@@ -9,6 +9,8 @@
  * In a plain browser (no bridge injected) everything here is a no-op.
  */
 import { useSyncExternalStore } from 'react';
+import { diag } from '../diagnostics';
+import { startStatsLogging, trackPeerConnections } from './streamStats';
 
 type Bridge = { port: number; token: string };
 
@@ -249,17 +251,26 @@ class ScreenShareAudio {
     if (!session) return;
     this.session = undefined;
 
-    if (session.ws) {
-      session.ws.onclose = null;
-      session.ws.onmessage = null;
-      session.ws.onerror = null;
-      session.ws.close();
+    try {
+      if (session.ws) {
+        session.ws.onclose = null;
+        session.ws.onmessage = null;
+        session.ws.onerror = null;
+        session.ws.close();
+      }
+      session.node?.disconnect();
+      session.gain?.disconnect();
+      session.stopTrack?.();
+    } finally {
+      // WebKit limits the number of live AudioContexts: always release ours.
+      session.ctx.close().catch(() => {});
+      this.emit();
     }
-    session.node?.disconnect();
-    session.gain?.disconnect();
-    session.stopTrack?.();
-    session.ctx.close().catch(() => {});
-    this.emit();
+  }
+
+  /** True while `track` is the audio track of the running session. */
+  public isCurrent(track: MediaStreamTrack): boolean {
+    return this.session?.track === track;
   }
 }
 
@@ -281,15 +292,58 @@ export const installScreenShareAudio = (win: Window | null | undefined) => {
   if (!devices || typeof devices.getDisplayMedia !== 'function') return;
   if (devices.__cinnyScreenShareAudio) return;
 
+  // Diagnostics: remember the call's peer connections so a share's real quality can be logged.
+  trackPeerConnections(win);
+
   const original = devices.getDisplayMedia.bind(devices);
   devices.getDisplayMedia = async (constraints?: DisplayMediaStreamOptions) => {
-    const pending = screenShareAudio.begin();
+    const startedAt = Date.now();
+    const activation = (win?.navigator as unknown as { userActivation?: { isActive: boolean } })
+      ?.userActivation;
+    diag(
+      `getDisplayMedia requested active=${activation?.isActive ?? '?'} focus=${
+        win?.document?.hasFocus?.() ?? '?'
+      } constraints=${JSON.stringify(constraints ?? {})}`
+    );
+    // Audio setup must never be able to break the share itself.
+    let pending: PendingScreenShareAudio | undefined;
+    try {
+      pending = screenShareAudio.begin();
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('[screen-share-audio] no system audio for this share:', e);
+    }
     let stream: MediaStream;
     try {
       stream = await original(constraints);
     } catch (e) {
+      diag(
+        `getDisplayMedia failed after ${Date.now() - startedAt}ms: ${
+          e instanceof Error ? `${e.name}: ${e.message}` : String(e)
+        }`
+      );
       pending?.cancel();
       throw e;
+    }
+    const [video] = stream.getVideoTracks();
+    if (video) {
+      // Screen content: keep it sharp and drop frames instead of resolution when starved.
+      try {
+        if (!video.contentHint) video.contentHint = 'detail';
+      } catch {
+        // not supported
+      }
+      const settings = video.getSettings();
+      diag(
+        `getDisplayMedia ok after ${Date.now() - startedAt}ms ${settings.width}x${settings.height}@${
+          settings.frameRate ?? '?'
+        } hint=${video.contentHint ?? '-'} audio=${stream.getAudioTracks().length}`
+      );
+      const stopStats = startStatsLogging(win);
+      video.addEventListener('ended', () => {
+        diag('screen share video ended');
+        stopStats();
+      });
     }
     if (!pending || stream.getAudioTracks().length > 0) {
       pending?.cancel();
@@ -299,9 +353,14 @@ export const installScreenShareAudio = (win: Window | null | undefined) => {
     try {
       const track = await pending.finish();
       stream.addTrack(track);
-      stream.getVideoTracks()[0]?.addEventListener('ended', () => screenShareAudio.stop(), {
-        once: true,
-      });
+      stream.getVideoTracks()[0]?.addEventListener(
+        'ended',
+        () => {
+          // A late event of an old share must not tear down a newer one.
+          if (screenShareAudio.isCurrent(track)) screenShareAudio.stop();
+        },
+        { once: true }
+      );
     } catch (e) {
       // Sharing the screen without sound is still better than failing the whole share.
       // eslint-disable-next-line no-console

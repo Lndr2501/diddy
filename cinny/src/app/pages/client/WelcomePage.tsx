@@ -1,7 +1,8 @@
 import React from 'react';
 import { Box, Button, Icon, Icons, Text, config, toRem } from 'folds';
 import { Page, PageHero, PageHeroSection } from '../../components/page';
-import CinnySVG from '../../../../public/res/svg/cinny.svg';
+import { AppLogo } from '../../components/app-logo/AppLogo';
+import { APP_NAME, APP_VERSION, APP_REPO_URL, UPSTREAM_NAME, UPSTREAM_URL } from '../../appInfo';
 
 export function WelcomePage() {
   return (
@@ -14,17 +15,17 @@ export function WelcomePage() {
       >
         <PageHeroSection>
           <PageHero
-            icon={<img width="70" height="70" src={CinnySVG} alt="Cinny Logo" />}
-            title="Welcome to Cinny"
+            icon={<AppLogo size={70} />}
+            title={`Welcome to ${APP_NAME}`}
             subTitle={
               <span>
-                Yet another matrix client.{' '}
-                <a
-                  href="https://github.com/cinnyapp/cinny/releases"
-                  target="_blank"
-                  rel="noreferrer noopener"
-                >
-                  v4.12.8
+                A Matrix chat client based on{' '}
+                <a href={UPSTREAM_URL} target="_blank" rel="noreferrer noopener">
+                  {UPSTREAM_NAME}
+                </a>
+                .{' '}
+                <a href={`${APP_REPO_URL}/releases`} target="_blank" rel="noreferrer noopener">
+                  v{APP_VERSION}
                 </a>
               </span>
             }
@@ -33,7 +34,7 @@ export function WelcomePage() {
               <Box grow="Yes" style={{ maxWidth: toRem(300) }} direction="Column" gap="300">
                 <Button
                   as="a"
-                  href="https://github.com/cinnyapp/cinny"
+                  href={APP_REPO_URL}
                   target="_blank"
                   rel="noreferrer noopener"
                   before={<Icon size="200" src={Icons.Code} />}
@@ -44,14 +45,14 @@ export function WelcomePage() {
                 </Button>
                 <Button
                   as="a"
-                  href="https://cinny.in/#sponsor"
+                  href={UPSTREAM_URL}
                   target="_blank"
                   rel="noreferrer noopener"
                   fill="Soft"
                   before={<Icon size="200" src={Icons.Heart} />}
                 >
                   <Text as="span" size="B400" truncate>
-                    Support
+                    {UPSTREAM_NAME} (upstream)
                   </Text>
                 </Button>
               </Box>

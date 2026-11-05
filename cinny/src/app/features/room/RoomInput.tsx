@@ -18,14 +18,12 @@ import {
   Icon,
   IconButton,
   Icons,
-  Line,
   Overlay,
   OverlayBackdrop,
   OverlayCenter,
   PopOut,
   Scroll,
   Text,
-  config,
   toRem,
 } from 'folds';
 
@@ -100,6 +98,7 @@ import {
   getVideoMsgContent,
 } from './msgContent';
 import { getMemberDisplayName, getMentionContent, trimReplyFromBody } from '../../utils/room';
+import * as css from './RoomInput.css';
 import { CommandAutocomplete } from './CommandAutocomplete';
 import { Command, SHRUG, TABLEFLIP, UNFLIP, useCommands } from '../../hooks/useCommands';
 import { mobileOrTablet } from '../../utils/user-agent';
@@ -546,16 +545,13 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
           top={
             replyDraft && (
               <div>
-                <Box
-                  alignItems="Center"
-                  gap="300"
-                  style={{ padding: `${config.space.S200} ${config.space.S300} 0` }}
-                >
+                <Box alignItems="Center" gap="300" className={css.ReplyChip}>
                   <IconButton
                     onClick={() => setReplyDraft(undefined)}
                     variant="SurfaceVariant"
+                    fill="None"
                     size="300"
-                    radii="300"
+                    radii="Pill"
                   >
                     <Icon src={Icons.Cross} size="50" />
                   </IconButton>
@@ -586,8 +582,9 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
             <IconButton
               onClick={() => pickFile('*')}
               variant="SurfaceVariant"
+              fill="None"
               size="300"
-              radii="300"
+              radii="Pill"
             >
               <Icon src={Icons.PlusCircle} />
             </IconButton>
@@ -596,8 +593,9 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
             <>
               <IconButton
                 variant="SurfaceVariant"
+                fill="None"
                 size="300"
-                radii="300"
+                radii="Pill"
                 onClick={() => setToolbar(!toolbar)}
               >
                 <Icon src={toolbar ? Icons.AlphabetUnderline : Icons.Alphabet} />
@@ -640,8 +638,9 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
                         aria-pressed={emojiBoardTab === EmojiBoardTab.Sticker}
                         onClick={() => setEmojiBoardTab(EmojiBoardTab.Sticker)}
                         variant="SurfaceVariant"
+                        fill="None"
                         size="300"
-                        radii="300"
+                        radii="Pill"
                       >
                         <Icon
                           src={Icons.Sticker}
@@ -656,8 +655,9 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
                       }
                       onClick={() => setEmojiBoardTab(EmojiBoardTab.Emoji)}
                       variant="SurfaceVariant"
+                      fill="None"
                       size="300"
-                      radii="300"
+                      radii="Pill"
                     >
                       <Icon
                         src={Icons.Smile}
@@ -669,7 +669,13 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
                   </PopOut>
                 )}
               </UseStateProvider>
-              <IconButton onClick={submit} variant="SurfaceVariant" size="300" radii="300">
+              <IconButton
+                onClick={submit}
+                variant="Primary"
+                size="300"
+                radii="Pill"
+                className={css.SendButton}
+              >
                 <Icon src={Icons.Send} />
               </IconButton>
             </>
@@ -677,7 +683,6 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
           bottom={
             toolbar && (
               <div>
-                <Line variant="SurfaceVariant" size="300" />
                 <Toolbar />
               </div>
             )

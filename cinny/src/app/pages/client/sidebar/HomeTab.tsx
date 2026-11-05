@@ -17,6 +17,7 @@ import {
   SidebarItemBadge,
   SidebarItemTooltip,
 } from '../../../components/sidebar';
+import * as css from '../../../components/sidebar/Sidebar.css';
 import { useHomeSelected } from '../../../hooks/router/useHomeSelected';
 import { UnreadBadge } from '../../../components/unread-badge';
 import { ScreenSize, useScreenSizeContext } from '../../../hooks/useScreenSize';
@@ -100,7 +101,7 @@ export function HomeTab() {
           <SidebarAvatar
             as="button"
             ref={triggerRef}
-            outlined
+            className={css.SidebarHomeAvatar}
             onClick={handleHomeClick}
             onContextMenu={handleContextMenu}
           >

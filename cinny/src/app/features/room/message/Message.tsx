@@ -795,7 +795,7 @@ export const Message = as<'div', MessageProps>(
         <Avatar
           className={css.MessageAvatar}
           as="button"
-          size="300"
+          size="400"
           data-user-id={senderId}
           onClick={onUserClick}
         >

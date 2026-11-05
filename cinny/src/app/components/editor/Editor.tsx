@@ -8,6 +8,7 @@ import React, {
   useState,
 } from 'react';
 import { Box, Scroll, Text } from 'folds';
+import classNames from 'classnames';
 import { Descendant, Editor, createEditor } from 'slate';
 import {
   Slate,
@@ -122,9 +123,14 @@ export const CustomEditor = forwardRef<HTMLDivElement, CustomEditorProps>(
       <div className={css.Editor} ref={ref}>
         <Slate editor={editor} initialValue={initialValue} onChange={onChange}>
           {top}
-          <Box alignItems="Start">
+          <div className={css.EditorRow}>
             {before && (
-              <Box className={css.EditorOptions} alignItems="Center" gap="100" shrink="No">
+              <Box
+                className={classNames(css.EditorOptions, css.EditorOptionsBefore)}
+                alignItems="Center"
+                gap="100"
+                shrink="No"
+              >
                 {before}
               </Box>
             )}
@@ -149,11 +155,16 @@ export const CustomEditor = forwardRef<HTMLDivElement, CustomEditorProps>(
               />
             </Scroll>
             {after && (
-              <Box className={css.EditorOptions} alignItems="Center" gap="100" shrink="No">
+              <Box
+                className={classNames(css.EditorOptions, css.EditorOptionsAfter)}
+                alignItems="Center"
+                gap="100"
+                shrink="No"
+              >
                 {after}
               </Box>
             )}
-          </Box>
+          </div>
           {bottom}
         </Slate>
       </div>

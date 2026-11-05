@@ -12,7 +12,7 @@ export const Base = style({
   backgroundColor: color.Surface.Container,
   color: color.Surface.OnContainer,
   border: `${config.borderWidth.B300} solid ${color.Surface.ContainerLine}`,
-  borderRadius: config.radii.R400,
+  borderRadius: toRem(18),
   boxShadow: config.shadow.E200,
   overflow: 'hidden',
 });
@@ -62,7 +62,7 @@ export const Preview = style({
   marginTop: 0,
   minHeight: toRem(40),
 
-  borderRadius: config.radii.R400,
+  borderRadius: toRem(14),
   backgroundColor: color.SurfaceVariant.Container,
   color: color.SurfaceVariant.OnContainer,
 });

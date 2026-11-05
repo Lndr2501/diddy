@@ -10,6 +10,7 @@ import {
   Avatar,
   Badge,
   Box,
+  Button,
   Chip,
   Header,
   Icon,
@@ -59,6 +60,11 @@ import { useSpaceOptionally } from '../../hooks/useSpace';
 import { ContainerColor } from '../../styles/ContainerColor.css';
 import { useFlattenPowerTagMembers, useGetMemberPowerTag } from '../../hooks/useMemberPowerTag';
 import { useRoomCreators } from '../../hooks/useRoomCreators';
+import { Presence, useUserPresence } from '../../hooks/useUserPresence';
+import { AvatarPresence, PresenceBadge } from '../../components/presence';
+import { InviteUserPrompt } from '../../components/invite-user-prompt';
+import { useRoomPermissions } from '../../hooks/useRoomPermissions';
+import { useOpenRoomSettings } from '../../state/hooks/roomSettings';
 
 type MemberDrawerHeaderProps = {
   room: Room;
@@ -67,11 +73,12 @@ function MemberDrawerHeader({ room }: MemberDrawerHeaderProps) {
   const setPeopleDrawer = useSetSetting(settingsAtom, 'isPeopleDrawer');
 
   return (
-    <Header className={css.MembersDrawerHeader} variant="Background" size="600">
+    <Header className={css.MembersDrawerHeader} variant="Surface" size="500">
       <Box grow="Yes" alignItems="Center" gap="200">
         <Box grow="Yes" alignItems="Center" gap="200">
+          <Icon size="200" src={Icons.User} />
           <Text title={`${room.getJoinedMemberCount()} Members`} size="H5" truncate>
-            {`${millify(room.getJoinedMemberCount())} Members`}
+            <b>{`Participants (${millify(room.getJoinedMemberCount())})`}</b>
           </Text>
         </Box>
         <Box shrink="No" alignItems="Center">
@@ -88,7 +95,8 @@ function MemberDrawerHeader({ room }: MemberDrawerHeaderProps) {
             {(triggerRef) => (
               <IconButton
                 ref={triggerRef}
-                variant="Background"
+                variant="Surface"
+                radii="400"
                 onClick={() => setPeopleDrawer(false)}
               >
                 <Icon src={Icons.Cross} />
@@ -109,6 +117,7 @@ type MemberItemProps = {
   onClick: MouseEventHandler<HTMLButtonElement>;
   pressed?: boolean;
   typing?: boolean;
+  admin?: boolean;
 };
 function MemberItem({
   mx,
@@ -118,6 +127,7 @@ function MemberItem({
   onClick,
   pressed,
   typing,
+  admin,
 }: MemberItemProps) {
   const name =
     getMemberDisplayName(room, member.userId) ?? getMxIdLocalPart(member.userId) ?? member.userId;
@@ -125,31 +135,52 @@ function MemberItem({
   const avatarUrl = avatarMxcUrl
     ? mx.mxcUrlToHttp(avatarMxcUrl, 100, 100, 'crop', undefined, false, useAuthentication)
     : undefined;
+  const presence = useUserPresence(member.userId);
 
   return (
     <MenuItem
       style={{ padding: `0 ${config.space.S200}` }}
       aria-pressed={pressed}
       data-user-id={member.userId}
-      variant="Background"
+      variant="Surface"
       radii="400"
       onClick={onClick}
       before={
-        <Avatar size="200">
-          <UserAvatar
-            userId={member.userId}
-            src={avatarUrl ?? undefined}
-            alt={name}
-            renderFallback={() => <Icon size="50" src={Icons.User} filled />}
-          />
-        </Avatar>
+        <AvatarPresence
+          badge={
+            presence &&
+            presence.presence !== Presence.Offline && (
+              <PresenceBadge presence={presence.presence} status={presence.status} size="200" />
+            )
+          }
+        >
+          <Avatar size="200">
+            <UserAvatar
+              userId={member.userId}
+              src={avatarUrl ?? undefined}
+              alt={name}
+              renderFallback={() => <Icon size="50" src={Icons.User} filled />}
+            />
+          </Avatar>
+        </AvatarPresence>
       }
       after={
-        typing && (
-          <Badge size="300" variant="Secondary" fill="Soft" radii="Pill" outlined>
-            <TypingIndicator size="300" />
-          </Badge>
-        )
+        <>
+          {typing && (
+            <Badge size="300" variant="Secondary" fill="Soft" radii="Pill" outlined>
+              <TypingIndicator size="300" />
+            </Badge>
+          )}
+          {admin && (
+            <Icon
+              className={css.AdminIcon}
+              size="100"
+              src={Icons.ShieldUser}
+              filled
+              aria-label="Admin"
+            />
+          )}
+        </>
       }
     >
       <Box grow="Yes">
@@ -160,6 +191,8 @@ function MemberItem({
     </MenuItem>
   );
 }
+
+const ADMIN_POWER_LEVEL = 100;
 
 const SEARCH_OPTIONS: UseAsyncSearchOptions = {
   limit: 1000,
@@ -186,6 +219,10 @@ export function MembersDrawer({ room, members }: MembersDrawerProps) {
   const creators = useRoomCreators(room);
   const getPowerTag = useGetMemberPowerTag(room, creators, powerLevels);
   const getPowerLevel = useGetMemberPowerLevel(powerLevels);
+  const permissions = useRoomPermissions(creators, powerLevels);
+  const canInvite = permissions.action('invite', mx.getSafeUserId());
+  const [invitePrompt, setInvitePrompt] = useState(false);
+  const openRoomSettings = useOpenRoomSettings();
 
   const fetchingMembers = members.length < room.getJoinedMemberCount();
   const openUserRoomProfile = useOpenUserRoomProfile();
@@ -246,13 +283,13 @@ export function MembersDrawer({ room, members }: MembersDrawerProps) {
 
   return (
     <Box
-      className={classNames(css.MembersDrawer, ContainerColor({ variant: 'Background' }))}
+      className={classNames(css.MembersDrawer, ContainerColor({ variant: 'Surface' }))}
       shrink="No"
       direction="Column"
     >
       <MemberDrawerHeader room={room} />
       <Box className={css.MemberDrawerContentBase} grow="Yes">
-        <Scroll ref={scrollRef} variant="Background" size="300" visibility="Hover" hideTrack>
+        <Scroll ref={scrollRef} variant="Surface" size="300" visibility="Hover" hideTrack>
           <Box className={css.MemberDrawerContent} direction="Column" gap="200">
             <Box ref={scrollTopAnchorRef} className={css.DrawerGroup} direction="Column" gap="200">
               <Box alignItems="Center" justifyContent="SpaceBetween" gap="200">
@@ -278,7 +315,7 @@ export function MembersDrawer({ room, members }: MembersDrawerProps) {
                               evt.currentTarget.getBoundingClientRect()
                             )) as MouseEventHandler<HTMLButtonElement>
                         }
-                        variant="Background"
+                        variant="Surface"
                         size="400"
                         radii="300"
                         before={<Icon src={Icons.Filter} size="50" />}
@@ -310,7 +347,7 @@ export function MembersDrawer({ room, members }: MembersDrawerProps) {
                               evt.currentTarget.getBoundingClientRect()
                             )) as MouseEventHandler<HTMLButtonElement>
                         }
-                        variant="Background"
+                        variant="Surface"
                         size="400"
                         radii="300"
                         after={<Icon src={Icons.Sort} size="50" />}
@@ -327,7 +364,7 @@ export function MembersDrawer({ room, members }: MembersDrawerProps) {
                   onChange={handleSearchChange}
                   style={{ paddingRight: config.space.S200 }}
                   placeholder="Type name..."
-                  variant="Surface"
+                  variant="SurfaceVariant"
                   size="400"
                   radii="400"
                   before={<Icon size="50" src={Icons.Search} />}
@@ -419,6 +456,10 @@ export function MembersDrawer({ room, members }: MembersDrawerProps) {
                         member={tagOrMember}
                         onClick={handleMemberClick}
                         pressed={openProfileUserId === tagOrMember.userId}
+                        admin={
+                          creators.has(tagOrMember.userId) ||
+                          getPowerLevel(tagOrMember.userId) >= ADMIN_POWER_LEVEL
+                        }
                         typing={typingMembers.some(
                           (receipt) => receipt.userId === tagOrMember.userId
                         )}
@@ -436,6 +477,35 @@ export function MembersDrawer({ room, members }: MembersDrawerProps) {
             )}
           </Box>
         </Scroll>
+      </Box>
+      <Box className={css.MemberDrawerFooter} direction="Column" gap="200" shrink="No">
+        {invitePrompt && (
+          <InviteUserPrompt room={room} requestClose={() => setInvitePrompt(false)} />
+        )}
+        <Button
+          className={css.FooterButton}
+          variant="Secondary"
+          fill="Soft"
+          size="400"
+          radii="400"
+          before={<Icon size="100" src={Icons.UserPlus} />}
+          onClick={() => setInvitePrompt(true)}
+          aria-pressed={invitePrompt}
+          disabled={!canInvite}
+        >
+          <Text size="B400">Invite</Text>
+        </Button>
+        <Button
+          className={css.FooterButton}
+          variant="Secondary"
+          fill="Soft"
+          size="400"
+          radii="400"
+          before={<Icon size="100" src={Icons.Setting} />}
+          onClick={() => openRoomSettings(room.roomId, space?.roomId)}
+        >
+          <Text size="B400">Room settings</Text>
+        </Button>
       </Box>
     </Box>
   );

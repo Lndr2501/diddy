@@ -1,0 +1,19 @@
+{
+  "identifier": "app-commands",
+  "description": "Custom commands the app page may call (app icon, MyInstants import)",
+  "local": true,
+  "remote": {
+    "urls": [
+      "http://localhost:44548"
+    ]
+  },
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "allow-set-app-icon",
+    "allow-myinstants-fetch-text",
+    "allow-myinstants-fetch-audio",
+    "allow-diag-log"
+  ]
+}

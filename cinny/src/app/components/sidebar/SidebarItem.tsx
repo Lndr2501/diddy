@@ -7,6 +7,7 @@ export const SidebarItem = as<'div', css.SidebarItemVariants>(
   ({ as: AsSidebarAvatarBox = 'div', className, active, ...props }, ref) => (
     <AsSidebarAvatarBox
       className={classNames(css.SidebarItem({ active }), className)}
+      data-active={active ? 'true' : undefined}
       {...props}
       ref={ref}
     />

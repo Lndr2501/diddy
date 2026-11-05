@@ -154,7 +154,7 @@ export function Settings({ initialPage, requestClose }: SettingsProps) {
                     <MenuItem
                       key={item.name}
                       variant="Background"
-                      radii="400"
+                      radii="500"
                       aria-pressed={activePage === item.page}
                       before={<Icon src={item.icon} size="100" filled={activePage === item.page} />}
                       onClick={() => setActivePage(item.page)}

@@ -107,7 +107,7 @@ function CallPrescreen() {
               <Box grow="Yes" alignItems="Center">
                 <Text size="L400">Participant</Text>
               </Box>
-              <Badge variant="Critical" fill="Solid" size="400">
+              <Badge variant="Primary" fill="Solid" size="400" radii="Pill">
                 <Text as="span" size="L400" truncate>
                   {callMembers.length} Live
                 </Text>

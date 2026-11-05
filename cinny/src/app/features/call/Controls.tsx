@@ -18,7 +18,7 @@ type MicrophoneButtonProps = {
 export function MicrophoneButton({ enabled, onToggle }: MicrophoneButtonProps) {
   const [micState, toggleMic] = useAsyncCallback(onToggle);
   const loading = micState.status === AsyncStatus.Loading;
-  
+
   return (
     <TooltipProvider
       position="Top"
@@ -32,12 +32,12 @@ export function MicrophoneButton({ enabled, onToggle }: MicrophoneButtonProps) {
       {(anchorRef) => (
         <IconButton
           ref={anchorRef}
-          variant={enabled ? 'Surface' : 'Warning'}
+          variant={enabled ? 'SurfaceVariant' : 'Critical'}
           fill="Soft"
           radii="400"
           size="400"
+          className={css.ControlButton}
           onClick={toggleMic}
-          outlined
           disabled={loading}
         >
           <Icon size="400" src={enabled ? Icons.Mic : Icons.MicMute} filled={!enabled} />
@@ -65,12 +65,12 @@ export function SoundButton({ enabled, onToggle }: SoundButtonProps) {
       {(anchorRef) => (
         <IconButton
           ref={anchorRef}
-          variant={enabled ? 'Surface' : 'Warning'}
+          variant={enabled ? 'SurfaceVariant' : 'Critical'}
           fill="Soft"
           radii="400"
           size="400"
+          className={css.ControlButton}
           onClick={() => onToggle()}
-          outlined
         >
           <Icon
             size="400"
@@ -104,12 +104,12 @@ export function VideoButton({ enabled, onToggle }: VideoButtonProps) {
       {(anchorRef) => (
         <IconButton
           ref={anchorRef}
-          variant={enabled ? 'Success' : 'Surface'}
+          variant={enabled ? 'Success' : 'SurfaceVariant'}
           fill="Soft"
           radii="400"
           size="400"
+          className={css.ControlButton}
           onClick={toggleVideo}
-          outlined
           disabled={loading}
         >
           <Icon
@@ -141,12 +141,12 @@ export function ScreenShareButton({ enabled, onToggle }: ScreenShareButtonProps)
       {(anchorRef) => (
         <IconButton
           ref={anchorRef}
-          variant={enabled ? 'Success' : 'Surface'}
+          variant={enabled ? 'Success' : 'SurfaceVariant'}
           fill="Soft"
           radii="400"
           size="400"
+          className={css.ControlButton}
           onClick={() => onToggle()}
-          outlined
         >
           <Icon size="400" src={Icons.ScreenShare} filled={enabled} />
         </IconButton>
@@ -173,12 +173,12 @@ export function ScreenShareAudioButton({ enabled, onToggle }: ScreenShareAudioBu
       {(anchorRef) => (
         <IconButton
           ref={anchorRef}
-          variant={enabled ? 'Success' : 'Warning'}
+          variant={enabled ? 'Success' : 'Critical'}
           fill="Soft"
           radii="400"
           size="400"
+          className={css.ControlButton}
           onClick={() => onToggle()}
-          outlined
         >
           <Icon
             size="400"
@@ -207,12 +207,12 @@ export function ChatButton() {
       {(anchorRef) => (
         <IconButton
           ref={anchorRef}
-          variant={chat ? 'Success' : 'Surface'}
+          variant={chat ? 'Success' : 'SurfaceVariant'}
           fill="Soft"
           radii="400"
           size="400"
+          className={css.ControlButton}
           onClick={() => setChat(!chat)}
-          outlined
         >
           <Icon size="400" src={Icons.Message} filled={chat} />
         </IconButton>

@@ -58,7 +58,7 @@ impl AudioBridge {
     }
 }
 
-fn log(msg: &str) {
+pub fn log(msg: &str) {
     eprintln!("[system-audio] {msg}");
     if let Some(home) = std::env::var_os("HOME") {
         let dir = std::path::Path::new(&home).join("Library/Logs/Diddy");
@@ -168,10 +168,12 @@ fn serve(
     };
     log("capture started");
 
-    ws.send(Message::text(format!(
+    if let Err(e) = ws.send(Message::text(format!(
         r#"{{"type":"format","sampleRate":{SAMPLE_RATE},"channels":{CHANNELS}}}"#
-    )))
-    .map_err(|e| e.to_string())?;
+    ))) {
+        // Don't leave the native capture running when the page is already gone.
+        return finish(capture, Err(e.to_string()));
+    }
 
     let result = loop {
         // Reading doubles as pacing (5 ms timeout) and notices when the page goes away.

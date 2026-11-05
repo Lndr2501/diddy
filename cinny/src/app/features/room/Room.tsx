@@ -80,10 +80,7 @@ export function Room() {
           </>
         )}
         {!callView && screenSize === ScreenSize.Desktop && isDrawer && (
-          <>
-            <Line variant="Background" direction="Vertical" size="300" />
-            <MembersDrawer key={room.roomId} room={room} members={members} />
-          </>
+          <MembersDrawer key={room.roomId} room={room} members={members} />
         )}
       </Box>
     </PowerLevelsContextProvider>

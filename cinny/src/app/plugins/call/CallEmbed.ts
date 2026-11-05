@@ -25,7 +25,9 @@ import {
 } from './types';
 import { CallControl } from './CallControl';
 import { CallControlState } from './CallControlState';
-import { installScreenShareAudio } from './screenShareAudio';
+import { installScreenShareAudio, screenShareAudio } from './screenShareAudio';
+import { installSoundboard } from './soundboard';
+import { installCallTheme } from './callTheme';
 
 export class CallEmbed {
   private mx: MatrixClient;
@@ -140,7 +142,8 @@ export class CallEmbed {
     iframe.title = 'Call Embed';
     iframe.sandbox =
       'allow-forms allow-scripts allow-same-origin allow-popups allow-modals allow-downloads';
-    iframe.allow = 'microphone; camera; display-capture; autoplay; clipboard-write;';
+    iframe.allow = 'microphone; camera; display-capture; autoplay; clipboard-write; fullscreen;';
+    iframe.allowFullscreen = true;
     iframe.src = url;
 
     iframe.style.width = '100%';
@@ -174,10 +177,27 @@ export class CallEmbed {
     const controlState = initialControlState ?? new CallControlState(true, false, true);
     this.control = new CallControl(controlState, call, iframe);
     this.control.startObserving();
+    // Desktop app: give getDisplayMedia() system audio and mix soundboard clips into getUserMedia().
+    // Installed as early as possible because Element Call may ask for the microphone right away;
+    // both installers are idempotent, so the load handler is just a safety net.
+    const installMediaPatches = () => {
+      installScreenShareAudio(iframe.contentWindow);
+      installSoundboard(iframe.contentWindow);
+      // Restyle the Element Call tiles to match the app theme.
+      installCallTheme(iframe.contentWindow);
+    };
+    const earlyInstall = window.setInterval(() => {
+      const target = iframe.contentWindow;
+      if (target && target.location.href !== 'about:blank') {
+        installMediaPatches();
+        window.clearInterval(earlyInstall);
+      }
+    }, 5);
+    window.setTimeout(() => window.clearInterval(earlyInstall), 5000);
+
     iframe.onload = () => {
       this.control.startObserving();
-      // Desktop app: give getDisplayMedia() system audio (no-op in a plain browser).
-      installScreenShareAudio(iframe.contentWindow);
+      installMediaPatches();
     };
 
     let initialMediaEvent = true;
@@ -266,6 +286,8 @@ export class CallEmbed {
     this.call.stop();
     this.container.removeChild(this.iframe);
     this.control.dispose();
+    // Release the screen-share audio session (AudioContext, WebSocket, native capture).
+    screenShareAudio.stop();
 
     this.mx.off(ClientEvent.Event, this.onEvent.bind(this));
     this.mx.off(MatrixEventEvent.Decrypted, this.onEventDecrypted.bind(this));

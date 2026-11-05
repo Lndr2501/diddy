@@ -1673,8 +1673,8 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
     const newDividerJSX =
       newDivider && eventJSX && eventSender !== mx.getUserId() ? (
         <MessageBase space={messageSpacing}>
-          <TimelineDivider style={{ color: color.Success.Main }} variant="Inherit">
-            <Badge as="span" size="500" variant="Success" fill="Solid" radii="300">
+          <TimelineDivider style={{ color: color.Primary.Main }} variant="Inherit">
+            <Badge as="span" size="500" variant="Primary" fill="Solid" radii="Pill">
               <Text size="L400">New Messages</Text>
             </Badge>
           </TimelineDivider>
@@ -1685,7 +1685,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
       dayDivider && eventJSX ? (
         <MessageBase space={messageSpacing}>
           <TimelineDivider variant="Surface">
-            <Badge as="span" size="500" variant="Secondary" fill="None" radii="300">
+            <Badge as="span" size="500" variant="Secondary" fill="Soft" radii="Pill">
               <Text size="L400">
                 {(() => {
                   if (today(mEvent.getTs())) return 'Today';

@@ -121,9 +121,9 @@ export function LiveChip({ count, room, members }: LiveChipProps) {
       }
     >
       <Chip
-        variant="Surface"
+        variant="Primary"
         fill="Soft"
-        before={<Badge variant="Critical" fill="Solid" size="200" />}
+        before={<Badge variant="Primary" fill="Solid" size="200" radii="Pill" />}
         after={<Icon size="50" src={cords ? Icons.ChevronBottom : Icons.ChevronTop} />}
         radii="Pill"
         onClick={handleOpenMenu}

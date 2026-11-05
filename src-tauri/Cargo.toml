@@ -2,7 +2,7 @@
 
 [package]
 name = "diddy"
-version = "1.0.0"
+version = "1.1.0"
 description = "Diddy - a Matrix chat client (based on Cinny)"
 authors = ["Lndr2501"]
 license = "AGPL-3.0-only"
@@ -17,7 +17,7 @@ tauri-build = { version = "2.6.2", features = [] }
 [dependencies]
 serde_json = "1.0.109"
 serde = { version = "1.0.193", features = ["derive"] }
-tauri = { version = "2.11.2", features = [ "devtools"] }
+tauri = { version = "2.11.2", features = [ "devtools", "image-png"] }
 tauri-plugin-localhost = "2.3.2"
 tauri-plugin-window-state = "2.4.1"
 tauri-plugin-clipboard-manager = "2.3.2"
@@ -46,6 +46,8 @@ tauri-plugin-updater = { version = "2.10.1", features = ["rustls-tls"], optional
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6"
 objc2-web-kit = { version = "0.3", features = ["WKWebViewConfiguration", "WKPreferences"] }
+objc2-app-kit = { version = "0.3", features = ["NSApplication", "NSImage", "NSResponder"] }
+objc2-foundation = { version = "0.3", features = ["NSData"] }
 # System-audio capture for screen sharing (see src/system_audio.rs)
 screencapturekit = "11"
 tungstenite = "0.30"

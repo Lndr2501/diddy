@@ -3,10 +3,10 @@ import { Box, config, Icon, Icons, Menu, PopOut, RectCords, Text } from 'folds';
 import FocusTrap from 'focus-trap-react';
 import { useNavigate } from 'react-router-dom';
 import { SidebarAvatar, SidebarItem, SidebarItemTooltip } from '../../../components/sidebar';
+import * as css from '../../../components/sidebar/Sidebar.css';
 import { stopPropagation } from '../../../utils/keyboard';
 import { SequenceCard } from '../../../components/sequence-card';
 import { SettingTile } from '../../../components/setting-tile';
-import { ContainerColor } from '../../../styles/ContainerColor.css';
 import {
   encodeSearchParamValueArray,
   getCreatePath,
@@ -102,10 +102,10 @@ export function CreateTab() {
             }
           >
             <SidebarAvatar
-              className={menuCords ? ContainerColor({ variant: 'Surface' }) : undefined}
+              className={css.SidebarAddAvatar}
+              data-open={!!menuCords}
               as="button"
               ref={triggerRef}
-              outlined
               onClick={handleMenu}
             >
               <Icon src={Icons.Plus} />

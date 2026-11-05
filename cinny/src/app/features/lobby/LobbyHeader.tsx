@@ -1,6 +1,5 @@
 import React, { MouseEventHandler, forwardRef, useState } from 'react';
 import {
-  Avatar,
   Box,
   Icon,
   IconButton,
@@ -39,6 +38,11 @@ import { useRoomCreators } from '../../hooks/useRoomCreators';
 import { useRoomPermissions } from '../../hooks/useRoomPermissions';
 import { InviteUserPrompt } from '../../components/invite-user-prompt';
 import { SpaceJoinMenuItems } from '../../components/space-join/SpaceJoinMenuItems';
+import {
+  HeaderBellButton,
+  HeaderProfileButton,
+  HeaderSearchField,
+} from '../../components/top-actions';
 
 type LobbyMenuProps = {
   powerLevels: IPowerLevels;
@@ -160,7 +164,7 @@ export function LobbyHeader({ showProfile, powerLevels }: LobbyHeaderProps) {
   };
 
   return (
-    <PageHeader className={showProfile ? undefined : css.Header} balance>
+    <PageHeader className={showProfile ? undefined : css.Header} outlined={false} balance>
       <Box grow="Yes" alignItems="Center" gap="200">
         {screenSize === ScreenSize.Mobile ? (
           <>
@@ -182,30 +186,37 @@ export function LobbyHeader({ showProfile, powerLevels }: LobbyHeaderProps) {
             </Box>
           </>
         ) : (
-          <>
-            <Box grow="Yes" basis="No" />
-            <Box justifyContent="Center" alignItems="Center" gap="300">
-              {showProfile && (
-                <>
-                  <Avatar size="300">
-                    <RoomAvatar
-                      roomId={space.roomId}
-                      src={avatarUrl}
-                      alt={name}
-                      renderFallback={() => <Text size="H4">{nameInitials(name)}</Text>}
-                    />
-                  </Avatar>
-                  <Text size="H3" truncate>
-                    {name}
-                  </Text>
-                </>
-              )}
-            </Box>
-          </>
+          <Box grow="Yes" alignItems="Center" gap="300">
+            {showProfile && (
+              <>
+                <div className={css.SpaceBadge}>
+                  {avatarUrl ? (
+                    <div className={css.SpaceBadgeAvatar}>
+                      <RoomAvatar
+                        roomId={space.roomId}
+                        src={avatarUrl}
+                        alt={name}
+                        renderFallback={() => <Text size="H6">{nameInitials(name)}</Text>}
+                      />
+                    </div>
+                  ) : (
+                    <Text size="H6">
+                      <b>{nameInitials(name)}</b>
+                    </Text>
+                  )}
+                </div>
+                <Text className={css.HeaderTitle} size="H4" truncate>
+                  <b>{name}</b>
+                </Text>
+              </>
+            )}
+          </Box>
         )}
         <Box
+          className={css.HeaderActions}
           shrink="No"
-          grow={screenSize === ScreenSize.Mobile ? 'No' : 'Yes'}
+          alignItems="Center"
+          grow="No"
           basis={screenSize === ScreenSize.Mobile ? 'Yes' : 'No'}
           justifyContent="End"
         >
@@ -221,7 +232,10 @@ export function LobbyHeader({ showProfile, powerLevels }: LobbyHeaderProps) {
             >
               {(triggerRef) => (
                 <IconButton
-                  fill="None"
+                  className={css.SoftButton}
+                  variant="Surface"
+                  fill="Soft"
+                  radii="400"
                   ref={triggerRef}
                   onClick={() => setPeopleDrawer((drawer) => !drawer)}
                 >
@@ -242,7 +256,10 @@ export function LobbyHeader({ showProfile, powerLevels }: LobbyHeaderProps) {
           >
             {(triggerRef) => (
               <IconButton
-                fill="None"
+                className={css.SoftButton}
+                variant="Surface"
+                fill="Soft"
+                radii="400"
                 onClick={handleOpenMenu}
                 ref={triggerRef}
                 aria-pressed={!!menuAnchor}
@@ -274,6 +291,13 @@ export function LobbyHeader({ showProfile, powerLevels }: LobbyHeaderProps) {
               </FocusTrap>
             }
           />
+          {screenSize !== ScreenSize.Mobile && (
+            <>
+              <HeaderBellButton />
+              <HeaderSearchField />
+              <HeaderProfileButton />
+            </>
+          )}
         </Box>
       </Box>
     </PageHeader>

@@ -4,6 +4,7 @@ import classNames from 'classnames';
 import { ContainerColor } from '../../styles/ContainerColor.css';
 import * as css from './style.css';
 import { ScreenSize, useScreenSizeContext } from '../../hooks/useScreenSize';
+import { UserPanel } from '../user-panel/UserPanel';
 
 type PageRootProps = {
   nav: ReactNode;
@@ -14,10 +15,18 @@ export function PageRoot({ nav, children }: PageRootProps) {
   const screenSize = useScreenSizeContext();
 
   return (
-    <Box grow="Yes" className={ContainerColor({ variant: 'Background' })}>
+    <Box
+      grow="Yes"
+      className={classNames(ContainerColor({ variant: 'Background' }), css.PageRoot)}
+    >
       {nav}
       {screenSize !== ScreenSize.Mobile && (
-        <Line variant="Background" size="300" direction="Vertical" />
+        <Line
+          className={css.PageRootSeparator}
+          variant="Background"
+          size="300"
+          direction="Vertical"
+        />
       )}
       {children}
     </Box>
@@ -30,6 +39,8 @@ type ClientDrawerLayoutProps = {
 export function PageNav({ size, children }: ClientDrawerLayoutProps & css.PageNavVariants) {
   const screenSize = useScreenSizeContext();
   const isMobile = screenSize === ScreenSize.Mobile;
+  // size 300 is the compact variant used by settings dialogs: no user panel there.
+  const showUserPanel = size !== '300';
 
   return (
     <Box
@@ -39,6 +50,7 @@ export function PageNav({ size, children }: ClientDrawerLayoutProps & css.PageNa
     >
       <Box grow="Yes" direction="Column">
         {children}
+        {showUserPanel && <UserPanel />}
       </Box>
     </Box>
   );

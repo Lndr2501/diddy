@@ -27,12 +27,11 @@ function MicrophoneButton({ enabled, onToggle, disabled }: MicrophoneButtonProps
       {(anchorRef) => (
         <IconButton
           ref={anchorRef}
-          variant={enabled ? 'Surface' : 'Warning'}
+          variant={enabled ? 'SurfaceVariant' : 'Critical'}
           fill="Soft"
-          radii="300"
+          radii="Pill"
           size="300"
           onClick={toggleMic}
-          outlined
           disabled={disabled || loading}
         >
           <Icon size="100" src={enabled ? Icons.Mic : Icons.MicMute} filled={!enabled} />
@@ -60,12 +59,11 @@ function SoundButton({ enabled, onToggle, disabled }: SoundButtonProps) {
       {(anchorRef) => (
         <IconButton
           ref={anchorRef}
-          variant={enabled ? 'Surface' : 'Warning'}
+          variant={enabled ? 'SurfaceVariant' : 'Critical'}
           fill="Soft"
-          radii="300"
+          radii="Pill"
           size="300"
           onClick={() => onToggle()}
-          outlined
           disabled={disabled}
         >
           <Icon
@@ -100,12 +98,11 @@ function VideoButton({ enabled, onToggle, disabled }: VideoButtonProps) {
       {(anchorRef) => (
         <IconButton
           ref={anchorRef}
-          variant={enabled ? 'Success' : 'Surface'}
+          variant={enabled ? 'Success' : 'SurfaceVariant'}
           fill="Soft"
-          radii="300"
+          radii="Pill"
           size="300"
           onClick={toggleVideo}
-          outlined
           disabled={disabled || loading}
         >
           <Icon
@@ -137,12 +134,11 @@ function ScreenShareButton({ enabled, onToggle, disabled }: ScreenShareButtonPro
       {(anchorRef) => (
         <IconButton
           ref={anchorRef}
-          variant={enabled ? 'Success' : 'Surface'}
+          variant={enabled ? 'Success' : 'SurfaceVariant'}
           fill="Soft"
-          radii="300"
+          radii="Pill"
           size="300"
           onClick={onToggle}
-          outlined
           disabled={disabled}
         >
           <Icon size="100" src={Icons.ScreenShare} filled={enabled} />
@@ -210,12 +206,12 @@ export function CallControl({
       </Box>
       <StatusDivider />
       <Chip
-        variant="Critical"
+        variant="Primary"
         radii="Pill"
         fill="Soft"
         before={
           exiting ? (
-            <Spinner variant="Critical" fill="Soft" size="50" />
+            <Spinner variant="Primary" fill="Soft" size="50" />
           ) : (
             <Icon size="50" src={Icons.PhoneDown} filled />
           )

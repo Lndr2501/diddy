@@ -1,6 +1,6 @@
 import { ComplexStyleRule, createVar, style } from '@vanilla-extract/css';
 import { RecipeVariants, recipe } from '@vanilla-extract/recipes';
-import { ContainerColor, DefaultReset, Disabled, RadiiVariant, color, config, toRem } from 'folds';
+import { ContainerColor, DefaultReset, Disabled, color, config, toRem } from 'folds';
 
 export const NavCategory = style([
   DefaultReset,
@@ -11,6 +11,10 @@ export const NavCategory = style([
 
 export const NavCategoryHeader = style({
   gap: config.space.S100,
+  // transparent: sits directly on the glass panel
+  backgroundColor: 'transparent',
+  paddingLeft: config.space.S100,
+  paddingRight: config.space.S100,
 });
 
 export const NavLink = style({
@@ -49,23 +53,30 @@ const NavItemBase = style({
   display: 'flex',
   justifyContent: 'start',
   cursor: 'pointer',
-  backgroundColor: Container,
+  // rows are transparent so the glass panel shows through
+  backgroundColor: 'transparent',
   color: OnContainer,
   outline: 'none',
   minHeight: toRem(36),
+  transition: 'background-color 120ms ease',
 
   selectors: {
     '&:hover, &:focus-visible': {
-      backgroundColor: ContainerHover,
+      backgroundColor: color.SurfaceVariant.Container,
     },
     '&[data-hover=true]': {
-      backgroundColor: ContainerHover,
+      backgroundColor: color.SurfaceVariant.Container,
     },
     [`&:has(.${NavLink}:active)`]: {
-      backgroundColor: ContainerActive,
+      backgroundColor: color.SurfaceVariant.ContainerActive,
     },
+    // selected row: rounded accent-tinted highlight
     '&[aria-selected=true]': {
-      backgroundColor: ContainerActive,
+      backgroundColor: color.Primary.Container,
+      color: color.Primary.OnContainer,
+    },
+    '&[aria-selected=true]:hover': {
+      backgroundColor: color.Primary.ContainerHover,
     },
     [`&:has(.${NavLink}:focus-visible)`]: {
       outline: `${config.borderWidth.B600} solid ${ContainerLine}`,
@@ -81,6 +92,14 @@ const NavItemBase = style({
     },
   },
 });
+const NavItemRadii = {
+  '0': { borderRadius: 0 },
+  '300': { borderRadius: toRem(10) },
+  '400': { borderRadius: toRem(12) },
+  '500': { borderRadius: toRem(14) },
+  Inherit: { borderRadius: 'inherit' },
+  Pill: { borderRadius: config.radii.Pill },
+};
 export const NavItem = recipe({
   base: [DefaultReset, NavItemBase, Disabled],
   variants: {
@@ -94,7 +113,7 @@ export const NavItem = recipe({
       Warning: getVariant('Warning'),
       Critical: getVariant('Critical'),
     },
-    radii: RadiiVariant,
+    radii: NavItemRadii,
   },
   defaultVariants: {
     variant: 'Surface',
@@ -112,6 +131,15 @@ export const NavItemContent = style({
   display: 'flex',
   alignItems: 'center',
   fontWeight: config.fontWeight.W500,
+  // live call badges and mention counts use the accent instead of critical/success
+  vars: {
+    [color.Critical.Main]: color.Primary.Main,
+    [color.Critical.MainLine]: color.Primary.MainLine,
+    [color.Critical.OnMain]: color.Primary.OnMain,
+    [color.Success.Main]: color.Primary.Main,
+    [color.Success.MainLine]: color.Primary.MainLine,
+    [color.Success.OnMain]: color.Primary.OnMain,
+  },
 
   selectors: {
     '&:hover': {

@@ -1,14 +1,34 @@
 import { keyframes, style } from '@vanilla-extract/css';
-import { config, toRem } from 'folds';
+import { color, config, toRem } from 'folds';
 
 export const MembersDrawer = style({
-  width: toRem(266),
+  width: toRem(280),
+  margin: `${config.space.S200} ${config.space.S200} ${config.space.S200} 0`,
+  borderRadius: toRem(18),
+  border: `${config.borderWidth.B300} solid ${color.Surface.ContainerLine}`,
+  backgroundColor: color.Surface.Container,
+  overflow: 'hidden',
 });
 
 export const MembersDrawerHeader = style({
   flexShrink: 0,
-  padding: `0 ${config.space.S200} 0 ${config.space.S300}`,
+  padding: `0 ${config.space.S200} 0 ${config.space.S400}`,
   borderBottomWidth: config.borderWidth.B300,
+});
+
+export const MemberDrawerFooter = style({
+  padding: config.space.S300,
+  borderTop: `${config.borderWidth.B300} solid ${color.Surface.ContainerLine}`,
+});
+
+export const FooterButton = style({
+  width: '100%',
+  justifyContent: 'flex-start',
+});
+
+export const AdminIcon = style({
+  flexShrink: 0,
+  color: color.Warning.Main,
 });
 
 export const MemberDrawerContentBase = style({

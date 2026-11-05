@@ -6,6 +6,9 @@
 // mod menu;
 
 use tauri::{webview::{NewWindowResponse, WebviewWindowBuilder}, WebviewUrl, TitleBarStyle};
+mod app_icon;
+mod diag;
+mod myinstants;
 #[cfg(target_os = "macos")]
 mod system_audio;
 
@@ -18,7 +21,7 @@ use tauri_plugin_updater::UpdaterExt;
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 
 /// macOS: WKWebView ships with `navigator.mediaDevices` (getUserMedia) switched off, which makes
-/// Element Call hang forever on "Join". Flip the private WebKit switches before the page loads.
+/// Element Call hang forever on "Join", and fullscreen is off. Flip the WebKit switches before the page loads.
 #[cfg(target_os = "macos")]
 fn media_enabled_webview_configuration() -> objc2::rc::Retained<objc2_web_kit::WKWebViewConfiguration> {
     use objc2::{msg_send, runtime::{Bool, NSObjectProtocol}, sel, MainThreadMarker};
@@ -35,6 +38,14 @@ fn media_enabled_webview_configuration() -> objc2::rc::Retained<objc2_web_kit::W
         }
         if prefs.respondsToSelector(sel!(_setPeerConnectionEnabled:)) {
             let _: () = msg_send![&*prefs, _setPeerConnectionEnabled: Bool::YES];
+        }
+        // Element fullscreen (a stream tile, videos). Off by default in WKWebView; Tauri only turns
+        // it on with its `macos-private-api` feature, so do it here. Public API on macOS 12.3+,
+        // the private setter covers older systems.
+        if prefs.respondsToSelector(sel!(setElementFullscreenEnabled:)) {
+            let _: () = msg_send![&*prefs, setElementFullscreenEnabled: Bool::YES];
+        } else if prefs.respondsToSelector(sel!(_setFullScreenEnabled:)) {
+            let _: () = msg_send![&*prefs, _setFullScreenEnabled: Bool::YES];
         }
         config
     }
@@ -72,6 +83,12 @@ pub fn run() {
     }
 
     builder
+        .invoke_handler(tauri::generate_handler![
+            app_icon::set_app_icon,
+            diag::diag_log,
+            myinstants::myinstants_fetch_text,
+            myinstants::myinstants_fetch_audio
+        ])
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_localhost::Builder::new(port).build())
         .plugin(tauri_plugin_window_state::Builder::default().build())
@@ -149,7 +166,13 @@ pub fn run() {
 
             #[cfg(target_os = "macos")]
             let window_builder = window_builder
-                .title_bar_style(TitleBarStyle::Transparent)
+                // Overlay title bar: web content extends under the title bar and the traffic
+                // lights sit inside the app's own ~44px top row (see components/titlebar).
+                .title_bar_style(TitleBarStyle::Overlay)
+                .hidden_title(true)
+                .traffic_light_position(tauri::Position::Logical(tauri::LogicalPosition::new(
+                    20.0, 16.0,
+                )))
                 .with_webview_configuration(media_enabled_webview_configuration());
             
             window_builder.build()?;

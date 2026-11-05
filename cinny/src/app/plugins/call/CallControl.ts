@@ -1,6 +1,7 @@
 import { ClientWidgetApi } from 'matrix-widget-api';
 import EventEmitter from 'events';
 import { CallControlState } from './CallControlState';
+import { diag } from '../diagnostics';
 import { ElementMediaStateDetail, ElementMediaStatePayload, ElementWidgetActions } from './types';
 
 export enum CallControlEvent {
@@ -274,7 +275,13 @@ export class CallControl extends EventEmitter implements CallControlState {
   }
 
   public toggleScreenshare() {
-    this.screenshareButton?.click();
+    const button = this.screenshareButton;
+    diag(
+      `toggleScreenshare: button=${button ? 'found' : 'MISSING'} kind=${
+        button?.getAttribute('data-kind') ?? '-'
+      } disabled=${(button as HTMLButtonElement | undefined)?.disabled ?? '-'}`
+    );
+    button?.click();
   }
 
   public toggleSpotlight() {

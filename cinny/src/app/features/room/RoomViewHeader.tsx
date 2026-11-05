@@ -2,7 +2,6 @@ import React, { MouseEventHandler, forwardRef, useState } from 'react';
 import FocusTrap from 'focus-trap-react';
 import {
   Box,
-  Avatar,
   Text,
   Overlay,
   OverlayCenter,
@@ -72,6 +71,13 @@ import { RoomSettingsPage } from '../../state/roomSettings';
 import { useCallEmbed, useCallStart } from '../../hooks/useCallEmbed';
 import { useLivekitSupport } from '../../hooks/useLivekitSupport';
 import { webRTCSupported } from '../../utils/rtc';
+import { useCallMembers, useCallSession } from '../../hooks/useCall';
+import { millify } from '../../plugins/millify';
+import {
+  HeaderBellButton,
+  HeaderProfileButton,
+  HeaderSearchField,
+} from '../../components/top-actions';
 
 type RoomMenuProps = {
   room: Room;
@@ -336,8 +342,10 @@ function CallButton() {
       >
         {(triggerRef) => (
           <IconButton
+            className={css.SoftButton}
             variant="Surface"
-            fill="None"
+            fill="Soft"
+            radii="400"
             ref={triggerRef}
             onClick={handleOpenMenu}
             onContextMenu={(evt) => {
@@ -417,6 +425,19 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
 
   const [peopleDrawer, setPeopleDrawer] = useSetting(settingsAtom, 'isPeopleDrawer');
 
+  const callSession = useCallSession(room);
+  const callMembers = useCallMembers(callSession);
+  const isCallRoom = room.isCallRoom();
+  let countLabel: string | undefined;
+  if (isCallRoom || callView) {
+    if (callMembers.length > 0) {
+      countLabel = `${callMembers.length} ${callMembers.length === 1 ? 'participant' : 'participants'}`;
+    }
+  } else if (!direct) {
+    const joined = room.getJoinedMemberCount();
+    countLabel = `${millify(joined)} ${joined === 1 ? 'member' : 'members'}`;
+  }
+
   const handleSearchClick = () => {
     const searchParams: _SearchPathSearchParams = {
       rooms: room.roomId,
@@ -448,6 +469,7 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
   return (
     <PageHeader
       className={ContainerColor({ variant: 'Surface' })}
+      outlined={false}
       balance={screenSize === ScreenSize.Mobile}
     >
       <Box grow="Yes" gap="300">
@@ -464,21 +486,45 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
         )}
         <Box grow="Yes" alignItems="Center" gap="300">
           {screenSize !== ScreenSize.Mobile && (
-            <Avatar size="300">
-              <RoomAvatar
-                roomId={room.roomId}
-                src={avatarUrl}
-                alt={name}
-                renderFallback={() => (
-                  <RoomIcon size="200" joinRule={room.getJoinRule()} roomType={room.getType()} />
-                )}
-              />
-            </Avatar>
+            <div className={css.RoomBadge}>
+              {avatarUrl ? (
+                <div className={css.RoomBadgeAvatar}>
+                  <RoomAvatar
+                    roomId={room.roomId}
+                    src={avatarUrl}
+                    alt={name}
+                    renderFallback={() => (
+                      <RoomIcon
+                        size="200"
+                        joinRule={room.getJoinRule()}
+                        roomType={room.getType()}
+                      />
+                    )}
+                  />
+                </div>
+              ) : (
+                (isCallRoom && <Icon size="200" src={Icons.Headphone} filled />) || (
+                  <RoomIcon
+                    size="200"
+                    filled
+                    joinRule={room.getJoinRule()}
+                    roomType={room.getType()}
+                  />
+                )
+              )}
+            </div>
           )}
-          <Box direction="Column">
-            <Text size={topic ? 'H5' : 'H3'} truncate>
-              {name}
-            </Text>
+          <Box className={css.HeaderTitle} direction="Column">
+            <Box alignItems="Baseline" gap="200">
+              <Text size={topic ? 'H5' : 'H4'} truncate>
+                <b>{name}</b>
+              </Text>
+              {countLabel && (
+                <Text as="span" className={css.HeaderCount} size="T300" priority="300">
+                  {`· ${countLabel}`}
+                </Text>
+              )}
+            </Box>
             {topic && (
               <UseStateProvider initial={false}>
                 {(viewTopic, setViewTopic) => (
@@ -519,7 +565,7 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
           </Box>
         </Box>
 
-        <Box shrink="No">
+        <Box className={css.HeaderActions} shrink="No" alignItems="Center">
           {!encryptedRoom && (
             <TooltipProvider
               position="Bottom"
@@ -531,7 +577,14 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
               }
             >
               {(triggerRef) => (
-                <IconButton fill="None" ref={triggerRef} onClick={handleSearchClick}>
+                <IconButton
+                  className={css.SoftButton}
+                  variant="Surface"
+                  fill="Soft"
+                  radii="400"
+                  ref={triggerRef}
+                  onClick={handleSearchClick}
+                >
                   <Icon size="400" src={Icons.Search} />
                 </IconButton>
               )}
@@ -548,8 +601,10 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
           >
             {(triggerRef) => (
               <IconButton
-                fill="None"
-                style={{ position: 'relative' }}
+                className={css.SoftButton}
+                variant="Surface"
+                fill="Soft"
+                radii="400"
                 onClick={handleOpenPinMenu}
                 ref={triggerRef}
                 aria-pressed={!!pinMenuAnchor}
@@ -612,8 +667,16 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
               }
             >
               {(triggerRef) => (
-                <IconButton fill="None" ref={triggerRef} onClick={handleMemberToggle}>
-                  <Icon size="400" src={Icons.User} />
+                <IconButton
+                  className={css.SoftButton}
+                  variant="Surface"
+                  fill="Soft"
+                  radii="400"
+                  ref={triggerRef}
+                  onClick={handleMemberToggle}
+                  aria-pressed={!callView && peopleDrawer}
+                >
+                  <Icon size="400" src={Icons.User} filled={!callView && peopleDrawer} />
                 </IconButton>
               )}
             </TooltipProvider>
@@ -631,7 +694,10 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
           >
             {(triggerRef) => (
               <IconButton
-                fill="None"
+                className={css.SoftButton}
+                variant="Surface"
+                fill="Soft"
+                radii="400"
                 onClick={handleOpenMenu}
                 ref={triggerRef}
                 aria-pressed={!!menuAnchor}
@@ -660,6 +726,13 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
               </FocusTrap>
             }
           />
+          {screenSize !== ScreenSize.Mobile && (
+            <>
+              <HeaderBellButton />
+              <HeaderSearchField />
+              <HeaderProfileButton />
+            </>
+          )}
         </Box>
       </Box>
     </PageHeader>

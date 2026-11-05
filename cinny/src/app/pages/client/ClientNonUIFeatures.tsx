@@ -3,9 +3,9 @@ import React, { ReactNode, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { RoomEvent, RoomEventHandlerMap } from 'matrix-js-sdk';
 import { roomToUnreadAtom, unreadEqual, unreadInfoToUnread } from '../../state/room/roomToUnread';
-import LogoSVG from '../../../../public/res/svg/cinny.svg';
-import LogoUnreadSVG from '../../../../public/res/svg/cinny-unread.svg';
-import LogoHighlightSVG from '../../../../public/res/svg/cinny-highlight.svg';
+import { APP_ICON_IMAGES } from '../../plugins/appIconImages';
+import { getAppIcon, useAppIcon } from '../../plugins/appIcon';
+import { makeBadgedIcon } from '../../utils/badgedIcon';
 import NotificationSound from '../../../../public/sound/notification.ogg';
 import InviteSound from '../../../../public/sound/invite.ogg';
 import { notificationPermission, setFavicon } from '../../utils/dom';
@@ -27,6 +27,7 @@ import { useSelectedRoom } from '../../hooks/router/useSelectedRoom';
 import { useInboxNotificationsSelected } from '../../hooks/router/useInbox';
 import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
 import { useSpaceAutoJoinWorker } from '../../hooks/useSpaceAutoJoin';
+import { applyStoredAppIcon } from '../../plugins/appIcon';
 
 function SystemEmojiFeature() {
   const [twitterEmoji] = useSetting(settingsAtom, 'twitterEmoji');
@@ -54,6 +55,7 @@ function PageZoomFeature() {
 
 function FaviconUpdater() {
   const roomToUnread = useAtomValue(roomToUnreadAtom);
+  const iconId = useAppIcon();
 
   useEffect(() => {
     let notification = false;
@@ -67,12 +69,18 @@ function FaviconUpdater() {
       }
     });
 
-    if (notification) {
-      setFavicon(highlight ? LogoHighlightSVG : LogoUnreadSVG);
-    } else {
-      setFavicon(LogoSVG);
-    }
-  }, [roomToUnread]);
+    const src = APP_ICON_IMAGES[iconId];
+    const dot = notification ? (highlight ? '#FF3B30' : '#FFD60A') : undefined;
+    let cancelled = false;
+    makeBadgedIcon(src, dot)
+      .then((url) => {
+        if (!cancelled) setFavicon(url);
+      })
+      .catch(() => setFavicon(src));
+    return () => {
+      cancelled = true;
+    };
+  }, [roomToUnread, iconId]);
 
   return null;
 }
@@ -90,8 +98,8 @@ function InviteNotifications() {
   const notify = useCallback(
     (count: number) => {
       const noti = new window.Notification('Invitation', {
-        icon: LogoSVG,
-        badge: LogoSVG,
+        icon: APP_ICON_IMAGES[getAppIcon()],
+        badge: APP_ICON_IMAGES[getAppIcon()],
         body: `You have ${count} new invitation request.`,
         silent: true,
       });
@@ -254,6 +262,13 @@ function MessageNotifications() {
   );
 }
 
+function AppIconFeature() {
+  useEffect(() => {
+    applyStoredAppIcon();
+  }, []);
+  return null;
+}
+
 function SpaceAutoJoinFeature() {
   useSpaceAutoJoinWorker();
   return null;
@@ -272,6 +287,7 @@ export function ClientNonUIFeatures({ children }: ClientNonUIFeaturesProps) {
       <InviteNotifications />
       <MessageNotifications />
       <SpaceAutoJoinFeature />
+      <AppIconFeature />
       {children}
     </>
   );

@@ -50,6 +50,9 @@ import { useMessageLayoutItems } from '../../../hooks/useMessageLayout';
 import { useMessageSpacingItems } from '../../../hooks/useMessageSpacing';
 import { useDateFormatItems } from '../../../hooks/useDateFormat';
 import { SequenceCardStyle } from '../styles.css';
+import { AppIconPicker } from './AppIconPicker';
+import { CustomThemeSettings } from './CustomThemeSettings';
+import { canChangeAppIcon } from '../../../plugins/appIcon';
 
 type ThemeSelectorProps = {
   themeNames: Record<string, string>;
@@ -350,6 +353,19 @@ function Appearance() {
       <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column">
         <SettingTile title="Page Zoom" after={<PageZoomInput />} />
       </SequenceCard>
+
+      {canChangeAppIcon() && (
+        <SequenceCard
+          className={SequenceCardStyle}
+          variant="SurfaceVariant"
+          direction="Column"
+          gap="400"
+        >
+          <SettingTile title="App Icon" description="Icon shown in the Dock or taskbar.">
+            <AppIconPicker />
+          </SettingTile>
+        </SequenceCard>
+      )}
     </Box>
   );
 }
@@ -1003,6 +1019,7 @@ export function General({ requestClose }: GeneralProps) {
           <PageContent>
             <Box direction="Column" gap="700">
               <Appearance />
+              <CustomThemeSettings />
               <DateAndTime />
               <Editor />
               <Messages />

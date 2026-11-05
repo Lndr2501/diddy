@@ -1,7 +1,7 @@
 import React, { ReactNode, useEffect } from 'react';
 import { configClass, varsClass } from 'folds';
 import {
-  DarkTheme,
+  DiddyTheme,
   LightTheme,
   ThemeContextProvider,
   ThemeKind,
@@ -10,6 +10,7 @@ import {
 } from '../hooks/useTheme';
 import { useSetting } from '../state/hooks/settings';
 import { settingsAtom } from '../state/settings';
+import { CustomThemeEffects } from '../components/custom-theme/CustomThemeEffects';
 
 export function UnAuthRouteThemeManager() {
   const systemThemeKind = useSystemThemeKind();
@@ -18,7 +19,7 @@ export function UnAuthRouteThemeManager() {
     document.body.className = '';
     document.body.classList.add(configClass, varsClass);
     if (systemThemeKind === ThemeKind.Dark) {
-      document.body.classList.add(...DarkTheme.classNames);
+      document.body.classList.add(...DiddyTheme.classNames);
     }
     if (systemThemeKind === ThemeKind.Light) {
       document.body.classList.add(...LightTheme.classNames);
@@ -45,5 +46,10 @@ export function AuthRouteThemeManager({ children }: { children: ReactNode }) {
     }
   }, [activeTheme, monochromeMode]);
 
-  return <ThemeContextProvider value={activeTheme}>{children}</ThemeContextProvider>;
+  return (
+    <ThemeContextProvider value={activeTheme}>
+      <CustomThemeEffects />
+      {children}
+    </ThemeContextProvider>
+  );
 }

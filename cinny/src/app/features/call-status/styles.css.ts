@@ -2,13 +2,15 @@ import { style } from '@vanilla-extract/css';
 import { color, config, toRem } from 'folds';
 
 export const LiveChipText = style({
-  color: color.Critical.Main,
+  color: color.Primary.OnContainer,
 });
 
 export const CallStatus = style([
   {
+    margin: `${config.space.S100} ${config.space.S200} ${config.space.S200}`,
     padding: `${toRem(6)} ${config.space.S200}`,
-    borderTop: `${config.borderWidth.B300} solid ${color.Background.ContainerLine}`,
+    border: `${config.borderWidth.B300} solid ${color.Background.ContainerLine}`,
+    borderRadius: toRem(18),
   },
 ]);
 

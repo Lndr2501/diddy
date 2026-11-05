@@ -1,6 +1,5 @@
 import React, { useCallback } from 'react';
 import { Box, Button, Icon, Icons, Spinner, Text } from 'folds';
-import { SequenceCard } from '../../components/sequence-card';
 import * as css from './styles.css';
 import { ChatButton, ControlDivider, MicrophoneButton, SoundButton, VideoButton } from './Controls';
 import { useIsDirectRoom, useRoom } from '../../hooks/useRoom';
@@ -26,18 +25,15 @@ export function PrescreenControls({ canJoin }: PrescreenControlsProps) {
   const { microphone, video, sound, toggleMicrophone, toggleVideo, toggleSound } =
     useCallPreferences();
 
-
   const handleMicrophoneToggle = useCallback(async () => toggleMicrophone(), [toggleMicrophone]);
   const handleVideoToggle = useCallback(async () => toggleVideo(), [toggleVideo]);
 
   return (
-    <SequenceCard
-      className={css.ControlCard}
-      variant="SurfaceVariant"
-      gap="400"
-      radii="500"
+    <Box
+      className={css.PrescreenCard}
+      gap="200"
       alignItems="Center"
-      justifyContent="SpaceBetween"
+      justifyContent="Center"
       wrap="Wrap"
     >
       <Box shrink="No" alignItems="Inherit" justifyContent="SpaceBetween" gap="200">
@@ -51,13 +47,14 @@ export function PrescreenControls({ canJoin }: PrescreenControlsProps) {
       </Box>
       <Box grow="Yes" direction="Column">
         <Button
-          variant={disabled ? 'Secondary' : 'Success'}
+          className={css.ControlPrimaryButton}
+          variant={disabled ? 'Secondary' : 'Primary'}
           fill={disabled ? 'Soft' : 'Solid'}
           onClick={() => startCall(room, { microphone, video, sound })}
           disabled={disabled || joining}
           before={
             joining ? (
-              <Spinner variant="Success" fill="Solid" size="200" />
+              <Spinner variant="Primary" fill="Solid" size="200" />
             ) : (
               <Icon src={Icons.Phone} size="200" filled />
             )
@@ -66,6 +63,6 @@ export function PrescreenControls({ canJoin }: PrescreenControlsProps) {
           <Text size="B400">Join</Text>
         </Button>
       </Box>
-    </SequenceCard>
+    </Box>
   );
 }

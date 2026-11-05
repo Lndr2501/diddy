@@ -17,8 +17,8 @@ export const AuthCard = style({
   width: '100%',
   backgroundColor: color.Surface.Container,
   color: color.Surface.OnContainer,
-  borderRadius: config.radii.R400,
-  boxShadow: config.shadow.E100,
+  borderRadius: toRem(20),
+  boxShadow: config.shadow.E200,
   border: `${config.borderWidth.B300} solid ${color.Surface.ContainerLine}`,
   overflow: 'hidden',
 });

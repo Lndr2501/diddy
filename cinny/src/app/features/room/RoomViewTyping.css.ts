@@ -13,10 +13,10 @@ const SlideUpAnime = keyframes({
 export const RoomViewTyping = style([
   DefaultReset,
   {
-    padding: `0 ${config.space.S500}`,
+    padding: `${config.space.S100} ${config.space.S500}`,
     width: '100%',
     backgroundColor: color.Surface.Container,
-    color: color.Surface.OnContainer,
+    color: color.SurfaceVariant.OnContainer,
     position: 'absolute',
     bottom: 0,
     animation: `${SlideUpAnime} 100ms ease-in-out`,

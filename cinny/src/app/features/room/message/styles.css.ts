@@ -12,8 +12,8 @@ export const MessageOptionsBase = style([
   DefaultReset,
   {
     position: 'absolute',
-    top: toRem(-30),
-    right: 0,
+    top: toRem(-28),
+    right: toRem(12),
     zIndex: 1,
   },
 ]);
@@ -21,6 +21,12 @@ export const MessageOptionsBar = style([
   DefaultReset,
   {
     padding: config.space.S100,
+    selectors: {
+      '&&': {
+        borderRadius: toRem(12),
+        boxShadow: `0 ${toRem(4)} ${toRem(16)} rgba(0, 0, 0, 0.28)`,
+      },
+    },
   },
 ]);
 

@@ -1,5 +1,5 @@
 import React, { useCallback, useRef } from 'react';
-import { Box, Text, config } from 'folds';
+import { Box, Text, config, toRem } from 'folds';
 import { EventType } from 'matrix-js-sdk';
 import { ReactEditor } from 'slate-react';
 import { isKeyHotkey } from 'is-hotkey';
@@ -103,7 +103,15 @@ export function RoomView({ eventId }: { eventId?: string }) {
         <RoomViewTyping room={room} />
       </Box>
       <Box shrink="No" direction="Column">
-        <div style={{ padding: `0 ${config.space.S400}` }}>
+        <div
+          style={{
+            padding: `0 ${config.space.S400}`,
+            width: '100%',
+            maxWidth: toRem(900),
+            margin: '0 auto',
+            boxSizing: 'border-box',
+          }}
+        >
           {tombstoneEvent ? (
             <RoomTombstone
               roomId={roomId}

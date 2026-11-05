@@ -4,7 +4,8 @@ import { Page, PageContent, PageHeader } from '../../../components/page';
 import { SequenceCard } from '../../../components/sequence-card';
 import { SequenceCardStyle } from '../styles.css';
 import { SettingTile } from '../../../components/setting-tile';
-import CinnySVG from '../../../../../public/res/svg/cinny.svg';
+import { AppLogo } from '../../../components/app-logo/AppLogo';
+import { APP_NAME, APP_REPO_URL, APP_VERSION, UPSTREAM_NAME, UPSTREAM_URL } from '../../../appInfo';
 import { clearCacheAndReload } from '../../../../client/initMatrix';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
 
@@ -36,25 +37,21 @@ export function About({ requestClose }: AboutProps) {
             <Box direction="Column" gap="700">
               <Box gap="400">
                 <Box shrink="No">
-                  <img
-                    style={{ width: toRem(60), height: toRem(60) }}
-                    src={CinnySVG}
-                    alt="Cinny logo"
-                  />
+                  <AppLogo size={60} />
                 </Box>
                 <Box direction="Column" gap="300">
                   <Box direction="Column" gap="100">
                     <Box gap="100" alignItems="End">
-                      <Text size="H3">Cinny</Text>
-                      <Text size="T200">v4.12.8</Text>
+                      <Text size="H3">{APP_NAME}</Text>
+                      <Text size="T200">v{APP_VERSION}</Text>
                     </Box>
-                    <Text>Yet another matrix client.</Text>
+                    <Text>A Matrix chat client based on {UPSTREAM_NAME}.</Text>
                   </Box>
 
                   <Box gap="200" wrap="Wrap">
                     <Button
                       as="a"
-                      href="https://github.com/cinnyapp/cinny"
+                      href={APP_REPO_URL}
                       rel="noreferrer noopener"
                       target="_blank"
                       variant="Secondary"
@@ -67,16 +64,16 @@ export function About({ requestClose }: AboutProps) {
                     </Button>
                     <Button
                       as="a"
-                      href="https://cinny.in/#sponsor"
+                      href={UPSTREAM_URL}
                       rel="noreferrer noopener"
                       target="_blank"
-                      variant="Critical"
+                      variant="Secondary"
                       fill="Soft"
                       size="300"
                       radii="300"
                       before={<Icon src={Icons.Heart} size="100" filled />}
                     >
-                      <Text size="B300">Support</Text>
+                      <Text size="B300">{UPSTREAM_NAME}</Text>
                     </Button>
                   </Box>
                 </Box>

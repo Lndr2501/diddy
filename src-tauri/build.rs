@@ -5,5 +5,16 @@ fn main() {
     if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("macos") {
         println!("cargo:rustc-link-arg-bins=-Wl,-rpath,/usr/lib/swift");
     }
-    tauri_build::build()
+
+    // Custom commands must be declared so they can be granted to the page (see capabilities/app-commands.json).
+    tauri_build::try_build(
+        tauri_build::Attributes::new()
+            .app_manifest(tauri_build::AppManifest::new().commands(&[
+                "set_app_icon",
+                "diag_log",
+                "myinstants_fetch_text",
+                "myinstants_fetch_audio",
+            ])),
+    )
+    .expect("failed to run tauri-build");
 }

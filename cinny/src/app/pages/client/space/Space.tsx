@@ -273,6 +273,7 @@ function SpaceHeader() {
               {spaceName}
             </Text>
             {joinRules?.join_rule !== JoinRule.Public && <Icon src={Icons.Lock} size="50" />}
+            <Icon src={Icons.ChevronBottom} size="50" style={{ opacity: config.opacity.P300 }} />
           </Box>
           <Box shrink="No">
             <IconButton aria-pressed={!!menuAnchor} variant="Background" onClick={handleOpenMenu}>

@@ -84,8 +84,16 @@ export const MessageBase = recipe({
     DefaultReset,
     {
       marginTop: SpacingVar,
-      padding: `${config.space.S100} ${config.space.S200} ${config.space.S100} ${config.space.S400}`,
-      borderRadius: `0 ${config.radii.R400} ${config.radii.R400} 0`,
+      padding: `${config.space.S100} ${config.space.S200} ${config.space.S100} ${config.space.S300}`,
+      marginLeft: config.space.S200,
+      marginRight: config.space.S200,
+      borderRadius: toRem(12),
+      transition: 'background-color 120ms ease',
+      selectors: {
+        '&:hover': {
+          backgroundColor: `color-mix(in srgb, ${color.SurfaceVariant.OnContainer} 6%, transparent)`,
+        },
+      },
     },
   ],
   variants: {
@@ -131,19 +139,19 @@ export const AvatarBase = style({
 });
 
 export const ModernBefore = style({
-  minWidth: toRem(36),
+  minWidth: toRem(42),
 });
 
 export const BubbleBefore = style({
-  minWidth: toRem(36),
+  minWidth: toRem(42),
 });
 
 export const BubbleContent = style({
   maxWidth: toRem(800),
-  padding: config.space.S200,
+  padding: `${config.space.S200} ${config.space.S300}`,
   backgroundColor: color.SurfaceVariant.Container,
   color: color.SurfaceVariant.OnContainer,
-  borderRadius: config.radii.R500,
+  borderRadius: toRem(16),
   position: 'relative',
 });
 
@@ -176,7 +184,7 @@ export const Username = style({
 });
 
 export const UsernameBold = style({
-  fontWeight: 550,
+  fontWeight: 500,
 });
 
 export const MessageTextBody = recipe({

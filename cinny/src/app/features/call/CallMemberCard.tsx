@@ -51,7 +51,7 @@ export function CallMemberCard({ member }: CallMemberCardProps) {
       }
     >
       <Box grow="Yes" gap="300" alignItems="Center">
-        <Avatar size="200" radii="400">
+        <Avatar size="200" radii="Pill">
           <UserAvatar
             userId={userId}
             src={avatarUrl}

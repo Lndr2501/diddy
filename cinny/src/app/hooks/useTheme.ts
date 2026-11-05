@@ -1,7 +1,16 @@
 import { lightTheme } from 'folds';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { onDarkFontWeight, onLightFontWeight } from '../../config.css';
-import { butterTheme, darkTheme, silverTheme } from '../../colors.css';
+import {
+  amberTheme,
+  butterTheme,
+  darkTheme,
+  diddyTheme,
+  greenTheme,
+  purpleTheme,
+  redTheme,
+  silverTheme,
+} from '../../colors.css';
 import { settingsAtom } from '../state/settings';
 import { useSetting } from '../state/hooks/settings';
 
@@ -38,8 +47,55 @@ export const ButterTheme: Theme = {
   classNames: ['butter-theme', butterTheme, onDarkFontWeight, 'prism-dark'],
 };
 
+export const DiddyTheme: Theme = {
+  id: 'diddy-theme',
+  kind: ThemeKind.Dark,
+  classNames: ['diddy-theme', diddyTheme, onDarkFontWeight, 'prism-dark'],
+};
+export const RedTheme: Theme = {
+  id: 'red-theme',
+  kind: ThemeKind.Dark,
+  classNames: ['red-theme', redTheme, onDarkFontWeight, 'prism-dark'],
+};
+export const GreenTheme: Theme = {
+  id: 'green-theme',
+  kind: ThemeKind.Dark,
+  classNames: ['green-theme', greenTheme, onDarkFontWeight, 'prism-dark'],
+};
+export const PurpleTheme: Theme = {
+  id: 'purple-theme',
+  kind: ThemeKind.Dark,
+  classNames: ['purple-theme', purpleTheme, onDarkFontWeight, 'prism-dark'],
+};
+export const AmberTheme: Theme = {
+  id: 'amber-theme',
+  kind: ThemeKind.Dark,
+  classNames: ['amber-theme', amberTheme, onDarkFontWeight, 'prism-dark'],
+};
+/** Colors, gradient and background media come from the user's settings, see CustomThemeEffects. */
+export const CUSTOM_THEME_ID = 'custom-theme';
+export const CustomTheme: Theme = {
+  id: CUSTOM_THEME_ID,
+  kind: ThemeKind.Dark,
+  classNames: [CUSTOM_THEME_ID, darkTheme, onDarkFontWeight, 'prism-dark'],
+};
+
 export const useThemes = (): Theme[] => {
-  const themes: Theme[] = useMemo(() => [LightTheme, SilverTheme, DarkTheme, ButterTheme], []);
+  const themes: Theme[] = useMemo(
+    () => [
+      DiddyTheme,
+      LightTheme,
+      SilverTheme,
+      DarkTheme,
+      ButterTheme,
+      RedTheme,
+      GreenTheme,
+      PurpleTheme,
+      AmberTheme,
+      CustomTheme,
+    ],
+    []
+  );
 
   return themes;
 };
@@ -47,10 +103,16 @@ export const useThemes = (): Theme[] => {
 export const useThemeNames = (): Record<string, string> =>
   useMemo(
     () => ({
+      [DiddyTheme.id]: 'Diddy',
       [LightTheme.id]: 'Light',
       [SilverTheme.id]: 'Silver',
       [DarkTheme.id]: 'Dark',
       [ButterTheme.id]: 'Butter',
+      [RedTheme.id]: 'Red & Black',
+      [GreenTheme.id]: 'Green & Black',
+      [PurpleTheme.id]: 'Purple & Black',
+      [AmberTheme.id]: 'Amber & Black',
+      [CustomTheme.id]: 'Custom',
     }),
     []
   );

@@ -35,7 +35,7 @@ export function CallRoomName({ room }: CallRoomNameProps) {
 
   return (
     <Chip
-      variant="Background"
+      variant="SurfaceVariant"
       radii="Pill"
       before={
         dm ? (

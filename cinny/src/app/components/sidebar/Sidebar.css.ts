@@ -7,8 +7,8 @@ export const Sidebar = style([
   DefaultReset,
   {
     width: toRem(66),
-    backgroundColor: color.Background.Container,
-    borderRight: `${config.borderWidth.B300} solid ${color.Background.ContainerLine}`,
+    flexShrink: 0,
+    backgroundColor: 'transparent',
 
     display: 'flex',
     flexDirection: 'column',
@@ -63,7 +63,6 @@ export const DropTarget = style({
   },
 });
 
-const PUSH_X = 2;
 export const SidebarItem = recipe({
   base: [
     DefaultReset,
@@ -73,26 +72,22 @@ export const SidebarItem = recipe({
       alignItems: 'center',
       justifyContent: 'center',
       position: 'relative',
-      transition: 'transform 200ms cubic-bezier(0, 0.8, 0.67, 0.97)',
 
       selectors: {
-        '&:hover': {
-          transform: `translateX(${toRem(PUSH_X)})`,
-        },
+        // pill indicator on the rail edge
         '&::before': {
           content: '',
           display: 'none',
           position: 'absolute',
-          left: toRem(-11.5 - PUSH_X),
-          width: toRem(3 + PUSH_X),
-          height: toRem(16),
+          left: toRem(-12),
+          width: toRem(4),
+          height: toRem(14),
           borderRadius: `0 ${toRem(4)} ${toRem(4)} 0`,
-          background: 'CurrentColor',
-          transition: 'height 200ms linear',
+          background: color.Primary.Main,
+          transition: 'height 200ms ease',
         },
         '&:hover::before': {
           display: 'block',
-          width: toRem(3),
         },
       },
     },
@@ -105,10 +100,10 @@ export const SidebarItem = recipe({
         selectors: {
           '&::before': {
             display: 'block',
-            height: toRem(24),
+            height: toRem(28),
           },
           '&:hover::before': {
-            width: toRem(3 + PUSH_X),
+            height: toRem(28),
           },
         },
       },
@@ -125,6 +120,12 @@ export const SidebarItemBadge = recipe({
       position: 'absolute',
       zIndex: 1,
       lineHeight: 0,
+      // unread/mention badges use the accent instead of the default success green
+      vars: {
+        [color.Success.Main]: color.Primary.Main,
+        [color.Success.MainLine]: color.Primary.MainLine,
+        [color.Success.OnMain]: color.Primary.OnMain,
+      },
     },
   ],
   variants: {
@@ -148,9 +149,13 @@ export type SidebarItemBadgeVariants = RecipeVariants<typeof SidebarItemBadge>;
 export const SidebarAvatar = recipe({
   base: [
     {
+      transition: 'filter 150ms ease, background-color 150ms ease',
       selectors: {
         'button&': {
           cursor: 'pointer',
+        },
+        'button&:hover': {
+          filter: 'brightness(1.15)',
         },
       },
     },
@@ -167,15 +172,17 @@ export const SidebarAvatar = recipe({
       '300': {
         width: toRem(34),
         height: toRem(34),
+        borderRadius: toRem(11),
       },
       '400': {
         width: toRem(42),
         height: toRem(42),
+        borderRadius: toRem(14),
       },
     },
     outlined: {
       true: {
-        border: `${config.borderWidth.B300} solid ${color.Background.ContainerLine}`,
+        border: 'var(--diddy-border, 1px solid rgba(255, 255, 255, 0.06))',
       },
     },
   },
@@ -184,6 +191,34 @@ export const SidebarAvatar = recipe({
   },
 });
 export type SidebarAvatarVariants = RecipeVariants<typeof SidebarAvatar>;
+
+// Home tab: always accented, filled when selected.
+export const SidebarHomeAvatar = style({
+  border: 'none',
+  backgroundColor: color.Primary.Container,
+  color: color.Primary.OnContainer,
+  selectors: {
+    '[data-active=true] &': {
+      backgroundColor: color.Primary.Main,
+      color: color.Primary.OnMain,
+    },
+  },
+});
+
+// "+" add button: soft dashed rounded square.
+export const SidebarAddAvatar = style({
+  backgroundColor: 'transparent',
+  border: `${config.borderWidth.B300} dashed ${color.Background.ContainerLine}`,
+  color: color.Background.OnContainer,
+  opacity: 0.75,
+  selectors: {
+    '&:hover, &[data-open=true], [data-active=true] &': {
+      opacity: 1,
+      backgroundColor: color.SurfaceVariant.Container,
+      borderStyle: 'solid',
+    },
+  },
+});
 
 export const SidebarFolder = recipe({
   base: [
@@ -194,7 +229,8 @@ export const SidebarFolder = recipe({
       minHeight: toRem(42),
       display: 'flex',
       flexWrap: 'wrap',
-      outline: `${config.borderWidth.B300} solid ${color.Background.ContainerLine}`,
+      backgroundColor: color.SurfaceVariant.Container,
+      outline: 'var(--diddy-border, 1px solid rgba(255, 255, 255, 0.06))',
       position: 'relative',
 
       selectors: {
@@ -210,7 +246,7 @@ export const SidebarFolder = recipe({
     state: {
       Close: {
         gap: toRem(2),
-        borderRadius: config.radii.R400,
+        borderRadius: toRem(14),
       },
       Open: {
         paddingLeft: 0,
@@ -218,7 +254,7 @@ export const SidebarFolder = recipe({
         flexDirection: 'column',
         alignItems: 'center',
         gap: config.space.S200,
-        borderRadius: config.radii.R500,
+        borderRadius: toRem(16),
       },
     },
   },

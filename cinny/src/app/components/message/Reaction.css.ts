@@ -17,10 +17,10 @@ export const Reaction = style([
       [ContainerLine]: color.SurfaceVariant.ContainerLine,
       [OnContainer]: color.SurfaceVariant.OnContainer,
     },
-    padding: `${toRem(2)} ${config.space.S200} ${toRem(2)} ${config.space.S100}`,
+    padding: `${toRem(2)} ${config.space.S300} ${toRem(2)} ${config.space.S200}`,
     backgroundColor: Container,
     border: `${config.borderWidth.B300} solid ${ContainerLine}`,
-    borderRadius: config.radii.R300,
+    borderRadius: toRem(999),
 
     selectors: {
       'button&': {
