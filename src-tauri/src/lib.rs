@@ -11,6 +11,8 @@ mod diag;
 mod connections;
 mod myinstants;
 #[cfg(target_os = "macos")]
+mod audio_tap;
+#[cfg(target_os = "macos")]
 mod system_audio;
 
 use tauri::utils::config::BackgroundThrottlingPolicy;

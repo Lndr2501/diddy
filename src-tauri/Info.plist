@@ -4,6 +4,8 @@
 <dict>
   <key>NSMicrophoneUsageDescription</key>
   <string>Diddy needs the microphone for voice chats and calls.</string>
+  <key>NSAudioCaptureUsageDescription</key>
+  <string>Diddy shares the sound of other apps while you share your screen.</string>
   <key>NSCameraUsageDescription</key>
   <string>Diddy needs the camera for video calls.</string>
 </dict>

@@ -1,7 +1,7 @@
 //! System-audio capture for screen sharing (macOS only).
 //!
-//! WebKit's `getDisplayMedia()` cannot capture audio, so the sound is captured natively with
-//! ScreenCaptureKit and streamed to the page over a loopback WebSocket. The page turns the stream
+//! WebKit's `getDisplayMedia()` cannot capture audio, so the sound is captured natively with a
+//! Core Audio process tap (src/audio_tap.rs) and streamed to the page over a loopback WebSocket. The page turns the stream
 //! into a `MediaStreamTrack` and hands it to Element Call
 //! (see `cinny/src/app/plugins/call/screenShareAudio.ts`).
 //!
@@ -13,12 +13,14 @@
 //! into the app's own page, unreadable for other origins) and checks the `Origin` header.
 //! A capture session lives exactly as long as its WebSocket connection.
 //!
-//! The ScreenCaptureKit stream itself runs in a short-lived helper process (this same executable
-//! started with `--diddy-system-audio-helper`), never in the app process. Reason: macOS' screen
-//! sharing daemon (replayd) keeps a client per process. Once the app process had its own capture
-//! client, the system picker of the NEXT getDisplayMedia() delivered the user's choice to that
-//! client instead of WebKit, and the second screen share hung for 60 s until WebKit gave up. The
-//! helper's client disappears when the helper exits at the end of every share.
+//! History: the audio used to come from a ScreenCaptureKit stream. A second ScreenCaptureKit client
+//! of the same app breaks WebKit's screen-share picker: in the app process the NEXT picker choice
+//! went to our client instead of WebKit; in a helper process, the helper's exit made the screen
+//! sharing daemon (replayd) purge every picker of the bundle (`purgePickersForApplicationBundleID`).
+//! Either way the second share hung for 60 s and blocked camera requests meanwhile. A process tap
+//! does not involve replayd at all. The capture still runs in a short-lived helper process (this
+//! same executable started with `--diddy-system-audio-helper`) so a crash in Core Audio code can
+//! never take the app down.
 //!
 //! Helper wire format (helper stdout -> app): frames of `[kind: u8][len: u32 LE][payload]`,
 //! kind 0 = capture running, 1 = error (UTF-8 text), 2 = interleaved f32 PCM. The helper stops
@@ -38,7 +40,6 @@ use std::{
     time::{Duration, Instant},
 };
 
-use screencapturekit::prelude::*;
 use tungstenite::{
     accept_hdr,
     handshake::server::{ErrorResponse, Request, Response},
@@ -47,19 +48,12 @@ use tungstenite::{
 
 const SAMPLE_RATE: i32 = 48_000;
 const CHANNELS: i32 = 2;
-const BUNDLE_ID: &str = "app.diddy.desktop";
 pub const HELPER_FLAG: &str = "--diddy-system-audio-helper";
 const FRAME_STARTED: u8 = 0;
 const FRAME_ERROR: u8 = 1;
 const FRAME_PCM: u8 = 2;
 /// Upper bound for one frame; a 10 ms stereo f32 chunk at 48 kHz is 3840 bytes.
 const MAX_FRAME: usize = 1 << 20;
-
-extern "C" {
-    /// Private-but-stable libSystem call used by Activity Monitor / TCC: which app is
-    /// responsible for `pid` (WebKit's helper processes are attributed to the app that owns them).
-    fn responsibility_get_pid_responsible_for_pid(pid: i32) -> i32;
-}
 
 pub struct AudioBridge {
     pub port: u16,
@@ -340,15 +334,18 @@ pub fn helper_main(args: &[String]) -> Option<i32> {
     let app_pid = args.get(2).and_then(|p| p.parse::<i32>().ok())?;
     let mut out = std::io::stdout().lock();
     let (tx, rx) = mpsc::sync_channel::<Vec<u8>>(64);
-    let capture = match start_capture(tx, app_pid) {
+    let capture = match crate::audio_tap::TapCapture::start(tx, app_pid) {
         Ok(c) => c,
         Err(e) => {
+            log(&format!("tap failed: {e}"));
             let _ = write_frame(&mut out, FRAME_ERROR, e.as_bytes());
             return Some(1);
         }
     };
+    // the page plays 48 kHz; the tap delivers the output device's rate (often 44.1 kHz)
+    let mut resampler = crate::audio_tap::Resampler::new(capture.sample_rate, SAMPLE_RATE as f64);
     if write_frame(&mut out, FRAME_STARTED, &[]).is_err() {
-        let _ = capture.stop_capture();
+        capture.stop();
         return Some(1);
     }
     // stdin closes when the app ends the share, exits or crashes
@@ -363,7 +360,8 @@ pub fn helper_main(args: &[String]) -> Option<i32> {
     while !stop.load(Ordering::SeqCst) {
         match rx.recv_timeout(Duration::from_millis(100)) {
             Ok(pcm) => {
-                if write_frame(&mut out, FRAME_PCM, &pcm).is_err() {
+                let pcm = resampler.process(&pcm);
+                if !pcm.is_empty() && write_frame(&mut out, FRAME_PCM, &pcm).is_err() {
                     break;
                 }
             }
@@ -371,117 +369,8 @@ pub fn helper_main(args: &[String]) -> Option<i32> {
             Err(mpsc::RecvTimeoutError::Disconnected) => break,
         }
     }
-    let _ = capture.stop_capture();
+    capture.stop();
     Some(0)
-}
-
-fn is_ours(app: &SCRunningApplication, own_pid: i32) -> bool {
-    let pid = app.process_id();
-    pid == own_pid
-        || app.bundle_identifier() == BUNDLE_ID
-        // WebKit helper processes (WebContent/GPU/Networking) are attributed to us.
-        || unsafe { responsibility_get_pid_responsible_for_pid(pid) } == own_pid
-}
-
-fn start_capture(tx: SyncSender<Vec<u8>>, own_pid: i32) -> Result<SCStream, String> {
-    let content = SCShareableContent::get().map_err(|e| format!("shareable content: {e:?}"))?;
-    let display = content
-        .displays()
-        .into_iter()
-        .next()
-        .ok_or_else(|| "no display found".to_string())?;
-
-    let apps = content.applications();
-    for app in &apps {
-        log(&format!(
-            "app pid={} bundle={} name={} ours={}",
-            app.process_id(),
-            app.bundle_identifier(),
-            app.application_name(),
-            is_ours(app, own_pid)
-        ));
-    }
-
-    // Capture the audio of every app except Diddy itself (`own_pid` is the app, not this helper),
-    // otherwise the other call participants would hear their own voices coming back.
-    let others: Vec<&SCRunningApplication> = apps.iter().filter(|a| !is_ours(a, own_pid)).collect();
-
-    let filter = SCContentFilter::create()
-        .with_display(&display)
-        .with_including_applications(&others, &[])
-        .build()
-        .map_err(|e| format!("content filter: {e:?}"))?;
-
-    // We only want audio: keep the (unused) video side as tiny and slow as possible.
-    let config = SCStreamConfiguration::new()
-        .with_width(64)
-        .with_height(64)
-        .with_fps(1)
-        .with_captures_audio(true)
-        .with_sample_rate(SAMPLE_RATE)
-        .with_channel_count(CHANNELS)
-        .with_excludes_current_process_audio(true);
-
-    let mut stream =
-        SCStream::new(&filter, &config).map_err(|e| format!("create stream: {e:?}"))?;
-    stream
-        .add_output_handler(AudioHandler { tx }, SCStreamOutputType::Audio)
-        .map_err(|e| format!("add audio handler: {e:?}"))?;
-    stream
-        .start_capture()
-        .map_err(|e| format!("start capture: {e:?}"))?;
-    Ok(stream)
-}
-
-struct AudioHandler {
-    tx: SyncSender<Vec<u8>>,
-}
-
-impl SCStreamOutputTrait for AudioHandler {
-    fn did_output_sample_buffer(&self, sample: CMSampleBuffer, output_type: SCStreamOutputType) {
-        if !matches!(output_type, SCStreamOutputType::Audio) {
-            return;
-        }
-        let Ok(list) = sample.audio_buffer_list() else {
-            return;
-        };
-
-        let out = match list.num_buffers() {
-            0 => return,
-            // One buffer: already interleaved.
-            1 => {
-                let buf = list.get(0).expect("checked length");
-                let data = buf.data();
-                match buf.number_channels {
-                    2 => data.to_vec(),
-                    1 => data
-                        .chunks_exact(4)
-                        .flat_map(|s| [s, s].concat())
-                        .collect(),
-                    n if n > 2 => data
-                        .chunks_exact(4 * n as usize)
-                        .flat_map(|frame| frame[..8].to_vec())
-                        .collect(),
-                    _ => return,
-                }
-            }
-            // One buffer per channel (ScreenCaptureKit's usual layout): interleave L and R.
-            _ => {
-                let left = list.get(0).expect("checked length").data();
-                let right = list.get(1).expect("checked length").data();
-                let frames = left.len().min(right.len()) / 4;
-                let mut out = Vec::with_capacity(frames * 8);
-                for i in 0..frames {
-                    out.extend_from_slice(&left[i * 4..i * 4 + 4]);
-                    out.extend_from_slice(&right[i * 4..i * 4 + 4]);
-                }
-                out
-            }
-        };
-
-        // Never block ScreenCaptureKit's queue: if the page can't keep up, drop the chunk.
-        let _ = self.tx.try_send(out);
-    }
 }
 
 #[cfg(test)]

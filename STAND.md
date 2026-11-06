@@ -2,6 +2,15 @@
 
 Statusbericht des Entwicklungsstands (Diddy, nach 1.1.0, kein neues Release).
 
+## Zweiter Teststand 22:50 und Ursache Stream/Kamera (2026-11-06, 23:05)
+
+- Rückmeldung: Stream und Kamera lassen sich nach dem Ausschalten nicht wieder einschalten, die Kamera kam erst nach langer Verzögerung. Musik ruckelt beim Join, bei Mikrofonnutzung im Call und beim Mikrofonwechsel, egal ob "Voice processing" an oder aus ist.
+- Kamera und Stream haben dieselbe Ursache: Die Kamera kam 9 ms nach dem Abbruch der hängenden zweiten Bildschirmanfrage (`1794002079.130` → `.139`). WebKit arbeitet Aufnahme-Anfragen nacheinander ab.
+- Bildschirmanfrage: Mit dem Hilfsprozess hat `replayd` beim Ende des Helfers `purgePickersForApplicationBundleID` aufgerufen, also alle Auswahldialoge von `app.diddy.desktop` gelöscht, auch den von WebKit. Fazit: Jeder zweite ScreenCaptureKit-Nutzer im selben Bundle stört WebKit. Umbau: Der System-Ton kommt jetzt aus einem Core-Audio-Process-Tap (`src-tauri/src/audio_tap.rs`, macOS 14.2+, globaler Stereo-Tap ohne Diddy und seine WebKit-Prozesse, privates Aggregatgerät, IOProc). Er wird nativ linear auf 48 kHz umgerechnet, weil die Seite 48 kHz abspielt und das Gerät oft mit 44,1 kHz läuft. Er läuft weiter im Hilfsprozess. ScreenCaptureKit ist aus den Abhängigkeiten entfernt. Neue Berechtigung: "Systemaudio-Aufnahme" (`NSAudioCaptureUsageDescription`), macOS fragt beim ersten Stream danach.
+- Join-Ruckler: Im Systemlog legt WebKit beim Öffnen des Mikrofons ein Sprachverarbeitungs-Aggregat an (`AUVPAggregate StopForReconfiguration`), auch mit `echoCancellation:false`. Das passt zu dem Ruckeln. Noch nicht behoben.
+- Fensteröffnung (#6): Die Messung zeigt `build_ms=51`, `queued_ms=0`. Die 45–55 s treten derzeit nicht mehr auf.
+- 14 native Tests (inkl. 3 Resampler-Tests), nicht gebaut.
+
 ## Rückmeldung zum Teststand vom 2026-11-06, 22:25 (Korrekturen, noch nicht gebaut)
 
 - Konto-Menü: Das Profilbild füllte das ganze Menü, weil `AvatarImage` ohne positionierten `Avatar`-Rahmen absolut positioniert ist. Jetzt in `<Avatar size="400">` eingefasst.

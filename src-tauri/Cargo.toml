@@ -49,9 +49,8 @@ tauri-plugin-updater = { version = "2.10.1", features = ["rustls-tls"], optional
 objc2 = "0.6"
 objc2-web-kit = { version = "0.3", features = ["WKWebViewConfiguration", "WKPreferences", "WKWebsiteDataStore"] }
 objc2-app-kit = { version = "0.3", features = ["NSApplication", "NSImage", "NSResponder", "NSWorkspace"] }
-objc2-foundation = { version = "0.3", features = ["NSData", "NSString", "NSUUID"] }
-# System-audio capture for screen sharing (see src/system_audio.rs)
-screencapturekit = "11"
+objc2-foundation = { version = "0.3", features = ["NSArray", "NSData", "NSDictionary", "NSObject", "NSString", "NSUUID", "NSValue"] }
+# System-audio bridge for screen sharing (capture: src/audio_tap.rs, Core Audio process tap)
 tungstenite = "0.30"
 
 [lib]
