@@ -1019,8 +1019,8 @@ function CallSettings() {
       </SequenceCard>
       <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column">
         <SettingTile
-          title="Echo cancellation"
-          description="Off keeps your music and other apps sounding normal while you are in a call. Turn it on if you use speakers instead of headphones. Applies the next time you join a call."
+          title="Voice processing"
+          description="Echo cancellation, noise suppression and auto gain. Off keeps your music and other apps sounding normal and avoids short audio glitches when you join a call. Turn it on if you use speakers instead of headphones. Applies the next time you join a call."
           after={
             <Switch
               variant="Primary"

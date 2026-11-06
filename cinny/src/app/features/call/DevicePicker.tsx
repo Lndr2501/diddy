@@ -27,6 +27,7 @@ import {
 } from '../../plugins/call/audioDevices';
 import { switchLiveMicrophone, useSoundboard } from '../../plugins/call';
 import { callEmbedAtom } from '../../state/callEmbed';
+import { RangeInput } from '../../components/diddy/RangeInput';
 
 type DeviceListProps = {
   devices: AudioDevice[];
@@ -76,8 +77,7 @@ function VolumeSlider({ label, value, disabled, onChange }: VolumeSliderProps) {
           {Math.round(value * 100)}%
         </Text>
       </Box>
-      <input
-        type="range"
+      <RangeInput
         aria-label={label}
         min={0}
         max={1}
@@ -85,7 +85,7 @@ function VolumeSlider({ label, value, disabled, onChange }: VolumeSliderProps) {
         value={value}
         disabled={disabled}
         onChange={(evt) => onChange(Number(evt.target.value))}
-        style={{ width: '100%', accentColor: color.Primary.Main, margin: 0 }}
+        style={{ width: '100%' }}
       />
     </Box>
   );

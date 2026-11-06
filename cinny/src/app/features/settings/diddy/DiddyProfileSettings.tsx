@@ -28,6 +28,7 @@ import {
 } from '../../../plugins/diddy/types';
 import { BadgeEditor } from './BadgeEditor';
 import * as css from './DiddyProfileSettings.css';
+import { RangeInput } from '../../../components/diddy/RangeInput';
 
 type Draft = Omit<DiddyProfile, 'v' | 'shownBadges'>;
 
@@ -186,8 +187,7 @@ function ColorField({
 function AngleField({ value, onChange }: { value: number; onChange: (value: number) => void }) {
   return (
     <>
-      <input
-        type="range"
+      <RangeInput
         min={0}
         max={360}
         value={value}

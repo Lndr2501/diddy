@@ -3,9 +3,10 @@ import { useSyncExternalStore } from 'react';
 
 type Prefs = {
   /**
-   * Echo cancellation of the microphone. Off by default: on macOS, WebKit then switches to the
-   * system "voice processing" mode, which changes how all other audio (music) sounds.
-   * Turn it on when you use speakers instead of headphones.
+   * "Voice processing": echo cancellation, noise suppression and auto gain of the microphone.
+   * Off by default: on macOS, WebKit then switches to the system voice mode, which ducks and
+   * changes all other audio (music). Turn it on when you use speakers instead of headphones.
+   * (Kept under the old key name so saved settings still work.)
    */
   echoCancellation: boolean;
   /** Short tones when you mute / unmute / deafen / undeafen. */

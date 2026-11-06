@@ -18,6 +18,7 @@ import { soundboard, useSoundboard } from '../../plugins/call';
 import { canImportFromMyInstants } from '../../plugins/myinstants';
 import { MyInstantsImport } from './MyInstantsImport';
 import * as css from './styles.css';
+import { RangeInput } from '../../components/diddy/RangeInput';
 
 type SoundboardMenuProps = {
   onClose: () => void;
@@ -150,8 +151,7 @@ function SoundboardMenu({ onClose, onImport }: SoundboardMenuProps) {
 
         <Box alignItems="Center" gap="200">
           <Text size="T200">Volume</Text>
-          <input
-            type="range"
+          <RangeInput
             aria-label="Soundboard volume"
             min={0.05}
             max={1}

@@ -353,11 +353,14 @@ const mergeAudioConstraints = (
 ): true | MediaTrackConstraints => {
   const echoOff = !getCallPrefs().echoCancellation;
   if (!echoOff && !deviceId) return audio;
-  // Echo cancellation makes WebKit on macOS switch to the system "voice processing" mode, which
-  // changes how all other audio (music) sounds. It is off unless the user turned it on.
+  // Echo cancellation, noise suppression and auto gain make WebKit on macOS switch to the system
+  // "voice processing" mode, which ducks and changes all other audio (music) and causes a short
+  // glitch. All three are off unless the user turned "Voice processing" on.
   return {
     ...(audio === true ? {} : audio),
-    ...(echoOff ? { echoCancellation: false } : {}),
+    ...(echoOff
+      ? { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+      : {}),
     ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
   };
 };

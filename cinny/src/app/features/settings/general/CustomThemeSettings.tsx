@@ -11,6 +11,7 @@ import {
   updateCustomTheme,
   useCustomTheme,
 } from '../../../state/customTheme';
+import { RangeInput } from '../../../components/diddy/RangeInput';
 
 type ColorFieldProps = {
   label: string;
@@ -44,8 +45,7 @@ type SliderProps = {
 function Slider({ label, value, min, max, step, format, onChange }: SliderProps) {
   return (
     <Box alignItems="Center" gap="200">
-      <input
-        type="range"
+      <RangeInput
         aria-label={label}
         min={min}
         max={max}
