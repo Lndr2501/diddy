@@ -19,7 +19,7 @@
   --mx-uc-8: hsl(94, 100%, 35%);
 
   --font-emoji: 'Twemoji_DISABLED';
-  --font-secondary: 'InterVariable', var(--font-emoji), sans-serif;
+  --font-secondary: -apple-system, BlinkMacSystemFont, 'InterVariable', var(--font-emoji), sans-serif;
 
   /*
    * Diddy shape tokens (shared by all redesigned components, usable in .css.ts via `var(--diddy-*)`):
@@ -50,7 +50,7 @@
   --mx-uc-7: hsl(243, 100%, 80%);
   --mx-uc-8: hsl(94, 100%, 80%);
 
-  --font-secondary: 'InterVariable', var(--font-emoji), sans-serif;
+  --font-secondary: -apple-system, BlinkMacSystemFont, 'InterVariable', var(--font-emoji), sans-serif;
 }
 
 html {
@@ -68,6 +68,8 @@ body {
 
   /*Why font-variant-ligatures => https://github.com/rsms/inter/issues/222 */
   font-variant-ligatures: no-contextual;
+  /* Diddy (#21): system font (SF on macOS, Inter elsewhere) rendered like native macOS apps */
+  -webkit-font-smoothing: antialiased;
 }
 #root {
   position: relative;
