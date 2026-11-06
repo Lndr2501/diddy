@@ -1,5 +1,5 @@
 import React, { MouseEventHandler, useState } from 'react';
-import { Box, Menu, PopOut, RectCords, Text } from 'folds';
+import { Avatar, Box, Menu, PopOut, RectCords, Text } from 'folds';
 import FocusTrap from 'focus-trap-react';
 import { SidebarItem, SidebarItemTooltip, SidebarAvatar } from '../../../components/sidebar';
 import { UserAvatar } from '../../../components/user-avatar';
@@ -69,7 +69,9 @@ export function SettingsTab() {
                   <ConnectionsMenu
                     account={
                       <Box alignItems="Center" gap="300" style={{ padding: 4 }}>
-                        <div style={{ width: 40, height: 40, flexShrink: 0 }}>{avatar}</div>
+                        <Avatar size="400" radii="Pill" style={{ flexShrink: 0 }}>
+                          {avatar}
+                        </Avatar>
                         <Box direction="Column" style={{ minWidth: 0 }}>
                           <Text size="H6" truncate>
                             {displayName}

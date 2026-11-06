@@ -132,6 +132,20 @@ pub(crate) fn build_client_window(
     Ok(())
 }
 
+/// The system-audio helper is this same executable started with a flag (see system_audio.rs).
+/// Returns its exit code when this process is the helper; the app must then not start.
+pub fn system_audio_helper(args: &[String]) -> Option<i32> {
+    #[cfg(target_os = "macos")]
+    {
+        system_audio::helper_main(args)
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = args;
+        None
+    }
+}
+
 pub fn run() {
     
     for key in ["NO_PROXY", "no_proxy"] {

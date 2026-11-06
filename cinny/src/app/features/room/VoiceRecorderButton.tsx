@@ -1,20 +1,25 @@
-import React from 'react';
-import { Box, Icon, IconButton, Icons, Text } from 'folds';
+import React, { useState } from 'react';
+import { Icon, IconButton, Icons } from 'folds';
 import { useVoiceRecorder, VoiceRecording } from '../../hooks/useVoiceRecorder';
 import { millisecondsToMinutesAndSeconds } from '../../utils/common';
-import { VOICE_MAX_MS } from '../../plugins/voiceMessage';
+import { ArrowUpGlyph, TrashGlyph } from '../../components/message/content/VoiceIcons';
+import * as css from '../../components/message/content/VoiceContent.css';
 
 type VoiceRecorderButtonProps = {
-  /** receives the finished recording; it is put into the upload board like any file */
-  onRecorded: (recording: VoiceRecording) => void;
+  /** sends the finished recording; may reject, the recording is then kept by the caller */
+  onRecorded: (recording: VoiceRecording) => Promise<void>;
   disabled?: boolean;
 };
 
-/** Microphone button of the message composer; while recording it shows timer, cancel and done. */
+/**
+ * Microphone button of the composer. While recording it turns into a small capsule (discard,
+ * pulsing red dot, time, send) and the send button sends the message right away.
+ */
 export function VoiceRecorderButton({ onRecorded, disabled }: VoiceRecorderButtonProps) {
   const { state, elapsedMs, error, start, stop, cancel } = useVoiceRecorder();
+  const [sending, setSending] = useState(false);
 
-  if (state === 'idle' || state === 'starting') {
+  if ((state === 'idle' || state === 'starting') && !sending) {
     return (
       <IconButton
         variant="SurfaceVariant"
@@ -31,42 +36,43 @@ export function VoiceRecorderButton({ onRecorded, disabled }: VoiceRecorderButto
     );
   }
 
-  const handleDone = async () => {
-    const recording = await stop();
-    if (recording) onRecorded(recording);
+  const handleSend = async () => {
+    if (sending) return;
+    setSending(true);
+    try {
+      const recording = await stop();
+      if (recording) await onRecorded(recording);
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
-    <Box alignItems="Center" gap="100" role="status" aria-label="Recording voice message">
-      <IconButton
-        variant="SurfaceVariant"
-        fill="None"
-        size="300"
-        radii="Pill"
+    <div className={css.Recorder} role="group" aria-label="Recording voice message">
+      <button
+        type="button"
+        className={css.RoundButton}
         onClick={cancel}
+        disabled={sending}
         aria-label="Discard recording"
+        title="Discard"
       >
-        <Icon src={Icons.Cross} />
-      </IconButton>
-      <Box alignItems="Center" gap="100" style={{ minWidth: '6.5em' }}>
-        <span
-          aria-hidden
-          style={{ width: 8, height: 8, borderRadius: '50%', background: '#e5484d' }}
-        />
-        <Text size="T300" style={{ fontVariantNumeric: 'tabular-nums' }}>
-          {millisecondsToMinutesAndSeconds(elapsedMs)} /{' '}
-          {millisecondsToMinutesAndSeconds(VOICE_MAX_MS)}
-        </Text>
-      </Box>
-      <IconButton
-        variant="Primary"
-        size="300"
-        radii="Pill"
-        onClick={() => handleDone()}
-        aria-label="Finish recording"
+        <TrashGlyph />
+      </button>
+      <span className={css.RecordDot} aria-hidden />
+      <span className={css.RecordTime} aria-live="off">
+        {millisecondsToMinutesAndSeconds(elapsedMs)}
+      </span>
+      <button
+        type="button"
+        className={css.SendButton}
+        onClick={() => handleSend()}
+        disabled={sending}
+        aria-label="Send voice message"
+        title="Send"
       >
-        <Icon src={Icons.Check} />
-      </IconButton>
-    </Box>
+        {sending ? <span className={css.Spinner} aria-hidden /> : <ArrowUpGlyph />}
+      </button>
+    </div>
   );
 }

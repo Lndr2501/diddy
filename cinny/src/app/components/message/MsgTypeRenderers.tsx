@@ -313,20 +313,17 @@ export function MAudio({ content, renderAsFile, renderAudioContent, outlined }: 
 
   const voice = readVoice(content);
   if (voice) {
+    // a voice message is a compact capsule of its own, not a file attachment with a header
     return (
-      <Attachment outlined={outlined}>
-        <AttachmentBox>
-          <AttachmentContent>
-            {renderAudioContent({
-              info: audioInfo,
-              mimeType: safeMimeType,
-              url: mxcUrl,
-              encInfo: content.file,
-              voice,
-            })}
-          </AttachmentContent>
-        </AttachmentBox>
-      </Attachment>
+      <>
+        {renderAudioContent({
+          info: audioInfo,
+          mimeType: safeMimeType,
+          url: mxcUrl,
+          encInfo: content.file,
+          voice,
+        })}
+      </>
     );
   }
 

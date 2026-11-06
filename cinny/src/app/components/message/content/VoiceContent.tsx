@@ -1,6 +1,5 @@
 /* eslint-disable jsx-a11y/media-has-caption */
 import React, { MouseEvent, useCallback, useMemo, useRef, useState } from 'react';
-import { Icon, IconButton, Icons, Spinner, Text } from 'folds';
 import { EncryptedAttachmentInfo } from 'browser-encrypt-attachment';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { AsyncStatus, useAsyncCallback } from '../../../hooks/useAsyncCallback';
@@ -22,10 +21,11 @@ import {
 } from '../../../utils/matrix';
 import { useMediaAuthentication } from '../../../hooks/useMediaAuthentication';
 import { VoiceInfo, waveformBars } from '../../../plugins/voiceMessage';
+import { PauseGlyph, PlayGlyph } from './VoiceIcons';
 import * as css from './VoiceContent.css';
 
-const BAR_COUNT = 48;
-const PLAY_TIME_THROTTLE_OPS = { wait: 200, immediate: true };
+const BAR_COUNT = 40;
+const PLAY_TIME_THROTTLE_OPS = { wait: 100, immediate: true };
 
 export type VoiceContentProps = {
   mimeType: string;
@@ -67,38 +67,42 @@ export function VoiceContent({ mimeType, url, info, voice, encInfo }: VoiceConte
 
   const bars = useMemo(() => waveformBars(voice.waveform, BAR_COUNT), [voice.waveform]);
   const progress = duration > 0 ? Math.min(currentTime / duration, 1) : 0;
+  const ready = srcState.status === AsyncStatus.Success;
+  const busy = srcState.status === AsyncStatus.Loading || (ready && loading);
 
   const handlePlay = () => {
-    if (srcState.status === AsyncStatus.Success) setPlaying(!playing);
+    if (ready) setPlaying(!playing);
     else if (srcState.status !== AsyncStatus.Loading) loadSrc();
   };
   const handleSeek = (event: MouseEvent<HTMLButtonElement>) => {
-    if (srcState.status !== AsyncStatus.Success || duration <= 0) return;
+    if (!ready || duration <= 0) return;
     const rect = event.currentTarget.getBoundingClientRect();
     seek(((event.clientX - rect.left) / Math.max(rect.width, 1)) * duration);
   };
 
-  const busy = srcState.status === AsyncStatus.Loading || loading;
+  // remaining time while playing (like Messages), total length otherwise
+  const shown = playing || currentTime > 0 ? Math.max(duration - currentTime, 0) : duration;
+
+  let glyph = <PlayGlyph />;
+  if (busy) glyph = <span className={css.Spinner} aria-hidden />;
+  else if (playing) glyph = <PauseGlyph />;
+
   return (
     <div className={css.Voice}>
-      <IconButton
-        variant="Primary"
-        size="400"
-        radii="Pill"
+      <button
+        type="button"
+        className={css.PlayButton}
         onClick={handlePlay}
         disabled={srcState.status === AsyncStatus.Loading}
-        aria-label={playing ? 'Pause' : 'Play voice message'}
+        aria-label={playing ? 'Pause voice message' : 'Play voice message'}
       >
-        {busy ? (
-          <Spinner variant="Primary" size="200" />
-        ) : (
-          <Icon src={playing ? Icons.Pause : Icons.Play} size="200" filled />
-        )}
-      </IconButton>
+        {glyph}
+      </button>
       <button
         type="button"
         className={css.Wave}
         onClick={handleSeek}
+        disabled={!ready}
         aria-label="Voice message position"
       >
         {bars.map((height, index) => (
@@ -110,16 +114,15 @@ export function VoiceContent({ mimeType, url, info, voice, encInfo }: VoiceConte
           />
         ))}
       </button>
-      <Text size="T200" className={css.Time}>
-        {secondsToMinutesAndSeconds(playing || currentTime > 0 ? currentTime : duration)}
-      </Text>
-      {srcState.status === AsyncStatus.Error && (
-        <Text size="T200" role="alert">
-          Could not load
-        </Text>
+      {srcState.status === AsyncStatus.Error ? (
+        <span className={css.Error} role="alert">
+          Failed
+        </span>
+      ) : (
+        <span className={css.Time}>{secondsToMinutesAndSeconds(shown)}</span>
       )}
       <audio controls={false} autoPlay ref={audioRef}>
-        {srcState.status === AsyncStatus.Success && <source src={srcState.data} type={mimeType} />}
+        {ready && <source src={srcState.data} type={mimeType} />}
       </audio>
     </div>
   );

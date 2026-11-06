@@ -12,18 +12,30 @@
 //! Security: the socket only listens on 127.0.0.1, requires a random per-launch token (injected
 //! into the app's own page, unreadable for other origins) and checks the `Origin` header.
 //! A capture session lives exactly as long as its WebSocket connection.
+//!
+//! The ScreenCaptureKit stream itself runs in a short-lived helper process (this same executable
+//! started with `--diddy-system-audio-helper`), never in the app process. Reason: macOS' screen
+//! sharing daemon (replayd) keeps a client per process. Once the app process had its own capture
+//! client, the system picker of the NEXT getDisplayMedia() delivered the user's choice to that
+//! client instead of WebKit, and the second screen share hung for 60 s until WebKit gave up. The
+//! helper's client disappears when the helper exits at the end of every share.
+//!
+//! Helper wire format (helper stdout -> app): frames of `[kind: u8][len: u32 LE][payload]`,
+//! kind 0 = capture running, 1 = error (UTF-8 text), 2 = interleaved f32 PCM. The helper stops
+//! when its stdin is closed (the app ends the share or exits).
 
 use std::{
     fs::OpenOptions,
-    io::{ErrorKind, Read, Write},
+    io::{BufReader, ErrorKind, Read, Write},
     net::{TcpListener, TcpStream},
+    process::{Child, ChildStdin, Command, Stdio},
     sync::{
         atomic::{AtomicBool, Ordering},
         mpsc::{self, SyncSender},
         Arc,
     },
     thread,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use screencapturekit::prelude::*;
@@ -36,6 +48,12 @@ use tungstenite::{
 const SAMPLE_RATE: i32 = 48_000;
 const CHANNELS: i32 = 2;
 const BUNDLE_ID: &str = "app.diddy.desktop";
+pub const HELPER_FLAG: &str = "--diddy-system-audio-helper";
+const FRAME_STARTED: u8 = 0;
+const FRAME_ERROR: u8 = 1;
+const FRAME_PCM: u8 = 2;
+/// Upper bound for one frame; a 10 ms stereo f32 chunk at 48 kHz is 3840 bytes.
+const MAX_FRAME: usize = 1 << 20;
 
 extern "C" {
     /// Private-but-stable libSystem call used by Activity Monitor / TCC: which app is
@@ -153,7 +171,7 @@ fn serve(
     let _ = tcp.set_write_timeout(Some(Duration::from_secs(2)));
 
     let (tx, rx) = mpsc::sync_channel::<Vec<u8>>(64);
-    let capture = match start_capture(tx) {
+    let capture = match spawn_helper(tx) {
         Ok(c) => c,
         Err(e) => {
             log(&format!("capture failed to start: {e}"));
@@ -198,10 +216,163 @@ fn serve(
     finish(capture, result)
 }
 
-fn finish(capture: SCStream, result: Result<(), String>) -> Result<(), String> {
-    let _ = capture.stop_capture();
+fn finish(capture: Helper, result: Result<(), String>) -> Result<(), String> {
+    capture.stop();
     log("capture stopped");
     result
+}
+
+/// The running helper process of one share.
+struct Helper {
+    child: Child,
+    stdin: Option<ChildStdin>,
+}
+
+impl Helper {
+    /// Closing stdin asks the helper to stop its stream and exit; kill it if it does not.
+    fn stop(mut self) {
+        drop(self.stdin.take());
+        let deadline = Instant::now() + Duration::from_millis(1500);
+        loop {
+            match self.child.try_wait() {
+                Ok(Some(_)) => return,
+                Ok(None) if Instant::now() < deadline => thread::sleep(Duration::from_millis(20)),
+                _ => break,
+            }
+        }
+        let _ = self.child.kill();
+        let _ = self.child.wait();
+        log("helper killed after stop timeout");
+    }
+}
+
+fn read_frame(reader: &mut impl Read) -> std::io::Result<(u8, Vec<u8>)> {
+    let mut head = [0u8; 5];
+    reader.read_exact(&mut head)?;
+    let len = u32::from_le_bytes([head[1], head[2], head[3], head[4]]) as usize;
+    if len > MAX_FRAME {
+        return Err(std::io::Error::new(ErrorKind::InvalidData, "frame too large"));
+    }
+    let mut payload = vec![0u8; len];
+    reader.read_exact(&mut payload)?;
+    Ok((head[0], payload))
+}
+
+fn write_frame(writer: &mut impl Write, kind: u8, payload: &[u8]) -> std::io::Result<()> {
+    let len = u32::try_from(payload.len()).map_err(|_| std::io::Error::new(ErrorKind::InvalidInput, "frame too large"))?;
+    let mut head = [0u8; 5];
+    head[0] = kind;
+    head[1..].copy_from_slice(&len.to_le_bytes());
+    writer.write_all(&head)?;
+    writer.write_all(payload)?;
+    writer.flush()
+}
+
+/// Starts the helper and waits until its capture runs (or failed). PCM goes into `tx`.
+fn spawn_helper(tx: SyncSender<Vec<u8>>) -> Result<Helper, String> {
+    let exe = std::env::current_exe().map_err(|e| format!("helper path: {e}"))?;
+    let mut child = Command::new(exe)
+        .arg(HELPER_FLAG)
+        .arg(std::process::id().to_string())
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .map_err(|e| format!("helper start: {e}"))?;
+    let stdin = child.stdin.take();
+    let stdout = child.stdout.take().ok_or("helper output missing")?;
+    let (ready_tx, ready_rx) = mpsc::sync_channel::<Result<(), String>>(1);
+    thread::spawn(move || {
+        let mut reader = BufReader::new(stdout);
+        let mut ready = Some(ready_tx);
+        loop {
+            match read_frame(&mut reader) {
+                Ok((FRAME_STARTED, _)) => {
+                    if let Some(r) = ready.take() {
+                        let _ = r.send(Ok(()));
+                    }
+                }
+                Ok((FRAME_ERROR, text)) => {
+                    let message = String::from_utf8_lossy(&text).into_owned();
+                    match ready.take() {
+                        Some(r) => {
+                            let _ = r.send(Err(message));
+                        }
+                        None => log(&format!("helper error: {message}")),
+                    }
+                }
+                Ok((FRAME_PCM, pcm)) => {
+                    // Never block the reader: if the page can't keep up, drop the chunk.
+                    let _ = tx.try_send(pcm);
+                }
+                Ok(_) => {}
+                Err(_) => {
+                    if let Some(r) = ready.take() {
+                        let _ = r.send(Err("helper ended before the capture started".into()));
+                    }
+                    return;
+                }
+            }
+        }
+    });
+    let mut helper = Helper { child, stdin };
+    match ready_rx.recv_timeout(Duration::from_secs(10)) {
+        Ok(Ok(())) => Ok(helper),
+        Ok(Err(e)) => {
+            helper.stdin.take();
+            let _ = helper.child.kill();
+            let _ = helper.child.wait();
+            Err(e)
+        }
+        Err(_) => {
+            let _ = helper.child.kill();
+            let _ = helper.child.wait();
+            Err("helper did not start in time".into())
+        }
+    }
+}
+
+/// Entry point of the helper process. Returns the exit code when `args` ask for the helper.
+pub fn helper_main(args: &[String]) -> Option<i32> {
+    if args.get(1).map(String::as_str) != Some(HELPER_FLAG) {
+        return None;
+    }
+    let app_pid = args.get(2).and_then(|p| p.parse::<i32>().ok())?;
+    let mut out = std::io::stdout().lock();
+    let (tx, rx) = mpsc::sync_channel::<Vec<u8>>(64);
+    let capture = match start_capture(tx, app_pid) {
+        Ok(c) => c,
+        Err(e) => {
+            let _ = write_frame(&mut out, FRAME_ERROR, e.as_bytes());
+            return Some(1);
+        }
+    };
+    if write_frame(&mut out, FRAME_STARTED, &[]).is_err() {
+        let _ = capture.stop_capture();
+        return Some(1);
+    }
+    // stdin closes when the app ends the share, exits or crashes
+    let stop = Arc::new(AtomicBool::new(false));
+    let stop_flag = stop.clone();
+    thread::spawn(move || {
+        let mut sink = [0u8; 64];
+        let mut input = std::io::stdin();
+        while matches!(input.read(&mut sink), Ok(n) if n > 0) {}
+        stop_flag.store(true, Ordering::SeqCst);
+    });
+    while !stop.load(Ordering::SeqCst) {
+        match rx.recv_timeout(Duration::from_millis(100)) {
+            Ok(pcm) => {
+                if write_frame(&mut out, FRAME_PCM, &pcm).is_err() {
+                    break;
+                }
+            }
+            Err(mpsc::RecvTimeoutError::Timeout) => {}
+            Err(mpsc::RecvTimeoutError::Disconnected) => break,
+        }
+    }
+    let _ = capture.stop_capture();
+    Some(0)
 }
 
 fn is_ours(app: &SCRunningApplication, own_pid: i32) -> bool {
@@ -212,7 +383,7 @@ fn is_ours(app: &SCRunningApplication, own_pid: i32) -> bool {
         || unsafe { responsibility_get_pid_responsible_for_pid(pid) } == own_pid
 }
 
-fn start_capture(tx: SyncSender<Vec<u8>>) -> Result<SCStream, String> {
+fn start_capture(tx: SyncSender<Vec<u8>>, own_pid: i32) -> Result<SCStream, String> {
     let content = SCShareableContent::get().map_err(|e| format!("shareable content: {e:?}"))?;
     let display = content
         .displays()
@@ -220,7 +391,6 @@ fn start_capture(tx: SyncSender<Vec<u8>>) -> Result<SCStream, String> {
         .next()
         .ok_or_else(|| "no display found".to_string())?;
 
-    let own_pid = std::process::id() as i32;
     let apps = content.applications();
     for app in &apps {
         log(&format!(
@@ -232,8 +402,8 @@ fn start_capture(tx: SyncSender<Vec<u8>>) -> Result<SCStream, String> {
         ));
     }
 
-    // Capture the audio of every app except Cinny itself, otherwise the other call
-    // participants would hear their own voices coming back.
+    // Capture the audio of every app except Diddy itself (`own_pid` is the app, not this helper),
+    // otherwise the other call participants would hear their own voices coming back.
     let others: Vec<&SCRunningApplication> = apps.iter().filter(|a| !is_ours(a, own_pid)).collect();
 
     let filter = SCContentFilter::create()
@@ -311,5 +481,38 @@ impl SCStreamOutputTrait for AudioHandler {
 
         // Never block ScreenCaptureKit's queue: if the page can't keep up, drop the chunk.
         let _ = self.tx.try_send(out);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn helper_frames_round_trip_and_reject_oversized_lengths() {
+        let mut buf = Vec::new();
+        write_frame(&mut buf, FRAME_STARTED, &[]).unwrap();
+        write_frame(&mut buf, FRAME_PCM, &[1, 2, 3, 4]).unwrap();
+        write_frame(&mut buf, FRAME_ERROR, b"denied").unwrap();
+        let mut reader = std::io::Cursor::new(buf);
+        assert_eq!(read_frame(&mut reader).unwrap(), (FRAME_STARTED, vec![]));
+        assert_eq!(read_frame(&mut reader).unwrap(), (FRAME_PCM, vec![1, 2, 3, 4]));
+        assert_eq!(read_frame(&mut reader).unwrap(), (FRAME_ERROR, b"denied".to_vec()));
+        assert!(read_frame(&mut reader).is_err());
+
+        let mut huge = vec![FRAME_PCM];
+        huge.extend_from_slice(&u32::MAX.to_le_bytes());
+        assert!(read_frame(&mut std::io::Cursor::new(huge)).is_err());
+    }
+
+    #[test]
+    fn only_the_helper_flag_starts_the_helper() {
+        let normal: Vec<String> = vec!["diddy".into()];
+        assert_eq!(helper_main(&normal), None);
+        let other: Vec<String> = vec!["diddy".into(), "--connection-id".into(), "x".into()];
+        assert_eq!(helper_main(&other), None);
+        // the flag without a valid app pid does not start a capture either
+        let bad: Vec<String> = vec!["diddy".into(), HELPER_FLAG.into(), "nope".into()];
+        assert_eq!(helper_main(&bad), None);
     }
 }

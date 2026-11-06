@@ -122,6 +122,7 @@ import { useComposingCheck } from '../../hooks/useComposingCheck';
 import { useDebounce } from '../../hooks/useDebounce';
 import { VoiceRecorderButton } from './VoiceRecorderButton';
 import { VoiceRecording } from '../../hooks/useVoiceRecorder';
+import { sendVoiceMessage } from './sendVoiceMessage';
 
 const getReplyContent = (replyDraft: IReplyDraft | undefined): IEventRelation => {
   if (!replyDraft) return {};
@@ -242,11 +243,23 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
     );
     const handleFiles = useCallback((files: File[]) => addFiles(files), [addFiles]);
     const handleVoiceRecorded = useCallback(
-      (recording: VoiceRecording) =>
-        addFiles([recording.file], {
-          voice: { durationMs: recording.durationMs, waveform: recording.waveform },
-        }),
-      [addFiles]
+      async (recording: VoiceRecording) => {
+        const voice = { durationMs: recording.durationMs, waveform: recording.waveform };
+        try {
+          await sendVoiceMessage(
+            mx,
+            room,
+            recording.file,
+            voice,
+            replyDraft ? getReplyContent(replyDraft) : undefined
+          );
+          setReplyDraft(undefined);
+        } catch {
+          // nothing is lost: the recording goes to the upload board and can be sent from there
+          await addFiles([recording.file], { voice });
+        }
+      },
+      [mx, room, replyDraft, setReplyDraft, addFiles]
     );
     const pickFile = useFilePicker(handleFiles, true);
     const handlePaste = useFilePasteHandler(handleFiles);

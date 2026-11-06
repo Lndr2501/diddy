@@ -2,6 +2,16 @@
 
 Statusbericht des Entwicklungsstands (Diddy, nach 1.1.0, kein neues Release).
 
+## Rückmeldung zum Teststand vom 2026-11-06, 22:25 (Korrekturen, noch nicht gebaut)
+
+- Konto-Menü: Das Profilbild füllte das ganze Menü, weil `AvatarImage` ohne positionierten `Avatar`-Rahmen absolut positioniert ist. Jetzt in `<Avatar size="400">` eingefasst.
+- Rechtsklick: Beim Nutzer sind die Developer Tools an, und damit habe ich das native Menü absichtlich durchgelassen. Jetzt gibt es das native Menü nur noch mit gedrückter Wahltaste (⌥) oder in Eingabefeldern. Zusätzlich ist der Schutz im Call-Fenster (eigenes iframe-Dokument) installiert.
+- Sprachnachrichten: neue Kapsel im Stil der Apple-Nachrichten-App (runder Play-Knopf mit optisch zentriertem Symbol, abgerundete Wellenform-Balken, Restzeit in Tabellenziffern, ohne Dateikopf). Aufnahme als Kapsel (Papierkorb, pulsierender roter Punkt, Zeit, Senden-Pfeil); Senden lädt hoch und schickt direkt, nur bei einem Fehler landet die Aufnahme im Upload-Feld.
+- Zweite Bildschirmübertragung: Laut Systemlog hat der Nutzer im macOS-Dialog einen Bildschirm gewählt (`Ending picker session with result display`), aber WebKit bekam die Auswahl nie (`nothing picked after 60 seconds`). Hauptverdacht: Der System-Ton-Mitschnitt lief im App-Prozess und meldete sich beim Bildschirmfreigabe-Dienst (replayd) ebenfalls als Diddy an, ab dem zweiten Dialog ging die Auswahl an diesen Empfänger. Umbau: Der Mitschnitt läuft jetzt in einem kurzlebigen Hilfsprozess (gleiche Binärdatei mit `--diddy-system-audio-helper`), der am Ende jeder Übertragung endet. Nicht bewiesen, bis es am Mac getestet ist.
+- Kamera: `getUserMedia(video)` war viermal erfolgreich; was genau nicht geht, ist noch offen (Rückfrage an den Nutzer).
+- Mikrofonwechsel ruckelt weiterhin (jeder Wechsel öffnet das Gerät neu); Mikrofonklang anders als in Element, weil "Voice processing" aus ist (kein Echo-/Rauschfilter, keine automatische Lautstärke).
+- 82 JavaScript-Tests, 11 native Tests, Typecheck und ESLint sauber. Kein Build, keine Installation.
+
 ## Sprachnachrichten (Issue #1, 2026-11-06)
 
 - Aufnahme am Desktop: Mikrofon-Knopf im Eingabefeld (`VoiceRecorderButton`, `useVoiceRecorder`): Aufnahme mit Zeit, Verwerfen, Fertig (max. 15 min, min. 0,5 s). Format nach Engine: Ogg/Opus, WebM/Opus oder MP4 (WKWebView nimmt MP4/AAC auf). Fertige Aufnahme landet wie eine Datei im Upload-Feld (inkl. Verschlüsselung in verschlüsselten Räumen) und wird dort mit Senden verschickt; die Nachricht trägt `org.matrix.msc3245.voice` und `org.matrix.msc1767.audio` (Dauer, Wellenform 64 Werte), damit Element & Co. sie als Sprachnachricht zeigen.
