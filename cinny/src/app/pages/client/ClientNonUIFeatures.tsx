@@ -26,6 +26,8 @@ import { getMxIdLocalPart, mxcUrlToHttp } from '../../utils/matrix';
 import { useSelectedRoom } from '../../hooks/router/useSelectedRoom';
 import { useInboxNotificationsSelected } from '../../hooks/router/useInbox';
 import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
+import { useSelectedSpace } from '../../hooks/router/useSelectedSpace';
+import { APP_NAME } from '../../appInfo';
 import { useSpaceAutoJoinWorker } from '../../hooks/useSpaceAutoJoin';
 import { applyStoredAppIcon } from '../../plugins/appIcon';
 
@@ -81,6 +83,28 @@ function FaviconUpdater() {
       cancelled = true;
     };
   }, [roomToUnread, iconId]);
+
+  return null;
+}
+
+function TitleUpdater() {
+  const mx = useMatrixClient();
+  const selectedSpace = useSelectedSpace();
+  const selectedRoom = useSelectedRoom();
+
+  useEffect(() => {
+    const space = selectedSpace ? mx.getRoom(selectedSpace) : undefined;
+    const room = selectedRoom ? mx.getRoom(selectedRoom) : undefined;
+
+    const parts: string[] = [];
+    const roomName = room?.name || room?.roomId;
+    const spaceName = space?.name || space?.roomId;
+    if (roomName) parts.push(roomName);
+    if (spaceName) parts.push(spaceName);
+    parts.push(APP_NAME);
+
+    document.title = parts.join(' – ');
+  }, [mx, selectedRoom, selectedSpace]);
 
   return null;
 }
@@ -279,11 +303,21 @@ type ClientNonUIFeaturesProps = {
 };
 
 export function ClientNonUIFeatures({ children }: ClientNonUIFeaturesProps) {
+  const [showDynamicPageTitle] = useSetting(settingsAtom, 'showDynamicPageTitle');
+  const defaultTitleRef = useRef(document.title);
+
+  useEffect(() => {
+    if (!showDynamicPageTitle && document.title !== defaultTitleRef.current) {
+      document.title = defaultTitleRef.current;
+    }
+  }, [showDynamicPageTitle]);
+
   return (
     <>
       <SystemEmojiFeature />
       <PageZoomFeature />
       <FaviconUpdater />
+      {showDynamicPageTitle && <TitleUpdater />}
       <InviteNotifications />
       <MessageNotifications />
       <SpaceAutoJoinFeature />
