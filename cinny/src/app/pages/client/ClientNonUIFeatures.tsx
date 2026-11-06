@@ -32,20 +32,45 @@ import { useSpaceAutoJoinWorker } from '../../hooks/useSpaceAutoJoin';
 import { applyStoredAppIcon } from '../../plugins/appIcon';
 
 /**
- * Plays a short notification sound and resets the element afterwards. An ended <audio> element
- * stays registered as the "now playing" app, so a press on the media play/pause key would replay
- * the notification sound instead of resuming the user's music (cinnyapp/cinny#3017).
+ * Notification sounds go through Web Audio instead of an <audio> element. A played <audio> element
+ * registers as the "now playing" app, so the media play/pause key would replay the notification
+ * sound instead of controlling the user's music (cinnyapp/cinny#3017). Web Audio does not.
+ * If the sound cannot be decoded the old <audio> element is used as a fallback.
  */
+let soundContext: AudioContext | undefined;
+const soundBuffers = new Map<string, Promise<AudioBuffer>>();
+
+const playViaWebAudio = async (url: string): Promise<void> => {
+  if (!soundContext || soundContext.state === 'closed') soundContext = new AudioContext();
+  const ctx = soundContext;
+  let pending = soundBuffers.get(url);
+  if (!pending) {
+    pending = fetch(url)
+      .then((res) => res.arrayBuffer())
+      .then((data) => ctx.decodeAudioData(data));
+    soundBuffers.set(url, pending);
+    pending.catch(() => soundBuffers.delete(url));
+  }
+  const buffer = await pending;
+  if (ctx.state === 'suspended') await ctx.resume();
+  const source = ctx.createBufferSource();
+  source.buffer = buffer;
+  source.connect(ctx.destination);
+  source.start();
+};
+
 const playNotificationSound = (audio: HTMLAudioElement | null) => {
   if (!audio) return;
-  audio.addEventListener(
-    'ended',
-    () => {
-      audio.load();
-    },
-    { once: true }
-  );
-  audio.play().catch(() => {});
+  const url = audio.querySelector('source')?.src;
+  const fallback = () => {
+    audio.addEventListener('ended', () => audio.load(), { once: true });
+    audio.play().catch(() => {});
+  };
+  if (!url) {
+    fallback();
+    return;
+  }
+  playViaWebAudio(url).catch(fallback);
 };
 
 function SystemEmojiFeature() {

@@ -21,6 +21,15 @@ export const TitleBar = style({
 export const TitleBarSpacer = style({
   flexGrow: 1,
   alignSelf: 'stretch',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  minWidth: 0,
+  overflow: 'hidden',
+  whiteSpace: 'nowrap',
+  textOverflow: 'ellipsis',
+  fontSize: '12px',
+  opacity: 0.6,
 });
 
 export const ClientLayoutContent = style({
