@@ -16,6 +16,7 @@
     "check:prettier": "prettier --check .",
     "fix:prettier": "prettier --write .",
     "typecheck": "tsc --noEmit",
+    "test": "node --test --test-concurrency=1 tests/*.test.cjs",
     "prepare": "husky install",
     "commit": "git-cz",
     "bump": "node scripts/update-version.js"

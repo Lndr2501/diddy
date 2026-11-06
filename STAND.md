@@ -2,6 +2,10 @@
 
 Statusbericht des Entwicklungsstands (Diddy, nach 1.1.0, kein neues Release).
 
+## Automatisierte Tests (Issue #16, 2026-11-06)
+
+- `npm test` in `cinny/` führt alle 77 hardwarefreien Tests aus (Regeln, Vertrauenslogik, Verbindungen, Kontextmenü, Serverseitiger Render der echten UI-Komponenten: Verbindungsseite in 5 Phasen, Konto-Menü). Neuer Workflow `.github/workflows/test.yml` führt `typecheck` und `npm test` bei jedem Push auf `main` und jedem Pull Request aus (läuft erst nach dem Push, bisher nicht auf GitHub gesehen). Noch offen: Rust-Tests in CI (macOS-Runner, schwere Abhängigkeiten) und echte Browser-/Ende-zu-Ende-Tests.
+
 ## Rechtsklick-Fehler (Issue #17, 2026-11-06)
 
 - Ursache: Die Nachrichten-Menüs traten bei markiertem Text oder auf Links zurück und überließen dem Web-View das Menü (mit "Neu laden" und "Inspect", denn die Tauri-Funktion `devtools` ist aktiv). Jetzt: In der Desktop-App gibt es nur noch in Eingabefeldern das native Menü (oder mit eingeschalteten Developer Tools); Nachrichten-Menüs öffnen immer. Neuer Eintrag "Copy Text" (markierter Text oder ganze Nachricht) ersetzt das frühere "Kopieren" des Web-Views. Im normalen Browser bleibt das alte Verhalten. Neu `plugins/contextMenu.ts`, 4 Tests. Nicht in der echten App geprüft.
