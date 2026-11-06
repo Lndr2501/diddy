@@ -79,7 +79,10 @@ export function HomeTab() {
     [orphanRooms, directRooms]
   );
   const homeUnread = useRoomsUnread(homeAndDirectRooms, roomToUnreadAtom);
-  const homeSelected = useHomeSelected() || useDirectSelected();
+  // both hooks must always run (no short-circuit), otherwise React's hook order changes
+  const onHome = useHomeSelected();
+  const onDirect = useDirectSelected();
+  const homeSelected = onHome || onDirect;
   const [menuAnchor, setMenuAnchor] = useState<RectCords>();
 
   const handleHomeClick = () => {
