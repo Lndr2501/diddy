@@ -1,5 +1,6 @@
 import React, {
   ChangeEventHandler,
+  CSSProperties,
   MouseEventHandler,
   useCallback,
   useMemo,
@@ -25,6 +26,7 @@ import {
   Text,
   Tooltip,
   TooltipProvider,
+  color,
   config,
 } from 'folds';
 import { MatrixClient, Room, RoomMember } from 'matrix-js-sdk';
@@ -65,6 +67,9 @@ import { AvatarPresence, PresenceBadge } from '../../components/presence';
 import { InviteUserPrompt } from '../../components/invite-user-prompt';
 import { useRoomPermissions } from '../../hooks/useRoomPermissions';
 import { useOpenRoomSettings } from '../../state/hooks/roomSettings';
+import { DiddyName } from '../../components/diddy/DiddyName';
+import { useDiddyProfile } from '../../plugins/diddy/profiles';
+import { useMxcUrl } from '../../plugins/diddy/media';
 
 type MemberDrawerHeaderProps = {
   room: Room;
@@ -136,10 +141,35 @@ function MemberItem({
     ? mx.mxcUrlToHttp(avatarMxcUrl, 100, 100, 'crop', undefined, false, useAuthentication)
     : undefined;
   const presence = useUserPresence(member.userId);
+  const diddyProfile = useDiddyProfile(mx, member.userId);
+  const nameplateColor = diddyProfile?.nameplate?.color;
+  const nameplateImageUrl = useMxcUrl(diddyProfile?.nameplate?.imageMxc);
+
+  const nameplateStyle = useMemo<CSSProperties | undefined>(() => {
+    const layers: string[] = [];
+    if (nameplateImageUrl) {
+      const veil = `color-mix(in srgb, ${color.Surface.Container} 65%, transparent)`;
+      layers.push(`linear-gradient(${veil}, ${veil})`, `url("${nameplateImageUrl}")`);
+    }
+    if (nameplateColor) {
+      layers.unshift(
+        `linear-gradient(to right, color-mix(in srgb, ${nameplateColor} 28%, transparent), transparent)`
+      );
+    }
+    if (layers.length === 0) return undefined;
+    return {
+      backgroundImage: layers.join(', '),
+      backgroundSize: nameplateImageUrl
+        ? [nameplateColor ? '100% 100%' : undefined, '100% 100%', 'cover'].filter(Boolean).join(', ')
+        : undefined,
+      backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat',
+    };
+  }, [nameplateColor, nameplateImageUrl]);
 
   return (
     <MenuItem
-      style={{ padding: `0 ${config.space.S200}` }}
+      style={{ padding: `0 ${config.space.S200}`, ...nameplateStyle }}
       aria-pressed={pressed}
       data-user-id={member.userId}
       variant="Surface"
@@ -185,7 +215,7 @@ function MemberItem({
     >
       <Box grow="Yes">
         <Text size="T400" truncate>
-          {name}
+          <DiddyName userId={member.userId} name={name} showBadges />
         </Text>
       </Box>
     </MenuItem>

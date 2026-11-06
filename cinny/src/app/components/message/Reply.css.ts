@@ -1,4 +1,4 @@
-import { style } from '@vanilla-extract/css';
+import { globalStyle, style } from '@vanilla-extract/css';
 import { config, toRem } from 'folds';
 
 export const ReplyBend = style({
@@ -58,10 +58,25 @@ export const ReplyContent = style({
 });
 
 export const ReplyAvatar = style({
-  display: 'inline-flex',
+  display: 'block',
+  position: 'relative',
   flexShrink: 0,
   width: toRem(16),
   height: toRem(16),
+  minWidth: toRem(16),
   borderRadius: '50%',
   overflow: 'hidden',
+});
+
+// the avatar image must never size itself: pin it to the 16px circle
+globalStyle(`${ReplyAvatar} > *`, {
+  width: toRem(16),
+  height: toRem(16),
+});
+globalStyle(`${ReplyAvatar} img`, {
+  display: 'block',
+  width: toRem(16),
+  height: toRem(16),
+  maxWidth: toRem(16),
+  objectFit: 'cover',
 });

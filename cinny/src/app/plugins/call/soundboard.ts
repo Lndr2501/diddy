@@ -13,6 +13,7 @@ import { useSyncExternalStore } from 'react';
 import { deleteBlob, getBlob, putBlob } from '../../utils/blobStore';
 import { diag } from '../diagnostics';
 import { getCallPrefs } from '../../state/callPrefs';
+import { getAudioPrefs, registerInputGain } from './audioDevices';
 
 export type Clip = {
   id: string;
@@ -29,6 +30,8 @@ type MicMix = {
   /** Clips are connected here to be heard by the call. */
   bus: GainNode;
   stop: () => void;
+  /** Swaps the microphone under the mixer (live switching of the input device). */
+  replaceMic: (track: MediaStreamTrack) => void;
 };
 
 type Snapshot = {
@@ -228,6 +231,18 @@ class Soundboard {
     });
   }
 
+  /** True while a call microphone runs through the mixer (so it can be swapped live). */
+  public hasMix(): boolean {
+    return this.mixes.size > 0;
+  }
+
+  /** Swaps the microphone of every running mix. Returns false when no mix is running. */
+  public replaceMic(track: MediaStreamTrack): boolean {
+    if (this.mixes.size === 0) return false;
+    Array.from(this.mixes).forEach((mix, i) => mix.replaceMic(i === 0 ? track : track.clone()));
+    return true;
+  }
+
   /**
    * Wraps a microphone stream so clips can be mixed into it. Returns a stream with the mixed audio
    * track (behaving like the microphone track) and the original video tracks.
@@ -235,9 +250,13 @@ class Soundboard {
   public async mixInto(stream: MediaStream): Promise<MediaStream> {
     const [mic] = stream.getAudioTracks();
     if (!mic) return stream;
-    // Without clips there is nothing to mix, so keep the plain microphone: the most direct,
-    // glitch-free path to the call.
-    if (this.clips.length === 0) return stream;
+    // Without clips, a custom input volume or a chosen microphone there is nothing to process, so
+    // keep the plain microphone: the most direct, glitch-free path to the call. (A chosen
+    // microphone goes through the mixer so it can be switched live without Element Call's help.)
+    const audioPrefs = getAudioPrefs();
+    if (this.clips.length === 0 && audioPrefs.inputVolume === 1 && audioPrefs.input === '') {
+      return stream;
+    }
 
     const ctx = this.getContext();
     // A suspended context would make the microphone silent. Better no soundboard than no voice.
@@ -247,23 +266,46 @@ class Soundboard {
       );
       if (ctx.state !== 'running') return stream;
     }
-    const source = ctx.createMediaStreamSource(new MediaStream([mic]));
+    let currentMic = mic;
+    let source = ctx.createMediaStreamSource(new MediaStream([mic]));
     const destination = ctx.createMediaStreamDestination();
     const bus = ctx.createGain();
-    source.connect(destination);
+    // Input volume preference (live)
+    const micGain = ctx.createGain();
+    const unregisterGain = registerInputGain(micGain);
+    source.connect(micGain);
+    micGain.connect(destination);
     bus.connect(destination);
 
     const [mixed] = destination.stream.getAudioTracks();
     const nativeStop = mixed.stop.bind(mixed);
 
+    // Unplugged / revoked microphone
+    const onMicEnded = () => {
+      mix.stop();
+      mixed.dispatchEvent(new Event('ended'));
+    };
+
     const mix: MicMix = {
       bus,
       stop: () => {
+        unregisterGain();
         source.disconnect();
+        micGain.disconnect();
         bus.disconnect();
         this.mixes.delete(mix);
         this.emit();
         this.scheduleIdleClose();
+      },
+      replaceMic: (track) => {
+        const old = currentMic;
+        old.removeEventListener('ended', onMicEnded);
+        source.disconnect();
+        currentMic = track;
+        source = ctx.createMediaStreamSource(new MediaStream([track]));
+        source.connect(micGain);
+        track.addEventListener('ended', onMicEnded);
+        old.stop();
       },
     };
     this.mixes.add(mix);
@@ -271,22 +313,18 @@ class Soundboard {
 
     // Behave like the microphone track for code that inspects or reconfigures it.
     Object.defineProperties(mixed, {
-      label: { value: mic.label },
-      getSettings: { value: () => mic.getSettings() },
-      getConstraints: { value: () => mic.getConstraints() },
-      getCapabilities: { value: () => mic.getCapabilities?.() ?? {} },
-      applyConstraints: { value: (c?: MediaTrackConstraints) => mic.applyConstraints(c) },
+      label: { get: () => currentMic.label },
+      getSettings: { value: () => currentMic.getSettings() },
+      getConstraints: { value: () => currentMic.getConstraints() },
+      getCapabilities: { value: () => currentMic.getCapabilities?.() ?? {} },
+      applyConstraints: { value: (c?: MediaTrackConstraints) => currentMic.applyConstraints(c) },
     });
     mixed.stop = () => {
       nativeStop();
-      mic.stop();
+      currentMic.stop();
       mix.stop();
     };
-    // Unplugged / revoked microphone
-    mic.addEventListener('ended', () => {
-      mix.stop();
-      mixed.dispatchEvent(new Event('ended'));
-    });
+    mic.addEventListener('ended', onMicEnded);
 
     const result = new MediaStream([mixed]);
     stream.getVideoTracks().forEach((track) => result.addTrack(track));
@@ -296,6 +334,51 @@ class Soundboard {
 
 export const soundboard = new Soundboard();
 
+/** The preferred microphone, but only while that device is still plugged in. */
+const getPreferredInputId = async (devices: MediaDevices): Promise<string | undefined> => {
+  const { input } = getAudioPrefs();
+  if (!input) return undefined;
+  try {
+    const list = await devices.enumerateDevices();
+    return list.some((d) => d.kind === 'audioinput' && d.deviceId === input) ? input : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+/** Audio constraints with the echo preference and (optionally) the chosen microphone merged in. */
+const mergeAudioConstraints = (
+  audio: true | MediaTrackConstraints,
+  deviceId?: string
+): true | MediaTrackConstraints => {
+  const echoOff = !getCallPrefs().echoCancellation;
+  if (!echoOff && !deviceId) return audio;
+  // Echo cancellation makes WebKit on macOS switch to the system "voice processing" mode, which
+  // changes how all other audio (music) sounds. It is off unless the user turned it on.
+  return {
+    ...(audio === true ? {} : audio),
+    ...(echoOff ? { echoCancellation: false } : {}),
+    ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
+  };
+};
+
+let liveSwitch: (() => Promise<boolean>) | undefined;
+
+/**
+ * Re-opens the microphone with the current input preference and swaps it into the running call
+ * without Element Call noticing. Returns false when that is not possible (no call microphone runs
+ * through the soundboard mixer), in which case the caller has to restart capture differently.
+ */
+export const switchLiveMicrophone = async (): Promise<boolean> => {
+  if (!liveSwitch) return false;
+  try {
+    return await liveSwitch();
+  } catch (e) {
+    diag(`live microphone switch failed: ${e instanceof Error ? e.message : String(e)}`);
+    return false;
+  }
+};
+
 /** Wraps getUserMedia() of the call iframe. Safe to call repeatedly. */
 export const installSoundboard = (win: Window | null | undefined) => {
   const devices = win?.navigator?.mediaDevices as
@@ -304,23 +387,40 @@ export const installSoundboard = (win: Window | null | undefined) => {
   if (!devices || typeof devices.getUserMedia !== 'function' || devices.__cinnySoundboard) return;
 
   const original = devices.getUserMedia.bind(devices);
+  liveSwitch = async () => {
+    if (!soundboard.hasMix()) return false;
+    const deviceId = await getPreferredInputId(devices);
+    const raw = await original({ audio: mergeAudioConstraints(true, deviceId), video: false });
+    const [track] = raw.getAudioTracks();
+    if (!track) return false;
+    if (!soundboard.replaceMic(track)) {
+      track.stop();
+      return false;
+    }
+    return true;
+  };
   devices.getUserMedia = async (constraints?: MediaStreamConstraints) => {
     const wants = `${constraints?.audio ? 'audio ' : ''}${constraints?.video ? 'video' : ''}`.trim();
-    // Echo cancellation makes WebKit on macOS switch to the system "voice processing" mode, which
-    // changes how all other audio (music) sounds. It is off unless the user turned it on.
     let effective = constraints;
-    if (constraints?.audio && !getCallPrefs().echoCancellation) {
+    let withDevice = false;
+    if (constraints?.audio) {
+      const deviceId = await getPreferredInputId(devices);
+      withDevice = deviceId !== undefined;
       effective = {
         ...constraints,
-        audio:
-          constraints.audio === true
-            ? { echoCancellation: false }
-            : { ...constraints.audio, echoCancellation: false },
+        audio: mergeAudioConstraints(constraints.audio, deviceId),
       };
     }
     let stream: MediaStream;
     try {
-      stream = await original(effective);
+      try {
+        stream = await original(effective);
+      } catch (e) {
+        // The chosen microphone refused to open: use whatever Element Call asked for instead.
+        if (!withDevice || !constraints?.audio) throw e;
+        diag(`preferred microphone failed, using default: ${e instanceof Error ? e.name : String(e)}`);
+        stream = await original({ ...constraints, audio: mergeAudioConstraints(constraints.audio) });
+      }
     } catch (e) {
       diag(
         `getUserMedia(${wants}) failed: ${e instanceof Error ? `${e.name}: ${e.message}` : String(e)}`

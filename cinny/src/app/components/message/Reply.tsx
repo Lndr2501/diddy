@@ -15,6 +15,7 @@ import { useRoomEvent } from '../../hooks/useRoomEvent';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import colorMXID from '../../../util/colorMXID';
 import { GetMemberPowerTag } from '../../hooks/useMemberPowerTag';
+import { DiddyName } from '../diddy/DiddyName';
 
 type ReplyLayoutProps = {
   userColor?: string;
@@ -143,7 +144,13 @@ export const Reply = as<'div', ReplyProps>(
                   />
                 </span>
                 <Text size="T200" truncate>
-                  <b>@{getMemberDisplayName(room, sender) ?? getMxIdLocalPart(sender)}</b>
+                  <b>
+                    @
+                    <DiddyName
+                      userId={sender}
+                      name={getMemberDisplayName(room, sender) ?? getMxIdLocalPart(sender) ?? sender}
+                    />
+                  </b>
                 </Text>
               </Box>
             )

@@ -31,6 +31,8 @@ import { APP_NAME } from '../../appInfo';
 import { ImageViewerHost } from '../../components/image-viewer/ImageViewerHost';
 import { useSpaceAutoJoinWorker } from '../../hooks/useSpaceAutoJoin';
 import { applyStoredAppIcon } from '../../plugins/appIcon';
+import { useDiddyOptionsAutoJoin } from '../../plugins/diddy/autoJoin';
+import { getLocalStatus, useDiddyStatusSync } from '../../plugins/diddy/status';
 
 /**
  * Notification sounds go through Web Audio instead of an <audio> element. A played <audio> element
@@ -180,6 +182,7 @@ function InviteNotifications() {
 
   useEffect(() => {
     if (invites.length > perviousInviteLen && mx.getSyncState() === 'SYNCING') {
+      if (getLocalStatus() === 'dnd') return;
       if (showNotifications && notificationPermission('granted')) {
         notify(invites.length - perviousInviteLen);
       }
@@ -256,6 +259,7 @@ function MessageNotifications() {
       data
     ) => {
       if (mx.getSyncState() !== 'SYNCING') return;
+      if (getLocalStatus() === 'dnd') return;
       if (document.hasFocus() && (selectedRoomId === room?.roomId || notificationSelected)) return;
       if (
         !room ||
@@ -335,6 +339,16 @@ function SpaceAutoJoinFeature() {
   return null;
 }
 
+function DiddyOptionsAutoJoinFeature() {
+  useDiddyOptionsAutoJoin();
+  return null;
+}
+
+function DiddyStatusFeature() {
+  useDiddyStatusSync();
+  return null;
+}
+
 type ClientNonUIFeaturesProps = {
   children: ReactNode;
 };
@@ -360,6 +374,8 @@ export function ClientNonUIFeatures({ children }: ClientNonUIFeaturesProps) {
       <MessageNotifications />
       <SpaceAutoJoinFeature />
       <AppIconFeature />
+      <DiddyOptionsAutoJoinFeature />
+      <DiddyStatusFeature />
       {children}
     </>
   );

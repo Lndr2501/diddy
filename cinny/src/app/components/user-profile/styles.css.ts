@@ -44,3 +44,52 @@ export const UserHeroAvatarImg = style({
     },
   },
 });
+
+export const UserHeroBanner = style({
+  backgroundSize: 'cover',
+  backgroundPosition: 'center',
+  backgroundRepeat: 'no-repeat',
+});
+
+export const CardRoot = style({
+  position: 'relative',
+});
+export const CardRing = style({
+  position: 'absolute',
+  inset: 0,
+  borderRadius: 'inherit',
+  pointerEvents: 'none',
+  zIndex: 2,
+});
+
+export const StatusDot = style({
+  position: 'relative',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: toRem(14),
+  height: toRem(14),
+  borderRadius: '50%',
+  flexShrink: 0,
+});
+export const StatusDotBar = style({
+  width: toRem(8),
+  height: toRem(2.5),
+  borderRadius: toRem(2),
+  backgroundColor: color.Surface.Container,
+});
+export const StatusDotHole = style({
+  width: toRem(6),
+  height: toRem(6),
+  borderRadius: '50%',
+  backgroundColor: color.Surface.Container,
+});
+
+export const AboutLabel = style({
+  textTransform: 'uppercase',
+  letterSpacing: '0.04em',
+  opacity: 0.6,
+});
+export const AboutText = style({
+  whiteSpace: 'pre-wrap',
+});

@@ -3,6 +3,7 @@ import { ClientWidgetApi } from 'matrix-widget-api';
 import EventEmitter from 'events';
 import { CallControlState } from './CallControlState';
 import { diag } from '../diagnostics';
+import { applyAudioOutput, subscribeAudioPrefs } from './audioDevices';
 import { ElementMediaStateDetail, ElementMediaStatePayload, ElementWidgetActions } from './types';
 
 export enum CallControlEvent {
@@ -21,6 +22,12 @@ export class CallControl extends EventEmitter implements CallControlState {
   private controlMutationObserver: MutationObserver;
 
   private mediaStatePromiseResolver: undefined | (() => void);
+
+  private readonly stopAudioPrefs: () => void;
+
+  private readonly outputTimer: number;
+
+  private restarting = false;
 
   // Whether the microphone was live when the user deafened, so un-deafening can restore it.
   private micWasOnBeforeDeafen = false;
@@ -85,6 +92,11 @@ export class CallControl extends EventEmitter implements CallControlState {
 
     this.bodyMutationObserver = new MutationObserver(this.onBodyMutation.bind(this));
     this.controlMutationObserver = new MutationObserver(this.onControlMutation.bind(this));
+
+    // Output device / volume preferences: apply when they change, and regularly because Element
+    // Call creates new audio elements whenever somebody joins.
+    this.stopAudioPrefs = subscribeAudioPrefs(() => this.applyOutput());
+    this.outputTimer = window.setInterval(() => this.applyOutput(), 3000);
   }
 
   public getState(): CallControlState {
@@ -185,6 +197,36 @@ export class CallControl extends EventEmitter implements CallControlState {
         // eslint-disable-next-line no-param-reassign
         el.muted = !sound;
       });
+    }
+    this.applyOutput();
+  }
+
+  /** Applies the chosen output device and output volume to the media elements of the call. */
+  public applyOutput(): void {
+    let callDocument: Document | undefined | null;
+    try {
+      callDocument = this.iframe.contentDocument ?? this.iframe.contentWindow?.document;
+    } catch {
+      return;
+    }
+    callDocument?.querySelectorAll<HTMLMediaElement>('audio, video').forEach(applyAudioOutput);
+  }
+
+  /**
+   * Fallback to make Element Call re-acquire the microphone (used when the live swap in the
+   * soundboard mixer is not available): turn the microphone off and on again.
+   */
+  public async restartMicrophone(): Promise<void> {
+    if (this.restarting || !this.microphone) return;
+    this.restarting = true;
+    const wait = (ms: number) => new Promise<void>((resolve) => { window.setTimeout(resolve, ms); });
+    const withTimeout = (promise: Promise<unknown>) => Promise.race([promise, wait(2000)]);
+    try {
+      await withTimeout(this.toggleMicrophone(true));
+      await wait(250);
+      if (!this.microphone) await withTimeout(this.toggleMicrophone(true));
+    } finally {
+      this.restarting = false;
     }
   }
 
@@ -307,6 +349,8 @@ export class CallControl extends EventEmitter implements CallControlState {
   public dispose() {
     this.bodyMutationObserver.disconnect();
     this.controlMutationObserver.disconnect();
+    this.stopAudioPrefs();
+    window.clearInterval(this.outputTimer);
   }
 
   private emitStateUpdate() {

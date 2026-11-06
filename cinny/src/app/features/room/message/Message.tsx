@@ -79,6 +79,7 @@ import { useMediaAuthentication } from '../../../hooks/useMediaAuthentication';
 import { useRoomPinnedEvents } from '../../../hooks/useRoomPinnedEvents';
 import { MemberPowerTag, StateEvent } from '../../../../types/matrix/room';
 import { PowerIcon } from '../../../components/power';
+import { DiddyName } from '../../../components/diddy/DiddyName';
 import colorMXID from '../../../../util/colorMXID';
 import { getPowerTagIconSrc } from '../../../hooks/useMemberPowerTag';
 
@@ -778,7 +779,9 @@ export const Message = as<'div', MessageProps>(
               size={messageLayout === MessageLayout.Bubble ? 'T300' : 'T400'}
               truncate
             >
-              <UsernameBold>{senderDisplayName}</UsernameBold>
+              <UsernameBold>
+                <DiddyName userId={senderId} name={senderDisplayName} showBadges />
+              </UsernameBold>
             </Text>
           </Username>
           {tagIconSrc && <PowerIcon size="100" iconSrc={tagIconSrc} />}

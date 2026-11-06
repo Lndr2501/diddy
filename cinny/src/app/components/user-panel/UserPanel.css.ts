@@ -29,6 +29,27 @@ export const UserPanelProfile = style([
   },
 ]);
 
+// The avatar + name area is a button that opens the status picker.
+export const UserPanelProfileButton = style([
+  UserPanelProfile,
+  {
+    margin: `${toRem(-3)} 0 ${toRem(-3)} ${toRem(-4)}`,
+    padding: `${toRem(3)} ${toRem(4)}`,
+    background: 'none',
+    border: 'none',
+    font: 'inherit',
+    color: 'inherit',
+    textAlign: 'left',
+    cursor: 'pointer',
+    borderRadius: toRem(12),
+    selectors: {
+      '&:hover, &[aria-pressed=true]': {
+        backgroundColor: color.SurfaceVariant.ContainerHover,
+      },
+    },
+  },
+]);
+
 export const UserPanelAvatarWrap = style([
   DefaultReset,
   {
@@ -49,6 +70,18 @@ export const UserPanelOnlineDot = style([
     borderRadius: '50%',
     backgroundColor: color.Success.Main,
     border: `${toRem(2)} solid ${color.SurfaceVariant.Container}`,
+  },
+]);
+
+// Small status dot used in the status menu
+export const StatusMenuDot = style([
+  DefaultReset,
+  {
+    flexShrink: 0,
+    width: toRem(10),
+    height: toRem(10),
+    borderRadius: '50%',
+    display: 'inline-block',
   },
 ]);
 

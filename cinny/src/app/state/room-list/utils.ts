@@ -1,7 +1,11 @@
 import { useSetAtom, WritableAtom } from 'jotai';
-import { ClientEvent, MatrixClient, Room, RoomEvent } from 'matrix-js-sdk';
+import { ClientEvent, MatrixClient, MatrixEvent, Room, RoomEvent, RoomStateEvent } from 'matrix-js-sdk';
 import { useEffect } from 'react';
 import { Membership } from '../../../types/matrix/room';
+import { useSetting } from '../hooks/settings';
+import { settingsAtom } from '../settings';
+import { isHiddenOptionsRoom } from '../../plugins/diddy/optionsRoom';
+import { OPTIONS_MARKER_EVENT } from '../../plugins/diddy/types';
 
 export type RoomsAction =
   | {
@@ -19,10 +23,12 @@ export const useBindRoomsWithMembershipsAtom = (
   memberships: Membership[]
 ) => {
   const setRoomsAtom = useSetAtom(roomsAtom);
+  const [devTools] = useSetting(settingsAtom, 'developerTools');
 
   useEffect(() => {
     const satisfyMembership = (room: Room): boolean =>
-      !!memberships.find((membership) => membership === room.getMyMembership());
+      !!memberships.find((membership) => membership === room.getMyMembership()) &&
+      !isHiddenOptionsRoom(room);
     setRoomsAtom({
       type: 'INITIALIZE',
       rooms: mx
@@ -49,15 +55,24 @@ export const useBindRoomsWithMembershipsAtom = (
       setRoomsAtom({ type: 'DELETE', roomId });
     };
 
+    const handleStateEvent = (event: MatrixEvent) => {
+      if (event.getType() !== OPTIONS_MARKER_EVENT) return;
+      const roomId = event.getRoomId();
+      const room = roomId ? mx.getRoom(roomId) : null;
+      if (room) handleMembershipChange(room);
+    };
+
     mx.on(ClientEvent.Room, handleAddRoom);
+    mx.on(RoomStateEvent.Events, handleStateEvent);
     mx.on(RoomEvent.MyMembership, handleMembershipChange);
     mx.on(ClientEvent.DeleteRoom, handleDeleteRoom);
     return () => {
       mx.removeListener(ClientEvent.Room, handleAddRoom);
+      mx.removeListener(RoomStateEvent.Events, handleStateEvent);
       mx.removeListener(RoomEvent.MyMembership, handleMembershipChange);
       mx.removeListener(ClientEvent.DeleteRoom, handleDeleteRoom);
     };
-  }, [mx, memberships, setRoomsAtom]);
+  }, [mx, memberships, setRoomsAtom, devTools]);
 };
 
 export const compareRoomsEqual = (a: string[], b: string[]) => {

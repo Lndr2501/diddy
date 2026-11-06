@@ -1,7 +1,10 @@
 import { Box, Button, config, Icon, Icons, Text } from 'folds';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UserHero, UserHeroName } from './UserHero';
+import { UserHero, UserHeroName, safeColor } from './UserHero';
+import * as css from './styles.css';
+import { useDiddyProfile } from '../../plugins/diddy/profiles';
+import { AwardBadgeButton } from '../diddy/AwardBadgeMenu';
 import { getMxIdServer, mxcUrlToHttp } from '../../utils/matrix';
 import { getMemberAvatarMxc, getMemberDisplayName } from '../../utils/room';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
@@ -22,6 +25,16 @@ import { useMemberPowerCompare } from '../../hooks/useMemberPowerCompare';
 import { CreatorChip } from './CreatorChip';
 import { getDirectCreatePath, withSearchParam } from '../../pages/pathUtils';
 import { DirectCreateSearchParams } from '../../pages/paths';
+
+/** Black or white, whichever is readable on the given hex background. */
+const readableTextOn = (hex: string): string => {
+  let h = hex.replace('#', '');
+  if (h.length === 3 || h.length === 4) h = h.split('').map((c) => c + c).join('');
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  return (r * 299 + g * 587 + b * 114) / 1000 > 150 ? '#000000' : '#FFFFFF';
+};
 
 type UserRoomProfileProps = {
   userId: string;
@@ -59,6 +72,10 @@ export function UserRoomProfile({ userId }: UserRoomProfileProps) {
 
   const presence = useUserPresence(userId);
 
+  const profile = useDiddyProfile(mx, userId);
+  const accent = safeColor(profile?.card?.accent);
+  const accentText = accent ? readableTextOn(accent) : undefined;
+
   const handleMessage = () => {
     closeUserRoomProfile();
     const directSearchParam: DirectCreateSearchParams = {
@@ -68,16 +85,23 @@ export function UserRoomProfile({ userId }: UserRoomProfileProps) {
   };
 
   return (
-    <Box direction="Column">
+    <Box direction="Column" className={css.CardRoot}>
+      {accent && (
+        <div
+          className={css.CardRing}
+          style={{ boxShadow: `inset 0 0 0 2px ${accent}, inset 0 0 16px ${accent}55` }}
+        />
+      )}
       <UserHero
         userId={userId}
         avatarUrl={avatarUrl}
         presence={presence && presence.lastActiveTs !== 0 ? presence : undefined}
+        profile={profile}
       />
       <Box direction="Column" gap="500" style={{ padding: config.space.S400 }}>
         <Box direction="Column" gap="400">
           <Box gap="400" alignItems="Start">
-            <UserHeroName displayName={displayName} userId={userId} />
+            <UserHeroName displayName={displayName} userId={userId} profile={profile} />
             {userId !== myUserId && (
               <Box shrink="No">
                 <Button
@@ -87,6 +111,9 @@ export function UserRoomProfile({ userId }: UserRoomProfileProps) {
                   radii="300"
                   before={<Icon size="50" src={Icons.Message} filled />}
                   onClick={handleMessage}
+                  style={
+                    accent ? { backgroundColor: accent, color: accentText, borderColor: accent } : undefined
+                  }
                 >
                   <Text size="B300">Message</Text>
                 </Button>
@@ -99,6 +126,7 @@ export function UserRoomProfile({ userId }: UserRoomProfileProps) {
             {creator ? <CreatorChip /> : <PowerChip userId={userId} />}
             {userId !== myUserId && <MutualRoomsChip userId={userId} />}
             {userId !== myUserId && <OptionsChip userId={userId} />}
+            {userId !== myUserId && <AwardBadgeButton userId={userId} />}
           </Box>
         </Box>
         {ignored && <IgnoredUserAlert />}

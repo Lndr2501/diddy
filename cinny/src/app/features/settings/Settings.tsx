@@ -30,6 +30,7 @@ import { Devices } from './devices';
 import { EmojisStickers } from './emojis-stickers';
 import { DeveloperTools } from './developer-tools';
 import { About } from './about';
+import { DiddyProfileSettings } from './diddy/DiddyProfileSettings';
 import { UseStateProvider } from '../../components/UseStateProvider';
 import { stopPropagation } from '../../utils/keyboard';
 import { LogoutDialog } from '../../components/LogoutDialog';
@@ -37,6 +38,7 @@ import { LogoutDialog } from '../../components/LogoutDialog';
 export enum SettingsPages {
   GeneralPage,
   AppearancePage,
+  ProfilePage,
   AccountPage,
   NotificationPage,
   DevicesPage,
@@ -63,6 +65,11 @@ const useSettingsMenuItems = (): SettingsMenuItem[] =>
         page: SettingsPages.AppearancePage,
         name: 'Appearance',
         icon: Icons.Photo,
+      },
+      {
+        page: SettingsPages.ProfilePage,
+        name: 'Profile',
+        icon: Icons.User,
       },
       {
         page: SettingsPages.AccountPage,
@@ -221,6 +228,9 @@ export function Settings({ initialPage, requestClose }: SettingsProps) {
       )}
       {activePage === SettingsPages.AppearancePage && (
         <AppearanceSettings requestClose={handlePageRequestClose} />
+      )}
+      {activePage === SettingsPages.ProfilePage && (
+        <DiddyProfileSettings requestClose={handlePageRequestClose} />
       )}
       {activePage === SettingsPages.AccountPage && (
         <Account requestClose={handlePageRequestClose} />

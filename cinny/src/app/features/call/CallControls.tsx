@@ -16,6 +16,7 @@ import {
 import FocusTrap from 'focus-trap-react';
 import * as css from './styles.css';
 import { SoundboardButton } from './Soundboard';
+import { DeviceChevron } from './DevicePicker';
 import {
   ChatButton,
   ControlDivider,
@@ -96,8 +97,14 @@ export function CallControls({ callEmbed }: CallControlsProps) {
         justifyContent="Center"
         wrap={compact ? 'Wrap' : 'NoWrap'}
       >
-        <MicrophoneButton enabled={microphone} onToggle={handleMicrophoneToggle} />
-        <SoundButton enabled={sound} onToggle={() => callEmbed.control.toggleSound()} />
+        <Box alignItems="Center" gap="100">
+          <MicrophoneButton enabled={microphone} onToggle={handleMicrophoneToggle} />
+          <DeviceChevron kind="input" size="bar" />
+        </Box>
+        <Box alignItems="Center" gap="100">
+          <SoundButton enabled={sound} onToggle={() => callEmbed.control.toggleSound()} />
+          <DeviceChevron kind="output" size="bar" />
+        </Box>
         {!compact && <ControlDivider />}
         <VideoButton enabled={video} onToggle={handleVideoToggle} />
         <ScreenShareButton
