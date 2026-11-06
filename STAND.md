@@ -2,6 +2,13 @@
 
 Statusbericht des Entwicklungsstands (Diddy, nach 1.1.0, kein neues Release).
 
+## Dritter Teststand 23:16 (Rückmeldung) und Korrekturen
+
+- Bestätigt: Beim Join ruckelt nichts mehr. Stream starten, beenden und neu starten funktioniert jetzt (im Log #2 und #3 in ~2 s), die Kamera auch.
+- Absturzmeldung beim Stream: Abgestürzt ist der Ton-Hilfsprozess, nicht die App. `-[CATapDescription setPrivateTap:]` gibt es nicht (richtig ist `setPrivate:`), die Objective-C-Ausnahme beendete den Helfer. Folge: Stream ohne System-Ton. Korrigiert; optionale Setter werden jetzt vorher mit `respondsToSelector` geprüft.
+- Musik leiser im Mikrofon-Menü: Ohne WebKit-Aufnahme verbirgt WebKit die Gerätenamen. Der Knopf "Allow microphone access" öffnete dann kurz ein WebKit-Mikrofon, und VPIO senkte die Musik 4 s ab (23:15:21 → 23:15:25). Jetzt liefert die Audio-Brücke die Mikrofonliste nativ (`mode=devices`), der Knopf wird bei "Voice processing" aus nicht mehr gebraucht. Gewählte Einträge heißen `native:<Name>`.
+- 16 native, 90 JavaScript-Tests grün, Typecheck sauber. Noch nicht gebaut.
+
 ## Musik-Ruckler: Mikrofon ohne Apples Sprachverarbeitung (2026-11-06, 23:30)
 
 - Ursache laut Systemlog: WebKit öffnet jedes Mikrofon über Apples Voice-Processing-Einheit (VPIO), auch mit `echoCancellation:false`. VPIO senkt alle anderen Apps ab (`coreaudiod: ducking device to 0.177828`) und baut das Audiogerät um (`AUVP configuration time 664 ms`). Das passiert beim Join, beim Stummschalten und Entstummen und beim Mikrofonwechsel. Element hat das nicht, weil Chromium das Gerät ohne VPIO öffnet.

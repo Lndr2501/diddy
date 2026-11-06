@@ -16,9 +16,9 @@ use std::{
 };
 
 use objc2::{
-    msg_send, Message,
+    msg_send, sel, Message,
     rc::{Allocated, Retained},
-    runtime::{AnyClass, AnyObject},
+    runtime::{AnyClass, AnyObject, Sel},
 };
 use objc2_foundation::{NSArray, NSDictionary, NSNumber, NSString};
 
@@ -274,10 +274,22 @@ impl TapCapture {
             let allocated: Allocated<AnyObject> = msg_send![class, alloc];
             msg_send![allocated, initStereoGlobalTapButExcludeProcesses: &*excluded]
         };
+        // An unknown selector raises an Objective-C exception, which aborts this process (that
+        // happened with a wrong setter name). So every optional setter is checked first.
+        let responds = |selector: Sel| description.class().responds_to(selector);
         unsafe {
-            let _: () = msg_send![&*description, setPrivateTap: true];
-            let name = NSString::from_str("Diddy screen share audio");
-            let _: () = msg_send![&*description, setName: &*name];
+            if responds(sel!(setPrivate:)) {
+                let _: () = msg_send![&*description, setPrivate: true];
+            } else {
+                crate::system_audio::log("tap: setPrivate: missing, the tap is visible to other apps");
+            }
+            if responds(sel!(setName:)) {
+                let name = NSString::from_str("Diddy screen share audio");
+                let _: () = msg_send![&*description, setName: &*name];
+            }
+        }
+        if !responds(sel!(UUID)) {
+            return Err("tap description has no UUID".into());
         }
         let tap_uid: Retained<NSString> = unsafe {
             let uuid: Retained<AnyObject> = msg_send![&*description, UUID];
@@ -451,6 +463,33 @@ fn find_input_device(wanted: Option<&str>) -> Result<AudioObjectID, String> {
         crate::system_audio::log("microphone not found by name, using the default input");
     }
     get_pod(SYSTEM_OBJECT, DEFAULT_INPUT_DEVICE, "default input device")
+}
+
+/// Names of all input devices (the native microphone list for the device menu).
+pub fn input_device_names() -> Vec<String> {
+    let mut size = 0u32;
+    if unsafe { AudioObjectGetPropertyDataSize(SYSTEM_OBJECT, &address(HARDWARE_DEVICES), 0, ptr::null(), &mut size) } != 0 {
+        return Vec::new();
+    }
+    let mut ids = vec![0 as AudioObjectID; size as usize / std::mem::size_of::<AudioObjectID>()];
+    let status = unsafe {
+        AudioObjectGetPropertyData(SYSTEM_OBJECT, &address(HARDWARE_DEVICES), 0, ptr::null(), &mut size, ids.as_mut_ptr() as *mut c_void)
+    };
+    if status != 0 {
+        return Vec::new();
+    }
+    ids.truncate(size as usize / std::mem::size_of::<AudioObjectID>());
+    let default = get_pod::<AudioObjectID>(SYSTEM_OBJECT, DEFAULT_INPUT_DEVICE, "default input").ok();
+    let mut names: Vec<(bool, String)> = ids
+        .into_iter()
+        .filter(|&id| has_input(id))
+        .filter_map(|id| object_name(id).map(|n| (Some(id) == default, n)))
+        // hide the private aggregate devices Core Audio and Diddy create
+        .filter(|(_, n)| !n.is_empty() && !n.starts_with("CADefaultDeviceAggregate") && !n.starts_with("Diddy "))
+        .collect();
+    // the default input first
+    names.sort_by(|a, b| b.0.cmp(&a.0));
+    names.into_iter().map(|(_, n)| n).collect()
 }
 
 struct MicState {

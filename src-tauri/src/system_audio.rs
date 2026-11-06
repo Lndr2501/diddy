@@ -149,6 +149,8 @@ enum SessionKind {
     Screen,
     /// the microphone `device` (Core Audio name; None = default input)
     Mic { device: Option<String> },
+    /// the list of microphone names, then the connection closes
+    Devices,
 }
 
 #[derive(Debug, PartialEq)]
@@ -194,6 +196,7 @@ fn parse_request(query: &str) -> SessionRequest {
         let (key, value) = pair.split_once('=').unwrap_or((pair, ""));
         match key {
             "mode" if value == "mic" => mode = "mic",
+            "mode" if value == "devices" => mode = "devices",
             "device" => device = Some(percent_decode(value)).filter(|d| !d.is_empty() && d.len() <= 256),
             "rate" => {
                 if let Ok(r) = value.parse::<f64>() {
@@ -205,7 +208,11 @@ fn parse_request(query: &str) -> SessionRequest {
             _ => {}
         }
     }
-    let kind = if mode == "mic" { SessionKind::Mic { device } } else { SessionKind::Screen };
+    let kind = match mode {
+        "mic" => SessionKind::Mic { device },
+        "devices" => SessionKind::Devices,
+        _ => SessionKind::Screen,
+    };
     SessionRequest { kind, rate }
 }
 
@@ -251,9 +258,18 @@ fn serve(stream: TcpStream, token: &str, origins: &[String], busy: &Busy) -> Res
     let mut ws = accept_hdr(stream, callback).map_err(|e| format!("handshake: {e}"))?;
     let request = parse_request(&query);
 
+    if request.kind == SessionKind::Devices {
+        let names = crate::audio_tap::input_device_names();
+        let msg = serde_json::json!({ "type": "devices", "inputs": names }).to_string();
+        let _ = ws.send(Message::text(msg));
+        let _ = ws.close(None);
+        return Ok(());
+    }
+
     let guard = match request.kind {
         SessionKind::Screen => claim(&busy.screen, MAX_SCREEN_SESSIONS),
         SessionKind::Mic { .. } => claim(&busy.mic, MAX_MIC_SESSIONS),
+        SessionKind::Devices => None,
     };
     let Some(_guard) = guard else {
         let _ = ws.send(Message::text(r#"{"type":"error","message":"busy"}"#));
@@ -269,6 +285,7 @@ fn serve(stream: TcpStream, token: &str, origins: &[String], busy: &Busy) -> Res
     let (tx, rx) = mpsc::sync_channel::<Vec<u8>>(64);
     // Screen audio arrives at 48 kHz from the helper; the microphone at the device rate.
     let started = match &request.kind {
+        SessionKind::Devices => return Ok(()),
         SessionKind::Screen => spawn_helper(tx).map(|h| (Capture::Screen(h), SAMPLE_RATE as f64)),
         SessionKind::Mic { device } => crate::audio_tap::MicCapture::start(tx, device.as_deref()).map(|m| {
             log(&format!("microphone started device={} rate={}", m.name, m.sample_rate));
@@ -521,6 +538,7 @@ mod tests {
             parse_request("token=x&mode=mic&device=EarPods%20(USB)&rate=44100"),
             SessionRequest { kind: SessionKind::Mic { device: Some("EarPods (USB)".into()) }, rate: 44_100.0 }
         );
+        assert_eq!(parse_request("token=x&mode=devices").kind, SessionKind::Devices);
         // absurd rates and empty names fall back to the defaults
         assert_eq!(
             parse_request("mode=mic&device=&rate=5"),

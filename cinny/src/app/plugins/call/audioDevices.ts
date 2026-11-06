@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { getCallPrefs } from '../../state/callPrefs';
 import { diag } from '../diagnostics';
 import { applyAudioProcessingPolicy } from './audioConstraints';
+import { listNativeInputs, nativeMicAvailable, NATIVE_DEVICE_PREFIX } from './nativeMic';
 
 const INPUT_KEY = 'diddyAudioInput';
 const INPUT_LABEL_KEY = 'diddyAudioInputLabel';
@@ -194,12 +195,28 @@ const toDevices = (list: MediaDeviceInfo[]): AudioDevices => {
 };
 
 const enumerate = async (): Promise<AudioDevices> => {
-  if (!navigator.mediaDevices?.enumerateDevices) return EMPTY;
-  try {
-    return toDevices(await navigator.mediaDevices.enumerateDevices());
-  } catch {
-    return EMPTY;
+  let devices = EMPTY;
+  if (navigator.mediaDevices?.enumerateDevices) {
+    try {
+      devices = toDevices(await navigator.mediaDevices.enumerateDevices());
+    } catch {
+      devices = EMPTY;
+    }
   }
+  // Voice processing off in the desktop app: the microphone is opened natively, so list it
+  // natively too. WebKit hides the names here, and revealing them would open WebKit's microphone
+  // with voice processing, which turns other apps down for seconds.
+  if (!devices.permitted && !getCallPrefs().echoCancellation && nativeMicAvailable()) {
+    const names = await listNativeInputs();
+    if (names.length > 0) {
+      return {
+        ...devices,
+        inputs: names.map((label) => ({ deviceId: `${NATIVE_DEVICE_PREFIX}${label}`, label })),
+        permitted: true,
+      };
+    }
+  }
+  return devices;
 };
 
 /** Lists the audio devices and updates when one is plugged in or removed. */

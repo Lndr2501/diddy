@@ -34,7 +34,11 @@ function setup({
       this.closed = 0;
       sockets.push(this);
       setTimeout(() => {
-        if (reply && this.onmessage) this.onmessage({ data: JSON.stringify(reply) });
+        const isDevices = new URL(url).searchParams.get('mode') === 'devices';
+        const answer = isDevices
+          ? { type: 'devices', inputs: ['EarPods-Mikrofon', '', 7, 'MacBook-Mikrofon'] }
+          : reply;
+        if (answer && this.onmessage) this.onmessage({ data: JSON.stringify(answer) });
       }, 0);
     }
     close() {
@@ -92,7 +96,7 @@ function setup({
       require: (id) => {
         if (id === '../diagnostics') return { diag() {} };
         if (id === './sharedAudio') return { getSharedAudioContext: () => ctx };
-      if (id === './audioDevices') return { getAudioPrefs: () => prefs };
+        if (id === './audioDevices') return { getAudioPrefs: () => prefs };
         throw new Error(id);
       },
     },
@@ -166,7 +170,9 @@ test('the label of a chosen microphone is looked up by its WebKit id', async () 
 });
 
 test('the chosen microphone is found by its remembered name when WebKit hides ids and names', async () => {
-  const hidden = { enumerateDevices: async () => [{ kind: 'audioinput', deviceId: '', label: '' }] };
+  const hidden = {
+    enumerateDevices: async () => [{ kind: 'audioinput', deviceId: '', label: '' }],
+  };
   const { mod } = setup({ prefs: { input: 'dev-9', inputLabel: 'Shure MV7' } });
   const picked = await mod.preferredNativeMic(hidden, undefined);
   assert.equal(picked.deviceId, 'dev-9');
@@ -176,4 +182,23 @@ test('the chosen microphone is found by its remembered name when WebKit hides id
   const dflt = await none.mod.preferredNativeMic(hidden, undefined);
   assert.equal(dflt.deviceId, undefined);
   assert.equal(dflt.label, undefined);
+});
+
+test('the native microphone list is read from the bridge and cleaned', async () => {
+  const s = setup();
+  const names = await s.mod.listNativeInputs();
+  assert.deepEqual([...names], ['EarPods-Mikrofon', 'MacBook-Mikrofon']);
+  assert.equal(new URL(s.sockets[0].url).searchParams.get('mode'), 'devices');
+  assert.equal(s.sockets[0].closed, 1);
+  const none = setup({ bridge: null });
+  assert.deepEqual([...(await none.mod.listNativeInputs())], []);
+});
+
+test('entries of the native list carry their name in the id', async () => {
+  const { mod } = setup();
+  const devices = { enumerateDevices: async () => [] };
+  assert.equal(
+    await mod.microphoneLabel(devices, `${mod.NATIVE_DEVICE_PREFIX}Shure MV7`),
+    'Shure MV7'
+  );
 });

@@ -22,6 +22,9 @@ const getBridge = (): Bridge | undefined =>
   (window as unknown as { __CINNY_SYS_AUDIO__?: Bridge }).__CINNY_SYS_AUDIO__;
 
 const WORKLET_NAME = 'diddy-native-mic';
+
+/** deviceId prefix of microphones that come from the native list (not from WebKit). */
+export const NATIVE_DEVICE_PREFIX = 'native:';
 const CONNECT_TIMEOUT_MS = 5000;
 const RESUME_TIMEOUT_MS = 1000;
 
@@ -233,6 +236,9 @@ export const microphoneLabel = async (
   deviceId: string | undefined
 ): Promise<string | undefined> => {
   if (!deviceId) return undefined;
+  // an entry of the native list carries its name in the id
+  if (deviceId.startsWith(NATIVE_DEVICE_PREFIX))
+    return deviceId.slice(NATIVE_DEVICE_PREFIX.length) || undefined;
   const remembered = (): string | undefined => {
     const prefs = getAudioPrefs();
     return prefs.input === deviceId && prefs.inputLabel ? prefs.inputLabel : undefined;
@@ -260,4 +266,43 @@ export const preferredNativeMic = async (
     (await microphoneLabel(devices, deviceId)) ??
     (prefs.input && prefs.inputLabel ? prefs.inputLabel : undefined);
   return { deviceId, label };
+};
+
+/**
+ * Names of all microphones, read natively. WebKit hides device names until a page has captured
+ * audio, and its permission request goes through voice processing, which ducks other apps for
+ * seconds. Resolves [] when the bridge is not there or does not answer.
+ */
+export const listNativeInputs = (): Promise<string[]> => {
+  const bridge = getBridge();
+  if (!bridge) return Promise.resolve([]);
+  return new Promise((resolve) => {
+    const params = new URLSearchParams({ token: bridge.token, mode: 'devices' });
+    const ws = new WebSocket(`ws://127.0.0.1:${bridge.port}/?${params.toString()}`);
+    let timer: number | undefined;
+    const done = (names: string[]) => {
+      window.clearTimeout(timer);
+      ws.onmessage = null;
+      ws.onerror = null;
+      ws.onclose = null;
+      ws.close();
+      resolve(names);
+    };
+    timer = window.setTimeout(() => done([]), CONNECT_TIMEOUT_MS);
+    ws.onerror = () => done([]);
+    ws.onclose = () => done([]);
+    ws.onmessage = (evt) => {
+      try {
+        const msg = JSON.parse(String(evt.data)) as { type?: string; inputs?: unknown };
+        const names = Array.isArray(msg.inputs)
+          ? msg.inputs
+              .filter((n): n is string => typeof n === 'string' && n.length > 0)
+              .slice(0, 64)
+          : [];
+        done(msg.type === 'devices' ? names : []);
+      } catch {
+        done([]);
+      }
+    };
+  });
 };
