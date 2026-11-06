@@ -75,7 +75,6 @@ import { useCallMembers, useCallSession } from '../../hooks/useCall';
 import { millify } from '../../plugins/millify';
 import {
   HeaderBellButton,
-  HeaderProfileButton,
   HeaderSearchField,
 } from '../../components/top-actions';
 
@@ -730,7 +729,6 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
             <>
               <HeaderBellButton />
               <HeaderSearchField />
-              <HeaderProfileButton />
             </>
           )}
         </Box>

@@ -829,9 +829,12 @@ export const Message = as<'div', MessageProps>(
       </AvatarBase>
     );
 
+    const isModernLayout =
+      messageLayout !== MessageLayout.Compact && messageLayout !== MessageLayout.Bubble;
+
     const msgContentJSX = (
       <Box direction="Column" alignSelf="Start" style={{ maxWidth: '100%' }}>
-        {reply}
+        {isModernLayout ? null : reply}
         {edit && onEditId ? (
           <MessageEditor
             style={{
@@ -1156,7 +1159,8 @@ export const Message = as<'div', MessageProps>(
             {msgContentJSX}
           </BubbleLayout>
         )}
-        {messageLayout !== MessageLayout.Compact && messageLayout !== MessageLayout.Bubble && (
+        {isModernLayout && reply ? <div className={css.ReplyModernWrap}>{reply}</div> : null}
+        {isModernLayout && (
           <ModernLayout before={avatarJSX} onContextMenu={handleContextMenu}>
             {headerJSX}
             {msgContentJSX}

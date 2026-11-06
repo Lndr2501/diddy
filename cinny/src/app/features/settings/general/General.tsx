@@ -52,6 +52,7 @@ import { useDateFormatItems } from '../../../hooks/useDateFormat';
 import { SequenceCardStyle } from '../styles.css';
 import { AppIconPicker } from './AppIconPicker';
 import { BackgroundSettings, CustomThemeSettings } from './CustomThemeSettings';
+import { updateCallPrefs, useCallPrefs } from '../../../state/callPrefs';
 import { canChangeAppIcon } from '../../../plugins/appIcon';
 
 type ThemeSelectorProps = {
@@ -997,6 +998,42 @@ function Messages() {
   );
 }
 
+function CallSettings() {
+  const prefs = useCallPrefs();
+
+  return (
+    <Box direction="Column" gap="100">
+      <Text size="L400">Calls</Text>
+      <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column">
+        <SettingTile
+          title="Mute sounds"
+          description="Play a short tone when you mute, unmute, deafen or undeafen."
+          after={
+            <Switch
+              variant="Primary"
+              value={prefs.callSounds}
+              onChange={(callSounds) => updateCallPrefs({ callSounds })}
+            />
+          }
+        />
+      </SequenceCard>
+      <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column">
+        <SettingTile
+          title="Echo cancellation"
+          description="Off keeps your music and other apps sounding normal while you are in a call. Turn it on if you use speakers instead of headphones. Applies the next time you join a call."
+          after={
+            <Switch
+              variant="Primary"
+              value={prefs.echoCancellation}
+              onChange={(echoCancellation) => updateCallPrefs({ echoCancellation })}
+            />
+          }
+        />
+      </SequenceCard>
+    </Box>
+  );
+}
+
 type GeneralProps = {
   requestClose: () => void;
 };
@@ -1021,6 +1058,7 @@ export function General({ requestClose }: GeneralProps) {
         <Scroll hideTrack visibility="Hover">
           <PageContent>
             <Box direction="Column" gap="700">
+              <CallSettings />
               <DateAndTime />
               <Editor />
               <Messages />

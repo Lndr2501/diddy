@@ -171,7 +171,7 @@ pub fn run() {
                 .title_bar_style(TitleBarStyle::Overlay)
                 .hidden_title(true)
                 .traffic_light_position(tauri::Position::Logical(tauri::LogicalPosition::new(
-                    20.0, 16.0,
+                    20.0, 23.0,
                 )))
                 .with_webview_configuration(media_enabled_webview_configuration());
             

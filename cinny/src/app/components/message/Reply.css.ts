@@ -30,12 +30,29 @@ export const Reply = style({
   },
 });
 
+export const ReplyRoot = style({
+  minWidth: 0,
+  maxWidth: '100%',
+});
+
+export const ReplyCompact = style({
+  marginBottom: 0,
+  minHeight: config.lineHeight.T200,
+  background: 'none',
+  border: 'none',
+  padding: 0,
+  textAlign: 'left',
+  color: 'inherit',
+  borderRadius: config.radii.R300,
+});
+
 export const ReplyContent = style({
-  opacity: config.opacity.P300,
+  opacity: 0.65,
+  transition: 'opacity 120ms ease',
 
   selectors: {
-    [`${Reply}:hover &`]: {
-      opacity: config.opacity.P500,
+    [`${Reply}:hover &, ${Reply}:focus-visible &`]: {
+      opacity: 1,
     },
   },
 });

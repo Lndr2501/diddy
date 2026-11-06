@@ -1,3 +1,4 @@
+import { playCallSound } from './callSounds';
 import { ClientWidgetApi } from 'matrix-widget-api';
 import EventEmitter from 'events';
 import { CallControlState } from './CallControlState';
@@ -226,7 +227,8 @@ export class CallControl extends EventEmitter implements CallControlState {
     this.emitStateUpdate();
   }
 
-  public toggleMicrophone() {
+  public toggleMicrophone(silent = false) {
+    if (!silent) playCallSound(this.microphone ? 'mute' : 'unmute');
     const payload: ElementMediaStatePayload = {
       audio_enabled: !this.microphone,
       video_enabled: this.video,
@@ -259,9 +261,10 @@ export class CallControl extends EventEmitter implements CallControlState {
 
     if (!sound) {
       // Deafen: remember mic state, then mute it too.
+      playCallSound('deafen');
       this.micWasOnBeforeDeafen = this.microphone;
       if (this.microphone) {
-        this.toggleMicrophone();
+        this.toggleMicrophone(true);
       }
       return;
     }
@@ -269,8 +272,9 @@ export class CallControl extends EventEmitter implements CallControlState {
     // Un-deafen: bring the microphone back if it was live before.
     const restoreMic = this.micWasOnBeforeDeafen && !this.microphone;
     this.micWasOnBeforeDeafen = false;
+    playCallSound('undeafen');
     if (restoreMic) {
-      this.toggleMicrophone();
+      this.toggleMicrophone(true);
     }
   }
 

@@ -12,6 +12,7 @@
 import { useSyncExternalStore } from 'react';
 import { deleteBlob, getBlob, putBlob } from '../../utils/blobStore';
 import { diag } from '../diagnostics';
+import { getCallPrefs } from '../../state/callPrefs';
 
 export type Clip = {
   id: string;
@@ -305,9 +306,21 @@ export const installSoundboard = (win: Window | null | undefined) => {
   const original = devices.getUserMedia.bind(devices);
   devices.getUserMedia = async (constraints?: MediaStreamConstraints) => {
     const wants = `${constraints?.audio ? 'audio ' : ''}${constraints?.video ? 'video' : ''}`.trim();
+    // Echo cancellation makes WebKit on macOS switch to the system "voice processing" mode, which
+    // changes how all other audio (music) sounds. It is off unless the user turned it on.
+    let effective = constraints;
+    if (constraints?.audio && !getCallPrefs().echoCancellation) {
+      effective = {
+        ...constraints,
+        audio:
+          constraints.audio === true
+            ? { echoCancellation: false }
+            : { ...constraints.audio, echoCancellation: false },
+      };
+    }
     let stream: MediaStream;
     try {
-      stream = await original(constraints);
+      stream = await original(effective);
     } catch (e) {
       diag(
         `getUserMedia(${wants}) failed: ${e instanceof Error ? `${e.name}: ${e.message}` : String(e)}`

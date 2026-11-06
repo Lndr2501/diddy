@@ -17,18 +17,19 @@ import { GetMemberPowerTag } from '../../hooks/useMemberPowerTag';
 type ReplyLayoutProps = {
   userColor?: string;
   username?: ReactNode;
+  compact?: boolean;
 };
 export const ReplyLayout = as<'div', ReplyLayoutProps>(
-  ({ username, userColor, className, children, ...props }, ref) => (
+  ({ username, userColor, compact, className, children, ...props }, ref) => (
     <Box
-      className={classNames(css.Reply, className)}
+      className={classNames(css.Reply, compact && css.ReplyCompact, className)}
       alignItems="Center"
-      gap="100"
+      gap={compact ? '200' : '100'}
       {...props}
       ref={ref}
     >
       <Box style={{ color: userColor, maxWidth: toRem(200) }} alignItems="Center" shrink="No">
-        <Icon size="100" src={Icons.ReplyArrow} />
+        {!compact && <Icon size="100" src={Icons.ReplyArrow} />}
         {username}
       </Box>
       <Box grow="Yes" className={css.ReplyContent}>
@@ -76,6 +77,7 @@ export const Reply = as<'div', ReplyProps>(
       getMemberPowerTag,
       accessibleTagColors,
       legacyUsernameColor,
+      className,
       ...props
     },
     ref
@@ -106,16 +108,25 @@ export const Reply = as<'div', ReplyProps>(
     const bodyJSX = body ? scaleSystemEmoji(trimReplyFromBody(body)) : fallbackBody;
 
     return (
-      <Box direction="Row" gap="200" alignItems="Center" {...props} ref={ref} data-reply-highlight={mx.getUserId() === sender && sender !== replier}>
+      <Box
+        direction="Row"
+        gap="200"
+        alignItems="Center"
+        {...props}
+        className={classNames(css.ReplyRoot, className)}
+        ref={ref}
+        data-reply-highlight={mx.getUserId() === sender && sender !== replier}
+      >
         {threadRootId && (
           <ThreadIndicator as="button" data-event-id={threadRootId} onClick={onClick} />
         )}
         <ReplyLayout
           as="button"
+          compact
           userColor={usernameColor}
           username={
             sender && (
-              <Text size="T300" truncate>
+              <Text size="T200" truncate>
                 <b>{getMemberDisplayName(room, sender) ?? getMxIdLocalPart(sender)}</b>
               </Text>
             )
@@ -124,7 +135,7 @@ export const Reply = as<'div', ReplyProps>(
           onClick={onClick}
         >
           {replyEvent !== undefined ? (
-            <Text size="T300" truncate>
+            <Text size="T200" truncate>
               {badEncryption ? <MessageBadEncryptedContent /> : bodyJSX}
             </Text>
           ) : (

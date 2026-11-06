@@ -40,7 +40,6 @@ import { InviteUserPrompt } from '../../components/invite-user-prompt';
 import { SpaceJoinMenuItems } from '../../components/space-join/SpaceJoinMenuItems';
 import {
   HeaderBellButton,
-  HeaderProfileButton,
   HeaderSearchField,
 } from '../../components/top-actions';
 
@@ -295,7 +294,6 @@ export function LobbyHeader({ showProfile, powerLevels }: LobbyHeaderProps) {
             <>
               <HeaderBellButton />
               <HeaderSearchField />
-              <HeaderProfileButton />
             </>
           )}
         </Box>

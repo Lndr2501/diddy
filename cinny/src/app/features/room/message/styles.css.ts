@@ -1,5 +1,5 @@
 import { style } from '@vanilla-extract/css';
-import { DefaultReset, config, toRem } from 'folds';
+import { DefaultReset, color, config, toRem } from 'folds';
 
 export const MessageBase = style({
   position: 'relative',
@@ -60,4 +60,31 @@ export const ReactionsContainer = style({
 
 export const ReactionsTooltipText = style({
   wordBreak: 'break-word',
+});
+
+// Discord-style reply row rendered above the Modern layout; the connector
+// curves from the avatar column into the quoted message row.
+export const ReplyModernWrap = style({
+  position: 'relative',
+  display: 'flex',
+  alignItems: 'center',
+  minWidth: 0,
+  height: toRem(20),
+  paddingLeft: `calc(${toRem(42)} + ${config.space.S300})`,
+
+  selectors: {
+    '&::before': {
+      content: '""',
+      position: 'absolute',
+      boxSizing: 'border-box',
+      left: toRem(20),
+      top: toRem(10),
+      width: toRem(30),
+      height: toRem(12),
+      borderTop: `${toRem(1.5)} solid ${color.SurfaceVariant.ContainerLine}`,
+      borderLeft: `${toRem(1.5)} solid ${color.SurfaceVariant.ContainerLine}`,
+      borderTopLeftRadius: toRem(8),
+      pointerEvents: 'none',
+    },
+  },
 });
