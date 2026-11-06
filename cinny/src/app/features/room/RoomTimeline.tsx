@@ -1297,6 +1297,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
         const reactionRelations = getEventReactions(timelineSet, mEventId);
         const reactions = reactionRelations && reactionRelations.getSortedAnnotationsByKey();
         const hasReactions = reactions && reactions.length > 0;
+        const { replyEventId, threadRootId } = mEvent;
         const highlighted = focusItem?.index === item && focusItem.highlight;
 
         return (
@@ -1319,6 +1320,20 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
             onUsernameClick={handleUsernameClick}
             onReplyClick={handleReplyClick}
             onReactionToggle={handleReactionToggle}
+            reply={
+              replyEventId && (
+                <Reply
+                  room={room}
+                  timelineSet={timelineSet}
+                  replyEventId={replyEventId}
+                  threadRootId={threadRootId}
+                  onClick={handleOpenReply}
+                  getMemberPowerTag={getMemberPowerTag}
+                  accessibleTagColors={accessiblePowerTagColors}
+                  legacyUsernameColor={legacyUsernameColor || direct}
+                />
+              )
+            }
             reactions={
               reactionRelations && (
                 <Reactions
