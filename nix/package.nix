@@ -50,6 +50,10 @@ let
     npmDeps = importNpmLock { npmRoot = ../cinny; };
     npmConfigHook = importNpmLock.npmConfigHook;
     npmFlags = [ "--legacy-peer-deps" ];
+    # `canvas` (optional, pulled in by pdfjs-dist) would be compiled from source in
+    # the sandbox and fails. Nothing here needs install scripts: esbuild and swc
+    # ship their binaries through platform packages locked in package-lock.json.
+    npmRebuildFlags = [ "--ignore-scripts" ];
 
     env = {
       HUSKY = "0";
