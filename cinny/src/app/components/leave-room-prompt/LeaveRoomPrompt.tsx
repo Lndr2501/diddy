@@ -20,18 +20,20 @@ import { MatrixError } from 'matrix-js-sdk';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { AsyncStatus, useAsyncCallback } from '../../hooks/useAsyncCallback';
 import { stopPropagation } from '../../utils/keyboard';
+import { leaveRoom as leaveRoomAndSync } from '../../utils/leaveRoom';
 
 type LeaveRoomPromptProps = {
   roomId: string;
   onDone: () => void;
   onCancel: () => void;
 };
+
 export function LeaveRoomPrompt({ roomId, onDone, onCancel }: LeaveRoomPromptProps) {
   const mx = useMatrixClient();
 
   const [leaveState, leaveRoom] = useAsyncCallback<undefined, MatrixError, []>(
     useCallback(async () => {
-      mx.leave(roomId);
+      await leaveRoomAndSync(mx, roomId);
     }, [mx, roomId])
   );
 
