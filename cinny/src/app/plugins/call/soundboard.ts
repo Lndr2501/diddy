@@ -431,6 +431,21 @@ export const installSoundboard = (win: Window | null | undefined) => {
       throw e;
     }
     diag(`getUserMedia(${wants}) ok tracks=${stream.getTracks().map((t) => t.kind).join(',')}`);
+    if (constraints?.audio) {
+      // Which processing WebKit really applies decides whether macOS switches to its voice mode
+      // (ducking / glitches), so record it.
+      const track = stream.getAudioTracks()[0];
+      const settings = track?.getSettings?.() ?? {};
+      diag(
+        `mic asked=${JSON.stringify((effective as MediaStreamConstraints).audio)} got=${JSON.stringify({
+          echoCancellation: settings.echoCancellation,
+          noiseSuppression: settings.noiseSuppression,
+          autoGainControl: settings.autoGainControl,
+          sampleRate: settings.sampleRate,
+          deviceId: settings.deviceId?.slice(0, 8),
+        })}`
+      );
+    }
     if (!constraints?.audio) return stream;
     try {
       return await soundboard.mixInto(stream);

@@ -30,8 +30,46 @@ export const isDeveloperToolsOn = (): boolean => {
   }
 };
 
+// --- "message mode" rooms ----------------------------------------------------------------------
+// Rooms the user cannot change state in can still be used: the Diddy data is then sent as hidden
+// normal messages. Which rooms are used that way is remembered locally.
+
+const LIGHT_ROOMS_KEY = 'diddyLightRooms';
+export const LIGHT_ROOMS_EVENT = 'diddy-light-rooms-change';
+
+export const getLightRoomIds = (): string[] => {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(LIGHT_ROOMS_KEY) ?? '[]');
+    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : [];
+  } catch {
+    return [];
+  }
+};
+
+const setLightRoomIds = (ids: string[]) => {
+  try {
+    localStorage.setItem(LIGHT_ROOMS_KEY, JSON.stringify(ids));
+  } catch {
+    // ignore (storage full / unavailable)
+  }
+  window.dispatchEvent(new CustomEvent(LIGHT_ROOMS_EVENT));
+};
+
+export const addLightOptionsRoom = (roomId: string): void => {
+  const ids = getLightRoomIds();
+  if (!ids.includes(roomId)) ids.push(roomId);
+  setLightRoomIds(ids);
+};
+
+export const removeLightOptionsRoom = (roomId: string): void => {
+  setLightRoomIds(getLightRoomIds().filter((id) => id !== roomId));
+};
+
+export const isLightOptionsRoom = (room: Room | null | undefined): boolean =>
+  !!room && getLightRoomIds().includes(room.roomId);
+
 export const isOptionsRoom = (room: Room | null | undefined): boolean =>
-  !!room?.currentState.getStateEvents(OPTIONS_MARKER_EVENT, '');
+  !!room && (!!room.currentState.getStateEvents(OPTIONS_MARKER_EVENT, '') || isLightOptionsRoom(room));
 
 /** Options rooms are hidden from every room list unless Developer Tools are on. */
 export const isHiddenOptionsRoom = (room: Room): boolean =>
@@ -59,7 +97,9 @@ export const useOptionsRooms = (mx: MatrixClient): Room[] => {
     mx.on(ClientEvent.DeleteRoom, bump);
     mx.on(RoomEvent.MyMembership, bump);
     mx.on(RoomStateEvent.Events, onState);
+    window.addEventListener(LIGHT_ROOMS_EVENT, bump);
     return () => {
+      window.removeEventListener(LIGHT_ROOMS_EVENT, bump);
       mx.off(ClientEvent.Room, bump);
       mx.off(ClientEvent.DeleteRoom, bump);
       mx.off(RoomEvent.MyMembership, bump);

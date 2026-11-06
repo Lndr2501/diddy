@@ -3,7 +3,16 @@
  * underlying state events change.
  */
 import { useMemo, useSyncExternalStore } from 'react';
-import { MatrixClient, MatrixEvent, RoomStateEvent } from 'matrix-js-sdk';
+import {
+  ClientEvent,
+  Direction,
+  Filter,
+  MatrixClient,
+  MatrixEvent,
+  Room,
+  RoomEvent,
+  RoomStateEvent,
+} from 'matrix-js-sdk';
 import {
   awardStateKey,
   BadgeAward,
@@ -13,10 +22,16 @@ import {
   DiddyProfile,
   GLOBAL_BADGES,
   MAX_SHOWN_BADGES,
+  OPTIONS_MARKER_EVENT,
   parseAwardStateKey,
   PROFILE_EVENT,
 } from './types';
-import { getOptionsRooms, getPrimaryOptionsRoom } from './optionsRoom';
+import {
+  getOptionsRooms,
+  getPrimaryOptionsRoom,
+  isLightOptionsRoom,
+  LIGHT_ROOMS_EVENT,
+} from './optionsRoom';
 
 // --- change tracking ---------------------------------------------------------------------------
 
@@ -36,15 +51,164 @@ const notify = () => {
   });
 };
 
+// --- message mode cache --------------------------------------------------------------------------
+// In rooms where the user may not write state events, Diddy data is sent as normal events carrying
+// the would-be state key in content['app.diddy.key']. They are collected here.
+
+const KEY_FIELD = 'app.diddy.key';
+type Candidate = { content: Record<string, unknown>; ts: number };
+/** roomId -> event type -> key -> newest content */
+const messageData = new Map<string, Map<string, Map<string, Candidate>>>();
+const backfilled = new Set<string>();
+
+const ingestEvent = (event: MatrixEvent, roomId: string | undefined): boolean => {
+  const type = event.getType();
+  if (!roomId || !DIDDY_EVENTS.has(type) || event.isState()) return false;
+  const raw = event.getContent() as Record<string, unknown> | undefined;
+  const key = raw?.[KEY_FIELD];
+  if (typeof key !== 'string' || !key) return false;
+  if (type === PROFILE_EVENT && key !== event.getSender()) return false;
+  if (type === BADGE_AWARD_EVENT && !parseAwardStateKey(key)) return false;
+  const content = { ...raw };
+  delete content[KEY_FIELD];
+  const ts = event.getTs();
+  let byType = messageData.get(roomId);
+  if (!byType) {
+    byType = new Map();
+    messageData.set(roomId, byType);
+  }
+  let byKey = byType.get(type);
+  if (!byKey) {
+    byKey = new Map();
+    byType.set(type, byKey);
+  }
+  const existing = byKey.get(key);
+  if (existing && existing.ts >= ts) return false;
+  byKey.set(key, { content, ts });
+  return true;
+};
+
+const ingestRoomTimeline = (room: Room): boolean => {
+  let changed = false;
+  room
+    .getLiveTimeline()
+    .getEvents()
+    .forEach((event) => {
+      if (ingestEvent(event, room.roomId)) changed = true;
+    });
+  return changed;
+};
+
+const backfillRoom = (mx: MatrixClient, room: Room) => {
+  if (backfilled.has(room.roomId)) return;
+  backfilled.add(room.roomId);
+  const filter = Filter.fromJson(mx.getUserId(), '', {
+    room: { timeline: { types: [PROFILE_EVENT, BADGE_DEF_EVENT, BADGE_AWARD_EVENT] } },
+  });
+  mx.createMessagesRequest(room.roomId, null, 300, Direction.Backward, filter)
+    .then((res) => {
+      const mapper = mx.getEventMapper();
+      let changed = false;
+      res.chunk.forEach((raw) => {
+        if (ingestEvent(mapper(raw), room.roomId)) changed = true;
+      });
+      if (changed) notify();
+    })
+    .catch(() => {
+      backfilled.delete(room.roomId);
+    });
+};
+
+/** Ingests the loaded timelines of all options rooms and backfills message-mode rooms once. */
+const syncRooms = (mx: MatrixClient) => {
+  let changed = false;
+  getOptionsRooms(mx).forEach((room) => {
+    if (ingestRoomTimeline(room)) changed = true;
+    if (isLightOptionsRoom(room)) backfillRoom(mx, room);
+  });
+  if (changed) notify();
+};
+
 const attach = (mx: MatrixClient) => {
   if (attachedTo === mx) return;
-  attachedTo?.off(RoomStateEvent.Events, onStateEvent);
+  if (attachedTo) {
+    attachedTo.off(RoomStateEvent.Events, onStateEvent);
+    attachedTo.off(RoomEvent.Timeline, onTimelineEvent);
+    attachedTo.off(ClientEvent.Room, onRoomChange);
+    attachedTo.off(RoomEvent.MyMembership, onRoomChange);
+    window.removeEventListener(LIGHT_ROOMS_EVENT, onLightRoomsChange);
+  }
   attachedTo = mx;
   mx.on(RoomStateEvent.Events, onStateEvent);
+  mx.on(RoomEvent.Timeline, onTimelineEvent);
+  mx.on(ClientEvent.Room, onRoomChange);
+  mx.on(RoomEvent.MyMembership, onRoomChange);
+  window.addEventListener(LIGHT_ROOMS_EVENT, onLightRoomsChange);
+  syncRooms(mx);
 };
 function onStateEvent(event: MatrixEvent) {
-  if (DIDDY_EVENTS.has(event.getType())) notify();
+  const type = event.getType();
+  if (DIDDY_EVENTS.has(type)) notify();
+  // a new marker event turns a room into an options room: read what is already in its timeline
+  if (type === OPTIONS_MARKER_EVENT && attachedTo) syncRooms(attachedTo);
 }
+function onTimelineEvent(event: MatrixEvent, room: Room | undefined) {
+  if (ingestEvent(event, room?.roomId ?? event.getRoomId())) notify();
+}
+function onRoomChange() {
+  if (attachedTo) syncRooms(attachedTo);
+}
+function onLightRoomsChange() {
+  if (attachedTo) syncRooms(attachedTo);
+  notify();
+}
+
+/** Newest of the state event content and the message-mode content for one key. */
+const readData = (room: Room, type: string, key: string): Candidate | undefined => {
+  const state = room.currentState.getStateEvents(type, key);
+  const fromState: Candidate | undefined = state
+    ? { content: (state.getContent() ?? {}) as Record<string, unknown>, ts: state.getTs() }
+    : undefined;
+  const fromMessage = messageData.get(room.roomId)?.get(type)?.get(key);
+  if (fromState && fromMessage) return fromMessage.ts > fromState.ts ? fromMessage : fromState;
+  return fromState ?? fromMessage;
+};
+
+/** All keys of a type that exist in either source of a room. */
+const dataKeys = (room: Room, type: string): string[] => {
+  const keys = new Set<string>();
+  room.currentState.getStateEvents(type).forEach((event) => {
+    const key = event.getStateKey();
+    if (key) keys.add(key);
+  });
+  messageData
+    .get(room.roomId)
+    ?.get(type)
+    ?.forEach((_, key) => keys.add(key));
+  return Array.from(keys);
+};
+
+/**
+ * Writes Diddy data. In a normal options room it is a state event; when that is not allowed (or in
+ * a message-mode room) it is sent as a normal event carrying the key in content['app.diddy.key'].
+ */
+export const writeDiddyData = async (
+  mx: MatrixClient,
+  room: Room,
+  eventType: string,
+  content: object,
+  key: string
+): Promise<void> => {
+  if (!isLightOptionsRoom(room) && room.currentState.getStateEvents(OPTIONS_MARKER_EVENT, '')) {
+    try {
+      await mx.sendStateEvent(room.roomId, eventType as never, content as never, key);
+      return;
+    } catch {
+      // not allowed to write state here: fall back to a normal event
+    }
+  }
+  await mx.sendEvent(room.roomId, eventType as never, { ...content, [KEY_FIELD]: key } as never);
+};
 
 const useDiddyVersion = (mx: MatrixClient): number => {
   attach(mx);
@@ -64,7 +228,7 @@ const useDiddyVersion = (mx: MatrixClient): number => {
 export const readProfile = (mx: MatrixClient, userId: string): DiddyProfile | undefined => {
   const rooms = getOptionsRooms(mx);
   for (let i = 0; i < rooms.length; i += 1) {
-    const content = rooms[i].currentState.getStateEvents(PROFILE_EVENT, userId)?.getContent();
+    const content = readData(rooms[i], PROFILE_EVENT, userId)?.content;
     if (content && content.v === 1) return content as DiddyProfile;
   }
   return undefined;
@@ -80,7 +244,7 @@ export const useDiddyProfile = (mx: MatrixClient, userId: string | undefined): D
 export const setMyProfile = async (mx: MatrixClient, profile: DiddyProfile): Promise<void> => {
   const room = getPrimaryOptionsRoom(mx);
   if (!room) throw new Error('No Diddy Options room found.');
-  await mx.sendStateEvent(room.roomId, PROFILE_EVENT as never, profile as never, mx.getSafeUserId());
+  await writeDiddyData(mx, room, PROFILE_EVENT, profile, mx.getSafeUserId());
 };
 
 /** Updates parts of your profile, keeping everything else. */
@@ -94,10 +258,9 @@ export const patchMyProfile = async (mx: MatrixClient, patch: Partial<DiddyProfi
 const readCustomBadges = (mx: MatrixClient): BadgeDef[] => {
   const defs = new Map<string, BadgeDef>();
   getOptionsRooms(mx).forEach((room) => {
-    room.currentState.getStateEvents(BADGE_DEF_EVENT).forEach((event) => {
-      const content = event.getContent();
-      const id = event.getStateKey();
-      if (id && content?.name) defs.set(id, { ...(content as BadgeDef), id });
+    dataKeys(room, BADGE_DEF_EVENT).forEach((id) => {
+      const content = readData(room, BADGE_DEF_EVENT, id)?.content;
+      if (content?.name) defs.set(id, { ...(content as unknown as BadgeDef), id });
     });
   });
   return Array.from(defs.values());
@@ -116,12 +279,13 @@ const readAwards = (mx: MatrixClient, userId: string, defs: BadgeDef[]): Awarded
   const byId = new Map(defs.map((d) => [d.id, d]));
   const result = new Map<string, AwardedBadge>();
   getOptionsRooms(mx).forEach((room) => {
-    room.currentState.getStateEvents(BADGE_AWARD_EVENT).forEach((event) => {
-      const key = parseAwardStateKey(event.getStateKey() ?? '');
-      const content = event.getContent();
-      if (!key || key.userId !== userId || !content?.by) return;
+    dataKeys(room, BADGE_AWARD_EVENT).forEach((stateKey) => {
+      const key = parseAwardStateKey(stateKey);
+      if (!key || key.userId !== userId) return;
+      const content = readData(room, BADGE_AWARD_EVENT, stateKey)?.content;
+      if (!content?.by) return;
       const def = byId.get(key.badgeId);
-      if (def) result.set(def.id, { ...def, award: content as BadgeAward });
+      if (def) result.set(def.id, { ...def, award: content as unknown as BadgeAward });
     });
   });
   return Array.from(result.values());
@@ -155,12 +319,7 @@ export const createCustomBadge = async (
   const room = getPrimaryOptionsRoom(mx);
   if (!room) throw new Error('No Diddy Options room found.');
   const id = `c.${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-  await mx.sendStateEvent(
-    room.roomId,
-    BADGE_DEF_EVENT as never,
-    { ...def, createdBy: mx.getSafeUserId() } as never,
-    id
-  );
+  await writeDiddyData(mx, room, BADGE_DEF_EVENT, { ...def, createdBy: mx.getSafeUserId() }, id);
   return id;
 };
 
@@ -168,11 +327,11 @@ export const awardBadge = async (mx: MatrixClient, badgeId: string, userId: stri
   const room = getPrimaryOptionsRoom(mx);
   if (!room) throw new Error('No Diddy Options room found.');
   const content: BadgeAward = { by: mx.getSafeUserId(), at: Date.now() };
-  await mx.sendStateEvent(room.roomId, BADGE_AWARD_EVENT as never, content as never, awardStateKey(badgeId, userId));
+  await writeDiddyData(mx, room, BADGE_AWARD_EVENT, content, awardStateKey(badgeId, userId));
 };
 
 export const revokeBadge = async (mx: MatrixClient, badgeId: string, userId: string): Promise<void> => {
   const room = getPrimaryOptionsRoom(mx);
   if (!room) throw new Error('No Diddy Options room found.');
-  await mx.sendStateEvent(room.roomId, BADGE_AWARD_EVENT as never, {} as never, awardStateKey(badgeId, userId));
+  await writeDiddyData(mx, room, BADGE_AWARD_EVENT, {}, awardStateKey(badgeId, userId));
 };

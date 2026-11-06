@@ -1,6 +1,5 @@
-import React, { MouseEventHandler, useCallback, useEffect, useState } from 'react';
+import React, { MouseEventHandler, useCallback, useEffect, useRef, useState } from 'react';
 import { useAtomValue } from 'jotai';
-import FocusTrap from 'focus-trap-react';
 import {
   Avatar,
   Box,
@@ -28,7 +27,6 @@ import { callEmbedAtom } from '../../state/callEmbed';
 import { DeviceChevron } from '../../features/call/DevicePicker';
 import { setMyStatus, useMyStatus } from '../../plugins/diddy/status';
 import { DiddyStatus } from '../../plugins/diddy/types';
-import { stopPropagation } from '../../utils/keyboard';
 import { getMxIdLocalPart, mxcUrlToHttp } from '../../utils/matrix';
 import { nameInitials } from '../../utils/common';
 
@@ -180,8 +178,35 @@ export function UserPanel() {
   const status = pickedStatus ?? storedStatus;
   const { label: statusLabel, color: statusColor } = statusInfo(status);
 
+  const statusMenuRef = useRef<HTMLDivElement>(null);
+  const statusButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Close on outside click / Escape. A second click on the profile button toggles the menu, so
+  // clicks on the button itself are left to its own handler.
+  useEffect(() => {
+    if (!statusCords) return undefined;
+    const onPointerDown = (evt: PointerEvent) => {
+      const target = evt.target as Node | null;
+      if (!target) return;
+      if (statusMenuRef.current?.contains(target) || statusButtonRef.current?.contains(target)) {
+        return;
+      }
+      setStatusCords(undefined);
+    };
+    const onKeyDown = (evt: KeyboardEvent) => {
+      if (evt.key === 'Escape') setStatusCords(undefined);
+    };
+    document.addEventListener('pointerdown', onPointerDown, true);
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown, true);
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [statusCords]);
+
   const handleOpenStatus: MouseEventHandler<HTMLButtonElement> = (evt) => {
-    setStatusCords(evt.currentTarget.getBoundingClientRect());
+    const cords = evt.currentTarget.getBoundingClientRect();
+    setStatusCords((current) => (current ? undefined : cords));
   };
   const handleSelectStatus = (next: DiddyStatus) => {
     setStatusCords(undefined);
@@ -201,19 +226,13 @@ export function UserPanel() {
         position="Top"
         align="Start"
         content={
-          <FocusTrap
-            focusTrapOptions={{
-              initialFocus: false,
-              onDeactivate: () => setStatusCords(undefined),
-              clickOutsideDeactivates: true,
-              escapeDeactivates: stopPropagation,
-            }}
-          >
+          <div ref={statusMenuRef}>
             <StatusMenu status={status} onSelect={handleSelectStatus} />
-          </FocusTrap>
+          </div>
         }
       >
         <button
+          ref={statusButtonRef}
           type="button"
           className={css.UserPanelProfileButton}
           onClick={handleOpenStatus}
