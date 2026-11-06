@@ -27,8 +27,7 @@ Die Downloads liegen unter [Releases](../../releases).
 **Linux**
 - AppImage: `chmod +x Diddy_*.AppImage && ./Diddy_*.AppImage`
 - Debian/Ubuntu: `sudo apt install ./Diddy_*.deb`
-- **NixOS:** Im Checkout `nix run .#diddy` (natives Paket für x86_64 und ARM64, kein AppImage-Workaround). Installation und Entwicklung: [NixOS-Anleitung](docs/nixos.md).
-- Sprach- und Videochat sind im bisherigen Linux-WebKitGTK-Client nicht verlässlich unterstützt; das Nix-Paket ändert daran nichts.
+- Sprach- und Videochat gehen unter Linux noch nicht: WebKitGTK hat kein WebRTC.
 
 ## Selbst bauen
 
