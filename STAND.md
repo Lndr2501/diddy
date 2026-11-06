@@ -2,6 +2,10 @@
 
 Statusbericht des Entwicklungsstands (Diddy, nach 1.1.0, kein neues Release).
 
+## Vierter Teststand 23:31 (`2bc6425`)
+
+- Nutzer bestätigt: alles funktioniert (kein Ruckeln beim Join, Mikrofon-Menü ohne leisere Musik, Stream mit System-Ton auch nach Neustart, Kamera).
+
 ## Dritter Teststand 23:16 (Rückmeldung) und Korrekturen
 
 - Bestätigt: Beim Join ruckelt nichts mehr. Stream starten, beenden und neu starten funktioniert jetzt (im Log #2 und #3 in ~2 s), die Kamera auch.
