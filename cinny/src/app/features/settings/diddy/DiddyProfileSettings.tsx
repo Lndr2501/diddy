@@ -11,8 +11,11 @@ import { getMxIdLocalPart, mxcUrlToHttp } from '../../../utils/matrix';
 import { nameInitials } from '../../../utils/common';
 import { useDiddyProfile, setMyProfile } from '../../../plugins/diddy/profiles';
 import {
+  addLightOptionsRoom,
   adoptRoomAsOptionsRoom,
   createOptionsRoom,
+  isLightOptionsRoom,
+  removeLightOptionsRoom,
   useOptionsRooms,
 } from '../../../plugins/diddy/optionsRoom';
 import { OPTIONS_ROOM_NAME } from '../../../plugins/diddy/types';
@@ -467,6 +470,7 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
 
   const optionsRooms = useOptionsRooms(mx);
   const hasOptionsRoom = optionsRooms.length > 0;
+  const lightRooms = optionsRooms.filter((room) => isLightOptionsRoom(room));
   const stored = useDiddyProfile(mx, myId);
 
   const storedBase = useMemo(() => toDraft(stored), [stored]);
@@ -512,9 +516,17 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
   const [creating, setCreating] = useState(false);
   const [created, setCreated] = useState(false);
   const [setupError, setSetupError] = useState<string>();
+  const [lightUsed, setLightUsed] = useState(false);
+  const handleUseLight = () => {
+    if (!existingRoomId) return;
+    addLightOptionsRoom(existingRoomId);
+    setSetupError(undefined);
+    setLightUsed(true);
+  };
   const handleCreate = async () => {
     setCreating(true);
     setSetupError(undefined);
+    setLightUsed(false);
     try {
       if (setupMode === 'existing') {
         if (!existingRoomId) throw new Error('Choose a room first.');
@@ -588,6 +600,25 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
           <PageContent>
             <div className={css.Layout}>
               <div className={css.Editor}>
+                {lightRooms.length > 0 && (
+                  <Box alignItems="Center" justifyContent="SpaceBetween" gap="300">
+                    <Text size="T200" priority="300">
+                      Message mode (no admin rights): {lightRooms.map((room) => room.name).join(', ')}
+                    </Text>
+                    <Button
+                      size="300"
+                      variant="Critical"
+                      fill="None"
+                      radii="300"
+                      onClick={() => {
+                        lightRooms.forEach((room) => removeLightOptionsRoom(room.roomId));
+                        setLightUsed(false);
+                      }}
+                    >
+                      <Text size="B300">Stop using this room</Text>
+                    </Button>
+                  </Box>
+                )}
                 {!hasOptionsRoom && (
                   <Section title="Diddy Options room">
                     <Text size="T300">
@@ -659,6 +690,11 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
                           to change its settings. With this switch on, [diddy-options] is added to
                           its topic so Diddy clients in the same space join it automatically.
                         </Text>
+                        <Text size="T200" priority="300">
+                          No admin rights in that room? You can still use it without them: everyone
+                          who uses Diddy has to choose this same room themselves; your profile is
+                          then stored as hidden messages in it.
+                        </Text>
                       </>
                     )}
                     <Box alignItems="Center" gap="300">
@@ -678,11 +714,33 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
                           Room created. You can customize your profile now.
                         </Text>
                       )}
+                      {lightUsed && (
+                        <Text size="T200" style={{ color: color.Success.Main }}>
+                          Room is used in message mode. You can customize your profile now.
+                        </Text>
+                      )}
                     </Box>
                     {setupError && (
                       <Text size="T200" style={{ color: color.Critical.Main }}>
                         {setupError}
                       </Text>
+                    )}
+                    {setupError && setupMode === 'existing' && existingRoomId && !created && (
+                      <Box alignItems="Center" gap="300">
+                        <Button
+                          size="300"
+                          variant="Secondary"
+                          fill="Soft"
+                          radii="300"
+                          disabled={creating}
+                          onClick={handleUseLight}
+                        >
+                          <Text size="B300">Use without admin rights</Text>
+                        </Button>
+                        <Text size="T200" priority="300">
+                          Everyone has to choose this same room themselves.
+                        </Text>
+                      </Box>
                     )}
                     <Text size="T200" priority="300">
                       Not an admin? Ask the admin of your server to set it up; Diddy joins it
