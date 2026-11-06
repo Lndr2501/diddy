@@ -59,6 +59,7 @@ import {
 } from './optionsRoom';
 import { sanitizeBadgeDef, sanitizeProfile } from './sanitize';
 import { ReAnnouncer } from './reannounce';
+import { makeBadgeId, pickDefinition, resolveAwards } from './trust';
 import { diag } from '../diagnostics';
 
 // --- change tracking ---------------------------------------------------------------------------
@@ -116,8 +117,21 @@ const isPlausibleTs = (ts: number): boolean =>
   Number.isFinite(ts) && ts <= Date.now() + MAX_FUTURE_MS;
 /** `sender` is the authenticated event sender (never trust names written inside the content). */
 type Candidate = { content: Record<string, unknown>; ts: number; sender?: string };
-/** roomId -> event type -> key -> newest content */
-const messageData = new Map<string, Map<string, Map<string, Candidate>>>();
+/**
+ * roomId -> event type -> key -> sender -> newest content of that sender. Every sender keeps their
+ * own slot, so a member can never overwrite or hide what somebody else sent for the same key.
+ */
+const messageData = new Map<string, Map<string, Map<string, Map<string, Candidate>>>>();
+const forEachMessage = (
+  roomId: string,
+  type: string,
+  fn: (key: string, c: Candidate) => void
+): void => {
+  messageData
+    .get(roomId)
+    ?.get(type)
+    ?.forEach((bySender, key) => bySender.forEach((c) => fn(key, c)));
+};
 const backfilled = new Set<string>();
 const backfillTries = new Map<string, number>();
 const membersRequested = new Set<string>();
@@ -128,9 +142,15 @@ const trimRoomCache = (roomId: string) => {
   if (!byType) return;
   type Entry = { type: string; key: string; c: Candidate };
   const entries: Entry[] = [];
-  byType.forEach((byKey, type) => byKey.forEach((c, key) => entries.push({ type, key, c })));
+  byType.forEach((byKey, type) =>
+    byKey.forEach((bySender, key) => bySender.forEach((c) => entries.push({ type, key, c })))
+  );
   if (entries.length <= MAX_CACHE_PER_ROOM) return;
-  const drop = (e: Entry) => byType.get(e.type)?.delete(e.key);
+  const drop = (e: Entry) => {
+    const bySender = byType.get(e.type)?.get(e.key);
+    bySender?.delete(e.c.sender ?? '');
+    if (bySender?.size === 0) byType.get(e.type)?.delete(e.key);
+  };
   entries.sort((a, b) => b.c.ts - a.c.ts);
   const perSender = new Map<string, number>();
   const kept: Entry[] = [];
@@ -221,9 +241,14 @@ const ingestEvent = (event: MatrixEvent, roomId: string | undefined): boolean =>
     byKey = new Map();
     byType.set(type, byKey);
   }
-  const existing = byKey.get(key);
+  let bySender = byKey.get(key);
+  if (!bySender) {
+    bySender = new Map();
+    byKey.set(key, bySender);
+  }
+  const existing = bySender.get(sender);
   if (existing && existing.ts >= ts) return false;
-  byKey.set(key, { content, ts, sender });
+  bySender.set(sender, { content, ts, sender });
   trimRoomCache(roomId);
   if (type === PROFILE_EVENT)
     diag(`diddy: profile ingested user=${key} source=message room=${roomId}`);
@@ -441,19 +466,21 @@ const ownBadgeEntries = (room: Room, me: string): OwnEntry[] => {
   const defs: OwnEntry[] = [];
   dataKeys(room, BADGE_DEF_EVENT).forEach((key) => {
     if (key.length > 64 || GLOBAL_BADGES.some((g) => g.id === key)) return;
-    const data = readData(room, BADGE_DEF_EVENT, key);
-    if (!data || data.sender !== me || !sanitizeBadgeDef(data.content, key)) return;
+    const data = readData(room, BADGE_DEF_EVENT, key, me);
+    if (!data || !sanitizeBadgeDef(data.content, key)) return;
     if (notInState(BADGE_DEF_EVENT, key, data.ts))
       defs.push({ type: BADGE_DEF_EVENT, key, content: data.content, ts: data.ts });
   });
   const awards: OwnEntry[] = [];
   dataKeys(room, BADGE_AWARD_EVENT).forEach((key) => {
-    if (!parseAwardStateKey(key)) return;
-    const data = readData(room, BADGE_AWARD_EVENT, key);
-    // empty content = revoked: nothing to hand on
-    if (!data || data.sender !== me || typeof data.content.by !== 'string' || !data.content.by)
-      return;
-    if (notInState(BADGE_AWARD_EVENT, key, data.ts))
+    const parsed = parseAwardStateKey(key);
+    if (!parsed) return;
+    // only an award that is still in force (not removed by the recipient) is handed on
+    const mine = resolveAwards(parsed.userId, readCandidates(room, BADGE_AWARD_EVENT, key)).some(
+      (r) => r.by === me
+    );
+    const data = mine ? readData(room, BADGE_AWARD_EVENT, key, me) : undefined;
+    if (data && notInState(BADGE_AWARD_EVENT, key, data.ts))
       awards.push({ type: BADGE_AWARD_EVENT, key, content: data.content, ts: data.ts });
   });
   const newest = (list: OwnEntry[], max: number) => list.sort((a, b) => b.ts - a.ts).slice(0, max);
@@ -640,26 +667,34 @@ const isAcceptable = (room: Room, c: Candidate): boolean =>
   isPlausibleTs(c.ts) &&
   isSmallContent(c.content);
 
-/** Candidates that pass the trust checks (joined sender, size, timestamp). */
+/** Candidates that pass the trust checks (joined sender, size, timestamp), every sender's own. */
 const readCandidates = (room: Room, type: string, key: string): Candidate[] => {
   const state = room.currentState.getStateEvents(type, key);
-  const fromState: Candidate | undefined = state
-    ? {
-        content: (state.getContent() ?? {}) as Record<string, unknown>,
-        ts: state.getTs(),
-        sender: state.getSender() ?? undefined,
-      }
-    : undefined;
-  const fromMessage = messageData.get(room.roomId)?.get(type)?.get(key);
-  return [fromState, fromMessage].filter((c): c is Candidate => !!c && isAcceptable(room, c));
+  const all: Candidate[] = [];
+  if (state)
+    all.push({
+      content: (state.getContent() ?? {}) as Record<string, unknown>,
+      ts: state.getTs(),
+      sender: state.getSender() ?? undefined,
+    });
+  messageData
+    .get(room.roomId)
+    ?.get(type)
+    ?.get(key)
+    ?.forEach((c) => all.push(c));
+  return all.filter((c) => isAcceptable(room, c));
 };
 
-const readData = (room: Room, type: string, key: string): Candidate | undefined => {
-  const candidates = readCandidates(room, type, key);
-  if (candidates.length === 2)
-    return candidates[1].ts > candidates[0].ts ? candidates[1] : candidates[0];
-  return candidates[0];
-};
+/** Newest accepted version of a key, optionally only from one sender. */
+const readData = (
+  room: Room,
+  type: string,
+  key: string,
+  onlySender?: string
+): Candidate | undefined =>
+  readCandidates(room, type, key)
+    .filter((c) => onlySender === undefined || c.sender === onlySender)
+    .sort((a, b) => b.ts - a.ts)[0];
 
 /** All keys of a type that exist in either source of a room. */
 const dataKeys = (room: Room, type: string): string[] => {
@@ -668,10 +703,7 @@ const dataKeys = (room: Room, type: string): string[] => {
     const key = event.getStateKey();
     if (key) keys.add(key);
   });
-  messageData
-    .get(room.roomId)
-    ?.get(type)
-    ?.forEach((_, key) => keys.add(key));
+  forEachMessage(room.roomId, type, (key) => keys.add(key));
   return Array.from(keys);
 };
 
@@ -732,9 +764,9 @@ const useDiddyVersion = (mx: MatrixClient): number => {
 export const readProfile = (mx: MatrixClient, userId: string): DiddyProfile | undefined => {
   const rooms = getOptionsRooms(mx);
   for (let i = 0; i < rooms.length; i += 1) {
-    const data = readData(rooms[i], PROFILE_EVENT, userId);
     // a profile only counts when it was written by the user it belongs to
-    const profile = data && data.sender === userId ? sanitizeProfile(data.content) : undefined;
+    const data = readData(rooms[i], PROFILE_EVENT, userId, userId);
+    const profile = data ? sanitizeProfile(data.content) : undefined;
     if (profile) return profile;
   }
   return undefined;
@@ -805,16 +837,9 @@ const collectAwards = (mx: MatrixClient): AwardRec[] => {
     dataKeys(room, BADGE_AWARD_EVENT).forEach((stateKey) => {
       const key = parseAwardStateKey(stateKey);
       if (!key) return;
-      const data = readData(room, BADGE_AWARD_EVENT, stateKey);
-      // an empty content is a revoked award; the giver is the real event sender, not content.by
-      if (typeof data?.content.by !== 'string' || !data.content.by || !data.sender) return;
-      const at = data.content.at;
-      all.push({
-        badgeId: key.badgeId,
-        userId: key.userId,
-        by: data.sender,
-        at: typeof at === 'number' && Number.isFinite(at) ? at : data.ts,
-        ts: data.ts,
+      // one award per giver (the real event sender); the giver or the recipient can remove it
+      resolveAwards(key.userId, readCandidates(room, BADGE_AWARD_EVENT, stateKey)).forEach((r) => {
+        all.push({ badgeId: key.badgeId, userId: key.userId, by: r.by, at: r.at, ts: r.ts });
       });
     });
   });
@@ -838,14 +863,14 @@ const collectCustomBadges = (mx: MatrixClient, awardedIds: Set<string>): BadgeDe
   all.forEach((candidates, id) => {
     // global badges ship with the app: custom events can never redefine them
     if (GLOBAL_BADGES.some((g) => g.id === id)) return;
-    const valid = candidates
-      .filter((c) => !!c.sender && !!sanitizeBadgeDef(c.content, id))
-      .filter((c) => c.content.createdBy === undefined || c.content.createdBy === c.sender)
-      .sort((a, b) => a.ts - b.ts);
-    if (valid.length === 0) return;
-    // first writer wins: only the creator (oldest event) may change a definition afterwards
-    const owner = valid[0].sender;
-    const chosen = valid.filter((c) => c.sender === owner).pop();
+    // ids with a creator tag can only be defined by that creator; older ids: first writer wins
+    const chosen = pickDefinition(
+      id,
+      candidates,
+      (c) =>
+        !!sanitizeBadgeDef(c.content, id) &&
+        (c.content.createdBy === undefined || c.content.createdBy === c.sender)
+    );
     const def = chosen && sanitizeBadgeDef(chosen.content, id);
     if (chosen && def && chosen.sender)
       recs.push({
@@ -933,7 +958,7 @@ export const createCustomBadge = async (
 ): Promise<string> => {
   const room = getPrimaryOptionsRoom(mx);
   if (!room) throw new Error('No Diddy Options room found.');
-  const id = `c.${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+  const id = makeBadgeId(mx.getSafeUserId(), Date.now(), Math.random().toString(36).slice(2, 6));
   await writeDiddyData(mx, room, BADGE_DEF_EVENT, { ...def, createdBy: mx.getSafeUserId() }, id);
   badgeAnnouncer.markSent(room.roomId);
   return id;
@@ -996,10 +1021,7 @@ export const getOptionsRoomSenderStats = (mx: MatrixClient): OptionsRoomSenderSt
       room.currentState
         .getStateEvents(type)
         .forEach((event) => bump(event.getSender() ?? undefined, field));
-      messageData
-        .get(room.roomId)
-        ?.get(type)
-        ?.forEach((c) => bump(c.sender, field));
+      forEachMessage(room.roomId, type, (_, c) => bump(c.sender, field));
     });
   });
   return Array.from(stats.values()).sort(
@@ -1053,17 +1075,14 @@ export const getDiddyDebugInfo = (mx: MatrixClient): { rooms: DiddyDebugRoom[] }
           sender: event.getSender() ?? undefined,
         });
       });
-      messageData
-        .get(room.roomId)
-        ?.get(type)
-        ?.forEach((c) => {
-          messageEvents += 1;
-          check(c);
-        });
+      forEachMessage(room.roomId, type, (_, c) => {
+        messageEvents += 1;
+        check(c);
+      });
     });
     dataKeys(room, PROFILE_EVENT).forEach((userId) => {
-      const data = readData(room, PROFILE_EVENT, userId);
-      if (data && data.sender === userId && sanitizeProfile(data.content)) profilesAccepted += 1;
+      const data = readData(room, PROFILE_EVENT, userId, userId);
+      if (data && sanitizeProfile(data.content)) profilesAccepted += 1;
     });
     return {
       roomId: room.roomId,
