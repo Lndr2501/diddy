@@ -1,7 +1,7 @@
 //! Switchable app icon. The page calls `set_app_icon` (see `cinny/src/app/plugins/appIcon.ts`).
 //! The choice is also saved in a small file in the app config dir, so it is applied as soon as the
-//! app starts (before the page has loaded) and, on macOS, set as the custom icon of Diddy.app so
-//! the Dock shows it while the app is not running. Without a choice the bundle icon (pink) is used.
+//! app starts (before the page has loaded). The bundle icon (pink) is never modified: a custom icon
+//! on Diddy.app would invalidate its code signature and make the keychain prompt again.
 
 // (id, window icon for Linux/Windows, Dock icon for macOS with the macOS icon-grid margin)
 const ICONS: &[(&str, &[u8], &[u8])] = &[
@@ -47,9 +47,6 @@ fn set_app_icon_inner(app: &tauri::AppHandle, id: &str, persist: bool) -> Result
         app.run_on_main_thread(move || set_dock_icon(dock_png))
             .map_err(|e| e.to_string())?;
         if persist {
-            // Dock icon while the app is not running; the default pink one needs no custom icon.
-            let bundle_png: Option<&'static [u8]> = if id == "pink" { None } else { Some(dock_png) };
-            set_bundle_icon(bundle_png);
             crate::system_audio::log(&format!("app icon set: {id}"));
         }
     }
@@ -82,35 +79,6 @@ fn save_choice(app: &tauri::AppHandle, id: &str) {
         }
         let _ = std::fs::write(path, id);
     }
-}
-
-#[cfg(target_os = "macos")]
-fn set_bundle_icon(png: Option<&'static [u8]>) {
-    use objc2::AnyThread;
-    use objc2_app_kit::{NSImage, NSWorkspace, NSWorkspaceIconCreationOptions};
-    use objc2_foundation::{NSData, NSString};
-
-    // .../Diddy.app/Contents/MacOS/diddy -> .../Diddy.app
-    let Ok(exe) = std::env::current_exe() else {
-        return;
-    };
-    let Some(bundle) = exe.ancestors().nth(3) else {
-        return;
-    };
-    if bundle.extension().and_then(|e| e.to_str()) != Some("app") {
-        return;
-    }
-    let image = png.and_then(|bytes| {
-        let data = NSData::with_bytes(bytes);
-        NSImage::initWithData(NSImage::alloc(), &data)
-    });
-    let path = NSString::from_str(&bundle.to_string_lossy());
-    let ok = NSWorkspace::sharedWorkspace().setIcon_forFile_options(
-        image.as_deref(),
-        &path,
-        NSWorkspaceIconCreationOptions(0),
-    );
-    crate::system_audio::log(&format!("bundle icon set: {ok}"));
 }
 
 /// Applies the saved choice right at startup. Done a few times because the window system may
