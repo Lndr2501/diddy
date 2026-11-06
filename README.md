@@ -74,6 +74,8 @@ Alle Downloads liegen unter [Releases](../../releases/latest).
 > [!NOTE]
 > Sprach- und Videochat sind im Linux-Client (WebKitGTK) nicht verlässlich unterstützt. Das Nix-Paket ändert daran nichts.
 
+Kein Linux-Rechner? Linux und NixOS lassen sich auf dem Mac in UTM testen: [VM-Anleitung](docs/vm-macos.md).
+
 </details>
 
 ## Selbst bauen
