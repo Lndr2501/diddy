@@ -271,7 +271,7 @@ export const joinOptionsRoomOfSpace = async (mx: MatrixClient, spaceId: string):
       return true;
     });
     if (candidate) {
-      const via = space?.children_state.find((c) => c.state_key === candidate.room_id)?.content?.via;
+      const via = space?.children_state.find((c) => (c as { state_key?: string }).state_key === candidate.room_id)?.content?.via;
       const serverPart = candidate.room_id.split(':').slice(1).join(':');
       const viaServers = via && via.length > 0 ? via : serverPart ? [serverPart] : undefined;
       // eslint-disable-next-line no-await-in-loop
