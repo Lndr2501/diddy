@@ -59,6 +59,7 @@ import {
 } from './optionsRoom';
 import { sanitizeBadgeDef, sanitizeProfile } from './sanitize';
 import { ReAnnouncer } from './reannounce';
+import { RecentOwnData, RECENT_WINDOW_EVENTS } from './recentOwn';
 import { makeBadgeId, pickDefinition, resolveAwards } from './trust';
 import { diag } from '../diagnostics';
 
@@ -191,7 +192,11 @@ const clearDrop = (roomId: string, reason: DropReason, event: MatrixEvent) => {
   if (id) droppedIds.get(roomId)?.get(reason)?.delete(id);
 };
 
-const ingestEvent = (event: MatrixEvent, roomId: string | undefined): boolean => {
+/** Own entries among the newest events of each room (no re-send on every app start). */
+const recentOwn = new RecentOwnData();
+
+/** `recent`: the event is among the newest RECENT_WINDOW_EVENTS of the room (live or first page). */
+const ingestEvent = (event: MatrixEvent, roomId: string | undefined, recent = true): boolean => {
   const type = event.getType();
   if (!roomId || event.isState()) return false;
   if (type === ENCRYPTED_TYPE) {
@@ -228,6 +233,8 @@ const ingestEvent = (event: MatrixEvent, roomId: string | undefined): boolean =>
     noteDrop(roomId, 'badSender', event);
     return false;
   }
+  if (recent && sender === attachedTo?.getUserId())
+    recentOwn.noteRecent(roomId, type, key, event.getTs());
   const content = { ...raw };
   delete content[KEY_FIELD];
   const ts = event.getTs();
@@ -322,8 +329,9 @@ const backfillFiltered = async (mx: MatrixClient, room: Room): Promise<BackfillR
   const res = await mx.createMessagesRequest(room.roomId, null, 300, Direction.Backward, filter);
   const mapper = mx.getEventMapper();
   let ingested = 0;
-  res.chunk.forEach((raw) => {
-    if (ingestEvent(mapper(raw), room.roomId)) ingested += 1;
+  // the server returns only Diddy events here, so the newest ones are counted among those
+  res.chunk.forEach((raw, i) => {
+    if (ingestEvent(mapper(raw), room.roomId, i < RECENT_WINDOW_EVENTS)) ingested += 1;
   });
   return { fetched: res.chunk.length, ingested };
 };
@@ -339,7 +347,7 @@ const backfillEncrypted = async (mx: MatrixClient, room: Room): Promise<Backfill
     const res = (await mx.createMessagesRequest(
       room.roomId,
       from,
-      150,
+      RECENT_WINDOW_EVENTS,
       Direction.Backward
     )) as unknown as {
       chunk: Parameters<typeof mapper>[0][];
@@ -347,11 +355,12 @@ const backfillEncrypted = async (mx: MatrixClient, room: Room): Promise<Backfill
     };
     const events = res.chunk.map((raw) => mapper(raw)).filter((e) => !e.isState());
     fetched += events.length;
+    const recent = page === 0;
     // eslint-disable-next-line no-await-in-loop
     await runLimited(events, 20, async (e) => {
       await mx.decryptEventIfNeeded(e).catch(() => {});
       if (e.getType() === ENCRYPTED_TYPE) logDecryptFailure(e, room.roomId);
-      if (ingestEvent(e, room.roomId)) ingested += 1;
+      if (ingestEvent(e, room.roomId, recent)) ingested += 1;
     });
     if (!res.end || res.chunk.length === 0) break;
     from = res.end;
@@ -366,6 +375,7 @@ const backfillRoom = (mx: MatrixClient, room: Room) => {
   const encrypted = mx.isRoomEncrypted(room.roomId);
   (encrypted ? backfillEncrypted(mx, room) : backfillFiltered(mx, room))
     .then(({ fetched, ingested }) => {
+      recentOwn.markScanned(room.roomId);
       diag(
         `diddy: backfill done room=${room.roomId} encrypted=${encrypted} fetched=${fetched} ingested=${ingested}`
       );
@@ -416,13 +426,29 @@ const announceableRoom = (roomId: string): { mx: MatrixClient; room: Room } | un
   return { mx, room };
 };
 
+/** Timestamp of the newest join of another member (Infinity when unknown: then nothing is skipped). */
+const lastOtherJoinTs = (room: Room, me: string): number => {
+  let newest = 0;
+  room.getJoinedMembers().forEach((m) => {
+    if (m.userId === me) return;
+    const ts = m.events.member?.getTs();
+    newest = Math.max(newest, ts ?? Infinity);
+  });
+  return newest;
+};
+
 const announceProfile = async (roomId: string): Promise<void> => {
+  const onlineOnly = recentOwn.takeOnlineOnly(roomId, 'profile');
   const target = announceableRoom(roomId);
   if (!target) return;
   const { mx, room } = target;
   const me = mx.getSafeUserId();
   const profile = readProfile(mx, me);
   if (!profile) return;
+  if (onlineOnly && recentOwn.isRecent(roomId, PROFILE_EVENT, me, lastOtherJoinTs(room, me))) {
+    diag(`diddy: profile re-announce skipped room=${roomId} reason=recent`);
+    return;
+  }
   try {
     await writeDiddyData(mx, room, PROFILE_EVENT, profile, me);
     diag(`diddy: profile re-announced room=${roomId}`);
@@ -488,10 +514,22 @@ const ownBadgeEntries = (room: Room, me: string): OwnEntry[] => {
 };
 
 const announceBadges = async (roomId: string): Promise<void> => {
+  const onlineOnly = recentOwn.takeOnlineOnly(roomId, 'badges');
   const target = announceableRoom(roomId);
   if (!target || badgeAnnouncing.has(roomId)) return;
   const { mx, room } = target;
-  const entries = ownBadgeEntries(room, mx.getSafeUserId());
+  const me = mx.getSafeUserId();
+  const all = ownBadgeEntries(room, me);
+  const lastJoin = onlineOnly ? lastOtherJoinTs(room, me) : 0;
+  const entries = onlineOnly
+    ? all.filter((e) => !recentOwn.isRecent(roomId, e.type, e.key, lastJoin))
+    : all;
+  if (onlineOnly && entries.length < all.length)
+    diag(
+      `diddy: badge re-announce skipped room=${roomId} recent=${all.length - entries.length}/${
+        all.length
+      }`
+    );
   if (entries.length === 0) return;
   badgeAnnouncing.add(roomId);
   let sent = 0;
@@ -532,6 +570,16 @@ const badgeAnnouncer = new ReAnnouncer(
   { debounceMs: BADGE_ANNOUNCE_DEBOUNCE_MS, minIntervalMs: BADGE_ANNOUNCE_MIN_INTERVAL_MS }
 );
 
+/**
+ * True when our own join of this room is fresh (a real join, not an app start). The SDK also reports
+ * `join` for every known room while it starts, so the age of the membership event decides.
+ */
+const FRESH_JOIN_MS = 10 * 60 * 1000;
+const joinedRecently = (mx: MatrixClient, room: Room): boolean => {
+  const ts = room.currentState.getStateEvents(EventType.RoomMember, mx.getSafeUserId())?.getTs();
+  return ts !== undefined && Date.now() - ts < FRESH_JOIN_MS;
+};
+
 /** Queues the profile and the badge data of this client for a message-mode room. */
 const scheduleAnnounce = (roomId: string, opts: { force?: boolean; joinTs?: number } = {}) => {
   announcer.schedule(roomId, opts);
@@ -549,7 +597,10 @@ const syncRooms = (mx: MatrixClient) => {
         )} encrypted=${mx.isRoomEncrypted(room.roomId)}`
       );
       // coming online in a message-mode room: tell the members what is already known here
-      if (roomMode(room) !== 'state') scheduleAnnounce(room.roomId, { force: true });
+      if (roomMode(room) !== 'state') {
+        if (!joinedRecently(mx, room)) recentOwn.comingOnline(room.roomId);
+        scheduleAnnounce(room.roomId, { force: true });
+      }
     }
     // senders are checked against the member list, which is lazy loaded: fetch it once per room
     if (!membersRequested.has(room.roomId)) {
@@ -576,6 +627,7 @@ const attach = (mx: MatrixClient) => {
     window.removeEventListener(LIGHT_ROOMS_EVENT, onLightRoomsChange);
     announcer.close();
     badgeAnnouncer.close();
+    recentOwn.clear();
     stateWritesRejected.clear();
   }
   attachedTo = mx;
@@ -614,6 +666,7 @@ function onStateEvent(event: MatrixEvent) {
         event.getStateKey() !== attachedTo.getSafeUserId() &&
         roomMode(room) !== 'state'
       ) {
+        recentOwn.needEverything(roomId);
         scheduleAnnounce(roomId, { joinTs: event.getTs() });
       }
     }
@@ -648,10 +701,12 @@ function onRoomChange() {
 }
 function onMyMembership(room: Room, membership: string) {
   if (membership === 'join' && isOptionsRoom(room) && roomMode(room) !== 'state') {
+    if (attachedTo && joinedRecently(attachedTo, room)) recentOwn.needEverything(room.roomId);
     scheduleAnnounce(room.roomId, { force: true });
   } else if (membership === 'leave' || membership === 'ban' || membership === 'forget') {
     announcer.forget(room.roomId);
     badgeAnnouncer.forget(room.roomId);
+    recentOwn.forget(room.roomId);
   }
   onRoomChange();
 }

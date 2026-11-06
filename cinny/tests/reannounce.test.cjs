@@ -27,12 +27,15 @@ function setup() {
   };
   const exports = {};
   vm.runInNewContext(compiled, { exports, console });
-  const { ReAnnouncer, ANNOUNCE_DEBOUNCE_MS, ANNOUNCE_MIN_INTERVAL_MS, MAX_ANNOUNCE_ROOMS } = exports;
+  const { ReAnnouncer, ANNOUNCE_DEBOUNCE_MS, ANNOUNCE_MIN_INTERVAL_MS, MAX_ANNOUNCE_ROOMS } =
+    exports;
   const announcer = new ReAnnouncer(clock, (roomId) => sent.push({ roomId, at: now }));
   const advance = (ms) => {
     now += ms;
     for (;;) {
-      const due = [...timers.entries()].filter(([, t]) => t.at <= now).sort((a, b) => a[1].at - b[1].at);
+      const due = [...timers.entries()]
+        .filter(([, t]) => t.at <= now)
+        .sort((a, b) => a[1].at - b[1].at);
       if (!due.length) return;
       const [id, timer] = due[0];
       timers.delete(id);
@@ -57,7 +60,10 @@ test('our own join announces the profile once, after a short collection window',
   s.advance(s.ANNOUNCE_DEBOUNCE_MS - 1);
   assert.equal(s.sent.length, 0);
   s.advance(1);
-  assert.deepEqual(s.sent.map((e) => e.roomId), ['!room:example.org']);
+  assert.deepEqual(
+    s.sent.map((e) => e.roomId),
+    ['!room:example.org']
+  );
   assert.equal(s.announcer.queued, 0);
 });
 
@@ -149,14 +155,19 @@ test('a custom timing (badges) is respected and does not change the defaults', (
   };
   const advance = (ms) => {
     now += ms;
-    [...timers.entries()].filter(([, t]) => t.at <= now).forEach(([id, t]) => {
-      timers.delete(id);
-      t.run();
-    });
+    [...timers.entries()]
+      .filter(([, t]) => t.at <= now)
+      .forEach(([id, t]) => {
+        timers.delete(id);
+        t.run();
+      });
   };
   const exports = {};
   vm.runInNewContext(compiled, { exports, console });
-  const a = new exports.ReAnnouncer(clock, (r) => sent.push(r), { debounceMs: 60_000, minIntervalMs: 900_000 });
+  const a = new exports.ReAnnouncer(clock, (r) => sent.push(r), {
+    debounceMs: 60_000,
+    minIntervalMs: 900_000,
+  });
   a.schedule('!r:example.org', { force: true });
   advance(59_999);
   assert.equal(sent.length, 0);
@@ -169,4 +180,63 @@ test('a custom timing (badges) is respected and does not change the defaults', (
   assert.equal(sent.length, 1);
   advance(1);
   assert.equal(sent.length, 2);
+});
+
+const recentOwnCompiled = ts.transpileModule(
+  fs.readFileSync(path.join(__dirname, '../src/app/plugins/diddy/recentOwn.ts'), 'utf8'),
+  { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2016 } }
+).outputText;
+
+function recentOwn() {
+  const exports = {};
+  vm.runInNewContext(recentOwnCompiled, { exports, console });
+  return new exports.RecentOwnData();
+}
+
+test('app start skips own entries that are still among the newest events', () => {
+  const r = recentOwn();
+  r.noteRecent('!a', 'app.diddy.profile', '@me:x', 2000);
+  r.markScanned('!a');
+  r.comingOnline('!a');
+  assert.equal(r.takeOnlineOnly('!a', 'profile'), true);
+  assert.equal(r.isRecent('!a', 'app.diddy.profile', '@me:x', 1000), true);
+  assert.equal(r.isRecent('!a', 'app.diddy.badge', 'c.x', 1000), false);
+  // consumed: the next send is a normal one
+  assert.equal(r.takeOnlineOnly('!a', 'profile'), false);
+  // the badge channel keeps its own flag
+  assert.equal(r.takeOnlineOnly('!a', 'badges'), true);
+});
+
+test('nothing counts as recent before the room was read completely', () => {
+  const r = recentOwn();
+  r.noteRecent('!a', 'app.diddy.profile', '@me:x', 2000);
+  assert.equal(r.isRecent('!a', 'app.diddy.profile', '@me:x', 1000), false);
+});
+
+test('a join of another member always sends everything', () => {
+  const r = recentOwn();
+  r.comingOnline('!a');
+  r.needEverything('!a');
+  assert.equal(r.takeOnlineOnly('!a', 'profile'), false);
+  assert.equal(r.takeOnlineOnly('!a', 'badges'), false);
+});
+
+test('leaving a room forgets what was seen there', () => {
+  const r = recentOwn();
+  r.noteRecent('!a', 'app.diddy.profile', '@me:x', 2000);
+  r.markScanned('!a');
+  r.comingOnline('!a');
+  r.forget('!a');
+  assert.equal(r.isRecent('!a', 'app.diddy.profile', '@me:x', 1000), false);
+  assert.equal(r.takeOnlineOnly('!a', 'profile'), false);
+});
+
+test('a member who joined after our newest event still gets it again', () => {
+  const r = recentOwn();
+  r.noteRecent('!a', 'app.diddy.profile', '@me:x', 2000);
+  r.noteRecent('!a', 'app.diddy.profile', '@me:x', 1500);
+  r.markScanned('!a');
+  assert.equal(r.isRecent('!a', 'app.diddy.profile', '@me:x', 1999), true);
+  assert.equal(r.isRecent('!a', 'app.diddy.profile', '@me:x', 2500), false);
+  assert.equal(r.isRecent('!a', 'app.diddy.profile', '@me:x', Infinity), false);
 });
