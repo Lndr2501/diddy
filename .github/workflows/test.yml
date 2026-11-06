@@ -1,5 +1,5 @@
 name: Test
-# Typecheck and the hardware-free tests (cinny/tests) on every push and pull request.
+# Typecheck, hardware-free tests (cinny/tests), web build and native Rust tests on every push and pull request.
 on:
   workflow_dispatch:
   pull_request:
@@ -30,3 +30,27 @@ jobs:
 
       - name: Tests
         run: cd cinny && npm test
+
+      - name: Build web app
+        env:
+          NODE_OPTIONS: "--max_old_space_size=4096"
+        run: cp config.json cinny/ && cd cinny && npm run build
+
+  native:
+    # Rust unit tests of the desktop shell (connections, audio bridge, resampler).
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Placeholder web build
+        # tauri::generate_context! needs frontendDist at compile time; the tests do not use it.
+        run: mkdir -p cinny/dist && echo '<!doctype html>' > cinny/dist/index.html
+
+      - name: Rust tests
+        env:
+          DYLD_LIBRARY_PATH: /usr/lib/swift
+        run: cd src-tauri && cargo test --lib -- --test-threads=1
