@@ -11,10 +11,10 @@
 - Nachricht bearbeiten und Text leeren löscht sie (Cinny #2707)
 - Entwürfe im Eingabefeld bleiben erhalten (Cinny #2645)
 - Raum- und Space-Name im Fenstertitel (Cinny #2658)
-- Neue Einstellungsseite "Darstellung", Apple-Emoji, globaler Bildbetrachter, Titelfarbe
+- Neue Einstellungsseite "Appearance", Apple-Emoji, globaler Bildbetrachter, Titelfarbe
 - Das App-Icon bleibt nach dem Neustart erhalten
 - Antworten im Discord-Stil, mit kleinem Avatar und @Name
-- Töne bei Anrufen
+- Töne beim Stummschalten, Taubschalten und Aufheben (abschaltbar unter Calls)
 
 ### Verbessert
 
