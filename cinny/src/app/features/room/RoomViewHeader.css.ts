@@ -10,6 +10,8 @@ export const HeaderTopic = style({
 });
 
 export const RoomBadge = style({
+  // the avatar image inside is absolutely positioned: this must be its containing block
+  position: 'relative',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -23,6 +25,7 @@ export const RoomBadge = style({
 });
 
 export const RoomBadgeAvatar = style({
+  position: 'relative',
   width: '100%',
   height: '100%',
   borderRadius: toRem(12),
