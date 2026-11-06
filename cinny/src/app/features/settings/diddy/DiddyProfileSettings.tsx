@@ -10,7 +10,12 @@ import { useMediaAuthentication } from '../../../hooks/useMediaAuthentication';
 import { getMxIdLocalPart, mxcUrlToHttp } from '../../../utils/matrix';
 import { nameInitials } from '../../../utils/common';
 import { useDiddyProfile, setMyProfile } from '../../../plugins/diddy/profiles';
-import { createOptionsRoom, useOptionsRooms } from '../../../plugins/diddy/optionsRoom';
+import {
+  adoptRoomAsOptionsRoom,
+  createOptionsRoom,
+  useOptionsRooms,
+} from '../../../plugins/diddy/optionsRoom';
+import { OPTIONS_ROOM_NAME } from '../../../plugins/diddy/types';
 import { uploadDiddyMedia, useMxcUrl } from '../../../plugins/diddy/media';
 import {
   CardStyle,
@@ -496,6 +501,14 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
     .getRooms()
     .filter((room) => room.isSpaceRoom() && room.getMyMembership() === 'join');
   const [spaceId, setSpaceId] = useState('');
+  const [setupMode, setSetupMode] = useState<'new' | 'existing'>('new');
+  const [roomName, setRoomName] = useState(OPTIONS_ROOM_NAME);
+  const [existingRoomId, setExistingRoomId] = useState('');
+  const [tagTopic, setTagTopic] = useState(true);
+  const existingRooms = mx
+    .getRooms()
+    .filter((room) => !room.isSpaceRoom() && room.getMyMembership() === 'join')
+    .sort((a, b) => a.name.localeCompare(b.name));
   const [creating, setCreating] = useState(false);
   const [created, setCreated] = useState(false);
   const [setupError, setSetupError] = useState<string>();
@@ -503,7 +516,12 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
     setCreating(true);
     setSetupError(undefined);
     try {
-      await createOptionsRoom(mx, spaceId || undefined);
+      if (setupMode === 'existing') {
+        if (!existingRoomId) throw new Error('Choose a room first.');
+        await adoptRoomAsOptionsRoom(mx, existingRoomId, tagTopic);
+      } else {
+        await createOptionsRoom(mx, spaceId || undefined, roomName);
+      }
       setCreated(true);
     } catch (e) {
       setSetupError(e instanceof Error ? e.message : 'Could not create the room.');
@@ -577,21 +595,72 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
                       that Diddy uses to share profiles, badges and name styles between everyone.
                       Without it your customization cannot be saved or seen by others.
                     </Text>
-                    <Row label="Create it in">
+                    <Row label="Mode">
                       <select
                         className={css.Input}
-                        value={spaceId}
-                        onChange={(e) => setSpaceId(e.target.value)}
+                        value={setupMode}
+                        onChange={(e) => setSetupMode(e.target.value as 'new' | 'existing')}
                         disabled={creating}
                       >
-                        <option value="">No space (private room)</option>
-                        {spaces.map((space) => (
-                          <option key={space.roomId} value={space.roomId}>
-                            {space.name}
-                          </option>
-                        ))}
+                        <option value="new">Create a new hidden room</option>
+                        <option value="existing">Use an existing room</option>
                       </select>
                     </Row>
+                    {setupMode === 'new' && (
+                      <>
+                        <Row label="Room name">
+                          <input
+                            className={css.Input}
+                            value={roomName}
+                            onChange={(e) => setRoomName(e.target.value)}
+                            placeholder={OPTIONS_ROOM_NAME}
+                            disabled={creating}
+                          />
+                        </Row>
+                        <Row label="Create it in">
+                          <select
+                            className={css.Input}
+                            value={spaceId}
+                            onChange={(e) => setSpaceId(e.target.value)}
+                            disabled={creating}
+                          >
+                            <option value="">No space (private room)</option>
+                            {spaces.map((space) => (
+                              <option key={space.roomId} value={space.roomId}>
+                                {space.name}
+                              </option>
+                            ))}
+                          </select>
+                        </Row>
+                      </>
+                    )}
+                    {setupMode === 'existing' && (
+                      <>
+                        <Row label="Room">
+                          <select
+                            className={css.Input}
+                            value={existingRoomId}
+                            onChange={(e) => setExistingRoomId(e.target.value)}
+                            disabled={creating}
+                          >
+                            <option value="">Choose a room...</option>
+                            {existingRooms.map((room) => (
+                              <option key={room.roomId} value={room.roomId}>
+                                {room.name}
+                              </option>
+                            ))}
+                          </select>
+                        </Row>
+                        <Row label="Let others find it">
+                          <Switch variant="Primary" value={tagTopic} onChange={setTagTopic} />
+                        </Row>
+                        <Text size="T200" priority="300">
+                          The room is then hidden from the room lists in Diddy. You need permission
+                          to change its settings. With this switch on, [diddy-options] is added to
+                          its topic so Diddy clients in the same space join it automatically.
+                        </Text>
+                      </>
+                    )}
                     <Box alignItems="Center" gap="300">
                       <Button
                         size="300"
@@ -601,7 +670,7 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
                         onClick={handleCreate}
                       >
                         <Text size="B300">
-                          {creating ? 'Creating...' : 'Create Diddy Options room'}
+                          {creating ? 'Working...' : setupMode === 'existing' ? 'Use this room' : 'Create Diddy Options room'}
                         </Text>
                       </Button>
                       {created && (

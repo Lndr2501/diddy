@@ -70,6 +70,9 @@ export const useOptionsRooms = (mx: MatrixClient): Room[] => {
   return useMemo(() => getOptionsRooms(mx), [mx, version]);
 };
 
+/** Added to the topic so other clients can find the room in a space's hierarchy (any room name). */
+export const TOPIC_TAG = '[diddy-options]';
+
 /** Power levels that let every member write the Diddy event types (each user only their own key). */
 export const optionsRoomPowerLevels = (creatorId: string) => ({
   users: { [creatorId]: 100 },
@@ -88,7 +91,8 @@ export const optionsRoomPowerLevels = (creatorId: string) => ({
  */
 export const createOptionsRoom = async (
   mx: MatrixClient,
-  spaceId?: string
+  spaceId?: string,
+  name: string = OPTIONS_ROOM_NAME
 ): Promise<string> => {
   const me = mx.getSafeUserId();
   const initialState: { type: string; state_key: string; content: object }[] = [
@@ -109,8 +113,8 @@ export const createOptionsRoom = async (
     );
   }
   const { room_id: roomId } = await mx.createRoom({
-    name: OPTIONS_ROOM_NAME,
-    topic: 'Used by Diddy clients to share profiles and badges. Please do not rename or delete.',
+    name: name.trim() || OPTIONS_ROOM_NAME,
+    topic: `Used by Diddy clients to share profiles and badges. Please do not rename or delete. ${TOPIC_TAG}`,
     visibility: Visibility.Private,
     preset: Preset.PrivateChat,
     initial_state: initialState as never,
@@ -129,13 +133,56 @@ export const createOptionsRoom = async (
   return roomId;
 };
 
+/**
+ * Turns an existing room into the options room: adds the marker event and lets everyone write the
+ * Diddy event types. Needs permission to change power levels / state in that room.
+ */
+export const adoptRoomAsOptionsRoom = async (
+  mx: MatrixClient,
+  roomId: string,
+  tagTopic: boolean
+): Promise<void> => {
+  const room = mx.getRoom(roomId);
+  if (!room) throw new Error('Room not found.');
+  const powerLevels = room.currentState.getStateEvents(EventType.RoomPowerLevels, '')?.getContent() ?? {};
+  const events = {
+    ...(powerLevels.events ?? {}),
+    [PROFILE_EVENT]: 0,
+    [BADGE_DEF_EVENT]: 0,
+    [BADGE_AWARD_EVENT]: 0,
+  };
+  try {
+    await mx.sendStateEvent(roomId, EventType.RoomPowerLevels as never, { ...powerLevels, events } as never, '');
+    await mx.sendStateEvent(roomId, OPTIONS_MARKER_EVENT as never, { v: 1 } as never, '');
+  } catch (e) {
+    throw new Error(
+      `Could not use this room: you need permission to change its settings. (${
+        e instanceof Error ? e.message : String(e)
+      })`
+    );
+  }
+  if (tagTopic) {
+    const topic = room.currentState.getStateEvents(EventType.RoomTopic, '')?.getContent()?.topic ?? '';
+    if (!topic.includes(TOPIC_TAG)) {
+      await mx
+        .sendStateEvent(
+          roomId,
+          EventType.RoomTopic as never,
+          { topic: `${topic} ${TOPIC_TAG}`.trim() } as never,
+          ''
+        )
+        .catch(() => {});
+    }
+  }
+};
+
 /** Joins the options room of a space (a child named OPTIONS_ROOM_NAME) if there is one. */
 export const joinOptionsRoomOfSpace = async (mx: MatrixClient, spaceId: string): Promise<void> => {
   const hierarchy = await mx.getRoomHierarchy(spaceId, 50, 1);
   const candidate = hierarchy.rooms.find(
     (r) =>
       r.room_id !== spaceId &&
-      r.name === OPTIONS_ROOM_NAME &&
+      (r.name === OPTIONS_ROOM_NAME || (r.topic ?? '').includes(TOPIC_TAG)) &&
       mx.getRoom(r.room_id)?.getMyMembership() !== 'join'
   );
   if (!candidate) return;
