@@ -341,7 +341,8 @@ class Soundboard {
       await Promise.race([ctx.resume(), new Promise((resolve) => setTimeout(resolve, 800))]).catch(
         () => {}
       );
-      if (ctx.state !== 'running') return stream;
+      // the state may have changed while waiting (TypeScript narrowed it to the first check)
+      if ((ctx.state as AudioContextState) !== 'running') return stream;
     }
     let currentMic = mic;
     let source = ctx.createMediaStreamSource(new MediaStream([mic]));

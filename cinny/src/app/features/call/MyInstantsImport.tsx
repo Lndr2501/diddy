@@ -217,7 +217,7 @@ export function MyInstantsImport({ onClose }: MyInstantsImportProps) {
                   outlined
                   placeholder="Search term or MyInstants link"
                   value={input}
-                  onChange={(evt) => setInput(evt.target.value)}
+                  onChange={(evt: React.ChangeEvent<HTMLInputElement>) => setInput(evt.target.value)}
                   onKeyDown={(evt) => {
                     if (evt.key === 'Enter' && !busy) handleSearch();
                   }}

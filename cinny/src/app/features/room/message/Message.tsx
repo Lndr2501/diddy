@@ -964,7 +964,7 @@ export const Message = as<'div', MessageProps>(
                 </IconButton>
                 {!isThreadedMessage && (
                   <IconButton
-                    onClick={(ev) => onReplyClick(ev, true)}
+                    onClick={(ev: React.MouseEvent<HTMLButtonElement>) => onReplyClick(ev, true)}
                     data-event-id={mEvent.getId()}
                     variant="SurfaceVariant"
                     size="300"

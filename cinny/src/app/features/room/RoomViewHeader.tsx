@@ -347,7 +347,7 @@ function CallButton() {
             radii="400"
             ref={triggerRef}
             onClick={handleOpenMenu}
-            onContextMenu={(evt) => {
+            onContextMenu={(evt: React.MouseEvent<HTMLButtonElement>) => {
               evt.preventDefault();
               startCall(room, {
                 microphone: true,

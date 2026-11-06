@@ -2,6 +2,10 @@
 
 Statusbericht des Entwicklungsstands (Diddy, nach 1.1.0, kein neues Release).
 
+## Typcheck sauber (2026-11-06)
+
+- Ursache der 879 Diagnosen: TypeScript 4.9.4 kann die Typen von `matrix-js-sdk` 41.7.0 nicht auflösen. Mit TypeScript 5.6.3 blieben 22 echte Fehler; alle behoben (meist `as never` an Stellen mit eigenen Ereignistypen, Handler-Typen, ein echter Null-Fall in `profiles.ts`, `setAttribute('sandbox')`). `npm run typecheck` meldet jetzt **0 Fehler**. Der alte Baseline-Vergleich entfällt, jede Diagnose ist jetzt ein echter Fehler. Nur Dev-Werkzeug geändert (`typescript` 5.6.3 in package.json/Lock), Vite-Build unberührt.
+
 ## Profile für später beitretende Mitglieder (2026-11-06)
 
 - Entscheidung des Nutzers: Der Nachrichtenmodus ist der Standardweg, es sollen keine Admin-Rechte nötig sein (ein Admin legt den Raum einmal an und markiert ihn). State-Modus wird abgelehnt, weil State-Ereignisse nie verschlüsselt sind und der Schutz zählt. Umsetzung: Daten werden nur noch als State geschrieben, wenn der Raum **unverschlüsselt** ist **und** wir State schreiben dürfen (`stateTransport()` in `profiles.ts`, Rechteprüfung vorab statt erst `M_FORBIDDEN`). Ein nur vom Admin markierter Raum ohne Schreibrechte gilt jetzt als Nachrichtenmodus (vorher als State: Neuübermittlung und Backfill wurden dort übersprungen).

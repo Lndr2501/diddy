@@ -604,7 +604,7 @@ function onStateEvent(event: MatrixEvent) {
   if (type === EventType.RoomMember && attachedTo) {
     const roomId = event.getRoomId();
     const room = roomId ? attachedTo.getRoom(roomId) : null;
-    if (roomId && isOptionsRoom(room)) {
+    if (roomId && room && isOptionsRoom(room)) {
       notify();
       // a member who joins later cannot read the old events: answer the join with our own profile
       const membership = (event.getContent() as { membership?: string } | undefined)?.membership;

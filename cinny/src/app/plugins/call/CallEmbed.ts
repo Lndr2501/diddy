@@ -140,8 +140,10 @@ export class CallEmbed {
     const iframe = document.createElement('iframe');
 
     iframe.title = 'Call Embed';
-    iframe.sandbox =
-      'allow-forms allow-scripts allow-same-origin allow-popups allow-modals allow-downloads';
+    iframe.setAttribute(
+      'sandbox',
+      'allow-forms allow-scripts allow-same-origin allow-popups allow-modals allow-downloads'
+    );
     iframe.allow = 'microphone; camera; display-capture; autoplay; clipboard-write; fullscreen;';
     iframe.allowFullscreen = true;
     iframe.src = url;
