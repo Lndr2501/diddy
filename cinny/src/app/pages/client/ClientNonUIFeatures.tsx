@@ -31,6 +31,23 @@ import { APP_NAME } from '../../appInfo';
 import { useSpaceAutoJoinWorker } from '../../hooks/useSpaceAutoJoin';
 import { applyStoredAppIcon } from '../../plugins/appIcon';
 
+/**
+ * Plays a short notification sound and resets the element afterwards. An ended <audio> element
+ * stays registered as the "now playing" app, so a press on the media play/pause key would replay
+ * the notification sound instead of resuming the user's music (cinnyapp/cinny#3017).
+ */
+const playNotificationSound = (audio: HTMLAudioElement | null) => {
+  if (!audio) return;
+  audio.addEventListener(
+    'ended',
+    () => {
+      audio.load();
+    },
+    { once: true }
+  );
+  audio.play().catch(() => {});
+};
+
 function SystemEmojiFeature() {
   const [twitterEmoji] = useSetting(settingsAtom, 'twitterEmoji');
 
@@ -138,7 +155,7 @@ function InviteNotifications() {
 
   const playSound = useCallback(() => {
     const audioElement = audioRef.current;
-    audioElement?.play();
+    playNotificationSound(audioElement);
   }, []);
 
   useEffect(() => {
@@ -207,7 +224,7 @@ function MessageNotifications() {
 
   const playSound = useCallback(() => {
     const audioElement = audioRef.current;
-    audioElement?.play();
+    playNotificationSound(audioElement);
   }, []);
 
   useEffect(() => {
