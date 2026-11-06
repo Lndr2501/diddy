@@ -71,6 +71,30 @@ export const visibleHomeserver = (value: string): string => {
   }
 };
 
+export type ConnectionRow = { id: string; title: string; hint: string; current: boolean };
+
+/**
+ * The windows that can be opened: the original login first, then every saved connection.
+ * `currentId` is the profile id of this window, undefined for the original window.
+ */
+export const buildConnectionRows = (
+  profiles: ConnectionProfile[],
+  currentId: string | undefined
+): ConnectionRow[] => [
+  {
+    id: 'main',
+    title: 'Ursprüngliches Fenster',
+    hint: 'Deine bisherige Anmeldung',
+    current: currentId === undefined,
+  },
+  ...profiles.map((profile) => ({
+    id: profile.id,
+    title: visibleHomeserver(profile.server),
+    hint: `Eigene Anmeldung · ${profile.id.slice(0, 6)}`,
+    current: profile.id === currentId,
+  })),
+];
+
 export const listConnections = (): Promise<ConnectionProfile[]> => invoke('connection_profiles');
 export const openConnection = (id: string): Promise<void> =>
   invoke('open_connection_profile', { id });

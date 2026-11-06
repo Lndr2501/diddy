@@ -1,22 +1,29 @@
-import React, { FormEvent, useEffect, useId, useRef, useState } from 'react';
-import { Box, Button, Spinner, Text } from 'folds';
+import React, { FormEvent, MouseEvent, useEffect, useId, useRef, useState } from 'react';
+import { Box, Button, Icon, Icons, Menu, PopOut, RectCords, Spinner, Text } from 'folds';
+import FocusTrap from 'focus-trap-react';
+import { stopPropagation } from '../../utils/keyboard';
 import { SplashScreen } from '../splash-screen';
 import { canInvoke } from '../../plugins/tauri';
 import {
-  ConnectionProfile,
+  buildConnectionRows,
+  ConnectionRow,
   createConnection,
   getConnectionProfile,
   listConnections,
   openConnection,
   visibleHomeserver,
 } from '../../plugins/connections';
+import { ConnectionsMenu } from './AccountSwitcher';
+import * as switcher from './AccountSwitcher.css';
 import * as css from './ConnectionRecovery.css';
 
 export function ConnectionOverview({ open, onClose }: { open: boolean; onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const headingId = useId();
   const inputId = useId();
-  const [profiles, setProfiles] = useState<ConnectionProfile[]>([]);
+  const [rows, setRows] = useState<ConnectionRow[]>(() =>
+    buildConnectionRows([], getConnectionProfile()?.id)
+  );
   const [server, setServer] = useState('');
   const [error, setError] = useState<string>();
   const [pending, setPending] = useState(false);
@@ -37,7 +44,7 @@ export function ConnectionOverview({ open, onClose }: { open: boolean; onClose: 
     if (desktop) {
       listConnections().then(
         (data) => {
-          if (active) setProfiles(data);
+          if (active) setRows(buildConnectionRows(data, getConnectionProfile()?.id));
         },
         () => {
           if (active)
@@ -111,35 +118,20 @@ export function ConnectionOverview({ open, onClose }: { open: boolean; onClose: 
             Getrennte Anmeldungen sind in der Diddy-Desktop-App verfügbar.
           </Text>
         )}
-        <div className={css.Connection}>
-          <Box direction="Column" gap="100">
-            <Text size="L400">Ursprüngliches Fenster</Text>
-            <Text size="T200" priority="300">
-              Deine bisherige Anmeldung
-            </Text>
-          </Box>
-          <Button
-            variant="Secondary"
-            disabled={!desktop || !current || pending}
-            onClick={() => void act(() => openConnection('main'))}
-          >
-            <Text>{current ? 'Öffnen' : 'Dieses Fenster'}</Text>
-          </Button>
-        </div>
-        {profiles.map((profile) => (
-          <div key={profile.id} className={css.Connection}>
+        {rows.map((row) => (
+          <div key={row.id} className={css.Connection}>
             <Box direction="Column" gap="100" style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
-              <Text size="L400">{visibleHomeserver(profile.server)}</Text>
+              <Text size="L400">{row.title}</Text>
               <Text size="T200" priority="300">
-                Eigene Anmeldung · {profile.id.slice(0, 6)}
+                {row.current ? 'Dieses Fenster' : row.hint}
               </Text>
             </Box>
             <Button
               variant="Secondary"
-              disabled={pending || current?.id === profile.id}
-              onClick={() => void act(() => openConnection(profile.id))}
+              disabled={!desktop || pending || row.current}
+              onClick={() => void act(() => openConnection(row.id))}
             >
-              <Text>{current?.id === profile.id ? 'Dieses Fenster' : 'Öffnen'}</Text>
+              <Text>{row.current ? 'Dieses Fenster' : 'Öffnen'}</Text>
             </Button>
           </div>
         ))}
@@ -191,14 +183,75 @@ export function ConnectionOverview({ open, onClose }: { open: boolean; onClose: 
   );
 }
 
+/** Top-right entry: shows how many windows exist and opens the same menu as the account switcher. */
 export function ConnectionsButton() {
-  const [open, setOpen] = useState(false);
+  const [cords, setCords] = useState<RectCords>();
+  const [manage, setManage] = useState(false);
+  const [count, setCount] = useState(1);
+  useEffect(() => {
+    if (!canInvoke()) return undefined;
+    let cancelled = false;
+    listConnections().then(
+      (profiles) => {
+        if (!cancelled) setCount(1 + profiles.length);
+      },
+      () => {}
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [cords]);
+  const toggle = (event: MouseEvent<HTMLButtonElement>) =>
+    setCords(cords ? undefined : event.currentTarget.getBoundingClientRect());
+  const current = getConnectionProfile();
   return (
     <>
-      <Button variant="Secondary" fill="None" onClick={() => setOpen(true)}>
-        <Text size="T200">Verbindungen</Text>
-      </Button>
-      <ConnectionOverview open={open} onClose={() => setOpen(false)} />
+      <PopOut
+        anchor={cords}
+        position="Bottom"
+        align="End"
+        content={
+          <FocusTrap
+            focusTrapOptions={{
+              returnFocusOnDeactivate: false,
+              initialFocus: false,
+              onDeactivate: () => setCords(undefined),
+              clickOutsideDeactivates: true,
+              escapeDeactivates: stopPropagation,
+            }}
+          >
+            <Menu>
+              <ConnectionsMenu
+                onManage={() => {
+                  setCords(undefined);
+                  setManage(true);
+                }}
+                onDone={() => setCords(undefined)}
+              />
+            </Menu>
+          </FocusTrap>
+        }
+      >
+        <Button
+          variant="Secondary"
+          fill="None"
+          onClick={toggle}
+          aria-haspopup="menu"
+          aria-expanded={!!cords}
+          aria-label="Verbindungen"
+        >
+          <span className={switcher.Pill}>
+            <Icon size="100" src={Icons.Link} />
+            <Text size="T200">
+              {current
+                ? visibleHomeserver(current.server).replace(/^https?:\/\//, '')
+                : 'Verbindungen'}
+              {count > 1 ? ` · ${count}` : ''}
+            </Text>
+          </span>
+        </Button>
+      </PopOut>
+      <ConnectionOverview open={manage} onClose={() => setManage(false)} />
     </>
   );
 }
