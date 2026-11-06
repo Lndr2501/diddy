@@ -45,6 +45,37 @@
 - Automatisches Scrollen bei hohen Nachrichten blieb zu kurz (Cinny #2661)
 - Keine Phantom-Badges in überbrückten Räumen (Cinny #2588)
 
+### Profilsystem und Zusammenarbeit zwischen Diddy-Clients
+
+- Versteckter Datenraum "Diddy Options": neuer Raum oder vorhandener Raum, in dem Diddy-Clients Profile und Badges austauschen; unsichtbar in allen Listen (sichtbar mit Developer Tools)
+- Zustandsmodus (Admin) und Nachrichtenmodus (ohne Admin-Rechte, funktioniert auch in verschlüsselten Räumen)
+- Profil-Editor unter Einstellungen > Profile: Schriftart, Farbe oder Verlauf, Effekte, Karten-Banner (auch GIF), Bio, Namensschild, animierter Avatar, Status, mit Live-Vorschau
+- Banner, Avatar und Namensschild lassen sich per Ziehen und Zoom ausrichten
+- Badges: 41 eingebaute, eigene Badges, durchsuchbare Badge-Bibliothek, jeder darf Badges vergeben
+- Status (Online, Abwesend, Nicht stören, Unsichtbar) im Profil-Panel unten links; Nicht stören schaltet Töne und Desktop-Meldungen ab
+- Spam-Schutz: nur aktuelle Mitglieder zählen, Größen- und Mengenlimits, Prüfung aller fremden Daten, Admin kann Spammer bannen
+- Raum-Auswahl zeigt auch noch nicht beigetretene Räume aus den eigenen Spaces ("Join and use"), Debug-Info im Profil
+- Willkommens-Leitfaden für neue Nutzer, erkennt Diddy-Server am Raum-Namen "Diddy Options" oder am Marker [diddy-options] im Thema
+
+### Calls und Audio
+
+- Eingabe- und Ausgabegerät sowie Lautstärke neben Mikro und Kopfhörer wählbar
+- Neue Call-Leiste: Spotlight, Reactions und Einstellungen als direkte Knöpfe
+- Schalter "Voice processing" (Echo, Rauschfilter, automatische Lautstärke), standardmäßig aus, damit Musik im Call nicht verändert wird
+- Mute-Töne, ein gemeinsamer Audio-Kontext, Ausgabegerät wird nur bei Änderung gesetzt
+- Neue Schieberegler mit sichtbarer Füllung und Knopf
+
+### Behoben (Fehler dieser Runde)
+
+- Raum-Avatar im Header füllte den ganzen Chat (fehlender Rahmen), ebenso beim Reply-Avatar und beim Space-Badge
+- Status-Menü schließt bei Klick daneben, Escape und zweitem Klick
+- Stream ließ sich nach dem Beenden nicht neu starten: Umbau der Stream-Audio-Technik zurückgenommen
+- Keychain-Dialog kam bei jedem Start, weil die Icon-Änderung die Signatur der App beschädigte; das App-Paket wird nicht mehr verändert
+- Absturz durch bedingten React-Hook in der Seitenleiste
+- Markdown-Listen konnten Text verschlucken ("b. foo")
+- Entwürfe: Wettlauf beim Raumwechsel und Speicherfehler abgesichert
+- Raum verlassen: Raum wird danach vergessen, damit er verschwindet
+
 ## 1.1.0
 
 - Erste Version von Diddy: Matrix-Chat-Client für macOS und Linux, basiert auf Cinny
