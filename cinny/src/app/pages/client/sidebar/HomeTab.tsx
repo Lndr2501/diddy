@@ -1,4 +1,4 @@
-import React, { MouseEventHandler, forwardRef, useState } from 'react';
+import React, { MouseEventHandler, forwardRef, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box, Icon, Icons, Menu, MenuItem, PopOut, RectCords, Text, config, toRem } from 'folds';
 import { useAtomValue } from 'jotai';
@@ -19,6 +19,8 @@ import {
 } from '../../../components/sidebar';
 import * as css from '../../../components/sidebar/Sidebar.css';
 import { useHomeSelected } from '../../../hooks/router/useHomeSelected';
+import { useDirectSelected } from '../../../hooks/router/useDirectSelected';
+import { useDirectRooms } from '../direct/useDirectRooms';
 import { UnreadBadge } from '../../../components/unread-badge';
 import { ScreenSize, useScreenSizeContext } from '../../../hooks/useScreenSize';
 import { useNavToActivePathAtom } from '../../../state/hooks/navToActivePath';
@@ -71,8 +73,13 @@ export function HomeTab() {
   const mDirects = useAtomValue(mDirectAtom);
   const roomToParents = useAtomValue(roomToParentsAtom);
   const orphanRooms = useOrphanRooms(mx, allRoomsAtom, mDirects, roomToParents);
-  const homeUnread = useRoomsUnread(orphanRooms, roomToUnreadAtom);
-  const homeSelected = useHomeSelected();
+  const directRooms = useDirectRooms();
+  const homeAndDirectRooms = useMemo(
+    () => [...orphanRooms, ...directRooms],
+    [orphanRooms, directRooms]
+  );
+  const homeUnread = useRoomsUnread(homeAndDirectRooms, roomToUnreadAtom);
+  const homeSelected = useHomeSelected() || useDirectSelected();
   const [menuAnchor, setMenuAnchor] = useState<RectCords>();
 
   const handleHomeClick = () => {

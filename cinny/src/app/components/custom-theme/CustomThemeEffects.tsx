@@ -27,9 +27,37 @@ const toCssVars = (palette: ReturnType<typeof darkPalette>, panelAlpha?: number)
   return vars;
 };
 
+const PANEL_TOKENS: [string, string][] = [];
+['Background', 'Surface', 'SurfaceVariant'].forEach((category) => {
+  ['Container', 'ContainerHover', 'ContainerActive'].forEach((key) => {
+    const name = cssVarName(
+      (color as unknown as Record<string, Record<string, string>>)[category][key]
+    );
+    if (name) PANEL_TOKENS.push([name, `${category}.${key}`]);
+  });
+});
+
 /**
- * Applies the custom theme: colors as inline CSS variables on <body>, plus a fixed layer behind the
- * app for the gradient / image / GIF / video. Renders nothing while another theme is active.
+ * Makes the panels of the active (non-custom) theme translucent so the background shows through:
+ * reads the theme's own panel colors and re-sets them with the given opacity.
+ */
+const makeThemePanelsTranslucent = (opacity: number): (() => void) => {
+  const computed = getComputedStyle(document.body);
+  const pct = Math.round(opacity * 100);
+  const names: string[] = [];
+  PANEL_TOKENS.forEach(([name]) => {
+    const value = computed.getPropertyValue(name).trim();
+    if (!value) return;
+    document.body.style.setProperty(name, `color-mix(in srgb, ${value} ${pct}%, transparent)`);
+    names.push(name);
+  });
+  return () => names.forEach((name) => document.body.style.removeProperty(name));
+};
+
+/**
+ * Applies the custom theme colors (inline CSS variables on <body>) and the global background: a
+ * fixed layer behind the app for a gradient / image / GIF / video. The background works with every
+ * theme, the colors only with the "Custom" theme.
  */
 export function CustomThemeEffects() {
   const theme = useActiveTheme();
@@ -38,8 +66,8 @@ export function CustomThemeEffects() {
   const [mediaUrl, setMediaUrl] = useState<string>();
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  const hasMedia = active && config.mediaKind !== undefined;
-  const hasBackdrop = active && (config.gradient || hasMedia);
+  const hasMedia = config.mediaKind !== undefined;
+  const hasBackdrop = config.gradient || hasMedia;
 
   // colors
   useEffect(() => {
@@ -53,6 +81,20 @@ export function CustomThemeEffects() {
       Object.keys(vars).forEach((name) => document.body.style.removeProperty(name));
     };
   }, [active, hasBackdrop, config.background, config.accent, config.text, config.surfaceOpacity]);
+
+  // translucent panels for the other themes
+  useEffect(() => {
+    if (active || !hasBackdrop) return undefined;
+    let undo: (() => void) | undefined;
+    // wait until the theme classes are applied to <body>
+    const frame = window.requestAnimationFrame(() => {
+      undo = makeThemePanelsTranslucent(config.surfaceOpacity);
+    });
+    return () => {
+      window.cancelAnimationFrame(frame);
+      undo?.();
+    };
+  }, [active, hasBackdrop, theme.id, config.surfaceOpacity]);
 
   // background file
   useEffect(() => {
@@ -95,9 +137,12 @@ export function CustomThemeEffects() {
 
   if (!hasBackdrop) return null;
 
-  const background = config.gradient
-    ? `linear-gradient(${config.gradientAngle}deg, ${config.gradientFrom}, ${config.gradientTo})`
-    : config.background;
+  let background = 'transparent';
+  if (config.gradient) {
+    background = `linear-gradient(${config.gradientAngle}deg, ${config.gradientFrom}, ${config.gradientTo})`;
+  } else if (active) {
+    background = config.background;
+  }
 
   return createPortal(
     <div

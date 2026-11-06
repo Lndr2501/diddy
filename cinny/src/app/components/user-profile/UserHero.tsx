@@ -32,17 +32,14 @@ export function UserHero({ userId, avatarUrl, presence }: UserHeroProps) {
 
   return (
     <Box direction="Column" className={css.UserHero}>
+      {/* A blurred, scaled avatar looked badly stretched, so the banner is a plain color gradient. */}
       <div
         className={css.UserHeroCoverContainer}
         style={{
           backgroundColor: colorMXID(userId),
-          filter: avatarUrl ? undefined : 'brightness(50%)',
+          backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.18), rgba(0,0,0,0.45))',
         }}
-      >
-        {avatarUrl && (
-          <img className={css.UserHeroCover} src={avatarUrl} alt={userId} draggable="false" />
-        )}
-      </div>
+      />
       <div className={css.UserHeroAvatarContainer}>
         <AvatarPresence
           className={css.UserAvatarContainer}

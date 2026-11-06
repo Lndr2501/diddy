@@ -63,6 +63,45 @@ function Slider({ label, value, min, max, step, format, onChange }: SliderProps)
 
 export function CustomThemeSettings() {
   const config = useCustomTheme();
+  const set = (patch: Partial<CustomThemeConfig>) => updateCustomTheme(patch);
+
+  return (
+    <Box direction="Column" gap="100">
+      <Text size="L400">Custom Theme</Text>
+      <Text size="T200" priority="300">
+        Pick the &quot;Custom&quot; theme above to use these colors.
+      </Text>
+
+      <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column" gap="400">
+        <SettingTile title="Colors">
+          <Box gap="400" wrap="Wrap">
+            <ColorField label="Accent" value={config.accent} onChange={(accent) => set({ accent })} />
+            <ColorField
+              label="Background"
+              value={config.background}
+              onChange={(background) => set({ background })}
+            />
+            <ColorField label="Text" value={config.text} onChange={(text) => set({ text })} />
+          </Box>
+        </SettingTile>
+      </SequenceCard>
+
+      <Box>
+        <Button size="300" variant="Secondary" fill="None" onClick={() => set({
+              accent: DEFAULT_CUSTOM_THEME.accent,
+              background: DEFAULT_CUSTOM_THEME.background,
+              text: DEFAULT_CUSTOM_THEME.text,
+            })}>
+          <Text size="B300">Reset colors</Text>
+        </Button>
+      </Box>
+    </Box>
+  );
+}
+
+/** Gradient, image, GIF or video behind the whole app. Works with every theme. */
+export function BackgroundSettings() {
+  const config = useCustomTheme();
   const fileRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string>();
 
@@ -82,24 +121,10 @@ export function CustomThemeSettings() {
 
   return (
     <Box direction="Column" gap="100">
-      <Text size="L400">Custom Theme</Text>
+      <Text size="L400">Background</Text>
       <Text size="T200" priority="300">
-        Pick the &quot;Custom&quot; theme above to use these settings.
+        Shown behind the app with any theme.
       </Text>
-
-      <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column" gap="400">
-        <SettingTile title="Colors">
-          <Box gap="400" wrap="Wrap">
-            <ColorField label="Accent" value={config.accent} onChange={(accent) => set({ accent })} />
-            <ColorField
-              label="Background"
-              value={config.background}
-              onChange={(background) => set({ background })}
-            />
-            <ColorField label="Text" value={config.text} onChange={(text) => set({ text })} />
-          </Box>
-        </SettingTile>
-      </SequenceCard>
 
       <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column" gap="400">
         <SettingTile
@@ -201,11 +226,6 @@ export function CustomThemeSettings() {
         )}
       </SequenceCard>
 
-      <Box>
-        <Button size="300" variant="Secondary" fill="None" onClick={() => set({ ...DEFAULT_CUSTOM_THEME })}>
-          <Text size="B300">Reset colors</Text>
-        </Button>
-      </Box>
     </Box>
   );
 }

@@ -51,7 +51,7 @@ import { useMessageSpacingItems } from '../../../hooks/useMessageSpacing';
 import { useDateFormatItems } from '../../../hooks/useDateFormat';
 import { SequenceCardStyle } from '../styles.css';
 import { AppIconPicker } from './AppIconPicker';
-import { CustomThemeSettings } from './CustomThemeSettings';
+import { BackgroundSettings, CustomThemeSettings } from './CustomThemeSettings';
 import { canChangeAppIcon } from '../../../plugins/appIcon';
 
 type ThemeSelectorProps = {
@@ -1030,6 +1030,7 @@ export function General({ requestClose }: GeneralProps) {
           <PageContent>
             <Box direction="Column" gap="700">
               <Appearance />
+              <BackgroundSettings />
               <CustomThemeSettings />
               <DateAndTime />
               <Editor />
