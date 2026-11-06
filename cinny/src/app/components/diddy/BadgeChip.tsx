@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Text, Tooltip, TooltipProvider } from 'folds';
 import { BadgeDef } from '../../plugins/diddy/types';
 import { useMxcUrl } from '../../plugins/diddy/media';
+import { safeColor } from '../../plugins/diddy/sanitize';
 import * as css from './BadgeChip.css';
 
 const DEFAULT_COLOR = '#9B9BAA';
@@ -18,7 +19,11 @@ export function BadgeChip({ badge, size = 18 }: BadgeChipProps) {
     // thumbnails of GIFs are static, so the full file is requested to keep them animated
     { animated: true }
   );
-  const badgeColor = badge.color ?? DEFAULT_COLOR;
+  const [failedUrl, setFailedUrl] = useState<string>();
+  const badgeColor = safeColor(badge.color) ?? DEFAULT_COLOR;
+  const showImage = !!imageUrl && imageUrl !== failedUrl;
+  // text fallback: the emoji, or the first letter of the name when there is none
+  const label = badge.emoji?.trim() || Array.from(badge.name.trim())[0]?.toUpperCase() || '?';
 
   return (
     <TooltipProvider
@@ -45,10 +50,17 @@ export function BadgeChip({ badge, size = 18 }: BadgeChipProps) {
             border: `1px solid color-mix(in srgb, ${badgeColor} 45%, transparent)`,
           }}
         >
-          {imageUrl ? (
-            <img className={css.BadgeImage} src={imageUrl} alt={badge.name} draggable={false} />
+          {showImage ? (
+            <img
+              className={css.BadgeImage}
+              src={imageUrl}
+              alt={badge.name}
+              draggable={false}
+              loading="lazy"
+              onError={() => setFailedUrl(imageUrl)}
+            />
           ) : (
-            badge.emoji
+            label
           )}
         </span>
       )}

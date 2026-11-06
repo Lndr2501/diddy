@@ -1,4 +1,4 @@
-import React, { CSSProperties, ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import React, { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Button, Icon, IconButton, Icons, Scroll, Switch, Text, color, config } from 'folds';
 import { Page, PageContent, PageHeader } from '../../../components/page';
 import { SequenceCard } from '../../../components/sequence-card';
@@ -32,6 +32,8 @@ import {
 import { BadgeEditor } from './BadgeEditor';
 import * as css from './DiddyProfileSettings.css';
 import { RangeInput } from '../../../components/diddy/RangeInput';
+import { buildNameStyleCss } from '../../../components/diddy/DiddyName';
+import { safeAngle, safeColor } from '../../../plugins/diddy/sanitize';
 
 type Draft = Omit<DiddyProfile, 'v' | 'shownBadges'>;
 
@@ -41,12 +43,13 @@ const STATUSES: { id: DiddyStatus; label: string; color: string }[] = [
   { id: 'dnd', label: 'Do not disturb', color: '#ED4245' },
   { id: 'invisible', label: 'Invisible', color: '#80848E' },
 ];
-const statusColor = (s?: DiddyStatus) => STATUSES.find((x) => x.id === (s ?? 'online'))!.color;
+const statusColor = (s?: DiddyStatus) =>
+  (STATUSES.find((x) => x.id === (s ?? 'online')) ?? STATUSES[0]).color;
 
 const EFFECTS: NameEffect[] = ['none', 'glow', 'shadow', 'outline'];
 const MAX_BIO = 160;
 
-// JSON with sorted keys and no undefined/empty values, to compare drafts reliably
+// JSON with sorted keys and without undefined / empty / "off" values, to compare drafts reliably
 const stable = (value: unknown): unknown => {
   if (Array.isArray(value)) return value.map(stable);
   if (value && typeof value === 'object') {
@@ -55,7 +58,17 @@ const stable = (value: unknown): unknown => {
       .sort()
       .forEach((k) => {
         const v = (value as Record<string, unknown>)[k];
-        if (v !== undefined && v !== '') out[k] = stable(v);
+        if (v === undefined || v === '' || v === false || (k === 'effect' && v === 'none')) return;
+        const next = stable(v);
+        if (
+          next &&
+          typeof next === 'object' &&
+          !Array.isArray(next) &&
+          Object.keys(next as object).length === 0
+        ) {
+          return;
+        }
+        out[k] = next;
       });
     return out;
   }
@@ -71,50 +84,8 @@ const toDraft = (profile: DiddyProfile | undefined): Draft => {
 
 // --- name style --------------------------------------------------------------------------------
 
-const buildNameCss = (ns: NameStyle | undefined): CSSProperties => {
-  const out: CSSProperties = {};
-  if (!ns) return out;
-  const font = NAME_FONTS.find((f) => f.id === ns.font);
-  if (font && font.id !== 'default') out.fontFamily = font.css;
-  if (ns.bold) out.fontWeight = 700;
-  if (ns.italic) out.fontStyle = 'italic';
-  const gradient = ns.gradient;
-  const solid = gradient ? undefined : ns.color || undefined;
-  const effectColor = solid ?? gradient?.from;
-  if (gradient) {
-    out.backgroundImage = `linear-gradient(${gradient.angle ?? 90}deg, ${gradient.from}, ${gradient.to})`;
-    out.WebkitBackgroundClip = 'text';
-    out.backgroundClip = 'text';
-    out.color = 'transparent';
-    out.WebkitTextFillColor = 'transparent';
-  } else if (solid) {
-    out.color = solid;
-  }
-  switch (ns.effect) {
-    case 'glow':
-      if (effectColor) {
-        if (gradient) out.filter = `drop-shadow(0 0 4px ${effectColor})`;
-        else out.textShadow = `0 0 8px ${effectColor}`;
-      }
-      break;
-    case 'shadow':
-      if (gradient) out.filter = 'drop-shadow(0 2px 2px rgba(0,0,0,.6))';
-      else out.textShadow = '0 2px 4px rgba(0,0,0,.6)';
-      break;
-    case 'outline':
-      if (effectColor) {
-        (out as Record<string, string>).WebkitTextStroke = `0.5px ${effectColor}`;
-        if (gradient) out.WebkitTextFillColor = 'transparent';
-      }
-      break;
-    default:
-      break;
-  }
-  return out;
-};
-
 function PreviewName({ name, style, size }: { name: string; style?: NameStyle; size?: number }) {
-  const cssProps = useMemo(() => buildNameCss(style), [style]);
+  const cssProps = useMemo(() => buildNameStyleCss(style), [style]);
   return (
     <span
       style={{
@@ -293,12 +264,17 @@ function ProfilePreview({ userId, displayName, avatarUrl, draft }: PreviewProps)
   const animatedUrl = useMxcUrl(draft.animatedAvatarMxc);
   const plateUrl = useMxcUrl(draft.nameplate?.imageMxc);
   const avatarSrc = animatedUrl ?? avatarUrl;
-  const accent = card?.accent;
-  const plateColor = draft.nameplate?.color;
+  const accent = safeColor(card?.accent);
+  const plateColor = safeColor(draft.nameplate?.color);
 
-  const headerBg = card?.from
-    ? `linear-gradient(${card.angle ?? 135}deg, ${card.from}, ${card.to ?? card.from})`
-    : color.SurfaceVariant.Container;
+  const headerFrom = safeColor(card?.from);
+  const headerTo = safeColor(card?.to);
+  let headerBg: string = color.SurfaceVariant.Container;
+  if (headerFrom && headerTo) {
+    headerBg = `linear-gradient(${safeAngle(card?.angle, 135)}deg, ${headerFrom}, ${headerTo})`;
+  } else if (headerFrom || headerTo) {
+    headerBg = headerFrom ?? headerTo ?? headerBg;
+  }
 
   const avatar = (size: number, dot: number) => (
     <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
@@ -351,7 +327,7 @@ function ProfilePreview({ userId, displayName, avatarUrl, draft }: PreviewProps)
       <Text size="L400">Preview</Text>
       <div
         className={css.Card}
-        style={accent ? { borderColor: accent, boxShadow: `0 0 0 1px ${accent}55` } : undefined}
+        style={accent ? { borderColor: accent, boxShadow: `0 0 0 1px color-mix(in srgb, ${accent} 33%, transparent)` } : undefined}
       >
         <div
           style={{
@@ -393,7 +369,7 @@ function ProfilePreview({ userId, displayName, avatarUrl, draft }: PreviewProps)
               }}
             />
             <Text size="T200" priority="300">
-              {STATUSES.find((s) => s.id === (draft.status ?? 'online'))!.label}
+              {(STATUSES.find((s) => s.id === (draft.status ?? 'online')) ?? STATUSES[0]).label}
             </Text>
           </div>
           {accent && (
@@ -428,7 +404,7 @@ function ProfilePreview({ userId, displayName, avatarUrl, draft }: PreviewProps)
             style={{
               position: 'absolute',
               inset: 0,
-              background: `linear-gradient(90deg, ${plateColor}66, ${plateColor}11)`,
+              background: `linear-gradient(90deg, color-mix(in srgb, ${plateColor} 40%, transparent), color-mix(in srgb, ${plateColor} 7%, transparent))`,
             }}
           />
         )}
@@ -752,6 +728,8 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
                 <div
                   className={css.Editor}
                   style={hasOptionsRoom ? undefined : { opacity: 0.5, pointerEvents: 'none' }}
+                  aria-disabled={!hasOptionsRoom}
+                  {...(hasOptionsRoom ? {} : ({ inert: '' } as object))}
                 >
                   <Section title="Display name style">
                     <Row label="Font">
@@ -876,13 +854,26 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
                       <ColorField
                         value={draft.card?.from}
                         fallback="#3a3f5c"
-                        onChange={(c) => patchCard({ from: c, to: draft.card?.to ?? c })}
+                        onChange={(c) => patchCard({ from: c })}
                       />
                       <ColorField
                         value={draft.card?.to}
                         fallback="#3a3f5c"
-                        onChange={(c) => patchCard({ to: c, from: draft.card?.from ?? c })}
+                        onChange={(c) => patchCard({ to: c })}
                       />
+                      {(draft.card?.from || draft.card?.to || draft.card?.angle !== undefined) && (
+                        <Button
+                          size="300"
+                          variant="Secondary"
+                          fill="None"
+                          radii="300"
+                          onClick={() =>
+                            patchCard({ from: undefined, to: undefined, angle: undefined })
+                          }
+                        >
+                          <Text size="B300">Clear</Text>
+                        </Button>
+                      )}
                     </Row>
                     <Row label="Header angle">
                       <AngleField

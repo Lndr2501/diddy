@@ -1,7 +1,8 @@
 import { Box, Button, config, Icon, Icons, Text } from 'folds';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UserHero, UserHeroName, safeColor } from './UserHero';
+import { UserHero, UserHeroName } from './UserHero';
+import { safeColor } from '../../plugins/diddy/sanitize';
 import * as css from './styles.css';
 import { useDiddyProfile } from '../../plugins/diddy/profiles';
 import { AwardBadgeButton } from '../diddy/AwardBadgeMenu';
@@ -89,7 +90,7 @@ export function UserRoomProfile({ userId }: UserRoomProfileProps) {
       {accent && (
         <div
           className={css.CardRing}
-          style={{ boxShadow: `inset 0 0 0 2px ${accent}, inset 0 0 16px ${accent}55` }}
+          style={{ boxShadow: `inset 0 0 0 2px ${accent}, inset 0 0 16px color-mix(in srgb, ${accent} 33%, transparent)` }}
         />
       )}
       <UserHero

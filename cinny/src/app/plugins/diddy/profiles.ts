@@ -32,6 +32,7 @@ import {
   isLightOptionsRoom,
   LIGHT_ROOMS_EVENT,
 } from './optionsRoom';
+import { sanitizeBadgeDef, sanitizeProfile } from './sanitize';
 
 // --- change tracking ---------------------------------------------------------------------------
 
@@ -239,8 +240,8 @@ const useDiddyVersion = (mx: MatrixClient): number => {
 export const readProfile = (mx: MatrixClient, userId: string): DiddyProfile | undefined => {
   const rooms = getOptionsRooms(mx);
   for (let i = 0; i < rooms.length; i += 1) {
-    const content = readData(rooms[i], PROFILE_EVENT, userId)?.content;
-    if (content && content.v === 1) return content as DiddyProfile;
+    const profile = sanitizeProfile(readData(rooms[i], PROFILE_EVENT, userId)?.content);
+    if (profile) return profile;
   }
   return undefined;
 };
@@ -278,17 +279,18 @@ const readCustomBadges = (mx: MatrixClient): BadgeDef[] => {
   });
   const defs: BadgeDef[] = [];
   all.forEach((candidates, id) => {
+    // global badges ship with the app: custom events can never redefine them
+    if (id.length > 64 || GLOBAL_BADGES.some((g) => g.id === id)) return;
     const valid = candidates
-      .filter((c) => !!c.sender && !!c.content.name)
+      .filter((c) => !!c.sender && !!sanitizeBadgeDef(c.content, id))
       .filter((c) => c.content.createdBy === undefined || c.content.createdBy === c.sender)
       .sort((a, b) => a.ts - b.ts);
     if (valid.length === 0) return;
     // first writer wins: only the creator (oldest event) may change a definition afterwards
     const owner = valid[0].sender;
     const chosen = valid.filter((c) => c.sender === owner).pop();
-    if (chosen) {
-      defs.push({ ...(chosen.content as unknown as BadgeDef), id, createdBy: chosen.sender });
-    }
+    const def = chosen && sanitizeBadgeDef(chosen.content, id);
+    if (chosen && def) defs.push({ ...def, createdBy: chosen.sender });
   });
   return defs;
 };
@@ -311,10 +313,14 @@ const readAwards = (mx: MatrixClient, userId: string, defs: BadgeDef[]): Awarded
       if (!key || key.userId !== userId) return;
       const data = readData(room, BADGE_AWARD_EVENT, stateKey);
       // an empty content is a revoked award; the giver is the real event sender, not content.by
-      if (!data?.content.by || !data.sender) return;
+      if (typeof data?.content.by !== 'string' || !data.content.by || !data.sender) return;
       const def = byId.get(key.badgeId);
       if (def) {
-        const award: BadgeAward = { ...(data.content as unknown as BadgeAward), by: data.sender };
+        const at = data.content.at;
+        const award: BadgeAward = {
+          by: data.sender,
+          at: typeof at === 'number' && Number.isFinite(at) ? at : data.ts,
+        };
         result.set(def.id, { ...def, award });
       }
     });

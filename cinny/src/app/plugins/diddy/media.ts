@@ -2,6 +2,7 @@ import { MatrixClient } from 'matrix-js-sdk';
 import { mxcUrlToHttp } from '../../utils/matrix';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
+import { safeMxc } from './sanitize';
 
 export const MAX_DIDDY_MEDIA_BYTES = 8 * 1024 * 1024;
 
@@ -33,15 +34,17 @@ export const useMxcUrl = (
 ): string | undefined => {
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
-  if (!mxc) return undefined;
+  // remote data is untrusted: only well-formed mxc:// uris become urls
+  const safe = safeMxc(mxc);
+  if (!safe) return undefined;
   return (
     mxcUrlToHttp(
       mx,
-      mxc,
+      safe,
       useAuthentication,
       size && !options?.animated ? size.w : undefined,
       size && !options?.animated ? size.h : undefined,
       size && !options?.animated ? 'crop' : undefined
-    ) ?? undefined
+    ) || undefined
   );
 };

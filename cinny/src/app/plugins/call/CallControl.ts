@@ -4,6 +4,7 @@ import EventEmitter from 'events';
 import { CallControlState } from './CallControlState';
 import { diag } from '../diagnostics';
 import { applyAudioOutput, subscribeAudioPrefs } from './audioDevices';
+import { screenShareAudio } from './screenShareAudio';
 import { ElementMediaStateDetail, ElementMediaStatePayload, ElementWidgetActions } from './types';
 
 export enum CallControlEvent {
@@ -25,7 +26,12 @@ export class CallControl extends EventEmitter implements CallControlState {
 
   private readonly stopAudioPrefs: () => void;
 
-  private readonly outputTimer: number;
+  private mediaObserver?: MutationObserver;
+
+  private outputTimer?: number;
+
+  /** <video> elements WE muted because the user is deafened (unmuted again on un-deafen). */
+  private deafMutedVideos = new WeakSet<HTMLMediaElement>();
 
   private restarting = false;
 
@@ -93,10 +99,9 @@ export class CallControl extends EventEmitter implements CallControlState {
     this.bodyMutationObserver = new MutationObserver(this.onBodyMutation.bind(this));
     this.controlMutationObserver = new MutationObserver(this.onControlMutation.bind(this));
 
-    // Output device / volume preferences: apply when they change, and regularly because Element
-    // Call creates new audio elements whenever somebody joins.
-    this.stopAudioPrefs = subscribeAudioPrefs(() => this.applyOutput());
-    this.outputTimer = window.setInterval(() => this.applyOutput(), 3000);
+    // Output device / volume preferences: apply when they change, and when Element Call adds or
+    // removes media elements (somebody joins / shares), debounced.
+    this.stopAudioPrefs = subscribeAudioPrefs(() => this.scheduleApplyOutput());
   }
 
   public getState(): CallControlState {
@@ -128,12 +133,17 @@ export class CallControl extends EventEmitter implements CallControlState {
       audio_enabled: this.microphone,
       video_enabled: this.video,
     });
-    this.setSound(this.sound);
+    this.setSound();
     this.emitStateUpdate();
   }
 
   public startObserving() {
     if (!this.document) return;
+
+    this.mediaObserver?.disconnect();
+    this.mediaObserver = new MutationObserver(() => this.scheduleApplyOutput());
+    this.mediaObserver.observe(this.document, { childList: true, subtree: true });
+    this.scheduleApplyOutput();
 
     this.bodyMutationObserver.observe(this.document.body, {
       childList: true,
@@ -177,7 +187,7 @@ export class CallControl extends EventEmitter implements CallControlState {
   }
 
   public applySound() {
-    this.setSound(this.sound);
+    this.setSound();
   }
 
   private async setMediaState(state: ElementMediaStatePayload) {
@@ -190,15 +200,23 @@ export class CallControl extends EventEmitter implements CallControlState {
     });
   }
 
-  private setSound(sound: boolean): void {
-    const callDocument = this.iframe.contentDocument ?? this.iframe.contentWindow?.document;
-    if (callDocument) {
-      callDocument.querySelectorAll('audio').forEach((el) => {
-        // eslint-disable-next-line no-param-reassign
-        el.muted = !sound;
-      });
-    }
+  private setSound(): void {
     this.applyOutput();
+  }
+
+  private scheduleApplyOutput(): void {
+    window.clearTimeout(this.outputTimer);
+    this.outputTimer = window.setTimeout(() => {
+      this.outputTimer = undefined;
+      this.applyOutput();
+    }, 250);
+  }
+
+  /** True when the element plays back the system audio we capture for the screen share. */
+  private static carriesLocalShareAudio(el: HTMLMediaElement): boolean {
+    const stream = el.srcObject as MediaStream | null;
+    if (!stream || typeof stream.getAudioTracks !== 'function') return false;
+    return stream.getAudioTracks().some((track) => screenShareAudio.isCurrent(track));
   }
 
   /** Applies the chosen output device and output volume to the media elements of the call. */
@@ -209,7 +227,25 @@ export class CallControl extends EventEmitter implements CallControlState {
     } catch {
       return;
     }
-    callDocument?.querySelectorAll<HTMLMediaElement>('audio, video').forEach(applyAudioOutput);
+    const deafened = !this.sound;
+    callDocument?.querySelectorAll<HTMLMediaElement>('audio, video').forEach((el) => {
+      const target = el;
+      if (target.tagName === 'AUDIO') {
+        if (target.muted !== deafened) target.muted = deafened;
+      } else if (CallControl.carriesLocalShareAudio(target)) {
+        // Never replay our own captured system audio locally (would echo / feed back).
+        if (!target.muted) target.muted = true;
+      } else if (deafened) {
+        if (!target.muted) {
+          target.muted = true;
+          this.deafMutedVideos.add(target);
+        }
+      } else if (this.deafMutedVideos.has(target)) {
+        this.deafMutedVideos.delete(target);
+        target.muted = false;
+      }
+      applyAudioOutput(target);
+    });
   }
 
   /**
@@ -246,7 +282,7 @@ export class CallControl extends EventEmitter implements CallControlState {
     this.emitStateUpdate();
 
     if (this.microphone && !this.sound) {
-      this.toggleSound();
+      this.toggleSound(true);
     }
 
     if (this.mediaStatePromiseResolver) {
@@ -286,10 +322,10 @@ export class CallControl extends EventEmitter implements CallControlState {
     return this.setMediaState(payload);
   }
 
-  public toggleSound() {
+  public toggleSound(silent = false) {
     const sound = !this.sound;
-
-    this.setSound(sound);
+    // Callers may pass an event (e.g. as an onClick handler): only a real `true` silences.
+    const quiet = silent === true;
 
     const state = new CallControlState(
       this.microphone,
@@ -299,11 +335,12 @@ export class CallControl extends EventEmitter implements CallControlState {
       this.spotlight
     );
     this.state = state;
+    this.setSound();
     this.emitStateUpdate();
 
     if (!sound) {
       // Deafen: remember mic state, then mute it too.
-      playCallSound('deafen');
+      if (!quiet) playCallSound('deafen');
       this.micWasOnBeforeDeafen = this.microphone;
       if (this.microphone) {
         this.toggleMicrophone(true);
@@ -314,7 +351,7 @@ export class CallControl extends EventEmitter implements CallControlState {
     // Un-deafen: bring the microphone back if it was live before.
     const restoreMic = this.micWasOnBeforeDeafen && !this.microphone;
     this.micWasOnBeforeDeafen = false;
-    playCallSound('undeafen');
+    if (!quiet) playCallSound('undeafen');
     if (restoreMic) {
       this.toggleMicrophone(true);
     }
@@ -350,7 +387,8 @@ export class CallControl extends EventEmitter implements CallControlState {
     this.bodyMutationObserver.disconnect();
     this.controlMutationObserver.disconnect();
     this.stopAudioPrefs();
-    window.clearInterval(this.outputTimer);
+    this.mediaObserver?.disconnect();
+    window.clearTimeout(this.outputTimer);
   }
 
   private emitStateUpdate() {

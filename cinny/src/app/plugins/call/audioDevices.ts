@@ -6,6 +6,7 @@
  * The call iframe is served from the same origin as the app, so the ids are valid in both.
  */
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import { diag } from '../diagnostics';
 
 const INPUT_KEY = 'diddyAudioInput';
 const OUTPUT_KEY = 'diddyAudioOutput';
@@ -60,6 +61,9 @@ const listeners = new Set<() => void>();
 
 const emit = () => listeners.forEach((l) => l());
 
+/** Sink ids that setSinkId() refused: never tried again (until the user picks them again). */
+const failedSinks = new Set<string>();
+
 export const subscribeAudioPrefs = (listener: () => void): (() => void) => {
   listeners.add(listener);
   return () => {
@@ -76,6 +80,7 @@ export const setAudioInput = (deviceId: string) => {
 };
 
 export const setAudioOutput = (deviceId: string) => {
+  failedSinks.delete(deviceId);
   current = { ...current, output: deviceId };
   write(OUTPUT_KEY, deviceId);
   emit();
@@ -119,6 +124,9 @@ type SinkElement = HTMLMediaElement & {
 export const isOutputSelectionSupported = (): boolean =>
   typeof HTMLMediaElement !== 'undefined' && 'setSinkId' in HTMLMediaElement.prototype;
 
+/** The sink id WE applied last to an element, so unchanged elements are never touched again. */
+const appliedSinks = new WeakMap<HTMLMediaElement, { sink: string }>();
+
 /** Applies the output device and output volume to one media element of the call. */
 export const applyAudioOutput = (el: HTMLMediaElement): void => {
   const { output, outputVolume } = current;
@@ -127,10 +135,23 @@ export const applyAudioOutput = (el: HTMLMediaElement): void => {
 
   const sink = el as SinkElement;
   if (typeof sink.setSinkId !== 'function') return;
-  if ((sink.sinkId ?? '') === output) return;
-  sink.setSinkId(output).catch(() => {
-    // Device gone or refused: fall back to the system default.
-    if (output !== '' && sink.setSinkId) sink.setSinkId('').catch(() => {});
+
+  // A sink that failed once is not retried: stay on the system default instead.
+  const wanted = failedSinks.has(output) ? '' : output;
+  const record = appliedSinks.get(el);
+  // Never applied anything and the system default is wanted: nothing to do.
+  if (!record && wanted === '') return;
+  if ((record?.sink ?? '') === wanted) return;
+
+  appliedSinks.set(el, { sink: wanted });
+  diag(`setSinkId(${wanted === '' ? 'default' : wanted.slice(0, 8)}) on <${el.tagName.toLowerCase()}>`);
+  sink.setSinkId(wanted).catch(() => {
+    if (wanted === '') return;
+    // Device gone or refused: remember that and fall back to the system default.
+    failedSinks.add(wanted);
+    diag(`setSinkId(${wanted.slice(0, 8)}) failed, using default`);
+    appliedSinks.set(el, { sink: '' });
+    if (sink.setSinkId) sink.setSinkId('').catch(() => {});
   });
 };
 

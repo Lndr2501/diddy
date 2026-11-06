@@ -70,6 +70,7 @@ import { useOpenRoomSettings } from '../../state/hooks/roomSettings';
 import { DiddyName } from '../../components/diddy/DiddyName';
 import { useDiddyProfile } from '../../plugins/diddy/profiles';
 import { useMxcUrl } from '../../plugins/diddy/media';
+import { safeColor, safeMxc } from '../../plugins/diddy/sanitize';
 
 type MemberDrawerHeaderProps = {
   room: Room;
@@ -142,8 +143,11 @@ function MemberItem({
     : undefined;
   const presence = useUserPresence(member.userId);
   const diddyProfile = useDiddyProfile(mx, member.userId);
-  const nameplateColor = diddyProfile?.nameplate?.color;
-  const nameplateImageUrl = useMxcUrl(diddyProfile?.nameplate?.imageMxc);
+  const nameplateColor = safeColor(diddyProfile?.nameplate?.color);
+  const nameplateImageUrl = useMxcUrl(safeMxc(diddyProfile?.nameplate?.imageMxc), {
+    w: 560,
+    h: 80,
+  });
 
   const nameplateStyle = useMemo<CSSProperties | undefined>(() => {
     const layers: string[] = [];

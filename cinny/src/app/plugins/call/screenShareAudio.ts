@@ -311,6 +311,15 @@ class ScreenShareAudio {
       // still published so the share can get sound later when the user turns it on.
       if (this.enabledSetting) await this.openSocket(session);
       if (session.stopped) throw new Error('screen share audio was stopped');
+      if (!this.enabledSetting) {
+        // Turned off while connecting.
+        this.closeSocket(session);
+        gain.gain.value = 0;
+      } else if (!session.ws) {
+        // Turned on while connecting.
+        await this.openSocket(session);
+        if (session.stopped) throw new Error('screen share audio was stopped');
+      }
 
       const track = destination.stream.getAudioTracks()[0];
       const nativeStop = track.stop.bind(track);

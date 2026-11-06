@@ -14,6 +14,7 @@ import { deleteBlob, getBlob, putBlob } from '../../utils/blobStore';
 import { diag } from '../diagnostics';
 import { getCallPrefs } from '../../state/callPrefs';
 import { getAudioPrefs, registerInputGain } from './audioDevices';
+import { getSharedAudioContext } from './sharedAudio';
 
 export type Clip = {
   id: string;
@@ -26,12 +27,44 @@ const MAX_SECONDS = 20;
 
 const blobKey = (id: string) => `clip:${id}`;
 
+/**
+ * Echo cancellation, noise suppression and auto gain make WebKit on macOS switch to the system
+ * "voice processing" mode, which ducks and changes all other audio (music) and causes a short
+ * glitch. All three are off unless the user turned "Voice processing" on.
+ */
+const forceProcessingOff = (c?: MediaTrackConstraints): MediaTrackConstraints =>
+  getCallPrefs().echoCancellation
+    ? c ?? {}
+    : { ...c, echoCancellation: false, noiseSuppression: false, autoGainControl: false };
+
+/** Audio constraints with the echo preference and (optionally) the chosen microphone merged in. */
+const mergeAudioConstraints = (
+  audio: true | MediaTrackConstraints,
+  deviceId?: string
+): true | MediaTrackConstraints => {
+  const echoOff = !getCallPrefs().echoCancellation;
+  if (!echoOff && !deviceId) return audio;
+  return {
+    ...forceProcessingOff(audio === true ? {} : audio),
+    ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
+  };
+};
+
+/** The same constraints without any device choice (system default microphone). */
+const withoutDevice = (audio: true | MediaTrackConstraints): true | MediaTrackConstraints => {
+  if (audio === true) return audio;
+  const { deviceId, ...rest } = audio;
+  return rest;
+};
+
 type MicMix = {
   /** Clips are connected here to be heard by the call. */
   bus: GainNode;
   stop: () => void;
   /** Swaps the microphone under the mixer (live switching of the input device). */
   replaceMic: (track: MediaStreamTrack) => void;
+  /** The microphone track currently under the mixer. */
+  getMic: () => MediaStreamTrack;
 };
 
 type Snapshot = {
@@ -49,7 +82,8 @@ class Soundboard {
 
   private volume: number;
 
-  private ctx?: AudioContext;
+  /** The audio constraints the microphone of the current mix was opened with. */
+  private micConstraints?: true | MediaTrackConstraints;
 
   private mixes = new Set<MicMix>();
 
@@ -96,27 +130,9 @@ class Soundboard {
 
   public getSnapshot = () => this.snapshot;
 
-  private idleTimer?: number;
-
-  /** WebKit allows only a few live AudioContexts per page: close ours when nothing uses it. */
-  private scheduleIdleClose() {
-    window.clearTimeout(this.idleTimer);
-    this.idleTimer = window.setTimeout(() => {
-      if (this.mixes.size > 0 || this.playing || !this.ctx) return;
-      this.ctx.close().catch(() => {});
-      this.ctx = undefined;
-    }, 5000);
-  }
-
+  /** The app-wide shared context (never closed). */
   private getContext(): AudioContext {
-    window.clearTimeout(this.idleTimer);
-    if (!this.ctx || this.ctx.state === 'closed') {
-      // 48 kHz is what WebRTC/Opus uses natively (no resampling); 'balanced' trades a few ms of
-      // latency for far fewer dropouts when the machine is busy.
-      this.ctx = new AudioContext({ latencyHint: 'balanced', sampleRate: 48000 });
-    }
-    if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
-    return this.ctx;
+    return getSharedAudioContext();
   }
 
   public setVolume(volume: number) {
@@ -166,8 +182,8 @@ class Soundboard {
     source.connect(gain);
     gain.connect(ctx.destination);
     source.onended = () => {
+      source.disconnect();
       gain.disconnect();
-      this.scheduleIdleClose();
     };
     source.start();
   }
@@ -208,13 +224,13 @@ class Soundboard {
     this.playing = id;
     this.emit();
     source.onended = () => {
+      source.disconnect();
       gain.disconnect();
       this.active.delete(source);
       if (this.active.size === 0 && this.playing !== undefined) {
         this.playing = undefined;
         this.emit();
       }
-      this.scheduleIdleClose();
     };
     source.start();
   }
@@ -243,11 +259,46 @@ class Soundboard {
     return true;
   }
 
+  /** deviceId of the microphone under the first mix, if any. */
+  public getMicDeviceId(): string | undefined {
+    const [mix] = Array.from(this.mixes);
+    return mix?.getMic().getSettings?.().deviceId;
+  }
+
+  /** The audio constraints the microphone of the current mix was opened with. */
+  public getMicConstraints(): true | MediaTrackConstraints | undefined {
+    return this.micConstraints;
+  }
+
+  /** Remembers the constraints a replacement microphone was opened with. */
+  public setMicConstraints(constraints: true | MediaTrackConstraints): void {
+    this.micConstraints = constraints;
+  }
+
+  /**
+   * Tries to switch the running microphone to `deviceId` without re-opening it. Only possible with
+   * a single mix. Resolves true when the track really reports the new device afterwards.
+   */
+  public async applyMicDevice(deviceId: string): Promise<boolean> {
+    if (this.mixes.size !== 1) return false;
+    const [mix] = Array.from(this.mixes);
+    const track = mix.getMic();
+    try {
+      await track.applyConstraints(forceProcessingOff({ deviceId: { exact: deviceId } }));
+    } catch {
+      return false;
+    }
+    return track.getSettings?.().deviceId === deviceId;
+  }
+
   /**
    * Wraps a microphone stream so clips can be mixed into it. Returns a stream with the mixed audio
    * track (behaving like the microphone track) and the original video tracks.
    */
-  public async mixInto(stream: MediaStream): Promise<MediaStream> {
+  public async mixInto(
+    stream: MediaStream,
+    audioConstraints?: true | MediaTrackConstraints
+  ): Promise<MediaStream> {
     const [mic] = stream.getAudioTracks();
     if (!mic) return stream;
     // Without clips, a custom input volume or a chosen microphone there is nothing to process, so
@@ -286,16 +337,21 @@ class Soundboard {
       mixed.dispatchEvent(new Event('ended'));
     };
 
+    let stopped = false;
     const mix: MicMix = {
       bus,
+      getMic: () => currentMic,
       stop: () => {
+        if (stopped) return;
+        stopped = true;
+        currentMic.removeEventListener('ended', onMicEnded);
         unregisterGain();
         source.disconnect();
         micGain.disconnect();
         bus.disconnect();
         this.mixes.delete(mix);
+        if (this.mixes.size === 0) this.micConstraints = undefined;
         this.emit();
-        this.scheduleIdleClose();
       },
       replaceMic: (track) => {
         const old = currentMic;
@@ -309,6 +365,7 @@ class Soundboard {
       },
     };
     this.mixes.add(mix);
+    this.micConstraints = audioConstraints ?? true;
     this.emit();
 
     // Behave like the microphone track for code that inspects or reconfigures it.
@@ -317,7 +374,11 @@ class Soundboard {
       getSettings: { value: () => currentMic.getSettings() },
       getConstraints: { value: () => currentMic.getConstraints() },
       getCapabilities: { value: () => currentMic.getCapabilities?.() ?? {} },
-      applyConstraints: { value: (c?: MediaTrackConstraints) => currentMic.applyConstraints(c) },
+      // Keep the voice-processing preference when somebody reconfigures the microphone.
+      applyConstraints: {
+        value: (c?: MediaTrackConstraints) =>
+          currentMic.applyConstraints(getCallPrefs().echoCancellation ? c : forceProcessingOff(c)),
+      },
     });
     mixed.stop = () => {
       nativeStop();
@@ -344,25 +405,6 @@ const getPreferredInputId = async (devices: MediaDevices): Promise<string | unde
   } catch {
     return undefined;
   }
-};
-
-/** Audio constraints with the echo preference and (optionally) the chosen microphone merged in. */
-const mergeAudioConstraints = (
-  audio: true | MediaTrackConstraints,
-  deviceId?: string
-): true | MediaTrackConstraints => {
-  const echoOff = !getCallPrefs().echoCancellation;
-  if (!echoOff && !deviceId) return audio;
-  // Echo cancellation, noise suppression and auto gain make WebKit on macOS switch to the system
-  // "voice processing" mode, which ducks and changes all other audio (music) and causes a short
-  // glitch. All three are off unless the user turned "Voice processing" on.
-  return {
-    ...(audio === true ? {} : audio),
-    ...(echoOff
-      ? { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
-      : {}),
-    ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
-  };
 };
 
 let liveSwitch: (() => Promise<boolean>) | undefined;
@@ -393,26 +435,36 @@ export const installSoundboard = (win: Window | null | undefined) => {
   liveSwitch = async () => {
     if (!soundboard.hasMix()) return false;
     const deviceId = await getPreferredInputId(devices);
-    const raw = await original({ audio: mergeAudioConstraints(true, deviceId), video: false });
+    // Already on the wanted microphone: nothing to do (re-opening would glitch other apps' audio).
+    if (deviceId !== undefined && soundboard.getMicDeviceId() === deviceId) return true;
+    const base = soundboard.getMicConstraints() ?? true;
+    const audio = mergeAudioConstraints(deviceId ? base : withoutDevice(base), deviceId);
+    // Cheapest first: ask the running track to change device.
+    if (deviceId !== undefined && (await soundboard.applyMicDevice(deviceId))) {
+      soundboard.setMicConstraints(audio);
+      diag('live microphone switch via applyConstraints');
+      return true;
+    }
+    const raw = await original({ audio, video: false });
     const [track] = raw.getAudioTracks();
     if (!track) return false;
     if (!soundboard.replaceMic(track)) {
       track.stop();
       return false;
     }
+    soundboard.setMicConstraints(audio);
     return true;
   };
   devices.getUserMedia = async (constraints?: MediaStreamConstraints) => {
     const wants = `${constraints?.audio ? 'audio ' : ''}${constraints?.video ? 'video' : ''}`.trim();
     let effective = constraints;
     let withDevice = false;
+    let usedAudio: true | MediaTrackConstraints | undefined;
     if (constraints?.audio) {
       const deviceId = await getPreferredInputId(devices);
       withDevice = deviceId !== undefined;
-      effective = {
-        ...constraints,
-        audio: mergeAudioConstraints(constraints.audio, deviceId),
-      };
+      usedAudio = mergeAudioConstraints(constraints.audio, deviceId);
+      effective = { ...constraints, audio: usedAudio };
     }
     let stream: MediaStream;
     try {
@@ -422,7 +474,8 @@ export const installSoundboard = (win: Window | null | undefined) => {
         // The chosen microphone refused to open: use whatever Element Call asked for instead.
         if (!withDevice || !constraints?.audio) throw e;
         diag(`preferred microphone failed, using default: ${e instanceof Error ? e.name : String(e)}`);
-        stream = await original({ ...constraints, audio: mergeAudioConstraints(constraints.audio) });
+        usedAudio = mergeAudioConstraints(constraints.audio);
+        stream = await original({ ...constraints, audio: usedAudio });
       }
     } catch (e) {
       diag(
@@ -448,7 +501,7 @@ export const installSoundboard = (win: Window | null | undefined) => {
     }
     if (!constraints?.audio) return stream;
     try {
-      return await soundboard.mixInto(stream);
+      return await soundboard.mixInto(stream, usedAudio);
     } catch (e) {
       // Never break the call over the soundboard: fall back to the plain microphone.
       // eslint-disable-next-line no-console

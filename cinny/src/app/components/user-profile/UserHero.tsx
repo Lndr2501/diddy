@@ -24,12 +24,11 @@ import { ImageViewer } from '../image-viewer';
 import { stopPropagation } from '../../utils/keyboard';
 import { CardStyle, DiddyProfile, DiddyStatus } from '../../plugins/diddy/types';
 import { useMxcUrl } from '../../plugins/diddy/media';
+import { safeAngle, safeColor, safeMxc, safeText } from '../../plugins/diddy/sanitize';
 import { DiddyName } from '../diddy/DiddyName';
 
-const HEX_COLOR = /^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
-/** Returns the color when it is a safe hex color, otherwise undefined. */
-export const safeColor = (value?: string): string | undefined =>
-  value && HEX_COLOR.test(value.trim()) ? value.trim() : undefined;
+/** Kept for compatibility: the validation lives in plugins/diddy/sanitize. */
+export { safeColor };
 
 const STATUS_COLOR: Record<DiddyStatus, string> = {
   online: '#43B581',
@@ -69,7 +68,7 @@ const getBannerStyle = (userId: string, card?: CardStyle, bannerUrl?: string) =>
   if (from && to) {
     return {
       backgroundColor: from,
-      backgroundImage: `linear-gradient(${card?.angle ?? 135}deg, ${from}, ${to})`,
+      backgroundImage: `linear-gradient(${safeAngle(card?.angle, 135)}deg, ${from}, ${to})`,
     };
   }
   if (from || to) {
@@ -89,9 +88,9 @@ type UserHeroProps = {
 };
 export function UserHero({ userId, avatarUrl, presence, profile }: UserHeroProps) {
   const [viewAvatar, setViewAvatar] = useState<string>();
-  const bannerUrl = useMxcUrl(profile?.card?.bannerMxc);
-  const animatedAvatarUrl = useMxcUrl(profile?.animatedAvatarMxc);
-  const shownAvatarUrl = animatedAvatarUrl ?? avatarUrl;
+  const bannerUrl = useMxcUrl(safeMxc(profile?.card?.bannerMxc), { w: 640, h: 192 });
+  const animatedAvatarUrl = useMxcUrl(safeMxc(profile?.animatedAvatarMxc));
+  const shownAvatarUrl = animatedAvatarUrl || avatarUrl;
   const diddyStatus = profile?.status;
 
   return (
@@ -162,7 +161,7 @@ type UserHeroNameProps = {
 export function UserHeroName({ displayName, userId, profile }: UserHeroNameProps) {
   const username = getMxIdLocalPart(userId);
   const name = displayName ?? username ?? userId;
-  const bio = profile?.bio?.trim();
+  const bio = safeText(profile?.bio, 160);
 
   return (
     <Box grow="Yes" direction="Column" gap="0">

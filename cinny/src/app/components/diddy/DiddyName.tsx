@@ -2,9 +2,14 @@ import React, { CSSProperties, useMemo } from 'react';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { useDiddyProfile, useShownBadges } from '../../plugins/diddy/profiles';
 import { NAME_FONTS, NameStyle } from '../../plugins/diddy/types';
+import { safeAngle, safeColor } from '../../plugins/diddy/sanitize';
 import { BadgeRow } from './BadgeChip';
 
-const buildNameStyleCss = (ns: NameStyle | undefined): CSSProperties => {
+/**
+ * CSS for a name style. Profiles are written by other users, so every color and angle is
+ * validated here before it is interpolated into CSS.
+ */
+export const buildNameStyleCss = (ns: NameStyle | undefined): CSSProperties => {
   const css: CSSProperties = {};
   if (!ns) return css;
 
@@ -12,16 +17,21 @@ const buildNameStyleCss = (ns: NameStyle | undefined): CSSProperties => {
     const font = NAME_FONTS.find((f) => f.id === ns.font);
     if (font) css.fontFamily = font.css;
   }
-  if (ns.bold) css.fontWeight = 700;
-  if (ns.italic) css.fontStyle = 'italic';
+  if (ns.bold === true) css.fontWeight = 700;
+  if (ns.italic === true) css.fontStyle = 'italic';
 
-  const gradient = ns.gradient?.from && ns.gradient.to ? ns.gradient : undefined;
-  const solid = gradient ? undefined : ns.color || undefined;
+  const gradientFrom = safeColor(ns.gradient?.from);
+  const gradientTo = safeColor(ns.gradient?.to);
+  const gradient =
+    gradientFrom && gradientTo
+      ? { from: gradientFrom, to: gradientTo, angle: safeAngle(ns.gradient?.angle, 90) }
+      : undefined;
+  const solid = gradient ? undefined : safeColor(ns.color);
   // color used for glow and outline
   const effectColor = solid ?? gradient?.from;
 
   if (gradient) {
-    css.backgroundImage = `linear-gradient(${gradient.angle ?? 90}deg, ${gradient.from}, ${gradient.to})`;
+    css.backgroundImage = `linear-gradient(${gradient.angle}deg, ${gradient.from}, ${gradient.to})`;
     css.WebkitBackgroundClip = 'text';
     css.backgroundClip = 'text';
     css.color = 'transparent';
