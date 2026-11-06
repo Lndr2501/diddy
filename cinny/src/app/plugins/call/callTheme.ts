@@ -70,13 +70,6 @@ ${TILE_ROUNDED} {
   --media-view-fg-inset: 12px;
   border-radius: 18px;
 }
-/* Element Call paints a blurred, enlarged avatar behind a tile (stretched in 1:1 calls): drop it */
-${TILE} > div:first-child {
-  background-image: none !important;
-}
-${TILE} [class*="_bg_"] {
-  display: none !important;
-}
 ${TILE} > div:first-child {
   background-color: var(--diddy-tile-bg);
   box-shadow: inset 0 0 0 1px var(--diddy-tile-line);
