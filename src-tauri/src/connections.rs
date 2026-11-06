@@ -8,7 +8,7 @@ use std::{
         atomic::{AtomicBool, AtomicU64, Ordering},
         mpsc, Arc, Mutex,
     },
-    time::Duration,
+    time::{Duration, Instant},
 };
 use tauri::{AppHandle, Manager, State, Url};
 
@@ -202,7 +202,12 @@ pub async fn open_connection_profile(
     let cancel_check = Arc::clone(&cancelled);
     // WKWebView configuration must be built on the main thread. Do not block that thread waiting.
     let window_profile = profile.clone();
+    // Timing of the phases, written to the app log: the window takes 45-55 s on the Mac and nobody
+    // knows yet whether the time goes into the main thread queue or into building the web view.
+    let started = Instant::now();
     let scheduled = app.run_on_main_thread(move || {
+        let queued_ms = started.elapsed().as_millis();
+        let build_started = Instant::now();
         let result = if cancel_check.load(Ordering::SeqCst) {
             Err("Das Öffnen dieser Verbindung wurde abgebrochen.".to_string())
         } else if let Some(window) = window_app.get_webview_window(&marker) {
@@ -210,6 +215,13 @@ pub async fn open_connection_profile(
         } else {
             crate::build_client_window(&window_app, &marker, window_profile.as_ref())
         };
+        crate::diag::diag_log(format!(
+            "connection: window timing label={} queued_ms={} build_ms={} ok={}",
+            marker,
+            queued_ms,
+            build_started.elapsed().as_millis(),
+            result.is_ok()
+        ));
         if let Ok(mut opening) = window_app.state::<ConnectionState>().opening.lock() {
             release_reserved(&mut opening, &marker, attempt);
         }
@@ -223,6 +235,12 @@ pub async fn open_connection_profile(
         receiver.recv_timeout(Duration::from_secs(30))
             .map_err(|_| "Das Verbindungsfenster reagiert nicht.".to_string())?
     }).await.map_err(|_| "Verbindungsfenster konnte nicht geöffnet werden.".to_string())?;
+    crate::diag::diag_log(format!(
+        "connection: window open total_ms={} label={} ok={}",
+        started.elapsed().as_millis(),
+        label,
+        result.is_ok()
+    ));
     if result.is_err() {
         cancelled.store(true, Ordering::SeqCst);
         release_opening(&app, &label, attempt);
