@@ -72,6 +72,7 @@ import { ReactionViewer } from '../reaction-viewer';
 import { MessageEditor } from './MessageEditor';
 import { UserAvatar } from '../../../components/user-avatar';
 import { copyToClipboard } from '../../../utils/dom';
+import { deferToNativeMenu } from '../../../plugins/contextMenu';
 import { stopPropagation } from '../../../utils/keyboard';
 import { getMatrixToRoomEvent } from '../../../plugins/matrix-to';
 import { getViaServers } from '../../../plugins/via-servers';
@@ -316,6 +317,39 @@ export const MessageSourceCodeItem = as<
         </Text>
       </MenuItem>
     </>
+  );
+});
+
+export const MessageCopyTextItem = as<
+  'button',
+  {
+    mEvent: MatrixEvent;
+    onClose?: () => void;
+  }
+>(({ mEvent, onClose, ...props }, ref) => {
+  const body = mEvent.getContent()?.body;
+  if (typeof body !== 'string' || !body) return null;
+
+  const handleCopy = () => {
+    // selected text wins: right-clicking a selection used to open the web view's own copy menu
+    const selected = window.getSelection()?.toString();
+    copyToClipboard(selected || body);
+    onClose?.();
+  };
+
+  return (
+    <MenuItem
+      size="300"
+      after={<Icon size="100" src={Icons.Alphabet} />}
+      radii="300"
+      onClick={handleCopy}
+      {...props}
+      ref={ref}
+    >
+      <Text className={css.MessageMenuItemText} as="span" size="T300" truncate>
+        Copy Text
+      </Text>
+    </MenuItem>
   );
 });
 
@@ -860,9 +894,7 @@ export const Message = as<'div', MessageProps>(
     );
 
     const handleContextMenu: MouseEventHandler<HTMLDivElement> = (evt) => {
-      if (evt.altKey || !window.getSelection()?.isCollapsed || edit) return;
-      const tag = (evt.target as any).tagName;
-      if (typeof tag === 'string' && tag.toLowerCase() === 'a') return;
+      if (deferToNativeMenu(evt) || edit) return;
       evt.preventDefault();
       setMenuAnchor({
         x: evt.clientX,
@@ -1108,6 +1140,7 @@ export const Message = as<'div', MessageProps>(
                               onClose={closeMenu}
                             />
                           )}
+                          <MessageCopyTextItem mEvent={mEvent} onClose={closeMenu} />
                           <MessageCopyLinkItem room={room} mEvent={mEvent} onClose={closeMenu} />
                           {canPinEvent && (
                             <MessagePinItem room={room} mEvent={mEvent} onClose={closeMenu} />
@@ -1216,9 +1249,7 @@ export const Event = as<'div', EventProps>(
     const stateEvent = typeof mEvent.getStateKey() === 'string';
 
     const handleContextMenu: MouseEventHandler<HTMLDivElement> = (evt) => {
-      if (evt.altKey || !window.getSelection()?.isCollapsed) return;
-      const tag = (evt.target as any).tagName;
-      if (typeof tag === 'string' && tag.toLowerCase() === 'a') return;
+      if (deferToNativeMenu(evt)) return;
       evt.preventDefault();
       setMenuAnchor({
         x: evt.clientX,
@@ -1286,6 +1317,7 @@ export const Event = as<'div', EventProps>(
                               onClose={closeMenu}
                             />
                           )}
+                          <MessageCopyTextItem mEvent={mEvent} onClose={closeMenu} />
                           <MessageCopyLinkItem room={room} mEvent={mEvent} onClose={closeMenu} />
                         </Box>
                         {((!mEvent.isRedacted() && canDelete && !stateEvent) ||

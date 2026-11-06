@@ -17,8 +17,13 @@ import App from './app/pages/App';
 import './app/i18n';
 import { pushSessionToSW } from './sw-session';
 import { getFallbackSession } from './app/state/sessions';
+import { installContextMenuGuard } from './app/plugins/contextMenu';
+import { isDeveloperToolsOn } from './app/plugins/diddy/optionsRoom';
 
 document.body.classList.add(configClass, varsClass);
+
+// the desktop app only shows its own right-click menus (see plugins/contextMenu.ts)
+installContextMenuGuard(isDeveloperToolsOn);
 
 // Register Service Worker
 if ('serviceWorker' in navigator) {

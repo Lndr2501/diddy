@@ -2,6 +2,10 @@
 
 Statusbericht des Entwicklungsstands (Diddy, nach 1.1.0, kein neues Release).
 
+## Rechtsklick-Fehler (Issue #17, 2026-11-06)
+
+- Ursache: Die Nachrichten-Menüs traten bei markiertem Text oder auf Links zurück und überließen dem Web-View das Menü (mit "Neu laden" und "Inspect", denn die Tauri-Funktion `devtools` ist aktiv). Jetzt: In der Desktop-App gibt es nur noch in Eingabefeldern das native Menü (oder mit eingeschalteten Developer Tools); Nachrichten-Menüs öffnen immer. Neuer Eintrag "Copy Text" (markierter Text oder ganze Nachricht) ersetzt das frühere "Kopieren" des Web-Views. Im normalen Browser bleibt das alte Verhalten. Neu `plugins/contextMenu.ts`, 4 Tests. Nicht in der echten App geprüft.
+
 ## Typcheck sauber (2026-11-06)
 
 - Ursache der 879 Diagnosen: TypeScript 4.9.4 kann die Typen von `matrix-js-sdk` 41.7.0 nicht auflösen. Mit TypeScript 5.6.3 blieben 22 echte Fehler; alle behoben (meist `as never` an Stellen mit eigenen Ereignistypen, Handler-Typen, ein echter Null-Fall in `profiles.ts`, `setAttribute('sandbox')`). `npm run typecheck` meldet jetzt **0 Fehler**. Der alte Baseline-Vergleich entfällt, jede Diagnose ist jetzt ein echter Fehler. Nur Dev-Werkzeug geändert (`typescript` 5.6.3 in package.json/Lock), Vite-Build unberührt.
