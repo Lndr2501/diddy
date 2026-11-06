@@ -500,6 +500,16 @@ unsafe impl Send for MicCapture {}
 
 impl MicCapture {
     pub fn start(tx: SyncSender<Vec<u8>>, wanted: Option<&str>) -> Result<MicCapture, String> {
+        // Without microphone permission Core Audio delivers silence instead of an error. Refuse
+        // then, so the page falls back to WebKit's microphone (which also shows the system prompt).
+        if let Some(class) = AnyClass::get(c"AVCaptureDevice") {
+            let media_type = NSString::from_str("soun"); // AVMediaTypeAudio
+            let status: isize = unsafe { msg_send![class, authorizationStatusForMediaType: &*media_type] };
+            const AUTHORIZED: isize = 3;
+            if status != AUTHORIZED {
+                return Err(format!("microphone permission not granted (status {status})"));
+            }
+        }
         let device = find_input_device(wanted)?;
         let format: AudioStreamBasicDescription = {
             let mut value = AudioStreamBasicDescription::default();
