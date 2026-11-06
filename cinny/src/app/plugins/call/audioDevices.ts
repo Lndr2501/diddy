@@ -6,7 +6,9 @@
  * The call iframe is served from the same origin as the app, so the ids are valid in both.
  */
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import { getCallPrefs } from '../../state/callPrefs';
 import { diag } from '../diagnostics';
+import { applyAudioProcessingPolicy } from './audioConstraints';
 
 const INPUT_KEY = 'diddyAudioInput';
 const OUTPUT_KEY = 'diddyAudioOutput';
@@ -224,7 +226,9 @@ export const useAudioDevices = (): AudioDevices & { refresh: () => Promise<void>
  */
 export const requestDeviceAccess = async (): Promise<boolean> => {
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: applyAudioProcessingPolicy(true, getCallPrefs().echoCancellation),
+    });
     stream.getTracks().forEach((t) => t.stop());
     return true;
   } catch {

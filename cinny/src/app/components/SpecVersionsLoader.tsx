@@ -1,43 +1,48 @@
 import { ReactNode, useCallback, useEffect, useState } from 'react';
-import { AsyncStatus, useAsyncCallback } from '../hooks/useAsyncCallback';
 import { SpecVersions, specVersions } from '../cs-api';
 
 type SpecVersionsLoaderProps = {
   baseUrl: string;
-  fallback?: () => ReactNode;
+  fallback?: (retry: () => void) => ReactNode;
   error?: (err: unknown, retry: () => void, ignore: () => void) => ReactNode;
   children: (versions: SpecVersions) => ReactNode;
 };
+type LoadState = {
+  key: string;
+  status: 'loading' | 'success' | 'error';
+  versions?: SpecVersions;
+  error?: unknown;
+};
+
 export function SpecVersionsLoader({
   baseUrl,
   fallback,
   error,
   children,
 }: SpecVersionsLoaderProps) {
-  const [state, load] = useAsyncCallback(
-    useCallback(() => specVersions(fetch, baseUrl), [baseUrl])
-  );
-  const [ignoreError, setIgnoreError] = useState(false);
-
-  const ignoreCallback = useCallback(() => setIgnoreError(true), []);
+  const [attempt, setAttempt] = useState(0);
+  const key = `${baseUrl}\n${attempt}`;
+  const [state, setState] = useState<LoadState>({ key, status: 'loading' });
+  const [ignoredKey, setIgnoredKey] = useState<string>();
+  const retry = useCallback(() => setAttempt((value) => value + 1), []);
+  const ignore = useCallback(() => setIgnoredKey(key), [key]);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    const controller = new AbortController();
+    setState({ key, status: 'loading' });
+    specVersions(fetch, baseUrl, controller.signal).then(
+      (versions) => {
+        if (!controller.signal.aborted) setState({ key, status: 'success', versions });
+      },
+      (err: unknown) => {
+        if (!controller.signal.aborted) setState({ key, status: 'error', error: err });
+      }
+    );
+    return () => controller.abort();
+  }, [baseUrl, key]);
 
-  if (state.status === AsyncStatus.Idle || state.status === AsyncStatus.Loading) {
-    return fallback?.();
-  }
-
-  if (!ignoreError && state.status === AsyncStatus.Error) {
-    return error?.(state.error, load, ignoreCallback);
-  }
-
-  return children(
-    state.status === AsyncStatus.Success
-      ? state.data
-      : {
-          versions: [],
-        }
-  );
+  // Never briefly expose the previous server's result while a new effect is starting.
+  if (state.key !== key || state.status === 'loading') return fallback?.(retry);
+  if (state.status === 'error' && ignoredKey !== key) return error?.(state.error, retry, ignore);
+  return children(state.versions ?? { versions: [] });
 }

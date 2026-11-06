@@ -114,7 +114,9 @@ export const useAsyncCallbackValue = <TData, TError>(
   const [state, load] = useAsyncCallback<TData, TError, []>(asyncCallback);
 
   useEffect(() => {
-    load();
+    // Failures are reported through the state; without this catch every rejected request (for
+    // example a homeserver that does not answer in time) would be an unhandled rejection.
+    load().catch(() => {});
   }, [load]);
 
   return [state, load];

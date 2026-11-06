@@ -1,5 +1,6 @@
 import to from 'await-to-js';
 import { trimTrailingSlash } from './utils/common';
+import { withHomeserverTimeout } from './utils/requestTimeout';
 
 export enum AutoDiscoveryAction {
   PROMPT = 'PROMPT',
@@ -32,14 +33,16 @@ export type AutoDiscoveryInfo = Record<string, unknown> & {
   ];
 };
 
-export const autoDiscovery = async (
+const discoverHomeserver = async (
   request: typeof fetch,
-  server: string
+  server: string,
+  signal: AbortSignal
 ): Promise<[AutoDiscoveryError, undefined] | [undefined, AutoDiscoveryInfo]> => {
   const host = /^https?:\/\//.test(server) ? trimTrailingSlash(server) : `https://${server}`;
   const autoDiscoveryUrl = `${host}/.well-known/matrix/client`;
 
-  const [err, response] = await to(request(autoDiscoveryUrl, { method: 'GET' }));
+  const [err, response] = await to(request(autoDiscoveryUrl, { method: 'GET', signal }));
+  if (signal.aborted) throw new DOMException('Request canceled', 'AbortError');
 
   if (err || response.status === 404) {
     // AutoDiscoveryAction.IGNORE
@@ -106,20 +109,39 @@ export const autoDiscovery = async (
   return [undefined, content];
 };
 
+export const autoDiscovery = (
+  request: typeof fetch,
+  server: string,
+  signal?: AbortSignal
+): Promise<[AutoDiscoveryError, undefined] | [undefined, AutoDiscoveryInfo]> =>
+  withHomeserverTimeout(
+    (activeSignal) => discoverHomeserver(request, server, activeSignal),
+    signal
+  );
+
 export type SpecVersions = {
   versions: string[];
   unstable_features?: Record<string, boolean>;
 };
-export const specVersions = async (
+export const specVersions = (
   request: typeof fetch,
-  baseUrl: string
-): Promise<SpecVersions> => {
-  const res = await request(`${trimTrailingSlash(baseUrl)}/_matrix/client/versions`);
-
-  const data = (await res.json()) as unknown;
-
-  if (data && typeof data === 'object' && 'versions' in data && Array.isArray(data.versions)) {
-    return data as SpecVersions;
-  }
-  throw new Error('Homeserver URL does not appear to be a valid Matrix homeserver');
-};
+  baseUrl: string,
+  signal?: AbortSignal
+): Promise<SpecVersions> =>
+  withHomeserverTimeout(async (activeSignal) => {
+    const res = await request(`${trimTrailingSlash(baseUrl)}/_matrix/client/versions`, {
+      signal: activeSignal,
+    });
+    if (!res.ok) throw new Error(`Homeserver responded with HTTP ${res.status}`);
+    const data = (await res.json()) as unknown;
+    if (
+      data &&
+      typeof data === 'object' &&
+      'versions' in data &&
+      Array.isArray(data.versions) &&
+      data.versions.every((version) => typeof version === 'string')
+    ) {
+      return data as SpecVersions;
+    }
+    throw new Error('Homeserver URL does not appear to be a valid Matrix homeserver');
+  }, signal);

@@ -83,6 +83,7 @@ type Session = {
   gain?: GainNode;
   track?: MediaStreamTrack;
   stopTrack?: () => void;
+  cancelConnect?: () => void;
 };
 
 export type ScreenShareAudioSnapshot = {
@@ -158,8 +159,9 @@ class ScreenShareAudio {
     const session: Session = { ctx };
     this.session = session;
 
+    let connection: Promise<MediaStreamTrack> | undefined;
     return {
-      finish: () => this.connect(session),
+      finish: () => (connection ??= this.connect(session)),
       cancel: () => {
         if (this.session === session) this.stop();
       },
@@ -167,16 +169,31 @@ class ScreenShareAudio {
   }
 
   private async connect(session: Session): Promise<MediaStreamTrack> {
-    const bridge = getBridge();
-    if (!bridge) throw new Error('bridge unavailable');
     const { ctx } = session;
-
+    const ensureCurrent = () => {
+      if (this.session !== session) throw new DOMException('Screen-share audio canceled', 'AbortError');
+    };
+    ensureCurrent();
+    let interrupt!: (error: Error) => void;
+    const interrupted = new Promise<never>((_, reject) => { interrupt = reject; });
+    // Also observe cancellation if a synchronous setup error occurs before the first race.
+    interrupted.catch(() => {});
+    const waitFor = <T>(operation: Promise<T>): Promise<T> => Promise.race([operation, interrupted]);
+    session.cancelConnect = () => interrupt(new DOMException('Screen-share audio canceled', 'AbortError'));
+    // Bound the entire audio setup, including worklet loading, not just the socket handshake.
+    const timer = window.setTimeout(
+      () => interrupt(new Error('timed out preparing system audio')),
+      CONNECT_TIMEOUT_MS
+    );
     try {
+      const bridge = getBridge();
+      if (!bridge) throw new Error('bridge unavailable');
       const blobUrl = URL.createObjectURL(
         new Blob([WORKLET_SOURCE], { type: 'application/javascript' })
       );
       try {
-        await ctx.audioWorklet.addModule(blobUrl);
+        await waitFor(ctx.audioWorklet.addModule(blobUrl));
+        ensureCurrent();
       } finally {
         URL.revokeObjectURL(blobUrl);
       }
@@ -189,6 +206,11 @@ class ScreenShareAudio {
       const gain = ctx.createGain();
       gain.gain.value = this.enabledSetting ? 1 : 0;
       const destination = ctx.createMediaStreamDestination();
+      const track = destination.stream.getAudioTracks()[0];
+      if (!track) throw new Error('system audio destination has no track');
+      const nativeStop = track.stop.bind(track);
+      // Cancellation during the handshake must also end the unpublished destination track.
+      session.stopTrack = nativeStop;
       node.connect(gain);
       gain.connect(destination);
       session.node = node;
@@ -198,27 +220,21 @@ class ScreenShareAudio {
       ws.binaryType = 'arraybuffer';
       session.ws = ws;
 
-      await new Promise<void>((resolve, reject) => {
-        const timer = window.setTimeout(
-          () => reject(new Error('timed out waiting for system audio')),
-          CONNECT_TIMEOUT_MS
-        );
-        ws.onerror = () => {
-          window.clearTimeout(timer);
-          reject(new Error('could not connect to system audio bridge'));
-        };
-        ws.onclose = () => {
-          window.clearTimeout(timer);
-          reject(new Error('system audio bridge closed'));
-        };
+      await waitFor(new Promise<void>((resolve, reject) => {
+        ws.onerror = () => reject(new Error('could not connect to system audio bridge'));
+        ws.onclose = () => reject(new Error('system audio bridge closed'));
         ws.onmessage = (evt) => {
           if (typeof evt.data !== 'string') return;
-          const msg = JSON.parse(evt.data) as { type: string; message?: string };
-          window.clearTimeout(timer);
-          if (msg.type === 'format') resolve();
-          else reject(new Error(msg.message ?? 'system audio failed'));
+          try {
+            const msg = JSON.parse(evt.data) as { type: string; message?: string };
+            if (msg.type === 'format') resolve();
+            else reject(new Error(msg.message ?? 'system audio failed'));
+          } catch {
+            reject(new Error('invalid system audio bridge response'));
+          }
         };
-      });
+      }));
+      ensureCurrent();
 
       ws.onerror = null;
       ws.onclose = () => {
@@ -228,8 +244,6 @@ class ScreenShareAudio {
         if (typeof evt.data !== 'string') node.port.postMessage(evt.data, [evt.data]);
       };
 
-      const track = destination.stream.getAudioTracks()[0];
-      const nativeStop = track.stop.bind(track);
       // LiveKit calls track.stop() when the share ends; tear the capture down with it.
       track.stop = () => {
         nativeStop();
@@ -240,9 +254,15 @@ class ScreenShareAudio {
       this.emit();
       return track;
     } catch (e) {
-      this.lastError = e instanceof Error ? e.message : String(e);
-      if (this.session === session) this.stop();
+      // A canceled older session must not overwrite the current share's error state.
+      if (this.session === session) {
+        this.lastError = e instanceof Error ? e.message : String(e);
+        this.stop();
+      }
       throw e;
+    } finally {
+      window.clearTimeout(timer);
+      session.cancelConnect = undefined;
     }
   }
 
@@ -250,6 +270,7 @@ class ScreenShareAudio {
     const session = this.session;
     if (!session) return;
     this.session = undefined;
+    session.cancelConnect?.();
 
     try {
       if (session.ws) {
@@ -281,6 +302,25 @@ export type PendingScreenShareAudio = {
 
 export const screenShareAudio = new ScreenShareAudio();
 
+/** A maximum alone permits WebKit's 640x360 default; also express the caller's desired size. */
+const preferRequestedResolution = (
+  options?: DisplayMediaStreamOptions
+): DisplayMediaStreamOptions | undefined => {
+  if (!options?.video || typeof options.video !== 'object') return options;
+  const video = { ...options.video };
+  for (const dimension of ['width', 'height'] as const) {
+    const range = video[dimension];
+    if (
+      typeof range === 'object' && range !== null &&
+      range.ideal === undefined && range.exact === undefined &&
+      typeof range.max === 'number' && Number.isFinite(range.max) && range.max > 0
+    ) {
+      video[dimension] = { ...range, ideal: range.max };
+    }
+  }
+  return { ...options, video };
+};
+
 /**
  * Wraps `navigator.mediaDevices.getDisplayMedia` of the call iframe so the stream it returns also
  * carries the system audio. Safe to call repeatedly (e.g. on every iframe load).
@@ -296,37 +336,91 @@ export const installScreenShareAudio = (win: Window | null | undefined) => {
   trackPeerConnections(win);
 
   const original = devices.getDisplayMedia.bind(devices);
+  let acquiring = false;
+  let nextRequest = 0;
   devices.getDisplayMedia = async (constraints?: DisplayMediaStreamOptions) => {
+    if (acquiring) {
+      diag('getDisplayMedia ignored: another capture request is still pending');
+      throw new DOMException('A screen-share request is already pending', 'InvalidStateError');
+    }
+    acquiring = true;
+    const request = ++nextRequest;
     const startedAt = Date.now();
-    const activation = (win?.navigator as unknown as { userActivation?: { isActive: boolean } })
-      ?.userActivation;
-    diag(
-      `getDisplayMedia requested active=${activation?.isActive ?? '?'} focus=${
-        win?.document?.hasFocus?.() ?? '?'
-      } constraints=${JSON.stringify(constraints ?? {})}`
-    );
-    // Audio setup must never be able to break the share itself.
+    let stage = 'native capture';
+    const watchdog = window.setTimeout(() => {
+      // getDisplayMedia has no general abort API: never unlock/retry a still-live request here.
+      diag(`getDisplayMedia #${request} still pending at ${stage}`);
+    }, 10000);
     let pending: PendingScreenShareAudio | undefined;
+    let stream: MediaStream | undefined;
+    let cleanup: (() => void) | undefined;
+    const requested = preferRequestedResolution(constraints);
     try {
-      pending = screenShareAudio.begin();
-    } catch (e) {
-      // eslint-disable-next-line no-console
-      console.warn('[screen-share-audio] no system audio for this share:', e);
-    }
-    let stream: MediaStream;
-    try {
-      stream = await original(constraints);
-    } catch (e) {
+      const activation = (win?.navigator as unknown as { userActivation?: { isActive: boolean } })
+        ?.userActivation;
       diag(
-        `getDisplayMedia failed after ${Date.now() - startedAt}ms: ${
-          e instanceof Error ? `${e.name}: ${e.message}` : String(e)
-        }`
+        `getDisplayMedia #${request} native entering active=${activation?.isActive ?? '?'} focus=${
+          win?.document?.hasFocus?.() ?? '?'
+        } constraints=${JSON.stringify(requested ?? {})}`
       );
-      pending?.cancel();
-      throw e;
-    }
-    const [video] = stream.getVideoTracks();
-    if (video) {
+      // Enter the native picker first, with the original gesture and before audio reconfiguration.
+      const capture = original(requested);
+      diag(`getDisplayMedia #${request} native returned promise`);
+      try {
+        pending = screenShareAudio.begin();
+        diag(`getDisplayMedia #${request} audio prepared=${!!pending}`);
+      } catch {
+        diag(`getDisplayMedia #${request} audio preparation failed; continuing video-only`);
+      }
+      stream = await capture;
+      stage = 'audio connection';
+      diag(`getDisplayMedia #${request} native resolved after ${Date.now() - startedAt}ms`);
+      const [video] = stream.getVideoTracks();
+      if (!video) {
+        pending?.cancel();
+        return stream;
+      }
+      let ended = false;
+      const stopStats = startStatsLogging(win);
+      cleanup = () => {
+        if (ended) return;
+        ended = true;
+        stopStats();
+        // cancel() is session-specific: a late old video cannot stop a newer share.
+        pending?.cancel();
+        diag(`getDisplayMedia #${request} video stopped; capture audio released`);
+      };
+      const nativeStop = video.stop.bind(video);
+      video.stop = () => {
+        try { nativeStop(); } finally { cleanup?.(); }
+      };
+      video.addEventListener('ended', cleanup, { once: true });
+      const videoOptions = requested?.video;
+      if (typeof videoOptions === 'object' && (videoOptions.width || videoOptions.height)) {
+        stage = 'video constraints';
+        const initial = video.getSettings();
+        diag(`getDisplayMedia #${request} initial capture ${initial.width}x${initial.height}`);
+        let timer: number | undefined;
+        try {
+          // Apply the selected size to the live source too; some WebKit captures start at 360p.
+          // Keep the original bounds, and never make an optional quality adjustment strand sharing.
+          await Promise.race([
+            video.applyConstraints({
+              ...(videoOptions.width !== undefined ? { width: videoOptions.width } : {}),
+              ...(videoOptions.height !== undefined ? { height: videoOptions.height } : {}),
+              ...(videoOptions.frameRate !== undefined ? { frameRate: videoOptions.frameRate } : {}),
+            }),
+            new Promise<never>((_, reject) => {
+              timer = window.setTimeout(() => reject(new Error('capture quality adjustment timed out')), 2000);
+            }),
+          ]);
+        } catch (e) {
+          diag(`getDisplayMedia #${request} quality adjustment failed: ${e instanceof Error ? e.name : 'unknown'}`);
+        } finally {
+          window.clearTimeout(timer);
+        }
+      }
+      stage = 'audio connection';
       // Screen content: keep it sharp and drop frames instead of resolution when starved.
       try {
         if (!video.contentHint) video.contentHint = 'detail';
@@ -335,38 +429,46 @@ export const installScreenShareAudio = (win: Window | null | undefined) => {
       }
       const settings = video.getSettings();
       diag(
-        `getDisplayMedia ok after ${Date.now() - startedAt}ms ${settings.width}x${settings.height}@${
+        `getDisplayMedia #${request} ok ${settings.width}x${settings.height}@${
           settings.frameRate ?? '?'
         } hint=${video.contentHint ?? '-'} audio=${stream.getAudioTracks().length}`
       );
-      const stopStats = startStatsLogging(win);
-      video.addEventListener('ended', () => {
-        diag('screen share video ended');
-        stopStats();
-      });
-    }
-    if (!pending || stream.getAudioTracks().length > 0) {
-      pending?.cancel();
+      if (video.readyState === 'ended') cleanup();
+      if (ended) throw new DOMException('Screen share ended during setup', 'AbortError');
+      if (!pending || stream.getAudioTracks().length > 0) {
+        pending?.cancel();
+        return stream;
+      }
+      try {
+        const track = await pending.finish();
+        if (ended || video.readyState === 'ended') {
+          track.stop();
+          throw new DOMException('Screen share ended during audio setup', 'AbortError');
+        }
+        stream.addTrack(track);
+        diag(`getDisplayMedia #${request} audio connected`);
+      } catch {
+        // A live screen share remains useful even when optional system audio fails.
+        diag(`getDisplayMedia #${request} audio unavailable; continuing video-only`);
+      }
+      if (ended || video.readyState === 'ended') {
+        throw new DOMException('Screen share ended during setup', 'AbortError');
+      }
       return stream;
-    }
-
-    try {
-      const track = await pending.finish();
-      stream.addTrack(track);
-      stream.getVideoTracks()[0]?.addEventListener(
-        'ended',
-        () => {
-          // A late event of an old share must not tear down a newer one.
-          if (screenShareAudio.isCurrent(track)) screenShareAudio.stop();
-        },
-        { once: true }
-      );
     } catch (e) {
-      // Sharing the screen without sound is still better than failing the whole share.
-      // eslint-disable-next-line no-console
-      console.warn('[screen-share-audio] continuing without system audio:', e);
+      cleanup?.();
+      pending?.cancel();
+      stream?.getTracks().forEach((track) => track.stop());
+      diag(
+        `getDisplayMedia #${request} failed at ${stage} after ${Date.now() - startedAt}ms: ${
+          e instanceof Error ? `${e.name}: ${e.message}` : String(e)
+        }`
+      );
+      throw e;
+    } finally {
+      window.clearTimeout(watchdog);
+      acquiring = false;
     }
-    return stream;
   };
   devices.__cinnyScreenShareAudio = true;
 };

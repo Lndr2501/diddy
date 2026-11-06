@@ -359,10 +359,18 @@ export class CallControl extends EventEmitter implements CallControlState {
 
   public toggleScreenshare() {
     const button = this.screenshareButton;
+    if (button && !(button as HTMLButtonElement).disabled) {
+      // Keep this synchronous: the embedded call needs the original user gesture for capture.
+      // Its own controls are hidden, so focus the browsing context rather than that button.
+      this.iframe.focus();
+      this.iframe.contentWindow?.focus();
+    }
     diag(
       `toggleScreenshare: button=${button ? 'found' : 'MISSING'} kind=${
         button?.getAttribute('data-kind') ?? '-'
-      } disabled=${(button as HTMLButtonElement | undefined)?.disabled ?? '-'}`
+      } disabled=${(button as HTMLButtonElement | undefined)?.disabled ?? '-'} focus=${
+        this.document?.hasFocus() ?? '?'
+      }`
     );
     button?.click();
   }

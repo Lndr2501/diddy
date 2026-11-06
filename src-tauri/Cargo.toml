@@ -41,13 +41,15 @@ updater = [ "tauri-plugin-updater" ]
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-global-shortcut = "2.3.2"
+# Keep the current Tauri 2.11 runtime; newer plugin releases require Tauri 2.12.
+tauri-plugin-single-instance = "=2.4.2"
 tauri-plugin-updater = { version = "2.10.1", features = ["rustls-tls"], optional = true }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6"
-objc2-web-kit = { version = "0.3", features = ["WKWebViewConfiguration", "WKPreferences"] }
+objc2-web-kit = { version = "0.3", features = ["WKWebViewConfiguration", "WKPreferences", "WKWebsiteDataStore"] }
 objc2-app-kit = { version = "0.3", features = ["NSApplication", "NSImage", "NSResponder", "NSWorkspace"] }
-objc2-foundation = { version = "0.3", features = ["NSData", "NSString"] }
+objc2-foundation = { version = "0.3", features = ["NSData", "NSString", "NSUUID"] }
 # System-audio capture for screen sharing (see src/system_audio.rs)
 screencapturekit = "11"
 tungstenite = "0.30"

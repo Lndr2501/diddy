@@ -14,6 +14,7 @@ import { deleteBlob, getBlob, putBlob } from '../../utils/blobStore';
 import { diag } from '../diagnostics';
 import { getCallPrefs } from '../../state/callPrefs';
 import { getAudioPrefs, registerInputGain } from './audioDevices';
+import { applyAudioProcessingPolicy } from './audioConstraints';
 import { getSharedAudioContext } from './sharedAudio';
 
 export type Clip = {
@@ -27,15 +28,9 @@ const MAX_SECONDS = 20;
 
 const blobKey = (id: string) => `clip:${id}`;
 
-/**
- * Echo cancellation, noise suppression and auto gain make WebKit on macOS switch to the system
- * "voice processing" mode, which ducks and changes all other audio (music) and causes a short
- * glitch. All three are off unless the user turned "Voice processing" on.
- */
+/** Keep every microphone entry point on the current voice-processing policy. */
 const forceProcessingOff = (c?: MediaTrackConstraints): MediaTrackConstraints =>
-  getCallPrefs().echoCancellation
-    ? c ?? {}
-    : { ...c, echoCancellation: false, noiseSuppression: false, autoGainControl: false };
+  applyAudioProcessingPolicy(c ?? {}, getCallPrefs().echoCancellation);
 
 /** Audio constraints with the echo preference and (optionally) the chosen microphone merged in. */
 const mergeAudioConstraints = (
@@ -55,6 +50,33 @@ const withoutDevice = (audio: true | MediaTrackConstraints): true | MediaTrackCo
   if (audio === true) return audio;
   const { deviceId, ...rest } = audio;
   return rest;
+};
+
+/** Record the successful request and reported settings, without logging full device ids. */
+const logMicSettings = (
+  context: string,
+  audio: true | MediaTrackConstraints | undefined,
+  settings: MediaTrackSettings & { voiceIsolation?: boolean }
+): void => {
+  const shortIds = (ids: string | string[] | undefined) =>
+    typeof ids === 'string' ? ids.slice(0, 8) : ids?.map((id) => id.slice(0, 8));
+  const asked = JSON.stringify(audio, (key, value) => {
+    if (key !== 'deviceId' || !value) return value;
+    return typeof value === 'string' || Array.isArray(value)
+      ? shortIds(value)
+      : { exact: shortIds(value.exact), ideal: shortIds(value.ideal) };
+  });
+  diag(
+    `${context} asked=${asked} got=${JSON.stringify({
+      // null means the browser did not report the setting, not that processing is off.
+      echoCancellation: settings.echoCancellation ?? null,
+      noiseSuppression: settings.noiseSuppression ?? null,
+      autoGainControl: settings.autoGainControl ?? null,
+      voiceIsolation: settings.voiceIsolation ?? null,
+      sampleRate: settings.sampleRate,
+      deviceId: settings.deviceId?.slice(0, 8),
+    })}`
+  );
 };
 
 type MicMix = {
@@ -283,12 +305,16 @@ class Soundboard {
     if (this.mixes.size !== 1) return false;
     const [mix] = Array.from(this.mixes);
     const track = mix.getMic();
+    const audio = forceProcessingOff({ deviceId: { exact: deviceId } });
     try {
-      await track.applyConstraints(forceProcessingOff({ deviceId: { exact: deviceId } }));
+      await track.applyConstraints(audio);
     } catch {
       return false;
     }
-    return track.getSettings?.().deviceId === deviceId;
+    const settings = track.getSettings?.() ?? {};
+    const matched = settings.deviceId === deviceId;
+    logMicSettings(`live microphone switch via applyConstraints matched=${matched}`, audio, settings);
+    return matched;
   }
 
   /**
@@ -442,7 +468,6 @@ export const installSoundboard = (win: Window | null | undefined) => {
     // Cheapest first: ask the running track to change device.
     if (deviceId !== undefined && (await soundboard.applyMicDevice(deviceId))) {
       soundboard.setMicConstraints(audio);
-      diag('live microphone switch via applyConstraints');
       return true;
     }
     const raw = await original({ audio, video: false });
@@ -453,6 +478,7 @@ export const installSoundboard = (win: Window | null | undefined) => {
       return false;
     }
     soundboard.setMicConstraints(audio);
+    logMicSettings('live microphone switch via getUserMedia', audio, track.getSettings?.() ?? {});
     return true;
   };
   devices.getUserMedia = async (constraints?: MediaStreamConstraints) => {
@@ -485,19 +511,10 @@ export const installSoundboard = (win: Window | null | undefined) => {
     }
     diag(`getUserMedia(${wants}) ok tracks=${stream.getTracks().map((t) => t.kind).join(',')}`);
     if (constraints?.audio) {
-      // Which processing WebKit really applies decides whether macOS switches to its voice mode
-      // (ducking / glitches), so record it.
+      // Report the constraints that succeeded, including after a preferred-mic fallback.
+      // Missing settings do not prove that the browser honored or rejected a processing flag.
       const track = stream.getAudioTracks()[0];
-      const settings = track?.getSettings?.() ?? {};
-      diag(
-        `mic asked=${JSON.stringify((effective as MediaStreamConstraints).audio)} got=${JSON.stringify({
-          echoCancellation: settings.echoCancellation,
-          noiseSuppression: settings.noiseSuppression,
-          autoGainControl: settings.autoGainControl,
-          sampleRate: settings.sampleRate,
-          deviceId: settings.deviceId?.slice(0, 8),
-        })}`
-      );
+      logMicSettings('mic', usedAudio, track?.getSettings?.() ?? {});
     }
     if (!constraints?.audio) return stream;
     try {

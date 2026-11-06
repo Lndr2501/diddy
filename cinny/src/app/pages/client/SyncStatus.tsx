@@ -3,6 +3,7 @@ import React, { useCallback, useState } from 'react';
 import { Box, config, Line, Text } from 'folds';
 import { useSyncState } from '../../hooks/useSyncState';
 import { ContainerColor } from '../../styles/ContainerColor.css';
+import { ConnectionsButton } from '../../components/connection-recovery/ConnectionRecovery';
 
 type StateData = {
   current: SyncState | null;
@@ -60,7 +61,8 @@ export function SyncStatus({ mx }: SyncStatusProps) {
           alignItems="Center"
           justifyContent="Center"
         >
-          <Text size="L400">Connection Lost! Reconnecting...</Text>
+          <Text size="L400">Verbindung verloren – erneuter Versuch …</Text>
+          <ConnectionsButton />
         </Box>
         <Line variant="Warning" size="300" />
       </Box>
@@ -76,7 +78,8 @@ export function SyncStatus({ mx }: SyncStatusProps) {
           alignItems="Center"
           justifyContent="Center"
         >
-          <Text size="L400">Connection Lost!</Text>
+          <Text size="L400">Homeserver nicht erreichbar</Text>
+          <ConnectionsButton />
         </Box>
         <Line variant="Critical" size="300" />
       </Box>

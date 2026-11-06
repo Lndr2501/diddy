@@ -76,6 +76,43 @@
 - Entwürfe: Wettlauf beim Raumwechsel und Speicherfehler abgesichert
 - Raum verlassen: Raum wird danach vergessen, damit er verschwindet
 
+### Weitere lokale Call-Korrekturen (Teststand auf dem Mac installiert)
+
+- "Voice processing" aus deaktiviert jetzt auch die angeforderte Sprachisolierung; die Freigabe der Geräteliste verwendet dieselbe Richtlinie.
+- Mikrofon-Diagnose protokolliert die erfolgreiche Anfrage statt einer zuvor fehlgeschlagenen Gerätewahl; Geräte-IDs bleiben gekürzt.
+- Bildschirmfreigabe: synchroner iframe-Fokus, native Anfrage vor Audio-Vorbereitung, Schutz vor parallelen Starts und genauere Phasen-Diagnose.
+- Stream-Ende räumt Audio und Statistik auch bei programmgesteuertem Video-Stopp auf; Abbruch beendet wartende Audio-Vorbereitung ohne verspätetes Anhängen alter Tracks.
+- 19 Mock-/Regressionstests auf dem Mac bestanden; Teststand gebaut, mit bestehender Signieridentität installiert und nach dem Start auf gültige Signatur geprüft. Echter Call-/Stream-Neustart und Audio-Ruckler noch zu prüfen. Gesamt-Typcheck weiterhin mit denselben 879 Diagnosen wie HEAD, keine zusätzlichen Diagnosen.
+
+### Zweiter Call-Teststand (auf dem Mac installiert)
+
+- Soundboard und Call-Töne folgen der Plattform-Standard-Abtastrate statt fest 48 kHz anzufordern; noch keine bestätigte Behebung der Musik-Unterbrecher.
+- Bildschirmfreigabe fordert die vom Aufrufer maximal gewünschte Auflösung auch als Wunschgröße an und konfiguriert den ausgewählten Live-Track nach; Fehler oder verzögerte Qualitätsanpassung verhindern die Freigabe nicht.
+- 26 hardwarefreie Regressionstests auf dem Mac bestanden, im Typvergleich keine zusätzlichen Diagnosen. Zweiten Teststand auf dem Mac gebaut/signiert/installiert und nach dem Start auf gültige Signatur sowie neue Frontend-Codepfade geprüft. Echte Stream-Auflösung und Audio-Verhalten noch ungetestet; der vorherige Teststand zeigte weiterhin Unterbrecher und 360p.
+
+### Homeserver-Ausfall und getrennte Verbindungen (Mac-Teststand installiert)
+
+- Verständliche Verbindungsseite statt unbegrenztem "Connecting": Server-Adresse, Wiederholen und alternative Anmeldung. Discovery und Versionsabfrage haben ein 8-Sekunden-Limit inklusive Antwortkörper; alte Anfragen werden beim Wechsel abgebrochen.
+- Neue Verbindungsübersicht aus Titelleiste, Login und Verbindungsfehlern: gespeicherte Server öffnen oder eine neue Anmeldung anlegen.
+- Alternative Konten laufen in getrennten persistenten nativen Datenspeichern; die ursprüngliche Anmeldung bleibt erhalten. Keine Wiederverwendung alter Tokens für andere Server und keine Cache-/Schlüssel-Löschung durch den Wechsel.
+- Auf macOS benötigen zusätzliche getrennte Anmeldungen macOS 14+. Gespeichert werden nur Kennung und Server-Adresse. Audio-Bridges werden beim Wiederöffnen wiederverwendet.
+- 44 JavaScript-Tests, 3 Rust-Tests und 5 Renderprüfungen bestanden; keine zusätzlichen Typdiagnosen. Gebaut, signiert und auf dem Mac gestartet; echte alternative Anmeldung und Wiederöffnen noch manuell zu prüfen.
+
+### Profile auch für später beitretende Mitglieder sichtbar
+
+- Profile bleiben pro Person in genau einem festen Eintrag (State-Ereignis mit der eigenen Nutzerkennung); ein als Diddy-Raum markierter Raum nutzt jetzt immer diesen Weg, auch wenn er vorher als Nachrichtenraum ausgewählt war. Nur wenn der Server das Schreibrecht verweigert, weicht Diddy auf normale Ereignisse aus.
+- In Räumen ohne State-Recht schickt Diddy dein Profil erneut, sobald du online kommst und sobald andere Mitglieder beitreten - begrenzt auf eine Übermittlung pro Raum und fünf Minuten, damit kein Spam entsteht.
+- Behoben: Eine gleichzeitige Fensteröffnung konnte die Reservierung der ersten Öffnung überschreiben, wodurch eine Verbindung dauerhaft als "wird gerade geöffnet" blockiert blieb.
+- 54 JavaScript-Tests, 9 native Tests und 5 Renderzustände bestanden; keine zusätzlichen Typdiagnosen.
+
+### Verbindungsfunktion nach Fremdprüfung nachgebessert
+
+- Die gespeicherte Verbindungsliste kann nicht mehr durch eine zu lange Unicode-Adresse unlesbar werden; Grenzwert gilt jetzt für Eingabe und gespeicherte Form.
+- Eine Anmeldung wird erst gespeichert, wenn ihr Fenster wirklich offen ist; ein Fehlversuch belegt keinen Platz mehr. Andere Verbindungsaktionen werden während des Fensterbaus nicht mehr blockiert.
+- Nach einem Abbruch wird ein später eingeplantes Fenster nicht mehr nachträglich geöffnet; Mehrfachöffnungen derselben Verbindung werden zusammengefasst. Ein normaler erneutem Programmstart holt das geschlossene Hauptfenster zurück.
+- unbehandelte Promise-Fehler bei fehlgeschlagenen Serverabrufen beseitigt.
+- 46 JavaScript-Tests, 8 native Tests und 5 Renderzustände bestanden; keine zusätzlichen Typdiagnosen.
+
 ## 1.1.0
 
 - Erste Version von Diddy: Matrix-Chat-Client für macOS und Linux, basiert auf Cinny

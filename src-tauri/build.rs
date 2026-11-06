@@ -14,6 +14,8 @@ fn main() {
                 "diag_log",
                 "myinstants_fetch_text",
                 "myinstants_fetch_audio",
+                "connection_profiles",
+                "open_connection_profile",
             ])),
     )
     .expect("failed to run tauri-build");

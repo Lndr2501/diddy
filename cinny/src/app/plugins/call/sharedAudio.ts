@@ -11,12 +11,13 @@ let shared: AudioContext | undefined;
 
 export const getSharedAudioContext = (): AudioContext => {
   if (!shared || shared.state === 'closed') {
-    // 48 kHz is what WebRTC/Opus uses natively (no resampling); 'playback' keeps the output
-    // device in its most relaxed mode (fewest dropouts, no extra load on the system mixer).
-    shared = new AudioContext({ latencyHint: 'playback', sampleRate: 48000 });
+    // Follow the output device's default clock instead of forcing it to WebRTC's 48 kHz.
+    // WebRTC can resample its input; the local mixer should not request a different output rate.
+    // Screen-share PCM has its own explicit 48 kHz context and is not changed here.
+    shared = new AudioContext({ latencyHint: 'playback' });
     const info = shared as AudioContext & { outputLatency?: number };
     diag(
-      `shared AudioContext created state=${shared.state} sampleRate=${shared.sampleRate} baseLatency=${
+      `shared AudioContext created requestedSampleRate=default state=${shared.state} sampleRate=${shared.sampleRate} baseLatency=${
         shared.baseLatency ?? '?'
       } outputLatency=${info.outputLatency ?? '?'}`
     );

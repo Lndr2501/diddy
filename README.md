@@ -11,6 +11,10 @@ Chat-Client für Matrix, für macOS und Linux. Basiert auf [Cinny](https://githu
 - **Alle Räume eines Space mit einem Klick beitreten** ("Join All Rooms") oder automatisch ("Auto-Join Rooms"), im Space-Menü.
 - Kein Auto-Update.
 
+## Wenn ein Homeserver ausfällt
+
+Die Verbindungsseite zeigt den betroffenen Server und bietet **Erneut versuchen** oder **Anderen Server verbinden**. Unter **Verbindungen** lassen sich gespeicherte Anmeldungen wieder öffnen. Ein anderer Server bekommt ein eigenes Fenster mit getrenntem Login und Datenspeicher; das bisherige Konto und seine Schlüssel bleiben erhalten. Accounts werden nicht zwischen Servern übertragen. Zusätzliche getrennte Anmeldungen benötigen auf macOS mindestens Version 14.
+
 ## Installation
 
 Die Downloads liegen unter [Releases](../../releases).

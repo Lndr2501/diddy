@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect } from 'react';
-import { Box, Header, Scroll, Spinner, Text, color } from 'folds';
+import { Box, Button, Header, Scroll, Spinner, Text, color } from 'folds';
 import {
   Outlet,
   generatePath,
@@ -31,6 +31,8 @@ import { AuthFlowsLoader } from '../../components/AuthFlowsLoader';
 import { AuthFlowsProvider } from '../../hooks/useAuthFlows';
 import { AuthServerProvider } from '../../hooks/useAuthServer';
 import { tryDecodeURIComponent } from '../../utils/dom';
+import { getConnectionProfile } from '../../plugins/connections';
+import { ConnectionsButton } from '../../components/connection-recovery/ConnectionRecovery';
 
 const currentAuthPath = (pathname: string): string => {
   if (matchPath(LOGIN_PATH, pathname)) {
@@ -73,10 +75,12 @@ export function AuthLayout() {
 
   const clientConfig = useClientConfig();
 
-  const defaultServer = clientDefaultServer(clientConfig);
-  let server: string = urlEncodedServer ? tryDecodeURIComponent(urlEncodedServer) : defaultServer;
+  const profile = getConnectionProfile();
+  const defaultServer = profile?.server ?? clientDefaultServer(clientConfig);
+  let server: string =
+    profile?.server ?? (urlEncodedServer ? tryDecodeURIComponent(urlEncodedServer) : defaultServer);
 
-  if (!clientAllowedServer(clientConfig, server)) {
+  if (!profile && !clientAllowedServer(clientConfig, server)) {
     server = defaultServer;
   }
 
@@ -91,7 +95,7 @@ export function AuthLayout() {
   );
 
   useEffect(() => {
-    if (server) discoverServer(server);
+    if (server) discoverServer(server).catch(() => {});
   }, [discoverServer, server]);
 
   // if server is mismatches with path server, update path
@@ -110,7 +114,7 @@ export function AuthLayout() {
     (newServer: string) => {
       if (newServer === server) {
         if (discoveryState.status === AsyncStatus.Loading) return;
-        discoverServer(server);
+        discoverServer(server).catch(() => {});
         return;
       }
       navigate(
@@ -144,6 +148,7 @@ export function AuthLayout() {
               <AppLogo className={css.AuthLogo} />
               <Text size="H3">{APP_NAME}</Text>
             </Box>
+            <ConnectionsButton />
           </Header>
           <Box className={css.AuthCardContent} direction="Column">
             <Box direction="Column" gap="100">
@@ -152,8 +157,8 @@ export function AuthLayout() {
               </Text>
               <ServerPicker
                 server={server}
-                serverList={clientConfig.homeserverList ?? []}
-                allowCustomServer={clientConfig.allowCustomHomeservers}
+                serverList={profile ? [profile.server] : clientConfig.homeserverList ?? []}
+                allowCustomServer={!profile && clientConfig.allowCustomHomeservers}
                 onServerChange={selectServer}
               />
             </Box>
@@ -161,7 +166,12 @@ export function AuthLayout() {
               <AuthLayoutLoading message="Looking for homeserver..." />
             )}
             {discoveryState.status === AsyncStatus.Error && (
-              <AuthLayoutError message="Failed to find homeserver." />
+              <Box direction="Column" gap="200">
+                <AuthLayoutError message="Der Homeserver ist nicht erreichbar oder antwortet nicht rechtzeitig." />
+                <Button variant="Secondary" onClick={() => discoverServer(server).catch(() => {})}>
+                  <Text>Erneut versuchen</Text>
+                </Button>
+              </Box>
             )}
             {autoDiscoveryError?.action === AutoDiscoveryAction.FAIL_PROMPT && (
               <AuthLayoutError
@@ -181,8 +191,13 @@ export function AuthLayout() {
                         message={`Connecting to ${autoDiscoveryInfo['m.homeserver'].base_url}`}
                       />
                     )}
-                    error={() => (
-                      <AuthLayoutError message="Failed to connect. Either homeserver is unavailable at this moment or does not exist." />
+                    error={(_err, retry) => (
+                      <Box direction="Column" gap="200">
+                        <AuthLayoutError message="Der Homeserver ist nicht erreichbar oder kein gültiger Matrix-Server." />
+                        <Button variant="Secondary" onClick={retry}>
+                          <Text>Erneut versuchen</Text>
+                        </Button>
+                      </Box>
                     )}
                   >
                     {(specVersions) => (

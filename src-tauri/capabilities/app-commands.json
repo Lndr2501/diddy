@@ -1,6 +1,6 @@
 {
   "identifier": "app-commands",
-  "description": "Custom commands the app page may call (app icon, MyInstants import)",
+  "description": "App commands: icon, diagnostics, isolated connections and MyInstants import",
   "local": true,
   "remote": {
     "urls": [
@@ -8,12 +8,15 @@
     ]
   },
   "windows": [
-    "main"
+    "main",
+    "connection-*"
   ],
   "permissions": [
     "allow-set-app-icon",
     "allow-myinstants-fetch-text",
     "allow-myinstants-fetch-audio",
-    "allow-diag-log"
+    "allow-diag-log",
+    "allow-connection-profiles",
+    "allow-open-connection-profile"
   ]
 }

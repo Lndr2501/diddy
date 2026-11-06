@@ -6,7 +6,8 @@
     "linux"
   ],
   "windows": [
-    "main"
+    "main",
+    "connection-*"
   ],
   "permissions": [
     "global-shortcut:default"
