@@ -119,6 +119,13 @@ const PROCESS_PID: u32 = fourcc(b"ppid");
 const DEFAULT_OUTPUT_DEVICE: u32 = fourcc(b"dOut");
 const DEVICE_UID: u32 = fourcc(b"uid ");
 const TAP_FORMAT: u32 = fourcc(b"tfmt");
+const HARDWARE_DEVICES: u32 = fourcc(b"dev#");
+const DEFAULT_INPUT_DEVICE: u32 = fourcc(b"dIn ");
+const OBJECT_NAME: u32 = fourcc(b"lnam");
+const DEVICE_STREAMS: u32 = fourcc(b"stm#");
+const DEVICE_STREAM_FORMAT: u32 = fourcc(b"sfmt");
+const SCOPE_INPUT: u32 = fourcc(b"inpt");
+const FORMAT_FLAG_IS_FLOAT: u32 = 1;
 const FORMAT_FLAG_NON_INTERLEAVED: u32 = 1 << 5;
 
 fn address(selector: u32) -> AudioObjectPropertyAddress {
@@ -391,6 +398,148 @@ fn create_aggregate(tap_uid: &NSString, output_uid: &NSString) -> Result<AudioOb
         "create aggregate device",
     )?;
     Ok(device)
+}
+
+// --- microphone --------------------------------------------------------------------------------
+//
+// WebKit opens every microphone through Apple's voice processing unit (VPIO), even with
+// echoCancellation:false. VPIO ducks all other apps' audio to ~18 % and rebuilds the audio device
+// for ~0.7 s, which is the music "stutter" on joining a call, unmuting and switching microphones.
+// With voice processing switched off in Diddy, the microphone is read here straight from the
+// device (HAL, no VPIO) and streamed to the page like the system audio.
+
+fn input_address(selector: u32) -> AudioObjectPropertyAddress {
+    AudioObjectPropertyAddress { selector, scope: SCOPE_INPUT, element: ELEMENT_MAIN }
+}
+
+fn object_name(id: AudioObjectID) -> Option<String> {
+    let mut name: *const NSString = ptr::null();
+    let mut size = std::mem::size_of::<*const NSString>() as u32;
+    let status = unsafe {
+        AudioObjectGetPropertyData(id, &address(OBJECT_NAME), 0, ptr::null(), &mut size, &mut name as *mut _ as *mut c_void)
+    };
+    if status != 0 {
+        return None;
+    }
+    let name = unsafe { Retained::from_raw(name as *mut NSString) }?;
+    Some(name.to_string())
+}
+
+fn has_input(id: AudioObjectID) -> bool {
+    let mut size = 0u32;
+    let status = unsafe { AudioObjectGetPropertyDataSize(id, &input_address(DEVICE_STREAMS), 0, ptr::null(), &mut size) };
+    status == 0 && size > 0
+}
+
+/// The input device whose name equals `wanted` (WebKit's device labels are the Core Audio names),
+/// otherwise the system default input.
+fn find_input_device(wanted: Option<&str>) -> Result<AudioObjectID, String> {
+    if let Some(wanted) = wanted.map(str::trim).filter(|w| !w.is_empty()) {
+        let mut size = 0u32;
+        if unsafe { AudioObjectGetPropertyDataSize(SYSTEM_OBJECT, &address(HARDWARE_DEVICES), 0, ptr::null(), &mut size) } == 0 {
+            let mut ids = vec![0 as AudioObjectID; size as usize / std::mem::size_of::<AudioObjectID>()];
+            let status = unsafe {
+                AudioObjectGetPropertyData(SYSTEM_OBJECT, &address(HARDWARE_DEVICES), 0, ptr::null(), &mut size, ids.as_mut_ptr() as *mut c_void)
+            };
+            if status == 0 {
+                ids.truncate(size as usize / std::mem::size_of::<AudioObjectID>());
+                if let Some(id) = ids.into_iter().find(|&id| has_input(id) && object_name(id).as_deref() == Some(wanted)) {
+                    return Ok(id);
+                }
+            }
+        }
+        crate::system_audio::log("microphone not found by name, using the default input");
+    }
+    get_pod(SYSTEM_OBJECT, DEFAULT_INPUT_DEVICE, "default input device")
+}
+
+struct MicState {
+    tx: SyncSender<Vec<u8>>,
+}
+
+/// Channel 0 of the device input, written as interleaved stereo f32 (both sides the same).
+extern "C" fn mic_proc(
+    _device: AudioObjectID,
+    _now: *const c_void,
+    input: *const AudioBufferList,
+    _input_time: *const c_void,
+    _output: *mut AudioBufferList,
+    _output_time: *const c_void,
+    client: *mut c_void,
+) -> OSStatus {
+    if input.is_null() || client.is_null() {
+        return 0;
+    }
+    let state = unsafe { &*(client as *const MicState) };
+    let list = unsafe { &*input };
+    let buffers = unsafe { std::slice::from_raw_parts(list.buffers.as_ptr(), list.number_buffers as usize) };
+    let Some(first) = buffers.first() else { return 0 };
+    if first.data.is_null() || first.number_channels == 0 {
+        return 0;
+    }
+    let channels = first.number_channels as usize;
+    let data = unsafe { std::slice::from_raw_parts(first.data as *const u8, first.data_byte_size as usize) };
+    let mut out = Vec::with_capacity(data.len() / channels * 2);
+    for frame in data.chunks_exact(4 * channels) {
+        out.extend_from_slice(&frame[..4]);
+        out.extend_from_slice(&frame[..4]);
+    }
+    let _ = state.tx.try_send(out);
+    0
+}
+
+pub struct MicCapture {
+    device: AudioObjectID,
+    proc_id: AudioDeviceIOProcID,
+    state: *mut MicState,
+    pub sample_rate: f64,
+    pub name: String,
+}
+
+unsafe impl Send for MicCapture {}
+
+impl MicCapture {
+    pub fn start(tx: SyncSender<Vec<u8>>, wanted: Option<&str>) -> Result<MicCapture, String> {
+        let device = find_input_device(wanted)?;
+        let format: AudioStreamBasicDescription = {
+            let mut value = AudioStreamBasicDescription::default();
+            let mut size = std::mem::size_of::<AudioStreamBasicDescription>() as u32;
+            check(
+                unsafe {
+                    AudioObjectGetPropertyData(device, &input_address(DEVICE_STREAM_FORMAT), 0, ptr::null(), &mut size, &mut value as *mut _ as *mut c_void)
+                },
+                "microphone format",
+            )?;
+            value
+        };
+        if format.format_flags & FORMAT_FLAG_IS_FLOAT == 0 || format.bits_per_channel != 32 {
+            return Err(format!("unsupported microphone format flags={} bits={}", format.format_flags, format.bits_per_channel));
+        }
+        // non-interleaved devices deliver channel 0 in the first buffer: mic_proc handles both
+        let name = object_name(device).unwrap_or_default();
+        let state = Box::into_raw(Box::new(MicState { tx }));
+        let mut proc_id: AudioDeviceIOProcID = ptr::null_mut();
+        let status = unsafe { AudioDeviceCreateIOProcID(device, mic_proc, state as *mut c_void, &mut proc_id) };
+        if status != 0 {
+            unsafe { drop(Box::from_raw(state)) };
+            return Err(format!("microphone io proc failed ({status})"));
+        }
+        let capture = MicCapture { device, proc_id, state, sample_rate: format.sample_rate, name };
+        let status = unsafe { AudioDeviceStart(device, proc_id) };
+        if status != 0 {
+            capture.stop();
+            return Err(format!("microphone start failed ({status})"));
+        }
+        Ok(capture)
+    }
+
+    pub fn stop(self) {
+        unsafe {
+            AudioDeviceStop(self.device, self.proc_id);
+            AudioDeviceDestroyIOProcID(self.device, self.proc_id);
+            drop(Box::from_raw(self.state));
+        }
+    }
 }
 
 /// Linear resampler for interleaved stereo f32 frames (the page plays 48 kHz).

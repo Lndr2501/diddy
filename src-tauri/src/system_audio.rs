@@ -32,7 +32,7 @@ use std::{
     net::{TcpListener, TcpStream},
     process::{Child, ChildStdin, Command, Stdio},
     sync::{
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, AtomicUsize, Ordering},
         mpsc::{self, SyncSender},
         Arc,
     },
@@ -96,7 +96,7 @@ pub fn spawn(allowed_origins: Vec<String>) -> std::io::Result<AudioBridge> {
     let listener = TcpListener::bind("127.0.0.1:0")?;
     let port = listener.local_addr()?.port();
     let token = random_token()?;
-    let busy = Arc::new(AtomicBool::new(false));
+    let busy = Arc::new(Busy::default());
 
     let server_token = token.clone();
     thread::spawn(move || {
@@ -116,20 +116,117 @@ pub fn spawn(allowed_origins: Vec<String>) -> std::io::Result<AudioBridge> {
     Ok(AudioBridge { port, token })
 }
 
-struct BusyGuard(Arc<AtomicBool>);
-impl Drop for BusyGuard {
+/// Running sessions per kind: one screen-share audio, and two microphones (a live device switch
+/// opens the new microphone before the old one is closed).
+#[derive(Default)]
+struct Busy {
+    screen: AtomicUsize,
+    mic: AtomicUsize,
+}
+
+const MAX_SCREEN_SESSIONS: usize = 1;
+const MAX_MIC_SESSIONS: usize = 2;
+
+struct BusyGuard<'a>(&'a AtomicUsize);
+impl Drop for BusyGuard<'_> {
     fn drop(&mut self) {
-        self.0.store(false, Ordering::SeqCst);
+        self.0.fetch_sub(1, Ordering::SeqCst);
     }
 }
 
-fn serve(
-    stream: TcpStream,
-    token: &str,
-    origins: &[String],
-    busy: &Arc<AtomicBool>,
-) -> Result<(), String> {
+fn claim(counter: &AtomicUsize, max: usize) -> Option<BusyGuard<'_>> {
+    let previous = counter.fetch_add(1, Ordering::SeqCst);
+    if previous >= max {
+        counter.fetch_sub(1, Ordering::SeqCst);
+        return None;
+    }
+    Some(BusyGuard(counter))
+}
+
+#[derive(Debug, PartialEq)]
+enum SessionKind {
+    /// system audio of other apps (screen sharing)
+    Screen,
+    /// the microphone `device` (Core Audio name; None = default input)
+    Mic { device: Option<String> },
+}
+
+#[derive(Debug, PartialEq)]
+struct SessionRequest {
+    kind: SessionKind,
+    /// sample rate the page plays at
+    rate: f64,
+}
+
+fn percent_decode(value: &str) -> String {
+    let hex = |b: u8| -> Option<u8> {
+        match b {
+            b'0'..=b'9' => Some(b - b'0'),
+            b'a'..=b'f' => Some(b - b'a' + 10),
+            b'A'..=b'F' => Some(b - b'A' + 10),
+            _ => None,
+        }
+    };
+    let bytes = value.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        let b = bytes[i];
+        if b == b'%' {
+            if let (Some(hi), Some(lo)) = (bytes.get(i + 1).copied().and_then(hex), bytes.get(i + 2).copied().and_then(hex)) {
+                out.push(hi << 4 | lo);
+                i += 3;
+                continue;
+            }
+        }
+        out.push(if b == b'+' { b' ' } else { b });
+        i += 1;
+    }
+    String::from_utf8_lossy(&out).into_owned()
+}
+
+/// Reads `mode`, `device` and `rate` from the WebSocket query (the token is checked separately).
+fn parse_request(query: &str) -> SessionRequest {
+    let mut mode = "screen";
+    let mut device = None;
+    let mut rate = SAMPLE_RATE as f64;
+    for pair in query.split('&') {
+        let (key, value) = pair.split_once('=').unwrap_or((pair, ""));
+        match key {
+            "mode" if value == "mic" => mode = "mic",
+            "device" => device = Some(percent_decode(value)).filter(|d| !d.is_empty() && d.len() <= 256),
+            "rate" => {
+                if let Ok(r) = value.parse::<f64>() {
+                    if (8_000.0..=192_000.0).contains(&r) {
+                        rate = r;
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    let kind = if mode == "mic" { SessionKind::Mic { device } } else { SessionKind::Screen };
+    SessionRequest { kind, rate }
+}
+
+/// One running capture of either kind.
+enum Capture {
+    Screen(Helper),
+    Mic(crate::audio_tap::MicCapture),
+}
+
+impl Capture {
+    fn stop(self) {
+        match self {
+            Capture::Screen(helper) => helper.stop(),
+            Capture::Mic(mic) => mic.stop(),
+        }
+    }
+}
+
+fn serve(stream: TcpStream, token: &str, origins: &[String], busy: &Busy) -> Result<(), String> {
     let expected = format!("token={token}");
+    let mut query = String::new();
     let callback = |req: &Request, resp: Response| -> Result<Response, ErrorResponse> {
         let origin_ok = req
             .headers()
@@ -141,6 +238,7 @@ fn serve(
             .query()
             .is_some_and(|q| q.split('&').any(|kv| kv == expected));
         if origin_ok && token_ok {
+            query = req.uri().query().unwrap_or_default().to_string();
             Ok(resp)
         } else {
             Err(http::Response::builder()
@@ -151,13 +249,17 @@ fn serve(
     };
 
     let mut ws = accept_hdr(stream, callback).map_err(|e| format!("handshake: {e}"))?;
+    let request = parse_request(&query);
 
-    if busy.swap(true, Ordering::SeqCst) {
+    let guard = match request.kind {
+        SessionKind::Screen => claim(&busy.screen, MAX_SCREEN_SESSIONS),
+        SessionKind::Mic { .. } => claim(&busy.mic, MAX_MIC_SESSIONS),
+    };
+    let Some(_guard) = guard else {
         let _ = ws.send(Message::text(r#"{"type":"error","message":"busy"}"#));
         let _ = ws.close(None);
         return Ok(());
-    }
-    let _guard = BusyGuard(busy.clone());
+    };
 
     let tcp = ws.get_mut();
     let _ = tcp.set_nodelay(true);
@@ -165,7 +267,16 @@ fn serve(
     let _ = tcp.set_write_timeout(Some(Duration::from_secs(2)));
 
     let (tx, rx) = mpsc::sync_channel::<Vec<u8>>(64);
-    let capture = match spawn_helper(tx) {
+    // Screen audio arrives at 48 kHz from the helper; the microphone at the device rate.
+    let started = match &request.kind {
+        SessionKind::Screen => spawn_helper(tx).map(|h| (Capture::Screen(h), SAMPLE_RATE as f64)),
+        SessionKind::Mic { device } => crate::audio_tap::MicCapture::start(tx, device.as_deref()).map(|m| {
+            log(&format!("microphone started device={} rate={}", m.name, m.sample_rate));
+            let rate = m.sample_rate;
+            (Capture::Mic(m), rate)
+        }),
+    };
+    let (capture, source_rate) = match started {
         Ok(c) => c,
         Err(e) => {
             log(&format!("capture failed to start: {e}"));
@@ -179,9 +290,11 @@ fn serve(
         }
     };
     log("capture started");
+    let mut resampler = crate::audio_tap::Resampler::new(source_rate, request.rate);
 
     if let Err(e) = ws.send(Message::text(format!(
-        r#"{{"type":"format","sampleRate":{SAMPLE_RATE},"channels":{CHANNELS}}}"#
+        r#"{{"type":"format","sampleRate":{},"channels":{CHANNELS}}}"#,
+        request.rate
     ))) {
         // Don't leave the native capture running when the page is already gone.
         return finish(capture, Err(e.to_string()));
@@ -197,6 +310,10 @@ fn serve(
             Err(e) => break Err(e.to_string()),
         }
         while let Ok(buf) = rx.try_recv() {
+            let buf = resampler.process(&buf);
+            if buf.is_empty() {
+                continue;
+            }
             if let Err(e) = ws.send(Message::binary(buf)) {
                 match e {
                     WsError::Io(ref io)
@@ -210,7 +327,7 @@ fn serve(
     finish(capture, result)
 }
 
-fn finish(capture: Helper, result: Result<(), String>) -> Result<(), String> {
+fn finish(capture: Capture, result: Result<(), String>) -> Result<(), String> {
     capture.stop();
     log("capture stopped");
     result
@@ -392,6 +509,43 @@ mod tests {
         let mut huge = vec![FRAME_PCM];
         huge.extend_from_slice(&u32::MAX.to_le_bytes());
         assert!(read_frame(&mut std::io::Cursor::new(huge)).is_err());
+    }
+
+    #[test]
+    fn bridge_requests_choose_mode_device_and_rate_safely() {
+        assert_eq!(
+            parse_request("token=x"),
+            SessionRequest { kind: SessionKind::Screen, rate: 48_000.0 }
+        );
+        assert_eq!(
+            parse_request("token=x&mode=mic&device=EarPods%20(USB)&rate=44100"),
+            SessionRequest { kind: SessionKind::Mic { device: Some("EarPods (USB)".into()) }, rate: 44_100.0 }
+        );
+        // absurd rates and empty names fall back to the defaults
+        assert_eq!(
+            parse_request("mode=mic&device=&rate=5"),
+            SessionRequest { kind: SessionKind::Mic { device: None }, rate: 48_000.0 }
+        );
+        // broken escapes never panic
+        assert_eq!(percent_decode("a%2"), "a%2");
+        assert_eq!(percent_decode("%zz%41"), "%zzA");
+        assert_eq!(percent_decode("Mic%C3%A9"), "Micé");
+    }
+
+    #[test]
+    fn session_limits_are_per_kind_and_released() {
+        let busy = Busy::default();
+        let screen = claim(&busy.screen, MAX_SCREEN_SESSIONS);
+        assert!(screen.is_some());
+        assert!(claim(&busy.screen, MAX_SCREEN_SESSIONS).is_none());
+        let a = claim(&busy.mic, MAX_MIC_SESSIONS);
+        let b = claim(&busy.mic, MAX_MIC_SESSIONS);
+        assert!(a.is_some() && b.is_some());
+        assert!(claim(&busy.mic, MAX_MIC_SESSIONS).is_none());
+        drop(a);
+        assert!(claim(&busy.mic, MAX_MIC_SESSIONS).is_some());
+        drop(screen);
+        assert!(claim(&busy.screen, MAX_SCREEN_SESSIONS).is_some());
     }
 
     #[test]

@@ -2,6 +2,13 @@
 
 Statusbericht des Entwicklungsstands (Diddy, nach 1.1.0, kein neues Release).
 
+## Musik-Ruckler: Mikrofon ohne Apples Sprachverarbeitung (2026-11-06, 23:30)
+
+- Ursache laut Systemlog: WebKit öffnet jedes Mikrofon über Apples Voice-Processing-Einheit (VPIO), auch mit `echoCancellation:false`. VPIO senkt alle anderen Apps ab (`coreaudiod: ducking device to 0.177828`) und baut das Audiogerät um (`AUVP configuration time 664 ms`). Das passiert beim Join, beim Stummschalten und Entstummen und beim Mikrofonwechsel. Element hat das nicht, weil Chromium das Gerät ohne VPIO öffnet.
+- Lösung: Bei "Voice processing" aus liest Diddy das Mikrofon nativ über Core Audio (HAL-IOProc auf dem Eingabegerät, `MicCapture` in `audio_tap.rs`) und streamt es über die lokale Audio-Brücke (`mode=mic`, Abtastrate der Seite) in eine Spur (`plugins/call/nativeMic.ts`, AudioWorklet, höchstens 60 ms Puffer). Der Call bekommt diese Spur. Die Kamera kommt weiter von WebKit, aber ohne Mikrofon-Anfrage. Ein Mikrofonwechsel im Call öffnet das neue Gerät ebenfalls nativ. Gerätezuordnung über den Gerätenamen (WebKit-Label = Core-Audio-Name); der Name wird bei der Auswahl gespeichert, weil WebKit ihn ohne laufende Aufnahme verbergen kann. Auch die Sprachnachrichten-Aufnahme nutzt das native Mikrofon. Wenn die native Aufnahme nicht klappt, wird automatisch das WebKit-Mikrofon genutzt.
+- Bei "Voice processing" an bleibt das WebKit-Mikrofon mit Echo- und Rauschunterdrückung. Dann senkt macOS andere Apps weiterhin ab: Das ist Apples Verhalten, und dagegen hat Diddy dort keinen Zugriff.
+- Brücke: getrennte Grenzen pro Art (1 Bildschirm-Ton, 2 Mikrofone für den nahtlosen Wechsel). 16 native Tests, 88 JavaScript-Tests, Typecheck sauber.
+
 ## Zweiter Teststand 22:50 und Ursache Stream/Kamera (2026-11-06, 23:05)
 
 - Rückmeldung: Stream und Kamera lassen sich nach dem Ausschalten nicht wieder einschalten, die Kamera kam erst nach langer Verzögerung. Musik ruckelt beim Join, bei Mikrofonnutzung im Call und beim Mikrofonwechsel, egal ob "Voice processing" an oder aus ist.

@@ -16,6 +16,7 @@ import { getCallPrefs } from '../../state/callPrefs';
 import { getAudioPrefs, registerInputGain } from './audioDevices';
 import { applyAudioProcessingPolicy } from './audioConstraints';
 import { getSharedAudioContext } from './sharedAudio';
+import { isNativeMic, nativeMicAvailable, openNativeMic, preferredNativeMic } from './nativeMic';
 
 export type Clip = {
   id: string;
@@ -187,7 +188,11 @@ class Soundboard {
   }
 
   /** Adds a clip from downloaded bytes, e.g. from MyInstants. Resolves false if it already exists. */
-  public async addClipFromBytes(name: string, bytes: ArrayBuffer, type = 'audio/mpeg'): Promise<boolean> {
+  public async addClipFromBytes(
+    name: string,
+    bytes: ArrayBuffer,
+    type = 'audio/mpeg'
+  ): Promise<boolean> {
     if (this.hasClipNamed(name)) return false;
     await this.addClip(new File([bytes], `${name}.mp3`, { type }));
     return true;
@@ -281,6 +286,12 @@ class Soundboard {
     return true;
   }
 
+  /** True when the microphone under the mix is the native one (voice processing off). */
+  public isNativeMicInMix(): boolean {
+    const [mix] = Array.from(this.mixes);
+    return isNativeMic(mix?.getMic());
+  }
+
   /** deviceId of the microphone under the first mix, if any. */
   public getMicDeviceId(): string | undefined {
     const [mix] = Array.from(this.mixes);
@@ -313,7 +324,11 @@ class Soundboard {
     }
     const settings = track.getSettings?.() ?? {};
     const matched = settings.deviceId === deviceId;
-    logMicSettings(`live microphone switch via applyConstraints matched=${matched}`, audio, settings);
+    logMicSettings(
+      `live microphone switch via applyConstraints matched=${matched}`,
+      audio,
+      settings
+    );
     return matched;
   }
 
@@ -466,6 +481,18 @@ export const installSoundboard = (win: Window | null | undefined) => {
     if (deviceId !== undefined && soundboard.getMicDeviceId() === deviceId) return true;
     const base = soundboard.getMicConstraints() ?? true;
     const audio = mergeAudioConstraints(deviceId ? base : withoutDevice(base), deviceId);
+    // Native microphone: open the new device natively too, never via WebKit (that would bring
+    // back voice processing and its ducking of other apps).
+    if (soundboard.isNativeMicInMix() && !getCallPrefs().echoCancellation) {
+      const track = await openNativeMic(await preferredNativeMic(devices, deviceId));
+      if (!soundboard.replaceMic(track)) {
+        track.stop();
+        return false;
+      }
+      soundboard.setMicConstraints(audio);
+      diag(`live microphone switch via native capture device=${track.label}`);
+      return true;
+    }
     // Cheapest first: ask the running track to change device.
     if (deviceId !== undefined && (await soundboard.applyMicDevice(deviceId))) {
       soundboard.setMicConstraints(audio);
@@ -483,7 +510,9 @@ export const installSoundboard = (win: Window | null | undefined) => {
     return true;
   };
   devices.getUserMedia = async (constraints?: MediaStreamConstraints) => {
-    const wants = `${constraints?.audio ? 'audio ' : ''}${constraints?.video ? 'video' : ''}`.trim();
+    const wants = `${constraints?.audio ? 'audio ' : ''}${
+      constraints?.video ? 'video' : ''
+    }`.trim();
     let effective = constraints;
     let withDevice = false;
     let usedAudio: true | MediaTrackConstraints | undefined;
@@ -493,6 +522,50 @@ export const installSoundboard = (win: Window | null | undefined) => {
       usedAudio = mergeAudioConstraints(constraints.audio, deviceId);
       effective = { ...constraints, audio: usedAudio };
     }
+    // Voice processing off: take the microphone natively, the camera (if any) from WebKit alone.
+    if (constraints?.audio && !getCallPrefs().echoCancellation && nativeMicAvailable()) {
+      const deviceId = await getPreferredInputId(devices);
+      let mic: MediaStreamTrack | undefined;
+      try {
+        mic = await openNativeMic(await preferredNativeMic(devices, deviceId));
+      } catch (e) {
+        diag(
+          `native microphone unavailable, using WebKit: ${
+            e instanceof Error ? e.message : String(e)
+          }`
+        );
+      }
+      if (mic) {
+        let nativeStream: MediaStream;
+        try {
+          const camera = constraints.video
+            ? await original({ video: constraints.video })
+            : undefined;
+          nativeStream = new MediaStream([mic, ...(camera?.getVideoTracks() ?? [])]);
+        } catch (e) {
+          mic.stop();
+          diag(
+            `getUserMedia(video) failed: ${
+              e instanceof Error ? `${e.name}: ${e.message}` : String(e)
+            }`
+          );
+          throw e;
+        }
+        diag(
+          `getUserMedia(${wants}) ok native mic tracks=${nativeStream
+            .getTracks()
+            .map((t) => t.kind)
+            .join(',')}`
+        );
+        try {
+          return await soundboard.mixInto(nativeStream, usedAudio);
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.warn('[soundboard] using the plain microphone:', e);
+          return nativeStream;
+        }
+      }
+    }
     let stream: MediaStream;
     try {
       try {
@@ -500,17 +573,26 @@ export const installSoundboard = (win: Window | null | undefined) => {
       } catch (e) {
         // The chosen microphone refused to open: use whatever Element Call asked for instead.
         if (!withDevice || !constraints?.audio) throw e;
-        diag(`preferred microphone failed, using default: ${e instanceof Error ? e.name : String(e)}`);
+        diag(
+          `preferred microphone failed, using default: ${e instanceof Error ? e.name : String(e)}`
+        );
         usedAudio = mergeAudioConstraints(constraints.audio);
         stream = await original({ ...constraints, audio: usedAudio });
       }
     } catch (e) {
       diag(
-        `getUserMedia(${wants}) failed: ${e instanceof Error ? `${e.name}: ${e.message}` : String(e)}`
+        `getUserMedia(${wants}) failed: ${
+          e instanceof Error ? `${e.name}: ${e.message}` : String(e)
+        }`
       );
       throw e;
     }
-    diag(`getUserMedia(${wants}) ok tracks=${stream.getTracks().map((t) => t.kind).join(',')}`);
+    diag(
+      `getUserMedia(${wants}) ok tracks=${stream
+        .getTracks()
+        .map((t) => t.kind)
+        .join(',')}`
+    );
     if (constraints?.audio) {
       // Report the constraints that succeeded, including after a preferred-mic fallback.
       // Missing settings do not prove that the browser honored or rejected a processing flag.
@@ -530,4 +612,5 @@ export const installSoundboard = (win: Window | null | undefined) => {
   devices.__cinnySoundboard = true;
 };
 
-export const useSoundboard = (): Snapshot => useSyncExternalStore(soundboard.subscribe, soundboard.getSnapshot);
+export const useSoundboard = (): Snapshot =>
+  useSyncExternalStore(soundboard.subscribe, soundboard.getSnapshot);

@@ -104,13 +104,13 @@ export function InputDeviceMenu() {
   const handleSelect = useCallback(
     async (deviceId: string) => {
       if (deviceId === input) return;
-      setAudioInput(deviceId);
+      setAudioInput(deviceId, inputs.find((d) => d.deviceId === deviceId)?.label ?? '');
       if (!callEmbed) return;
       // Preferred: swap the microphone inside our mixer. Fallback: toggle the mic so that Element
       // Call asks for it again.
       if (!(await switchLiveMicrophone())) callEmbed.control.restartMicrophone();
     },
-    [callEmbed, input]
+    [callEmbed, input, inputs]
   );
 
   const handleReveal = async () => {

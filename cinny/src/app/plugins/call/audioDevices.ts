@@ -11,6 +11,7 @@ import { diag } from '../diagnostics';
 import { applyAudioProcessingPolicy } from './audioConstraints';
 
 const INPUT_KEY = 'diddyAudioInput';
+const INPUT_LABEL_KEY = 'diddyAudioInputLabel';
 const OUTPUT_KEY = 'diddyAudioOutput';
 const INPUT_VOLUME_KEY = 'diddyInputVolume';
 const OUTPUT_VOLUME_KEY = 'diddyOutputVolume';
@@ -18,6 +19,8 @@ const OUTPUT_VOLUME_KEY = 'diddyOutputVolume';
 export type AudioPrefs = {
   /** deviceId of the preferred microphone, '' = system default */
   input: string;
+  /** its name when it was chosen; the native microphone finds the device by this name */
+  inputLabel: string;
   /** deviceId of the preferred speakers, '' = system default */
   output: string;
   /** 0-1 */
@@ -55,6 +58,7 @@ const write = (key: string, value: string) => {
 
 let current: AudioPrefs = {
   input: readString(INPUT_KEY),
+  inputLabel: readString(INPUT_LABEL_KEY),
   output: readString(OUTPUT_KEY),
   inputVolume: readVolume(INPUT_VOLUME_KEY),
   outputVolume: readVolume(OUTPUT_VOLUME_KEY),
@@ -75,9 +79,10 @@ export const subscribeAudioPrefs = (listener: () => void): (() => void) => {
 
 export const getAudioPrefs = (): AudioPrefs => current;
 
-export const setAudioInput = (deviceId: string) => {
-  current = { ...current, input: deviceId };
+export const setAudioInput = (deviceId: string, label = '') => {
+  current = { ...current, input: deviceId, inputLabel: deviceId ? label : '' };
   write(INPUT_KEY, deviceId);
+  write(INPUT_LABEL_KEY, current.inputLabel);
   emit();
 };
 
@@ -102,7 +107,8 @@ export const setOutputVolume = (volume: number) => {
   emit();
 };
 
-export const useAudioPrefs = (): AudioPrefs => useSyncExternalStore(subscribeAudioPrefs, getAudioPrefs);
+export const useAudioPrefs = (): AudioPrefs =>
+  useSyncExternalStore(subscribeAudioPrefs, getAudioPrefs);
 
 /**
  * Keeps a GainNode in sync with the input volume preference (also live while it is dragged).
@@ -146,7 +152,9 @@ export const applyAudioOutput = (el: HTMLMediaElement): void => {
   if ((record?.sink ?? '') === wanted) return;
 
   appliedSinks.set(el, { sink: wanted });
-  diag(`setSinkId(${wanted === '' ? 'default' : wanted.slice(0, 8)}) on <${el.tagName.toLowerCase()}>`);
+  diag(
+    `setSinkId(${wanted === '' ? 'default' : wanted.slice(0, 8)}) on <${el.tagName.toLowerCase()}>`
+  );
   sink.setSinkId(wanted).catch(() => {
     if (wanted === '') return;
     // Device gone or refused: remember that and fall back to the system default.

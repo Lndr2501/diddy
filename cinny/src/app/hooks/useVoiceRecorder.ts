@@ -8,6 +8,27 @@ import {
   VoiceMeta,
   waveformFromLevels,
 } from '../plugins/voiceMessage';
+import { nativeMicAvailable, openNativeMic, preferredNativeMic } from '../plugins/call/nativeMic';
+
+/**
+ * The microphone for a recording: natively in the desktop app (no voice processing, so other apps'
+ * audio is not ducked), otherwise WebKit's microphone without processing.
+ */
+const openMicrophone = async (): Promise<MediaStream> => {
+  if (nativeMicAvailable()) {
+    try {
+      const track = await openNativeMic(
+        await preferredNativeMic(navigator.mediaDevices, undefined)
+      );
+      return new MediaStream([track]);
+    } catch {
+      // fall back to WebKit below
+    }
+  }
+  return navigator.mediaDevices.getUserMedia({
+    audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+  });
+};
 
 export type VoiceRecording = VoiceMeta & { file: File };
 export type VoiceRecorderState = 'idle' | 'starting' | 'recording';
@@ -52,7 +73,7 @@ export const useVoiceRecorder = () => {
     }
     setState('starting');
     try {
-      const media = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const media = await openMicrophone();
       stream.current = media;
       const mime = pickRecorderMime((m) => MediaRecorder.isTypeSupported(m));
       const rec = mime ? new MediaRecorder(media, { mimeType: mime }) : new MediaRecorder(media);
