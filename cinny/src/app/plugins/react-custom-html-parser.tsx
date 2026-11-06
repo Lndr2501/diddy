@@ -99,6 +99,7 @@ export const renderMatrixMention = (
         href={href}
         {...customProps}
         className={css.Mention({ highlight: mx.getUserId() === userId })}
+        data-highlight={mx.getUserId() === userId}
         data-mention-id={userId}
       >
         {`@${
@@ -124,6 +125,7 @@ export const renderMatrixMention = (
         className={css.Mention({
           highlight: currentRoomId === (mentionRoom?.roomId ?? roomIdOrAlias),
         })}
+        data-highlight={currentRoomId === (mentionRoom?.roomId ?? roomIdOrAlias)}
         data-mention-id={mentionRoom?.roomId ?? roomIdOrAlias}
         data-mention-via={viaServers?.join(',')}
       >
