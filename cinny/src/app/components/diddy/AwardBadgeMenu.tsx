@@ -1,5 +1,19 @@
 import React, { MouseEventHandler, useState } from 'react';
-import { Box, color, config, Icon, IconButton, Icons, Menu, MenuItem, PopOut, RectCords, Text, toRem } from 'folds';
+import {
+  Box,
+  color,
+  config,
+  Icon,
+  IconButton,
+  Icons,
+  Input,
+  Menu,
+  MenuItem,
+  PopOut,
+  RectCords,
+  Text,
+  toRem,
+} from 'folds';
 import FocusTrap from 'focus-trap-react';
 import { BadgeDef } from '../../plugins/diddy/types';
 import { awardBadge, revokeBadge, useBadgeDefs, useUserBadges } from '../../plugins/diddy/profiles';
@@ -12,9 +26,10 @@ type BadgeSectionProps = {
   badges: BadgeDef[];
   ownedIds: Set<string>;
   busyId?: string;
+  filtered?: boolean;
   onToggle: (badge: BadgeDef) => void;
 };
-function BadgeSection({ title, badges, ownedIds, busyId, onToggle }: BadgeSectionProps) {
+function BadgeSection({ title, badges, ownedIds, busyId, filtered, onToggle }: BadgeSectionProps) {
   return (
     <Box direction="Column" gap="100">
       <Text size="L400" priority="300" style={{ padding: `${config.space.S100} ${config.space.S200}` }}>
@@ -22,7 +37,7 @@ function BadgeSection({ title, badges, ownedIds, busyId, onToggle }: BadgeSectio
       </Text>
       {badges.length === 0 && (
         <Text size="T200" priority="300" style={{ padding: `0 ${config.space.S200}` }}>
-          Nothing here yet.
+          {filtered ? 'No matches.' : 'Nothing here yet.'}
         </Text>
       )}
       {badges.map((badge) => (
@@ -52,10 +67,13 @@ function AwardMenu({ userId }: { userId: string }) {
   const owned = useUserBadges(mx, userId);
   const [busyId, setBusyId] = useState<string>();
   const [error, setError] = useState<string>();
+  const [filter, setFilter] = useState('');
 
   const ownedIds = new Set(owned.map((b) => b.id));
-  const globals = defs.filter((b) => b.global);
-  const customs = defs.filter((b) => !b.global);
+  const query = filter.trim().toLowerCase();
+  const filtered = query ? defs.filter((b) => b.name.toLowerCase().includes(query)) : defs;
+  const globals = filtered.filter((b) => b.global);
+  const customs = filtered.filter((b) => !b.global);
 
   const handleToggle = async (badge: BadgeDef) => {
     setBusyId(badge.id);
@@ -73,18 +91,31 @@ function AwardMenu({ userId }: { userId: string }) {
   return (
     <Menu style={{ maxHeight: '70vh', width: toRem(240), overflowY: 'auto' }}>
       <Box direction="Column" gap="200" style={{ padding: config.space.S100 }}>
+        {defs.length > 12 && (
+          <Input
+            value={filter}
+            onChange={(evt) => setFilter((evt.target as HTMLInputElement).value)}
+            placeholder="Filter badges"
+            aria-label="Filter badges"
+            variant="Secondary"
+            radii="300"
+            size="300"
+          />
+        )}
         <BadgeSection
-          title="Global"
+          title="Built-in"
           badges={globals}
           ownedIds={ownedIds}
           busyId={busyId}
+          filtered={query.length > 0}
           onToggle={handleToggle}
         />
         <BadgeSection
-          title="Custom"
+          title="Community"
           badges={customs}
           ownedIds={ownedIds}
           busyId={busyId}
+          filtered={query.length > 0}
           onToggle={handleToggle}
         />
         {error && (

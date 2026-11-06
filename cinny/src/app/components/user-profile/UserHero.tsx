@@ -26,6 +26,7 @@ import { CardStyle, DiddyProfile, DiddyStatus } from '../../plugins/diddy/types'
 import { useMxcUrl } from '../../plugins/diddy/media';
 import { safeAngle, safeColor, safeMxc, safeText } from '../../plugins/diddy/sanitize';
 import { DiddyName } from '../diddy/DiddyName';
+import { PositionedImg } from '../diddy/PositionedImg';
 
 /** Kept for compatibility: the validation lives in plugins/diddy/sanitize. */
 export { safeColor };
@@ -60,7 +61,6 @@ const getBannerStyle = (userId: string, card?: CardStyle, bannerUrl?: string) =>
   if (bannerUrl) {
     return {
       backgroundColor: safeColor(card?.from) ?? colorMXID(userId),
-      backgroundImage: `url("${bannerUrl}")`,
     };
   }
   const from = safeColor(card?.from);
@@ -98,8 +98,10 @@ export function UserHero({ userId, avatarUrl, presence, profile }: UserHeroProps
       {/* A blurred, scaled avatar looked badly stretched, so the banner is a plain color gradient. */}
       <div
         className={classNames(css.UserHeroCoverContainer, css.UserHeroBanner)}
-        style={getBannerStyle(userId, profile?.card, bannerUrl)}
-      />
+        style={{ position: 'relative', ...getBannerStyle(userId, profile?.card, bannerUrl) }}
+      >
+        {bannerUrl && <PositionedImg src={bannerUrl} pos={profile?.card?.bannerPos} />}
+      </div>
       <div className={css.UserHeroAvatarContainer}>
         <AvatarPresence
           className={css.UserAvatarContainer}
@@ -117,13 +119,22 @@ export function UserHero({ userId, avatarUrl, presence, profile }: UserHeroProps
             className={css.UserHeroAvatar}
             size="500"
           >
-            <UserAvatar
-              className={css.UserHeroAvatarImg}
-              userId={userId}
-              src={shownAvatarUrl}
-              alt={userId}
-              renderFallback={() => <Icon size="500" src={Icons.User} filled />}
-            />
+            {animatedAvatarUrl && profile?.avatarPos ? (
+              <PositionedImg
+                className={css.UserHeroAvatarImg}
+                src={animatedAvatarUrl}
+                pos={profile.avatarPos}
+                alt={userId}
+              />
+            ) : (
+              <UserAvatar
+                className={css.UserHeroAvatarImg}
+                userId={userId}
+                src={shownAvatarUrl}
+                alt={userId}
+                renderFallback={() => <Icon size="500" src={Icons.User} filled />}
+              />
+            )}
           </Avatar>
         </AvatarPresence>
         {viewAvatar && (

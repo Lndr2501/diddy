@@ -49,6 +49,9 @@ export type NameStyle = {
   italic?: boolean;
 };
 
+/** Which part of an image is shown: focal point in percent (0-100) and zoom (1-3, 1 = cover). */
+export type ImagePos = { x: number; y: number; zoom: number };
+
 export type CardStyle = {
   /** profile card header: solid color or gradient, used when there is no banner */
   from?: string;
@@ -58,6 +61,8 @@ export type CardStyle = {
   accent?: string;
   /** banner image (mxc://) shown on the card header; can be a GIF */
   bannerMxc?: string;
+  /** visible part of the banner image */
+  bannerPos?: ImagePos;
 };
 
 export type NameplateStyle = {
@@ -65,6 +70,8 @@ export type NameplateStyle = {
   color?: string;
   /** optional image (mxc://) shown behind the name, can be a GIF */
   imageMxc?: string;
+  /** visible part of the nameplate image */
+  imagePos?: ImagePos;
 };
 
 export type DiddyStatus = 'online' | 'idle' | 'dnd' | 'invisible';
@@ -76,6 +83,8 @@ export type DiddyProfile = {
   nameplate?: NameplateStyle;
   /** animated avatar (mxc://, GIF/WebP) shown by other Diddy clients instead of the normal avatar */
   animatedAvatarMxc?: string;
+  /** visible part of the animated avatar */
+  avatarPos?: ImagePos;
   status?: DiddyStatus;
   /** badge ids shown next to the name, in order (max MAX_SHOWN_BADGES) */
   shownBadges?: string[];
@@ -116,6 +125,37 @@ export const GLOBAL_BADGES: BadgeDef[] = [
   { id: 'g.gamer', name: 'Gamer', emoji: '🎮', color: '#9B7BFF', global: true },
   { id: 'g.music', name: 'Music', emoji: '🎧', color: '#4FD1C5', global: true },
   { id: 'g.night', name: 'Night owl', emoji: '🦉', color: '#8A8FD6', global: true },
+  { id: 'g.founder', name: 'Founder', emoji: '🏛️', color: '#E8B04A', global: true },
+  { id: 'g.admin', name: 'Admin', emoji: '⚔️', color: '#E5604D', global: true },
+  { id: 'g.helper', name: 'Helper', emoji: '🤝', color: '#5DC9A0', global: true },
+  { id: 'g.vip', name: 'VIP', emoji: '💎', color: '#C58AF9', global: true },
+  { id: 'g.supporter', name: 'Supporter', emoji: '🎗️', color: '#F27BA6', global: true },
+  { id: 'g.early', name: 'Early bird', emoji: '🐣', color: '#F5D547', global: true },
+  { id: 'g.designer', name: 'Designer', emoji: '🎨', color: '#F28DB2', global: true },
+  { id: 'g.translator', name: 'Translator', emoji: '🌍', color: '#5BB6E8', global: true },
+  { id: 'g.artist', name: 'Artist', emoji: '🖌️', color: '#E58A5B', global: true },
+  { id: 'g.streamer', name: 'Streamer', emoji: '📺', color: '#9146FF', global: true },
+  { id: 'g.reader', name: 'Reader', emoji: '📚', color: '#B68D5E', global: true },
+  { id: 'g.coder', name: 'Coder', emoji: '💻', color: '#5CC8A8', global: true },
+  { id: 'g.photo', name: 'Photographer', emoji: '📷', color: '#8FB4D9', global: true },
+  { id: 'g.coffee', name: 'Coffee', emoji: '☕', color: '#A9784F', global: true },
+  { id: 'g.early_riser', name: 'Early riser', emoji: '🌅', color: '#F5A25D', global: true },
+  { id: 'g.diamond', name: 'Diamond', emoji: '💠', color: '#5BD1F0', global: true },
+  { id: 'g.rocket', name: 'Rocket', emoji: '🚀', color: '#7AA2F7', global: true },
+  { id: 'g.clover', name: 'Clover', emoji: '🍀', color: '#5CC46A', global: true },
+  { id: 'g.skull', name: 'Skull', emoji: '💀', color: '#C9CDD6', global: true },
+  { id: 'g.ghost', name: 'Ghost', emoji: '👻', color: '#B8A9E8', global: true },
+  { id: 'g.cat', name: 'Cat', emoji: '🐱', color: '#F2B36B', global: true },
+  { id: 'g.dog', name: 'Dog', emoji: '🐶', color: '#C99A6B', global: true },
+  { id: 'g.pizza', name: 'Pizza', emoji: '🍕', color: '#E8744F', global: true },
+  { id: 'g.rainbow', name: 'Rainbow', emoji: '🌈', color: '#F28DB2', global: true },
+  { id: 'g.sparkles', name: 'Sparkles', emoji: '✨', color: '#F5DC7A', global: true },
+  { id: 'g.lightning', name: 'Lightning', emoji: '⚡', color: '#F5D547', global: true },
+  { id: 'g.trophy', name: 'Trophy', emoji: '🏆', color: '#E8B04A', global: true },
+  { id: 'g.matrix', name: 'Matrix', emoji: '🟩', color: '#2FBF71', global: true },
+  { id: 'g.linux', name: 'Linux', emoji: '🐧', color: '#E8E8E8', global: true },
+  { id: 'g.apple', name: 'Apple', emoji: '🍎', color: '#E5604D', global: true },
+  { id: 'g.opensource', name: 'Open source', emoji: '🔓', color: '#6FCF97', global: true },
 ];
 
 export const awardStateKey = (badgeId: string, userId: string) => `${badgeId}|${userId}`;

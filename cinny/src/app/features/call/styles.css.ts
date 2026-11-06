@@ -16,6 +16,8 @@ export const ControlCard = style({
   borderRadius: toRem(22),
   boxShadow: `0 ${toRem(12)} ${toRem(32)} rgba(0, 0, 0, 0.35)`,
   maxWidth: '100%',
+  minWidth: 0,
+  boxSizing: 'border-box',
   pointerEvents: 'auto',
 });
 
@@ -54,7 +56,20 @@ export const ControlPrimaryButton = style({
   },
 });
 
+// A group of buttons inside the pill. Groups wrap as a whole; a group that is still too
+// wide wraps internally instead of overflowing.
+export const ControlGroup = style({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  flexWrap: 'wrap',
+  gap: config.space.S100,
+  minWidth: 0,
+  maxWidth: '100%',
+});
+
 export const ControlDivider = style({
+  flexShrink: 0,
   height: toRem(24),
 });
 

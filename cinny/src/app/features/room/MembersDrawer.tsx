@@ -69,6 +69,7 @@ import { useRoomPermissions } from '../../hooks/useRoomPermissions';
 import { useOpenRoomSettings } from '../../state/hooks/roomSettings';
 import { DiddyName } from '../../components/diddy/DiddyName';
 import { useDiddyProfile } from '../../plugins/diddy/profiles';
+import { PositionedImg } from '../../components/diddy/PositionedImg';
 import { useMxcUrl } from '../../plugins/diddy/media';
 import { safeColor, safeMxc } from '../../plugins/diddy/sanitize';
 
@@ -150,24 +151,14 @@ function MemberItem({
   });
 
   const nameplateStyle = useMemo<CSSProperties | undefined>(() => {
-    const layers: string[] = [];
-    if (nameplateImageUrl) {
-      const veil = `color-mix(in srgb, ${color.Surface.Container} 65%, transparent)`;
-      layers.push(`linear-gradient(${veil}, ${veil})`, `url("${nameplateImageUrl}")`);
-    }
-    if (nameplateColor) {
-      layers.unshift(
-        `linear-gradient(to right, color-mix(in srgb, ${nameplateColor} 28%, transparent), transparent)`
-      );
-    }
-    if (layers.length === 0) return undefined;
+    if (!nameplateColor && !nameplateImageUrl) return undefined;
     return {
-      backgroundImage: layers.join(', '),
-      backgroundSize: nameplateImageUrl
-        ? [nameplateColor ? '100% 100%' : undefined, '100% 100%', 'cover'].filter(Boolean).join(', ')
+      position: 'relative',
+      isolation: 'isolate',
+      overflow: 'hidden',
+      backgroundImage: nameplateColor
+        ? `linear-gradient(to right, color-mix(in srgb, ${nameplateColor} 28%, transparent), transparent)`
         : undefined,
-      backgroundPosition: 'center',
-      backgroundRepeat: 'no-repeat',
     };
   }, [nameplateColor, nameplateImageUrl]);
 
@@ -217,6 +208,27 @@ function MemberItem({
         </>
       }
     >
+      {nameplateImageUrl && (
+        <div
+          aria-hidden
+          style={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: -1,
+            overflow: 'hidden',
+            pointerEvents: 'none',
+          }}
+        >
+          <PositionedImg src={nameplateImageUrl} pos={diddyProfile?.nameplate?.imagePos} />
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: `color-mix(in srgb, ${color.Surface.Container} 65%, transparent)`,
+            }}
+          />
+        </div>
+      )}
       <Box grow="Yes">
         <Text size="T400" truncate>
           <DiddyName userId={member.userId} name={name} showBadges />

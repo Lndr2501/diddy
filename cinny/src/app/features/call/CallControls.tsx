@@ -1,34 +1,22 @@
-import React, { MouseEventHandler, useCallback, useRef, useState } from 'react';
-import {
-  Box,
-  Button,
-  config,
-  Icon,
-  IconButton,
-  Icons,
-  Menu,
-  MenuItem,
-  PopOut,
-  RectCords,
-  Spinner,
-  Text,
-} from 'folds';
-import FocusTrap from 'focus-trap-react';
+import React, { useCallback, useRef, useState } from 'react';
+import { Box, Button, Icon, Icons, Spinner, Text } from 'folds';
 import * as css from './styles.css';
 import { SoundboardButton } from './Soundboard';
 import { DeviceChevron } from './DevicePicker';
 import {
+  CallSettingsButton,
   ChatButton,
   ControlDivider,
   MicrophoneButton,
+  ReactionsButton,
   ScreenShareAudioButton,
   ScreenShareButton,
   SoundButton,
+  SpotlightButton,
   VideoButton,
 } from './Controls';
 import { CallEmbed, useCallControlState, useScreenShareAudio } from '../../plugins/call';
 import { useResizeObserver } from '../../hooks/useResizeObserver';
-import { stopPropagation } from '../../utils/keyboard';
 import { AsyncStatus, useAsyncCallback } from '../../hooks/useAsyncCallback';
 
 type CallControlsProps = {
@@ -36,13 +24,13 @@ type CallControlsProps = {
 };
 export function CallControls({ callEmbed }: CallControlsProps) {
   const controlRef = useRef<HTMLDivElement>(null);
-  const [compact, setCompact] = useState(document.body.clientWidth < 500);
+  const [compact, setCompact] = useState(document.body.clientWidth < 760);
 
   useResizeObserver(
     useCallback(() => {
       const element = controlRef.current;
       if (!element) return;
-      setCompact(element.clientWidth < 500);
+      setCompact(element.clientWidth < 760);
     }, []),
     useCallback(() => controlRef.current, [])
   );
@@ -53,26 +41,9 @@ export function CallControls({ callEmbed }: CallControlsProps) {
 
   const streamAudio = useScreenShareAudio();
 
-  const [cords, setCords] = useState<RectCords>();
-
-  const handleOpenMenu: MouseEventHandler<HTMLButtonElement> = (evt) => {
-    setCords(evt.currentTarget.getBoundingClientRect());
-  };
-
-  const handleSpotlightClick = () => {
-    callEmbed.control.toggleSpotlight();
-    setCords(undefined);
-  };
-
-  const handleReactionsClick = () => {
-    callEmbed.control.toggleReactions();
-    setCords(undefined);
-  };
-
-  const handleSettingsClick = () => {
-    callEmbed.control.toggleSettings();
-    setCords(undefined);
-  };
+  const handleSpotlightToggle = useCallback(() => callEmbed.control.toggleSpotlight(), [callEmbed]);
+  const handleReactionsClick = useCallback(() => callEmbed.control.toggleReactions(), [callEmbed]);
+  const handleSettingsClick = useCallback(() => callEmbed.control.toggleSettings(), [callEmbed]);
 
   const handleMicrophoneToggle = useCallback(() => callEmbed.control.toggleMicrophone(), [callEmbed]);
   const handleVideoToggle = useCallback(() => callEmbed.control.toggleVideo(), [callEmbed]);
@@ -95,92 +66,35 @@ export function CallControls({ callEmbed }: CallControlsProps) {
         gap="200"
         alignItems="Center"
         justifyContent="Center"
-        wrap={compact ? 'Wrap' : 'NoWrap'}
+        wrap="Wrap"
       >
-        <Box alignItems="Center" gap="100">
+        <div className={css.ControlGroup} style={{ flexWrap: 'nowrap' }}>
           <MicrophoneButton enabled={microphone} onToggle={handleMicrophoneToggle} />
           <DeviceChevron kind="input" size="bar" />
-        </Box>
-        <Box alignItems="Center" gap="100">
+        </div>
+        <div className={css.ControlGroup} style={{ flexWrap: 'nowrap' }}>
           <SoundButton enabled={sound} onToggle={() => callEmbed.control.toggleSound()} />
           <DeviceChevron kind="output" size="bar" />
-        </Box>
+        </div>
+        <div className={css.ControlGroup}>
+          <VideoButton enabled={video} onToggle={handleVideoToggle} />
+          <ScreenShareButton
+            enabled={screenshare}
+            onToggle={() => callEmbed.control.toggleScreenshare()}
+          />
+          {screenshare && streamAudio.available && streamAudio.active && (
+            <ScreenShareAudioButton enabled={streamAudio.enabled} onToggle={streamAudio.toggle} />
+          )}
+        </div>
         {!compact && <ControlDivider />}
-        <VideoButton enabled={video} onToggle={handleVideoToggle} />
-        <ScreenShareButton
-          enabled={screenshare}
-          onToggle={() => callEmbed.control.toggleScreenshare()}
-        />
-        {screenshare && streamAudio.available && streamAudio.active && (
-          <ScreenShareAudioButton enabled={streamAudio.enabled} onToggle={streamAudio.toggle} />
-        )}
+        <div className={css.ControlGroup}>
+          <ChatButton />
+          <SoundboardButton />
+          <SpotlightButton active={spotlight} onToggle={handleSpotlightToggle} />
+          <ReactionsButton onClick={handleReactionsClick} />
+          <CallSettingsButton onClick={handleSettingsClick} />
+        </div>
         {!compact && <ControlDivider />}
-        <ChatButton />
-        <SoundboardButton />
-        <PopOut
-          anchor={cords}
-          position="Top"
-          align="Center"
-          content={
-            <FocusTrap
-              focusTrapOptions={{
-                initialFocus: false,
-                onDeactivate: () => setCords(undefined),
-                clickOutsideDeactivates: true,
-                isKeyForward: (evt: KeyboardEvent) => evt.key === 'ArrowDown',
-                isKeyBackward: (evt: KeyboardEvent) => evt.key === 'ArrowUp',
-                escapeDeactivates: stopPropagation,
-              }}
-            >
-              <Menu>
-                <Box direction="Column" style={{ padding: config.space.S100 }}>
-                  <MenuItem
-                    size="300"
-                    variant="Surface"
-                    radii="300"
-                    onClick={handleSpotlightClick}
-                  >
-                    <Text size="B300" truncate>
-                      {spotlight ? 'Grid View' : 'Spotlight View'}
-                    </Text>
-                  </MenuItem>
-                  <MenuItem
-                    size="300"
-                    variant="Surface"
-                    radii="300"
-                    onClick={handleReactionsClick}
-                  >
-                    <Text size="B300" truncate>
-                      Reactions
-                    </Text>
-                  </MenuItem>
-                  <MenuItem
-                    size="300"
-                    variant="Surface"
-                    radii="300"
-                    onClick={handleSettingsClick}
-                  >
-                    <Text size="B300" truncate>
-                      Settings
-                    </Text>
-                  </MenuItem>
-                </Box>
-              </Menu>
-            </FocusTrap>
-          }
-        >
-          <IconButton
-            variant="SurfaceVariant"
-            fill="Soft"
-            radii="400"
-            size="400"
-            className={css.ControlButton}
-            onClick={handleOpenMenu}
-            aria-pressed={!!cords}
-          >
-            <Icon size="400" src={Icons.VerticalDots} />
-          </IconButton>
-        </PopOut>
         <Button
           className={css.ControlPrimaryButton}
           style={compact ? { flexGrow: 1 } : undefined}

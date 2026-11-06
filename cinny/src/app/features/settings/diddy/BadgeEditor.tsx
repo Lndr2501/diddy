@@ -1,5 +1,5 @@
 import React, { ChangeEventHandler, useRef, useState } from 'react';
-import { Box, Button, color, Input, Spinner, Text } from 'folds';
+import { Box, Button, color, config, Input, Spinner, Text } from 'folds';
 import { SequenceCard } from '../../../components/sequence-card';
 import { SettingTile } from '../../../components/setting-tile';
 import { BadgeChip } from '../../../components/diddy/BadgeChip';
@@ -11,6 +11,8 @@ import {
   awardBadge,
   createCustomBadge,
   patchMyProfile,
+  revokeBadge,
+  useBadgeDefs,
   useDiddyProfile,
   useUserBadges,
 } from '../../../plugins/diddy/profiles';
@@ -22,6 +24,129 @@ const DEFAULT_BADGE_COLOR = '#7AA2F7';
 const MAX_EMOJI_CODEPOINTS = 6;
 
 const errorMessage = (e: unknown, fallback: string): string => (e instanceof Error ? e.message : fallback);
+
+const normalizeColor = (c?: string): string => (c ?? '').trim().toLowerCase();
+
+function BadgeLibrary() {
+  const mx = useMatrixClient();
+  const myUserId = mx.getSafeUserId();
+  const defs = useBadgeDefs(mx);
+  const owned = useUserBadges(mx, myUserId);
+  const [filter, setFilter] = useState('');
+  const [busyId, setBusyId] = useState<string>();
+  const [error, setError] = useState<string>();
+
+  const ownedIds = new Set(owned.map((b) => b.id));
+  const query = filter.trim().toLowerCase();
+  const visible = query ? defs.filter((b) => b.name.toLowerCase().includes(query)) : defs;
+
+  const authorLabel = (badge: BadgeDef): string => {
+    if (badge.global) return 'Built-in';
+    if (!badge.createdBy) return 'by unknown';
+    const displayName = mx.getUser(badge.createdBy)?.displayName;
+    const localpart = badge.createdBy.replace(/^@/, '').split(':')[0];
+    return `by ${displayName || localpart || badge.createdBy}`;
+  };
+
+  const handleToggle = async (badge: BadgeDef) => {
+    setBusyId(badge.id);
+    setError(undefined);
+    try {
+      if (ownedIds.has(badge.id)) await revokeBadge(mx, badge.id, myUserId);
+      else await awardBadge(mx, badge.id, myUserId);
+    } catch (e) {
+      setError(errorMessage(e, 'Failed to update badge.'));
+    } finally {
+      setBusyId(undefined);
+    }
+  };
+
+  return (
+    <Box direction="Column" gap="100">
+      <Text size="L400">Badge library</Text>
+      <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column" gap="300">
+        <SettingTile
+          title="Browse all badges"
+          description={`Built-in and community badges. You own ${owned.length} of ${defs.length}.`}
+        >
+          <Input
+            value={filter}
+            onChange={(evt) => setFilter((evt.target as HTMLInputElement).value)}
+            placeholder="Search badges"
+            aria-label="Search badges"
+            variant="Secondary"
+            radii="300"
+            size="400"
+            style={{ width: '100%' }}
+          />
+        </SettingTile>
+        {visible.length === 0 ? (
+          <Text size="T200" priority="300">
+            No badges match your search.
+          </Text>
+        ) : (
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))',
+              gap: config.space.S200,
+              maxHeight: 360,
+              overflowY: 'auto',
+            }}
+          >
+            {visible.map((badge) => {
+              const isOwned = ownedIds.has(badge.id);
+              return (
+                <Box
+                  key={badge.id}
+                  direction="Column"
+                  gap="200"
+                  style={{
+                    padding: config.space.S200,
+                    borderRadius: config.radii.R400,
+                    border: `${config.borderWidth.B300} solid ${color.SurfaceVariant.ContainerLine}`,
+                  }}
+                >
+                  <Box gap="200" alignItems="Center">
+                    <BadgeChip badge={badge} size={28} />
+                    <Box direction="Column" grow="Yes" style={{ minWidth: 0 }}>
+                      <Text size="T300" truncate>
+                        {badge.name}
+                      </Text>
+                      <Text size="T200" priority="300" truncate>
+                        {authorLabel(badge)}
+                      </Text>
+                    </Box>
+                  </Box>
+                  <Button
+                    size="300"
+                    radii="300"
+                    variant={isOwned ? 'Critical' : 'Primary'}
+                    fill="Soft"
+                    disabled={busyId !== undefined}
+                    before={
+                      busyId === badge.id ? (
+                        <Spinner size="100" variant={isOwned ? 'Critical' : 'Primary'} />
+                      ) : undefined
+                    }
+                    onClick={() => handleToggle(badge)}
+                  >
+                    <Text size="B300">{isOwned ? 'Remove' : 'Add to me'}</Text>
+                  </Button>
+                </Box>
+              );
+            })}
+          </div>
+        )}
+        {error && (
+          <Text size="T200" style={{ color: color.Critical.Main }}>
+            {error}
+          </Text>
+        )}
+      </SequenceCard>
+    </Box>
+  );
+}
 
 function YourBadges() {
   const mx = useMatrixClient();
@@ -96,6 +221,7 @@ function YourBadges() {
 
 function CreateBadge() {
   const mx = useMatrixClient();
+  const defs = useBadgeDefs(mx);
   const fileRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState('');
   const [emoji, setEmoji] = useState('');
@@ -139,8 +265,34 @@ function CreateBadge() {
     }
   };
 
+  const duplicate = defs.find((d) => {
+    if (trimmedName && d.name.trim().toLowerCase() === trimmedName.toLowerCase()) return true;
+    return (
+      !imageMxc &&
+      trimmedEmoji.length > 0 &&
+      d.emoji === trimmedEmoji &&
+      normalizeColor(d.color) === normalizeColor(badgeColor)
+    );
+  });
+
+  const handleUseExisting = async () => {
+    if (!duplicate || creating) return;
+    setCreating(true);
+    setError(undefined);
+    try {
+      await awardBadge(mx, duplicate.id, mx.getSafeUserId());
+      setName('');
+      setEmoji('');
+      setImageMxc(undefined);
+    } catch (e) {
+      setError(errorMessage(e, 'Failed to add badge.'));
+    } finally {
+      setCreating(false);
+    }
+  };
+
   const handleCreate = async () => {
-    if (!canCreate) return;
+    if (!canCreate || duplicate) return;
     setCreating(true);
     setError(undefined);
     try {
@@ -243,6 +395,30 @@ function CreateBadge() {
           title="Preview"
           after={<BadgeChip badge={preview} size={32} />}
         />
+        {duplicate && (
+          <Box direction="Column" gap="200" alignItems="Start">
+            <Text size="T200" style={{ color: color.Warning.Main }}>
+              This badge already exists in the library
+            </Text>
+            <Box gap="200" alignItems="Center">
+              <BadgeChip badge={duplicate} size={24} />
+              <Text size="T200" priority="300">
+                {duplicate.name}
+              </Text>
+              <Button
+                size="300"
+                variant="Secondary"
+                fill="Soft"
+                radii="300"
+                disabled={creating}
+                before={creating ? <Spinner size="100" variant="Secondary" /> : undefined}
+                onClick={handleUseExisting}
+              >
+                <Text size="B300">Use the existing badge</Text>
+              </Button>
+            </Box>
+          </Box>
+        )}
         {error && (
           <Text size="T200" style={{ color: color.Critical.Main }}>
             {error}
@@ -253,7 +429,7 @@ function CreateBadge() {
             size="300"
             variant="Primary"
             radii="300"
-            disabled={!canCreate}
+            disabled={!canCreate || !!duplicate}
             before={creating ? <Spinner size="100" variant="Primary" fill="Solid" /> : undefined}
             onClick={handleCreate}
           >
@@ -318,6 +494,7 @@ export function BadgeEditor() {
   return (
     <Box direction="Column" gap="400">
       <YourBadges />
+      <BadgeLibrary />
       <CreateBadge />
       <GiveBadge />
     </Box>

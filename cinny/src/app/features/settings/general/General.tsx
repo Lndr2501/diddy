@@ -53,6 +53,8 @@ import { SequenceCardStyle } from '../styles.css';
 import { AppIconPicker } from './AppIconPicker';
 import { BackgroundSettings, CustomThemeSettings } from './CustomThemeSettings';
 import { updateCallPrefs, useCallPrefs } from '../../../state/callPrefs';
+import { resetDiddyOnboarding } from '../../../plugins/diddy/onboarding';
+import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { canChangeAppIcon } from '../../../plugins/appIcon';
 
 type ThemeSelectorProps = {
@@ -998,6 +1000,36 @@ function Messages() {
   );
 }
 
+function WelcomeGuideSettings() {
+  const mx = useMatrixClient();
+  const [shown, setShown] = useState(false);
+
+  return (
+    <Box direction="Column" gap="100">
+      <Text size="L400">Diddy</Text>
+      <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column">
+        <SettingTile
+          title="Welcome guide"
+          description="Show the setup walkthrough for Diddy servers again."
+          after={
+            <Button
+              size="300"
+              variant="Secondary"
+              fill="Soft"
+              onClick={() => {
+                resetDiddyOnboarding(mx.getSafeUserId());
+                setShown(true);
+              }}
+            >
+              <Text size="B300">{shown ? 'Starting...' : 'Show again'}</Text>
+            </Button>
+          }
+        />
+      </SequenceCard>
+    </Box>
+  );
+}
+
 function CallSettings() {
   const prefs = useCallPrefs();
 
@@ -1059,6 +1091,7 @@ export function General({ requestClose }: GeneralProps) {
           <PageContent>
             <Box direction="Column" gap="700">
               <CallSettings />
+              <WelcomeGuideSettings />
               <DateAndTime />
               <Editor />
               <Messages />

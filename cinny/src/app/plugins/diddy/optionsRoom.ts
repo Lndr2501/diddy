@@ -21,6 +21,7 @@ import {
   OPTIONS_ROOM_NAME,
   PROFILE_EVENT,
 } from './types';
+import { diag } from '../diagnostics';
 
 /** Synchronous read of the "Developer Tools" setting (it lives in localStorage). */
 export const isDeveloperToolsOn = (): boolean => {
@@ -58,7 +59,10 @@ const setLightRoomIds = (ids: string[]) => {
 
 export const addLightOptionsRoom = (roomId: string): void => {
   const ids = getLightRoomIds();
-  if (!ids.includes(roomId)) ids.push(roomId);
+  if (!ids.includes(roomId)) {
+    ids.push(roomId);
+    diag(`diddy: room selected as message-mode options room room=${roomId}`);
+  }
   setLightRoomIds(ids);
 };
 
@@ -113,6 +117,16 @@ export const getOptionsRooms = (mx: MatrixClient): Room[] =>
 /** The room new data is written to (stable choice when there are several). */
 export const getPrimaryOptionsRoom = (mx: MatrixClient): Room | undefined =>
   getOptionsRooms(mx)[0];
+
+/**
+ * True when the user may ban members of the options room (power level of at least the room's
+ * "ban" level, 50 by default). Banning a spammer makes all their Diddy data disappear.
+ */
+export const canModerateOptionsRoom = (mx: MatrixClient, room: Room): boolean => {
+  const me = room.getMember(mx.getSafeUserId());
+  if (!me) return false;
+  return room.currentState.hasSufficientPowerLevelFor('ban', me.powerLevel);
+};
 
 /** Re-renders when options rooms appear / disappear. */
 export const useOptionsRooms = (mx: MatrixClient): Room[] => {

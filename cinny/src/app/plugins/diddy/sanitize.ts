@@ -7,6 +7,7 @@ import {
   BadgeDef,
   CardStyle,
   DiddyProfile,
+  ImagePos,
   DiddyStatus,
   MAX_SHOWN_BADGES,
   NAME_FONTS,
@@ -80,6 +81,27 @@ const sanitizeNameStyle = (raw: unknown): NameStyle | undefined => {
   return Object.keys(out).length > 0 ? out : undefined;
 };
 
+/** Validates an image focal point / zoom; undefined when invalid. */
+export const sanitizeImagePos = (raw: unknown): ImagePos | undefined => {
+  if (!isRecord(raw)) return undefined;
+  const { x, y, zoom } = raw;
+  if (
+    typeof x !== 'number' ||
+    typeof y !== 'number' ||
+    typeof zoom !== 'number' ||
+    !Number.isFinite(x) ||
+    !Number.isFinite(y) ||
+    !Number.isFinite(zoom)
+  ) {
+    return undefined;
+  }
+  return {
+    x: Math.min(100, Math.max(0, x)),
+    y: Math.min(100, Math.max(0, y)),
+    zoom: Math.min(3, Math.max(1, zoom)),
+  };
+};
+
 const sanitizeCard = (raw: unknown): CardStyle | undefined => {
   if (!isRecord(raw)) return undefined;
   const out: CardStyle = {};
@@ -92,6 +114,8 @@ const sanitizeCard = (raw: unknown): CardStyle | undefined => {
   if (raw.angle !== undefined) out.angle = safeAngle(raw.angle, 135);
   if (accent) out.accent = accent;
   if (bannerMxc) out.bannerMxc = bannerMxc;
+  const bannerPos = sanitizeImagePos(raw.bannerPos);
+  if (bannerMxc && bannerPos) out.bannerPos = bannerPos;
   return Object.keys(out).length > 0 ? out : undefined;
 };
 
@@ -102,6 +126,8 @@ const sanitizeNameplate = (raw: unknown): NameplateStyle | undefined => {
   const imageMxc = safeMxc(raw.imageMxc);
   if (color) out.color = color;
   if (imageMxc) out.imageMxc = imageMxc;
+  const imagePos = sanitizeImagePos(raw.imagePos);
+  if (imageMxc && imagePos) out.imagePos = imagePos;
   return Object.keys(out).length > 0 ? out : undefined;
 };
 
@@ -117,6 +143,8 @@ export const sanitizeProfile = (raw: unknown): DiddyProfile | undefined => {
   if (nameplate) out.nameplate = nameplate;
   const animatedAvatarMxc = safeMxc(raw.animatedAvatarMxc);
   if (animatedAvatarMxc) out.animatedAvatarMxc = animatedAvatarMxc;
+  const avatarPos = sanitizeImagePos(raw.avatarPos);
+  if (animatedAvatarMxc && avatarPos) out.avatarPos = avatarPos;
   if (typeof raw.status === 'string' && STATUSES.includes(raw.status as DiddyStatus)) {
     out.status = raw.status as DiddyStatus;
   }

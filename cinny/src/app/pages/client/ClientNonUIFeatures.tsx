@@ -33,6 +33,7 @@ import { useSpaceAutoJoinWorker } from '../../hooks/useSpaceAutoJoin';
 import { applyStoredAppIcon } from '../../plugins/appIcon';
 import { useDiddyOptionsAutoJoin } from '../../plugins/diddy/autoJoin';
 import { getLocalStatus, useDiddyStatusSync } from '../../plugins/diddy/status';
+import { DiddyOnboarding } from '../../features/onboarding/DiddyOnboarding';
 
 /**
  * Notification sounds go through Web Audio instead of an <audio> element. A played <audio> element
@@ -376,6 +377,7 @@ export function ClientNonUIFeatures({ children }: ClientNonUIFeaturesProps) {
       <AppIconFeature />
       <DiddyOptionsAutoJoinFeature />
       <DiddyStatusFeature />
+      <DiddyOnboarding />
       {children}
     </>
   );

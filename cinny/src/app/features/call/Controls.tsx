@@ -220,3 +220,98 @@ export function ChatButton() {
     </TooltipProvider>
   );
 }
+
+type ViewToggleButtonProps = {
+  active: boolean;
+  onToggle: () => void;
+};
+export function SpotlightButton({ active, onToggle }: ViewToggleButtonProps) {
+  return (
+    <TooltipProvider
+      position="Top"
+      delay={500}
+      tooltip={
+        <Tooltip>
+          <Text size="T200">{active ? 'Grid View' : 'Spotlight View'}</Text>
+        </Tooltip>
+      }
+    >
+      {(anchorRef) => (
+        <IconButton
+          ref={anchorRef}
+          variant={active ? 'Success' : 'SurfaceVariant'}
+          fill="Soft"
+          radii="400"
+          size="400"
+          className={css.ControlButton}
+          onClick={() => onToggle()}
+          aria-pressed={active}
+          aria-label={active ? 'Grid View' : 'Spotlight View'}
+        >
+          <Icon size="400" src={Icons.Category} filled={active} />
+        </IconButton>
+      )}
+    </TooltipProvider>
+  );
+}
+
+type SimpleControlButtonProps = {
+  onClick: () => void;
+};
+export function ReactionsButton({ onClick }: SimpleControlButtonProps) {
+  return (
+    <TooltipProvider
+      position="Top"
+      delay={500}
+      tooltip={
+        <Tooltip>
+          <Text size="T200">Reactions</Text>
+        </Tooltip>
+      }
+    >
+      {(anchorRef) => (
+        <IconButton
+          ref={anchorRef}
+          variant="SurfaceVariant"
+          fill="Soft"
+          radii="400"
+          size="400"
+          className={css.ControlButton}
+          onClick={() => onClick()}
+          aria-label="Reactions"
+        >
+          <Icon size="400" src={Icons.Smile} />
+        </IconButton>
+      )}
+    </TooltipProvider>
+  );
+}
+
+export function CallSettingsButton({ onClick }: SimpleControlButtonProps) {
+  return (
+    <TooltipProvider
+      position="Top"
+      delay={500}
+      tooltip={
+        <Tooltip>
+          <Text size="T200">Call Settings</Text>
+        </Tooltip>
+      }
+    >
+      {(anchorRef) => (
+        <IconButton
+          ref={anchorRef}
+          variant="SurfaceVariant"
+          fill="Soft"
+          radii="400"
+          size="400"
+          className={css.ControlButton}
+          onClick={() => onClick()}
+          aria-label="Call Settings"
+        >
+          <Icon size="400" src={Icons.Setting} />
+        </IconButton>
+      )}
+    </TooltipProvider>
+  );
+}
