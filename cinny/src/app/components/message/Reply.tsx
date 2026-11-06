@@ -2,8 +2,10 @@ import { Box, Icon, Icons, Text, as, color, toRem } from 'folds';
 import { EventTimelineSet, Room } from 'matrix-js-sdk';
 import React, { MouseEventHandler, ReactNode, useCallback, useMemo } from 'react';
 import classNames from 'classnames';
-import { getMemberDisplayName, trimReplyFromBody } from '../../utils/room';
-import { getMxIdLocalPart } from '../../utils/matrix';
+import { getMemberAvatarMxc, getMemberDisplayName, trimReplyFromBody } from '../../utils/room';
+import { getMxIdLocalPart, mxcUrlToHttp } from '../../utils/matrix';
+import { UserAvatar } from '../user-avatar';
+import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
 import { LinePlaceholder } from './placeholder';
 import { randomNumberBetween } from '../../utils/common';
 import * as css from './Reply.css';
@@ -97,6 +99,11 @@ export const Reply = as<'div', ReplyProps>(
     const usernameColor = legacyUsernameColor ? colorMXID(sender ?? replyEventId) : tagColor;
 
     const mx = useMatrixClient();
+    const useAuthentication = useMediaAuthentication();
+    const senderAvatarMxc = sender ? getMemberAvatarMxc(room, sender) : undefined;
+    const senderAvatarUrl = senderAvatarMxc
+      ? mxcUrlToHttp(mx, senderAvatarMxc, useAuthentication, 32, 32, 'crop') ?? undefined
+      : undefined;
 
     const fallbackBody = replyEvent?.isRedacted() ? (
       <MessageDeletedContent />
@@ -126,9 +133,19 @@ export const Reply = as<'div', ReplyProps>(
           userColor={usernameColor}
           username={
             sender && (
-              <Text size="T200" truncate>
-                <b>{getMemberDisplayName(room, sender) ?? getMxIdLocalPart(sender)}</b>
-              </Text>
+              <Box alignItems="Center" gap="100">
+                <span className={css.ReplyAvatar}>
+                  <UserAvatar
+                    userId={sender}
+                    src={senderAvatarUrl}
+                    alt=""
+                    renderFallback={() => <span />}
+                  />
+                </span>
+                <Text size="T200" truncate>
+                  <b>@{getMemberDisplayName(room, sender) ?? getMxIdLocalPart(sender)}</b>
+                </Text>
+              </Box>
             )
           }
           data-event-id={replyEventId}

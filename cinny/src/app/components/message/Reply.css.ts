@@ -56,3 +56,12 @@ export const ReplyContent = style({
     },
   },
 });
+
+export const ReplyAvatar = style({
+  display: 'inline-flex',
+  flexShrink: 0,
+  width: toRem(16),
+  height: toRem(16),
+  borderRadius: '50%',
+  overflow: 'hidden',
+});
