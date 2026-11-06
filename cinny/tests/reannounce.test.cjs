@@ -81,14 +81,22 @@ test('later joins are answered again, but never more often than every quiet peri
   const last = s.now();
   // a join we have already answered stays ignored, even when it arrives late in the sync
   assert.equal(s.announcer.schedule('!room:example.org', { joinTs: last - 5 }), false);
-  // a newer join inside the quiet period does not spam the room
+  // a newer join inside the quiet period is not dropped: it is answered when the period is over
   s.advance(60 * 1000);
-  assert.equal(s.announcer.schedule('!room:example.org', { joinTs: last + 60_000 }), false);
-  // after the quiet period the same kind of join is answered again
-  s.advance(s.ANNOUNCE_MIN_INTERVAL_MS);
-  assert.equal(s.announcer.schedule('!room:example.org', { joinTs: s.now() }), true);
-  s.advance(s.ANNOUNCE_DEBOUNCE_MS);
+  assert.equal(s.announcer.schedule('!room:example.org', { joinTs: last + 60_000 }), true);
+  s.advance(s.ANNOUNCE_MIN_INTERVAL_MS - 60_000 - 1);
+  assert.equal(s.sent.length, 1);
+  s.advance(1);
   assert.equal(s.sent.length, 2);
+  assert.equal(s.sent[1].at - last, s.ANNOUNCE_MIN_INTERVAL_MS);
+  // several joins in the quiet period still cause one send
+  const again = s.now();
+  s.advance(30 * 1000);
+  s.announcer.schedule('!room:example.org', { joinTs: again + 10_000 });
+  s.announcer.schedule('!room:example.org', { joinTs: again + 20_000 });
+  assert.equal(s.announcer.queued, 1);
+  s.advance(s.ANNOUNCE_MIN_INTERVAL_MS);
+  assert.equal(s.sent.length, 3);
 });
 
 test('a profile write counts as an announcement and cancels the need to repeat it', () => {
@@ -154,9 +162,11 @@ test('a custom timing (badges) is respected and does not change the defaults', (
   assert.equal(sent.length, 0);
   advance(1);
   assert.equal(sent.length, 1);
-  // 10 minutes later is still inside the 15 minute quiet period
+  // 10 minutes later is still inside the 15 minute quiet period: answered after it, not before
   advance(600_000);
-  assert.equal(a.schedule('!r:example.org', { joinTs: now }), false);
-  advance(300_000);
   assert.equal(a.schedule('!r:example.org', { joinTs: now }), true);
+  advance(299_999);
+  assert.equal(sent.length, 1);
+  advance(1);
+  assert.equal(sent.length, 2);
 });

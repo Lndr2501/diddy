@@ -10,8 +10,9 @@
  *  - again whenever other members join after that.
  *
  * The rules below keep that from becoming spam: joins are collected for ANNOUNCE_DEBOUNCE_MS, one
- * room answers at most every ANNOUNCE_MIN_INTERVAL_MS, joins that are older than our last answer
- * are ignored, and only a bounded number of rooms can be queued. Pure logic, no Matrix client, so
+ * room answers at most every ANNOUNCE_MIN_INTERVAL_MS (a join inside that period is answered when
+ * it is over, not dropped), joins that are older than our last answer are ignored, and only a
+ * bounded number of rooms can be queued. Pure logic, no Matrix client, so
  * it is covered by the hardware-free tests in cinny/tests.
  */
 
@@ -62,9 +63,12 @@ export class ReAnnouncer {
     if (this.pending.has(roomId) && !force) return false;
     const now = this.clock.now();
     const last = this.lastSent.get(roomId);
+    let delay = this.debounceMs;
     if (!force && last !== undefined) {
+      // already covered by what we sent after that join
       if ((joinTs ?? now) <= last) return false;
-      if (now - last < this.minIntervalMs) return false;
+      // inside the quiet period: do not drop the join, answer it when the period is over
+      delay = Math.max(delay, last + this.minIntervalMs - now);
     }
     if (!this.pending.has(roomId) && this.pending.size >= MAX_ANNOUNCE_ROOMS) return false;
     const existing = this.pending.get(roomId);
@@ -73,7 +77,7 @@ export class ReAnnouncer {
       this.pending.delete(roomId);
       this.lastSent.set(roomId, this.clock.now());
       this.send(roomId);
-    }, this.debounceMs);
+    }, delay);
     this.pending.set(roomId, timer);
     return true;
   }

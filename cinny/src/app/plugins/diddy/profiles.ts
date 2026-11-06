@@ -358,12 +358,24 @@ const backfillRoom = (mx: MatrixClient, room: Room) => {
     });
 };
 
-/** Ingests the loaded timelines of all options rooms and backfills message-mode rooms once. */
+/**
+ * True when Diddy data of this room can be written as state events: the room is marked, NOT
+ * encrypted (state events are never encrypted, so they would expose the data to the server), and
+ * we really may write them. Everything else uses message mode, which needs no admin rights and is
+ * end-to-end encrypted in encrypted rooms.
+ */
+const stateTransport = (room: Room, eventType: string = PROFILE_EVENT): boolean => {
+  const mx = attachedTo;
+  if (!mx || !room.currentState.getStateEvents(OPTIONS_MARKER_EVENT, '')) return false;
+  if (mx.isRoomEncrypted(room.roomId) || stateWritesRejected.has(room.roomId)) return false;
+  return room.currentState.maySendStateEvent(eventType, mx.getSafeUserId());
+};
 const roomMode = (room: Room): 'state' | 'message' | 'both' => {
   const marker = !!room.currentState.getStateEvents(OPTIONS_MARKER_EVENT, '');
   const light = isLightOptionsRoom(room);
   if (marker && light) return 'both';
-  return light ? 'message' : 'state';
+  if (light) return 'message';
+  return stateTransport(room) ? 'state' : 'message';
 };
 const announcedRooms = new Set<string>();
 
@@ -521,7 +533,7 @@ const syncRooms = (mx: MatrixClient) => {
         .catch(() => {});
     }
     if (ingestRoomTimeline(mx, room)) changed = true;
-    if (isLightOptionsRoom(room)) backfillRoom(mx, room);
+    if (roomMode(room) !== 'state') backfillRoom(mx, room);
   });
   if (changed) notify();
 };
@@ -667,9 +679,10 @@ const dataKeys = (room: Room, type: string): string[] => {
 const stateWritesRejected = new Set<string>();
 
 /**
- * Writes Diddy data. A room marked as the options room keeps its data in state events, which every
- * member receives when they join. When that is not allowed (or the room carries the data as
- * messages) it is sent as a normal event carrying the key in content['app.diddy.key'].
+ * Writes Diddy data. An unencrypted room marked as the options room, where we may write state,
+ * keeps its data in state events, which every member receives when they join. In every other case
+ * (encrypted room, no permission, message-mode room) it is sent as a normal event carrying the key
+ * in content['app.diddy.key'], encrypted like any message when the room is encrypted.
  */
 export const writeDiddyData = async (
   mx: MatrixClient,
@@ -678,10 +691,7 @@ export const writeDiddyData = async (
   content: object,
   key: string
 ): Promise<void> => {
-  if (
-    room.currentState.getStateEvents(OPTIONS_MARKER_EVENT, '') &&
-    !stateWritesRejected.has(room.roomId)
-  ) {
+  if (stateTransport(room, eventType)) {
     try {
       await mx.sendStateEvent(room.roomId, eventType as never, content as never, key);
       return;
