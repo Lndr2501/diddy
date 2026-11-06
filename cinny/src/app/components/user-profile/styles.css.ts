@@ -18,14 +18,6 @@ export const UserHeroCoverContainer = style({
   height: toRem(96),
   overflow: 'hidden',
 });
-export const UserHeroCover = style({
-  height: '100%',
-  width: '100%',
-  objectFit: 'cover',
-  filter: 'blur(16px)',
-  transform: 'scale(2)',
-});
-
 export const UserHeroAvatarContainer = style({
   position: 'relative',
   height: toRem(29),
