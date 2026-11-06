@@ -120,6 +120,8 @@ import { useRoomCreatorsTag } from '../../hooks/useRoomCreatorsTag';
 import { usePowerLevelTags } from '../../hooks/usePowerLevelTags';
 import { useComposingCheck } from '../../hooks/useComposingCheck';
 import { useDebounce } from '../../hooks/useDebounce';
+import { VoiceRecorderButton } from './VoiceRecorderButton';
+import { VoiceRecording } from '../../hooks/useVoiceRecorder';
 
 const getReplyContent = (replyDraft: IReplyDraft | undefined): IEventRelation => {
   if (!replyDraft) return {};
@@ -199,8 +201,8 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
 
     const sendTypingStatus = useTypingStatusUpdater(mx, roomId);
 
-    const handleFiles = useCallback(
-      async (files: File[]) => {
+    const addFiles = useCallback(
+      async (files: File[], extraMetadata?: Partial<TUploadMetadata>) => {
         setUploadBoard(true);
         const safeFiles = files.map(safeFile);
         const fileItems: TUploadItem[] = [];
@@ -214,6 +216,7 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
               ...ef,
               metadata: {
                 markedAsSpoiler: false,
+                ...extraMetadata,
               },
             })
           );
@@ -225,6 +228,7 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
               encInfo: undefined,
               metadata: {
                 markedAsSpoiler: false,
+                ...extraMetadata,
               },
             })
           );
@@ -235,6 +239,14 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
         });
       },
       [setSelectedFiles, room]
+    );
+    const handleFiles = useCallback((files: File[]) => addFiles(files), [addFiles]);
+    const handleVoiceRecorded = useCallback(
+      (recording: VoiceRecording) =>
+        addFiles([recording.file], {
+          voice: { durationMs: recording.durationMs, waveform: recording.waveform },
+        }),
+      [addFiles]
     );
     const pickFile = useFilePicker(handleFiles, true);
     const handlePaste = useFilePasteHandler(handleFiles);
@@ -653,6 +665,7 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
           }
           after={
             <>
+              <VoiceRecorderButton onRecorded={handleVoiceRecorded} />
               <IconButton
                 variant="SurfaceVariant"
                 fill="None"

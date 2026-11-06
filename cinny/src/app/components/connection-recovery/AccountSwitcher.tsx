@@ -35,6 +35,12 @@ export const useConnectionRows = (active: boolean): { rows: ConnectionRow[]; fai
   return { rows, failed };
 };
 
+const errorText = (err: unknown): string => {
+  if (typeof err === 'string') return err;
+  if (err instanceof Error) return err.message;
+  return 'Das Fenster konnte nicht geöffnet werden.';
+};
+
 type ConnectionsMenuProps = {
   /** the signed in account of this window (avatar, name, id); not shown on the login page */
   account?: ReactNode;
@@ -58,13 +64,7 @@ export function ConnectionsMenu({ account, onSettings, onManage, onDone }: Conne
       await openConnection(row.id);
       onDone();
     } catch (err) {
-      setError(
-        typeof err === 'string'
-          ? err
-          : err instanceof Error
-          ? err.message
-          : 'Das Fenster konnte nicht geöffnet werden.'
-      );
+      setError(errorText(err));
     } finally {
       busy.current = false;
     }
@@ -85,7 +85,7 @@ export function ConnectionsMenu({ account, onSettings, onManage, onDone }: Conne
             className={css.Row}
             aria-current={row.current}
             disabled={!desktop || row.current}
-            onClick={() => void open(row)}
+            onClick={() => open(row)}
           >
             <span className={css.RowText}>
               <Text size="T300" className={css.Ellipsis}>

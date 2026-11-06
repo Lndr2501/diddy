@@ -2,6 +2,12 @@
 
 Statusbericht des Entwicklungsstands (Diddy, nach 1.1.0, kein neues Release).
 
+## Sprachnachrichten (Issue #1, 2026-11-06)
+
+- Aufnahme am Desktop: Mikrofon-Knopf im Eingabefeld (`VoiceRecorderButton`, `useVoiceRecorder`): Aufnahme mit Zeit, Verwerfen, Fertig (max. 15 min, min. 0,5 s). Format nach Engine: Ogg/Opus, WebM/Opus oder MP4 (WKWebView nimmt MP4/AAC auf). Fertige Aufnahme landet wie eine Datei im Upload-Feld (inkl. Verschlüsselung in verschlüsselten Räumen) und wird dort mit Senden verschickt; die Nachricht trägt `org.matrix.msc3245.voice` und `org.matrix.msc1767.audio` (Dauer, Wellenform 64 Werte), damit Element & Co. sie als Sprachnachricht zeigen.
+- Anzeige: Sprachnachrichten (eigene und fremde mit dem Flag) bekommen einen kompakten Player (`VoiceContent`: Play, anklickbare Wellenform mit Fortschritt, Zeit) ohne Dateikopf. Normale Audiodateien bleiben unverändert.
+- Logik in `plugins/voiceMessage.ts` getestet (5 Tests, 82 gesamt, Typcheck und ESLint sauber). Nicht in der echten App gesehen: Mikrofonfreigabe in WKWebView, echtes Aufnahmeformat, Aussehen des Players. Offen: automatisches Senden ohne Umweg über das Upload-Feld, Lautstärke/Geschwindigkeit im Player.
+
 ## Automatisierte Tests (Issue #16, 2026-11-06)
 
 - `npm test` in `cinny/` führt alle 77 hardwarefreien Tests aus (Regeln, Vertrauenslogik, Verbindungen, Kontextmenü, Serverseitiger Render der echten UI-Komponenten: Verbindungsseite in 5 Phasen, Konto-Menü). Neuer Workflow `.github/workflows/test.yml` führt `typecheck` und `npm test` bei jedem Push auf `main` und jedem Pull Request aus (läuft erst nach dem Push, bisher nicht auf GitHub gesehen). Noch offen: Rust-Tests in CI (macOS-Runner, schwere Abhängigkeiten) und echte Browser-/Ende-zu-Ende-Tests.

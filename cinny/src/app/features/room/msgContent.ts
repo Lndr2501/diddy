@@ -17,6 +17,7 @@ import { encryptFile, getImageInfo, getThumbnailContent, getVideoInfo } from '..
 import { TUploadItem } from '../../state/room/roomInputDrafts';
 import { encodeBlurHash } from '../../utils/blurHash';
 import { scaleYDimension } from '../../utils/common';
+import { voiceContentFields } from '../../plugins/voiceMessage';
 
 const generateThumbnailContent = async (
   mx: MatrixClient,
@@ -127,7 +128,7 @@ export const getVideoMsgContent = async (
 };
 
 export const getAudioMsgContent = (item: TUploadItem, mxc: string): IContent => {
-  const { file, encInfo } = item;
+  const { file, encInfo, metadata } = item;
   const content: IContent = {
     msgtype: MsgType.Audio,
     filename: file.name,
@@ -135,7 +136,9 @@ export const getAudioMsgContent = (item: TUploadItem, mxc: string): IContent => 
     info: {
       mimetype: file.type,
       size: file.size,
+      ...(metadata.voice ? { duration: Math.round(metadata.voice.durationMs) } : {}),
     },
+    ...(metadata.voice ? voiceContentFields(metadata.voice) : {}),
   };
   if (encInfo) {
     content.file = {

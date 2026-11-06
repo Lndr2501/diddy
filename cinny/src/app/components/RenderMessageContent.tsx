@@ -31,6 +31,7 @@ import { PdfViewer } from './Pdf-viewer';
 import { TextViewer } from './text-viewer';
 import { testMatrixTo } from '../plugins/matrix-to';
 import { IImageContent } from '../../types/matrix/common';
+import { VoiceContent } from './message/content/VoiceContent';
 
 type RenderMessageContentProps = {
   displayName: string;
@@ -242,9 +243,13 @@ export function RenderMessageContent({
         <MAudio
           content={getContent()}
           renderAsFile={renderFile}
-          renderAudioContent={(props) => (
-            <AudioContent {...props} renderMediaControl={(p) => <MediaControl {...p} />} />
-          )}
+          renderAudioContent={({ voice, ...props }) =>
+            voice ? (
+              <VoiceContent {...props} voice={voice} />
+            ) : (
+              <AudioContent {...props} renderMediaControl={(p) => <MediaControl {...p} />} />
+            )
+          }
           outlined={outlineAttachment}
         />
         {renderCaption()}

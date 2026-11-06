@@ -8,6 +8,8 @@ import { createListAtom } from '../list';
 
 export type TUploadMetadata = {
   markedAsSpoiler: boolean;
+  /** set for a recorded voice message */
+  voice?: { durationMs: number; waveform: number[] };
 };
 
 export type TUploadItem = {

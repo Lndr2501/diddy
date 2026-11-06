@@ -71,6 +71,9 @@ export type IAudioContent = {
   url?: string;
   info?: IAudioInfo;
   file?: IEncryptedFile;
+  /** voice message marker (MSC3245); its presence is what counts */
+  'org.matrix.msc3245.voice'?: Record<string, never>;
+  'org.matrix.msc1767.audio'?: { duration?: number; waveform?: number[] };
 };
 
 export type IFileContent = {

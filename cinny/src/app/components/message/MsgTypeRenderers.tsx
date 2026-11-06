@@ -29,6 +29,7 @@ import { FALLBACK_MIMETYPE, getBlobSafeMimeType } from '../../utils/mimeTypes';
 import { parseGeoUri, scaleYDimension } from '../../utils/common';
 import { Attachment, AttachmentBox, AttachmentContent, AttachmentHeader } from './attachment';
 import { FileHeader, FileDownloadButton } from './FileHeader';
+import { readVoice, VoiceInfo } from '../../plugins/voiceMessage';
 
 export function MBadEncrypted() {
   return (
@@ -289,6 +290,8 @@ type RenderAudioContentProps = {
   mimeType: string;
   url: string;
   encInfo?: IEncryptedFile;
+  /** set for voice messages: they get their own compact player */
+  voice?: VoiceInfo;
 };
 type MAudioProps = {
   content: IAudioContent;
@@ -306,6 +309,25 @@ export function MAudio({ content, renderAsFile, renderAudioContent, outlined }: 
       return renderAsFile();
     }
     return <BrokenContent />;
+  }
+
+  const voice = readVoice(content);
+  if (voice) {
+    return (
+      <Attachment outlined={outlined}>
+        <AttachmentBox>
+          <AttachmentContent>
+            {renderAudioContent({
+              info: audioInfo,
+              mimeType: safeMimeType,
+              url: mxcUrl,
+              encInfo: content.file,
+              voice,
+            })}
+          </AttachmentContent>
+        </AttachmentBox>
+      </Attachment>
+    );
   }
 
   const filename = content.filename ?? content.body ?? 'Audio';
