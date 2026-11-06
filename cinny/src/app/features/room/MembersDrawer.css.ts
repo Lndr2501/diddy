@@ -3,9 +3,11 @@ import { color, config, toRem } from 'folds';
 
 export const MembersDrawer = style({
   width: toRem(280),
-  margin: `${config.space.S200} ${config.space.S200} ${config.space.S200} 0`,
-  borderRadius: toRem(18),
+  // runs down to the window edge like the chat next to it (no gap at the bottom)
+  margin: `${config.space.S200} ${config.space.S200} 0 0`,
+  borderRadius: `${toRem(18)} ${toRem(18)} 0 0`,
   border: `${config.borderWidth.B300} solid ${color.Surface.ContainerLine}`,
+  borderBottom: 'none',
   backgroundColor: color.Surface.Container,
   overflow: 'hidden',
 });
