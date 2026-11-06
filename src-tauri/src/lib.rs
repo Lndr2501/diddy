@@ -176,6 +176,7 @@ pub fn run() {
                 .with_webview_configuration(media_enabled_webview_configuration());
             
             window_builder.build()?;
+            app_icon::apply_saved(app.handle());
             Ok(())
         })
         .run(context)

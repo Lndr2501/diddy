@@ -6,10 +6,6 @@ import {
   Chip,
   Icon,
   Icons,
-  Modal,
-  Overlay,
-  OverlayBackdrop,
-  OverlayCenter,
   Spinner,
   Text,
   Tooltip,
@@ -17,8 +13,9 @@ import {
   as,
 } from 'folds';
 import classNames from 'classnames';
+import { useSetAtom } from 'jotai';
+import { imageViewerAtom } from '../../../state/imageViewer';
 import { BlurhashCanvas } from 'react-blurhash';
-import FocusTrap from 'focus-trap-react';
 import { EncryptedAttachmentInfo } from 'browser-encrypt-attachment';
 import { IImageInfo, MATRIX_BLUR_HASH_PROPERTY_NAME } from '../../../../types/matrix/common';
 import { AsyncStatus, useAsyncCallback } from '../../../hooks/useAsyncCallback';
@@ -26,10 +23,8 @@ import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import * as css from './style.css';
 import { bytesToSize } from '../../../utils/common';
 import { FALLBACK_MIMETYPE } from '../../../utils/mimeTypes';
-import { stopPropagation } from '../../../utils/keyboard';
 import { decryptFile, downloadEncryptedMedia, mxcUrlToHttp } from '../../../utils/matrix';
 import { useMediaAuthentication } from '../../../hooks/useMediaAuthentication';
-import { ModalWide } from '../../../styles/Modal.css';
 import { validBlurHash } from '../../../utils/blurHash';
 
 type RenderViewerProps = {
@@ -70,7 +65,9 @@ export const ImageContent = as<'div', ImageContentProps>(
       autoPlay,
       markedAsSpoiler,
       spoilerReason,
-      renderViewer,
+      // the viewer is rendered once at the app root (ImageViewerHost)
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      renderViewer: _renderViewer,
       renderImage,
       ...props
     },
@@ -82,7 +79,7 @@ export const ImageContent = as<'div', ImageContentProps>(
 
     const [load, setLoad] = useState(false);
     const [error, setError] = useState(false);
-    const [viewer, setViewer] = useState(false);
+    const setViewerImage = useSetAtom(imageViewerAtom);
     const [blurred, setBlurred] = useState(markedAsSpoiler ?? false);
 
     const [srcState, loadSrc] = useAsyncCallback(
@@ -118,32 +115,6 @@ export const ImageContent = as<'div', ImageContentProps>(
 
     return (
       <Box className={classNames(css.RelativeBase, className)} {...props} ref={ref}>
-        {srcState.status === AsyncStatus.Success && (
-          <Overlay open={viewer} backdrop={<OverlayBackdrop />}>
-            <OverlayCenter>
-              <FocusTrap
-                focusTrapOptions={{
-                  initialFocus: false,
-                  onDeactivate: () => setViewer(false),
-                  clickOutsideDeactivates: true,
-                  escapeDeactivates: stopPropagation,
-                }}
-              >
-                <Modal
-                  className={ModalWide}
-                  size="500"
-                  onContextMenu={(evt: any) => evt.stopPropagation()}
-                >
-                  {renderViewer({
-                    src: srcState.data,
-                    alt: body,
-                    requestClose: () => setViewer(false),
-                  })}
-                </Modal>
-              </FocusTrap>
-            </OverlayCenter>
-          </Overlay>
-        )}
         {typeof blurHash === 'string' && !load && (
           <BlurhashCanvas
             style={{ width: '100%', height: '100%' }}
@@ -175,7 +146,7 @@ export const ImageContent = as<'div', ImageContentProps>(
               src: srcState.data,
               onLoad: handleLoad,
               onError: handleError,
-              onClick: () => setViewer(true),
+              onClick: () => setViewerImage({ src: srcState.data, alt: body }),
               tabIndex: 0,
             })}
           </Box>

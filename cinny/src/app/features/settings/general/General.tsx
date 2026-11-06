@@ -310,7 +310,6 @@ function Appearance() {
   const [systemTheme, setSystemTheme] = useSetting(settingsAtom, 'useSystemTheme');
   const [monochromeMode, setMonochromeMode] = useSetting(settingsAtom, 'monochromeMode');
   const [dynamicPageTitle, setDynamicPageTitle] = useSetting(settingsAtom, 'showDynamicPageTitle');
-  const [twitterEmoji, setTwitterEmoji] = useSetting(settingsAtom, 'twitterEmoji');
 
   return (
     <Box direction="Column" gap="100">
@@ -351,13 +350,6 @@ function Appearance() {
           after={
             <Switch variant="Primary" value={dynamicPageTitle} onChange={setDynamicPageTitle} />
           }
-        />
-      </SequenceCard>
-
-      <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column">
-        <SettingTile
-          title="Twitter Emoji"
-          after={<Switch variant="Primary" value={twitterEmoji} onChange={setTwitterEmoji} />}
         />
       </SequenceCard>
 
@@ -1029,12 +1021,44 @@ export function General({ requestClose }: GeneralProps) {
         <Scroll hideTrack visibility="Hover">
           <PageContent>
             <Box direction="Column" gap="700">
-              <Appearance />
-              <BackgroundSettings />
-              <CustomThemeSettings />
               <DateAndTime />
               <Editor />
               <Messages />
+            </Box>
+          </PageContent>
+        </Scroll>
+      </Box>
+    </Page>
+  );
+}
+
+type AppearanceSettingsProps = {
+  requestClose: () => void;
+};
+export function AppearanceSettings({ requestClose }: AppearanceSettingsProps) {
+  return (
+    <Page>
+      <PageHeader outlined={false}>
+        <Box grow="Yes" gap="200">
+          <Box grow="Yes" alignItems="Center" gap="200">
+            <Text size="H3" truncate>
+              Appearance
+            </Text>
+          </Box>
+          <Box shrink="No">
+            <IconButton onClick={requestClose} variant="Surface">
+              <Icon src={Icons.Cross} />
+            </IconButton>
+          </Box>
+        </Box>
+      </PageHeader>
+      <Box grow="Yes">
+        <Scroll hideTrack visibility="Hover">
+          <PageContent>
+            <Box direction="Column" gap="700">
+              <Appearance />
+              <BackgroundSettings />
+              <CustomThemeSettings />
             </Box>
           </PageContent>
         </Scroll>

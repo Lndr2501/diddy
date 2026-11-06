@@ -28,6 +28,7 @@ import { useInboxNotificationsSelected } from '../../hooks/router/useInbox';
 import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
 import { useSelectedSpace } from '../../hooks/router/useSelectedSpace';
 import { APP_NAME } from '../../appInfo';
+import { ImageViewerHost } from '../../components/image-viewer/ImageViewerHost';
 import { useSpaceAutoJoinWorker } from '../../hooks/useSpaceAutoJoin';
 import { applyStoredAppIcon } from '../../plugins/appIcon';
 
@@ -73,15 +74,9 @@ const playNotificationSound = (audio: HTMLAudioElement | null) => {
   playViaWebAudio(url).catch(fallback);
 };
 
+/** Diddy always shows the system emoji (Apple Color Emoji on macOS) instead of Twemoji. */
 function SystemEmojiFeature() {
-  const [twitterEmoji] = useSetting(settingsAtom, 'twitterEmoji');
-
-  if (twitterEmoji) {
-    document.documentElement.style.setProperty('--font-emoji', 'Twemoji');
-  } else {
-    document.documentElement.style.setProperty('--font-emoji', 'Twemoji_DISABLED');
-  }
-
+  document.documentElement.style.setProperty('--font-emoji', "'Apple Color Emoji'");
   return null;
 }
 
@@ -359,6 +354,7 @@ export function ClientNonUIFeatures({ children }: ClientNonUIFeaturesProps) {
       <SystemEmojiFeature />
       <PageZoomFeature />
       <FaviconUpdater />
+      <ImageViewerHost />
       {showDynamicPageTitle && <TitleUpdater />}
       <InviteNotifications />
       <MessageNotifications />

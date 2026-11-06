@@ -1,5 +1,5 @@
 import { style } from '@vanilla-extract/css';
-import { config, toRem } from 'folds';
+import { color, config, toRem } from 'folds';
 
 // Height of the custom title row. Must match the traffic light position in src-tauri/src/lib.rs.
 export const TITLE_BAR_HEIGHT = 44;
@@ -29,7 +29,8 @@ export const TitleBarSpacer = style({
   whiteSpace: 'nowrap',
   textOverflow: 'ellipsis',
   fontSize: '12px',
-  opacity: 0.6,
+  color: color.Background.OnContainer,
+  opacity: 0.7,
 });
 
 export const ClientLayoutContent = style({
