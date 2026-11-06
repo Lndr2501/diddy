@@ -3,6 +3,7 @@
  * into the call). No audio files needed.
  */
 import { getCallPrefs } from '../../state/callPrefs';
+import { getSharedAudioContext } from './sharedAudio';
 
 export type CallSound = 'mute' | 'unmute' | 'deafen' | 'undeafen';
 
@@ -13,24 +14,10 @@ const TONES: Record<CallSound, number[]> = {
   undeafen: [330, 495, 660],
 };
 
-let ctx: AudioContext | undefined;
-let idleTimer: number | undefined;
-
-const scheduleClose = () => {
-  window.clearTimeout(idleTimer);
-  idleTimer = window.setTimeout(() => {
-    ctx?.close().catch(() => {});
-    ctx = undefined;
-  }, 4000);
-};
-
 export const playCallSound = (sound: CallSound): void => {
   if (!getCallPrefs().callSounds) return;
   try {
-    window.clearTimeout(idleTimer);
-    if (!ctx || ctx.state === 'closed') ctx = new AudioContext();
-    const audio = ctx;
-    if (audio.state === 'suspended') audio.resume().catch(() => {});
+    const audio = getSharedAudioContext();
     const step = 0.085;
     const start = audio.currentTime + 0.01;
     TONES[sound].forEach((freq, i) => {
@@ -46,8 +33,11 @@ export const playCallSound = (sound: CallSound): void => {
       gain.connect(audio.destination);
       osc.start(t0);
       osc.stop(t0 + step);
+      osc.onended = () => {
+        osc.disconnect();
+        gain.disconnect();
+      };
     });
-    scheduleClose();
   } catch {
     // sounds are optional
   }

@@ -11,6 +11,7 @@
 import { useSyncExternalStore } from 'react';
 import { diag } from '../diagnostics';
 import { startStatsLogging, trackPeerConnections } from './streamStats';
+import { getSharedAudioContext } from './sharedAudio';
 
 type Bridge = { port: number; token: string };
 
@@ -81,8 +82,33 @@ type Session = {
   ws?: WebSocket;
   node?: AudioWorkletNode;
   gain?: GainNode;
+  destination?: MediaStreamAudioDestinationNode;
   track?: MediaStreamTrack;
   stopTrack?: () => void;
+  /** Bumped whenever the socket is opened or closed, so stale async work can tell. */
+  socketGen: number;
+  stopped: boolean;
+};
+
+// The worklet module can only be registered once per AudioContext, and the context is shared.
+let workletContext: AudioContext | undefined;
+let workletReady: Promise<void> | undefined;
+
+const ensureWorklet = (ctx: AudioContext): Promise<void> => {
+  if (workletContext === ctx && workletReady) return workletReady;
+  const blobUrl = URL.createObjectURL(
+    new Blob([WORKLET_SOURCE], { type: 'application/javascript' })
+  );
+  workletContext = ctx;
+  workletReady = ctx.audioWorklet
+    .addModule(blobUrl)
+    .catch((e) => {
+      workletContext = undefined;
+      workletReady = undefined;
+      throw e;
+    })
+    .finally(() => URL.revokeObjectURL(blobUrl));
+  return workletReady;
 };
 
 export type ScreenShareAudioSnapshot = {
@@ -134,8 +160,21 @@ class ScreenShareAudio {
   public setEnabled(enabled: boolean) {
     this.enabledSetting = enabled;
     localStorage.setItem(STORAGE_KEY, String(enabled));
-    if (this.session?.gain) {
-      this.session.gain.gain.value = enabled ? 1 : 0;
+    const { session } = this;
+    if (session?.track) {
+      if (enabled) {
+        // Native capture only runs while the setting is on: (re)start it for this share.
+        if (!session.ws) {
+          this.openSocket(session).catch((e) => {
+            this.lastError = e instanceof Error ? e.message : String(e);
+            this.emit();
+          });
+        }
+      } else {
+        // Stop the native capture; the published track stays, silent, so it can be turned back on.
+        this.closeSocket(session);
+        if (session.gain) session.gain.gain.value = 0;
+      }
     }
     this.emit();
   }
@@ -145,17 +184,17 @@ class ScreenShareAudio {
   }
 
   /**
-   * Step 1, call synchronously at the start of the user's click: creates the AudioContext while the
-   * user gesture is still valid (autoplay policy). Returns undefined where there is no bridge.
+   * Step 1, call synchronously at the start of the user's click: obtains (creates and resumes) the
+   * shared AudioContext while the user gesture is still valid (autoplay policy). It is shared and
+   * never closed, so this only costs once. Returns undefined where there is no bridge.
    */
   public begin(): PendingScreenShareAudio | undefined {
     if (!getBridge()) return undefined;
     this.stop();
     this.lastError = undefined;
 
-    const ctx = new AudioContext({ sampleRate: 48000, latencyHint: 'interactive' });
-    ctx.resume().catch(() => {});
-    const session: Session = { ctx };
+    const ctx = getSharedAudioContext();
+    const session: Session = { ctx, socketGen: 0, stopped: false };
     this.session = session;
 
     return {
@@ -166,38 +205,23 @@ class ScreenShareAudio {
     };
   }
 
-  private async connect(session: Session): Promise<MediaStreamTrack> {
+  /** Opens the socket to the native capture and wires its audio into the session's worklet. */
+  private async openSocket(session: Session): Promise<void> {
     const bridge = getBridge();
-    if (!bridge) throw new Error('bridge unavailable');
-    const { ctx } = session;
+    const { node } = session;
+    if (!bridge || !node) throw new Error('bridge unavailable');
+    session.socketGen += 1;
+    const gen = session.socketGen;
+    const ws = new WebSocket(`ws://127.0.0.1:${bridge.port}/?token=${bridge.token}`);
+    ws.binaryType = 'arraybuffer';
+    session.ws = ws;
+    const detach = () => {
+      ws.onerror = null;
+      ws.onclose = null;
+      ws.onmessage = null;
+    };
 
     try {
-      const blobUrl = URL.createObjectURL(
-        new Blob([WORKLET_SOURCE], { type: 'application/javascript' })
-      );
-      try {
-        await ctx.audioWorklet.addModule(blobUrl);
-      } finally {
-        URL.revokeObjectURL(blobUrl);
-      }
-
-      const node = new AudioWorkletNode(ctx, WORKLET_NAME, {
-        numberOfInputs: 0,
-        numberOfOutputs: 1,
-        outputChannelCount: [2],
-      });
-      const gain = ctx.createGain();
-      gain.gain.value = this.enabledSetting ? 1 : 0;
-      const destination = ctx.createMediaStreamDestination();
-      node.connect(gain);
-      gain.connect(destination);
-      session.node = node;
-      session.gain = gain;
-
-      const ws = new WebSocket(`ws://127.0.0.1:${bridge.port}/?token=${bridge.token}`);
-      ws.binaryType = 'arraybuffer';
-      session.ws = ws;
-
       await new Promise<void>((resolve, reject) => {
         const timer = window.setTimeout(
           () => reject(new Error('timed out waiting for system audio')),
@@ -219,14 +243,74 @@ class ScreenShareAudio {
           else reject(new Error(msg.message ?? 'system audio failed'));
         };
       });
+    } catch (e) {
+      detach();
+      try {
+        ws.close();
+      } catch {
+        // already closed
+      }
+      if (session.ws === ws) session.ws = undefined;
+      throw e;
+    }
 
-      ws.onerror = null;
-      ws.onclose = () => {
-        if (this.session === session) this.stop();
-      };
-      ws.onmessage = (evt) => {
-        if (typeof evt.data !== 'string') node.port.postMessage(evt.data, [evt.data]);
-      };
+    // Turned off (or the share ended) while connecting: drop this capture again.
+    if (session.stopped || session.socketGen !== gen) {
+      detach();
+      ws.close();
+      return;
+    }
+
+    ws.onerror = null;
+    ws.onclose = () => {
+      if (this.session === session) this.stop();
+    };
+    ws.onmessage = (evt) => {
+      if (typeof evt.data !== 'string') node.port.postMessage(evt.data, [evt.data]);
+    };
+    if (session.gain) session.gain.gain.value = this.enabledSetting ? 1 : 0;
+  }
+
+  private closeSocket(session: Session) {
+    session.socketGen += 1;
+    const { ws } = session;
+    session.ws = undefined;
+    if (!ws) return;
+    ws.onclose = null;
+    ws.onmessage = null;
+    ws.onerror = null;
+    try {
+      ws.close();
+    } catch {
+      // already closed
+    }
+  }
+
+  private async connect(session: Session): Promise<MediaStreamTrack> {
+    if (!getBridge()) throw new Error('bridge unavailable');
+    const { ctx } = session;
+
+    try {
+      await ensureWorklet(ctx);
+
+      const node = new AudioWorkletNode(ctx, WORKLET_NAME, {
+        numberOfInputs: 0,
+        numberOfOutputs: 1,
+        outputChannelCount: [2],
+      });
+      const gain = ctx.createGain();
+      gain.gain.value = this.enabledSetting ? 1 : 0;
+      const destination = ctx.createMediaStreamDestination();
+      node.connect(gain);
+      gain.connect(destination);
+      session.node = node;
+      session.gain = gain;
+      session.destination = destination;
+
+      // With the setting off the native capture is not started at all; the (silent) track is
+      // still published so the share can get sound later when the user turns it on.
+      if (this.enabledSetting) await this.openSocket(session);
+      if (session.stopped) throw new Error('screen share audio was stopped');
 
       const track = destination.stream.getAudioTracks()[0];
       const nativeStop = track.stop.bind(track);
@@ -237,6 +321,9 @@ class ScreenShareAudio {
       };
       session.track = track;
       session.stopTrack = nativeStop;
+      diag(
+        `screen share audio session started capture=${session.ws ? 'on' : 'off'} sampleRate=${ctx.sampleRate}`
+      );
       this.emit();
       return track;
     } catch (e) {
@@ -250,20 +337,17 @@ class ScreenShareAudio {
     const session = this.session;
     if (!session) return;
     this.session = undefined;
+    session.stopped = true;
 
     try {
-      if (session.ws) {
-        session.ws.onclose = null;
-        session.ws.onmessage = null;
-        session.ws.onerror = null;
-        session.ws.close();
-      }
+      this.closeSocket(session);
       session.node?.disconnect();
       session.gain?.disconnect();
       session.stopTrack?.();
+      if (!session.stopTrack) session.destination?.stream.getTracks().forEach((t) => t.stop());
     } finally {
-      // WebKit limits the number of live AudioContexts: always release ours.
-      session.ctx.close().catch(() => {});
+      // The AudioContext is shared and never closed: only our own nodes are released.
+      diag('screen share audio session stopped');
       this.emit();
     }
   }

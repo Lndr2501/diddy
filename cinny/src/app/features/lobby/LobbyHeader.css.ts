@@ -13,6 +13,7 @@ export const HeaderTopic = style({
 });
 
 export const SpaceBadge = style({
+  position: 'relative',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -26,6 +27,7 @@ export const SpaceBadge = style({
 });
 
 export const SpaceBadgeAvatar = style({
+  position: 'relative',
   width: '100%',
   height: '100%',
   borderRadius: toRem(12),

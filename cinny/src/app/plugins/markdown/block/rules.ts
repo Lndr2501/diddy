@@ -190,7 +190,7 @@ function buildList(lines: ParsedLine[], parseInline?: (s: string) => string): st
   return html;
 }
 
-const LIST_REG_1 = /^(?: *(?:[-*]|[\da-zA-Z]\.) +.+\n?)+/m;
+const LIST_REG_1 = /^(?: *(?:[-*]|\d+\.|[aAiI]\.) +.+\n?)+/m;
 export const ListRule: BlockMDRule = {
   match: (text) => text.match(LIST_REG_1),
   html: (match, parseBlock, parseInline) => {
@@ -204,5 +204,5 @@ export const ListRule: BlockMDRule = {
   },
 };
 
-export const UN_ESC_BLOCK_SEQ = /^\\*(#{1,6} +|```|>|(-|[\da-zA-Z]\.) +|\* +)/;
-export const ESC_BLOCK_SEQ = /^\\(\\*(#{1,6} +|```|>|(-|[\da-zA-Z]\.) +|\* +))/;
+export const UN_ESC_BLOCK_SEQ = /^\\*(#{1,6} +|```|>|(-|\d+\.|[aAiI]\.) +|\* +)/;
+export const ESC_BLOCK_SEQ = /^\\(\\*(#{1,6} +|```|>|(-|\d+\.|[aAiI]\.) +|\* +))/;

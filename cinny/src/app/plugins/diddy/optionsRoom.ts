@@ -13,6 +13,7 @@ import {
   Visibility,
   Preset,
 } from 'matrix-js-sdk';
+import type { IHierarchyRoom } from 'matrix-js-sdk/lib/@types/spaces';
 import {
   BADGE_AWARD_EVENT,
   BADGE_DEF_EVENT,
@@ -67,6 +68,34 @@ export const removeLightOptionsRoom = (roomId: string): void => {
 
 export const isLightOptionsRoom = (room: Room | null | undefined): boolean =>
   !!room && getLightRoomIds().includes(room.roomId);
+
+// --- rooms the user left on purpose ------------------------------------------------------------
+// Those are never joined automatically again.
+
+const LEFT_ROOMS_KEY = 'diddyLeftOptionsRooms';
+
+const getLeftRoomIds = (): string[] => {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(LEFT_ROOMS_KEY) ?? '[]');
+    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : [];
+  } catch {
+    return [];
+  }
+};
+
+/** Call when the user leaves an options room themselves: it will not be auto-joined again. */
+export const rememberLeftOptionsRoom = (roomId: string): void => {
+  const ids = getLeftRoomIds();
+  if (ids.includes(roomId)) return;
+  ids.push(roomId);
+  try {
+    localStorage.setItem(LEFT_ROOMS_KEY, JSON.stringify(ids));
+  } catch {
+    // ignore (storage full / unavailable)
+  }
+};
+
+export const wasLeftOnPurpose = (roomId: string): boolean => getLeftRoomIds().includes(roomId);
 
 export const isOptionsRoom = (room: Room | null | undefined): boolean =>
   !!room && (!!room.currentState.getStateEvents(OPTIONS_MARKER_EVENT, '') || isLightOptionsRoom(room));
@@ -168,7 +197,11 @@ export const createOptionsRoom = async (
         { via: [mx.getDomain() ?? ''], suggested: false } as never,
         roomId
       )
-      .catch(() => {});
+      .catch((e) => {
+        // the room exists and works without the space child entry, so do not fail
+        // eslint-disable-next-line no-console
+        console.warn('Diddy: could not add the options room to the space', e);
+      });
   }
   return roomId;
 };
@@ -184,7 +217,11 @@ export const adoptRoomAsOptionsRoom = async (
 ): Promise<void> => {
   const room = mx.getRoom(roomId);
   if (!room) throw new Error('Room not found.');
-  const powerLevels = room.currentState.getStateEvents(EventType.RoomPowerLevels, '')?.getContent() ?? {};
+  const powerLevelsEvent = room.currentState.getStateEvents(EventType.RoomPowerLevels, '');
+  if (!powerLevelsEvent) {
+    throw new Error('Could not read this room\'s permissions yet. Try again in a moment.');
+  }
+  const powerLevels = powerLevelsEvent.getContent() ?? {};
   const events = {
     ...(powerLevels.events ?? {}),
     [PROFILE_EVENT]: 0,
@@ -218,13 +255,30 @@ export const adoptRoomAsOptionsRoom = async (
 
 /** Joins the options room of a space (a child named OPTIONS_ROOM_NAME) if there is one. */
 export const joinOptionsRoomOfSpace = async (mx: MatrixClient, spaceId: string): Promise<void> => {
-  const hierarchy = await mx.getRoomHierarchy(spaceId, 50, 1);
-  const candidate = hierarchy.rooms.find(
-    (r) =>
-      r.room_id !== spaceId &&
-      (r.name === OPTIONS_ROOM_NAME || (r.topic ?? '').includes(TOPIC_TAG)) &&
-      mx.getRoom(r.room_id)?.getMyMembership() !== 'join'
-  );
-  if (!candidate) return;
-  await mx.joinRoom(candidate.room_id, { viaServers: candidate.children_state?.[0]?.content?.via });
+  const MAX_PAGES = 5;
+  let fromToken: string | undefined;
+  let space: IHierarchyRoom | undefined;
+  for (let page = 0; page < MAX_PAGES; page += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    const hierarchy = await mx.getRoomHierarchy(spaceId, 50, 1, false, fromToken);
+    space = space ?? hierarchy.rooms.find((r) => r.room_id === spaceId);
+    const candidate = hierarchy.rooms.find((r) => {
+      if (r.room_id === spaceId) return false;
+      if (!(r.name === OPTIONS_ROOM_NAME || (r.topic ?? '').includes(TOPIC_TAG))) return false;
+      const membership = mx.getRoom(r.room_id)?.getMyMembership();
+      if (membership === 'join' || membership === 'ban') return false;
+      if (wasLeftOnPurpose(r.room_id)) return false;
+      return true;
+    });
+    if (candidate) {
+      const via = space?.children_state.find((c) => c.state_key === candidate.room_id)?.content?.via;
+      const serverPart = candidate.room_id.split(':').slice(1).join(':');
+      const viaServers = via && via.length > 0 ? via : serverPart ? [serverPart] : undefined;
+      // eslint-disable-next-line no-await-in-loop
+      await mx.joinRoom(candidate.room_id, { viaServers });
+      return;
+    }
+    if (!hierarchy.next_batch) return;
+    fromToken = hierarchy.next_batch;
+  }
 };

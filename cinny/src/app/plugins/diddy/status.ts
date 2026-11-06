@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
-import { MatrixClient } from 'matrix-js-sdk';
+import { MatrixClient, SetPresence } from 'matrix-js-sdk';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { DiddyStatus } from './types';
-import { patchMyProfile, useDiddyProfile } from './profiles';
+import { patchMyProfile, readProfile, useDiddyProfile } from './profiles';
 import { getPrimaryOptionsRoom } from './optionsRoom';
 
 const STATUS_KEY = 'diddyStatus';
@@ -23,15 +23,24 @@ export const useMyStatus = (mx: MatrixClient): DiddyStatus =>
 
 const applyPresence = async (mx: MatrixClient, status: DiddyStatus): Promise<void> => {
   let presence: 'online' | 'offline' | 'unavailable' = 'online';
+  let syncPresence = SetPresence.Online;
   let statusMsg: string | undefined;
   if (status === 'dnd') {
     statusMsg = 'Do not disturb';
   } else if (status === 'idle') {
     presence = 'unavailable';
+    syncPresence = SetPresence.Unavailable;
   } else if (status === 'invisible') {
     presence = 'offline';
+    syncPresence = SetPresence.Offline;
   }
-  await mx.setPresence({ presence, status_msg: statusMsg });
+  // the sync loop re-announces its own presence, so it has to follow the chosen status
+  try {
+    await mx.setSyncPresence(syncPresence);
+  } catch {
+    // ignore, PUT /presence below may still work
+  }
+  await mx.setPresence(statusMsg ? { presence, status_msg: statusMsg } : { presence });
 };
 
 export const setMyStatus = async (mx: MatrixClient, status: DiddyStatus): Promise<void> => {
@@ -63,7 +72,7 @@ export const useDiddyStatusSync = (): void => {
     const tryApply = () => {
       if (disposed) return;
       if (mx.isInitialSyncComplete()) {
-        applyPresence(mx, getLocalStatus()).catch(() => {});
+        applyPresence(mx, readProfile(mx, mx.getSafeUserId())?.status ?? getLocalStatus()).catch(() => {});
         return;
       }
       timer = window.setTimeout(tryApply, 2000);

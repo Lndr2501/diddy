@@ -56,7 +56,8 @@ const notify = () => {
 // the would-be state key in content['app.diddy.key']. They are collected here.
 
 const KEY_FIELD = 'app.diddy.key';
-type Candidate = { content: Record<string, unknown>; ts: number };
+/** `sender` is the authenticated event sender (never trust names written inside the content). */
+type Candidate = { content: Record<string, unknown>; ts: number; sender?: string };
 /** roomId -> event type -> key -> newest content */
 const messageData = new Map<string, Map<string, Map<string, Candidate>>>();
 const backfilled = new Set<string>();
@@ -84,7 +85,7 @@ const ingestEvent = (event: MatrixEvent, roomId: string | undefined): boolean =>
   }
   const existing = byKey.get(key);
   if (existing && existing.ts >= ts) return false;
-  byKey.set(key, { content, ts });
+  byKey.set(key, { content, ts, sender: event.getSender() ?? undefined });
   return true;
 };
 
@@ -164,14 +165,23 @@ function onLightRoomsChange() {
 }
 
 /** Newest of the state event content and the message-mode content for one key. */
-const readData = (room: Room, type: string, key: string): Candidate | undefined => {
+const readCandidates = (room: Room, type: string, key: string): Candidate[] => {
   const state = room.currentState.getStateEvents(type, key);
   const fromState: Candidate | undefined = state
-    ? { content: (state.getContent() ?? {}) as Record<string, unknown>, ts: state.getTs() }
+    ? {
+        content: (state.getContent() ?? {}) as Record<string, unknown>,
+        ts: state.getTs(),
+        sender: state.getSender() ?? undefined,
+      }
     : undefined;
   const fromMessage = messageData.get(room.roomId)?.get(type)?.get(key);
-  if (fromState && fromMessage) return fromMessage.ts > fromState.ts ? fromMessage : fromState;
-  return fromState ?? fromMessage;
+  return [fromState, fromMessage].filter((c): c is Candidate => !!c);
+};
+
+const readData = (room: Room, type: string, key: string): Candidate | undefined => {
+  const candidates = readCandidates(room, type, key);
+  if (candidates.length === 2) return candidates[1].ts > candidates[0].ts ? candidates[1] : candidates[0];
+  return candidates[0];
 };
 
 /** All keys of a type that exist in either source of a room. */
@@ -203,8 +213,9 @@ export const writeDiddyData = async (
     try {
       await mx.sendStateEvent(room.roomId, eventType as never, content as never, key);
       return;
-    } catch {
-      // not allowed to write state here: fall back to a normal event
+    } catch (e) {
+      // only "not allowed to write state here" falls back to a normal event
+      if ((e as { errcode?: string } | null)?.errcode !== 'M_FORBIDDEN') throw e;
     }
   }
   await mx.sendEvent(room.roomId, eventType as never, { ...content, [KEY_FIELD]: key } as never);
@@ -256,14 +267,30 @@ export const patchMyProfile = async (mx: MatrixClient, patch: Partial<DiddyProfi
 // --- badges ------------------------------------------------------------------------------------
 
 const readCustomBadges = (mx: MatrixClient): BadgeDef[] => {
-  const defs = new Map<string, BadgeDef>();
+  // all known versions of every definition, from every options room
+  const all = new Map<string, Candidate[]>();
   getOptionsRooms(mx).forEach((room) => {
     dataKeys(room, BADGE_DEF_EVENT).forEach((id) => {
-      const content = readData(room, BADGE_DEF_EVENT, id)?.content;
-      if (content?.name) defs.set(id, { ...(content as unknown as BadgeDef), id });
+      const list = all.get(id) ?? [];
+      list.push(...readCandidates(room, BADGE_DEF_EVENT, id));
+      all.set(id, list);
     });
   });
-  return Array.from(defs.values());
+  const defs: BadgeDef[] = [];
+  all.forEach((candidates, id) => {
+    const valid = candidates
+      .filter((c) => !!c.sender && !!c.content.name)
+      .filter((c) => c.content.createdBy === undefined || c.content.createdBy === c.sender)
+      .sort((a, b) => a.ts - b.ts);
+    if (valid.length === 0) return;
+    // first writer wins: only the creator (oldest event) may change a definition afterwards
+    const owner = valid[0].sender;
+    const chosen = valid.filter((c) => c.sender === owner).pop();
+    if (chosen) {
+      defs.push({ ...(chosen.content as unknown as BadgeDef), id, createdBy: chosen.sender });
+    }
+  });
+  return defs;
 };
 
 /** Global + custom badge definitions. */
@@ -282,10 +309,14 @@ const readAwards = (mx: MatrixClient, userId: string, defs: BadgeDef[]): Awarded
     dataKeys(room, BADGE_AWARD_EVENT).forEach((stateKey) => {
       const key = parseAwardStateKey(stateKey);
       if (!key || key.userId !== userId) return;
-      const content = readData(room, BADGE_AWARD_EVENT, stateKey)?.content;
-      if (!content?.by) return;
+      const data = readData(room, BADGE_AWARD_EVENT, stateKey);
+      // an empty content is a revoked award; the giver is the real event sender, not content.by
+      if (!data?.content.by || !data.sender) return;
       const def = byId.get(key.badgeId);
-      if (def) result.set(def.id, { ...def, award: content as unknown as BadgeAward });
+      if (def) {
+        const award: BadgeAward = { ...(data.content as unknown as BadgeAward), by: data.sender };
+        result.set(def.id, { ...def, award });
+      }
     });
   });
   return Array.from(result.values());

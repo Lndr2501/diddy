@@ -12,7 +12,12 @@ type BadgeChipProps = {
 };
 
 export function BadgeChip({ badge, size = 18 }: BadgeChipProps) {
-  const imageUrl = useMxcUrl(badge.imageMxc, { w: size * 2, h: size * 2 });
+  const imageUrl = useMxcUrl(
+    badge.imageMxc,
+    { w: size * 2, h: size * 2 },
+    // thumbnails of GIFs are static, so the full file is requested to keep them animated
+    { animated: true }
+  );
   const badgeColor = badge.color ?? DEFAULT_COLOR;
 
   return (

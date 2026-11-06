@@ -251,18 +251,31 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
     useEffect(() => {
       // if the editor is empty and there is a draft, restore it
       if (isEmptyEditor(editor) && msgDraft && msgDraft.length > 0) {
-        Transforms.insertFragment(editor, msgDraft);
+        try {
+          Transforms.insertFragment(editor, msgDraft);
+        } catch {
+          // a stale or invalid stored draft must never break the room
+          setMsgDraft(RESET);
+        }
       }
-    }, [editor, msgDraft]);
+    }, [editor, msgDraft, setMsgDraft]);
+
+    // Room of the latest render: a draft save that was scheduled for another room is dropped.
+    const currentRoomIdRef = useRef(roomId);
+    currentRoomIdRef.current = roomId;
 
     // On unmount, if the editor is not empty, save the draft. Otherwise, clear the draft.
     useEffect(
       () => () => {
-        if (!isEmptyEditor(editor)) {
-          const parsedDraft = JSON.parse(JSON.stringify(editor.children));
-          setMsgDraft(parsedDraft);
-        } else {
-          setMsgDraft(RESET);
+        try {
+          if (!isEmptyEditor(editor)) {
+            const parsedDraft = JSON.parse(JSON.stringify(editor.children));
+            setMsgDraft(parsedDraft);
+          } else {
+            setMsgDraft(RESET);
+          }
+        } catch {
+          // e.g. localStorage full: losing a draft is better than crashing
         }
         resetEditor(editor);
         resetEditorHistory(editor);
@@ -273,11 +286,16 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
     // Save draft after the editor changes
     const handleAutomaticDraftSave = useDebounce(
       () => {
-        if (!isEmptyEditor(editor)) {
-          const parsedDraft = JSON.parse(JSON.stringify(editor.children));
-          setMsgDraft(parsedDraft);
-        } else {
-          setMsgDraft(RESET);
+        if (currentRoomIdRef.current !== roomId) return;
+        try {
+          if (!isEmptyEditor(editor)) {
+            const parsedDraft = JSON.parse(JSON.stringify(editor.children));
+            setMsgDraft(parsedDraft);
+          } else {
+            setMsgDraft(RESET);
+          }
+        } catch {
+          // storage full or similar
         }
       },
       { wait: 400 }

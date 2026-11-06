@@ -35,13 +35,12 @@ export const updateCallPrefs = (patch: Partial<Prefs>) => {
   listeners.forEach((l) => l());
 };
 
-export const useCallPrefs = (): Prefs =>
-  useSyncExternalStore(
-    (listener) => {
-      listeners.add(listener);
-      return () => {
-        listeners.delete(listener);
-      };
-    },
-    () => current
-  );
+const subscribe = (listener: () => void) => {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+};
+const getSnapshot = () => current;
+
+export const useCallPrefs = (): Prefs => useSyncExternalStore(subscribe, getSnapshot);
