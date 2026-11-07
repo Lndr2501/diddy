@@ -10,6 +10,7 @@ import {
   OverlayBackdrop,
   OverlayCenter,
   Text,
+  toRem,
 } from 'folds';
 import classNames from 'classnames';
 import FocusTrap from 'focus-trap-react';
@@ -85,8 +86,10 @@ type UserHeroProps = {
   avatarUrl?: string;
   presence?: UserPresence;
   profile?: DiddyProfile;
+  /** the compact card layout uses a slimmer banner */
+  compact?: boolean;
 };
-export function UserHero({ userId, avatarUrl, presence, profile }: UserHeroProps) {
+export function UserHero({ userId, avatarUrl, presence, profile, compact }: UserHeroProps) {
   const [viewAvatar, setViewAvatar] = useState<string>();
   const bannerUrl = useMxcUrl(safeMxc(profile?.card?.bannerMxc), { w: 640, h: 192 });
   const animatedAvatarUrl = useMxcUrl(safeMxc(profile?.animatedAvatarMxc));
@@ -98,7 +101,11 @@ export function UserHero({ userId, avatarUrl, presence, profile }: UserHeroProps
       {/* A blurred, scaled avatar looked badly stretched, so the banner is a plain color gradient. */}
       <div
         className={classNames(css.UserHeroCoverContainer, css.UserHeroBanner)}
-        style={{ position: 'relative', ...getBannerStyle(userId, profile?.card, bannerUrl) }}
+        style={{
+          position: 'relative',
+          ...(compact ? { height: toRem(56) } : undefined),
+          ...getBannerStyle(userId, profile?.card, bannerUrl),
+        }}
       >
         {bannerUrl && <PositionedImg src={bannerUrl} pos={profile?.card?.bannerPos} />}
       </div>
@@ -168,11 +175,13 @@ type UserHeroNameProps = {
   displayName?: string;
   userId: string;
   profile?: DiddyProfile;
+  /** the bio is a card module now; the name block shows it only when asked to */
+  showBio?: boolean;
 };
-export function UserHeroName({ displayName, userId, profile }: UserHeroNameProps) {
+export function UserHeroName({ displayName, userId, profile, showBio = true }: UserHeroNameProps) {
   const username = getMxIdLocalPart(userId);
   const name = displayName ?? username ?? userId;
-  const bio = safeText(profile?.bio, 160);
+  const bio = showBio ? safeText(profile?.bio, 160) : undefined;
 
   return (
     <Box grow="Yes" direction="Column" gap="0">

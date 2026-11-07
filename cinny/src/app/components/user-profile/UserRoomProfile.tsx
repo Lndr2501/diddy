@@ -26,6 +26,8 @@ import { useMemberPowerCompare } from '../../hooks/useMemberPowerCompare';
 import { CreatorChip } from './CreatorChip';
 import { getDirectCreatePath, withSearchParam } from '../../pages/pathUtils';
 import { DirectCreateSearchParams } from '../../pages/paths';
+import { ProfileModules } from './ProfileModules';
+import { visibleModules } from '../../plugins/diddy/profileExtras';
 
 /** Black or white, whichever is readable on the given hex background. */
 const readableTextOn = (hex: string): string => {
@@ -76,6 +78,9 @@ export function UserRoomProfile({ userId }: UserRoomProfileProps) {
   const profile = useDiddyProfile(mx, userId);
   const accent = safeColor(profile?.card?.accent);
   const accentText = accent ? readableTextOn(accent) : undefined;
+  const layout = profile?.cardLayout?.layout ?? 'standard';
+  const compact = layout === 'compact';
+  const modules = visibleModules(profile?.cardLayout);
 
   const handleMessage = () => {
     closeUserRoomProfile();
@@ -98,11 +103,17 @@ export function UserRoomProfile({ userId }: UserRoomProfileProps) {
         avatarUrl={avatarUrl}
         presence={presence && presence.lastActiveTs !== 0 ? presence : undefined}
         profile={profile}
+        compact={compact}
       />
       <Box direction="Column" gap="500" style={{ padding: config.space.S400 }}>
         <Box direction="Column" gap="400">
           <Box gap="400" alignItems="Start">
-            <UserHeroName displayName={displayName} userId={userId} profile={profile} />
+            <UserHeroName
+              displayName={displayName}
+              userId={userId}
+              profile={profile}
+              showBio={false}
+            />
             {userId !== myUserId && (
               <Box shrink="No">
                 <Button
@@ -122,13 +133,22 @@ export function UserRoomProfile({ userId }: UserRoomProfileProps) {
             )}
           </Box>
           <Box alignItems="Center" gap="200" wrap="Wrap">
-            {server && <ServerChip server={server} />}
+            {!compact && server && <ServerChip server={server} />}
             <ShareChip userId={userId} />
-            {creator ? <CreatorChip /> : <PowerChip userId={userId} />}
-            {userId !== myUserId && <MutualRoomsChip userId={userId} />}
+            {!compact && (creator ? <CreatorChip /> : <PowerChip userId={userId} />)}
+            {layout !== 'tabs' && modules.includes('sharedRooms') && userId !== myUserId && (
+              <MutualRoomsChip userId={userId} />
+            )}
             {userId !== myUserId && <OptionsChip userId={userId} />}
             {userId !== myUserId && <AwardBadgeButton userId={userId} />}
           </Box>
+          <ProfileModules
+            profile={profile}
+            accent={accent}
+            sharedRooms={
+              layout === 'tabs' && userId !== myUserId ? <MutualRoomsChip userId={userId} /> : undefined
+            }
+          />
         </Box>
         {ignored && <IgnoredUserAlert />}
         {member && membership === Membership.Ban && (
