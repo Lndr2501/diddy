@@ -2,6 +2,11 @@
 
 ## Unveröffentlicht
 
+### Call: alle Bildschirmübertragungen gleichzeitig (#66)
+
+- Teilen mehrere Leute ihren Bildschirm, zeigt der Call alle Übertragungen nebeneinander als eigene Kacheln mit dem Namen unten, statt sie einzeln durchzublättern (keine Pfeile und Striche mehr). Die Kamera-Kacheln bzw. Profilbilder bleiben unverändert daneben.
+- Das Layout bestimmt der eingebettete Element Call; Diddy formt dessen Bildschirm-Karussell per Stylesheet zum Raster um (`plugins/call/screenShareGrid.ts`). Die Übertragungen bleiben deshalb im großen Bereich und werden nicht zwischen die Kamera-Kacheln gemischt. Der Lautstärke-Knopf für Übertragungston wirkt weiter nur auf eine Übertragung.
+
 ### iOS: Rauschunterdrückung (#53)
 
 - Neuer Schalter "Noise suppression" in den iOS-Einstellungen, standardmäßig an, wirkt sofort, auch im Call. Filtert Lüfter und Tippen aus dem Mikrofon, auf dem Gerät und ohne Server oder Konto, mit [RNNoise](https://github.com/xiph/rnnoise) (BSD-3) wie am Desktop. Krisp selbst braucht einen kommerziellen Vertrag, die fertigen LiveKit-Filter sind an LiveKit Cloud gebunden.
