@@ -15,6 +15,40 @@ export const CALL_FRAME_MENU_EVENT = 'diddy-call-frame-menu';
 
 export type CallFrameMenuDetail = { x: number; y: number; text: string };
 
+/** Right-click on a person (a tile in the call, or their avatar elsewhere): the Discord-style menu. */
+export const CALL_USER_MENU_EVENT = 'diddy-call-user-menu';
+export type CallUserMenuDetail = { x: number; y: number; userId: string };
+
+/** A participant tile of the embedded call (Element Call's `MediaView`). */
+export const CALL_TILE_SELECTOR = '[data-testid="videoTile"]';
+
+type LabelledLike = { getAttribute: (name: string) => string | null };
+type TileLike = { querySelector: (selector: string) => LabelledLike | null };
+
+/** The Matrix ID of the tile's owner: the first `aria-label` in a tile is the avatar's (the ID). */
+export const tileUserId = (tile: TileLike | null | undefined): string | undefined => {
+  const label = tile?.querySelector('[aria-label]')?.getAttribute('aria-label');
+  return label && /^@[^\s:]+:[^\s]+$/.test(label) ? label : undefined;
+};
+
+/** The tile of `userId` in the call document, if that person is shown. */
+export const findCallTile = <T extends TileLike>(
+  doc: { querySelectorAll: (selector: string) => ArrayLike<T> } | null | undefined,
+  userId: string
+): T | undefined => {
+  if (!doc) return undefined;
+  return Array.from(doc.querySelectorAll(CALL_TILE_SELECTOR)).find(
+    (tile) => tileUserId(tile) === userId
+  );
+};
+
+/** Ask the main window to show the person menu at (x, y) for `userId`. */
+export const openCallUserMenu = (userId: string, x: number, y: number): void => {
+  window.dispatchEvent(
+    new CustomEvent<CallUserMenuDetail>(CALL_USER_MENU_EVENT, { detail: { x, y, userId } })
+  );
+};
+
 type FrameStyleLike = { visibility?: string; pointerEvents?: string } | null | undefined;
 
 /** True when the call view is hidden (another room), so a right-click on it is meant for the chat. */
@@ -140,6 +174,13 @@ export const installCallFrameMenu = (
     }
     // the guard already prevented the event unless the native menu is wanted (inputs, Option)
     if (!evt.defaultPrevented) return;
+    // a person's tile: the person menu (profile, message, volume ...) instead of plain Copy
+    const tile = (evt.target as Element | null)?.closest?.(CALL_TILE_SELECTOR);
+    const tileUser = tileUserId(tile);
+    if (tileUser) {
+      openCallUserMenu(tileUser, box.left + evt.clientX, box.top + evt.clientY);
+      return;
+    }
     const text = textToCopy(doc, evt.target);
     if (!text) return;
     const detail: CallFrameMenuDetail = {
@@ -149,4 +190,24 @@ export const installCallFrameMenu = (
     };
     window.dispatchEvent(new CustomEvent<CallFrameMenuDetail>(CALL_FRAME_MENU_EVENT, { detail }));
   });
+};
+
+/**
+ * Open Element Call's own menu of a tile (mute for me, volume slider): its trigger is the tile
+ * itself and opens on a primary-button pointerdown.
+ */
+export const openCallTileMenu = (tile: Element): void => {
+  const win = tile.ownerDocument.defaultView as (Window & typeof globalThis) | null;
+  const PointerCtor = win?.PointerEvent ?? win?.MouseEvent;
+  if (!win || !PointerCtor) return;
+  tile.dispatchEvent(
+    new PointerCtor('pointerdown', {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+      buttons: 1,
+      ctrlKey: false,
+      view: win,
+    })
+  );
 };

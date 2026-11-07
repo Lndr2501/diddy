@@ -11,6 +11,7 @@ import { UserAvatar } from '../../components/user-avatar';
 import { getMouseEventCords } from '../../utils/dom';
 import * as css from './styles.css';
 import { useAgentTalking } from '../../state/agentVoice';
+import { openCallUserMenu } from '../../plugins/callFrameMenu';
 
 type CallMemberCardProps = {
   member: CallMembership;
@@ -111,6 +112,10 @@ export function CallMemberCard({ member }: CallMemberCardProps) {
       type="button"
       key={member.memberId}
       className={css.CallMemberCard}
+      onContextMenu={(evt) => {
+        evt.preventDefault();
+        openCallUserMenu(userId, evt.clientX, evt.clientY);
+      }}
       onClick={(evt) =>
         openUserProfile(
           room.roomId,

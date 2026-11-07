@@ -118,3 +118,34 @@ test('without elementsFromPoint the single hit is used, and nothing there means 
   );
   assert.equal(onlyFrame.target, null);
 });
+
+// Right-click on a person's tile in the call: the Discord-style person menu.
+const tile = (label) => ({
+  querySelector: (selector) => {
+    assert.equal(selector, '[aria-label]');
+    return label === undefined ? null : { getAttribute: () => label };
+  },
+});
+
+test('the tile owner is read from the avatar label, only if it is a Matrix ID', () => {
+  const mod = load();
+  assert.equal(mod.tileUserId(tile('@lndr:matrix.tllx.eu')), '@lndr:matrix.tllx.eu');
+  assert.equal(mod.tileUserId(tile('Unencrypted')), undefined);
+  assert.equal(mod.tileUserId(tile(undefined)), undefined);
+  assert.equal(mod.tileUserId(null), undefined);
+});
+
+test('finds the tile of a given user in the call document', () => {
+  const mod = load();
+  const a = tile('@a:x.org');
+  const b = tile('@b:x.org');
+  const doc = {
+    querySelectorAll: (selector) => {
+      assert.equal(selector, mod.CALL_TILE_SELECTOR);
+      return [a, b];
+    },
+  };
+  assert.equal(mod.findCallTile(doc, '@b:x.org'), b);
+  assert.equal(mod.findCallTile(doc, '@c:x.org'), undefined);
+  assert.equal(mod.findCallTile(null, '@a:x.org'), undefined);
+});

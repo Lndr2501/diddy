@@ -27,6 +27,7 @@ import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
 import { UserAvatar } from '../../components/user-avatar';
 import { useOpenUserRoomProfile } from '../../state/hooks/userRoomProfile';
 import { getMouseEventCords } from '../../utils/dom';
+import { openCallUserMenu } from '../../plugins/callFrameMenu';
 
 type LiveChipProps = {
   room: Room;
@@ -88,6 +89,10 @@ export function LiveChip({ count, room, members }: LiveChipProps) {
                         variant="Surface"
                         radii="400"
                         style={{ paddingLeft: config.space.S200 }}
+                        onContextMenu={(evt: React.MouseEvent<HTMLButtonElement>) => {
+                          evt.preventDefault();
+                          openCallUserMenu(userId, evt.clientX, evt.clientY);
+                        }}
                         onClick={(evt: React.MouseEvent<HTMLButtonElement>) =>
                           openUserProfile(
                             room.roomId,
@@ -99,7 +104,8 @@ export function LiveChip({ count, room, members }: LiveChipProps) {
                         }
                         before={
                           <Avatar size="200" radii="Pill">
-                            <UserAvatar surface="call"
+                            <UserAvatar
+                              surface="call"
                               userId={userId}
                               src={avatarUrl}
                               alt={name}

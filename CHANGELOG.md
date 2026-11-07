@@ -7,6 +7,22 @@
 - **Neue Einstellung unter Allgemein → „Talking to an agent“ (standardmäßig aus).** Dieselbe Taste wie im Diktier-Tool (OpenWhispr, Wispr Flow, ...) eintragen: solange sie gedrückt ist (oder bis zum zweiten Druck), zeigt Diddy „Talking to agent“ an deinem Bild unten links, schaltet auf Wunsch das Mikro im Call stumm und danach wieder an, und die anderen im Call sehen „redet mit Agent“ an deinem Namen (kurzlebige To-Device-Nachricht nur an die Call-Teilnehmer, abschaltbar).
 - Im Diddy-Fenster funktioniert jede Taste. Im Hintergrund liest die macOS-App Fn/Globe, die Modifier-Tasten und F13–F20 direkt vom System. Für alles andere (Linux, eigene Tastenkürzel): `diddy --agent-voice start|stop|toggle`, z. B. aus Karabiner, Hammerspoon, skhd oder sxhkd; Diddy bekommt dabei nicht den Fokus.
 
+### Teilnehmer eines Calls in der Raumliste
+
+- Wer gerade im Call ist, steht jetzt wie bei Discord untereinander direkt unter dem Call-Raum in der Seitenleiste (Profilbild und Name, eine Person pro Zeile). Die kleinen Avatare in der Raumzeile entfallen, das "n Live"-Badge bleibt.
+- Klick auf eine Person öffnet das Profil, Rechtsklick das Call-Menü (Profile, Message, Copy Name, ...). Neu `features/room-nav/CallMemberList.tsx`; gilt in Home, Direktnachrichten und Spaces. Nicht in einem echten Call geprüft.
+
+### Rechtsklick-Menü auf Personen im Call
+
+- Rechtsklick auf die Kachel einer Person im Call (und auf die Avatare in der Call-Leiste und der Teilnehmerliste) öffnet ein Menü wie bei Discord: **Profile**, **Message** (privater Chat), **Volume & Mute for me…**, **Copy Name**, **Copy User ID**.
+- "Volume & Mute for me…" öffnet das Lautstärke-/Stummschalten-Menü von Element Call an der Kachel der Person. Es erscheint nur bei anderen Personen und solange die Call-Ansicht sichtbar ist.
+- Neu `components/CallUserMenu.tsx`; Erkennung der Kachel in `plugins/callFrameMenu.ts`. Nicht in einem echten Call geprüft (Aufbau von Element Call nur aus dem Quelltext gelesen).
+
+### Privat anrufen vom Profil aus (#55)
+
+- Die Profilkarte hat neben "Message" einen **Call**-Knopf: Er startet einen Sprachanruf im privaten Chat mit der Person (so klingelt nur sie, nicht ein ganzer Raum). Gibt es noch keinen privaten Chat, wird ein verschlüsselter angelegt. Der Knopf ist gesperrt, solange man schon in einem Call ist, und fehlt, wenn der Server keine Calls unterstützt.
+- Dafür liegt die Profilkarte jetzt innerhalb des Call-Providers (`Router.tsx`). Logik in `plugins/directCall.ts`, 5 Tests.
+
 ### Linux: Diddy läuft jetzt in Electron, Calls funktionieren
 
 - **Sprach- und Videoanrufe unter Linux, auch verschlüsselt.** Vorher endete jeder Beitritt mit „Something went wrong“ (`UNKNOWN_ERROR`). Die Ursache ist WebKitGTKs WebRTC (GStreamer): fehlende BUNDLE-Gruppe, ein Deadlock beim Beitritt, kaputte Empfangs-Transceiver und vor allem keine Frame-Verschlüsselung. Damit sind verschlüsselte Calls unmöglich. Unter Linux läuft dasselbe Frontend deshalb in Electron (Chromium, libwebrtc wie Safari auf macOS). macOS bleibt Tauri.
