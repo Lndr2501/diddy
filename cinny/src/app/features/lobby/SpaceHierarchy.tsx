@@ -14,6 +14,7 @@ import { SpaceItemCard } from './SpaceItem';
 import { AfterItemDropTarget, CanDropCallback } from './DnD';
 import { HierarchyItemMenu } from './HierarchyItemMenu';
 import { RoomItemCard } from './RoomItem';
+import * as roomItemCss from './RoomItem.css';
 import { RoomType, StateEvent } from '../../../types/matrix/room';
 import { SequenceCard } from '../../components/sequence-card';
 import { getRoomCreatorsForRoomId } from '../../hooks/useRoomCreators';
@@ -153,7 +154,7 @@ export const SpaceHierarchy = forwardRef<HTMLDivElement, SpaceHierarchyProps>(
           data-dragging={draggingSpace}
         />
         {childItems && childItems.length > 0 ? (
-          <Box direction="Column" gap="100">
+          <div className={roomItemCss.RoomItemGroup}>
             {childItems.map((roomItem, index) => {
               const roomSummary = rooms.get(roomItem.roomId);
 
@@ -202,7 +203,7 @@ export const SpaceHierarchy = forwardRef<HTMLDivElement, SpaceHierarchyProps>(
                 />
               );
             })}
-          </Box>
+          </div>
         ) : (
           childItems && (
             <SequenceCard variant="SurfaceVariant" gap="300" alignItems="Center">

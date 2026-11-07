@@ -39,6 +39,7 @@ import { useAlive } from '../../../hooks/useAlive';
 import { creatorsSupported } from '../../../utils/matrix';
 import { useRoomCreators } from '../../../hooks/useRoomCreators';
 import { BreakWord } from '../../../styles/Text.css';
+import * as sheetCss from '../../../components/sheet/Sheet.css';
 
 function RoomUpgradeDialog({ requestClose }: { requestClose: () => void }) {
   const mx = useMatrixClient();
@@ -83,7 +84,7 @@ function RoomUpgradeDialog({ requestClose }: { requestClose: () => void }) {
   };
 
   return (
-    <Overlay open backdrop={<OverlayBackdrop />}>
+    <Overlay open backdrop={<OverlayBackdrop className={sheetCss.Backdrop} />}>
       <OverlayCenter>
         <FocusTrap
           focusTrapOptions={{
@@ -93,8 +94,9 @@ function RoomUpgradeDialog({ requestClose }: { requestClose: () => void }) {
             escapeDeactivates: stopPropagation,
           }}
         >
-          <Dialog variant="Surface">
+          <Dialog className={sheetCss.Sheet} variant="Surface">
             <Header
+              className={sheetCss.SheetHeader}
               style={{
                 padding: `0 ${config.space.S200} 0 ${config.space.S400}`,
                 borderBottomWidth: config.borderWidth.B300,
@@ -103,7 +105,9 @@ function RoomUpgradeDialog({ requestClose }: { requestClose: () => void }) {
               size="500"
             >
               <Box grow="Yes">
-                <Text size="H4">{room.isSpaceRoom() ? 'Space Upgrade' : 'Room Upgrade'}</Text>
+                <Text className={sheetCss.SheetTitle} size="H4">
+                  {room.isSpaceRoom() ? 'Space Upgrade' : 'Room Upgrade'}
+                </Text>
               </Box>
               <IconButton size="300" onClick={requestClose} radii="300">
                 <Icon src={Icons.Cross} />
@@ -143,6 +147,7 @@ function RoomUpgradeDialog({ requestClose }: { requestClose: () => void }) {
                 </Text>
               )}
               <Button
+                className={sheetCss.Pill}
                 onClick={handleUpgradeRoom}
                 variant="Secondary"
                 disabled={upgrading}
@@ -224,6 +229,7 @@ export function RoomUpgrade({ permissions, requestClose }: RoomUpgradeProps) {
           <Box alignItems="Center" gap="200">
             {predecessorRoomId && (
               <Button
+                className={sheetCss.Pill}
                 size="300"
                 variant="Secondary"
                 fill="Soft"
@@ -236,6 +242,7 @@ export function RoomUpgrade({ permissions, requestClose }: RoomUpgradeProps) {
             )}
             {replacementRoom ? (
               <Button
+                className={sheetCss.Pill}
                 size="300"
                 variant="Success"
                 fill="Solid"
@@ -246,6 +253,7 @@ export function RoomUpgrade({ permissions, requestClose }: RoomUpgradeProps) {
               </Button>
             ) : (
               <Button
+                className={sheetCss.Pill}
                 size="300"
                 variant="Secondary"
                 fill="Solid"

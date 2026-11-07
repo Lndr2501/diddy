@@ -30,6 +30,7 @@ import { IPowerLevels } from '../../hooks/usePowerLevels';
 import { getRoomCreatorsForRoomId } from '../../hooks/useRoomCreators';
 import { getRoomPermissionsAPI } from '../../hooks/useRoomPermissions';
 import { InviteUserPrompt } from '../../components/invite-user-prompt';
+import * as sheetCss from '../../components/sheet/Sheet.css';
 
 type HierarchyItemWithParent = HierarchyItem & {
   parentId: string;
@@ -60,6 +61,7 @@ function SuggestMenuItem({
 
   return (
     <MenuItem
+      className={sheetCss.MenuRow}
       onClick={handleToggleSuggested}
       size="300"
       radii="300"
@@ -98,6 +100,7 @@ function RemoveMenuItem({
 
   return (
     <MenuItem
+      className={sheetCss.MenuRow}
       onClick={handleRemove}
       variant="Critical"
       fill="None"
@@ -137,6 +140,7 @@ function InviteMenuItem({
   return (
     <>
       <MenuItem
+        className={sheetCss.MenuRow}
         onClick={handleInvite}
         size="300"
         radii="300"
@@ -185,7 +189,13 @@ function SettingsMenuItem({
   };
 
   return (
-    <MenuItem onClick={handleSettings} size="300" radii="300" disabled={disabled}>
+    <MenuItem
+      className={sheetCss.MenuRow}
+      onClick={handleSettings}
+      size="300"
+      radii="300"
+      disabled={disabled}
+    >
       <Text as="span" size="T300" truncate>
         Settings
       </Text>
@@ -261,11 +271,15 @@ export function HierarchyItemMenu({
                 escapeDeactivates: stopPropagation,
               }}
             >
-              <Menu style={{ maxWidth: toRem(150), width: '100vw' }}>
+              <Menu
+                className={sheetCss.MenuMaterial}
+                style={{ maxWidth: toRem(150), width: '100vw' }}
+              >
                 {joined && (
                   <Box direction="Column" gap="100" style={{ padding: config.space.S100 }}>
                     {onTogglePin && (
                       <MenuItem
+                        className={sheetCss.MenuRow}
                         size="300"
                         radii="300"
                         onClick={() => {
@@ -288,6 +302,7 @@ export function HierarchyItemMenu({
                       {(promptLeave, setPromptLeave) => (
                         <>
                           <MenuItem
+                            className={sheetCss.MenuRow}
                             onClick={() => setPromptLeave(true)}
                             variant="Critical"
                             fill="None"

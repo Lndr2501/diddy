@@ -8,6 +8,7 @@ import { useAllJoinedRoomsSet, useGetRoom } from '../hooks/useGetRoom';
 import { stopPropagation } from '../utils/keyboard';
 import { SpaceProvider } from '../hooks/useSpace';
 import { RoomProvider } from '../hooks/useRoom';
+import * as sheetCss from './sheet/Sheet.css';
 
 function UserRoomProfileContextMenu({ state }: { state: UserRoomProfileState }) {
   const { roomId, spaceId, userId, cords, position } = state;
@@ -34,7 +35,7 @@ function UserRoomProfileContextMenu({ state }: { state: UserRoomProfileState }) 
             escapeDeactivates: stopPropagation,
           }}
         >
-          <Menu style={{ width: toRem(340) }}>
+          <Menu className={sheetCss.PopoverCard} style={{ width: toRem(340) }}>
             <SpaceProvider value={space ?? null}>
               <RoomProvider value={room}>
                 <UserRoomProfile userId={userId} />

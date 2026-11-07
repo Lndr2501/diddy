@@ -1,6 +1,7 @@
 import { Box, Button, color, config, Dialog, Header, Icon, IconButton, Icons, Text } from 'folds';
 import React, { useCallback, useEffect, useState } from 'react';
 import { StageComponentProps } from './types';
+import * as sheetCss from '../sheet/Sheet.css';
 
 export function SSOStage({
   ssoRedirectURL,
@@ -45,8 +46,9 @@ export function SSOStage({
   }, [ssoWindow, handleSubmit, ssoRedirectURL]);
 
   return (
-    <Dialog>
+    <Dialog className={sheetCss.Sheet}>
       <Header
+        className={sheetCss.SheetHeader}
         style={{
           padding: `0 ${config.space.S200} 0 ${config.space.S400}`,
         }}
@@ -54,7 +56,9 @@ export function SSOStage({
         size="500"
       >
         <Box grow="Yes">
-          <Text size="H4">SSO Login</Text>
+          <Text className={sheetCss.SheetTitle} size="H4">
+            SSO Login
+          </Text>
         </Box>
         <IconButton size="300" onClick={onCancel} radii="300">
           <Icon src={Icons.Cross} />
@@ -78,13 +82,13 @@ export function SSOStage({
         )}
 
         {ssoWindow ? (
-          <Button variant="Primary" onClick={handleSubmit}>
+          <Button className={sheetCss.Pill} variant="Primary" onClick={handleSubmit}>
             <Text as="span" size="B400">
               Continue
             </Text>
           </Button>
         ) : (
-          <Button variant="Primary" onClick={handleContinue}>
+          <Button className={sheetCss.Pill} variant="Primary" onClick={handleContinue}>
             <Text as="span" size="B400">
               Continue with SSO
             </Text>

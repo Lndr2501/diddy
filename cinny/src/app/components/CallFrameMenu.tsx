@@ -4,6 +4,7 @@ import FocusTrap from 'focus-trap-react';
 import { stopPropagation } from '../utils/keyboard';
 import { copyToClipboard } from '../utils/dom';
 import { CALL_FRAME_MENU_EVENT, CallFrameMenuDetail } from '../plugins/callFrameMenu';
+import * as sheetCss from './sheet/Sheet.css';
 
 /** The Copy menu for a right-click inside the call view, shown in the main window. */
 export function CallFrameMenu() {
@@ -35,9 +36,10 @@ export function CallFrameMenu() {
             escapeDeactivates: stopPropagation,
           }}
         >
-          <Menu>
+          <Menu className={sheetCss.MenuMaterial}>
             <Box direction="Column" gap="100" style={{ padding: config.space.S100 }}>
               <MenuItem
+                className={sheetCss.MenuRow}
                 size="300"
                 radii="300"
                 onClick={() => {

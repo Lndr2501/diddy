@@ -1,6 +1,5 @@
 import { style } from '@vanilla-extract/css';
-import { config } from 'folds';
+import { settingsCardStyle } from '../common-settings/styles.css';
 
-export const SequenceCardStyle = style({
-  padding: config.space.S300,
-});
+/** Same rounded grouped cards as the other settings pages (#21). */
+export const SequenceCardStyle = style(settingsCardStyle);

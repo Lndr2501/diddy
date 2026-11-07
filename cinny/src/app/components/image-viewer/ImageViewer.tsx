@@ -2,7 +2,7 @@
 import React from 'react';
 import FileSaver from 'file-saver';
 import classNames from 'classnames';
-import { Box, Chip, Header, Icon, IconButton, Icons, Text, as } from 'folds';
+import { Box, Chip, Icon, IconButton, Icons, Text, as } from 'folds';
 import * as css from './ImageViewer.css';
 import { useZoom } from '../../hooks/useZoom';
 import { usePan } from '../../hooks/usePan';
@@ -31,49 +31,20 @@ export const ImageViewer = as<'div', ImageViewerProps>(
         {...props}
         ref={ref}
       >
-        <Header className={css.ImageViewerHeader} size="400">
-          <Box grow="Yes" alignItems="Center" gap="200">
-            <IconButton size="300" radii="300" onClick={requestClose}>
-              <Icon size="50" src={Icons.ArrowLeft} />
-            </IconButton>
-            <Text size="T300" truncate>
-              {alt}
-            </Text>
-          </Box>
-          <Box shrink="No" alignItems="Center" gap="200">
-            <IconButton
-              variant={zoom < 1 ? 'Success' : 'SurfaceVariant'}
-              outlined={zoom < 1}
-              size="300"
-              radii="Pill"
-              onClick={zoomOut}
-              aria-label="Zoom Out"
-            >
-              <Icon size="50" src={Icons.Minus} />
-            </IconButton>
-            <Chip variant="SurfaceVariant" radii="Pill" onClick={() => setZoom(zoom === 1 ? 2 : 1)}>
-              <Text size="B300">{Math.round(zoom * 100)}%</Text>
-            </Chip>
-            <IconButton
-              variant={zoom > 1 ? 'Success' : 'SurfaceVariant'}
-              outlined={zoom > 1}
-              size="300"
-              radii="Pill"
-              onClick={zoomIn}
-              aria-label="Zoom In"
-            >
-              <Icon size="50" src={Icons.Plus} />
-            </IconButton>
-            <Chip
-              variant="Primary"
-              onClick={handleDownload}
-              radii="300"
-              before={<Icon size="50" src={Icons.Download} />}
-            >
-              <Text size="B300">Download</Text>
-            </Chip>
-          </Box>
-        </Header>
+        <div className={css.ImageViewerHeader}>
+          <IconButton
+            className={classNames(css.Control, css.CloseControl)}
+            size="300"
+            radii="Pill"
+            onClick={requestClose}
+            aria-label="Close"
+          >
+            <Icon size="50" src={Icons.Cross} />
+          </IconButton>
+          <Text className={css.ImageViewerTitle} size="T300" truncate>
+            {alt}
+          </Text>
+        </div>
         <Box
           grow="Yes"
           className={css.ImageViewerContent}
@@ -91,6 +62,47 @@ export const ImageViewer = as<'div', ImageViewerProps>(
             onMouseDown={onMouseDown}
           />
         </Box>
+        <div className={css.ControlPill}>
+          <IconButton
+            className={css.Control}
+            size="300"
+            radii="Pill"
+            onClick={zoomOut}
+            aria-label="Zoom Out"
+            data-active={zoom < 1}
+          >
+            <Icon size="50" src={Icons.Minus} />
+          </IconButton>
+          <Chip
+            className={classNames(css.Control, css.ZoomLabel)}
+            radii="Pill"
+            onClick={() => setZoom(zoom === 1 ? 2 : 1)}
+            aria-label="Toggle Zoom"
+          >
+            <Text size="B300">{Math.round(zoom * 100)}%</Text>
+          </Chip>
+          <IconButton
+            className={css.Control}
+            size="300"
+            radii="Pill"
+            onClick={zoomIn}
+            aria-label="Zoom In"
+            data-active={zoom > 1}
+          >
+            <Icon size="50" src={Icons.Plus} />
+          </IconButton>
+          <span className={css.ControlSeparator} aria-hidden />
+          <IconButton
+            className={css.Control}
+            size="300"
+            radii="Pill"
+            onClick={handleDownload}
+            aria-label="Download"
+            title="Download"
+          >
+            <Icon size="50" src={Icons.Download} />
+          </IconButton>
+        </div>
       </Box>
     );
   }

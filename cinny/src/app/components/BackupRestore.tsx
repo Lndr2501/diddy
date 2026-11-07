@@ -30,6 +30,7 @@ import {
 } from '../hooks/useKeyBackup';
 import { stopPropagation } from '../utils/keyboard';
 import { useRestoreBackupOnVerification } from '../hooks/useRestoreBackupOnVerification';
+import * as sheetCss from './sheet/Sheet.css';
 
 type BackupStatusProps = {
   enabled: boolean;
@@ -204,6 +205,7 @@ export function BackupRestoreTile({ crypto }: BackupRestoreTileProps) {
                 }}
               >
                 <Menu
+                  className={sheetCss.MenuMaterial}
                   style={{
                     padding: config.space.S100,
                   }}

@@ -1,11 +1,10 @@
 import React, { useCallback, useState } from 'react';
 import { Box, Text, Icon, Icons, Button, MenuItem } from 'folds';
-import { SequenceCard } from '../../../components/sequence-card';
-import { SequenceCardStyle } from '../styles.css';
-import { SettingTile } from '../../../components/setting-tile';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { useAccountDataCallback } from '../../../hooks/useAccountDataCallback';
 import { CutoutCard } from '../../../components/cutout-card';
+import { InsetGroup, InsetItem, InsetRow, InsetSection } from '../inset-list';
+import * as sheetCss from '../../../components/sheet/Sheet.css';
 
 type AccountDataProps = {
   expand: boolean;
@@ -26,25 +25,19 @@ export function AccountData({ expand, onExpandToggle, onSelect }: AccountDataPro
   );
 
   return (
-    <Box direction="Column" gap="100">
-      <Text size="L400">Account Data</Text>
-      <SequenceCard
-        className={SequenceCardStyle}
-        variant="SurfaceVariant"
-        direction="Column"
-        gap="400"
-      >
-        <SettingTile
+    <InsetSection title="Account Data">
+      <InsetGroup>
+        <InsetRow
           title="Global"
           description="Data stored in your global account data."
           after={
             <Button
+              className={sheetCss.Pill}
               onClick={() => onExpandToggle(!expand)}
               variant="Secondary"
               fill="Soft"
               size="300"
-              radii="300"
-              outlined
+              radii="Pill"
               before={
                 <Icon src={expand ? Icons.ChevronTop : Icons.ChevronBottom} size="100" filled />
               }
@@ -54,7 +47,7 @@ export function AccountData({ expand, onExpandToggle, onSelect }: AccountDataPro
           }
         />
         {expand && (
-          <Box direction="Column" gap="100">
+          <InsetItem>
             <Box justifyContent="SpaceBetween">
               <Text size="L400">Events</Text>
               <Text size="L400">Total: {accountDataTypes.length}</Text>
@@ -92,9 +85,9 @@ export function AccountData({ expand, onExpandToggle, onSelect }: AccountDataPro
                 </MenuItem>
               ))}
             </CutoutCard>
-          </Box>
+          </InsetItem>
         )}
-      </SequenceCard>
-    </Box>
+      </InsetGroup>
+    </InsetSection>
   );
 }

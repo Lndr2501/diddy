@@ -1,5 +1,5 @@
 import { style } from '@vanilla-extract/css';
-import { config } from 'folds';
+import { config, toRem } from 'folds';
 
 export const ModalFlex = style({
   display: 'flex',
@@ -13,9 +13,7 @@ export const ModalScroll = style({
   flexGrow: 1,
 });
 export const ModalContent = style({
-  padding: config.space.S400,
-  paddingRight: config.space.S200,
-  paddingBottom: config.space.S700,
+  padding: `${config.space.S100} ${config.space.S300} ${config.space.S500} ${toRem(20)}`,
 });
 export const ModalTopic = style({
   whiteSpace: 'pre-wrap',

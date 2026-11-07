@@ -1,18 +1,5 @@
 import React from 'react';
-import {
-  Box,
-  config,
-  Header,
-  Icon,
-  IconButton,
-  Icons,
-  Modal,
-  Overlay,
-  OverlayBackdrop,
-  OverlayCenter,
-  Scroll,
-  Text,
-} from 'folds';
+import { Box, config, Modal, Overlay, OverlayBackdrop, OverlayCenter, Scroll, toRem } from 'folds';
 import FocusTrap from 'focus-trap-react';
 import { useAllJoinedRoomsSet, useGetRoom } from '../../hooks/useGetRoom';
 import { SpaceProvider } from '../../hooks/useSpace';
@@ -23,6 +10,8 @@ import {
 } from '../../state/hooks/createRoomModal';
 import { CreateRoomModalState } from '../../state/createRoomModal';
 import { stopPropagation } from '../../utils/keyboard';
+import { SheetHeader } from '../../components/sheet';
+import * as sheetCss from '../../components/sheet/Sheet.css';
 import { CreateRoomType } from '../../components/create-room/types';
 
 type CreateRoomModalProps = {
@@ -38,7 +27,7 @@ function CreateRoomModal({ state }: CreateRoomModalProps) {
 
   return (
     <SpaceProvider value={space ?? null}>
-      <Overlay open backdrop={<OverlayBackdrop />}>
+      <Overlay open backdrop={<OverlayBackdrop className={sheetCss.Backdrop} />}>
         <OverlayCenter>
           <FocusTrap
             focusTrapOptions={{
@@ -48,31 +37,18 @@ function CreateRoomModal({ state }: CreateRoomModalProps) {
               escapeDeactivates: stopPropagation,
             }}
           >
-            <Modal size="300" flexHeight>
+            <Modal className={sheetCss.Sheet} size="300" flexHeight>
               <Box direction="Column">
-                <Header
-                  size="500"
-                  style={{
-                    padding: config.space.S200,
-                    paddingLeft: config.space.S400,
-                  }}
-                >
-                  <Box grow="Yes">
-                    <Text size="H4">
-                      {type === CreateRoomType.VoiceRoom ? 'New Voice Room' : 'New Chat Room'}
-                    </Text>
-                  </Box>
-                  <Box shrink="No">
-                    <IconButton size="300" radii="300" onClick={closeDialog}>
-                      <Icon src={Icons.Cross} />
-                    </IconButton>
-                  </Box>
-                </Header>
+                <SheetHeader
+                  title={type === CreateRoomType.VoiceRoom ? 'New Voice Room' : 'New Chat Room'}
+                  onClose={closeDialog}
+                />
                 <Scroll size="300" hideTrack>
                   <Box
                     style={{
-                      padding: config.space.S400,
-                      paddingRight: config.space.S200,
+                      padding: `${config.space.S200} ${config.space.S300} ${toRem(20)} ${toRem(
+                        20
+                      )}`,
                     }}
                     direction="Column"
                     gap="500"

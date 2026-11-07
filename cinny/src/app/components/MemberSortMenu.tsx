@@ -3,6 +3,7 @@ import React from 'react';
 import { config, Menu, MenuItem, Text } from 'folds';
 import { stopPropagation } from '../utils/keyboard';
 import { useMemberSortMenu } from '../hooks/useMemberSort';
+import * as sheetCss from './sheet/Sheet.css';
 
 type MemberSortMenuProps = {
   requestClose: () => void;
@@ -23,9 +24,10 @@ export function MemberSortMenu({ selected, onSelect, requestClose }: MemberSortM
         escapeDeactivates: stopPropagation,
       }}
     >
-      <Menu style={{ padding: config.space.S100 }}>
+      <Menu className={sheetCss.MenuMaterial} style={{ padding: config.space.S100 }}>
         {memberSortMenu.map((menuItem, index) => (
           <MenuItem
+            className={sheetCss.MenuRow}
             key={menuItem.name}
             variant="Surface"
             aria-pressed={selected === index}

@@ -5,13 +5,9 @@ import {
   Overlay,
   OverlayCenter,
   OverlayBackdrop,
-  Header,
   config,
   Box,
   Text,
-  IconButton,
-  Icon,
-  Icons,
   Button,
   Input,
   color,
@@ -20,6 +16,8 @@ import { stopPropagation } from '../../utils/keyboard';
 import { isRoomAlias, isRoomId } from '../../utils/matrix';
 import { parseMatrixToRoom, parseMatrixToRoomEvent, testMatrixTo } from '../../plugins/matrix-to';
 import { tryDecodeURIComponent } from '../../utils/dom';
+import { SheetHeader } from '../sheet';
+import * as sheetCss from '../sheet/Sheet.css';
 
 type JoinAddressProps = {
   onOpen: (roomIdOrAlias: string, via?: string[], eventId?: string) => void;
@@ -61,7 +59,7 @@ export function JoinAddressPrompt({ onOpen, onCancel }: JoinAddressProps) {
   };
 
   return (
-    <Overlay open backdrop={<OverlayBackdrop />}>
+    <Overlay open backdrop={<OverlayBackdrop className={sheetCss.Backdrop} />}>
       <OverlayCenter>
         <FocusTrap
           focusTrapOptions={{
@@ -71,27 +69,13 @@ export function JoinAddressPrompt({ onOpen, onCancel }: JoinAddressProps) {
             escapeDeactivates: stopPropagation,
           }}
         >
-          <Dialog variant="Surface">
-            <Header
-              style={{
-                padding: `0 ${config.space.S200} 0 ${config.space.S400}`,
-              }}
-              variant="Surface"
-              size="500"
-            >
-              <Box grow="Yes">
-                <Text size="H4">Join with Address</Text>
-              </Box>
-              <IconButton size="300" onClick={onCancel} radii="300">
-                <Icon src={Icons.Cross} />
-              </IconButton>
-            </Header>
+          <Dialog variant="Surface" className={sheetCss.Sheet}>
+            <SheetHeader title="Join with Address" onClose={onCancel} />
             <Box
               as="form"
               onSubmit={handleSubmit}
-              style={{ padding: config.space.S400, paddingTop: 0 }}
+              className={sheetCss.SheetBody}
               direction="Column"
-              gap="400"
             >
               <Box direction="Column" gap="200">
                 <Text priority="400" size="T300">
@@ -119,9 +103,20 @@ export function JoinAddressPrompt({ onOpen, onCancel }: JoinAddressProps) {
                   </Text>
                 )}
               </Box>
-              <Button type="submit" variant="Primary">
-                <Text size="B400">Open</Text>
-              </Button>
+              <div className={sheetCss.SheetFooter}>
+                <Button
+                  className={sheetCss.Pill}
+                  type="button"
+                  variant="Secondary"
+                  fill="Soft"
+                  onClick={onCancel}
+                >
+                  <Text size="B400">Cancel</Text>
+                </Button>
+                <Button className={sheetCss.Pill} type="submit" variant="Primary">
+                  <Text size="B400">Open</Text>
+                </Button>
+              </div>
             </Box>
           </Dialog>
         </FocusTrap>

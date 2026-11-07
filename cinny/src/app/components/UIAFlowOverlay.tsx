@@ -13,6 +13,7 @@ import {
   IconButton,
 } from 'folds';
 import FocusTrap from 'focus-trap-react';
+import * as sheetCss from './sheet/Sheet.css';
 
 export type UIAFlowOverlayProps = {
   currentStep: number;
@@ -27,7 +28,7 @@ export function UIAFlowOverlay({
   onCancel,
 }: UIAFlowOverlayProps) {
   return (
-    <Overlay open backdrop={<OverlayBackdrop />}>
+    <Overlay open backdrop={<OverlayBackdrop className={sheetCss.Backdrop} />}>
       <FocusTrap focusTrapOptions={{ initialFocus: false, escapeDeactivates: false }}>
         <Box style={{ height: '100%' }} direction="Column" grow="Yes" gap="400">
           <Box grow="Yes" direction="Column" alignItems="Center" justifyContent="Center">

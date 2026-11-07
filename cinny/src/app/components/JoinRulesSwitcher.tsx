@@ -17,6 +17,7 @@ import { JoinRule } from 'matrix-js-sdk';
 import FocusTrap from 'focus-trap-react';
 import { stopPropagation } from '../utils/keyboard';
 import { getRoomIconSrc } from '../utils/room';
+import * as sheetCss from './sheet/Sheet.css';
 
 export type ExtraJoinRules = 'knock_restricted';
 export type ExtendedJoinRules = JoinRule | ExtraJoinRules;
@@ -98,10 +99,11 @@ export function JoinRulesSwitcher<T extends ExtendedJoinRules[]>({
             escapeDeactivates: stopPropagation,
           }}
         >
-          <Menu>
+          <Menu className={sheetCss.MenuMaterial}>
             <Box direction="Column" gap="100" style={{ padding: config.space.S100 }}>
               {rules.map((rule) => (
                 <MenuItem
+                  className={sheetCss.MenuRow}
                   key={rule}
                   size="300"
                   variant="Surface"

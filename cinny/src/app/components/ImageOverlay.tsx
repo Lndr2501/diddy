@@ -1,7 +1,10 @@
 import FocusTrap from 'focus-trap-react';
 import { as, Modal, Overlay, OverlayBackdrop, OverlayCenter } from 'folds';
 import React, { ReactNode } from 'react';
+import classNames from 'classnames';
 import { ModalWide } from '../styles/Modal.css';
+import * as sheetCss from './sheet/Sheet.css';
+import { ViewerFrame } from './image-viewer/ImageViewer.css';
 import { stopPropagation } from '../utils/keyboard';
 
 export type RenderViewerProps = {
@@ -17,7 +20,12 @@ type ImageOverlayProps = RenderViewerProps & {
 
 export const ImageOverlay = as<'div', ImageOverlayProps>(
   ({ src, alt, viewer, requestClose, renderViewer, ...props }, ref) => (
-    <Overlay {...props} ref={ref} open={viewer} backdrop={<OverlayBackdrop />}>
+    <Overlay
+      {...props}
+      ref={ref}
+      open={viewer}
+      backdrop={<OverlayBackdrop className={sheetCss.Backdrop} />}
+    >
       <OverlayCenter>
         <FocusTrap
           focusTrapOptions={{
@@ -28,7 +36,7 @@ export const ImageOverlay = as<'div', ImageOverlayProps>(
           }}
         >
           <Modal
-            className={ModalWide}
+            className={classNames(ModalWide, sheetCss.Sheet, ViewerFrame)}
             size="500"
             onContextMenu={(evt: any) => evt.stopPropagation()}
           >

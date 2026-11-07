@@ -4,17 +4,13 @@ import {
   VerificationRequest,
   Verifier,
 } from 'matrix-js-sdk/lib/crypto-api';
-import React, { CSSProperties, useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { VerificationMethod } from 'matrix-js-sdk/lib/types';
 import {
   Box,
   Button,
   config,
   Dialog,
-  Header,
-  Icon,
-  IconButton,
-  Icons,
   Overlay,
   OverlayBackdrop,
   OverlayCenter,
@@ -30,11 +26,8 @@ import {
 } from '../hooks/useVerificationRequest';
 import { AsyncStatus, useAsyncCallback } from '../hooks/useAsyncCallback';
 import { ContainerColor } from '../styles/ContainerColor.css';
-
-const DialogHeaderStyles: CSSProperties = {
-  padding: `0 ${config.space.S200} 0 ${config.space.S400}`,
-  borderBottomWidth: config.borderWidth.B300,
-};
+import { SheetHeader } from './sheet';
+import * as sheetCss from './sheet/Sheet.css';
 
 type WaitingMessageProps = {
   message: string;
@@ -53,7 +46,7 @@ function VerificationUnexpected({ message, onClose }: VerificationUnexpectedProp
   return (
     <Box direction="Column" gap="400">
       <Text>{message}</Text>
-      <Button variant="Secondary" fill="Soft" onClick={onClose}>
+      <Button className={sheetCss.Pill} variant="Secondary" fill="Soft" onClick={onClose}>
         <Text size="B400">Close</Text>
       </Button>
     </Box>
@@ -80,6 +73,7 @@ function VerificationAccept({ onAccept }: VerificationAcceptProps) {
     <Box direction="Column" gap="400">
       <Text>Click accept to start the verification process.</Text>
       <Button
+        className={sheetCss.Pill}
         variant="Primary"
         fill="Solid"
         onClick={accept}
@@ -151,6 +145,7 @@ function CompareEmoji({ sasData }: { sasData: ShowSasCallbacks }) {
       </Box>
       <Box direction="Column" gap="200">
         <Button
+          className={sheetCss.Pill}
           variant="Primary"
           fill="Soft"
           onClick={confirm}
@@ -160,6 +155,7 @@ function CompareEmoji({ sasData }: { sasData: ShowSasCallbacks }) {
           <Text size="B400">They Match</Text>
         </Button>
         <Button
+          className={sheetCss.Pill}
           variant="Primary"
           fill="Soft"
           onClick={() => sasData.mismatch()}
@@ -206,7 +202,7 @@ function VerificationDone({ onExit }: VerificationDoneProps) {
       <div>
         <Text>Your device is verified.</Text>
       </div>
-      <Button variant="Primary" fill="Solid" onClick={onExit}>
+      <Button className={sheetCss.Pill} variant="Primary" fill="Solid" onClick={onExit}>
         <Text size="B400">Okay</Text>
       </Button>
     </Box>
@@ -220,7 +216,7 @@ function VerificationCanceled({ onClose }: VerificationCanceledProps) {
   return (
     <Box direction="Column" gap="400">
       <Text>Verification has been canceled.</Text>
-      <Button variant="Secondary" fill="Soft" onClick={onClose}>
+      <Button className={sheetCss.Pill} variant="Secondary" fill="Soft" onClick={onClose}>
         <Text size="B400">Close</Text>
       </Button>
     </Box>
@@ -247,7 +243,7 @@ export function DeviceVerification({ request, onExit }: DeviceVerificationProps)
   }, [request]);
 
   return (
-    <Overlay open backdrop={<OverlayBackdrop />}>
+    <Overlay open backdrop={<OverlayBackdrop className={sheetCss.Backdrop} />}>
       <OverlayCenter>
         <FocusTrap
           focusTrapOptions={{
@@ -256,16 +252,9 @@ export function DeviceVerification({ request, onExit }: DeviceVerificationProps)
             escapeDeactivates: false,
           }}
         >
-          <Dialog variant="Surface">
-            <Header style={DialogHeaderStyles} variant="Surface" size="500">
-              <Box grow="Yes">
-                <Text size="H4">Device Verification</Text>
-              </Box>
-              <IconButton size="300" radii="300" onClick={handleCancel}>
-                <Icon src={Icons.Cross} />
-              </IconButton>
-            </Header>
-            <Box style={{ padding: config.space.S400 }} direction="Column" gap="400">
+          <Dialog variant="Surface" className={sheetCss.Sheet}>
+            <SheetHeader title="Device Verification" onClose={handleCancel} />
+            <Box className={sheetCss.SheetBody} direction="Column">
               {phase === VerificationPhase.Requested &&
                 (request.initiatedByMe ? (
                   <VerificationWaitAccept />

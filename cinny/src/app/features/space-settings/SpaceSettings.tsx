@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import { useAtomValue } from 'jotai';
-import { Avatar, Box, config, Icon, IconButton, Icons, IconSrc, MenuItem, Text } from 'folds';
+import { Avatar, Box, Icons, Text } from 'folds';
 import { JoinRule } from 'matrix-js-sdk';
-import { PageNav, PageNavContent, PageNavHeader, PageRoot } from '../../components/page';
 import { ScreenSize, useScreenSizeContext } from '../../hooks/useScreenSize';
+import { SettingsLayout, SettingsNavItem } from '../common-settings/SettingsLayout';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { mxcUrlToHttp } from '../../utils/matrix';
 import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
@@ -18,11 +18,7 @@ import { DeveloperTools } from '../common-settings/developer-tools';
 import { General } from './general';
 import { Permissions } from './permissions';
 
-type SpaceSettingsMenuItem = {
-  page: SpaceSettingsPage;
-  name: string;
-  icon: IconSrc;
-};
+type SpaceSettingsMenuItem = SettingsNavItem<SpaceSettingsPage>;
 
 const useSpaceSettingsMenuItems = (): SpaceSettingsMenuItem[] =>
   useMemo(
@@ -31,26 +27,31 @@ const useSpaceSettingsMenuItems = (): SpaceSettingsMenuItem[] =>
         page: SpaceSettingsPage.GeneralPage,
         name: 'General',
         icon: Icons.Setting,
+        tone: 'Gray',
       },
       {
         page: SpaceSettingsPage.MembersPage,
         name: 'Members',
         icon: Icons.User,
+        tone: 'Green',
       },
       {
         page: SpaceSettingsPage.PermissionsPage,
         name: 'Permissions',
         icon: Icons.Lock,
+        tone: 'SoftBlue',
       },
       {
         page: SpaceSettingsPage.EmojisStickersPage,
         name: 'Emojis & Stickers',
         icon: Icons.Smile,
+        tone: 'Orange',
       },
       {
         page: SpaceSettingsPage.DeveloperToolsPage,
         name: 'Developer Tools',
         icon: Icons.Terminal,
+        tone: 'Dark',
       },
     ],
     []
@@ -90,67 +91,34 @@ export function SpaceSettings({ initialPage, requestClose }: SpaceSettingsProps)
   };
 
   return (
-    <PageRoot
-      nav={
-        screenSize === ScreenSize.Mobile && activePage !== undefined ? undefined : (
-          <PageNav size="300">
-            <PageNavHeader outlined={false}>
-              <Box grow="Yes" gap="200">
-                <Avatar size="200" radii="300">
-                  <RoomAvatar
-                    roomId={room.roomId}
-                    src={avatarUrl}
-                    alt={roomName}
-                    renderFallback={() => (
-                      <RoomIcon
-                        roomType={room.getType()}
-                        size="50"
-                        joinRule={joinRuleContent?.join_rule ?? JoinRule.Invite}
-                        filled
-                      />
-                    )}
-                  />
-                </Avatar>
-                <Text size="H4" truncate>
-                  {roomName}
-                </Text>
-              </Box>
-              <Box shrink="No">
-                {screenSize === ScreenSize.Mobile && (
-                  <IconButton onClick={requestClose} variant="Background">
-                    <Icon src={Icons.Cross} />
-                  </IconButton>
-                )}
-              </Box>
-            </PageNavHeader>
-            <Box grow="Yes" direction="Column">
-              <PageNavContent>
-                <div style={{ flexGrow: 1 }}>
-                  {menuItems.map((item) => (
-                    <MenuItem
-                      key={item.name}
-                      variant="Background"
-                      radii="400"
-                      aria-pressed={activePage === item.page}
-                      before={<Icon src={item.icon} size="100" filled={activePage === item.page} />}
-                      onClick={() => setActivePage(item.page)}
-                    >
-                      <Text
-                        style={{
-                          fontWeight: activePage === item.page ? config.fontWeight.W600 : undefined,
-                        }}
-                        size="T300"
-                        truncate
-                      >
-                        {item.name}
-                      </Text>
-                    </MenuItem>
-                  ))}
-                </div>
-              </PageNavContent>
-            </Box>
-          </PageNav>
-        )
+    <SettingsLayout
+      label="Space settings"
+      items={menuItems}
+      activePage={activePage}
+      onSelect={setActivePage}
+      compact={screenSize === ScreenSize.Mobile}
+      requestClose={requestClose}
+      header={
+        <Box grow="Yes" alignItems="Center" gap="300" style={{ minWidth: 0 }}>
+          <Avatar size="300" radii="400">
+            <RoomAvatar
+              roomId={room.roomId}
+              src={avatarUrl}
+              alt={roomName}
+              renderFallback={() => (
+                <RoomIcon
+                  roomType={room.getType()}
+                  size="50"
+                  joinRule={joinRuleContent?.join_rule ?? JoinRule.Invite}
+                  filled
+                />
+              )}
+            />
+          </Avatar>
+          <Text size="T400" style={{ fontWeight: 600 }} truncate>
+            {roomName}
+          </Text>
+        </Box>
       }
     >
       {activePage === SpaceSettingsPage.GeneralPage && (
@@ -168,6 +136,6 @@ export function SpaceSettings({ initialPage, requestClose }: SpaceSettingsProps)
       {activePage === SpaceSettingsPage.DeveloperToolsPage && (
         <DeveloperTools requestClose={handlePageRequestClose} />
       )}
-    </PageRoot>
+    </SettingsLayout>
   );
 }

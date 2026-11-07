@@ -4,6 +4,7 @@ import { AuthType, MatrixError } from 'matrix-js-sdk';
 import { StageComponentProps } from './types';
 import { AsyncState, AsyncStatus } from '../../hooks/useAsyncCallback';
 import { RequestEmailTokenCallback, RequestEmailTokenResponse } from '../../hooks/types';
+import * as sheetCss from '../sheet/Sheet.css';
 
 function EmailErrorDialog({
   title,
@@ -28,7 +29,7 @@ function EmailErrorDialog({
   };
 
   return (
-    <Dialog>
+    <Dialog className={sheetCss.Sheet}>
       <Box
         as="form"
         onSubmit={handleFormSubmit}
@@ -37,7 +38,9 @@ function EmailErrorDialog({
         gap="400"
       >
         <Box direction="Column" gap="100">
-          <Text size="H4">{title}</Text>
+          <Text className={sheetCss.SheetTitle} size="H4">
+            {title}
+          </Text>
           <Text>{message}</Text>
           <Text as="label" size="L400" style={{ paddingTop: config.space.S400 }}>
             Email
@@ -51,12 +54,19 @@ function EmailErrorDialog({
             required
           />
         </Box>
-        <Button variant="Primary" type="submit">
+        <Button className={sheetCss.Pill} variant="Primary" type="submit">
           <Text as="span" size="B400">
             Send Verification Email
           </Text>
         </Button>
-        <Button variant="Critical" fill="None" outlined type="button" onClick={onCancel}>
+        <Button
+          className={sheetCss.Pill}
+          variant="Critical"
+          fill="None"
+          outlined
+          type="button"
+          onClick={onCancel}
+        >
           <Text as="span" size="B400">
             Cancel
           </Text>
@@ -137,17 +147,23 @@ export function EmailStageDialog({
 
   if (emailTokenState.status === AsyncStatus.Success) {
     return (
-      <Dialog>
+      <Dialog className={sheetCss.Sheet}>
         <Box style={{ padding: config.space.S400 }} direction="Column" gap="400">
           <Box direction="Column" gap="100">
-            <Text size="H4">Verification Request Sent</Text>
+            <Text className={sheetCss.SheetTitle} size="H4">
+              Verification Request Sent
+            </Text>
             <Text>{`Please check your email "${emailTokenState.data.email}" and validate before continuing further.`}</Text>
 
             {errorCode && (
               <Text style={{ color: color.Critical.Main }}>{`${errorCode}: ${error}`}</Text>
             )}
           </Box>
-          <Button variant="Primary" onClick={() => handleSubmit(emailTokenState.data.result.sid)}>
+          <Button
+            className={sheetCss.Pill}
+            variant="Primary"
+            onClick={() => handleSubmit(emailTokenState.data.result.sid)}
+          >
             <Text as="span" size="B400">
               Continue
             </Text>

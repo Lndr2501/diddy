@@ -54,6 +54,7 @@ import { StateEvent } from '../../../types/matrix/room';
 import { getViaServers } from '../../plugins/via-servers';
 import { rateLimitedActions } from '../../utils/matrix';
 import { useAlive } from '../../hooks/useAlive';
+import * as sheetCss from '../../components/sheet/Sheet.css';
 
 const SEARCH_OPTS: UseAsyncSearchOptions = {
   limit: 500,
@@ -178,7 +179,7 @@ export function AddExistingModal({ parentId, space, requestClose }: AddExistingM
   };
 
   return (
-    <Overlay open backdrop={<OverlayBackdrop />}>
+    <Overlay open backdrop={<OverlayBackdrop className={sheetCss.Backdrop} />}>
       <OverlayCenter>
         <FocusTrap
           focusTrapOptions={{
@@ -188,9 +189,10 @@ export function AddExistingModal({ parentId, space, requestClose }: AddExistingM
             escapeDeactivates: stopPropagation,
           }}
         >
-          <Modal size="300">
+          <Modal className={sheetCss.Sheet} size="300">
             <Box grow="Yes" direction="Column">
               <Header
+                className={sheetCss.SheetHeader}
                 size="500"
                 style={{
                   padding: config.space.S200,
@@ -198,7 +200,9 @@ export function AddExistingModal({ parentId, space, requestClose }: AddExistingM
                 }}
               >
                 <Box grow="Yes">
-                  <Text size="H4">Add Existing</Text>
+                  <Text className={sheetCss.SheetTitle} size="H4">
+                    Add Existing
+                  </Text>
                 </Box>
                 <Box shrink="No">
                   <IconButton size="300" radii="300" onClick={requestClose}>
@@ -340,6 +344,7 @@ export function AddExistingModal({ parentId, space, requestClose }: AddExistingM
                           </Box>
                           <Box shrink="No" gap="200">
                             <Button
+                              className={sheetCss.Pill}
                               size="300"
                               variant="Success"
                               fill="None"
@@ -350,6 +355,7 @@ export function AddExistingModal({ parentId, space, requestClose }: AddExistingM
                               <Text size="B300">Reset</Text>
                             </Button>
                             <Button
+                              className={sheetCss.Pill}
                               size="300"
                               variant="Success"
                               radii="300"

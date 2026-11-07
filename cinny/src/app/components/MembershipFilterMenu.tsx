@@ -3,6 +3,7 @@ import React from 'react';
 import { config, Menu, MenuItem, Text } from 'folds';
 import { stopPropagation } from '../utils/keyboard';
 import { useMembershipFilterMenu } from '../hooks/useMemberFilter';
+import * as sheetCss from './sheet/Sheet.css';
 
 type MembershipFilterMenuProps = {
   requestClose: () => void;
@@ -27,9 +28,10 @@ export function MembershipFilterMenu({
         escapeDeactivates: stopPropagation,
       }}
     >
-      <Menu style={{ padding: config.space.S100 }}>
+      <Menu className={sheetCss.MenuMaterial} style={{ padding: config.space.S100 }}>
         {membershipFilterMenu.map((menuItem, index) => (
           <MenuItem
+            className={sheetCss.MenuRow}
             key={menuItem.name}
             variant="Surface"
             aria-pressed={selected === index}
