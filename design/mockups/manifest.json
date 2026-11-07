@@ -1,0 +1,288 @@
+[
+  {
+    "number": 29,
+    "title": "Profilkarten, die sich dir anpassen",
+    "originalTitle": "Profilkarte Redesign",
+    "category": "Profilkarte",
+    "url": "https://github.com/Lndr2501/diddy/issues/29",
+    "file": "issue-29",
+    "notes": [
+      {
+        "title": "Echte Layout-Unterschiede",
+        "text": "Kompakt ohne Banner, Standard ausgewogen, Erweitert mit Zusatzfeldern, Tabs mit getrennter Navigation."
+      },
+      {
+        "title": "Ansicht ≠ öffentliche Daten",
+        "text": "Layout und sichtbare Module gehören zu lokalen Anzeige-Einstellungen. Eigene Freigaben bleiben separat."
+      },
+      {
+        "title": "Modular & ehrlich",
+        "text": "Module teilen Komponenten. Externe Aktivitäten nur mit aktiver Integration; keine erfundenen Daten."
+      }
+    ]
+  },
+  {
+    "number": 28,
+    "title": "Dein Profil. Ein klarer Editor.",
+    "originalTitle": "Custom-Profilkarte: es fehlt noch Inhalt, Einrichtung sieht schlecht aus",
+    "category": "Profil-Editor",
+    "url": "https://github.com/Lndr2501/diddy/issues/28",
+    "file": "issue-28",
+    "notes": [
+      {
+        "title": "Editor statt Options-Wand",
+        "text": "Zwei Kartenspalten für Identität, Banner, Avatar und Zusatzfelder. Vorschau bleibt beim Bearbeiten sichtbar."
+      },
+      {
+        "title": "Felder noch abzustimmen",
+        "text": "Pronomen, Ort und Links sind Vorschläge, keine beschlossenen Pflichtfelder. Alles freiwillig und einzeln freigebbar."
+      },
+      {
+        "title": "Mit #29 gemeinsam umsetzen",
+        "text": "#28 fokussiert die eigenen Inhalte. #29 definiert modulare Kartenlayouts und lokale Anzeige-Einstellungen."
+      }
+    ]
+  },
+  {
+    "number": 30,
+    "title": "Ein guter erster Schritt in Matrix",
+    "originalTitle": "Einstiegshilfe",
+    "category": "Einstiegshilfe",
+    "url": "https://github.com/Lndr2501/diddy/issues/30",
+    "file": "issue-30",
+    "notes": [
+      {
+        "title": "Fünf verständliche Schritte",
+        "text": "Grundlagen, Discord-Begriffe, Schlüssel, Funktionen und Grenzen. Kurz, überspringbar und später erneut erreichbar."
+      },
+      {
+        "title": "Begriffe sauber trennen",
+        "text": "Homeserver hostet Konten. Räume tragen Gespräche. Spaces ordnen Räume – keine falsche 1:1-Gleichsetzung mit Discord."
+      },
+      {
+        "title": "Sicherheit nicht überspringen",
+        "text": "Eigenen Schritt für Verschlüsselung, Wiederherstellungsschlüssel und Verifizierung vorsehen."
+      }
+    ]
+  },
+  {
+    "number": 27,
+    "title": "Dasselbe Profilbild. An jeder Stelle.",
+    "originalTitle": "Profilbild bug",
+    "category": "Avatar-Bug",
+    "url": "https://github.com/Lndr2501/diddy/issues/27",
+    "file": "issue-27",
+    "notes": [
+      {
+        "title": "Eine gemeinsame Auflösung",
+        "text": "Vorschlag: Diddy-Avatar → Matrix-Avatar → Initialen. Dieselbe Logik für Mitgliederliste, Karte und Kontozeile."
+      },
+      {
+        "title": "Den konkreten Bug prüfen",
+        "text": "Testfall: Matrix-Avatar leer, Diddy-Avatar gesetzt. Bild muss auch in der kleinen Anzeige rechts erscheinen."
+      },
+      {
+        "title": "Robuster Fallback",
+        "text": "Bei Ladefehlern oder fehlenden Bildern lesbare Initialen. Cache-Wechsel nach einer Avatar-Änderung mitprüfen."
+      }
+    ]
+  },
+  {
+    "number": 26,
+    "title": "Nicht hängen lassen. Verständlich helfen.",
+    "originalTitle": "Unable to Start",
+    "category": "Startfehler",
+    "url": "https://github.com/Lndr2501/diddy/issues/26",
+    "file": "issue-26",
+    "notes": [
+      {
+        "title": "Bekannte Ursachen berücksichtigen",
+        "text": "Issue-Kommentare nennen einen ungültigen Fensterzustand und später einen blockierten coreaudiod-Dienst."
+      },
+      {
+        "title": "Recovery außerhalb des WebViews",
+        "text": "Fehlerdialog und Retry müssen auch bei blockiertem WebKit erscheinen können, z. B. über einen nativen Watchdog."
+      },
+      {
+        "title": "Kein vorgetäuschter Fix",
+        "text": "Darstellung ist ein Soll-Zustand. Installierte App testen; Daten nicht löschen und Audio-Dienst nicht automatisch beenden."
+      }
+    ]
+  },
+  {
+    "number": 25,
+    "title": "Ein Startfenster, das sich richtig anfühlt",
+    "originalTitle": "StartUp Fenster",
+    "category": "App-Start",
+    "url": "https://github.com/Lndr2501/diddy/issues/25",
+    "file": "issue-25",
+    "notes": [
+      {
+        "title": "Sofort verschiebbar",
+        "text": "Native Drag-Region in der Titelleiste; Fensterknöpfe bleiben klickbar. Nicht auf geladene Web-Inhalte warten."
+      },
+      {
+        "title": "Ein sauberer Übergang",
+        "text": "Kleines Startfenster zuerst, Hauptfenster erst bei UI-Readiness. Übergang ohne zwei dauerhaft sichtbare Fenster."
+      },
+      {
+        "title": "Wahrheitsgemäßer Fortschritt",
+        "text": "Unbestimmte Ladeanzeige statt erfundener Prozentwerte. Bei Hängern eine verständliche Recovery anbieten."
+      }
+    ]
+  },
+  {
+    "number": 23,
+    "title": "Wer im Voice ist, bleibt sichtbar",
+    "originalTitle": "Sehen, wer im Voice ist",
+    "category": "Sprachraum",
+    "url": "https://github.com/Lndr2501/diddy/issues/23",
+    "file": "issue-23",
+    "notes": [
+      {
+        "title": "Teilnehmerleiste oberhalb des Calls",
+        "text": "Entspricht der im Issue beschriebenen Umsetzung: Diddy-Leiste über dem eingebetteten Call, nicht darin."
+      },
+      {
+        "title": "Bild + Name + Fallback",
+        "text": "Diddy-/Matrix-Avatar verwenden, sonst bis zu zwei Initialen. Ohne Anzeigenamen auf den Matrix-Localpart zurückfallen."
+      },
+      {
+        "title": "Nicht mit Effekten überladen",
+        "text": "Sprecherrahmen nur bei verfügbarem Aktivitätssignal. Viele Teilnehmer horizontal; bei leerem Call Leiste ausblenden."
+      }
+    ]
+  },
+  {
+    "number": 21,
+    "title": "Ein gemeinsames Gefühl für die ganze App",
+    "originalTitle": "Apple-Design (Human Interface Guidelines) für die ganze App",
+    "category": "Designsystem",
+    "url": "https://github.com/Lndr2501/diddy/issues/21",
+    "file": "issue-21",
+    "notes": [
+      {
+        "title": "Eine konsistente Designsprache",
+        "text": "Sidebar, Konto-Menü, Composer, Sprachnachricht und Call-Leiste teilen Radien, Typografie und Oberflächen."
+      },
+      {
+        "title": "macOS zuerst, Neon gezielt",
+        "text": "Systemfont/SF Pro auf macOS, SF Symbols nativ; Akzent nur für Auswahl und Primäraktion. Keine Dauer-Leuchtrahmen."
+      },
+      {
+        "title": "Interaktion mitdenken",
+        "text": "44-pt-Zielflächen für wichtige Aktionen, sichtbarer Tastaturfokus, Reduce Motion; Übergänge 150–250 ms Ease-out."
+      }
+    ]
+  },
+  {
+    "number": 12,
+    "title": "Linux: Fähigkeiten zeigen, Grenzen benennen",
+    "originalTitle": "Linux-Build: nie gestartet, Calls funktionieren nicht",
+    "category": "Plattformstatus",
+    "url": "https://github.com/Lndr2501/diddy/issues/12",
+    "file": "issue-12",
+    "notes": [
+      {
+        "title": "Status nicht beschönigen",
+        "text": "Der gezeigte Zustand ist ein Vorschlag für Diagnose und Freigabe. Er ersetzt keine realen Linux-Call-Tests."
+      },
+      {
+        "title": "Pakete unterscheiden",
+        "text": "Issue und README differenzieren: AppImage/.deb ohne funktionierende Calls; NixOS-Sonderpaket gesondert testen."
+      },
+      {
+        "title": "Releasesperre ernst nehmen",
+        "text": "Start, Audio/Video, Wiederöffnen und getrennte Datenverzeichnisse prüfen. Keine automatische Reparatur versprechen."
+      }
+    ]
+  },
+  {
+    "number": 11,
+    "title": "Auflösung messen, nicht nur einstellen",
+    "originalTitle": "Stream-Auflösung oft nur 640×360",
+    "category": "Stream-Qualität",
+    "url": "https://github.com/Lndr2501/diddy/issues/11",
+    "file": "issue-11",
+    "notes": [
+      {
+        "title": "Drei Messpunkte auseinanderhalten",
+        "text": "Capture-Track, tatsächlich gesendete Frames und empfangene Qualität getrennt darstellen. Keine 1080p-Garantie aus dem Sender ableiten."
+      },
+      {
+        "title": "Letzten Kommentar berücksichtigen",
+        "text": "Log zeigt 1920 × 1080 bei 29 fps; 640 × 360 war der Startwert. Echte Gegenstelle ist weiter zu prüfen."
+      },
+      {
+        "title": "Diagnose ist ein UI-Vorschlag",
+        "text": "Vorhandene Log-Werte verständlich sichtbar machen; Ursachen wie Bandbreite, CPU oder Encoder nur aus Messdaten benennen."
+      }
+    ]
+  },
+  {
+    "number": 9,
+    "title": "Fehlende Badges ehrlich erklären",
+    "originalTitle": "Badge-Verleihungen abwesender Vergebender erreichen Neue nicht",
+    "category": "Badge-Grenze",
+    "url": "https://github.com/Lndr2501/diddy/issues/9",
+    "file": "issue-09",
+    "notes": [
+      {
+        "title": "Nicht clientseitig „reparierbar“",
+        "text": "Verleihungen sind an den echten Absender gebunden. Der Entwurf visualisiert die Grenze, nicht eine erfundene Behebung."
+      },
+      {
+        "title": "Unbekannt ist nicht „keine Badges“",
+        "text": "Empfangene, verifizierte Badges zeigen. Fehlende Daten nicht durch ausgedachte oder fremd signierte Verleihungen ergänzen."
+      },
+      {
+        "title": "Architekturentscheidung respektieren",
+        "text": "State-Modus ist laut Kommentar abgelehnt. Eine Server-Lösung braucht eine neue ausdrückliche Entscheidung."
+      }
+    ]
+  },
+  {
+    "number": 7,
+    "title": "Verbindungen trennen. Fehler sicher abfangen.",
+    "originalTitle": "Verbindungsprofile: Lebenszyklus und Datenstore-Isolation ungetestet",
+    "category": "Konten & Daten",
+    "url": "https://github.com/Lndr2501/diddy/issues/7",
+    "file": "issue-07",
+    "notes": [
+      {
+        "title": "Fehlerzustand bewusst entwerfen",
+        "text": "Timeout lässt gezielten Retry zu. Doppelte Slots, halbe Registry-Einträge und ungesicherte Fenster vermeiden."
+      },
+      {
+        "title": "Isolation ist nicht nur eine Karte",
+        "text": "Separate native WebKit-Datenstores beweisen. Primärdaten unverändert; kein Fallback auf einen gemeinsamen Default-Store."
+      },
+      {
+        "title": "Noch offene native Tests",
+        "text": "Prozessabbruch, Speicherfehler, paralleles Öffnen und Wiederöffnen sind im Issue weiter offen. Keine grünen Tests erfinden."
+      }
+    ]
+  },
+  {
+    "number": 2,
+    "title": "Zwei Bildschirme. Deine Perspektive.",
+    "originalTitle": "Bildschirmübertragung, Add-on",
+    "category": "Multi-Screen",
+    "url": "https://github.com/Lndr2501/diddy/issues/2",
+    "file": "issue-02",
+    "notes": [
+      {
+        "title": "Zuschauer wählen selbst",
+        "text": "Mehrere gleichzeitig angebotene Screen-Tracks. Jeder Zuschauer wechselt unabhängig über Vorschaubilder."
+      },
+      {
+        "title": "Audio bewusst definieren",
+        "text": "Vorschlag: nur Ton der ausgewählten Quelle abonnieren, keine Doppelwiedergabe. Technische Zuordnung vor Umsetzung klären."
+      },
+      {
+        "title": "Benötigt RTC-Architekturarbeit",
+        "text": "Der aktuelle Element-Call-Einbau bietet nur einen Screen-Track. Add-on erfordert Multi-Track-Support oder einen eigenen Call-Client."
+      }
+    ]
+  }
+]
