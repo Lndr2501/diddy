@@ -6,6 +6,7 @@
 // mod menu;
 
 use tauri::{webview::{NewWindowResponse, PageLoadEvent, WebviewWindowBuilder}, Manager, WebviewUrl, TitleBarStyle};
+mod agent_voice;
 mod app_icon;
 mod diag;
 mod connections;
@@ -348,6 +349,8 @@ pub fn run() {
     // store in multiple app processes. The first plugin must handle this before localhost setup.
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     let builder = builder.plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+        // Agent-voice triggers (#57) come in while the user dictates elsewhere: never focus Diddy.
+        if agent_voice::handle_launch(&args) { return; }
         if !connections::handle_launch(app, &args) { connections::focus_or_reopen_main(app); }
     }));
 
@@ -369,7 +372,8 @@ pub fn run() {
             myinstants::myinstants_fetch_audio,
             connections::connection_profiles,
             connections::open_connection_profile,
-            connections::remove_connection_profile
+            connections::remove_connection_profile,
+            agent_voice::agent_voice_state
         ])
         .manage(connections::ConnectionState::default())
         .plugin(tauri_plugin_dialog::init())

@@ -230,6 +230,21 @@ export const CallRosterChip = style({
   boxShadow: t.shadow1,
   maxWidth: toRem(240),
   minWidth: 0,
+  selectors: {
+    // talking to an agent (#57)
+    '&[data-agent]': {
+      boxShadow: `0 0 0 ${toRem(2)} ${color.Secondary.Main}`,
+    },
+  },
+});
+export const CallRosterAgent = style({
+  flexShrink: 0,
+  selectors: {
+    '&[class]': {
+      fontSize: toRem(11),
+      fontStyle: 'italic',
+    },
+  },
 });
 export const CallRosterName = style({
   // `&[class]` wins over the folds Text size class
