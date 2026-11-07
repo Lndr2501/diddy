@@ -166,7 +166,7 @@ export const uploadContent = async (
     else onError(new MatrixError(data));
   } catch (e: any) {
     const error = typeof e?.message === 'string' ? e.message : undefined;
-    const errcode = typeof e?.name === 'string' ? e.message : undefined;
+    const errcode = typeof e?.errcode === 'string' ? e.errcode : undefined;
     onError(new MatrixError({ error, errcode }));
   }
 };
