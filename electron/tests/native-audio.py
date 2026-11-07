@@ -100,17 +100,33 @@ with tempfile.TemporaryDirectory(prefix='diddy-audio-') as runtime:
                     amplitudes.append(2 * math.hypot(real, imag) / len(chunk))
                 return sum(amplitudes) / len(amplitudes)
             return {hz: amplitude(hz) for hz in [440, 660, 880]}
+        settle_attempts = []
+        def wait_for_tones(*tones):
+            # Policy managers can connect a newly discovered stream asynchronously.
+            # Require the actual tones, bounded in time; never tolerate Diddy's tone.
+            deadline = time.monotonic() + 8
+            attempts = 0
+            while True:
+                levels = measure()
+                attempts += 1
+                assert levels[880] < 0.005, ('own process leaked', levels)
+                if all(levels[tone] > 0.05 for tone in tones):
+                    settle_attempts.append(attempts)
+                    return levels
+                if time.monotonic() >= deadline:
+                    raise AssertionError(('audio did not settle', tones, levels))
+
         excluded = measure()
         assert excluded[880] < 0.005, ('own process leaked', excluded)
         foreign = launch([sys.executable, __file__, 'player', '440'], stdout=log, stderr=log, start_new_session=True)
-        included = measure()
+        included = wait_for_tones(440)
         if included[440] < 0.05:
             print(Path(runtime + '/server.log').read_text(), flush=True)
             print(subprocess.check_output(['pactl', '-f', 'json', 'list', 'sink-inputs']).decode(), flush=True)
             print(subprocess.check_output(['pactl', '-f', 'json', 'list', 'source-outputs']).decode(), flush=True)
         assert included[440] > 0.05 and included[880] < 0.005, ('foreign/excluded mix', included)
         second = launch([sys.executable, __file__, 'player', '660'], stdout=log, stderr=log, start_new_session=True)
-        mixed = measure()
+        mixed = wait_for_tones(440, 660)
         assert mixed[440] > 0.05 and mixed[660] > 0.05 and mixed[880] < 0.005, ('dynamic mix', mixed)
         inputs = json.loads(subprocess.check_output(['pactl', '-f', 'json', 'list', 'sink-inputs']))
         for stream in inputs:
@@ -122,14 +138,14 @@ with tempfile.TemporaryDirectory(prefix='diddy-audio-') as runtime:
                 continue
             if parent == str(foreign.pid):
                 subprocess.run(['pactl', 'move-sink-input', str(stream['index']), 'diddy_other'], check=True)
-        moved = measure()
+        moved = wait_for_tones(440, 660)
         assert moved[440] > 0.05 and moved[880] < 0.005, ('capture after sink move', moved)
         os.killpg(foreign.pid, signal.SIGTERM)
         time.sleep(0.5)
         assert capture.poll() is None, 'Removing a player ended capture'
         capture.terminate()
         assert capture.wait(timeout=5) == 0
-        print(json.dumps({'backend': backend, 'excluded_only': excluded, 'foreign': included, 'mixed': mixed, 'moved': moved, 'exit': 0}))
+        print(json.dumps({'backend': backend, 'settle_attempts': settle_attempts, 'excluded_only': excluded, 'foreign': included, 'mixed': mixed, 'moved': moved, 'exit': 0}))
     finally:
         for p in reversed(processes):
             if p.poll() is None:
