@@ -2,6 +2,11 @@
 
 ## Unveröffentlicht
 
+### "… is typing" sauber über dem Composer
+
+- Die Tipp-Anzeige hing am linken Fensterrand statt an der Composer-Spalte und lag über der letzten Nachricht und der Ecke des Eingabefelds. Sie steht jetzt in derselben Spalte wie der Composer (zentriert, max. 900 px), bündig mit seiner linken Kante, direkt darüber.
+- Kompakter: 24 px hoch, kleinere Punkte und Schrift, kleineres ×, feine Kontur; blendet beim Erscheinen sanft ein. In `features/room/RoomViewTyping.tsx` und `RoomViewTyping.css.ts`. Nicht in der laufenden App geprüft.
+
 ### "Jump to Latest" scrollt sanft runter
 
 - Klick auf "Jump to Latest" springt nicht mehr hart ans Ende, sondern fährt in ca. 350–600 ms mit Auslaufen runter. Sind die neuesten Nachrichten schon geladen, wird die Timeline nicht neu geladen; sonst wird sie geladen und die Fahrt startet höchstens 2,5 Bildschirmhöhen über dem Ende.

@@ -44,77 +44,85 @@ export const RoomViewTyping = as<'div', RoomViewTypingProps>(
     };
 
     return (
-      <div style={{ position: 'relative' }}>
-        <Box
-          className={classNames(css.RoomViewTyping, className)}
-          alignItems="Center"
-          gap="400"
-          {...props}
-          ref={ref}
-        >
-          <TypingIndicator />
-          <Text className={css.TypingText} size="T300" truncate>
-            {typingNames.length === 1 && (
-              <>
-                <b>{typingNames[0]}</b>
-                <Text as="span" size="Inherit" priority="300">
-                  {' is typing...'}
-                </Text>
-              </>
-            )}
-            {typingNames.length === 2 && (
-              <>
-                <b>{typingNames[0]}</b>
-                <Text as="span" size="Inherit" priority="300">
-                  {' and '}
-                </Text>
-                <b>{typingNames[1]}</b>
-                <Text as="span" size="Inherit" priority="300">
-                  {' are typing...'}
-                </Text>
-              </>
-            )}
-            {typingNames.length === 3 && (
-              <>
-                <b>{typingNames[0]}</b>
-                <Text as="span" size="Inherit" priority="300">
-                  {', '}
-                </Text>
-                <b>{typingNames[1]}</b>
-                <Text as="span" size="Inherit" priority="300">
-                  {' and '}
-                </Text>
-                <b>{typingNames[2]}</b>
-                <Text as="span" size="Inherit" priority="300">
-                  {' are typing...'}
-                </Text>
-              </>
-            )}
-            {typingNames.length > 3 && (
-              <>
-                <b>{typingNames[0]}</b>
-                <Text as="span" size="Inherit" priority="300">
-                  {', '}
-                </Text>
-                <b>{typingNames[1]}</b>
-                <Text as="span" size="Inherit" priority="300">
-                  {', '}
-                </Text>
-                <b>{typingNames[2]}</b>
-                <Text as="span" size="Inherit" priority="300">
-                  {' and '}
-                </Text>
-                <b>{typingNames.length - 3} others</b>
-                <Text as="span" size="Inherit" priority="300">
-                  {' are typing...'}
-                </Text>
-              </>
-            )}
-          </Text>
-          <IconButton title="Drop Typing Status" size="300" radii="Pill" onClick={handleDropAll}>
-            <Icon size="50" src={Icons.Cross} />
-          </IconButton>
-        </Box>
+      <div className={css.TypingAnchor}>
+        <div className={css.TypingColumn}>
+          <Box
+            className={classNames(css.RoomViewTyping, className)}
+            alignItems="Center"
+            gap="200"
+            {...props}
+            ref={ref}
+          >
+            <TypingIndicator size="300" />
+            <Text className={css.TypingText} size="T200" truncate>
+              {typingNames.length === 1 && (
+                <>
+                  <b>{typingNames[0]}</b>
+                  <Text as="span" size="Inherit" priority="300">
+                    {' is typing...'}
+                  </Text>
+                </>
+              )}
+              {typingNames.length === 2 && (
+                <>
+                  <b>{typingNames[0]}</b>
+                  <Text as="span" size="Inherit" priority="300">
+                    {' and '}
+                  </Text>
+                  <b>{typingNames[1]}</b>
+                  <Text as="span" size="Inherit" priority="300">
+                    {' are typing...'}
+                  </Text>
+                </>
+              )}
+              {typingNames.length === 3 && (
+                <>
+                  <b>{typingNames[0]}</b>
+                  <Text as="span" size="Inherit" priority="300">
+                    {', '}
+                  </Text>
+                  <b>{typingNames[1]}</b>
+                  <Text as="span" size="Inherit" priority="300">
+                    {' and '}
+                  </Text>
+                  <b>{typingNames[2]}</b>
+                  <Text as="span" size="Inherit" priority="300">
+                    {' are typing...'}
+                  </Text>
+                </>
+              )}
+              {typingNames.length > 3 && (
+                <>
+                  <b>{typingNames[0]}</b>
+                  <Text as="span" size="Inherit" priority="300">
+                    {', '}
+                  </Text>
+                  <b>{typingNames[1]}</b>
+                  <Text as="span" size="Inherit" priority="300">
+                    {', '}
+                  </Text>
+                  <b>{typingNames[2]}</b>
+                  <Text as="span" size="Inherit" priority="300">
+                    {' and '}
+                  </Text>
+                  <b>{typingNames.length - 3} others</b>
+                  <Text as="span" size="Inherit" priority="300">
+                    {' are typing...'}
+                  </Text>
+                </>
+              )}
+            </Text>
+            <IconButton
+              className={css.TypingDismiss}
+              title="Drop Typing Status"
+              size="300"
+              radii="Pill"
+              onClick={handleDropAll}
+            >
+              <Icon size="50" src={Icons.Cross} />
+            </IconButton>
+          </Box>
+        </div>
       </div>
     );
   }
