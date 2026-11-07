@@ -1,0 +1,191 @@
+name: Build iOS
+# Builds the native iPhone/iPad app (ios/, SwiftUI + matrix-rust-sdk + LiveKit) and stores the
+# IPA as artifact `diddy-ios`.
+#
+# Without secrets the IPA is unsigned. AltStore, SideStore or Sideloadly sign it with your own
+# Apple ID (a free one works) when they install it. The app has no extensions, so it uses a single
+# App ID of the few a free account gets.
+#
+# Signed build (paid Apple Developer account): set the repository secrets
+#   APPLE_TEAM_ID               10-character team ID
+#   ASC_KEY_ID, ASC_ISSUER_ID   App Store Connect API key (Users and Access > Integrations)
+#   ASC_KEY_P8                  contents of the AuthKey_XXXX.p8 file
+# Xcode then signs automatically (app.diddy.ios).
+on:
+  workflow_dispatch:
+    inputs:
+      export_method:
+        description: "Export method (only used when the signing secrets are set)"
+        type: choice
+        options:
+          - release-testing
+          - debugging
+          - app-store-connect
+        default: release-testing
+      release_tag:
+        description: "Publish the IPA as a GitHub release with this new tag, e.g. ios-v1.1.0-beta.1 (empty: artifact only)"
+        type: string
+        default: ""
+  push:
+    tags:
+      - "v*"
+      # iOS-only releases: builds the IPA and publishes it as a GitHub release (pre-release while
+      # the tag contains "beta"/"alpha"/"rc"). Desktop builds (build.yml) only react to v*.
+      - "ios-v*"
+  pull_request:
+    paths:
+      - "ios/**"
+      - ".github/workflows/ios.yml"
+
+jobs:
+  ios:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    env:
+      SIGNED: ${{ secrets.APPLE_TEAM_ID != '' && secrets.ASC_KEY_ID != '' && secrets.ASC_ISSUER_ID != '' && secrets.ASC_KEY_P8 != '' }}
+    defaults:
+      run:
+        working-directory: ios
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Select newest Xcode
+        # Whole-screen sharing without an extension (ScreenCaptureKit on iOS) is only compiled into
+        # LiveKit with the iOS 27 SDK, so use the newest Xcode the runner has.
+        run: |
+          newest=$(ls -d /Applications/Xcode_*.app | grep -E 'Xcode_[0-9.]+\.app$' | sort -V | tail -n 1)
+          sudo xcode-select -s "$newest"
+          xcodebuild -version && swift --version
+          sdk=$(xcrun --sdk iphoneos --show-sdk-version)
+          echo "iOS SDK $sdk"
+          if [ "${sdk%%.*}" -lt 27 ]; then
+            echo "::warning::iOS SDK $sdk: screen sharing will only cover the Diddy app itself, even on iOS 27 devices. Needs Xcode 27."
+          fi
+
+      - name: Install XcodeGen
+        run: command -v xcodegen || brew install xcodegen
+
+      - name: Generate Xcode project
+        env:
+          DIDDY_DEVELOPMENT_TEAM: ${{ secrets.APPLE_TEAM_ID }}
+        run: xcodegen generate
+
+      - name: Resolve Swift packages
+        run: xcodebuild -resolvePackageDependencies -project Diddy.xcodeproj -scheme Diddy -clonedSourcePackagesDirPath build/spm
+
+      - name: Build unsigned archive
+        if: env.SIGNED != 'true'
+        run: |
+          set -o pipefail
+          xcodebuild archive \
+            -project Diddy.xcodeproj -scheme Diddy -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -clonedSourcePackagesDirPath build/spm \
+            -archivePath build/Diddy.xcarchive \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            | tee build/xcodebuild.log | grep -E "error:|warning: .*deprecated|\*\* (ARCHIVE|BUILD)" || true
+          test -d build/Diddy.xcarchive/Products/Applications/Diddy.app || {
+            echo "::error::Archive failed"; grep -E "error:" build/xcodebuild.log | sort -u | head -n 80; exit 1; }
+
+      - name: Package unsigned IPA
+        if: env.SIGNED != 'true'
+        run: |
+          version=$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' build/Diddy.xcarchive/Products/Applications/Diddy.app/Info.plist)
+          rm -rf build/ipa && mkdir -p build/ipa/Payload dist
+          cp -R build/Diddy.xcarchive/Products/Applications/Diddy.app build/ipa/Payload/
+          (cd build/ipa && zip -qry "../../dist/Diddy_${version}_iOS_unsigned.ipa" Payload)
+
+      - name: Build signed IPA
+        if: env.SIGNED == 'true'
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          EXPORT_METHOD: ${{ inputs.export_method || 'release-testing' }}
+        run: |
+          set -o pipefail
+          key="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+          printf '%s' "$ASC_KEY_P8" > "$key"
+          auth=(-allowProvisioningUpdates -authenticationKeyPath "$key" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID")
+          xcodebuild archive \
+            -project Diddy.xcodeproj -scheme Diddy -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -clonedSourcePackagesDirPath build/spm \
+            -archivePath build/Diddy.xcarchive \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" "${auth[@]}" | tee build/xcodebuild.log | grep -E "error:|\*\* ARCHIVE" || true
+          test -d build/Diddy.xcarchive || { grep -E "error:" build/xcodebuild.log | sort -u | head -n 80; exit 1; }
+          /usr/libexec/PlistBuddy -c "Add :method string $EXPORT_METHOD" -c "Add :teamID string $APPLE_TEAM_ID" -c "Add :signingStyle string automatic" "$RUNNER_TEMP/ExportOptions.plist"
+          xcodebuild -exportArchive -archivePath build/Diddy.xcarchive -exportPath build/export \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" "${auth[@]}"
+          version=$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' build/Diddy.xcarchive/Products/Applications/Diddy.app/Info.plist)
+          mkdir -p dist && cp build/export/*.ipa "dist/Diddy_${version}_iOS.ipa"
+
+      - name: Check IPA contents
+        # A dynamic framework the binaries link against but that is missing from the IPA makes the
+        # app crash at launch, so fail the build instead.
+        run: |
+          ls -la dist
+          rm -rf build/check && mkdir -p build/check && unzip -q dist/*.ipa -d build/check
+          app=build/check/Payload/Diddy.app
+          ls "$app/Frameworks"
+          # Every extension would need its own App ID when sideloading.
+          if [ -d "$app/PlugIns" ] || [ -d "$app/Extensions" ]; then
+            echo "::error::The IPA contains app extensions:"; ls "$app/PlugIns" "$app/Extensions" 2>/dev/null; exit 1
+          fi
+          missing=0
+          for binary in "$app/Diddy" "$app"/Frameworks/*.framework/*; do
+            [ -f "$binary" ] && file "$binary" | grep -q Mach-O || continue
+            for lib in $(otool -L "$binary" | awk '/@rpath\//{print $1}'); do
+              name=${lib#@rpath/}
+              if [ ! -e "$app/Frameworks/$name" ]; then
+                echo "::error::$(basename "$binary") links $lib, which is not in the IPA"; missing=1
+              fi
+            done
+          done
+          exit $missing
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: diddy-ios
+          path: ios/dist/*.ipa
+          if-no-files-found: error
+
+      - name: Publish GitHub release
+        if: startsWith(github.ref, 'refs/tags/ios-v') || inputs.release_tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.release_tag || github.ref_name }}
+        run: |
+          case "$TAG" in ios-v*) ;; *) echo "::error::Release tags must start with ios-v"; exit 1 ;; esac
+          flags=()
+          case "$TAG" in *alpha*|*beta*|*rc*) flags+=(--prerelease) ;; esac
+          if [ "$SIGNED" = "true" ]; then
+            install="Signed IPA: installs directly on the devices in the provisioning profile."
+          else
+            install="Unsigned IPA: install it with AltStore, SideStore or Sideloadly, which sign it with your Apple ID. A free Apple ID works; the app has no extensions and uses a single App ID."
+          fi
+          cat > "$RUNNER_TEMP/notes.md" <<NOTES
+          Native iPhone/iPad app (SwiftUI, matrix-rust-sdk, LiveKit), built from $(git rev-parse --short HEAD).
+
+          $install
+
+          Needs iOS 16 or newer. Your homeserver needs Simplified Sliding Sync (MSC4186); voice channels need a MatrixRTC/LiveKit backend, the same one desktop calls use. See ios/README.md.
+
+          Built with $(xcodebuild -version | head -n 1), iOS SDK $(xcrun --sdk iphoneos --show-sdk-version).
+          NOTES
+          # --target creates the tag on the built commit when it does not exist yet (manual runs).
+          gh release create "$TAG" dist/*.ipa --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "Diddy iOS ${TAG#ios-v}" --notes-file "$RUNNER_TEMP/notes.md" "${flags[@]}"
+
+      - name: Upload build log
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: xcodebuild-log
+          path: ios/build/xcodebuild.log
+          if-no-files-found: ignore
