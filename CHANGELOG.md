@@ -2,6 +2,11 @@
 
 ## Unveröffentlicht
 
+### Teilnehmer eines Calls in der Raumliste
+
+- Wer gerade im Call ist, steht jetzt wie bei Discord untereinander direkt unter dem Call-Raum in der Seitenleiste (Profilbild und Name, eine Person pro Zeile). Die kleinen Avatare in der Raumzeile entfallen, das "n Live"-Badge bleibt.
+- Klick auf eine Person öffnet das Profil, Rechtsklick das Call-Menü (Profile, Message, Copy Name, ...). Neu `features/room-nav/CallMemberList.tsx`; gilt in Home, Direktnachrichten und Spaces. Nicht in einem echten Call geprüft.
+
 ### Rechtsklick-Menü auf Personen im Call
 
 - Rechtsklick auf die Kachel einer Person im Call (und auf die Avatare in der Call-Leiste und der Teilnehmerliste) öffnet ein Menü wie bei Discord: **Profile**, **Message** (privater Chat), **Volume & Mute for me…**, **Copy Name**, **Copy User ID**.
