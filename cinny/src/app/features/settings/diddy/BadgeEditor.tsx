@@ -38,6 +38,8 @@ function BadgeLibrary() {
   const [filter, setFilter] = useState('');
   const [busyId, setBusyId] = useState<string>();
   const [error, setError] = useState<string>();
+  // two-step delete without window.confirm (not reliable inside the app's webview)
+  const [confirmId, setConfirmId] = useState<string>();
 
   const optionsRoom = getPrimaryOptionsRoom(mx);
   const isModerator = !!optionsRoom && canModerateOptionsRoom(mx, optionsRoom);
@@ -45,8 +47,7 @@ function BadgeLibrary() {
     !badge.global && (badge.createdBy === myUserId || isModerator);
 
   const handleDelete = async (badge: BadgeDef) => {
-    // eslint-disable-next-line no-alert
-    if (!window.confirm(`Delete the badge "${badge.name}" for everyone?`)) return;
+    setConfirmId(undefined);
     setBusyId(badge.id);
     setError(undefined);
     try {
@@ -162,9 +163,16 @@ function BadgeLibrary() {
                     variant="Critical"
                     fill="None"
                     disabled={busyId !== undefined}
-                    onClick={() => handleDelete(badge)}
+                    onClick={() =>
+                      confirmId === badge.id ? handleDelete(badge) : setConfirmId(badge.id)
+                    }
+                    onBlur={() => setConfirmId((id) => (id === badge.id ? undefined : id))}
                   >
-                    <Text size="B300">Delete from library</Text>
+                    <Text size="B300">
+                      {confirmId === badge.id
+                        ? 'Really delete for everyone?'
+                        : 'Delete from library'}
+                    </Text>
                   </Button>
                 )}
               </Box>
