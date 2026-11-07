@@ -32,7 +32,11 @@ type BadgeSectionProps = {
 function BadgeSection({ title, badges, ownedIds, busyId, filtered, onToggle }: BadgeSectionProps) {
   return (
     <Box direction="Column" gap="100">
-      <Text size="L400" priority="300" style={{ padding: `${config.space.S100} ${config.space.S200}` }}>
+      <Text
+        size="L400"
+        priority="300"
+        style={{ padding: `${config.space.S100} ${config.space.S200}` }}
+      >
         {title}
       </Text>
       {badges.length === 0 && (
@@ -119,7 +123,10 @@ function AwardMenu({ userId }: { userId: string }) {
           onToggle={handleToggle}
         />
         {error && (
-          <Text size="T200" style={{ color: color.Critical.Main, padding: `0 ${config.space.S200}` }}>
+          <Text
+            size="T200"
+            style={{ color: color.Critical.Main, padding: `0 ${config.space.S200}` }}
+          >
             {error}
           </Text>
         )}
@@ -141,7 +148,7 @@ export function AwardBadgeButton({ userId }: { userId: string }) {
         variant="Surface"
         fill="Soft"
         size="300"
-        radii="300"
+        radii="Pill"
         aria-label="Give or remove badges"
         aria-pressed={!!anchor}
         onClick={handleOpen}
