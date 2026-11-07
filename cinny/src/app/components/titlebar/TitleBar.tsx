@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import * as css from './TitleBar.css';
 import { useSetting } from '../../state/hooks/settings';
 import { settingsAtom } from '../../state/settings';
-import { isIOS } from '../../plugins/ios';
 
 /** Follows document.title, which TitleUpdater keeps at "room – space – Diddy". */
 const useDocumentTitle = (enabled: boolean): string => {
@@ -23,14 +22,12 @@ const useDocumentTitle = (enabled: boolean): string => {
 
 /**
  * The custom title row is only needed in the Tauri desktop app on macOS, where the window uses an
- * overlay title bar and the traffic lights are drawn on top of the web content. iPadOS also reports
- * a Mac platform but has no title bar (and no traffic lights) at all.
+ * overlay title bar and the traffic lights are drawn on top of the web content.
  */
 export const useHasCustomTitleBar = (): boolean =>
   typeof window !== 'undefined' &&
   '__TAURI_INTERNALS__' in window &&
-  /mac/i.test(window.navigator.platform) &&
-  !isIOS();
+  /mac/i.test(window.navigator.platform);
 
 export function TitleBar() {
   const navigate = useNavigate();

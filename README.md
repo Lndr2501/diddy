@@ -4,12 +4,12 @@
 
 # Diddy
 
-**Matrix-Chat für macOS, Linux und iOS, mit Sprachchat, der wirklich funktioniert.**
+**Matrix-Chat für macOS und Linux, mit Sprachchat, der wirklich funktioniert.**
 
 [![Release](https://img.shields.io/github/v/release/Lndr2501/diddy?label=Release&color=e6007e)](../../releases/latest)
 [![Tests](https://github.com/Lndr2501/diddy/actions/workflows/test.yml/badge.svg)](../../actions/workflows/test.yml)
 [![Lizenz](https://img.shields.io/badge/Lizenz-AGPL--3.0-blue)](LICENSE)
-![Plattformen](https://img.shields.io/badge/macOS%20%7C%20Linux%20%7C%20iOS-lightgrey)
+![Plattformen](https://img.shields.io/badge/macOS%20%7C%20Linux-lightgrey)
 
 [Download](../../releases/latest) · [Installation](#installation) · [Selbst bauen](#selbst-bauen) · [Änderungen](CHANGELOG.md)
 
@@ -21,14 +21,14 @@ Diddy basiert auf [Cinny](https://github.com/cinnyapp/cinny) und ergänzt alles,
 
 ## Auf einen Blick
 
-| | macOS | Linux | iOS / iPadOS |
-|---|:---:|:---:|:---:|
-| Chat, Räume, Verschlüsselung | ✅ | 🧪 gebaut, aber ungetestet | 🧪 |
-| Sprachchat | ✅ | 🧪 nur NixOS-Paket `diddy-webrtc` | 🧪 (iOS 15+) |
-| Bildschirmübertragung | ✅ | ❌ | ❌ |
-| davon mit System-Ton | ✅ (macOS 14.2+) | ❌ | ❌ |
-| Mehrere Verbindungsprofile | ✅ (ab macOS 14) | 🧪 ungetestet | ❌ |
-| Sprachnachrichten | ✅ | 🧪 | 🧪 |
+| | macOS | Linux |
+|---|:---:|:---:|
+| Chat, Räume, Verschlüsselung | ✅ | 🧪 gebaut, aber ungetestet |
+| Sprachchat | ✅ | 🧪 nur NixOS-Paket `diddy-webrtc` |
+| Bildschirmübertragung | ✅ | ❌ |
+| davon mit System-Ton | ✅ (macOS 14.2+) | ❌ |
+| Mehrere Verbindungsprofile | ✅ (ab macOS 14) | 🧪 ungetestet |
+| Sprachnachrichten | ✅ | 🧪 |
 
 ✅ läuft und wird getestet · 🧪 gebaut, aber noch nicht im Alltag geprüft · ❌ funktioniert (noch) nicht
 
@@ -92,20 +92,6 @@ Kein Linux-Rechner? Linux und NixOS lassen sich auf dem Mac in UTM testen: [VM-A
 
 </details>
 
-<details>
-<summary><b>iOS / iPadOS</b></summary>
-
-Die IPA baut der Workflow [Build iOS](.github/workflows/ios.yml) (Artefakt `diddy-ios`, manuell startbar unter *Actions*).
-
-- **Ohne Signier-Secrets** ist sie unsigniert (`Diddy_*_iOS_unsigned.ipa`). [AltStore](https://altstore.io), [SideStore](https://sidestore.io) oder [Sideloadly](https://sideloadly.io) signieren sie beim Installieren mit deiner Apple-ID.
-- **Mit Signier-Secrets** (`IOS_CERTIFICATE`, `IOS_CERTIFICATE_PASSWORD`, `IOS_MOBILE_PROVISION`, `APPLE_DEVELOPMENT_TEAM`, siehe Kopf des Workflows) ist sie signiert und lässt sich direkt auf registrierten Geräten installieren.
-
-Beim ersten Call Mikrofon (und für Video die Kamera) erlauben. Ein laufender Sprachchat bleibt hörbar, wenn Diddy im Hintergrund ist oder der Bildschirm gesperrt wird.
-
-Auf iOS gibt es keine getrennten Anmeldungen (ein Fenster, ein Datenspeicher) und keine Bildschirmübertragung (WKWebView kann den Bildschirm nicht aufnehmen).
-
-</details>
-
 ## Selbst bauen
 
 Voraussetzungen: Node 24, Rust und die [Tauri-Abhängigkeiten](https://v2.tauri.app/start/prerequisites/).
@@ -123,19 +109,6 @@ cd cinny && npm run build && npm run test:e2e         # Browser-Smoke (Playwrigh
 ```
 
 Auf macOS die nativen Tests mit `DYLD_LIBRARY_PATH=/usr/lib/swift` starten.
-
-### iOS
-
-Auf einem Mac mit Xcode, XcodeGen (`brew install xcodegen`) und `rustup target add aarch64-apple-ios`:
-
-```sh
-(cd cinny && npm ci) && npm ci
-npm run tauri -- ios init                       # erzeugt src-tauri/gen/apple (nicht eingecheckt)
-npm run tauri -- icon src-tauri/icons/ios-source.png -o src-tauri/.ios-icons && rm -rf src-tauri/.ios-icons
-npm run tauri -- ios build                      # signiert mit deinem Team (APPLE_DEVELOPMENT_TEAM)
-```
-
-Was Diddy am Xcode-Projekt ändert, steht in `src-tauri/tauri.ios.conf.json` und `src-tauri/Info.ios.plist`.
 
 ## Lizenz
 

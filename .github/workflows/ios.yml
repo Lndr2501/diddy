@@ -1,13 +1,15 @@
 name: Build iOS
-# Builds Diddy for iPhone and iPad and stores the IPA as an artifact.
+# Builds the native iPhone/iPad app (ios/, SwiftUI + matrix-rust-sdk + LiveKit) and stores the
+# IPA as artifact `diddy-ios`.
 #
-# Without signing secrets the IPA is unsigned. Sideloading tools (AltStore, SideStore, Sideloadly)
-# sign it with your own Apple ID when they install it.
-# With these repository secrets the IPA is signed and installs directly on registered devices:
-#   IOS_CERTIFICATE           base64 of the .p12 signing certificate (Apple Development/Distribution)
-#   IOS_CERTIFICATE_PASSWORD  password of that .p12
-#   IOS_MOBILE_PROVISION      base64 of the .mobileprovision for app.diddy.ios
-#   APPLE_DEVELOPMENT_TEAM    the 10-character team ID
+# Without secrets the IPA is unsigned. AltStore, SideStore or Sideloadly sign it with your own
+# Apple ID (a free one works) when they install it, including the screen-share extension.
+#
+# Signed build (paid Apple Developer account): set the repository secrets
+#   APPLE_TEAM_ID               10-character team ID
+#   ASC_KEY_ID, ASC_ISSUER_ID   App Store Connect API key (Users and Access > Integrations)
+#   ASC_KEY_P8                  contents of the AuthKey_XXXX.p8 file
+# Xcode then signs automatically (app.diddy.ios, app.diddy.ios.broadcast, group.app.diddy.ios).
 on:
   workflow_dispatch:
     inputs:
@@ -24,111 +26,100 @@ on:
       - "v*"
   pull_request:
     paths:
-      - "src-tauri/**"
-      - "package.json"
-      - "package-lock.json"
+      - "ios/**"
       - ".github/workflows/ios.yml"
 
 jobs:
   ios:
     runs-on: macos-latest
+    timeout-minutes: 60
     env:
-      NODE_OPTIONS: "--max_old_space_size=4096"
-      SIGNED: ${{ secrets.IOS_CERTIFICATE != '' && secrets.IOS_CERTIFICATE_PASSWORD != '' && secrets.IOS_MOBILE_PROVISION != '' && secrets.APPLE_DEVELOPMENT_TEAM != '' }}
+      SIGNED: ${{ secrets.APPLE_TEAM_ID != '' && secrets.ASC_KEY_ID != '' && secrets.ASC_ISSUER_ID != '' && secrets.ASC_KEY_P8 != '' }}
+    defaults:
+      run:
+        working-directory: ios
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Setup node
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version-file: ".node-version"
-          package-manager-cache: false
-
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-apple-ios
+      - name: Show toolchain
+        run: xcodebuild -version && swift --version
 
       - name: Install XcodeGen
-        # `tauri ios init` generates the Xcode project with it.
         run: command -v xcodegen || brew install xcodegen
 
-      - name: Install dependencies
-        run: |
-          (cd cinny && npm ci)
-          npm ci
-
       - name: Generate Xcode project
-        # src-tauri/gen/apple is generated, not committed; tauri.ios.conf.json and Info.ios.plist
-        # carry everything Diddy changes in it.
         env:
-          APPLE_DEVELOPMENT_TEAM: ${{ secrets.APPLE_DEVELOPMENT_TEAM }}
-        run: npm run tauri -- ios init --ci
+          DIDDY_DEVELOPMENT_TEAM: ${{ secrets.APPLE_TEAM_ID }}
+        run: xcodegen generate
 
-      - name: App icon
-        # Full-bleed 1024 px source; with the output folder inside src-tauri, `tauri icon` writes the
-        # iOS sizes straight into the generated asset catalog.
+      - name: Resolve Swift packages
+        run: xcodebuild -resolvePackageDependencies -project Diddy.xcodeproj -scheme Diddy -clonedSourcePackagesDirPath build/spm
+
+      - name: Build unsigned archive
+        if: env.SIGNED != 'true'
         run: |
-          npm run tauri -- icon src-tauri/icons/ios-source.png -o src-tauri/.ios-icons
-          rm -rf src-tauri/.ios-icons
-          ls src-tauri/gen/apple/Assets.xcassets/AppIcon.appiconset
+          set -o pipefail
+          xcodebuild archive \
+            -project Diddy.xcodeproj -scheme Diddy -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -clonedSourcePackagesDirPath build/spm \
+            -archivePath build/Diddy.xcarchive \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            | tee build/xcodebuild.log | grep -E "error:|warning: .*deprecated|\*\* (ARCHIVE|BUILD)" || true
+          test -d build/Diddy.xcarchive/Products/Applications/Diddy.app || {
+            echo "::error::Archive failed"; grep -E "error:" build/xcodebuild.log | sort -u | head -n 80; exit 1; }
+
+      - name: Package unsigned IPA
+        if: env.SIGNED != 'true'
+        run: |
+          version=$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' build/Diddy.xcarchive/Products/Applications/Diddy.app/Info.plist)
+          rm -rf build/ipa && mkdir -p build/ipa/Payload dist
+          cp -R build/Diddy.xcarchive/Products/Applications/Diddy.app build/ipa/Payload/
+          (cd build/ipa && zip -qry "../../dist/Diddy_${version}_iOS_unsigned.ipa" Payload)
 
       - name: Build signed IPA
         if: env.SIGNED == 'true'
         env:
-          IOS_CERTIFICATE: ${{ secrets.IOS_CERTIFICATE }}
-          IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
-          IOS_MOBILE_PROVISION: ${{ secrets.IOS_MOBILE_PROVISION }}
-          APPLE_DEVELOPMENT_TEAM: ${{ secrets.APPLE_DEVELOPMENT_TEAM }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           EXPORT_METHOD: ${{ inputs.export_method || 'release-testing' }}
         run: |
-          npm run tauri -- ios build --ci --target aarch64 --export-method "$EXPORT_METHOD"
-          version=$(node -p "require('./src-tauri/tauri.conf.json').version")
-          ipa=$(find src-tauri/gen/apple/build -name '*.ipa' | head -n 1)
-          test -n "$ipa" || { echo "::error::tauri ios build produced no IPA"; exit 1; }
-          mkdir -p dist-ios
-          cp "$ipa" "dist-ios/Diddy_${version}_iOS.ipa"
-
-      - name: Build unsigned IPA
-        if: env.SIGNED != 'true'
-        run: |
-          # Turn code signing off for every xcodebuild call Tauri makes. The archive then builds
-          # without a team; only the final export (which always signs) fails, so the app is
-          # packaged from the archive by hand below.
-          xcconfig="$RUNNER_TEMP/unsigned.xcconfig"
-          printf '%s\n' \
-            'CODE_SIGNING_ALLOWED = NO' \
-            'CODE_SIGNING_REQUIRED = NO' \
-            'CODE_SIGN_IDENTITY =' \
-            'CODE_SIGN_ENTITLEMENTS =' \
-            'DEVELOPMENT_TEAM =' > "$xcconfig"
-          export XCODE_XCCONFIG_FILE="$xcconfig"
-
-          npm run tauri -- ios build --ci --target aarch64 \
-            || echo "::notice::The IPA export needs a signing identity; packaging the unsigned archive instead."
-
-          app=$(find src-tauri/gen/apple/build -maxdepth 5 -type d -path '*.xcarchive/Products/Applications/*.app' | head -n 1)
-          test -n "$app" || { echo "::error::The archive contains no .app, the build failed before export (see above)."; exit 1; }
-          test -f "$app/Info.plist" || { echo "::error::$app has no Info.plist"; exit 1; }
-          echo "Packaging $app"
-
-          version=$(node -p "require('./src-tauri/tauri.conf.json').version")
-          staging="$RUNNER_TEMP/ipa"
-          rm -rf "$staging" && mkdir -p "$staging/Payload"
-          cp -R "$app" "$staging/Payload/"
-          mkdir -p dist-ios
-          (cd "$staging" && zip -qry "$GITHUB_WORKSPACE/dist-ios/Diddy_${version}_iOS_unsigned.ipa" Payload)
+          set -o pipefail
+          key="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+          printf '%s' "$ASC_KEY_P8" > "$key"
+          auth=(-allowProvisioningUpdates -authenticationKeyPath "$key" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID")
+          xcodebuild archive \
+            -project Diddy.xcodeproj -scheme Diddy -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -clonedSourcePackagesDirPath build/spm \
+            -archivePath build/Diddy.xcarchive \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" "${auth[@]}" | tee build/xcodebuild.log | grep -E "error:|\*\* ARCHIVE" || true
+          test -d build/Diddy.xcarchive || { grep -E "error:" build/xcodebuild.log | sort -u | head -n 80; exit 1; }
+          /usr/libexec/PlistBuddy -c "Add :method string $EXPORT_METHOD" -c "Add :teamID string $APPLE_TEAM_ID" -c "Add :signingStyle string automatic" "$RUNNER_TEMP/ExportOptions.plist"
+          xcodebuild -exportArchive -archivePath build/Diddy.xcarchive -exportPath build/export \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" "${auth[@]}"
+          version=$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' build/Diddy.xcarchive/Products/Applications/Diddy.app/Info.plist)
+          mkdir -p dist && cp build/export/*.ipa "dist/Diddy_${version}_iOS.ipa"
 
       - name: Show IPA contents
         run: |
-          ls -la dist-ios
-          unzip -l dist-ios/*.ipa | head -n 20
-          plutil -p "$(find src-tauri/gen/apple/build -maxdepth 5 -type d -path '*.xcarchive/Products/Applications/*.app' | head -n 1)/Info.plist" || true
+          ls -la dist
+          unzip -l dist/*.ipa | grep -E "Diddy.app/(Diddy|Info.plist)$|PlugIns/.*appex/(DiddyBroadcast|Info.plist)$|Assets.car$|Frameworks/[^/]+/$" || true
 
       - name: Upload IPA
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: diddy-ios
-          path: dist-ios/*.ipa
+          path: ios/dist/*.ipa
           if-no-files-found: error
+
+      - name: Upload build log
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: xcodebuild-log
+          path: ios/build/xcodebuild.log
+          if-no-files-found: ignore

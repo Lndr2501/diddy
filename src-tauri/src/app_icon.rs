@@ -51,14 +51,7 @@ fn set_app_icon_inner(app: &tauri::AppHandle, id: &str, persist: bool) -> Result
         }
     }
 
-    // iOS: the home-screen icon is fixed by the bundle (alternate icons would need extra asset
-    // catalog entries), so only the choice is remembered for the settings page.
-    #[cfg(mobile)]
-    {
-        let _ = (window_png, dock_png);
-    }
-
-    #[cfg(all(desktop, not(target_os = "macos")))]
+    #[cfg(not(target_os = "macos"))]
     {
         use tauri::Manager;
         let _ = dock_png;
