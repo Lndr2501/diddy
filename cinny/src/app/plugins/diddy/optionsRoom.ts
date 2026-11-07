@@ -169,6 +169,15 @@ export const optionsRoomPowerLevels = (creatorId: string) => ({
 });
 
 /**
+ * Power levels for createRoom. The creator gets power level 100 from the server by default, and in
+ * room version 12 (current Synapse default) the creator must NOT be listed in `users` at all
+ * ("Creator user ... must not appear in content.users"), so the creator entry is left out here.
+ */
+export const createRoomPowerLevels = (creatorId: string) => ({
+  events: optionsRoomPowerLevels(creatorId).events,
+});
+
+/**
  * Creates the options room. With a space id the room becomes a child of that space and can be
  * joined by every space member (restricted join rule), so their clients can join it automatically.
  */
@@ -201,7 +210,7 @@ export const createOptionsRoom = async (
     visibility: Visibility.Private,
     preset: Preset.PrivateChat,
     initial_state: initialState as never,
-    power_level_content_override: optionsRoomPowerLevels(me) as never,
+    power_level_content_override: createRoomPowerLevels(me) as never,
   });
   if (spaceId) {
     await mx
