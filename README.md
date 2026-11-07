@@ -19,6 +19,20 @@
 
 Diddy basiert auf [Cinny](https://github.com/cinnyapp/cinny) und ergänzt alles, was im Alltag mit Sprachchat und Bildschirmübertragung fehlt.
 
+## Auf einen Blick
+
+| | macOS | Linux |
+|---|:---:|:---:|
+| Chat, Räume, Verschlüsselung | ✅ | 🧪 gebaut, aber ungetestet |
+| Sprachchat | ✅ | 🧪 nur NixOS-Paket `diddy-webrtc` |
+| Bildschirmübertragung | ✅ | ❌ |
+| davon mit System-Ton | ✅ (macOS 14.2+) | ❌ |
+| Mehrere Verbindungsprofile | ✅ (ab macOS 14) | 🧪 ungetestet |
+| Sprachnachrichten | ✅ | 🧪 |
+
+✅ läuft und wird getestet · 🧪 gebaut, aber noch nicht im Alltag geprüft · ❌ funktioniert (noch) nicht
+
+
 ## Was Diddy anders macht
 
 ### 🎙️ Sprachchat
@@ -91,6 +105,7 @@ Tests ohne Hardware:
 ```sh
 cd cinny && npm test                                  # JavaScript
 cd src-tauri && cargo test --lib -- --test-threads=1  # nativ
+cd cinny && npm run build && npm run test:e2e         # Browser-Smoke (Playwright, Chromium)
 ```
 
 Auf macOS die nativen Tests mit `DYLD_LIBRARY_PATH=/usr/lib/swift` starten.
@@ -98,3 +113,11 @@ Auf macOS die nativen Tests mit `DYLD_LIBRARY_PATH=/usr/lib/swift` starten.
 ## Lizenz
 
 [AGPL-3.0](LICENSE), wie Cinny.
+
+---
+
+<div align="center">
+
+**Diddy** · gebaut auf [Cinny](https://github.com/cinnyapp/cinny) und [Tauri 2](https://tauri.app/)
+
+</div>
