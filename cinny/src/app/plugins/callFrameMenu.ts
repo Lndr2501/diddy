@@ -42,6 +42,25 @@ export const findCallTile = <T extends TileLike>(
   );
 };
 
+type MutedTileLike = TileLike & { querySelector: (selector: string) => LabelledLike | null };
+
+/**
+ * Who shows the mute icon in the call document (Element Call sets `data-muted="true"` on the icon
+ * in a tile's name tag: the person muted themselves, or you muted them for yourself). Only people
+ * whose tile is shown are known, and only while you are in that call.
+ */
+export const mutedCallUsers = (
+  doc: { querySelectorAll: (selector: string) => ArrayLike<MutedTileLike> } | null | undefined
+): Set<string> => {
+  const muted = new Set<string>();
+  if (!doc) return muted;
+  Array.from(doc.querySelectorAll(CALL_TILE_SELECTOR)).forEach((tile) => {
+    const userId = tileUserId(tile);
+    if (userId && tile.querySelector('[data-muted="true"]')) muted.add(userId);
+  });
+  return muted;
+};
+
 /** Ask the main window to show the person menu at (x, y) for `userId`. */
 export const openCallUserMenu = (userId: string, x: number, y: number): void => {
   window.dispatchEvent(
