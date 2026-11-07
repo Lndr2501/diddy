@@ -1,15 +1,7 @@
-import React, {
-  PointerEvent,
-  ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { PointerEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EventType } from 'matrix-js-sdk';
 import { Box, Button, Icon, IconButton, Icons, Scroll, Switch, Text, color, config } from 'folds';
-import { Page, PageContent, PageHeader } from '../../../components/page';
+import { Page } from '../../../components/page';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { useUserProfile } from '../../../hooks/useUserProfile';
 import { useMediaAuthentication } from '../../../hooks/useMediaAuthentication';
@@ -29,7 +21,6 @@ import {
   removeLightOptionsRoom,
   useOptionsRooms,
 } from '../../../plugins/diddy/optionsRoom';
-import { OPTIONS_ROOM_NAME } from '../../../plugins/diddy/types';
 import { uploadDiddyMedia, useMxcUrl } from '../../../plugins/diddy/media';
 import {
   CardStyle,
@@ -40,6 +31,7 @@ import {
   NameEffect,
   NameStyle,
   NameplateStyle,
+  OPTIONS_ROOM_NAME,
 } from '../../../plugins/diddy/types';
 import { BadgeEditor } from './BadgeEditor';
 import { DarkTheme, LightTheme } from '../../../hooks/useTheme';
@@ -52,6 +44,15 @@ import {
   LayoutEditor,
   LinksEditor,
 } from './ProfileCardEditor';
+import {
+  AngleField,
+  ClearButton,
+  ColorField,
+  Field,
+  Segmented,
+  SettingsCard,
+  UploadField,
+} from './ProfileSettingsUI';
 import { ProfileModules } from '../../../components/user-profile/ProfileModules';
 import * as css from './DiddyProfileSettings.css';
 import { RangeInput } from '../../../components/diddy/RangeInput';
@@ -106,6 +107,19 @@ const toDraft = (profile: DiddyProfile | undefined): Draft => {
   return JSON.parse(JSON.stringify(rest)) as Draft;
 };
 
+const EFFECT_LABEL: Record<NameEffect, string> = {
+  none: 'None',
+  glow: 'Glow',
+  shadow: 'Shadow',
+  outline: 'Outline',
+};
+
+const themeClass = (theme?: string): string | undefined => {
+  if (theme === 'light') return LightTheme.classNames.join(' ');
+  if (theme === 'dark') return DarkTheme.classNames.join(' ');
+  return undefined;
+};
+
 // --- name style --------------------------------------------------------------------------------
 
 function PreviewName({ name, style, size }: { name: string; style?: NameStyle; size?: number }) {
@@ -123,162 +137,6 @@ function PreviewName({ name, style, size }: { name: string; style?: NameStyle; s
     >
       {name}
     </span>
-  );
-}
-
-// --- small building blocks ---------------------------------------------------------------------
-
-function Section({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description?: string;
-  children: ReactNode;
-}) {
-  return (
-    <section className={css.SectionCard}>
-      <div className={css.SectionHeader}>
-        <Text size="H5">{title}</Text>
-        {description && (
-          <Text size="T200" priority="300">
-            {description}
-          </Text>
-        )}
-      </div>
-      <div className={css.SectionBody}>{children}</div>
-    </section>
-  );
-}
-
-function Row({ label, top, children }: { label: string; top?: boolean; children: ReactNode }) {
-  return (
-    <div className={top ? `${css.Field} ${css.FieldTop}` : css.Field}>
-      <Text size="T300" priority="300">
-        {label}
-      </Text>
-      <div className={css.Controls}>{children}</div>
-    </div>
-  );
-}
-
-const HEX_RE = /^#[0-9a-fA-F]{6}$/;
-
-function ColorField({
-  value,
-  fallback,
-  onChange,
-}: {
-  value?: string;
-  fallback: string;
-  onChange: (value: string) => void;
-}) {
-  const current = value && HEX_RE.test(value) ? value : fallback;
-  return (
-    <>
-      <input
-        type="color"
-        className={css.ColorInput}
-        value={current}
-        onChange={(e) => onChange(e.target.value)}
-      />
-      <span className={css.HexLabel} style={value ? undefined : { opacity: 0.45 }}>
-        {current.toUpperCase()}
-      </span>
-    </>
-  );
-}
-
-function AngleField({ value, onChange }: { value: number; onChange: (value: number) => void }) {
-  return (
-    <>
-      <RangeInput
-        min={0}
-        max={360}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        style={{ width: 160 }}
-      />
-      <Text size="T200" priority="300" style={{ width: 36, textAlign: 'right' }}>
-        {value}°
-      </Text>
-    </>
-  );
-}
-
-type UploadFieldProps = {
-  label: string;
-  accept: string;
-  mxc?: string;
-  busy: boolean;
-  round?: boolean;
-  onFile: (file: File) => void;
-  onRemove: () => void;
-};
-function UploadField({ label, accept, mxc, busy, round, onFile, onRemove }: UploadFieldProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const url = useMxcUrl(mxc);
-  return (
-    <div className={css.Field}>
-      <Text size="T300" priority="300">
-        {label}
-      </Text>
-      <div className={css.Controls} style={{ gap: 12 }}>
-        <div
-          style={{
-            width: 44,
-            height: 44,
-            borderRadius: round ? '50%' : 10,
-            overflow: 'hidden',
-            background: color.Surface.Container,
-            border: `1px solid ${color.Surface.ContainerLine}`,
-            flexShrink: 0,
-          }}
-        >
-          {url && (
-            <img
-              src={url}
-              alt=""
-              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-            />
-          )}
-        </div>
-        <input
-          ref={inputRef}
-          type="file"
-          accept={accept}
-          hidden
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            e.target.value = '';
-            if (file) onFile(file);
-          }}
-        />
-        <Button
-          size="300"
-          variant="Secondary"
-          fill="Soft"
-          radii="300"
-          disabled={busy}
-          onClick={() => inputRef.current?.click()}
-        >
-          <Text size="B300">{busy ? 'Uploading...' : mxc ? 'Replace' : 'Upload'}</Text>
-        </Button>
-        {mxc && (
-          <Button
-            size="300"
-            variant="Critical"
-            fill="None"
-            radii="300"
-            disabled={busy}
-            onClick={onRemove}
-          >
-            <Text size="B300">Remove</Text>
-          </Button>
-        )}
-      </div>
-    </div>
   );
 }
 
@@ -345,7 +203,7 @@ function PositionEditor({ mxc, pos, width, ratio, round, onChange }: PositionEdi
 
   if (!url) return null;
   return (
-    <Box alignItems="Center" gap="300" wrap="Wrap">
+    <Box direction={round ? 'Row' : 'Column'} alignItems={round ? 'Center' : 'Start'} gap="400">
       <div
         ref={frameRef}
         onPointerDown={onPointerDown}
@@ -360,9 +218,10 @@ function PositionEditor({ mxc, pos, width, ratio, round, onChange }: PositionEdi
           flexShrink: 0,
           overflow: 'hidden',
           position: 'relative',
-          borderRadius: round ? '50%' : 12,
+          borderRadius: round ? '50%' : 14,
           background: color.Surface.Container,
           border: `1px solid ${color.Surface.ContainerLine}`,
+          boxShadow: '0 4px 14px rgba(0, 0, 0, 0.12)',
           cursor: 'grab',
           touchAction: 'none',
           userSelect: 'none',
@@ -379,24 +238,31 @@ function PositionEditor({ mxc, pos, width, ratio, round, onChange }: PositionEdi
           }}
         />
       </div>
-      <Box direction="Column" gap="100" style={{ minWidth: 140, flexGrow: 1, maxWidth: 260 }}>
+      <Box direction="Column" gap="200" grow="Yes" style={{ width: '100%', minWidth: 0 }}>
         <Text size="T200" priority="300">
-          Position: drag the image, zoom {cur.zoom.toFixed(1)}x
+          Drag the image to choose the visible part.
         </Text>
-        <RangeInput
-          min={1}
-          max={3}
-          step={0.05}
-          value={cur.zoom}
-          aria-label="Zoom"
-          onChange={(e) =>
-            onChange({
-              ...cur,
-              zoom: clampNum(Math.round(Number(e.target.value) * 100) / 100, 1, 3),
-            })
-          }
-        />
-        <Box>
+        <Box alignItems="Center" gap="300">
+          <Text size="T300" priority="300" style={{ flexShrink: 0 }}>
+            Zoom
+          </Text>
+          <RangeInput
+            min={1}
+            max={3}
+            step={0.05}
+            value={cur.zoom}
+            aria-label="Zoom"
+            style={{ flexGrow: 1, minWidth: 80 }}
+            onChange={(e) =>
+              onChange({
+                ...cur,
+                zoom: clampNum(Math.round(Number(e.target.value) * 100) / 100, 1, 3),
+              })
+            }
+          />
+          <Text size="T200" priority="300" style={{ width: 36, textAlign: 'right' }}>
+            {cur.zoom.toFixed(1)}x
+          </Text>
           <Button
             size="300"
             variant="Secondary"
@@ -421,25 +287,17 @@ type PreviewProps = {
   avatarUrl?: string;
   draft: Draft;
 };
-function ProfilePreview({ userId, displayName, avatarUrl, draft }: PreviewProps) {
-  const card = draft.card;
-  const bannerUrl = useMxcUrl(card?.bannerMxc);
+
+function PreviewAvatar({
+  displayName,
+  avatarUrl,
+  draft,
+  size,
+  dot,
+}: Omit<PreviewProps, 'userId'> & { size: number; dot: number }) {
   const animatedUrl = useMxcUrl(draft.animatedAvatarMxc);
-  const plateUrl = useMxcUrl(draft.nameplate?.imageMxc);
   const avatarSrc = animatedUrl ?? avatarUrl;
-  const accent = safeColor(card?.accent);
-  const plateColor = safeColor(draft.nameplate?.color);
-
-  const headerFrom = safeColor(card?.from);
-  const headerTo = safeColor(card?.to);
-  let headerBg: string = color.SurfaceVariant.Container;
-  if (headerFrom && headerTo) {
-    headerBg = `linear-gradient(${safeAngle(card?.angle, 135)}deg, ${headerFrom}, ${headerTo})`;
-  } else if (headerFrom || headerTo) {
-    headerBg = headerFrom ?? headerTo ?? headerBg;
-  }
-
-  const avatar = (size: number, dot: number) => (
+  return (
     <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
       <div
         style={{
@@ -480,112 +338,140 @@ function ProfilePreview({ userId, displayName, avatarUrl, draft }: PreviewProps)
       />
     </div>
   );
+}
+
+function CardPreview({ userId, displayName, avatarUrl, draft }: PreviewProps) {
+  const { card } = draft;
+  const bannerUrl = useMxcUrl(card?.bannerMxc);
+  const accent = safeColor(card?.accent);
+  const glass = !!draft.cardLayout?.glass;
+
+  const headerFrom = safeColor(card?.from);
+  const headerTo = safeColor(card?.to);
+  let headerBg: string = color.SurfaceVariant.Container;
+  if (headerFrom && headerTo) {
+    headerBg = `linear-gradient(${safeAngle(card?.angle, 135)}deg, ${headerFrom}, ${headerTo})`;
+  } else if (headerFrom || headerTo) {
+    headerBg = headerFrom ?? headerTo ?? headerBg;
+  }
 
   return (
-    <section className={css.SectionCard}>
-      <div className={css.SectionHeader}>
-        <Text size="H5">Live preview</Text>
-        <Text size="T200" priority="300">
-          How your profile card and nameplate look to others.
-        </Text>
-      </div>
+    <div
+      className={css.Card}
+      style={{
+        ...(accent
+          ? {
+              borderColor: accent,
+              boxShadow: `0 0 0 1px color-mix(in srgb, ${accent} 33%, transparent), 0 12px 32px rgba(0, 0, 0, 0.16)`,
+            }
+          : {}),
+        ...(glass
+          ? {
+              background: `color-mix(in srgb, ${color.Surface.Container} 72%, transparent)`,
+              backdropFilter: 'blur(16px) saturate(1.3)',
+            }
+          : {}),
+      }}
+    >
       <div
-        className={css.Card}
-        style={
-          accent
-            ? {
-                borderColor: accent,
-                boxShadow: `0 0 0 1px color-mix(in srgb, ${accent} 33%, transparent)`,
-              }
-            : undefined
-        }
+        style={{
+          height: draft.cardLayout?.layout === 'compact' ? 64 : 104,
+          background: headerBg,
+          position: 'relative',
+          overflow: 'hidden',
+        }}
       >
+        {bannerUrl && <PositionedImg src={bannerUrl} pos={card?.bannerPos} />}
+      </div>
+      <div style={{ padding: `0 ${config.space.S400} ${config.space.S400}` }}>
+        <div style={{ marginTop: -44, marginBottom: config.space.S200 }}>
+          <PreviewAvatar
+            displayName={displayName}
+            avatarUrl={avatarUrl}
+            draft={draft}
+            size={88}
+            dot={14}
+          />
+        </div>
+        <PreviewName name={displayName} style={draft.nameStyle} size={22} />
+        <Text size="T200" priority="300" style={{ display: 'block' }}>
+          {userId}
+        </Text>
+        <div style={{ marginTop: config.space.S400 }}>
+          <ProfileModules profile={{ v: 1, ...draft }} accent={accent} />
+        </div>
         <div
           style={{
-            height: draft.cardLayout?.layout === 'compact' ? 56 : 96,
-            background: headerBg,
-            position: 'relative',
-            overflow: 'hidden',
+            marginTop: config.space.S400,
+            display: 'flex',
+            alignItems: 'center',
+            gap: config.space.S200,
           }}
         >
-          {bannerUrl && <PositionedImg src={bannerUrl} pos={card?.bannerPos} />}
-        </div>
-        <div style={{ padding: `0 ${config.space.S400} ${config.space.S400}` }}>
-          <div style={{ marginTop: -40, marginBottom: config.space.S200 }}>{avatar(80, 14)}</div>
-          <PreviewName name={displayName} style={draft.nameStyle} />
-          <Text size="T200" priority="300" style={{ display: 'block' }}>
-            {userId}
+          <span className={css.Dot} style={{ background: statusColor(draft.status) }} />
+          <Text size="T200" priority="300">
+            {(STATUSES.find((s) => s.id === (draft.status ?? 'online')) ?? STATUSES[0]).label}
           </Text>
-          <div style={{ marginTop: config.space.S300 }}>
-            <ProfileModules profile={{ v: 1, ...draft }} accent={accent} />
-          </div>
+        </div>
+        {accent && (
           <div
             style={{
               marginTop: config.space.S300,
-              display: 'flex',
-              alignItems: 'center',
-              gap: config.space.S200,
+              padding: `${config.space.S200} ${config.space.S300}`,
+              borderRadius: 12,
+              background: accent,
+              color: '#fff',
+              textAlign: 'center',
+              fontSize: 14,
+              fontWeight: 600,
+              textShadow: '0 1px 2px rgba(0,0,0,.4)',
             }}
           >
-            <span
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: '50%',
-                background: statusColor(draft.status),
-              }}
-            />
-            <Text size="T200" priority="300">
-              {(STATUSES.find((s) => s.id === (draft.status ?? 'online')) ?? STATUSES[0]).label}
-            </Text>
+            Message
           </div>
-          {accent && (
-            <div
-              style={{
-                marginTop: config.space.S300,
-                padding: `${config.space.S200} ${config.space.S300}`,
-                borderRadius: 10,
-                background: accent,
-                color: '#fff',
-                textAlign: 'center',
-                fontSize: 13,
-                fontWeight: 600,
-                textShadow: '0 1px 2px rgba(0,0,0,.4)',
-              }}
-            >
-              Message
-            </div>
-          )}
-        </div>
+        )}
       </div>
+    </div>
+  );
+}
 
-      <Text size="T300" priority="300">
-        Nameplate
-      </Text>
-      <div
-        className={css.Card}
-        style={{ position: 'relative', padding: `${config.space.S200} ${config.space.S300}` }}
-      >
-        {plateColor && (
-          <div
-            style={{
-              position: 'absolute',
-              inset: 0,
-              background: `linear-gradient(90deg, color-mix(in srgb, ${plateColor} 40%, transparent), color-mix(in srgb, ${plateColor} 7%, transparent))`,
-            }}
-          />
-        )}
-        {plateUrl && (
-          <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', opacity: 0.55 }}>
-            <PositionedImg src={plateUrl} pos={draft.nameplate?.imagePos} />
-          </div>
-        )}
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 10 }}>
-          {avatar(32, 8)}
-          <PreviewName name={displayName} style={draft.nameStyle} size={14} />
+function NameplatePreview({ displayName, avatarUrl, draft }: Omit<PreviewProps, 'userId'>) {
+  const plateUrl = useMxcUrl(draft.nameplate?.imageMxc);
+  const plateColor = safeColor(draft.nameplate?.color);
+  return (
+    <div
+      className={css.Card}
+      style={{
+        position: 'relative',
+        padding: `${config.space.S300} ${config.space.S400}`,
+        boxShadow: 'none',
+      }}
+    >
+      {plateColor && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: `linear-gradient(90deg, color-mix(in srgb, ${plateColor} 40%, transparent), color-mix(in srgb, ${plateColor} 7%, transparent))`,
+          }}
+        />
+      )}
+      {plateUrl && (
+        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', opacity: 0.55 }}>
+          <PositionedImg src={plateUrl} pos={draft.nameplate?.imagePos} />
         </div>
+      )}
+      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <PreviewAvatar
+          displayName={displayName}
+          avatarUrl={avatarUrl}
+          draft={draft}
+          size={36}
+          dot={8}
+        />
+        <PreviewName name={displayName} style={draft.nameStyle} size={15} />
       </div>
-    </section>
+    </div>
   );
 }
 
@@ -771,11 +657,12 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
     .sort((a, b) => a.name.localeCompare(b.name));
   const selectedUnjoined = unjoinedRooms.find((d) => d.roomId === existingRoomId);
   const selectedJoined = existingRooms.find((room) => room.roomId === existingRoomId);
-  const selectedIsDiddy = selectedUnjoined
-    ? looksLikeDiddyRoom(selectedUnjoined.name, selectedUnjoined.topic)
-    : selectedJoined
-    ? isDiddyJoined(selectedJoined.roomId, selectedJoined.name)
-    : false;
+  let selectedIsDiddy = false;
+  if (selectedUnjoined) {
+    selectedIsDiddy = looksLikeDiddyRoom(selectedUnjoined.name, selectedUnjoined.topic);
+  } else if (selectedJoined) {
+    selectedIsDiddy = isDiddyJoined(selectedJoined.roomId, selectedJoined.name);
+  }
 
   // preselect a room that is marked as a Diddy room
   useEffect(() => {
@@ -886,660 +773,721 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
   };
 
   const ns = draft.nameStyle ?? {};
-  const gradient = ns.gradient;
-  const clearButton = (onClick: () => void) => (
-    <Button size="300" variant="Secondary" fill="None" radii="300" onClick={onClick}>
-      <Text size="B300">Clear</Text>
-    </Button>
+  const { gradient } = ns;
+  const resetDraft = () => {
+    setDraft(base);
+    setSaveError(undefined);
+  };
+  const saveDisabled = saving || !dirty || busyKey !== undefined;
+  let setupLabel = 'Create Diddy Options room';
+  if (setupMode === 'existing') setupLabel = selectedUnjoined ? 'Join and use' : 'Use this room';
+
+  const setupCard = (
+    <SettingsCard
+      wide
+      icon={Icons.Server}
+      title="Set up the data room"
+      description="Diddy needs a hidden room to share profiles, badges and name styles. Without it your customization cannot be saved or seen by others."
+    >
+      <Text size="T300">
+        On a private server where everyone uses Diddy, an admin creates a hidden room that Diddy
+        uses to share profiles, badges and name styles between everyone.
+      </Text>
+      <Field label="Mode">
+        <Segmented
+          label="Mode"
+          value={setupMode}
+          options={[
+            { id: 'new', label: 'Create a new hidden room' },
+            { id: 'existing', label: 'Use an existing room' },
+          ]}
+          onChange={(m) => {
+            if (!creating) setSetupMode(m);
+          }}
+        />
+      </Field>
+      {setupMode === 'new' && (
+        <>
+          <Field label="Room name">
+            <input
+              className={css.Input}
+              value={roomName}
+              onChange={(e) => setRoomName(e.target.value)}
+              placeholder={OPTIONS_ROOM_NAME}
+              disabled={creating}
+            />
+          </Field>
+          <Field label="Create it in">
+            <select
+              className={css.Input}
+              value={spaceId}
+              onChange={(e) => setSpaceId(e.target.value)}
+              disabled={creating}
+            >
+              <option value="">No space (private room)</option>
+              {spaces.map((space) => (
+                <option key={space.roomId} value={space.roomId}>
+                  {space.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </>
+      )}
+      {setupMode === 'existing' && (
+        <>
+          <Field label="Room">
+            <select
+              className={css.Input}
+              value={existingRoomId}
+              onChange={(e) => setExistingRoomId(e.target.value)}
+              disabled={creating}
+            >
+              <option value="">Choose a room...</option>
+              <optgroup label="Your rooms">
+                {existingRooms.map((room) => (
+                  <option key={room.roomId} value={room.roomId}>
+                    {room.name}
+                    {isDiddyJoined(room.roomId, room.name) ? ' - Diddy room' : ''}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Rooms in your spaces (not joined)">
+                {unjoinedRooms.map((d) => (
+                  <option key={d.roomId} value={d.roomId}>
+                    {d.name} ({d.spaceName})
+                    {looksLikeDiddyRoom(d.name, d.topic) ? ' - Diddy room' : ''}
+                  </option>
+                ))}
+              </optgroup>
+            </select>
+            {selectedIsDiddy && <span className={css.Badge}>Diddy room</span>}
+          </Field>
+          <Field label="Spaces">
+            <Button
+              size="300"
+              variant="Secondary"
+              fill="Soft"
+              radii="300"
+              disabled={discovering || creating}
+              onClick={loadDiscovered}
+            >
+              <Text size="B300">Refresh</Text>
+            </Button>
+            {discovering && (
+              <Text size="T200" priority="300">
+                Looking in your spaces...
+              </Text>
+            )}
+            {!discovering && unjoinedRooms.length === 0 && (
+              <Text size="T200" priority="300">
+                No unjoined rooms found in your spaces.
+              </Text>
+            )}
+          </Field>
+          <Field label="Let others find it">
+            <Switch variant="Primary" value={tagTopic} onChange={setTagTopic} />
+          </Field>
+          <Text size="T200" priority="300">
+            The room is then hidden from the room lists in Diddy. You need permission to change its
+            settings. With this switch on, [diddy-options] is added to its topic so Diddy clients in
+            the same space join it automatically.
+          </Text>
+          <Text size="T200" priority="300">
+            No admin rights in that room? You can still use it without them: everyone who uses Diddy
+            has to choose this same room themselves; your profile is then stored as hidden messages
+            in it.
+          </Text>
+        </>
+      )}
+      <Box alignItems="Center" gap="300" wrap="Wrap">
+        <Button
+          size="400"
+          variant="Primary"
+          radii="300"
+          disabled={creating || created}
+          onClick={handleCreate}
+        >
+          <Text size="B400">{creating ? 'Working...' : setupLabel}</Text>
+        </Button>
+        {created && (
+          <Text size="T200" style={{ color: color.Success.Main }}>
+            Room created. You can customize your profile now.
+          </Text>
+        )}
+        {lightUsed && (
+          <Text size="T200" style={{ color: color.Success.Main }}>
+            Room is used in message mode. You can customize your profile now.
+          </Text>
+        )}
+      </Box>
+      {setupError && (
+        <Text size="T200" style={{ color: color.Critical.Main }}>
+          {setupError}
+        </Text>
+      )}
+      {setupError &&
+        setupMode === 'existing' &&
+        existingRoomId &&
+        !created &&
+        mx.getRoom(existingRoomId)?.getMyMembership() === 'join' && (
+          <Box alignItems="Center" gap="300" wrap="Wrap">
+            <Button
+              size="300"
+              variant="Secondary"
+              fill="Soft"
+              radii="300"
+              disabled={creating}
+              onClick={handleUseLight}
+            >
+              <Text size="B300">Use without admin rights</Text>
+            </Button>
+            <Text size="T200" priority="300">
+              Everyone has to choose this same room themselves.
+            </Text>
+          </Box>
+        )}
+      <Text size="T200" priority="300">
+        Not an admin? Ask the admin of your server to set it up; Diddy joins it automatically.
+      </Text>
+    </SettingsCard>
   );
+
+  const identityTab = (
+    <>
+      <SettingsCard
+        wide
+        icon={Icons.Eye}
+        title="Display name"
+        description="How your name looks to others, in light and in dark mode."
+      >
+        <div className={css.NameStage}>
+          <div className={`${LightTheme.classNames.join(' ')} ${css.NameStageHalf}`}>
+            <PreviewName name={displayName} style={draft.nameStyle} size={30} />
+            <Text size="T200" priority="300">
+              Light
+            </Text>
+          </div>
+          <div className={`${DarkTheme.classNames.join(' ')} ${css.NameStageHalf}`}>
+            <PreviewName name={displayName} style={draft.nameStyle} size={30} />
+            <Text size="T200" priority="300">
+              Dark
+            </Text>
+          </div>
+        </div>
+      </SettingsCard>
+      <SettingsCard
+        icon={Icons.Alphabet}
+        title="Name style"
+        description="Font, effect and weight of your display name."
+      >
+        <Field label="Font">
+          <select
+            className={css.Input}
+            value={ns.font ?? 'default'}
+            onChange={(e) => patchNameStyle({ font: e.target.value })}
+          >
+            {NAME_FONTS.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Effect">
+          <Segmented
+            label="Effect"
+            value={ns.effect ?? 'none'}
+            options={EFFECTS.map((eff) => ({ id: eff, label: EFFECT_LABEL[eff] }))}
+            onChange={(effect) => patchNameStyle({ effect })}
+          />
+        </Field>
+        <Field label="Bold">
+          <Switch
+            variant="Primary"
+            value={!!ns.bold}
+            onChange={(on) => patchNameStyle({ bold: on })}
+          />
+        </Field>
+        <Field label="Italic">
+          <Switch
+            variant="Primary"
+            value={!!ns.italic}
+            onChange={(on) => patchNameStyle({ italic: on })}
+          />
+        </Field>
+      </SettingsCard>
+      <SettingsCard
+        icon={Icons.Bulb}
+        title="Name color"
+        description="A solid color or a two-color gradient."
+      >
+        <Field label="Fill">
+          <Segmented
+            label="Fill"
+            value={gradient ? 'gradient' : 'solid'}
+            options={[
+              { id: 'solid', label: 'Solid' },
+              { id: 'gradient', label: 'Gradient' },
+            ]}
+            onChange={(mode) =>
+              patchNameStyle({
+                gradient:
+                  mode === 'gradient'
+                    ? gradient ?? { from: ns.color ?? '#7aa2f7', to: '#c084fc', angle: 90 }
+                    : undefined,
+              })
+            }
+          />
+        </Field>
+        {!gradient && (
+          <Field label="Color">
+            <ColorField
+              label="Name color"
+              value={ns.color}
+              fallback="#ffffff"
+              onChange={(c) => patchNameStyle({ color: c })}
+            />
+            {ns.color && <ClearButton onClick={() => patchNameStyle({ color: undefined })} />}
+          </Field>
+        )}
+        {gradient && (
+          <>
+            <Field label="Colors">
+              <ColorField
+                label="Gradient start"
+                value={gradient.from}
+                fallback="#7aa2f7"
+                onChange={(c) => patchNameStyle({ gradient: { ...gradient, from: c } })}
+              />
+              <ColorField
+                label="Gradient end"
+                value={gradient.to}
+                fallback="#c084fc"
+                onChange={(c) => patchNameStyle({ gradient: { ...gradient, to: c } })}
+              />
+            </Field>
+            <Field label="Angle">
+              <AngleField
+                value={gradient.angle ?? 90}
+                onChange={(angle) => patchNameStyle({ gradient: { ...gradient, angle } })}
+              />
+            </Field>
+          </>
+        )}
+      </SettingsCard>
+    </>
+  );
+
+  const cardTab = (
+    <>
+      <SettingsCard
+        icon={Icons.Flag}
+        title="Header & accent"
+        description="Header colors are used when there is no banner. The accent colors buttons and outline."
+        action={
+          (draft.card?.from || draft.card?.to || draft.card?.angle !== undefined) && (
+            <ClearButton
+              label="Clear header"
+              onClick={() => patchCard({ from: undefined, to: undefined, angle: undefined })}
+            />
+          )
+        }
+      >
+        <Field label="Header colors">
+          <ColorField
+            label="Header start"
+            value={draft.card?.from}
+            fallback="#3a3f5c"
+            onChange={(c) => patchCard({ from: c })}
+          />
+          <ColorField
+            label="Header end"
+            value={draft.card?.to}
+            fallback="#3a3f5c"
+            onChange={(c) => patchCard({ to: c })}
+          />
+        </Field>
+        <Field label="Direction">
+          <AngleField value={draft.card?.angle ?? 135} onChange={(angle) => patchCard({ angle })} />
+        </Field>
+        <Field label="Accent color">
+          <ColorField
+            label="Accent color"
+            value={draft.card?.accent}
+            fallback="#7aa2f7"
+            onChange={(c) => patchCard({ accent: c })}
+          />
+          {draft.card?.accent && <ClearButton onClick={() => patchCard({ accent: undefined })} />}
+        </Field>
+      </SettingsCard>
+      <SettingsCard
+        icon={Icons.Photo}
+        title="Banner"
+        description="An image or GIF at the top of your card. Drop a file or upload one."
+      >
+        <UploadField
+          title={draft.card?.bannerMxc ? 'Banner image' : 'No banner yet'}
+          hint="GIF, WebP or PNG"
+          accept="image/*"
+          wide
+          mxc={draft.card?.bannerMxc}
+          busy={busyKey === 'banner'}
+          onFile={(file) =>
+            upload('banner', file, (mxc) => patchCard({ bannerMxc: mxc, bannerPos: undefined }))
+          }
+          onRemove={() => patchCard({ bannerMxc: undefined, bannerPos: undefined })}
+        />
+        {draft.card?.bannerMxc && (
+          <PositionEditor
+            mxc={draft.card.bannerMxc}
+            pos={draft.card.bannerPos}
+            width={420}
+            ratio={640 / 192}
+            onChange={(bannerPos) => patchCard({ bannerPos })}
+          />
+        )}
+      </SettingsCard>
+      <SettingsCard
+        icon={Icons.Pencil}
+        title="Bio"
+        description="A short text under your name."
+        action={
+          <Text size="T200" priority="300">
+            {(draft.bio ?? '').length}/{MAX_BIO}
+          </Text>
+        }
+      >
+        <textarea
+          className={css.TextArea}
+          rows={4}
+          maxLength={MAX_BIO}
+          value={draft.bio ?? ''}
+          placeholder="Tell people a bit about you"
+          aria-label="Bio"
+          onChange={(e) => setDraft((d) => ({ ...d, bio: e.target.value.slice(0, MAX_BIO) }))}
+        />
+      </SettingsCard>
+      <AboutEditor draft={draft} patch={setDraft} />
+      <InterestsEditor key={baseKey} draft={draft} patch={setDraft} />
+      <LinksEditor draft={draft} patch={setDraft} />
+      <ActivityEditor draft={draft} patch={setDraft} />
+    </>
+  );
+
+  const avatarTab = (
+    <>
+      <SettingsCard
+        icon={Icons.User}
+        title="Animated avatar"
+        description="Other Diddy users see it instead of your normal avatar."
+      >
+        <UploadField
+          title={draft.animatedAvatarMxc ? 'Animated avatar' : 'No animated avatar'}
+          hint="Supports GIF, WebP and PNG"
+          accept="image/gif,image/webp,image/png"
+          round
+          mxc={draft.animatedAvatarMxc}
+          busy={busyKey === 'avatar'}
+          onFile={(file) =>
+            upload('avatar', file, (mxc) =>
+              setDraft((d) => ({ ...d, animatedAvatarMxc: mxc, avatarPos: undefined }))
+            )
+          }
+          onRemove={() =>
+            setDraft((d) => ({ ...d, animatedAvatarMxc: undefined, avatarPos: undefined }))
+          }
+        />
+        {draft.animatedAvatarMxc && (
+          <PositionEditor
+            mxc={draft.animatedAvatarMxc}
+            pos={draft.avatarPos}
+            width={120}
+            ratio={1}
+            round
+            onChange={(avatarPos) => setDraft((d) => ({ ...d, avatarPos }))}
+          />
+        )}
+      </SettingsCard>
+      <SettingsCard
+        icon={Icons.Bookmark}
+        title="Nameplate"
+        description="The color wash and image behind your name in member lists and the user panel."
+      >
+        <Field label="Color">
+          <ColorField
+            label="Nameplate color"
+            value={draft.nameplate?.color}
+            fallback="#7aa2f7"
+            onChange={(c) => patchPlate({ color: c })}
+          />
+          {draft.nameplate?.color && (
+            <ClearButton onClick={() => patchPlate({ color: undefined })} />
+          )}
+        </Field>
+        <UploadField
+          title={draft.nameplate?.imageMxc ? 'Nameplate image' : 'Image (optional)'}
+          hint="Shown behind your name, can be a GIF"
+          accept="image/*"
+          wide
+          mxc={draft.nameplate?.imageMxc}
+          busy={busyKey === 'plate'}
+          onFile={(file) =>
+            upload('plate', file, (mxc) => patchPlate({ imageMxc: mxc, imagePos: undefined }))
+          }
+          onRemove={() => patchPlate({ imageMxc: undefined, imagePos: undefined })}
+        />
+        {draft.nameplate?.imageMxc && (
+          <PositionEditor
+            mxc={draft.nameplate.imageMxc}
+            pos={draft.nameplate.imagePos}
+            width={420}
+            ratio={560 / 80}
+            onChange={(imagePos) => patchPlate({ imagePos })}
+          />
+        )}
+      </SettingsCard>
+    </>
+  );
+
+  const statusTab = (
+    <>
+      <SettingsCard icon={Icons.Smile} title="Status" description="Shown next to your avatar.">
+        <Box gap="200" wrap="Wrap" role="group" aria-label="Status">
+          {STATUSES.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              className={css.Pill}
+              aria-pressed={(draft.status ?? 'online') === s.id}
+              onClick={() => setDraft((d) => ({ ...d, status: s.id }))}
+            >
+              <span className={css.Dot} style={{ background: s.color }} />
+              <Text as="span" size="T300">
+                {s.label}
+              </Text>
+            </button>
+          ))}
+        </Box>
+      </SettingsCard>
+      <BadgeEditor />
+    </>
+  );
+
+  const privacyTab = (
+    <>
+      <SettingsCard
+        icon={Icons.Server}
+        title="Data room"
+        description="The hidden room Diddy uses to share profiles, badges and name styles."
+      >
+        <div className={css.Group}>
+          {optionsRooms.map((room) => {
+            const light = isLightOptionsRoom(room);
+            return (
+              <div key={room.roomId} className={css.GroupRow}>
+                <Box direction="Column" grow="Yes" style={{ minWidth: 0 }}>
+                  <Text size="T300" truncate>
+                    {room.name}
+                  </Text>
+                  <Text size="T200" priority="300">
+                    {light ? 'Message mode' : 'State mode'}
+                  </Text>
+                </Box>
+                {light && (
+                  <Button
+                    size="300"
+                    variant="Critical"
+                    fill="None"
+                    radii="300"
+                    onClick={() => {
+                      removeLightOptionsRoom(room.roomId);
+                      setLightUsed(false);
+                    }}
+                  >
+                    <Text size="B300">Stop using this room</Text>
+                  </Button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        {lightRooms.length > 0 && (
+          <Text size="T200" priority="300">
+            Message mode (no admin rights): your profile is stored as hidden messages.
+          </Text>
+        )}
+      </SettingsCard>
+      <SettingsCard
+        icon={Icons.ShieldLock}
+        title="What others see"
+        description="Everything on this page is optional."
+      >
+        <Text size="T300">
+          Your profile card, badges and name style are shared with everyone in the data room who
+          uses Diddy. Fields you leave empty are not shared. Links must be https addresses and are
+          checked for each platform.
+        </Text>
+      </SettingsCard>
+      <SettingsCard
+        wide
+        icon={Icons.Terminal}
+        title="Diagnostics"
+        description="Technical details about the data rooms, for troubleshooting."
+      >
+        <DebugPanel mx={mx} />
+      </SettingsCard>
+    </>
+  );
+
+  const tabContent: Record<EditorTab, React.ReactNode> = {
+    identity: identityTab,
+    card: cardTab,
+    avatar: avatarTab,
+    status: statusTab,
+    layout: <LayoutEditor draft={draft} patch={setDraft} />,
+    privacy: hasOptionsRoom ? privacyTab : null,
+  };
 
   return (
     <Page>
-      <PageHeader outlined={false}>
-        <Box grow="Yes" gap="200">
-          <Box grow="Yes" alignItems="Center" gap="200">
-            <Text size="H3" truncate>
-              Profile
-            </Text>
-          </Box>
-          {hasOptionsRoom && (
-            <Box shrink="No" alignItems="Center" gap="200">
-              <Button
-                size="300"
-                variant="Secondary"
-                fill="None"
-                radii="300"
-                disabled={saving || stableKey(draft) === stableKey({})}
-                onClick={() => {
-                  setDraft({});
-                  setSaveError(undefined);
-                }}
-              >
-                <Text size="B300">Reset to default</Text>
-              </Button>
-              <Button
-                size="300"
-                variant="Secondary"
-                fill="Soft"
-                radii="300"
-                disabled={saving || !dirty}
-                onClick={() => {
-                  setDraft(base);
-                  setSaveError(undefined);
-                }}
-              >
-                <Text size="B300">Cancel</Text>
-              </Button>
-              <Button
-                size="300"
-                variant="Primary"
-                radii="300"
-                disabled={saving || !dirty || busyKey !== undefined}
-                onClick={handleSave}
-              >
-                <Text size="B300">{saving ? 'Saving...' : 'Save changes'}</Text>
-              </Button>
-            </Box>
-          )}
-          <Box shrink="No">
-            <IconButton onClick={requestClose} variant="Surface">
-              <Icon src={Icons.Cross} />
-            </IconButton>
-          </Box>
-        </Box>
-      </PageHeader>
       <Box grow="Yes">
         <Scroll hideTrack visibility="Hover">
-          <PageContent>
-            <div className={css.Wrap}>
-              <div className={css.Layout}>
-                <div className={css.Editor}>
-                  {/* 1. Data room */}
-                  {hasOptionsRoom ? (
-                    <Section
-                      title="Data room"
-                      description="The hidden room Diddy uses to share profiles, badges and name styles."
+          <div className={css.Wrap}>
+            <header className={css.Head}>
+              <div className={css.HeadText}>
+                <Text as="h1" size="H2" className={css.HeadTitle}>
+                  Profile
+                </Text>
+                <Text size="T300" priority="300">
+                  Customize your identity, profile card and how you appear to others on Matrix.
+                </Text>
+              </div>
+              <div className={css.HeadActions}>
+                {hasOptionsRoom && (
+                  <>
+                    <Button
+                      size="400"
+                      variant="Secondary"
+                      fill="None"
+                      radii="300"
+                      before={<Icon size="100" src={Icons.Reload} />}
+                      disabled={saving || stableKey(draft) === stableKey({})}
+                      onClick={() => {
+                        setDraft({});
+                        setSaveError(undefined);
+                      }}
                     >
-                      {optionsRooms.map((room) => {
-                        const light = isLightOptionsRoom(room);
-                        return (
-                          <Box
-                            key={room.roomId}
-                            alignItems="Center"
-                            justifyContent="SpaceBetween"
-                            gap="300"
-                            wrap="Wrap"
-                          >
-                            <Text size="T300">
-                              Data room: <b>{room.name}</b> ({light ? 'message mode' : 'state mode'}
-                              )
-                            </Text>
-                            {light && (
-                              <Button
-                                size="300"
-                                variant="Critical"
-                                fill="None"
-                                radii="300"
-                                onClick={() => {
-                                  removeLightOptionsRoom(room.roomId);
-                                  setLightUsed(false);
-                                }}
-                              >
-                                <Text size="B300">Stop using this room</Text>
-                              </Button>
-                            )}
-                          </Box>
-                        );
-                      })}
-                      {lightRooms.length > 0 && (
-                        <Text size="T200" priority="300">
-                          Message mode (no admin rights): your profile is stored as hidden messages.
-                        </Text>
-                      )}
-                      <DebugPanel mx={mx} />
-                    </Section>
-                  ) : (
-                    <Section
-                      title="Data room"
-                      description="Set up the hidden room Diddy uses to share profiles, badges and name styles."
+                      <Text size="B400">Reset to default</Text>
+                    </Button>
+                    <Button
+                      size="400"
+                      variant="Secondary"
+                      fill="Soft"
+                      radii="300"
+                      disabled={saving || !dirty}
+                      onClick={resetDraft}
                     >
-                      <Text size="T300">
-                        On a private server where everyone uses Diddy, an admin creates a hidden
-                        room that Diddy uses to share profiles, badges and name styles between
-                        everyone. Without it your customization cannot be saved or seen by others.
-                      </Text>
-                      <Row label="Mode">
-                        <select
-                          className={css.Input}
-                          value={setupMode}
-                          onChange={(e) => setSetupMode(e.target.value as 'new' | 'existing')}
-                          disabled={creating}
-                        >
-                          <option value="new">Create a new hidden room</option>
-                          <option value="existing">Use an existing room</option>
-                        </select>
-                      </Row>
-                      {setupMode === 'new' && (
-                        <>
-                          <Row label="Room name">
-                            <input
-                              className={css.Input}
-                              value={roomName}
-                              onChange={(e) => setRoomName(e.target.value)}
-                              placeholder={OPTIONS_ROOM_NAME}
-                              disabled={creating}
-                            />
-                          </Row>
-                          <Row label="Create it in">
-                            <select
-                              className={css.Input}
-                              value={spaceId}
-                              onChange={(e) => setSpaceId(e.target.value)}
-                              disabled={creating}
-                            >
-                              <option value="">No space (private room)</option>
-                              {spaces.map((space) => (
-                                <option key={space.roomId} value={space.roomId}>
-                                  {space.name}
-                                </option>
-                              ))}
-                            </select>
-                          </Row>
-                        </>
-                      )}
-                      {setupMode === 'existing' && (
-                        <>
-                          <Row label="Room">
-                            <select
-                              className={css.Input}
-                              value={existingRoomId}
-                              onChange={(e) => setExistingRoomId(e.target.value)}
-                              disabled={creating}
-                            >
-                              <option value="">Choose a room...</option>
-                              <optgroup label="Your rooms">
-                                {existingRooms.map((room) => (
-                                  <option key={room.roomId} value={room.roomId}>
-                                    {room.name}
-                                    {isDiddyJoined(room.roomId, room.name) ? ' - Diddy room' : ''}
-                                  </option>
-                                ))}
-                              </optgroup>
-                              <optgroup label="Rooms in your spaces (not joined)">
-                                {unjoinedRooms.map((d) => (
-                                  <option key={d.roomId} value={d.roomId}>
-                                    {d.name} ({d.spaceName})
-                                    {looksLikeDiddyRoom(d.name, d.topic) ? ' - Diddy room' : ''}
-                                  </option>
-                                ))}
-                              </optgroup>
-                            </select>
-                            {selectedIsDiddy && <span className={css.Badge}>Diddy room</span>}
-                          </Row>
-                          <Row label="Spaces">
-                            <Button
-                              size="300"
-                              variant="Secondary"
-                              fill="Soft"
-                              radii="300"
-                              disabled={discovering || creating}
-                              onClick={loadDiscovered}
-                            >
-                              <Text size="B300">Refresh</Text>
-                            </Button>
-                            {discovering && (
-                              <Text size="T200" priority="300">
-                                Looking in your spaces...
-                              </Text>
-                            )}
-                            {!discovering && unjoinedRooms.length === 0 && (
-                              <Text size="T200" priority="300">
-                                No unjoined rooms found in your spaces.
-                              </Text>
-                            )}
-                          </Row>
-                          <Row label="Let others find it">
-                            <Switch variant="Primary" value={tagTopic} onChange={setTagTopic} />
-                          </Row>
-                          <Text size="T200" priority="300">
-                            The room is then hidden from the room lists in Diddy. You need
-                            permission to change its settings. With this switch on, [diddy-options]
-                            is added to its topic so Diddy clients in the same space join it
-                            automatically.
-                          </Text>
-                          <Text size="T200" priority="300">
-                            No admin rights in that room? You can still use it without them:
-                            everyone who uses Diddy has to choose this same room themselves; your
-                            profile is then stored as hidden messages in it.
-                          </Text>
-                        </>
-                      )}
-                      <Box alignItems="Center" gap="300" wrap="Wrap">
-                        <Button
-                          size="300"
-                          variant="Primary"
-                          radii="300"
-                          disabled={creating || created}
-                          onClick={handleCreate}
-                        >
-                          <Text size="B300">
-                            {creating
-                              ? 'Working...'
-                              : setupMode === 'existing'
-                              ? selectedUnjoined
-                                ? 'Join and use'
-                                : 'Use this room'
-                              : 'Create Diddy Options room'}
-                          </Text>
-                        </Button>
-                        {created && (
-                          <Text size="T200" style={{ color: color.Success.Main }}>
-                            Room created. You can customize your profile now.
-                          </Text>
-                        )}
-                        {lightUsed && (
-                          <Text size="T200" style={{ color: color.Success.Main }}>
-                            Room is used in message mode. You can customize your profile now.
-                          </Text>
-                        )}
-                      </Box>
-                      {setupError && (
-                        <Text size="T200" style={{ color: color.Critical.Main }}>
-                          {setupError}
-                        </Text>
-                      )}
-                      {setupError &&
-                        setupMode === 'existing' &&
-                        existingRoomId &&
-                        !created &&
-                        mx.getRoom(existingRoomId)?.getMyMembership() === 'join' && (
-                          <Box alignItems="Center" gap="300" wrap="Wrap">
-                            <Button
-                              size="300"
-                              variant="Secondary"
-                              fill="Soft"
-                              radii="300"
-                              disabled={creating}
-                              onClick={handleUseLight}
-                            >
-                              <Text size="B300">Use without admin rights</Text>
-                            </Button>
-                            <Text size="T200" priority="300">
-                              Everyone has to choose this same room themselves.
-                            </Text>
-                          </Box>
-                        )}
-                      <Text size="T200" priority="300">
-                        Not an admin? Ask the admin of your server to set it up; Diddy joins it
-                        automatically.
-                      </Text>
-                    </Section>
-                  )}
+                      <Text size="B400">Cancel</Text>
+                    </Button>
+                    <Button
+                      size="400"
+                      variant="Primary"
+                      radii="300"
+                      disabled={saveDisabled}
+                      onClick={handleSave}
+                    >
+                      <Text size="B400">{saving ? 'Saving...' : 'Save changes'}</Text>
+                    </Button>
+                  </>
+                )}
+                <IconButton onClick={requestClose} variant="Surface" radii="300" aria-label="Close">
+                  <Icon src={Icons.Cross} />
+                </IconButton>
+              </div>
+            </header>
 
-                  <div
-                    className={css.Editor}
-                    style={
-                      hasOptionsRoom
-                        ? { marginTop: 8 }
-                        : { marginTop: 8, opacity: 0.5, pointerEvents: 'none' }
-                    }
-                    aria-disabled={!hasOptionsRoom}
-                    {...(hasOptionsRoom ? {} : ({ inert: '' } as object))}
-                  >
-                    <EditorTabs tab={tab} onChange={setTab} />
-                    {tab === 'identity' && (
-                      <Section
-                        title="Appearance of your name"
-                        description="Font, color, effect and style of your display name."
-                      >
-                        <Row label="Font">
-                          <select
-                            className={css.Input}
-                            value={ns.font ?? 'default'}
-                            onChange={(e) => patchNameStyle({ font: e.target.value })}
-                          >
-                            {NAME_FONTS.map((f) => (
-                              <option key={f.id} value={f.id}>
-                                {f.label}
-                              </option>
-                            ))}
-                          </select>
-                        </Row>
-                        <Row label="Gradient">
-                          <Switch
-                            variant="Primary"
-                            value={!!gradient}
-                            onChange={(on) =>
-                              patchNameStyle({
-                                gradient: on
-                                  ? { from: ns.color ?? '#7aa2f7', to: '#c084fc', angle: 90 }
-                                  : undefined,
-                              })
-                            }
-                          />
-                          <Text size="T200" priority="300">
-                            Two-color gradient instead of a solid color
-                          </Text>
-                        </Row>
-                        {!gradient && (
-                          <Row label="Solid color">
-                            <ColorField
-                              value={ns.color}
-                              fallback="#ffffff"
-                              onChange={(c) => patchNameStyle({ color: c })}
-                            />
-                            {ns.color && clearButton(() => patchNameStyle({ color: undefined }))}
-                          </Row>
-                        )}
-                        {gradient && (
-                          <>
-                            <Row label="Colors">
-                              <ColorField
-                                value={gradient.from}
-                                fallback="#7aa2f7"
-                                onChange={(c) =>
-                                  patchNameStyle({ gradient: { ...gradient, from: c } })
-                                }
-                              />
-                              <ColorField
-                                value={gradient.to}
-                                fallback="#c084fc"
-                                onChange={(c) =>
-                                  patchNameStyle({ gradient: { ...gradient, to: c } })
-                                }
-                              />
-                            </Row>
-                            <Row label="Angle">
-                              <AngleField
-                                value={gradient.angle ?? 90}
-                                onChange={(angle) =>
-                                  patchNameStyle({ gradient: { ...gradient, angle } })
-                                }
-                              />
-                            </Row>
-                          </>
-                        )}
-                        <Row label="Effect">
-                          <select
-                            className={css.Input}
-                            value={ns.effect ?? 'none'}
-                            onChange={(e) =>
-                              patchNameStyle({ effect: e.target.value as NameEffect })
-                            }
-                          >
-                            {EFFECTS.map((eff) => (
-                              <option key={eff} value={eff}>
-                                {eff.charAt(0).toUpperCase() + eff.slice(1)}
-                              </option>
-                            ))}
-                          </select>
-                        </Row>
-                        <Row label="Bold">
-                          <Switch
-                            variant="Primary"
-                            value={!!ns.bold}
-                            onChange={(on) => patchNameStyle({ bold: on })}
-                          />
-                        </Row>
-                        <Row label="Italic">
-                          <Switch
-                            variant="Primary"
-                            value={!!ns.italic}
-                            onChange={(on) => patchNameStyle({ italic: on })}
-                          />
-                        </Row>
-                        <div
-                          style={{
-                            padding: config.space.S400,
-                            borderRadius: 12,
-                            background: color.Surface.Container,
-                            textAlign: 'center',
-                          }}
-                        >
-                          <PreviewName name={displayName} style={draft.nameStyle} size={24} />
-                        </div>
-                      </Section>
-                    )}
-                    {tab === 'card' && (
-                      <>
-                        <Section
-                          title="Profile card"
-                          description="Header colors, banner and bio of your profile card."
-                        >
-                          <Row label="Header colors">
-                            <ColorField
-                              value={draft.card?.from}
-                              fallback="#3a3f5c"
-                              onChange={(c) => patchCard({ from: c })}
-                            />
-                            <ColorField
-                              value={draft.card?.to}
-                              fallback="#3a3f5c"
-                              onChange={(c) => patchCard({ to: c })}
-                            />
-                            {(draft.card?.from ||
-                              draft.card?.to ||
-                              draft.card?.angle !== undefined) &&
-                              clearButton(() =>
-                                patchCard({ from: undefined, to: undefined, angle: undefined })
-                              )}
-                          </Row>
-                          <Row label="Header angle">
-                            <AngleField
-                              value={draft.card?.angle ?? 135}
-                              onChange={(angle) => patchCard({ angle })}
-                            />
-                          </Row>
-                          <Row label="Accent color">
-                            <ColorField
-                              value={draft.card?.accent}
-                              fallback="#7aa2f7"
-                              onChange={(c) => patchCard({ accent: c })}
-                            />
-                            {draft.card?.accent &&
-                              clearButton(() => patchCard({ accent: undefined }))}
-                          </Row>
-                          <UploadField
-                            label="Banner (image or GIF)"
-                            accept="image/*"
-                            mxc={draft.card?.bannerMxc}
-                            busy={busyKey === 'banner'}
-                            onFile={(file) =>
-                              upload('banner', file, (mxc) =>
-                                patchCard({ bannerMxc: mxc, bannerPos: undefined })
-                              )
-                            }
-                            onRemove={() =>
-                              patchCard({ bannerMxc: undefined, bannerPos: undefined })
-                            }
-                          />
-                          {draft.card?.bannerMxc && (
-                            <Row label="Banner position" top>
-                              <PositionEditor
-                                mxc={draft.card.bannerMxc}
-                                pos={draft.card.bannerPos}
-                                width={340}
-                                ratio={640 / 192}
-                                onChange={(bannerPos) => patchCard({ bannerPos })}
-                              />
-                            </Row>
-                          )}
-                          <Row label="Bio" top>
-                            <Box direction="Column" gap="100" style={{ width: '100%' }}>
-                              <textarea
-                                className={css.TextArea}
-                                rows={3}
-                                maxLength={MAX_BIO}
-                                value={draft.bio ?? ''}
-                                placeholder="Tell people a bit about you"
-                                onChange={(e) =>
-                                  setDraft((d) => ({ ...d, bio: e.target.value.slice(0, MAX_BIO) }))
-                                }
-                                style={{ resize: 'vertical' }}
-                              />
-                              <Text size="T200" priority="300" style={{ textAlign: 'right' }}>
-                                {(draft.bio ?? '').length}/{MAX_BIO}
-                              </Text>
-                            </Box>
-                          </Row>
-                        </Section>
+            {!hasOptionsRoom && setupCard}
 
-                        <AboutEditor draft={draft} patch={setDraft} />
-                        <InterestsEditor key={baseKey} draft={draft} patch={setDraft} />
-                        <LinksEditor draft={draft} patch={setDraft} />
-                        <ActivityEditor draft={draft} patch={setDraft} />
-                      </>
-                    )}
-                    {tab === 'avatar' && (
-                      <Section
-                        title="Avatar & nameplate"
-                        description="An animated avatar and the nameplate shown behind your name in member lists."
-                      >
-                        <UploadField
-                          label="Animated avatar (GIF, WebP or PNG)"
-                          accept="image/gif,image/webp,image/png"
-                          round
-                          mxc={draft.animatedAvatarMxc}
-                          busy={busyKey === 'avatar'}
-                          onFile={(file) =>
-                            upload('avatar', file, (mxc) =>
-                              setDraft((d) => ({
-                                ...d,
-                                animatedAvatarMxc: mxc,
-                                avatarPos: undefined,
-                              }))
-                            )
-                          }
-                          onRemove={() =>
-                            setDraft((d) => ({
-                              ...d,
-                              animatedAvatarMxc: undefined,
-                              avatarPos: undefined,
-                            }))
-                          }
-                        />
-                        {draft.animatedAvatarMxc && (
-                          <Row label="Avatar position" top>
-                            <PositionEditor
-                              mxc={draft.animatedAvatarMxc}
-                              pos={draft.avatarPos}
-                              width={120}
-                              ratio={1}
-                              round
-                              onChange={(avatarPos) => setDraft((d) => ({ ...d, avatarPos }))}
-                            />
-                          </Row>
-                        )}
-                        <Text size="T200" priority="300">
-                          Other Diddy users see the animated avatar instead of your normal avatar.
-                        </Text>
-                        <Row label="Nameplate color">
-                          <ColorField
-                            value={draft.nameplate?.color}
-                            fallback="#7aa2f7"
-                            onChange={(c) => patchPlate({ color: c })}
-                          />
-                          {draft.nameplate?.color &&
-                            clearButton(() => patchPlate({ color: undefined }))}
-                        </Row>
-                        <UploadField
-                          label="Nameplate image (optional)"
-                          accept="image/*"
-                          mxc={draft.nameplate?.imageMxc}
-                          busy={busyKey === 'plate'}
-                          onFile={(file) =>
-                            upload('plate', file, (mxc) =>
-                              patchPlate({ imageMxc: mxc, imagePos: undefined })
-                            )
-                          }
-                          onRemove={() => patchPlate({ imageMxc: undefined, imagePos: undefined })}
-                        />
-                        {draft.nameplate?.imageMxc && (
-                          <Row label="Nameplate position" top>
-                            <PositionEditor
-                              mxc={draft.nameplate.imageMxc}
-                              pos={draft.nameplate.imagePos}
-                              width={340}
-                              ratio={560 / 80}
-                              onChange={(imagePos) => patchPlate({ imagePos })}
-                            />
-                          </Row>
-                        )}
-                      </Section>
-                    )}
-                    {tab === 'status' && (
-                      <>
-                        <Section title="Status" description="Shown next to your avatar.">
-                          <div className={css.Segment}>
-                            {STATUSES.map((s) => (
-                              <button
-                                key={s.id}
-                                type="button"
-                                className={css.SegmentButton}
-                                aria-pressed={(draft.status ?? 'online') === s.id}
-                                onClick={() => setDraft((d) => ({ ...d, status: s.id }))}
-                              >
-                                <span
-                                  style={{
-                                    width: 10,
-                                    height: 10,
-                                    borderRadius: '50%',
-                                    background: s.color,
-                                  }}
-                                />
-                                <Text size="T300">{s.label}</Text>
-                              </button>
-                            ))}
-                          </div>
-                        </Section>
-
-                        {/* 6. Badges */}
-                        <BadgeEditor />
-                      </>
-                    )}
-                    {tab === 'layout' && <LayoutEditor draft={draft} patch={setDraft} />}
-                  </div>
-
-                  {uploadError && (
-                    <Text size="T200" style={{ color: color.Critical.Main }}>
-                      {uploadError}
-                    </Text>
-                  )}
+            <div className={css.Layout}>
+              <div
+                className={hasOptionsRoom ? css.Main : `${css.Main} ${css.Disabled}`}
+                aria-disabled={!hasOptionsRoom}
+                {...(hasOptionsRoom ? {} : ({ inert: '' } as object))}
+              >
+                <EditorTabs
+                  tab={tab}
+                  onChange={setTab}
+                  hide={hasOptionsRoom ? undefined : ['privacy']}
+                />
+                {uploadError && (
+                  <Text size="T200" style={{ color: color.Critical.Main }}>
+                    {uploadError}
+                  </Text>
+                )}
+                <div className={css.Grid} role="tabpanel">
+                  {tabContent[tab]}
                 </div>
+              </div>
 
-                <div className={css.PreviewColumn}>
-                  <div
-                    className={
-                      draft.cardLayout?.theme === 'light'
-                        ? LightTheme.classNames.join(' ')
-                        : draft.cardLayout?.theme === 'dark'
-                        ? DarkTheme.classNames.join(' ')
-                        : undefined
-                    }
-                  >
-                    <ProfilePreview
+              <aside className={css.PreviewColumn} aria-label="Live preview">
+                <SettingsCard
+                  icon={Icons.Eye}
+                  title="Live preview"
+                  description="See how your profile card and nameplate look to others."
+                >
+                  <div className={themeClass(draft.cardLayout?.theme)}>
+                    <CardPreview
                       userId={myId}
                       displayName={displayName}
                       avatarUrl={avatarUrl}
                       draft={draft}
                     />
                   </div>
-                </div>
-              </div>
-
-              {dirty && hasOptionsRoom && (
-                <div className={css.SaveBar}>
-                  <Text size="T300">
-                    {saveError ? (
-                      <span style={{ color: color.Critical.Main }}>{saveError}</span>
-                    ) : (
-                      'You have unsaved changes.'
-                    )}
-                  </Text>
-                </div>
-              )}
+                </SettingsCard>
+                <SettingsCard
+                  icon={Icons.Bookmark}
+                  title="Nameplate preview"
+                  description="In member lists and the user panel."
+                >
+                  <NameplatePreview displayName={displayName} avatarUrl={avatarUrl} draft={draft} />
+                </SettingsCard>
+              </aside>
             </div>
-          </PageContent>
+
+            {dirty && hasOptionsRoom && (
+              <div className={css.SaveBar}>
+                <Text size="T300">
+                  {saveError ? (
+                    <span style={{ color: color.Critical.Main }}>{saveError}</span>
+                  ) : (
+                    'You have unsaved changes.'
+                  )}
+                </Text>
+                <Box gap="200" shrink="No">
+                  <Button
+                    size="300"
+                    variant="Secondary"
+                    fill="Soft"
+                    radii="300"
+                    disabled={saving}
+                    onClick={resetDraft}
+                  >
+                    <Text size="B300">Cancel</Text>
+                  </Button>
+                  <Button
+                    size="300"
+                    variant="Primary"
+                    radii="300"
+                    disabled={saveDisabled}
+                    onClick={handleSave}
+                  >
+                    <Text size="B300">{saving ? 'Saving...' : 'Save changes'}</Text>
+                  </Button>
+                </Box>
+              </div>
+            )}
+          </div>
         </Scroll>
       </Box>
     </Page>
