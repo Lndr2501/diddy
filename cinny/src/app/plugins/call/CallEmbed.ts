@@ -27,6 +27,7 @@ import { CallControl } from './CallControl';
 import { CallControlState } from './CallControlState';
 import { installScreenShareAudio, screenShareAudio } from './screenShareAudio';
 import { installContextMenuGuard } from '../contextMenu';
+import { installCallFrameMenu } from '../callFrameMenu';
 import { installSoundboard } from './soundboard';
 import { installCallTheme } from './callTheme';
 
@@ -187,6 +188,7 @@ export class CallEmbed {
       installScreenShareAudio(iframe.contentWindow);
       // the call view is its own document: without this it showed the web view menu again
       installContextMenuGuard(iframe.contentWindow?.document);
+      installCallFrameMenu(iframe.contentWindow?.document);
       installSoundboard(iframe.contentWindow);
       // Restyle the Element Call tiles to match the app theme.
       installCallTheme(iframe.contentWindow);
