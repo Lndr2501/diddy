@@ -35,12 +35,50 @@ export const trackPeerConnections = (win: Window | null | undefined) => {
 
 const POLL_MS = 4000;
 
+export type FrameDims = {
+  width?: number;
+  height?: number;
+  frameRate?: number;
+};
+
+/**
+ * Compares what the capture delivers with what actually leaves the machine (issue #11: logs showed
+ * 640x360 outbound while the user asked for 1080p). Returns a verdict line, or null while the
+ * numbers are not comparable yet. The cause hint follows the encoder's own qualityLimitationReason.
+ */
+export const resolutionDiagnosis = (
+  capture: FrameDims,
+  sent: FrameDims & { qualityLimitationReason?: string; targetBitrateKbps?: number }
+): string | null => {
+  if (!capture.width || !capture.height || !sent.width || !sent.height) return null;
+  if (sent.height >= capture.height && sent.width >= capture.width) {
+    return `sent matches capture ${capture.width}x${capture.height}`;
+  }
+  const reason = sent.qualityLimitationReason;
+  let cause: string;
+  if (reason === 'bandwidth') {
+    cause = `Ursache wahrscheinlich Bandbreite (Ziel ${sent.targetBitrateKbps ?? 0} kbps zu niedrig für ${capture.width}x${capture.height})`;
+  } else if (reason === 'CPU') {
+    cause = 'Ursache wahrscheinlich Encoder-CPU (Qualitätslimit vom Encoder gemeldet)';
+  } else if (reason === 'none') {
+    cause = 'Encoder drosselt nicht - zwischen Capture und Sender geht Auflösung verloren';
+  } else {
+    cause = `Encoder-Limit: ${reason ?? 'unbekannt'}`;
+  }
+  return `sent ${sent.width}x${sent.height} stays below capture ${capture.width}x${capture.height}; ${cause}`;
+};
+
 /** Logs sender/receiver stats every few seconds until the returned function is called. */
-export const startStatsLogging = (win: Window | null | undefined): (() => void) => {
+export const startStatsLogging = (
+  win: Window | null | undefined,
+  videoTrack?: { readyState: string; getSettings(): MediaTrackSettings }
+): (() => void) => {
   const list = win ? registries.get(win) : undefined;
   if (!list) return () => {};
 
   const lastBytes = new Map<string, { bytes: number; at: number }>();
+  // Issue #11: log the capture-vs-sent verdict whenever it changes, not on every poll.
+  let lastVerdict = '';
 
   const poll = async () => {
     // Forget closed connections.
@@ -87,6 +125,36 @@ export const startStatsLogging = (win: Window | null | undefined): (() => void) 
             }
           });
           if (lines.length > 0) diag(`stats pc${i}: ${lines.join(' | ')}`);
+          if (videoTrack && videoTrack.readyState === 'live') {
+            try {
+              const settings = videoTrack.getSettings();
+              let best: { width?: number; height?: number; qualityLimitationReason?: string; targetBitrateKbps?: number } = {};
+              report.forEach((r: Record<string, any>) => {
+                if (r.type !== 'outbound-rtp') return;
+                if (!(r.kind === 'video' || r.mediaType === 'video')) return;
+                const area = (r.frameWidth ?? 0) * (r.frameHeight ?? 0);
+                const bestArea = (best.width ?? 0) * (best.height ?? 0);
+                if (area >= bestArea) {
+                  best = {
+                    width: r.frameWidth,
+                    height: r.frameHeight,
+                    qualityLimitationReason: r.qualityLimitationReason,
+                    targetBitrateKbps: Math.round((r.targetBitrate ?? 0) / 1000),
+                  };
+                }
+              });
+              const verdict = resolutionDiagnosis(
+                { width: settings.width, height: settings.height, frameRate: settings.frameRate },
+                best
+              );
+              if (verdict && verdict !== lastVerdict) {
+                lastVerdict = verdict;
+                diag(`resolution watch: ${verdict}`);
+              }
+            } catch {
+              // Stats or settings may disappear between polls; the plain stats lines still help.
+            }
+          }
         } catch (e) {
           diag(`stats failed: ${String(e)}`);
         }

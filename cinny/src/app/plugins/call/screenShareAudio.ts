@@ -381,7 +381,7 @@ export const installScreenShareAudio = (win: Window | null | undefined) => {
         return stream;
       }
       let ended = false;
-      const stopStats = startStatsLogging(win);
+      const stopStats = startStatsLogging(win, video);
       cleanup = () => {
         if (ended) return;
         ended = true;
