@@ -102,8 +102,8 @@ export const Tabs = style({
   background: color.SurfaceVariant.Container,
   border: LINE,
   boxShadow: SOFT_SHADOW,
-  overflowX: 'auto',
-  scrollbarWidth: 'none',
+  // Wrap instead of scrolling: with a hidden scrollbar the last tabs were cut off and unreachable.
+  flexWrap: 'wrap',
   alignSelf: 'flex-start',
   maxWidth: '100%',
   boxSizing: 'border-box',
