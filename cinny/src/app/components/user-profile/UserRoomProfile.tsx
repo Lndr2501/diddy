@@ -6,7 +6,8 @@ import { ProfileStatus, UserHero, UserHeroName } from './UserHero';
 import { safeColor } from '../../plugins/diddy/sanitize';
 import * as css from './styles.css';
 import { useDiddyProfile } from '../../plugins/diddy/profiles';
-import { getMxIdServer, mxcUrlToHttp } from '../../utils/matrix';
+import { getDMRoomFor, getMxIdServer, mxcUrlToHttp } from '../../utils/matrix';
+import { useCallEmbed, useCallStart } from '../../hooks/useCallEmbed';
 import { getMemberAvatarMxc, getMemberDisplayName } from '../../utils/room';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
@@ -24,7 +25,7 @@ import { useRoomCreators } from '../../hooks/useRoomCreators';
 import { useRoomPermissions } from '../../hooks/useRoomPermissions';
 import { useMemberPowerCompare } from '../../hooks/useMemberPowerCompare';
 import { CreatorChip } from './CreatorChip';
-import { getDirectCreatePath, withSearchParam } from '../../pages/pathUtils';
+import { getDirectCreatePath, getDirectRoomPath, withSearchParam } from '../../pages/pathUtils';
 import { DirectCreateSearchParams } from '../../pages/paths';
 import { ProfileModules, readableTextOn } from './ProfileModules';
 import { DarkTheme, LightTheme } from '../../hooks/useTheme';
@@ -84,20 +85,46 @@ export function UserRoomProfile({ userId }: UserRoomProfileProps) {
   };
 
   const notMe = userId !== myUserId;
+  const dmRoom = notMe ? getDMRoomFor(mx, userId) : undefined;
+  const callEmbed = useCallEmbed();
+  const startDmCall = useCallStart(true);
+  const handleCall = () => {
+    if (!dmRoom) return;
+    closeUserRoomProfile();
+    startDmCall(dmRoom, { microphone: true, video: false, sound: true });
+    navigate(getDirectRoomPath(dmRoom.roomId));
+  };
+
   const actions = notMe ? (
-    <Button
-      size="300"
-      variant="Primary"
-      fill="Solid"
-      radii="Pill"
-      before={<Icon size="50" src={Icons.Message} filled />}
-      onClick={handleMessage}
-      style={
-        accent ? { backgroundColor: accent, color: accentText, borderColor: accent } : undefined
-      }
-    >
-      <Text size="B300">Message</Text>
-    </Button>
+    <Box gap="200">
+      <Button
+        size="300"
+        variant="Primary"
+        fill="Solid"
+        radii="Pill"
+        before={<Icon size="50" src={Icons.Message} filled />}
+        onClick={handleMessage}
+        style={
+          accent ? { backgroundColor: accent, color: accentText, borderColor: accent } : undefined
+        }
+      >
+        <Text size="B300">Message</Text>
+      </Button>
+      {dmRoom && (
+        <Button
+          size="300"
+          variant="Primary"
+          fill="Soft"
+          radii="Pill"
+          before={<Icon size="50" src={Icons.Phone} filled />}
+          onClick={handleCall}
+          disabled={!!callEmbed}
+          title={callEmbed ? 'Already in a call' : 'Start a private voice call'}
+        >
+          <Text size="B300">Call</Text>
+        </Button>
+      )}
+    </Box>
   ) : undefined;
 
   return (
