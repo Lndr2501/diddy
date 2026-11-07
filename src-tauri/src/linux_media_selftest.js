@@ -28,6 +28,34 @@
     } catch (e) {
       r.devices = `ERR ${e.name}`;
     }
+    if (r.rtc === 'function') {
+      // two peer connections in this page: offer/answer, ICE and a data channel message
+      try {
+        const a = new RTCPeerConnection();
+        const b = new RTCPeerConnection();
+        a.onicecandidate = (e) => e.candidate && b.addIceCandidate(e.candidate);
+        b.onicecandidate = (e) => e.candidate && a.addIceCandidate(e.candidate);
+        const channel = a.createDataChannel('selftest');
+        const received = new Promise((resolve) => {
+          b.ondatachannel = (e) => {
+            e.channel.onmessage = (m) => resolve(m.data);
+          };
+        });
+        channel.onopen = () => channel.send('pong');
+        await a.setLocalDescription(await a.createOffer());
+        await b.setRemoteDescription(a.localDescription);
+        await b.setLocalDescription(await b.createAnswer());
+        await a.setRemoteDescription(b.localDescription);
+        r.loopback = await Promise.race([
+          received,
+          new Promise((resolve) => setTimeout(() => resolve('timeout'), 15000)),
+        ]);
+        a.close();
+        b.close();
+      } catch (e) {
+        r.loopback = `ERR ${e.name} ${e.message}`;
+      }
+    }
   } catch (e) {
     r.error = String(e);
   }
