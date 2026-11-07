@@ -19,6 +19,7 @@ packages:
 settings:
   base:
     SWIFT_VERSION: "5.0"
+    SWIFT_OBJC_BRIDGING_HEADER: Diddy/Call/Diddy-Bridging-Header.h
     MARKETING_VERSION: "1.2.0"
     CURRENT_PROJECT_VERSION: "1"
     CODE_SIGN_STYLE: Automatic
@@ -31,6 +32,16 @@ targets:
     platform: iOS
     sources:
       - path: Diddy
+      # RNNoise, optimized in every configuration: it runs on the audio thread during calls.
+      - path: Vendor/rnnoise
+        excludes:
+          - README.md
+          - COPYING
+          - AUTHORS
+        compilerFlags:
+          - -O2
+          - -w
+          - -I$(SRCROOT)/Vendor/rnnoise/include
     dependencies:
       # MatrixRustSDK is a dynamic framework (the Rust core lives in it) and must be copied into
       # the app; CI checks that every @rpath framework is really inside the IPA.

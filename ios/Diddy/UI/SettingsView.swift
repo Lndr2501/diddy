@@ -10,6 +10,7 @@ struct SettingsView: View {
     @State private var iconError: String?
     @State private var confirmLogout: MatrixAccount?
     @State private var showRecovery = false
+    @AppStorage(NoiseSuppression.settingKey) private var noiseSuppression = true
 
     var body: some View {
         NavigationStack {
@@ -72,6 +73,18 @@ struct SettingsView: View {
 
                 Section {
                     NavigationLink("Sounds") { SoundSettingsView() }
+                }
+
+                Section {
+                    Toggle("Noise suppression", isOn: Binding(
+                        get: { noiseSuppression },
+                        set: { isOn in
+                            noiseSuppression = isOn
+                            NoiseSuppression.apply()
+                        }
+                    ))
+                } footer: {
+                    Text("Filters background noise such as fans and typing out of your microphone, on this device.")
                 }
 
                 Section("Security") {

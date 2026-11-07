@@ -80,7 +80,8 @@ Die App-Icons kommen aus `src-tauri/app-icons`. Neu erzeugen: `python3 ios/Tools
 |---|---|
 | `Diddy/App` | App-Start, Kontoliste, App-Icon |
 | `Diddy/Matrix` | Login, Sessions im Schlüsselbund, Sync, Räume/Spaces, Timeline, Medien |
-| `Diddy/Call` | Sprachkanal: MatrixRTC-Mitgliedschaft, JWT vom `lk-jwt-service`, LiveKit, Medien-Schlüssel |
+| `Diddy/Call` | Sprachkanal: MatrixRTC-Mitgliedschaft, JWT vom `lk-jwt-service`, LiveKit, Medien-Schlüssel, Rauschunterdrückung |
+| `Vendor/rnnoise` | [RNNoise](https://github.com/xiph/rnnoise) für die Rauschunterdrückung (BSD-3, siehe README dort) |
 | `Diddy/UI` | SwiftUI-Ansichten |
 
 Sprachkanäle sprechen das Protokoll von Element Call 0.20 (Desktop-Diddy):

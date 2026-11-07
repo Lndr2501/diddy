@@ -277,6 +277,7 @@ final class CallSession: NSObject, ObservableObject {
         )
         state = "Connecting…"
         try configureAudioSession()
+        NoiseSuppression.apply()
         try await liveKitRoom.connect(url: sfu.url, token: sfu.jwt, roomOptions: roomOptions)
 
         if encrypted {
