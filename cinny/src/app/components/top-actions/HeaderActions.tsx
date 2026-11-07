@@ -12,7 +12,7 @@ import { useUserProfile } from '../../hooks/useUserProfile';
 import { getMxIdLocalPart, mxcUrlToHttp } from '../../utils/matrix';
 import { nameInitials } from '../../utils/common';
 import { UserAvatar } from '../user-avatar';
-import { Modal500 } from '../Modal500';
+import { SettingsSheet } from '../SettingsSheet';
 import { Settings } from '../../features/settings';
 
 /** Search field that opens the global search modal (same as the Mod+K shortcut). */
@@ -123,9 +123,9 @@ export function HeaderProfileButton() {
         )}
       </TooltipProvider>
       {settings && (
-        <Modal500 requestClose={() => setSettings(false)}>
+        <SettingsSheet requestClose={() => setSettings(false)}>
           <Settings requestClose={() => setSettings(false)} />
-        </Modal500>
+        </SettingsSheet>
       )}
     </>
   );

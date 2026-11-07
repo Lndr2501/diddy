@@ -1,22 +1,21 @@
-import React, { useMemo, useState } from 'react';
+import React, { ChangeEventHandler, KeyboardEventHandler, useMemo, useState } from 'react';
 import {
   Avatar,
-  Box,
-  Button,
-  config,
   Icon,
   IconButton,
   Icons,
   IconSrc,
-  MenuItem,
+  Input,
   Overlay,
   OverlayBackdrop,
   OverlayCenter,
+  Scroll,
   Text,
 } from 'folds';
 import FocusTrap from 'focus-trap-react';
+import classNames from 'classnames';
+import { isKeyHotkey } from 'is-hotkey';
 import { AppearanceSettings, General } from './general';
-import { PageNav, PageNavContent, PageNavHeader, PageRoot } from '../../components/page';
 import { ScreenSize, useScreenSizeContext } from '../../hooks/useScreenSize';
 import { Account } from './account';
 import { useUserProfile } from '../../hooks/useUserProfile';
@@ -31,9 +30,9 @@ import { EmojisStickers } from './emojis-stickers';
 import { DeveloperTools } from './developer-tools';
 import { About } from './about';
 import { DiddyProfileSettings } from './diddy/DiddyProfileSettings';
-import { UseStateProvider } from '../../components/UseStateProvider';
 import { stopPropagation } from '../../utils/keyboard';
 import { LogoutDialog } from '../../components/LogoutDialog';
+import * as css from './styles.css';
 
 export enum SettingsPages {
   GeneralPage,
@@ -51,59 +50,136 @@ type SettingsMenuItem = {
   page: SettingsPages;
   name: string;
   icon: IconSrc;
+  tone: NonNullable<css.IconTileVariants>['tone'];
+  /** extra words the sidebar search matches */
+  keywords: string;
 };
 
-const useSettingsMenuItems = (): SettingsMenuItem[] =>
-  useMemo(
-    () => [
-      {
-        page: SettingsPages.GeneralPage,
-        name: 'General',
-        icon: Icons.Setting,
-      },
-      {
-        page: SettingsPages.AppearancePage,
-        name: 'Appearance',
-        icon: Icons.Photo,
-      },
-      {
-        page: SettingsPages.ProfilePage,
-        name: 'Profile',
-        icon: Icons.User,
-      },
-      {
-        page: SettingsPages.AccountPage,
-        name: 'Account',
-        icon: Icons.User,
-      },
-      {
-        page: SettingsPages.NotificationPage,
-        name: 'Notifications',
-        icon: Icons.Bell,
-      },
-      {
-        page: SettingsPages.DevicesPage,
-        name: 'Devices',
-        icon: Icons.Monitor,
-      },
-      {
-        page: SettingsPages.EmojisStickersPage,
-        name: 'Emojis & Stickers',
-        icon: Icons.Smile,
-      },
-      {
-        page: SettingsPages.DeveloperToolsPage,
-        name: 'Developer Tools',
-        icon: Icons.Terminal,
-      },
-      {
-        page: SettingsPages.AboutPage,
-        name: 'About',
-        icon: Icons.Info,
-      },
-    ],
-    []
+// Groups of the sidebar, separated by a gap like in macOS System Settings.
+const SETTINGS_MENU: SettingsMenuItem[][] = [
+  [
+    {
+      page: SettingsPages.GeneralPage,
+      name: 'General',
+      icon: Icons.Setting,
+      tone: 'Gray',
+      keywords: 'language editor messages media links privacy',
+    },
+    {
+      page: SettingsPages.AppearancePage,
+      name: 'Appearance',
+      icon: Icons.Sun,
+      tone: 'Blue',
+      keywords: 'theme dark light colour color font app icon',
+    },
+  ],
+  [
+    {
+      page: SettingsPages.ProfilePage,
+      name: 'Profile',
+      icon: Icons.User,
+      tone: 'Green',
+      keywords: 'avatar name banner badge card status',
+    },
+    {
+      page: SettingsPages.AccountPage,
+      name: 'Account',
+      icon: Icons.ShieldUser,
+      tone: 'SoftBlue',
+      keywords: 'matrix id email password contact ignored users',
+    },
+    {
+      page: SettingsPages.NotificationPage,
+      name: 'Notifications',
+      icon: Icons.Bell,
+      tone: 'Red',
+      keywords: 'sound mention keyword push alert',
+    },
+    {
+      page: SettingsPages.DevicesPage,
+      name: 'Devices',
+      icon: Icons.Monitor,
+      tone: 'Gray',
+      keywords: 'sessions verification encryption backup keys security',
+    },
+    {
+      page: SettingsPages.EmojisStickersPage,
+      name: 'Emojis & Stickers',
+      icon: Icons.Smile,
+      tone: 'Orange',
+      keywords: 'emoji sticker pack image',
+    },
+  ],
+  [
+    {
+      page: SettingsPages.DeveloperToolsPage,
+      name: 'Developer Tools',
+      icon: Icons.Terminal,
+      tone: 'Dark',
+      keywords: 'debug account data developer',
+    },
+    {
+      page: SettingsPages.AboutPage,
+      name: 'About',
+      icon: Icons.Info,
+      tone: 'Blue',
+      keywords: 'version cache reload credits source',
+    },
+  ],
+];
+
+const matchesQuery = (item: SettingsMenuItem, query: string): boolean => {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  return `${item.name} ${item.keywords}`.toLowerCase().includes(q);
+};
+
+type IconTileProps = {
+  icon: IconSrc;
+  tone: SettingsMenuItem['tone'];
+  filled?: boolean;
+};
+function IconTile({ icon, tone, filled }: IconTileProps) {
+  return (
+    <span className={css.IconTile({ tone })} aria-hidden>
+      <Icon src={icon} size="50" filled={filled} />
+    </span>
   );
+}
+
+function LogoutRow() {
+  const [logout, setLogout] = useState(false);
+
+  return (
+    <>
+      <button
+        type="button"
+        className={classNames(css.NavRow, css.NavRowCritical)}
+        onClick={() => setLogout(true)}
+      >
+        <IconTile icon={Icons.Power} tone="SoftRed" />
+        <Text as="span" size="T300" truncate>
+          Logout
+        </Text>
+      </button>
+      {logout && (
+        <Overlay open backdrop={<OverlayBackdrop />}>
+          <OverlayCenter>
+            <FocusTrap
+              focusTrapOptions={{
+                onDeactivate: () => setLogout(false),
+                clickOutsideDeactivates: true,
+                escapeDeactivates: stopPropagation,
+              }}
+            >
+              <LogoutDialog handleClose={() => setLogout(false)} />
+            </FocusTrap>
+          </OverlayCenter>
+        </Overlay>
+      )}
+    </>
+  );
+}
 
 type SettingsProps = {
   initialPage?: SettingsPages;
@@ -120,134 +196,194 @@ export function Settings({ initialPage, requestClose }: SettingsProps) {
     : undefined;
 
   const screenSize = useScreenSizeContext();
+  const isMobile = screenSize === ScreenSize.Mobile;
   const [activePage, setActivePage] = useState<SettingsPages | undefined>(() => {
-    if (initialPage) return initialPage;
-    return screenSize === ScreenSize.Mobile ? undefined : SettingsPages.GeneralPage;
+    if (initialPage !== undefined) return initialPage;
+    return isMobile ? undefined : SettingsPages.GeneralPage;
   });
-  const menuItems = useSettingsMenuItems();
+  const [query, setQuery] = useState('');
+
+  const groups = useMemo(
+    () =>
+      SETTINGS_MENU.map((group) => group.filter((item) => matchesQuery(item, query))).filter(
+        (group) => group.length > 0
+      ),
+    [query]
+  );
 
   const handlePageRequestClose = () => {
-    if (screenSize === ScreenSize.Mobile) {
+    if (isMobile) {
       setActivePage(undefined);
       return;
     }
     requestClose();
   };
 
+  const handleSearchChange: ChangeEventHandler<HTMLInputElement> = (evt) => {
+    setQuery(evt.currentTarget.value);
+  };
+
+  const handleSearchKeyDown: KeyboardEventHandler<HTMLInputElement> = (evt) => {
+    if (isKeyHotkey('enter', evt)) {
+      const first = groups[0]?.[0];
+      if (first) setActivePage(first.page);
+      return;
+    }
+    if (isKeyHotkey('escape', evt)) {
+      // first Esc clears the search, the next one leaves the field (and then closes the sheet)
+      if (query) {
+        setQuery('');
+        return;
+      }
+      const dialog = evt.currentTarget.closest<HTMLElement>('[role=dialog]');
+      if (dialog) dialog.focus();
+      else evt.currentTarget.blur();
+    }
+  };
+
+  const showSidebar = !isMobile || activePage === undefined;
+  const showContent = activePage !== undefined;
+
   return (
-    <PageRoot
-      nav={
-        screenSize === ScreenSize.Mobile && activePage !== undefined ? undefined : (
-          <PageNav size="300">
-            <PageNavHeader outlined={false}>
-              <Box grow="Yes" gap="200">
-                <Avatar size="200" radii="300">
-                  <UserAvatar
-                    userId={userId}
-                    src={avatarUrl}
-                    renderFallback={() => <Text size="H6">{nameInitials(displayName)}</Text>}
-                  />
-                </Avatar>
-                <Text size="H4" truncate>
+    <div className={css.SettingsRoot}>
+      {showSidebar && (
+        <nav className={css.Sidebar} data-compact={isMobile} aria-label="Settings">
+          <div className={css.SidebarTop}>
+            {isMobile && (
+              <div className={css.SidebarTopBar}>
+                <Text size="H3" truncate>
                   Settings
                 </Text>
-              </Box>
-              <Box shrink="No">
-                {screenSize === ScreenSize.Mobile && (
-                  <IconButton onClick={requestClose} variant="Background">
-                    <Icon src={Icons.Cross} />
+                <IconButton
+                  onClick={requestClose}
+                  variant="Background"
+                  radii="Pill"
+                  aria-label="Close settings"
+                >
+                  <Icon src={Icons.Cross} />
+                </IconButton>
+              </div>
+            )}
+            <button
+              type="button"
+              className={css.ProfileCard}
+              onClick={() => setActivePage(SettingsPages.ProfilePage)}
+              title="Edit profile"
+            >
+              <Avatar size="400" radii="Pill">
+                <UserAvatar
+                  userId={userId}
+                  src={avatarUrl}
+                  renderFallback={() => <Text size="H5">{nameInitials(displayName)}</Text>}
+                />
+              </Avatar>
+              <span className={css.ProfileText}>
+                <Text as="span" size="T400" style={{ fontWeight: 600 }} truncate>
+                  {displayName}
+                </Text>
+                <Text as="span" size="T200" className={css.ProfileSub} truncate>
+                  {userId}
+                </Text>
+              </span>
+            </button>
+            <Input
+              value={query}
+              onChange={handleSearchChange}
+              onKeyDown={handleSearchKeyDown}
+              before={<Icon size="50" src={Icons.Search} />}
+              after={
+                query ? (
+                  <IconButton
+                    size="300"
+                    radii="Pill"
+                    variant="Surface"
+                    aria-label="Clear search"
+                    onClick={() => setQuery('')}
+                  >
+                    <Icon size="50" src={Icons.Cross} />
                   </IconButton>
+                ) : undefined
+              }
+              placeholder="Search"
+              aria-label="Search settings"
+              size="300"
+              radii="300"
+              variant="Surface"
+            />
+          </div>
+          <div className={css.SidebarScroll}>
+            <Scroll variant="Background" direction="Vertical" size="300" hideTrack visibility="Hover">
+              <div className={css.SidebarList}>
+                {groups.length === 0 && (
+                  <Text className={css.SidebarEmpty} size="T300" priority="300">
+                    No results for “{query.trim()}”
+                  </Text>
                 )}
-              </Box>
-            </PageNavHeader>
-            <Box grow="Yes" direction="Column">
-              <PageNavContent>
-                <div style={{ flexGrow: 1 }}>
-                  {menuItems.map((item) => (
-                    <MenuItem
-                      key={item.name}
-                      variant="Background"
-                      radii="500"
-                      aria-pressed={activePage === item.page}
-                      before={<Icon src={item.icon} size="100" filled={activePage === item.page} />}
-                      onClick={() => setActivePage(item.page)}
-                    >
-                      <Text
-                        style={{
-                          fontWeight: activePage === item.page ? config.fontWeight.W600 : undefined,
-                        }}
-                        size="T300"
-                        truncate
-                      >
-                        {item.name}
-                      </Text>
-                    </MenuItem>
-                  ))}
-                </div>
-              </PageNavContent>
-              <Box style={{ padding: config.space.S200 }} shrink="No" direction="Column">
-                <UseStateProvider initial={false}>
-                  {(logout, setLogout) => (
-                    <>
-                      <Button
-                        size="300"
-                        variant="Critical"
-                        fill="None"
-                        radii="Pill"
-                        before={<Icon src={Icons.Power} size="100" />}
-                        onClick={() => setLogout(true)}
-                      >
-                        <Text size="B400">Logout</Text>
-                      </Button>
-                      {logout && (
-                        <Overlay open backdrop={<OverlayBackdrop />}>
-                          <OverlayCenter>
-                            <FocusTrap
-                              focusTrapOptions={{
-                                onDeactivate: () => setLogout(false),
-                                clickOutsideDeactivates: true,
-                                escapeDeactivates: stopPropagation,
-                              }}
-                            >
-                              <LogoutDialog handleClose={() => setLogout(false)} />
-                            </FocusTrap>
-                          </OverlayCenter>
-                        </Overlay>
-                      )}
-                    </>
-                  )}
-                </UseStateProvider>
-              </Box>
-            </Box>
-          </PageNav>
-        )
-      }
-    >
-      {activePage === SettingsPages.GeneralPage && (
-        <General requestClose={handlePageRequestClose} />
+                {groups.map((group) => (
+                  <div key={group[0].name} className={css.SidebarGroup}>
+                    {group.map((item) => {
+                      const active = activePage === item.page;
+                      return (
+                        <button
+                          key={item.name}
+                          type="button"
+                          className={css.NavRow}
+                          aria-current={active ? 'page' : undefined}
+                          onClick={() => setActivePage(item.page)}
+                        >
+                          <IconTile icon={item.icon} tone={item.tone} filled />
+                          <Text
+                            as="span"
+                            size="T300"
+                            style={{ fontWeight: active ? 600 : 500 }}
+                            truncate
+                          >
+                            {item.name}
+                          </Text>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </Scroll>
+          </div>
+          <div className={css.SidebarFooter}>
+            <LogoutRow />
+          </div>
+        </nav>
       )}
-      {activePage === SettingsPages.AppearancePage && (
-        <AppearanceSettings requestClose={handlePageRequestClose} />
+      {showContent && (
+        <div className={classNames(css.Content, isMobile && css.ContentCompact)}>
+          {activePage === SettingsPages.GeneralPage && (
+            <General requestClose={handlePageRequestClose} />
+          )}
+          {activePage === SettingsPages.AppearancePage && (
+            <AppearanceSettings requestClose={handlePageRequestClose} />
+          )}
+          {activePage === SettingsPages.ProfilePage && (
+            <DiddyProfileSettings requestClose={handlePageRequestClose} />
+          )}
+          {activePage === SettingsPages.AccountPage && (
+            <Account requestClose={handlePageRequestClose} />
+          )}
+          {activePage === SettingsPages.NotificationPage && (
+            <Notifications requestClose={handlePageRequestClose} />
+          )}
+          {activePage === SettingsPages.DevicesPage && (
+            <Devices requestClose={handlePageRequestClose} />
+          )}
+          {activePage === SettingsPages.EmojisStickersPage && (
+            <EmojisStickers requestClose={handlePageRequestClose} />
+          )}
+          {activePage === SettingsPages.DeveloperToolsPage && (
+            <DeveloperTools requestClose={handlePageRequestClose} />
+          )}
+          {activePage === SettingsPages.AboutPage && (
+            <About requestClose={handlePageRequestClose} />
+          )}
+        </div>
       )}
-      {activePage === SettingsPages.ProfilePage && (
-        <DiddyProfileSettings requestClose={handlePageRequestClose} />
-      )}
-      {activePage === SettingsPages.AccountPage && (
-        <Account requestClose={handlePageRequestClose} />
-      )}
-      {activePage === SettingsPages.NotificationPage && (
-        <Notifications requestClose={handlePageRequestClose} />
-      )}
-      {activePage === SettingsPages.DevicesPage && (
-        <Devices requestClose={handlePageRequestClose} />
-      )}
-      {activePage === SettingsPages.EmojisStickersPage && (
-        <EmojisStickers requestClose={handlePageRequestClose} />
-      )}
-      {activePage === SettingsPages.DeveloperToolsPage && (
-        <DeveloperTools requestClose={handlePageRequestClose} />
-      )}
-      {activePage === SettingsPages.AboutPage && <About requestClose={handlePageRequestClose} />}
-    </PageRoot>
+    </div>
   );
 }

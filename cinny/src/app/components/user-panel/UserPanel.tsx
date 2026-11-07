@@ -16,7 +16,7 @@ import {
 } from 'folds';
 import * as css from './UserPanel.css';
 import { UserAvatar } from '../user-avatar';
-import { Modal500 } from '../Modal500';
+import { SettingsSheet } from '../SettingsSheet';
 import { Settings } from '../../features/settings';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { useUserProfile } from '../../hooks/useUserProfile';
@@ -280,9 +280,9 @@ export function UserPanel() {
         </IconButton>
       </div>
       {settings && (
-        <Modal500 requestClose={() => setSettings(false)}>
+        <SettingsSheet requestClose={() => setSettings(false)}>
           <Settings requestClose={() => setSettings(false)} />
-        </Modal500>
+        </SettingsSheet>
       )}
     </div>
   );

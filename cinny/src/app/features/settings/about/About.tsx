@@ -35,20 +35,26 @@ export function About({ requestClose }: AboutProps) {
         <Scroll hideTrack visibility="Hover">
           <PageContent>
             <Box direction="Column" gap="700">
-              <Box gap="400">
+              {/* centred hero like the macOS "About This Mac" window */}
+              <Box
+                direction="Column"
+                alignItems="Center"
+                gap="400"
+                style={{ padding: `${toRem(24)} 0 ${toRem(8)}`, textAlign: 'center' }}
+              >
                 <Box shrink="No">
-                  <AppLogo size={60} />
+                  <AppLogo size={96} />
                 </Box>
-                <Box direction="Column" gap="300">
-                  <Box direction="Column" gap="100">
-                    <Box gap="100" alignItems="End">
-                      <Text size="H3">{APP_NAME}</Text>
-                      <Text size="T200">v{APP_VERSION}</Text>
-                    </Box>
-                    <Text>A Matrix chat client based on {UPSTREAM_NAME}.</Text>
+                <Box direction="Column" alignItems="Center" gap="300">
+                  <Box direction="Column" alignItems="Center" gap="100">
+                    <Text size="H2">{APP_NAME}</Text>
+                    <Text size="T300" priority="300">
+                      Version {APP_VERSION}
+                    </Text>
+                    <Text priority="400">A Matrix chat client based on {UPSTREAM_NAME}.</Text>
                   </Box>
 
-                  <Box gap="200" wrap="Wrap">
+                  <Box gap="200" wrap="Wrap" justifyContent="Center">
                     <Button
                       as="a"
                       href={APP_REPO_URL}
