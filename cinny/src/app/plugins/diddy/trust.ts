@@ -57,15 +57,30 @@ export const pickDefinition = <T extends Cand>(
   isValid: (c: T) => boolean
 ): T | undefined => {
   const tag = badgeIdOwnerTag(id);
-  const valid = candidates
-    .filter((c) => !!c.sender && isValid(c))
+  const possible = candidates
+    .filter((c) => !!c.sender)
     .filter((c) => tag === undefined || ownerTag(c.sender as string) === tag)
     .sort((a, b) => a.ts - b.ts);
-  if (valid.length === 0) return undefined;
   // older ids: the first writer owns the badge, only they may change it afterwards
-  const owner = valid[0].sender;
-  return valid.filter((c) => c.sender === owner).pop();
+  const owner = tag === undefined ? possible.find(isValid)?.sender : undefined;
+  const ofOwner = tag === undefined ? possible.filter((c) => c.sender === owner) : possible;
+  if (ofOwner.length === 0) return undefined;
+  // the owner's newest version wins; an invalid (empty) one is a deletion of the badge
+  const newest = ofOwner[ofOwner.length - 1];
+  return isValid(newest) ? newest : undefined;
 };
+
+/**
+ * True when a moderator removed the badge: the newest definition event of at least one moderator
+ * carries `deleted: true`. `isMod` decides who counts as moderator (power level of the sender).
+ */
+export const isRemovedByModerator = (
+  candidates: Cand[],
+  isMod: (sender: string) => boolean
+): boolean =>
+  latestPerSender(candidates.filter((c) => !!c.sender && isMod(c.sender as string))).some(
+    (c) => c.content.deleted === true
+  );
 
 export type ResolvedAward = { by: string; at: number; ts: number };
 

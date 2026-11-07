@@ -12,7 +12,7 @@ const compiled = ts.transpileModule(fs.readFileSync(filename, 'utf8'), {
 }).outputText;
 const mod = {};
 vm.runInNewContext(compiled, { exports: mod, console });
-const { ownerTag, makeBadgeId, badgeIdOwnerTag, pickDefinition } = mod;
+const { ownerTag, makeBadgeId, badgeIdOwnerTag, pickDefinition, isRemovedByModerator } = mod;
 // arrays created inside the vm context have another prototype: copy them for deepEqual
 const resolveAwards = (...args) => [...mod.resolveAwards(...args)];
 const latestPerSender = (...args) => [...mod.latestPerSender(...args)];
@@ -69,6 +69,30 @@ test('older ids without a tag: first writer owns the badge', () => {
   assert.equal(badgeIdOwnerTag('c.lq3x8f2k9a1b'), undefined);
   const picked = pickDefinition('c.lq3x8f2k9a1b', [def(MALLORY, 500, 'Fake'), def(ALICE, 100, 'Real')], always);
   assert.equal(picked.sender, ALICE);
+});
+
+test('the creator deletes a badge with an empty definition, others cannot', () => {
+  const id = makeBadgeId(ALICE, 1, 'ab12');
+  const valid = (c) => typeof c.content.name === 'string';
+  const tomb = (sender, ts) => ({ sender, ts, content: {} });
+  assert.equal(pickDefinition(id, [def(ALICE, 100, 'Real'), tomb(ALICE, 200)], valid), undefined);
+  // creating it again later brings it back
+  assert.equal(pickDefinition(id, [def(ALICE, 100), tomb(ALICE, 200), def(ALICE, 300, 'Again')], valid).content.name, 'Again');
+  // Mallory's empty event does nothing
+  assert.equal(pickDefinition(id, [def(ALICE, 100, 'Real'), tomb(MALLORY, 200)], valid).content.name, 'Real');
+  // older ids: only the first writer's tombstone counts
+  const old = 'c.lq3x8f2k9a1b';
+  assert.equal(pickDefinition(old, [def(ALICE, 100), tomb(ALICE, 200)], valid), undefined);
+  assert.equal(pickDefinition(old, [def(ALICE, 100), tomb(MALLORY, 200)], valid).sender, ALICE);
+});
+
+test('a moderator removes any badge with deleted: true, others cannot', () => {
+  const mod = (s) => s === BOB;
+  const removal = (sender, ts) => ({ sender, ts, content: { deleted: true } });
+  assert.equal(isRemovedByModerator([def(ALICE, 100), removal(BOB, 200)], mod), true);
+  assert.equal(isRemovedByModerator([def(ALICE, 100), removal(MALLORY, 200)], mod), false);
+  // the moderator re-defining it later lifts the removal
+  assert.equal(isRemovedByModerator([removal(BOB, 200), def(BOB, 300)], mod), false);
 });
 
 test('owner tags are stable, 11 characters and differ between users', () => {

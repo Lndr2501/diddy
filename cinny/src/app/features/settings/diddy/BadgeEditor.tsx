@@ -2,10 +2,15 @@ import React, { ChangeEventHandler, useRef, useState } from 'react';
 import { Box, Button, color, config, Icons, Spinner, Text } from 'folds';
 import { BadgeChip } from '../../../components/diddy/BadgeChip';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
-import { useOptionsRooms } from '../../../plugins/diddy/optionsRoom';
+import {
+  canModerateOptionsRoom,
+  getPrimaryOptionsRoom,
+  useOptionsRooms,
+} from '../../../plugins/diddy/optionsRoom';
 import {
   awardBadge,
   createCustomBadge,
+  deleteBadgeDef,
   patchMyProfile,
   revokeBadge,
   useBadgeDefs,
@@ -33,6 +38,25 @@ function BadgeLibrary() {
   const [filter, setFilter] = useState('');
   const [busyId, setBusyId] = useState<string>();
   const [error, setError] = useState<string>();
+
+  const optionsRoom = getPrimaryOptionsRoom(mx);
+  const isModerator = !!optionsRoom && canModerateOptionsRoom(mx, optionsRoom);
+  const canDelete = (badge: BadgeDef): boolean =>
+    !badge.global && (badge.createdBy === myUserId || isModerator);
+
+  const handleDelete = async (badge: BadgeDef) => {
+    // eslint-disable-next-line no-alert
+    if (!window.confirm(`Delete the badge "${badge.name}" for everyone?`)) return;
+    setBusyId(badge.id);
+    setError(undefined);
+    try {
+      await deleteBadgeDef(mx, badge);
+    } catch (e) {
+      setError(errorMessage(e, 'Failed to delete badge.'));
+    } finally {
+      setBusyId(undefined);
+    }
+  };
 
   const ownedIds = new Set(owned.map((b) => b.id));
   const query = filter.trim().toLowerCase();
@@ -131,6 +155,18 @@ function BadgeLibrary() {
                 >
                   <Text size="B300">{isOwned ? 'Remove' : 'Add to me'}</Text>
                 </Button>
+                {canDelete(badge) && (
+                  <Button
+                    size="300"
+                    radii="300"
+                    variant="Critical"
+                    fill="None"
+                    disabled={busyId !== undefined}
+                    onClick={() => handleDelete(badge)}
+                  >
+                    <Text size="B300">Delete from library</Text>
+                  </Button>
+                )}
               </Box>
             );
           })}
