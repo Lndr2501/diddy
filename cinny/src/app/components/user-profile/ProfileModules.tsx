@@ -41,11 +41,11 @@ const ACTIVITY_ICON: Record<ActivityKind, IconSrc> = {
   custom: Icons.Star,
 };
 export const ACTIVITY_LABEL: Record<ActivityKind, string> = {
-  music: 'Hört Musik',
-  game: 'Spielt',
-  working: 'Arbeitet an',
-  learning: 'Lernt',
-  custom: 'Aktivität',
+  music: 'Listening to',
+  game: 'Playing',
+  working: 'Working on',
+  learning: 'Learning',
+  custom: 'Activity',
 };
 
 const pill = (accent?: string) => ({
@@ -95,7 +95,7 @@ export function BioModule({ bio }: { bio?: string }) {
   const text = safeText(bio, 160);
   if (!text) return null;
   return (
-    <Section title="Über mich">
+    <Section title="About me">
       <Text size="T300" className={classNames(BreakWord, LineClamp3, css.AboutText)}>
         {text}
       </Text>
@@ -107,8 +107,12 @@ export function ActivityModule({ profile, accent }: { profile?: DiddyProfile; ac
   const activity = profile?.activity;
   if (!activity) return null;
   return (
-    <Section title="Aktivität">
-      <Box alignItems="Center" gap="300" style={{ ...pill(accent), borderRadius: config.radii.R400 }}>
+    <Section title="Activity">
+      <Box
+        alignItems="Center"
+        gap="300"
+        style={{ ...pill(accent), borderRadius: config.radii.R400 }}
+      >
         <Icon size="200" src={ACTIVITY_ICON[activity.kind]} />
         <Box direction="Column">
           <Text size="T200" priority="300">
@@ -131,7 +135,7 @@ export function ActivityModule({ profile, accent }: { profile?: DiddyProfile; ac
 export function InterestsModule({ interests, accent }: { interests?: string[]; accent?: string }) {
   if (!interests || interests.length === 0) return null;
   return (
-    <Section title="Interessen">
+    <Section title="Interests">
       <Box gap="200" wrap="Wrap">
         {interests.map((tag) => (
           <span key={tag} style={pill(accent)}>
@@ -170,9 +174,9 @@ export function LinksModule({ links, accent }: { links?: DiddyProfile['links']; 
 
 const TABS: { id: string; label: string; modules: CardModule[] }[] = [
   { id: 'info', label: 'Info', modules: ['about', 'bio'] },
-  { id: 'activity', label: 'Aktivität', modules: ['activity', 'interests'] },
+  { id: 'activity', label: 'Activity', modules: ['activity', 'interests'] },
   { id: 'links', label: 'Links', modules: ['links'] },
-  { id: 'shared', label: 'Gemeinsam', modules: ['sharedRooms'] },
+  { id: 'shared', label: 'Shared', modules: ['sharedRooms'] },
 ];
 
 type ProfileModulesProps = {
@@ -215,9 +219,10 @@ export function ProfileModules({ profile, accent, sharedRooms }: ProfileModulesP
     );
   }
 
-  const tabs = TABS.map((t) => ({ ...t, modules: t.modules.filter((m) => modules.includes(m)) })).filter(
-    (t) => t.modules.length > 0
-  );
+  const tabs = TABS.map((t) => ({
+    ...t,
+    modules: t.modules.filter((m) => modules.includes(m)),
+  })).filter((t) => t.modules.length > 0);
   if (tabs.length === 0) return null;
   const active = tabs.find((t) => t.id === tab) ?? tabs[0];
   return (

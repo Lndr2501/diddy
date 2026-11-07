@@ -42,6 +42,16 @@ import {
   NameplateStyle,
 } from '../../../plugins/diddy/types';
 import { BadgeEditor } from './BadgeEditor';
+import {
+  AboutEditor,
+  ActivityEditor,
+  EditorTab,
+  EditorTabs,
+  InterestsEditor,
+  LayoutEditor,
+  LinksEditor,
+} from './ProfileCardEditor';
+import { ProfileModules } from '../../../components/user-profile/ProfileModules';
 import * as css from './DiddyProfileSettings.css';
 import { RangeInput } from '../../../components/diddy/RangeInput';
 import { buildNameStyleCss } from '../../../components/diddy/DiddyName';
@@ -319,7 +329,11 @@ function PositionEditor({ mxc, pos, width, ratio, round, onChange }: PositionEdi
     // dragging right moves the image right, i.e. the visible area (focal point) to the left
     const x = kx > 0.01 ? d.start.x - (e.clientX - d.px) / kx : d.start.x;
     const y = ky > 0.01 ? d.start.y - (e.clientY - d.py) / ky : d.start.y;
-    onChange({ x: round1(clampNum(x, 0, 100)), y: round1(clampNum(y, 0, 100)), zoom: d.start.zoom });
+    onChange({
+      x: round1(clampNum(x, 0, 100)),
+      y: round1(clampNum(y, 0, 100)),
+      zoom: d.start.zoom,
+    });
   };
   const onPointerUp = (e: PointerEvent<HTMLDivElement>) => {
     drag.current = undefined;
@@ -375,7 +389,10 @@ function PositionEditor({ mxc, pos, width, ratio, round, onChange }: PositionEdi
           value={cur.zoom}
           aria-label="Zoom"
           onChange={(e) =>
-            onChange({ ...cur, zoom: clampNum(Math.round(Number(e.target.value) * 100) / 100, 1, 3) })
+            onChange({
+              ...cur,
+              zoom: clampNum(Math.round(Number(e.target.value) * 100) / 100, 1, 3),
+            })
           }
         />
         <Box>
@@ -473,9 +490,23 @@ function ProfilePreview({ userId, displayName, avatarUrl, draft }: PreviewProps)
       </div>
       <div
         className={css.Card}
-        style={accent ? { borderColor: accent, boxShadow: `0 0 0 1px color-mix(in srgb, ${accent} 33%, transparent)` } : undefined}
+        style={
+          accent
+            ? {
+                borderColor: accent,
+                boxShadow: `0 0 0 1px color-mix(in srgb, ${accent} 33%, transparent)`,
+              }
+            : undefined
+        }
       >
-        <div style={{ height: 96, background: headerBg, position: 'relative', overflow: 'hidden' }}>
+        <div
+          style={{
+            height: draft.cardLayout?.layout === 'compact' ? 56 : 96,
+            background: headerBg,
+            position: 'relative',
+            overflow: 'hidden',
+          }}
+        >
           {bannerUrl && <PositionedImg src={bannerUrl} pos={card?.bannerPos} />}
         </div>
         <div style={{ padding: `0 ${config.space.S400} ${config.space.S400}` }}>
@@ -484,14 +515,9 @@ function ProfilePreview({ userId, displayName, avatarUrl, draft }: PreviewProps)
           <Text size="T200" priority="300" style={{ display: 'block' }}>
             {userId}
           </Text>
-          {draft.bio && (
-            <Text
-              size="T300"
-              style={{ display: 'block', marginTop: config.space.S300, whiteSpace: 'pre-wrap' }}
-            >
-              {draft.bio}
-            </Text>
-          )}
+          <div style={{ marginTop: config.space.S300 }}>
+            <ProfileModules profile={{ v: 1, ...draft }} accent={accent} />
+          </div>
           <div
             style={{
               marginTop: config.space.S300,
@@ -689,6 +715,7 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
   }, [storedKey]);
 
   const dirty = stableKey(draft) !== baseKey;
+  const [tab, setTab] = useState<EditorTab>('identity');
 
   const patchNameStyle = (p: Partial<NameStyle>) =>
     setDraft((d) => ({ ...d, nameStyle: { ...d.nameStyle, ...p } }));
@@ -696,7 +723,6 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
     setDraft((d) => ({ ...d, card: { ...d.card, ...p } }));
   const patchPlate = (p: Partial<NameplateStyle>) =>
     setDraft((d) => ({ ...d, nameplate: { ...d.nameplate, ...p } }));
-
 
   // setup
   const spaces = mx
@@ -834,7 +860,21 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
     try {
       const clean = JSON.parse(JSON.stringify(draft)) as Draft;
       // keep everything the editor does not manage (shownBadges is written by BadgeEditor)
-      const { nameStyle, card, nameplate, animatedAvatarMxc, avatarPos, status, bio, ...kept } = (stored ?? { v: 1 }) as DiddyProfile;
+      const {
+        nameStyle,
+        card,
+        nameplate,
+        animatedAvatarMxc,
+        avatarPos,
+        status,
+        bio,
+        about,
+        interests,
+        links,
+        activity,
+        cardLayout,
+        ...kept
+      } = (stored ?? { v: 1 }) as DiddyProfile;
       await setMyProfile(mx, { ...kept, ...clean, v: 1 });
       setLocalBase(clean);
     } catch (e) {
@@ -891,7 +931,8 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
                             wrap="Wrap"
                           >
                             <Text size="T300">
-                              Data room: <b>{room.name}</b> ({light ? 'message mode' : 'state mode'})
+                              Data room: <b>{room.name}</b> ({light ? 'message mode' : 'state mode'}
+                              )
                             </Text>
                             {light && (
                               <Button
@@ -1021,14 +1062,15 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
                             <Switch variant="Primary" value={tagTopic} onChange={setTagTopic} />
                           </Row>
                           <Text size="T200" priority="300">
-                            The room is then hidden from the room lists in Diddy. You need permission
-                            to change its settings. With this switch on, [diddy-options] is added to
-                            its topic so Diddy clients in the same space join it automatically.
+                            The room is then hidden from the room lists in Diddy. You need
+                            permission to change its settings. With this switch on, [diddy-options]
+                            is added to its topic so Diddy clients in the same space join it
+                            automatically.
                           </Text>
                           <Text size="T200" priority="300">
-                            No admin rights in that room? You can still use it without them: everyone
-                            who uses Diddy has to choose this same room themselves; your profile is
-                            then stored as hidden messages in it.
+                            No admin rights in that room? You can still use it without them:
+                            everyone who uses Diddy has to choose this same room themselves; your
+                            profile is then stored as hidden messages in it.
                           </Text>
                         </>
                       )}
@@ -1104,290 +1146,318 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
                     aria-disabled={!hasOptionsRoom}
                     {...(hasOptionsRoom ? {} : ({ inert: '' } as object))}
                   >
-                    {/* 2. Appearance of your name */}
-                    <Section
-                      title="Appearance of your name"
-                      description="Font, color, effect and style of your display name."
-                    >
-                      <Row label="Font">
-                        <select
-                          className={css.Input}
-                          value={ns.font ?? 'default'}
-                          onChange={(e) => patchNameStyle({ font: e.target.value })}
+                    <EditorTabs tab={tab} onChange={setTab} />
+                    {tab === 'identity' && (
+                      <Section
+                        title="Appearance of your name"
+                        description="Font, color, effect and style of your display name."
+                      >
+                        <Row label="Font">
+                          <select
+                            className={css.Input}
+                            value={ns.font ?? 'default'}
+                            onChange={(e) => patchNameStyle({ font: e.target.value })}
+                          >
+                            {NAME_FONTS.map((f) => (
+                              <option key={f.id} value={f.id}>
+                                {f.label}
+                              </option>
+                            ))}
+                          </select>
+                        </Row>
+                        <Row label="Gradient">
+                          <Switch
+                            variant="Primary"
+                            value={!!gradient}
+                            onChange={(on) =>
+                              patchNameStyle({
+                                gradient: on
+                                  ? { from: ns.color ?? '#7aa2f7', to: '#c084fc', angle: 90 }
+                                  : undefined,
+                              })
+                            }
+                          />
+                          <Text size="T200" priority="300">
+                            Two-color gradient instead of a solid color
+                          </Text>
+                        </Row>
+                        {!gradient && (
+                          <Row label="Solid color">
+                            <ColorField
+                              value={ns.color}
+                              fallback="#ffffff"
+                              onChange={(c) => patchNameStyle({ color: c })}
+                            />
+                            {ns.color && clearButton(() => patchNameStyle({ color: undefined }))}
+                          </Row>
+                        )}
+                        {gradient && (
+                          <>
+                            <Row label="Colors">
+                              <ColorField
+                                value={gradient.from}
+                                fallback="#7aa2f7"
+                                onChange={(c) =>
+                                  patchNameStyle({ gradient: { ...gradient, from: c } })
+                                }
+                              />
+                              <ColorField
+                                value={gradient.to}
+                                fallback="#c084fc"
+                                onChange={(c) =>
+                                  patchNameStyle({ gradient: { ...gradient, to: c } })
+                                }
+                              />
+                            </Row>
+                            <Row label="Angle">
+                              <AngleField
+                                value={gradient.angle ?? 90}
+                                onChange={(angle) =>
+                                  patchNameStyle({ gradient: { ...gradient, angle } })
+                                }
+                              />
+                            </Row>
+                          </>
+                        )}
+                        <Row label="Effect">
+                          <select
+                            className={css.Input}
+                            value={ns.effect ?? 'none'}
+                            onChange={(e) =>
+                              patchNameStyle({ effect: e.target.value as NameEffect })
+                            }
+                          >
+                            {EFFECTS.map((eff) => (
+                              <option key={eff} value={eff}>
+                                {eff.charAt(0).toUpperCase() + eff.slice(1)}
+                              </option>
+                            ))}
+                          </select>
+                        </Row>
+                        <Row label="Bold">
+                          <Switch
+                            variant="Primary"
+                            value={!!ns.bold}
+                            onChange={(on) => patchNameStyle({ bold: on })}
+                          />
+                        </Row>
+                        <Row label="Italic">
+                          <Switch
+                            variant="Primary"
+                            value={!!ns.italic}
+                            onChange={(on) => patchNameStyle({ italic: on })}
+                          />
+                        </Row>
+                        <div
+                          style={{
+                            padding: config.space.S400,
+                            borderRadius: 12,
+                            background: color.Surface.Container,
+                            textAlign: 'center',
+                          }}
                         >
-                          {NAME_FONTS.map((f) => (
-                            <option key={f.id} value={f.id}>
-                              {f.label}
-                            </option>
-                          ))}
-                        </select>
-                      </Row>
-                      <Row label="Gradient">
-                        <Switch
-                          variant="Primary"
-                          value={!!gradient}
-                          onChange={(on) =>
-                            patchNameStyle({
-                              gradient: on
-                                ? { from: ns.color ?? '#7aa2f7', to: '#c084fc', angle: 90 }
-                                : undefined,
-                            })
+                          <PreviewName name={displayName} style={draft.nameStyle} size={24} />
+                        </div>
+                      </Section>
+                    )}
+                    {tab === 'card' && (
+                      <>
+                        <Section
+                          title="Profile card"
+                          description="Header colors, banner and bio of your profile card."
+                        >
+                          <Row label="Header colors">
+                            <ColorField
+                              value={draft.card?.from}
+                              fallback="#3a3f5c"
+                              onChange={(c) => patchCard({ from: c })}
+                            />
+                            <ColorField
+                              value={draft.card?.to}
+                              fallback="#3a3f5c"
+                              onChange={(c) => patchCard({ to: c })}
+                            />
+                            {(draft.card?.from ||
+                              draft.card?.to ||
+                              draft.card?.angle !== undefined) &&
+                              clearButton(() =>
+                                patchCard({ from: undefined, to: undefined, angle: undefined })
+                              )}
+                          </Row>
+                          <Row label="Header angle">
+                            <AngleField
+                              value={draft.card?.angle ?? 135}
+                              onChange={(angle) => patchCard({ angle })}
+                            />
+                          </Row>
+                          <Row label="Accent color">
+                            <ColorField
+                              value={draft.card?.accent}
+                              fallback="#7aa2f7"
+                              onChange={(c) => patchCard({ accent: c })}
+                            />
+                            {draft.card?.accent &&
+                              clearButton(() => patchCard({ accent: undefined }))}
+                          </Row>
+                          <UploadField
+                            label="Banner (image or GIF)"
+                            accept="image/*"
+                            mxc={draft.card?.bannerMxc}
+                            busy={busyKey === 'banner'}
+                            onFile={(file) =>
+                              upload('banner', file, (mxc) =>
+                                patchCard({ bannerMxc: mxc, bannerPos: undefined })
+                              )
+                            }
+                            onRemove={() =>
+                              patchCard({ bannerMxc: undefined, bannerPos: undefined })
+                            }
+                          />
+                          {draft.card?.bannerMxc && (
+                            <Row label="Banner position" top>
+                              <PositionEditor
+                                mxc={draft.card.bannerMxc}
+                                pos={draft.card.bannerPos}
+                                width={340}
+                                ratio={640 / 192}
+                                onChange={(bannerPos) => patchCard({ bannerPos })}
+                              />
+                            </Row>
+                          )}
+                          <Row label="Bio" top>
+                            <Box direction="Column" gap="100" style={{ width: '100%' }}>
+                              <textarea
+                                className={css.TextArea}
+                                rows={3}
+                                maxLength={MAX_BIO}
+                                value={draft.bio ?? ''}
+                                placeholder="Tell people a bit about you"
+                                onChange={(e) =>
+                                  setDraft((d) => ({ ...d, bio: e.target.value.slice(0, MAX_BIO) }))
+                                }
+                                style={{ resize: 'vertical' }}
+                              />
+                              <Text size="T200" priority="300" style={{ textAlign: 'right' }}>
+                                {(draft.bio ?? '').length}/{MAX_BIO}
+                              </Text>
+                            </Box>
+                          </Row>
+                        </Section>
+
+                        <AboutEditor draft={draft} patch={setDraft} />
+                        <InterestsEditor key={baseKey} draft={draft} patch={setDraft} />
+                        <LinksEditor draft={draft} patch={setDraft} />
+                        <ActivityEditor draft={draft} patch={setDraft} />
+                      </>
+                    )}
+                    {tab === 'avatar' && (
+                      <Section
+                        title="Avatar & nameplate"
+                        description="An animated avatar and the nameplate shown behind your name in member lists."
+                      >
+                        <UploadField
+                          label="Animated avatar (GIF, WebP or PNG)"
+                          accept="image/gif,image/webp,image/png"
+                          round
+                          mxc={draft.animatedAvatarMxc}
+                          busy={busyKey === 'avatar'}
+                          onFile={(file) =>
+                            upload('avatar', file, (mxc) =>
+                              setDraft((d) => ({
+                                ...d,
+                                animatedAvatarMxc: mxc,
+                                avatarPos: undefined,
+                              }))
+                            )
+                          }
+                          onRemove={() =>
+                            setDraft((d) => ({
+                              ...d,
+                              animatedAvatarMxc: undefined,
+                              avatarPos: undefined,
+                            }))
                           }
                         />
+                        {draft.animatedAvatarMxc && (
+                          <Row label="Avatar position" top>
+                            <PositionEditor
+                              mxc={draft.animatedAvatarMxc}
+                              pos={draft.avatarPos}
+                              width={120}
+                              ratio={1}
+                              round
+                              onChange={(avatarPos) => setDraft((d) => ({ ...d, avatarPos }))}
+                            />
+                          </Row>
+                        )}
                         <Text size="T200" priority="300">
-                          Two-color gradient instead of a solid color
+                          Other Diddy users see the animated avatar instead of your normal avatar.
                         </Text>
-                      </Row>
-                      {!gradient && (
-                        <Row label="Solid color">
+                        <Row label="Nameplate color">
                           <ColorField
-                            value={ns.color}
-                            fallback="#ffffff"
-                            onChange={(c) => patchNameStyle({ color: c })}
+                            value={draft.nameplate?.color}
+                            fallback="#7aa2f7"
+                            onChange={(c) => patchPlate({ color: c })}
                           />
-                          {ns.color && clearButton(() => patchNameStyle({ color: undefined }))}
+                          {draft.nameplate?.color &&
+                            clearButton(() => patchPlate({ color: undefined }))}
                         </Row>
-                      )}
-                      {gradient && (
-                        <>
-                          <Row label="Colors">
-                            <ColorField
-                              value={gradient.from}
-                              fallback="#7aa2f7"
-                              onChange={(c) => patchNameStyle({ gradient: { ...gradient, from: c } })}
-                            />
-                            <ColorField
-                              value={gradient.to}
-                              fallback="#c084fc"
-                              onChange={(c) => patchNameStyle({ gradient: { ...gradient, to: c } })}
+                        <UploadField
+                          label="Nameplate image (optional)"
+                          accept="image/*"
+                          mxc={draft.nameplate?.imageMxc}
+                          busy={busyKey === 'plate'}
+                          onFile={(file) =>
+                            upload('plate', file, (mxc) =>
+                              patchPlate({ imageMxc: mxc, imagePos: undefined })
+                            )
+                          }
+                          onRemove={() => patchPlate({ imageMxc: undefined, imagePos: undefined })}
+                        />
+                        {draft.nameplate?.imageMxc && (
+                          <Row label="Nameplate position" top>
+                            <PositionEditor
+                              mxc={draft.nameplate.imageMxc}
+                              pos={draft.nameplate.imagePos}
+                              width={340}
+                              ratio={560 / 80}
+                              onChange={(imagePos) => patchPlate({ imagePos })}
                             />
                           </Row>
-                          <Row label="Angle">
-                            <AngleField
-                              value={gradient.angle ?? 90}
-                              onChange={(angle) =>
-                                patchNameStyle({ gradient: { ...gradient, angle } })
-                              }
-                            />
-                          </Row>
-                        </>
-                      )}
-                      <Row label="Effect">
-                        <select
-                          className={css.Input}
-                          value={ns.effect ?? 'none'}
-                          onChange={(e) => patchNameStyle({ effect: e.target.value as NameEffect })}
-                        >
-                          {EFFECTS.map((eff) => (
-                            <option key={eff} value={eff}>
-                              {eff.charAt(0).toUpperCase() + eff.slice(1)}
-                            </option>
-                          ))}
-                        </select>
-                      </Row>
-                      <Row label="Bold">
-                        <Switch
-                          variant="Primary"
-                          value={!!ns.bold}
-                          onChange={(on) => patchNameStyle({ bold: on })}
-                        />
-                      </Row>
-                      <Row label="Italic">
-                        <Switch
-                          variant="Primary"
-                          value={!!ns.italic}
-                          onChange={(on) => patchNameStyle({ italic: on })}
-                        />
-                      </Row>
-                      <div
-                        style={{
-                          padding: config.space.S400,
-                          borderRadius: 12,
-                          background: color.Surface.Container,
-                          textAlign: 'center',
-                        }}
-                      >
-                        <PreviewName name={displayName} style={draft.nameStyle} size={24} />
-                      </div>
-                    </Section>
+                        )}
+                      </Section>
+                    )}
+                    {tab === 'status' && (
+                      <>
+                        <Section title="Status" description="Shown next to your avatar.">
+                          <div className={css.Segment}>
+                            {STATUSES.map((s) => (
+                              <button
+                                key={s.id}
+                                type="button"
+                                className={css.SegmentButton}
+                                aria-pressed={(draft.status ?? 'online') === s.id}
+                                onClick={() => setDraft((d) => ({ ...d, status: s.id }))}
+                              >
+                                <span
+                                  style={{
+                                    width: 10,
+                                    height: 10,
+                                    borderRadius: '50%',
+                                    background: s.color,
+                                  }}
+                                />
+                                <Text size="T300">{s.label}</Text>
+                              </button>
+                            ))}
+                          </div>
+                        </Section>
 
-                    {/* 3. Profile card */}
-                    <Section
-                      title="Profile card"
-                      description="Header colors, banner and bio of your profile card."
-                    >
-                      <Row label="Header colors">
-                        <ColorField
-                          value={draft.card?.from}
-                          fallback="#3a3f5c"
-                          onChange={(c) => patchCard({ from: c })}
-                        />
-                        <ColorField
-                          value={draft.card?.to}
-                          fallback="#3a3f5c"
-                          onChange={(c) => patchCard({ to: c })}
-                        />
-                        {(draft.card?.from || draft.card?.to || draft.card?.angle !== undefined) &&
-                          clearButton(() =>
-                            patchCard({ from: undefined, to: undefined, angle: undefined })
-                          )}
-                      </Row>
-                      <Row label="Header angle">
-                        <AngleField
-                          value={draft.card?.angle ?? 135}
-                          onChange={(angle) => patchCard({ angle })}
-                        />
-                      </Row>
-                      <Row label="Accent color">
-                        <ColorField
-                          value={draft.card?.accent}
-                          fallback="#7aa2f7"
-                          onChange={(c) => patchCard({ accent: c })}
-                        />
-                        {draft.card?.accent && clearButton(() => patchCard({ accent: undefined }))}
-                      </Row>
-                      <UploadField
-                        label="Banner (image or GIF)"
-                        accept="image/*"
-                        mxc={draft.card?.bannerMxc}
-                        busy={busyKey === 'banner'}
-                        onFile={(file) =>
-                          upload('banner', file, (mxc) =>
-                            patchCard({ bannerMxc: mxc, bannerPos: undefined })
-                          )
-                        }
-                        onRemove={() => patchCard({ bannerMxc: undefined, bannerPos: undefined })}
-                      />
-                      {draft.card?.bannerMxc && (
-                        <Row label="Banner position" top>
-                          <PositionEditor
-                            mxc={draft.card.bannerMxc}
-                            pos={draft.card.bannerPos}
-                            width={340}
-                            ratio={640 / 192}
-                            onChange={(bannerPos) => patchCard({ bannerPos })}
-                          />
-                        </Row>
-                      )}
-                      <Row label="Bio" top>
-                        <Box direction="Column" gap="100" style={{ width: '100%' }}>
-                          <textarea
-                            className={css.TextArea}
-                            rows={3}
-                            maxLength={MAX_BIO}
-                            value={draft.bio ?? ''}
-                            placeholder="Tell people a bit about you"
-                            onChange={(e) =>
-                              setDraft((d) => ({ ...d, bio: e.target.value.slice(0, MAX_BIO) }))
-                            }
-                            style={{ resize: 'vertical' }}
-                          />
-                          <Text size="T200" priority="300" style={{ textAlign: 'right' }}>
-                            {(draft.bio ?? '').length}/{MAX_BIO}
-                          </Text>
-                        </Box>
-                      </Row>
-                    </Section>
-
-                    {/* 4. Avatar & nameplate */}
-                    <Section
-                      title="Avatar & nameplate"
-                      description="An animated avatar and the nameplate shown behind your name in member lists."
-                    >
-                      <UploadField
-                        label="Animated avatar (GIF, WebP or PNG)"
-                        accept="image/gif,image/webp,image/png"
-                        round
-                        mxc={draft.animatedAvatarMxc}
-                        busy={busyKey === 'avatar'}
-                        onFile={(file) =>
-                          upload('avatar', file, (mxc) =>
-                            setDraft((d) => ({ ...d, animatedAvatarMxc: mxc, avatarPos: undefined }))
-                          )
-                        }
-                        onRemove={() =>
-                          setDraft((d) => ({
-                            ...d,
-                            animatedAvatarMxc: undefined,
-                            avatarPos: undefined,
-                          }))
-                        }
-                      />
-                      {draft.animatedAvatarMxc && (
-                        <Row label="Avatar position" top>
-                          <PositionEditor
-                            mxc={draft.animatedAvatarMxc}
-                            pos={draft.avatarPos}
-                            width={120}
-                            ratio={1}
-                            round
-                            onChange={(avatarPos) => setDraft((d) => ({ ...d, avatarPos }))}
-                          />
-                        </Row>
-                      )}
-                      <Text size="T200" priority="300">
-                        Other Diddy users see the animated avatar instead of your normal avatar.
-                      </Text>
-                      <Row label="Nameplate color">
-                        <ColorField
-                          value={draft.nameplate?.color}
-                          fallback="#7aa2f7"
-                          onChange={(c) => patchPlate({ color: c })}
-                        />
-                        {draft.nameplate?.color && clearButton(() => patchPlate({ color: undefined }))}
-                      </Row>
-                      <UploadField
-                        label="Nameplate image (optional)"
-                        accept="image/*"
-                        mxc={draft.nameplate?.imageMxc}
-                        busy={busyKey === 'plate'}
-                        onFile={(file) =>
-                          upload('plate', file, (mxc) =>
-                            patchPlate({ imageMxc: mxc, imagePos: undefined })
-                          )
-                        }
-                        onRemove={() => patchPlate({ imageMxc: undefined, imagePos: undefined })}
-                      />
-                      {draft.nameplate?.imageMxc && (
-                        <Row label="Nameplate position" top>
-                          <PositionEditor
-                            mxc={draft.nameplate.imageMxc}
-                            pos={draft.nameplate.imagePos}
-                            width={340}
-                            ratio={560 / 80}
-                            onChange={(imagePos) => patchPlate({ imagePos })}
-                          />
-                        </Row>
-                      )}
-                    </Section>
-
-                    {/* 5. Status */}
-                    <Section title="Status" description="Shown next to your avatar.">
-                      <div className={css.Segment}>
-                        {STATUSES.map((s) => (
-                          <button
-                            key={s.id}
-                            type="button"
-                            className={css.SegmentButton}
-                            aria-pressed={(draft.status ?? 'online') === s.id}
-                            onClick={() => setDraft((d) => ({ ...d, status: s.id }))}
-                          >
-                            <span
-                              style={{
-                                width: 10,
-                                height: 10,
-                                borderRadius: '50%',
-                                background: s.color,
-                              }}
-                            />
-                            <Text size="T300">{s.label}</Text>
-                          </button>
-                        ))}
-                      </div>
-                    </Section>
-
-                    {/* 6. Badges */}
-                    <BadgeEditor />
+                        {/* 6. Badges */}
+                        <BadgeEditor />
+                      </>
+                    )}
+                    {tab === 'layout' && <LayoutEditor draft={draft} patch={setDraft} />}
                   </div>
 
                   {uploadError && (
