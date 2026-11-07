@@ -1,4 +1,5 @@
-# Native iOS/iPadOS client. Generate the Xcode project with `xcodegen` in this folder
+# Native iOS/iPadOS client: one app target, no extensions, so sideloading with a free Apple ID
+# needs a single App ID. Generate the Xcode project with `xcodegen` in this folder
 # (the .xcodeproj is not committed), see ios/README.md.
 name: Diddy
 options:
@@ -37,13 +38,6 @@ targets:
       - package: MatrixRustSDK
         embed: true
       - package: LiveKit
-      - target: DiddyBroadcast
-        embed: true
-    entitlements:
-      path: Diddy/Diddy.entitlements
-      properties:
-        com.apple.security.application-groups:
-          - group.app.diddy.ios
     info:
       path: Diddy/Info.plist
       properties:
@@ -83,33 +77,3 @@ targets:
         # Home-screen icons the user can switch to in Settings (see AppIconManager.swift).
         ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: AppIcon-Blue AppIcon-Purple AppIcon-Black AppIcon-Magenta
         ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: NO
-
-  # ReplayKit broadcast upload extension: captures the whole screen (also outside Diddy) and hands
-  # the frames to the app through the shared app group, where LiveKit publishes them.
-  DiddyBroadcast:
-    type: app-extension
-    platform: iOS
-    sources:
-      - path: DiddyBroadcast
-    dependencies:
-      - package: LiveKit
-    entitlements:
-      path: DiddyBroadcast/DiddyBroadcast.entitlements
-      properties:
-        com.apple.security.application-groups:
-          - group.app.diddy.ios
-    info:
-      path: DiddyBroadcast/Info.plist
-      properties:
-        CFBundleDisplayName: Diddy Screen Share
-        CFBundleShortVersionString: $(MARKETING_VERSION)
-        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
-        NSExtension:
-          NSExtensionPointIdentifier: com.apple.broadcast-services-upload
-          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).SampleHandler
-          RPBroadcastProcessMode: RPBroadcastProcessModeSampleBuffer
-    settings:
-      base:
-        # LiveKit derives the app group (group.app.diddy.ios) and the extension id from these.
-        PRODUCT_BUNDLE_IDENTIFIER: app.diddy.ios.broadcast
-        LD_RUNPATH_SEARCH_PATHS: $(inherited) @executable_path/Frameworks @executable_path/../../Frameworks

@@ -127,7 +127,12 @@ final class CallSession: NSObject, ObservableObject {
         }
 
         let roomOptions = LiveKit.RoomOptions(
-            defaultScreenShareCaptureOptions: LiveKit.ScreenShareCaptureOptions(dimensions: .h1080_169, fps: 15, appAudio: true),
+            // No broadcast extension (a second App ID would cost sideloaders one of their few free ones):
+            // iOS 27+ captures the whole screen in-process with ScreenCaptureKit, older iOS only Diddy itself.
+            defaultScreenShareCaptureOptions: LiveKit.ScreenShareCaptureOptions(
+                dimensions: .h1080_169, fps: 15, appAudio: true,
+                useBroadcastExtension: false, useScreenCaptureKit: true
+            ),
             adaptiveStream: true,
             dynacast: true,
             e2eeOptions: encrypted ? LiveKit.E2EEOptions(keyProvider: keyProvider) : nil
@@ -194,8 +199,9 @@ final class CallSession: NSObject, ObservableObject {
         refreshMembers()
     }
 
-    /// iOS 16–26: starts the ReplayKit broadcast picker (DiddyBroadcast extension, whole screen).
-    /// iOS 27+: LiveKit captures in-process with ScreenCaptureKit.
+    /// iOS 27+: the system picker, then ScreenCaptureKit in-process (whole screen, other apps too).
+    /// iOS 16–26: in-app ReplayKit capture, which only sees Diddy itself (Apple allows whole-screen
+    /// capture there only from a broadcast extension, which this app deliberately does not have).
     func toggleScreenShare() async {
         do {
             _ = try await liveKitRoom.localParticipant.setScreenShare(enabled: !screenSharing)
@@ -371,6 +377,12 @@ final class CallSession: NSObject, ObservableObject {
         else { return }
         // Element Call maps the key to the sender's LiveKit identity for legacy members.
         keyProvider.setKey(keyData: key, participantId: "\(message.senderId):\(device)", index: index)
+    }
+
+    /// Whether this iOS can share the whole screen without an extension.
+    static var sharesWholeScreen: Bool {
+        if #available(iOS 27.0, *) { return true }
+        return false
     }
 
     /// Element Call sends unpadded base64.

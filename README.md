@@ -25,7 +25,7 @@ Diddy basiert auf [Cinny](https://github.com/cinnyapp/cinny) und ergänzt alles,
 |---|:---:|:---:|:---:|
 | Chat, Räume, Verschlüsselung | ✅ | 🧪 gebaut, aber ungetestet | 🧪 native App, neu |
 | Sprachchat | ✅ | 🧪 nur NixOS-Paket `diddy-webrtc` | 🧪 |
-| Bildschirmübertragung | ✅ | ❌ | 🧪 ganzer Bildschirm |
+| Bildschirmübertragung | ✅ | ❌ | 🧪 ab iOS 27 ganzer Bildschirm, davor nur Diddy |
 | davon mit System-Ton | ✅ (macOS 14.2+) | ❌ | 🧪 App-Ton |
 | Mehrere Verbindungsprofile | ✅ (ab macOS 14) | 🧪 ungetestet | 🧪 mehrere Konten |
 | Sprachnachrichten | ✅ | 🧪 | ❌ |

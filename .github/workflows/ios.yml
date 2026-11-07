@@ -3,13 +3,14 @@ name: Build iOS
 # IPA as artifact `diddy-ios`.
 #
 # Without secrets the IPA is unsigned. AltStore, SideStore or Sideloadly sign it with your own
-# Apple ID (a free one works) when they install it, including the screen-share extension.
+# Apple ID (a free one works) when they install it. The app has no extensions, so it uses a single
+# App ID of the few a free account gets.
 #
 # Signed build (paid Apple Developer account): set the repository secrets
 #   APPLE_TEAM_ID               10-character team ID
 #   ASC_KEY_ID, ASC_ISSUER_ID   App Store Connect API key (Users and Access > Integrations)
 #   ASC_KEY_P8                  contents of the AuthKey_XXXX.p8 file
-# Xcode then signs automatically (app.diddy.ios, app.diddy.ios.broadcast, group.app.diddy.ios).
+# Xcode then signs automatically (app.diddy.ios).
 on:
   workflow_dispatch:
     inputs:
@@ -42,8 +43,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Show toolchain
-        run: xcodebuild -version && swift --version
+      - name: Select newest Xcode
+        # Whole-screen sharing without an extension (ScreenCaptureKit on iOS) is only compiled into
+        # LiveKit with the iOS 27 SDK, so use the newest Xcode the runner has.
+        run: |
+          newest=$(ls -d /Applications/Xcode_*.app | grep -E 'Xcode_[0-9.]+\.app$' | sort -V | tail -n 1)
+          sudo xcode-select -s "$newest"
+          xcodebuild -version && swift --version
+          sdk=$(xcrun --sdk iphoneos --show-sdk-version)
+          echo "iOS SDK $sdk"
+          if [ "${sdk%%.*}" -lt 27 ]; then
+            echo "::warning::iOS SDK $sdk: screen sharing will only cover the Diddy app itself, even on iOS 27 devices. Needs Xcode 27."
+          fi
 
       - name: Install XcodeGen
         run: command -v xcodegen || brew install xcodegen
@@ -111,9 +122,13 @@ jobs:
           ls -la dist
           rm -rf build/check && mkdir -p build/check && unzip -q dist/*.ipa -d build/check
           app=build/check/Payload/Diddy.app
-          ls "$app/Frameworks" "$app/PlugIns"
+          ls "$app/Frameworks"
+          # Every extension would need its own App ID when sideloading.
+          if [ -d "$app/PlugIns" ] || [ -d "$app/Extensions" ]; then
+            echo "::error::The IPA contains app extensions:"; ls "$app/PlugIns" "$app/Extensions" 2>/dev/null; exit 1
+          fi
           missing=0
-          for binary in "$app/Diddy" "$app/PlugIns/DiddyBroadcast.appex/DiddyBroadcast" "$app"/Frameworks/*.framework/*; do
+          for binary in "$app/Diddy" "$app"/Frameworks/*.framework/*; do
             [ -f "$binary" ] && file "$binary" | grep -q Mach-O || continue
             for lib in $(otool -L "$binary" | awk '/@rpath\//{print $1}'); do
               name=${lib#@rpath/}

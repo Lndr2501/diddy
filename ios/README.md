@@ -11,7 +11,7 @@ Eigene, native App (SwiftUI), keine Web-Ansicht: [matrix-rust-sdk](https://githu
 | Mehrere Konten auf verschiedenen Servern, jedes mit eigenem Speicher | ✅ |
 | Anmeldung mit Passwort oder über die Login-Seite des Servers (OAuth/MAS) | ✅ |
 | Sprachkanäle mit Desktop-Diddy und Element Call (gleiches MatrixRTC, gleiche Medien-Verschlüsselung) | ✅ |
-| Bildschirmübertragung (ganzer Bildschirm, auch andere Apps, mit Ton) | ✅ |
+| Bildschirmübertragung | ✅ ab iOS 27 ganzer Bildschirm, davor nur Diddy selbst |
 | Stummschalten, Taubschalten, Kamera | ✅ |
 | App-Icon wechseln (Pink, Blau, Lila, Schwarz, Magenta) | ✅ |
 | Push-Benachrichtigungen | ❌ (braucht einen Push-Gateway und ein bezahltes Apple-Konto) |
@@ -25,20 +25,23 @@ Eigene, native App (SwiftUI), keine Web-Ansicht: [matrix-rust-sdk](https://githu
 
 Die IPA baut der Workflow [Build iOS](../.github/workflows/ios.yml), Artefakt `diddy-ios`.
 
-**Ohne bezahltes Apple-Konto:** `Diddy_*_iOS_unsigned.ipa` mit [AltStore](https://altstore.io), [SideStore](https://sidestore.io) oder [Sideloadly](https://sideloadly.io) installieren. Sie signieren App und Bildschirm-Erweiterung mit deiner Apple-ID.
+**Ohne bezahltes Apple-Konto:** `Diddy_*_iOS_unsigned.ipa` mit [AltStore](https://altstore.io), [SideStore](https://sidestore.io) oder [Sideloadly](https://sideloadly.io) installieren. Sie signieren die App mit deiner Apple-ID.
 
 Grenzen einer kostenlosen Apple-ID:
 - Die App läuft 7 Tage und muss dann neu signiert werden (AltStore/SideStore machen das automatisch).
 - Höchstens 3 eigene Apps gleichzeitig.
-- Diddy belegt zwei App-IDs (App und Bildschirm-Erweiterung) und eine App-Gruppe.
+- Diddy hat keine Erweiterungen und belegt nur eine App-ID (eine kostenlose Apple-ID bekommt 10 pro Woche). Der Workflow bricht ab, falls doch eine Erweiterung in die IPA gerät.
 
 **Mit bezahltem Konto:** Repository-Secrets `APPLE_TEAM_ID`, `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8` setzen (siehe Kopf des Workflows), dann ist die IPA signiert.
 
 ## Bildschirm übertragen
 
-Im Sprachkanal auf das Bildschirm-Symbol tippen und im iOS-Dialog **Diddy Screen Share** wählen. Übertragen wird der ganze Bildschirm, auch wenn du in eine andere App wechselst, samt App-Ton. Beenden über denselben Knopf oder die rote Statusleiste.
+Im Sprachkanal auf das Bildschirm-Symbol tippen. Diddy nimmt ohne Erweiterung direkt in der App auf.
 
-Ab iOS 27 nimmt LiveKit direkt in der App mit ScreenCaptureKit auf, die Erweiterung wird dann nicht gebraucht.
+- **ab iOS 27:** Der iOS-Dialog fragt, was geteilt wird. Das kann der ganze Bildschirm sein, auch andere Apps, und es läuft im Hintergrund weiter (ScreenCaptureKit).
+- **iOS 16 bis 26:** nur Diddy selbst. Apple erlaubt die Aufnahme anderer Apps dort nur aus einer Broadcast-Erweiterung, und die würde beim Sideloaden eine zweite App-ID kosten.
+
+Für den iOS-27-Weg muss die App mit dem iOS-27-SDK (Xcode 27) gebaut sein. Der Workflow nimmt das neueste Xcode des Runners und warnt, wenn es älter ist.
 
 ## Selbst bauen
 
@@ -63,7 +66,6 @@ Die App-Icons kommen aus `src-tauri/app-icons`. Neu erzeugen: `python3 ios/Tools
 | `Diddy/Matrix` | Login, Sessions im Schlüsselbund, Sync, Räume/Spaces, Timeline, Medien |
 | `Diddy/Call` | Sprachkanal: MatrixRTC-Mitgliedschaft, JWT vom `lk-jwt-service`, LiveKit, Medien-Schlüssel |
 | `Diddy/UI` | SwiftUI-Ansichten |
-| `DiddyBroadcast` | ReplayKit-Erweiterung für die Bildschirmübertragung |
 
 Sprachkanäle sprechen das Protokoll von Element Call 0.20 (Desktop-Diddy):
 - Mitgliedschaft als Zustand `org.matrix.msc3401.call.member` mit Schlüssel `_@user:server_GERÄT_m.call`.

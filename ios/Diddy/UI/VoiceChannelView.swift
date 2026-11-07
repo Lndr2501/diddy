@@ -101,6 +101,10 @@ private struct ConnectedVoiceView: View {
                 }
                 .padding(12)
             }
+            if session.screenSharing && !CallSession.sharesWholeScreen {
+                Text("Sharing Diddy only. Sharing other apps needs iOS 27.")
+                    .font(.footnote).foregroundStyle(Theme.muted).padding(.horizontal)
+            }
             if let error = session.lastError {
                 Text(error).font(.footnote).foregroundStyle(Theme.danger).padding(.horizontal)
             }
