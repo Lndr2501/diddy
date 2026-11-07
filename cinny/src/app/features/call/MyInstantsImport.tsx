@@ -217,9 +217,7 @@ export function MyInstantsImport({ onClose }: MyInstantsImportProps) {
                   outlined
                   placeholder="Search term or MyInstants link"
                   value={input}
-                  onChange={(evt: React.ChangeEvent<HTMLInputElement>) =>
-                    setInput(evt.target.value)
-                  }
+                  onChange={(evt: React.ChangeEvent<HTMLInputElement>) => setInput(evt.target.value)}
                   onKeyDown={(evt) => {
                     if (evt.key === 'Enter' && !busy) handleSearch();
                   }}
@@ -252,48 +250,22 @@ export function MyInstantsImport({ onClose }: MyInstantsImportProps) {
                     <Text size="B300">{allSelected ? 'Select none' : 'Select all'}</Text>
                   </Button>
                   <Text size="T200" priority="300">
-                    {selected.size} selected · {results.length} shown
-                    {nextPage ? ' · more available' : ''}
+                    {selected.size} selected · {results.length} shown{nextPage ? ' · more available' : ''}
                   </Text>
                 </Box>
 
                 <div style={{ maxHeight: toRem(300), overflowY: 'auto' }}>
                   <Box direction="Column" gap="100">
                     {results.map((item) => (
-                      <Box
-                        key={item.path}
-                        alignItems="Center"
-                        gap="200"
-                        style={{
-                          padding: `${config.space.S100} ${config.space.S200}`,
-                          borderRadius: config.radii.R300,
-                          border: `${config.borderWidth.B300} solid ${
-                            selected.has(item.path) ? color.Primary.Main : 'transparent'
-                          }`,
-                          background: selected.has(item.path) ? color.Primary.Container : undefined,
-                        }}
-                      >
+                      <Box key={item.path} alignItems="Center" gap="200">
                         <label
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 8,
-                            flexGrow: 1,
-                            minWidth: 0,
-                            cursor: 'pointer',
-                          }}
+                          style={{ display: 'flex', alignItems: 'center', gap: 8, flexGrow: 1, minWidth: 0 }}
                         >
                           <input
                             type="checkbox"
                             checked={selected.has(item.path)}
                             onChange={() => toggle(item.path)}
                             disabled={busy}
-                            style={{
-                              width: toRem(18),
-                              height: toRem(18),
-                              accentColor: color.Primary.Main,
-                              flexShrink: 0,
-                            }}
                           />
                           <Text size="T300" truncate>
                             {item.name}
@@ -324,25 +296,11 @@ export function MyInstantsImport({ onClose }: MyInstantsImportProps) {
                   >
                     <Text size="B300">Import selected ({selected.size})</Text>
                   </Button>
-                  <Button
-                    variant="Primary"
-                    fill="Soft"
-                    size="300"
-                    disabled={busy}
-                    onClick={handleImportAll}
-                  >
-                    <Text size="B300">
-                      Import all{nextPage ? ' results' : ` (${results.length})`}
-                    </Text>
+                  <Button variant="Primary" fill="Soft" size="300" disabled={busy} onClick={handleImportAll}>
+                    <Text size="B300">Import all{nextPage ? ' results' : ` (${results.length})`}</Text>
                   </Button>
                   {nextPage && (
-                    <Button
-                      variant="Secondary"
-                      fill="Soft"
-                      size="300"
-                      disabled={busy}
-                      onClick={loadMore}
-                    >
+                    <Button variant="Secondary" fill="Soft" size="300" disabled={busy} onClick={loadMore}>
                       <Text size="B300">Load more</Text>
                     </Button>
                   )}
