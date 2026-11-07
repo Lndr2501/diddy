@@ -15,6 +15,63 @@ import * as css from './styles.css';
 type CallMemberCardProps = {
   member: CallMembership;
 };
+
+/** Up to two capital initials for the avatar fallback (issue #23). */
+export function initialsFromName(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  const first = parts[0]?.charAt(0) ?? '';
+  const second = parts.length > 1 ? parts[parts.length - 1].charAt(0) : '';
+  return (first + second).toUpperCase() || '?';
+}
+
+/**
+ * Compact participant strip for the joined call (issue #23): the embedded call fills the whole
+ * area, so who is on the call was not visible from the Diddy window itself. Avatars when the
+ * profile has one, capital initials otherwise, always with the display name.
+ */
+export function CallRoster({ members }: { members: CallMembership[] }) {
+  const mx = useMatrixClient();
+  const useAuthentication = useMediaAuthentication();
+  const room = useRoom();
+  if (members.length === 0) return null;
+
+  return (
+    <Box className={css.CallRoster} alignItems="Center" gap="200" wrap="Wrap">
+      <Text size="T200" priority="300">
+        Im Gespräch
+      </Text>
+      {members.map((member) => {
+        const { userId } = member;
+        if (!userId) return null;
+        const name = getMemberDisplayName(room, userId) ?? getMxIdLocalPart(userId) ?? userId;
+        const avatarMxc = getMemberAvatarMxc(room, userId);
+        const avatarUrl = avatarMxc
+          ? mxcUrlToHttp(mx, avatarMxc, useAuthentication, 64, 64) ?? undefined
+          : undefined;
+        return (
+          <Box key={member.memberId} className={css.CallRosterChip} alignItems="Center" gap="200">
+            <Avatar size="300" radii="Pill">
+              <UserAvatar
+                userId={userId}
+                src={avatarUrl}
+                alt={name}
+                renderFallback={() => (
+                  <Text as="span" size="T200">
+                    {initialsFromName(name)}
+                  </Text>
+                )}
+              />
+            </Avatar>
+            <Text size="T300" truncate>
+              {name}
+            </Text>
+          </Box>
+        );
+      })}
+    </Box>
+  );
+}
+
 export function CallMemberCard({ member }: CallMemberCardProps) {
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();

@@ -1,5 +1,6 @@
 import React, { RefObject, useRef } from 'react';
 import { Badge, Box, color, Header, Scroll, Text, toRem } from 'folds';
+import { CallMembership } from 'matrix-js-sdk/lib/matrixrtc/CallMembership';
 import { useCallEmbed, useCallJoined, useCallEmbedPlacementSync } from '../../hooks/useCallEmbed';
 import { ContainerColor } from '../../styles/ContainerColor.css';
 import { PrescreenControls } from './PrescreenControls';
@@ -10,7 +11,7 @@ import { useRoomPermissions } from '../../hooks/useRoomPermissions';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { StateEvent } from '../../../types/matrix/room';
 import { useCallMembers, useCallSession } from '../../hooks/useCall';
-import { CallMemberRenderer } from './CallMemberCard';
+import { CallMemberRenderer, CallRoster } from './CallMemberCard';
 import * as css from './styles.css';
 import { CallControls } from './CallControls';
 import { useLivekitSupport } from '../../hooks/useLivekitSupport';
@@ -138,12 +139,14 @@ function CallPrescreen() {
 type CallJoinedProps = {
   containerRef: RefObject<HTMLDivElement>;
   joined: boolean;
+  members: CallMembership[];
 };
-function CallJoined({ joined, containerRef }: CallJoinedProps) {
+function CallJoined({ joined, containerRef, members }: CallJoinedProps) {
   const callEmbed = useCallEmbed();
 
   return (
     <Box grow="Yes" direction="Column">
+      {joined && <CallRoster members={members} />}
       <Box grow="Yes" ref={containerRef} />
       {callEmbed && joined && <CallControls callEmbed={callEmbed} />}
     </Box>
@@ -157,6 +160,8 @@ export function CallView() {
 
   const callEmbed = useCallEmbed();
   const callJoined = useCallJoined(callEmbed);
+  const callSession = useCallSession(room);
+  const callMembers = useCallMembers(callSession);
 
   const currentJoined = callEmbed?.roomId === room.roomId && callJoined;
 
@@ -167,7 +172,7 @@ export function CallView() {
       grow="Yes"
     >
       {!currentJoined && <CallPrescreen />}
-      <CallJoined joined={currentJoined} containerRef={callContainerRef} />
+      <CallJoined joined={currentJoined} containerRef={callContainerRef} members={callMembers} />
     </Box>
   );
 }

@@ -77,6 +77,18 @@ export const CallMemberCard = style({
   padding: config.space.S300,
 });
 
+// Participant strip above the embedded call (issue #23)
+export const CallRoster = style({
+  padding: `${config.space.S200} ${config.space.S400}`,
+});
+export const CallRosterChip = style({
+  padding: `${config.space.S100} ${config.space.S300} ${config.space.S100} ${config.space.S100}`,
+  borderRadius: toRem(999),
+  background: color.Background.Container,
+  maxWidth: toRem(240),
+  minWidth: 0,
+});
+
 export const CallControlContainer = style({
   padding: `${config.space.S200} ${config.space.S400} ${config.space.S500}`,
   // The container spans the full width, only the pill itself (ControlCard) takes clicks.
