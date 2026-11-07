@@ -7,6 +7,7 @@ import { APP_ICON_IMAGES } from '../../plugins/appIconImages';
 import { getAppIcon, useAppIcon } from '../../plugins/appIcon';
 import { makeBadgedIcon } from '../../utils/badgedIcon';
 import { getSoundUrl, isSoundEnabled, SoundId } from '../../plugins/sounds';
+import { pickMessageSound } from '../../plugins/soundLogic';
 import { notificationPermission, setFavicon } from '../../utils/dom';
 import { useSetting } from '../../state/hooks/settings';
 import { settingsAtom } from '../../state/settings';
@@ -66,8 +67,15 @@ const playViaWebAudio = async (url: string): Promise<void> => {
   source.start();
 };
 
+/** Several notifying messages in one sync batch make one sound, not a burst. */
+const NOTIFICATION_SOUND_GAP_MS = 500;
+let lastNotificationSound = 0;
+
 const playNotificationSound = (audio: HTMLAudioElement | null, id: SoundId) => {
   if (!audio || !isSoundEnabled(id)) return;
+  const now = Date.now();
+  if (now - lastNotificationSound < NOTIFICATION_SOUND_GAP_MS) return;
+  lastNotificationSound = now;
   const url = getSoundUrl(id);
   audio.src = url;
   const fallback = () => {
@@ -248,9 +256,9 @@ function MessageNotifications() {
     [navigate]
   );
 
-  const playSound = useCallback(() => {
+  const playSound = useCallback((id: 'message' | 'mention') => {
     const audioElement = audioRef.current;
-    playNotificationSound(audioElement, 'message');
+    playNotificationSound(audioElement, id);
   }, []);
 
   useEffect(() => {
@@ -304,7 +312,14 @@ function MessageNotifications() {
       }
 
       if (notificationSound) {
-        playSound();
+        // a message that mentions you has its own sound instead of the plain message sound
+        playSound(
+          pickMessageSound(
+            mx.getPushActionsForEvent(mEvent)?.tweaks?.highlight,
+            cachedUnreadInfo?.highlight,
+            unreadInfo.highlight
+          )
+        );
       }
     };
     mx.on(RoomEvent.Timeline, handleTimelineEvent);

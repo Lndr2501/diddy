@@ -7,6 +7,19 @@ import { diag } from '../diagnostics';
 
 type PcList = RTCPeerConnection[];
 const registries = new WeakMap<Window, PcList>();
+const createdListeners = new Set<(pc: RTCPeerConnection) => void>();
+
+/** The call iframe's peer connections created so far (tracked by trackPeerConnections). */
+export const getTrackedPeerConnections = (win: Window | null | undefined): PcList =>
+  (win && registries.get(win)) || [];
+
+/** Called for every peer connection the call iframe creates from now on. */
+export const onPeerConnectionCreated = (listener: (pc: RTCPeerConnection) => void) => {
+  createdListeners.add(listener);
+  return () => {
+    createdListeners.delete(listener);
+  };
+};
 
 /** Remembers the peer connections created in the call iframe. Subclass, so everything still works. */
 export const trackPeerConnections = (win: Window | null | undefined) => {
@@ -20,6 +33,13 @@ export const trackPeerConnections = (win: Window | null | undefined) => {
       constructor(...args: ConstructorParameters<typeof RTCPeerConnection>) {
         super(...args);
         list.push(this);
+        createdListeners.forEach((listener) => {
+          try {
+            listener(this);
+          } catch (e) {
+            diag(`peer connection listener failed: ${String(e)}`);
+          }
+        });
       }
     }
     Object.defineProperty(w, 'RTCPeerConnection', {
