@@ -89,9 +89,16 @@ with tempfile.TemporaryDirectory(prefix='diddy-audio-') as runtime:
             mono = data[::2]
             assert len(mono) > 24000, ('no PCM', len(mono), capture.poll())
             def amplitude(hz):
-                real = sum(v * math.cos(2*math.pi*hz*i/48000) for i, v in enumerate(mono))
-                imag = sum(v * math.sin(2*math.pi*hz*i/48000) for i, v in enumerate(mono))
-                return 2 * math.hypot(real, imag) / len(mono)
+                # Average short-window magnitudes: asynchronous sound-server clocks may
+                # insert/drop frames. A single long coherent sum can cancel an audible tone.
+                window = 4800
+                amplitudes = []
+                for start in range(0, len(mono) - window + 1, window):
+                    chunk = mono[start:start + window]
+                    real = sum(v * math.cos(2*math.pi*hz*i/48000) for i, v in enumerate(chunk))
+                    imag = sum(v * math.sin(2*math.pi*hz*i/48000) for i, v in enumerate(chunk))
+                    amplitudes.append(2 * math.hypot(real, imag) / len(chunk))
+                return sum(amplitudes) / len(amplitudes)
             return {hz: amplitude(hz) for hz in [440, 660, 880]}
         excluded = measure()
         assert excluded[880] < 0.005, ('own process leaked', excluded)

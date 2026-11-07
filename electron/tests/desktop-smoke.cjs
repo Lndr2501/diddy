@@ -10,14 +10,15 @@ const ts = require('../../cinny/node_modules/typescript');
 
 (async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'diddy-desktop-'));
-  const env = { ...process.env, XDG_CONFIG_HOME: path.join(dir, 'config'), XDG_DATA_HOME: path.join(dir, 'data'), XDG_STATE_HOME: path.join(dir, 'state'), PULSE_SERVER: `unix:${dir}/pulse`, PULSE_SINK: 'diddy_smoke', XDG_SESSION_TYPE: 'x11', WAYLAND_DISPLAY: '' };
+  const env = { ...process.env, XDG_RUNTIME_DIR: path.join(dir, 'runtime'), XDG_CONFIG_HOME: path.join(dir, 'config'), XDG_DATA_HOME: path.join(dir, 'data'), XDG_STATE_HOME: path.join(dir, 'state'), PULSE_SERVER: `unix:${dir}/pulse`, PULSE_SINK: 'diddy_smoke', XDG_SESSION_TYPE: 'x11', WAYLAND_DISPLAY: '' };
+  fs.mkdirSync(env.XDG_RUNTIME_DIR, {mode: 0o700});
   // Chromium's ALSA fallback also needs a real output clock in this hardware-free fixture.
   env.ALSA_CONFIG_PATH = path.join(dir, 'asound.conf');
   fs.writeFileSync(env.ALSA_CONFIG_PATH, `pcm.!default { type pulse server "unix:${dir}/pulse" }\nctl.!default { type pulse server "unix:${dir}/pulse" }\n`);
   const processes = [];
   let browser;
   const run = (file, args, extra = {}) => {
-    const child = spawn(file, args, { env, stdio: ['pipe', 'pipe', 'pipe'], ...extra });
+    const child = spawn(file, args, { env, detached: true, stdio: ['pipe', 'pipe', 'pipe'], ...extra });
     processes.push(child); return child;
   };
   try {
@@ -107,10 +108,12 @@ const ts = require('../../cinny/node_modules/typescript');
     } finally { clearInterval(feed); }
   } finally {
     await browser?.close();
-    for (const child of processes.reverse()) child.kill('SIGTERM');
+    for (const child of processes.reverse()) {
+      try { process.kill(-child.pid, 'SIGTERM'); } catch {}
+    }
     await Promise.all(processes.map((child) => new Promise((resolve) => {
       if (child.exitCode !== null) { resolve(); return; }
-      const timer = setTimeout(() => { child.kill('SIGKILL'); resolve(); }, 3000);
+      const timer = setTimeout(() => { try { process.kill(-child.pid, 'SIGKILL'); } catch {} resolve(); }, 3000);
       child.once('exit', () => { clearTimeout(timer); resolve(); });
     })));
     fs.rmSync(dir, { recursive: true, force: true });
