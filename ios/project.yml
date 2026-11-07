@@ -32,7 +32,10 @@ targets:
     sources:
       - path: Diddy
     dependencies:
+      # MatrixRustSDK is a dynamic framework (the Rust core lives in it) and must be copied into
+      # the app; CI checks that every @rpath framework is really inside the IPA.
       - package: MatrixRustSDK
+        embed: true
       - package: LiveKit
       - target: DiddyBroadcast
         embed: true

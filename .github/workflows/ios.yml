@@ -104,10 +104,25 @@ jobs:
           version=$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' build/Diddy.xcarchive/Products/Applications/Diddy.app/Info.plist)
           mkdir -p dist && cp build/export/*.ipa "dist/Diddy_${version}_iOS.ipa"
 
-      - name: Show IPA contents
+      - name: Check IPA contents
+        # A dynamic framework the binaries link against but that is missing from the IPA makes the
+        # app crash at launch, so fail the build instead.
         run: |
           ls -la dist
-          unzip -l dist/*.ipa | grep -E "Diddy.app/(Diddy|Info.plist)$|PlugIns/.*appex/(DiddyBroadcast|Info.plist)$|Assets.car$|Frameworks/[^/]+/$" || true
+          rm -rf build/check && mkdir -p build/check && unzip -q dist/*.ipa -d build/check
+          app=build/check/Payload/Diddy.app
+          ls "$app/Frameworks" "$app/PlugIns"
+          missing=0
+          for binary in "$app/Diddy" "$app/PlugIns/DiddyBroadcast.appex/DiddyBroadcast" "$app"/Frameworks/*.framework/*; do
+            [ -f "$binary" ] && file "$binary" | grep -q Mach-O || continue
+            for lib in $(otool -L "$binary" | awk '/@rpath\//{print $1}'); do
+              name=${lib#@rpath/}
+              if [ ! -e "$app/Frameworks/$name" ]; then
+                echo "::error::$(basename "$binary") links $lib, which is not in the IPA"; missing=1
+              fi
+            done
+          done
+          exit $missing
 
       - name: Upload IPA
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
