@@ -51,6 +51,7 @@ const imports = {
     mxcUrlToHttp: (mx, mxc) => `https://cdn.example/${mxc.split('/').pop()}`,
   },
   '../../utils/dom': { getMouseEventCords: () => ({ x: 0, y: 0 }) },
+  '../../plugins/callFrameMenu': { openCallUserMenu: () => {} },
   './styles.css': css,
 };
 vm.runInNewContext(

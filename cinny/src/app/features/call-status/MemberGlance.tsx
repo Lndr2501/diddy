@@ -11,6 +11,7 @@ import { StackedAvatar } from '../../components/stacked-avatar';
 import { useOpenUserRoomProfile } from '../../state/hooks/userRoomProfile';
 import { getMouseEventCords } from '../../utils/dom';
 import * as css from './styles.css';
+import { openCallUserMenu } from '../../plugins/callFrameMenu';
 
 type MemberGlanceProps = {
   room: Room;
@@ -46,6 +47,10 @@ export function MemberGlance({ room, members, speakers, max = 6 }: MemberGlanceP
             variant="Background"
             size="200"
             radii="Pill"
+            onContextMenu={(evt: React.MouseEvent<HTMLButtonElement>) => {
+              evt.preventDefault();
+              openCallUserMenu(userId, evt.clientX, evt.clientY);
+            }}
             onClick={(evt: React.MouseEvent<HTMLButtonElement>) =>
               openUserProfile(
                 room.roomId,
@@ -56,7 +61,8 @@ export function MemberGlance({ room, members, speakers, max = 6 }: MemberGlanceP
               )
             }
           >
-            <UserAvatar surface="call"
+            <UserAvatar
+              surface="call"
               userId={userId}
               src={avatarUrl}
               alt={name}

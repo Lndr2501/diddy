@@ -10,6 +10,7 @@ import { getMxIdLocalPart, mxcUrlToHttp } from '../../utils/matrix';
 import { UserAvatar } from '../../components/user-avatar';
 import { getMouseEventCords } from '../../utils/dom';
 import * as css from './styles.css';
+import { openCallUserMenu } from '../../plugins/callFrameMenu';
 
 type CallMemberCardProps = {
   member: CallMembership;
@@ -50,7 +51,8 @@ export function CallRoster({ members }: { members: CallMembership[] }) {
         return (
           <Box key={member.memberId} className={css.CallRosterChip} alignItems="Center" gap="200">
             <Avatar size="200" radii="Pill">
-              <UserAvatar surface="call"
+              <UserAvatar
+                surface="call"
                 userId={userId}
                 src={avatarUrl}
                 alt={name}
@@ -94,6 +96,10 @@ export function CallMemberCard({ member }: CallMemberCardProps) {
       type="button"
       key={member.memberId}
       className={css.CallMemberCard}
+      onContextMenu={(evt) => {
+        evt.preventDefault();
+        openCallUserMenu(userId, evt.clientX, evt.clientY);
+      }}
       onClick={(evt) =>
         openUserProfile(
           room.roomId,
@@ -105,7 +111,8 @@ export function CallMemberCard({ member }: CallMemberCardProps) {
       }
     >
       <Avatar size="300" radii="Pill">
-        <UserAvatar surface="call"
+        <UserAvatar
+          surface="call"
           userId={userId}
           src={avatarUrl}
           alt={name}

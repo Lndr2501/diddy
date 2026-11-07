@@ -2,6 +2,12 @@
 
 ## Unveröffentlicht
 
+### Rechtsklick-Menü auf Personen im Call
+
+- Rechtsklick auf die Kachel einer Person im Call (und auf die Avatare in der Call-Leiste und der Teilnehmerliste) öffnet ein Menü wie bei Discord: **Profile**, **Message** (privater Chat), **Volume & Mute for me…**, **Copy Name**, **Copy User ID**.
+- "Volume & Mute for me…" öffnet das Lautstärke-/Stummschalten-Menü von Element Call an der Kachel der Person. Es erscheint nur bei anderen Personen und solange die Call-Ansicht sichtbar ist.
+- Neu `components/CallUserMenu.tsx`; Erkennung der Kachel in `plugins/callFrameMenu.ts`. Nicht in einem echten Call geprüft (Aufbau von Element Call nur aus dem Quelltext gelesen).
+
 ### Privat anrufen vom Profil aus (#55)
 
 - Die Profilkarte hat neben "Message" einen **Call**-Knopf: Er startet einen Sprachanruf im privaten Chat mit der Person (so klingelt nur sie, nicht ein ganzer Raum). Gibt es noch keinen privaten Chat, wird ein verschlüsselter angelegt. Der Knopf ist gesperrt, solange man schon in einem Call ist, und fehlt, wenn der Server keine Calls unterstützt.
