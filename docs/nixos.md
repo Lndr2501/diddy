@@ -121,14 +121,60 @@ nicht durch den x86_64-CI-Job laufzeitgetestet.
   sein. Das ist eine System-/Desktop-Einstellung und wird vom Paket nicht überschrieben.
 - Normale Medienwiedergabe nutzt die mitgelieferten GStreamer-Plugins. Audio setzt
   zusätzlich einen funktionierenden Audio-Server in der Desktop-Sitzung voraus.
-- **Sprach-/Videoanrufe und Bildschirmübertragung sind in Diddys bisherigem
-  Linux-WebKitGTK-Client nicht nachgewiesen bzw. eingeschränkt.** Dieses Paket
-  ersetzt die WebView nicht durch Chromium und verspricht keine macOS-Funktionsparität.
-  PipeWire/Portale allein beheben fehlende WebRTC-Unterstützung nicht.
+- **Sprach-/Videoanrufe brauchen das Paket `diddy-webrtc`** (siehe unten). Das
+  normale Paket `diddy` startet, chattet und spielt Medien ab, kann aber keinen Call
+  aufbauen.
 - Der lokale Frontend-Port bleibt `44548`. Dafür ist keine Firewall-Freigabe
   nach außen erforderlich.
 
-## Verifikationsstand
+## Sprach- und Videoanrufe
+
+Element Call (die Calls in Diddy) braucht WebRTC (`RTCPeerConnection`) in der WebView.
+nixpkgs baut WebKitGTK ohne WebRTC: Es gehört dort zu den experimentellen Funktionen
+(`enableExperimental`). Im normalen Paket fehlt `RTCPeerConnection` deshalb, und ein
+Call kann nicht verbinden. Diddy selbst schaltet unter Linux Mikrofon, Kamera,
+Bildschirmfreigabe und WebRTC in der WebView ein und erlaubt die Geräte-Anfragen.
+
+Für Calls gibt es die Paketvariante `diddy-webrtc`. Sie nutzt WebKitGTK mit dessen
+experimentellen Funktionen, darunter WebRTC über GStreamer:
+
+```sh
+nix run .#diddy-webrtc
+```
+
+- Dieses WebKitGTK liegt derzeit fertig im offiziellen Binär-Cache (`cache.nixos.org`,
+  x86_64 und ARM64), es wird nur heruntergeladen. Fehlt es nach einem nixpkgs-Update
+  einmal im Cache, baut Nix es selbst: das dauert Stunden und braucht viel RAM.
+  Vorher prüfen: `nix build .#diddy-webrtc --dry-run` zeigt, ob `webkitgtk` gebaut
+  oder geladen würde.
+- In einer System-Flake entsprechend `diddy.packages.${system}.diddy-webrtc` verwenden.
+- Bildschirmfreigabe läuft über PipeWire und das Desktop-Portal:
+  `services.pipewire.enable = true;` und `xdg.portal.enable = true;` mit dem passenden
+  Portal-Backend (GNOME: `xdg-desktop-portal-gnome`, KDE: `xdg-desktop-portal-kde`,
+  wlroots: `xdg-desktop-portal-wlr`).
+- Die WebRTC-Unterstützung von WebKitGTK (GStreamer) ist neuer als die von Chromium.
+  Ob ein Call mit Element Call zuverlässig klappt, ist erst nach einem echten Test belegt.
+
+## Verifikationsstand Calls (2026-11-07, ARM64-Container auf dem Mac, Xvfb)
+
+- WebKitGTK ohne WebRTC: nixpkgs (2.52.6), Ubuntu 22.04 (2.50.4), Ubuntu 24.04
+  (2.52.6), Debian 13 (2.54.0): `typeof RTCPeerConnection === "undefined"` im
+  MiniBrowser, auch mit `--enable-webrtc=true`. Fedora 43 (2.54.2) linkt ebenfalls
+  nicht gegen GStreamer-WebRTC. AppImage und .deb können deshalb keine Calls.
+- `diddy-webrtc` gebaut (WebKitGTK aus dem Cache, Diddy selbst ~10 min) und mit
+  `DIDDY_MEDIA_SELFTEST=1` in der echten Diddy-Seite geprüft: `RTCPeerConnection`
+  vorhanden, `getUserMedia({audio, video})` ohne Rückfrage erlaubt (Mock-Geräte),
+  Gerätenamen sichtbar, WebRTC-Verbindung zweier Peers mit Datenkanal erfolgreich.
+  Gegenprobe mit dem normalen `diddy`: Freigabe und Geräte ebenso, aber
+  `RTCPeerConnection` fehlt.
+- Nicht geprüft: ein echter Call über Element Call/LiveKit, echte Mikrofone/Kameras,
+  Bildschirmfreigabe über Portal/PipeWire, Wayland, x86_64-Laufzeit.
+
+`DIDDY_MEDIA_SELFTEST=1` ist ein Testschalter für Rechner ohne Kamera/Mikrofon: Er
+aktiviert Mock-Geräte und schreibt das Ergebnis als `linux-selftest …` in das
+Diddy-Log. Im normalen Betrieb nicht setzen.
+
+## Verifikationsstand Paket
 
 Bei dieser Änderung geprüft (Nix 2.26.3):
 

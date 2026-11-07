@@ -15,10 +15,19 @@
   librsvg,
   webkitgtk_4_1,
   gst_all_1,
+  libnice,
+  pipewire,
   xdg-utils,
+  # Voice/video calls need WebRTC in WebKitGTK. The default nixpkgs WebKitGTK has none
+  # (ENABLE_WEB_RTC belongs to its experimental features), so `RTCPeerConnection` is
+  # missing and Element Call cannot connect. `true` uses WebKitGTK with its experimental
+  # features (WebRTC via GStreamer). cache.nixos.org currently has that build for
+  # x86_64-linux and aarch64-linux; when it does not, it is built locally (hours).
+  withWebRTC ? false,
 }:
 let
   version = (lib.importJSON ../src-tauri/tauri.conf.json).version;
+  webkitgtk = if withWebRTC then webkitgtk_4_1.override { enableExperimental = true; } else webkitgtk_4_1;
 
   # Only application sources enter the store, never local handovers, credentials,
   # build output or dependencies installed outside Nix.
@@ -99,12 +108,16 @@ rustPlatform.buildRustPackage {
     openssl
     gtk3
     librsvg
-    webkitgtk_4_1
+    webkitgtk
     gst_all_1.gstreamer
     gst_all_1.gst-plugins-base
     gst_all_1.gst-plugins-good
     gst_all_1.gst-plugins-bad
     gst_all_1.gst-libav
+    # ICE transport (nicesrc/nicesink) for GStreamer WebRTC
+    libnice
+    # Screen sharing through xdg-desktop-portal (pipewiresrc)
+    pipewire
   ];
 
   # Tauri's Nix hook extracts its temporary deb bundle into a native store
@@ -129,7 +142,7 @@ rustPlatform.buildRustPackage {
     desktop-file-validate "$out/share/applications/Diddy.desktop"
   '';
 
-  passthru = { inherit frontend; };
+  passthru = { inherit frontend webkitgtk withWebRTC; };
 
   meta = {
     description = "Matrix chat client based on Cinny";

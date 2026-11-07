@@ -72,7 +72,7 @@ Alle Downloads liegen unter [Releases](../../releases/latest).
 | NixOS | `nix run .#diddy` im Checkout, siehe [NixOS-Anleitung](docs/nixos.md) |
 
 > [!NOTE]
-> Sprach- und Videochat sind im Linux-Client (WebKitGTK) nicht verlässlich unterstützt. Das Nix-Paket ändert daran nichts.
+> Sprach- und Videochat gehen mit AppImage und .deb nicht: Das WebKitGTK von Ubuntu, Debian und Fedora ist ohne WebRTC gebaut. Unter NixOS gibt es dafür das Paket `diddy-webrtc` (WebKitGTK mit WebRTC aus dem NixOS-Cache), siehe [NixOS-Anleitung](docs/nixos.md#sprach--und-videoanrufe).
 
 Kein Linux-Rechner? Linux und NixOS lassen sich auf dem Mac in UTM testen: [VM-Anleitung](docs/vm-macos.md).
 

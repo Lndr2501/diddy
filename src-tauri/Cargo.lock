@@ -883,6 +883,7 @@ dependencies = [
  "tauri-plugin-updater",
  "tauri-plugin-window-state",
  "tungstenite",
+ "webkit2gtk",
 ]
 
 [[package]]
