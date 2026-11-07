@@ -2,11 +2,7 @@ import React, { ChangeEventHandler, useRef, useState } from 'react';
 import { Box, Button, color, config, Icons, Spinner, Text } from 'folds';
 import { BadgeChip } from '../../../components/diddy/BadgeChip';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
-import {
-  canModerateOptionsRoom,
-  getPrimaryOptionsRoom,
-  useOptionsRooms,
-} from '../../../plugins/diddy/optionsRoom';
+import { useOptionsRooms } from '../../../plugins/diddy/optionsRoom';
 import {
   awardBadge,
   createCustomBadge,
@@ -41,10 +37,7 @@ function BadgeLibrary() {
   // two-step delete without window.confirm (not reliable inside the app's webview)
   const [confirmId, setConfirmId] = useState<string>();
 
-  const optionsRoom = getPrimaryOptionsRoom(mx);
-  const isModerator = !!optionsRoom && canModerateOptionsRoom(mx, optionsRoom);
-  const canDelete = (badge: BadgeDef): boolean =>
-    !badge.global && (badge.createdBy === myUserId || isModerator);
+  const canDelete = (badge: BadgeDef): boolean => !badge.global && badge.createdBy === myUserId;
 
   const handleDelete = async (badge: BadgeDef) => {
     setConfirmId(undefined);

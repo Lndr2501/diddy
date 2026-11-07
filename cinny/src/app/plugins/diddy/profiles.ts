@@ -51,7 +51,6 @@ import {
   PROFILE_EVENT,
 } from './types';
 import {
-  canModerateOptionsRoom,
   getOptionsRooms,
   getPrimaryOptionsRoom,
   isLightOptionsRoom,
@@ -61,7 +60,7 @@ import {
 import { sanitizeBadgeDef, sanitizeProfile } from './sanitize';
 import { ReAnnouncer } from './reannounce';
 import { RecentOwnData, RECENT_WINDOW_EVENTS } from './recentOwn';
-import { isRemovedByModerator, makeBadgeId, pickDefinition, resolveAwards } from './trust';
+import { makeBadgeId, pickDefinition, resolveAwards } from './trust';
 import { diag } from '../diagnostics';
 
 // --- change tracking ---------------------------------------------------------------------------
@@ -907,26 +906,18 @@ type DefRec = { def: BadgeDef; ts: number; sender: string };
 const collectCustomBadges = (mx: MatrixClient, awardedIds: Set<string>): BadgeDef[] => {
   // all known versions of every definition, from every options room
   const all = new Map<string, Candidate[]>();
-  const removed = new Set<string>();
   getOptionsRooms(mx).forEach((room) => {
-    const isMod = (sender: string) => {
-      const member = room.getMember(sender);
-      return !!member && room.currentState.hasSufficientPowerLevelFor('ban', member.powerLevel);
-    };
     dataKeys(room, BADGE_DEF_EVENT).forEach((id) => {
       if (id.length > 64) return;
       const list = all.get(id) ?? [];
-      const found = readCandidates(room, BADGE_DEF_EVENT, id);
-      // a moderator of the options room can remove any badge (e.g. offensive ones)
-      if (isRemovedByModerator(found, isMod)) removed.add(id);
-      list.push(...found);
+      list.push(...readCandidates(room, BADGE_DEF_EVENT, id));
       all.set(id, list);
     });
   });
   const recs: DefRec[] = [];
   all.forEach((candidates, id) => {
     // global badges ship with the app: custom events can never redefine them
-    if (GLOBAL_BADGES.some((g) => g.id === id) || removed.has(id)) return;
+    if (GLOBAL_BADGES.some((g) => g.id === id)) return;
     // ids with a creator tag can only be defined by that creator; older ids: first writer wins
     const chosen = pickDefinition(
       id,
@@ -1028,17 +1019,13 @@ export const createCustomBadge = async (
   return id;
 };
 
-/**
- * Deletes a custom badge from the library. The creator deletes their own badge with an empty
- * definition; a moderator of the options room removes any badge with `deleted: true`.
- */
+/** Deletes a custom badge from the library. Only its creator can (empty definition = deleted). */
 export const deleteBadgeDef = async (mx: MatrixClient, badge: BadgeDef): Promise<void> => {
   const room = getPrimaryOptionsRoom(mx);
   if (!room) throw new Error('No Diddy Options room found.');
-  if (badge.global) throw new Error('Built-in badges cannot be deleted.');
-  const mine = badge.createdBy === mx.getSafeUserId();
-  if (!mine && !canModerateOptionsRoom(mx, room)) throw new Error('You cannot delete this badge.');
-  await writeDiddyData(mx, room, BADGE_DEF_EVENT, mine ? {} : { deleted: true }, badge.id);
+  if (badge.global || badge.createdBy !== mx.getSafeUserId())
+    throw new Error('Only the creator can delete this badge.');
+  await writeDiddyData(mx, room, BADGE_DEF_EVENT, {}, badge.id);
   badgeAnnouncer.markSent(room.roomId);
 };
 

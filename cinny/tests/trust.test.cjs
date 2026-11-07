@@ -12,7 +12,7 @@ const compiled = ts.transpileModule(fs.readFileSync(filename, 'utf8'), {
 }).outputText;
 const mod = {};
 vm.runInNewContext(compiled, { exports: mod, console });
-const { ownerTag, makeBadgeId, badgeIdOwnerTag, pickDefinition, isRemovedByModerator } = mod;
+const { ownerTag, makeBadgeId, badgeIdOwnerTag, pickDefinition } = mod;
 // arrays created inside the vm context have another prototype: copy them for deepEqual
 const resolveAwards = (...args) => [...mod.resolveAwards(...args)];
 const latestPerSender = (...args) => [...mod.latestPerSender(...args)];
@@ -84,15 +84,6 @@ test('the creator deletes a badge with an empty definition, others cannot', () =
   const old = 'c.lq3x8f2k9a1b';
   assert.equal(pickDefinition(old, [def(ALICE, 100), tomb(ALICE, 200)], valid), undefined);
   assert.equal(pickDefinition(old, [def(ALICE, 100), tomb(MALLORY, 200)], valid).sender, ALICE);
-});
-
-test('a moderator removes any badge with deleted: true, others cannot', () => {
-  const mod = (s) => s === BOB;
-  const removal = (sender, ts) => ({ sender, ts, content: { deleted: true } });
-  assert.equal(isRemovedByModerator([def(ALICE, 100), removal(BOB, 200)], mod), true);
-  assert.equal(isRemovedByModerator([def(ALICE, 100), removal(MALLORY, 200)], mod), false);
-  // the moderator re-defining it later lifts the removal
-  assert.equal(isRemovedByModerator([removal(BOB, 200), def(BOB, 300)], mod), false);
 });
 
 test('owner tags are stable, 11 characters and differ between users', () => {

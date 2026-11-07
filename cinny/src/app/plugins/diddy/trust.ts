@@ -70,18 +70,6 @@ export const pickDefinition = <T extends Cand>(
   return isValid(newest) ? newest : undefined;
 };
 
-/**
- * True when a moderator removed the badge: the newest definition event of at least one moderator
- * carries `deleted: true`. `isMod` decides who counts as moderator (power level of the sender).
- */
-export const isRemovedByModerator = (
-  candidates: Cand[],
-  isMod: (sender: string) => boolean
-): boolean =>
-  latestPerSender(candidates.filter((c) => !!c.sender && isMod(c.sender as string))).some(
-    (c) => c.content.deleted === true
-  );
-
 export type ResolvedAward = { by: string; at: number; ts: number };
 
 /**
