@@ -1,8 +1,26 @@
 # Changelog
 
-## Unveröffentlicht (nach 1.1.0)
+## 1.2.0 (2026-11-07)
 
-### Stand 2026-11-07
+### Highlights
+
+- **Neues Apple-Design (#21):** einheitliche Design-Sprache für die ganze App: Seitenleiste und Navigation, Raumansicht, Call, Profilkarte, Dialoge, Menüs und Suche (Material mit Blur, weiche Schatten, ruhige Typografie, Scrollbars nur beim Hover, Hell und Dunkel). Einstellungen öffnen als fast vollflächiges Fenster mit Seitenleiste (Gruppen, Suche, farbige Icon-Kacheln).
+- **Standard-Theme ist jetzt das normale Dark** (hell: das normale Hell-Theme). Wer schon ein Theme gewählt hat, behält es.
+- **Neue Profilkarte (#28, #29):** vier Layouts (Kompakt, Standard, Erweitert, Tabs), neue Felder (Kurzinfo, Interessen, Links, Aktivität), Karten-Theme, Glass-Effekt, Module ein-/ausblendbar und sortierbar. Der Profil-Editor hat Tabs und eine Live-Vorschau.
+- **Sprachchat-Panel in der Seitenleiste (#31):** "Im Sprachchat" über dem Benutzerbereich, mit Mikro, Kopfhörer, Kamera, Mehr-Menü und Auflegen; von jedem Raum aus bedienbar.
+- **Einführung für Matrix-Neulinge (#30):** fünf Schritte "Matrix für Discord-Umsteiger", beim ersten Start und im Konto-Menü.
+- **Raumliste zeigt, wer im Call ist (#23)** und das Roster über dem Call-Fenster.
+- iPhone/iPad: neue native App (Beta) aus PR #32, siehe `ios/README.md`.
+- **Logdatei:** Start, Fenster, Audio, Verbindungen, Abstürze (Panic) und JavaScript-Fehler landen in einer Logdatei (macOS `~/Library/Logs/Diddy/app.log`, Windows `%LOCALAPPDATA%\Diddy\Logs`, Linux `~/.local/state/diddy/app.log`), gedreht bei 2 MB. Ordner und Pfad stehen unter Einstellungen → About → Diagnostics; ohne Nachrichtentexte, zum Anhängen an Fehlerberichte.
+
+### Behoben
+
+- Fenster startete nicht sichtbar oder war nicht verschiebbar (#25, #26): Fenster wird auf den Bildschirm begrenzt, kleines Startfenster bis die App geladen ist; hängt der macOS-Audiodienst (`coreaudiod`), meldet Diddy das nach 8 s mit Hinweis.
+- Kein Profilbild bei Nutzern ohne Matrix-Avatar, aber mit Diddy-Bild (#27).
+- Rechtsklick auf Nachrichten funktionierte nicht, wenn ein Call lief: das unsichtbare Call-Fenster hat die Klicks abgefangen. Im Call-Fenster gibt es ein kleines Copy-Menü.
+- Badge-Verleihung an andere Nutzer entfernt (eigene Badges bleiben, #9 erledigt).
+
+### Stand 2026-11-07 (frühere Einträge)
 
 - iPhone/iPad: neue native App (`ios/`, SwiftUI + matrix-rust-sdk + LiveKit) im Discord-Stil: Server-Leiste, Kanäle mit Kategorien, Sprachkanäle kompatibel mit Desktop-Diddy/Element Call, Bildschirmübertragung ohne Erweiterung (ab iOS 27 ganzer Bildschirm, nur eine App-ID beim Sideloaden), mehrere Konten auf verschiedenen Servern, wechselbares App-Icon. Workflow *Build iOS* baut die IPA.
 - Systemschrift: SF auf macOS, Inter auf Linux (#21, erster Schritt)

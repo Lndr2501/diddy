@@ -51,10 +51,10 @@ export interface Settings {
 }
 
 const defaultSettings: Settings = {
-  themeId: 'diddy-theme',
+  themeId: 'dark-theme',
   useSystemTheme: true,
-  lightThemeId: 'diddy-theme',
-  darkThemeId: 'diddy-theme',
+  lightThemeId: 'light-theme',
+  darkThemeId: 'dark-theme',
   monochromeMode: false,
   isMarkdown: true,
   editorToolbar: false,

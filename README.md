@@ -102,6 +102,10 @@ Die iOS-App ist Beta. Sprachkanäle in verschlüsselten Räumen sind Ende-zu-End
 
 </details>
 
+## Fehler melden
+
+Hilft am meisten: die Logdatei anhängen. Sie liegt unter macOS in `~/Library/Logs/Diddy/app.log`, unter Linux in `~/.local/state/diddy/app.log` und unter Windows in `%LOCALAPPDATA%\Diddy\Logs\app.log`; in der App öffnet *Einstellungen → About → Diagnostics → Open Folder* den Ordner. Die Datei enthält technische Ereignisse und Fehler, keine Nachrichtentexte.
+
 ## Selbst bauen
 
 Voraussetzungen: Node 24, Rust und die [Tauri-Abhängigkeiten](https://v2.tauri.app/start/prerequisites/).

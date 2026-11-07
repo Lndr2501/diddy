@@ -9,7 +9,6 @@
  * right-clicks over that area to the call document instead of the chat behind it, so there the
  * right-click is passed on to the element of the main window under the pointer.
  */
-import { describeElement } from './contextMenu';
 
 const MAX_COPY = 4000;
 export const CALL_FRAME_MENU_EVENT = 'diddy-call-frame-menu';
@@ -116,8 +115,7 @@ const textToCopy = (doc: Document, target: EventTarget | null): string => {
 
 export const installCallFrameMenu = (
   doc: Document | null | undefined,
-  iframe: HTMLIFrameElement,
-  log?: (message: string) => void
+  iframe: HTMLIFrameElement
 ): void => {
   if (!doc || !doc.body) return;
   const marked = doc as Document & { __diddyFrameMenu?: boolean };
@@ -133,34 +131,16 @@ export const installCallFrameMenu = (
       // the call view is not visible: nothing of it may react, not even its editable fields
       evt.preventDefault();
       evt.stopPropagation();
-      const { target, handled } = forwardContextMenu(
+      forwardContextMenu(
         document,
         forwardedContextMenuInit(box, evt),
         (init) => new MouseEvent('contextmenu', { ...init, view: window })
-      );
-      log?.(
-        `frame menu: call view hidden, right-click passed to the main window ` +
-          `handled=${handled} target=${describeElement(target)}`
       );
       return;
     }
     // the guard already prevented the event unless the native menu is wanted (inputs, Option)
     if (!evt.defaultPrevented) return;
     const text = textToCopy(doc, evt.target);
-    const holder = iframe.parentElement;
-    const holderStyle = holder ? getComputedStyle(holder) : undefined;
-    log?.(
-      `frame menu: copyable text ${text.length} chars${
-        text ? '' : ' (nothing to copy, no menu)'
-      } ` +
-        `iframe=${Math.round(box.left)},${Math.round(box.top)} ${Math.round(
-          box.width
-        )}x${Math.round(box.height)} ` +
-        `holder visibility=${holderStyle?.visibility} pointerEvents=${holderStyle?.pointerEvents} ` +
-        `iframePointerEvents=${getComputedStyle(iframe).pointerEvents} route=${
-          window.location.pathname
-        }${window.location.hash}`
-    );
     if (!text) return;
     const detail: CallFrameMenuDetail = {
       x: box.left + evt.clientX,

@@ -16,6 +16,8 @@
     "allow-myinstants-fetch-text",
     "allow-myinstants-fetch-audio",
     "allow-diag-log",
+    "allow-log-path",
+    "allow-open-log-folder",
     "allow-connection-profiles",
     "allow-open-connection-profile"
   ]

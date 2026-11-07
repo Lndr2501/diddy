@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Box, Text, Icon, Icons, Button, config, toRem } from 'folds';
 import { AppLogo } from '../../../components/app-logo/AppLogo';
 import { APP_NAME, APP_REPO_URL, APP_VERSION, UPSTREAM_NAME, UPSTREAM_URL } from '../../../appInfo';
@@ -6,12 +6,24 @@ import { clearCacheAndReload } from '../../../../client/initMatrix';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { InsetGroup, InsetItem, InsetRow, InsetSection, SettingsPage } from '../inset-list';
 import * as sheetCss from '../../../components/sheet/Sheet.css';
+import { canInvoke, invoke } from '../../../plugins/tauri';
+import { copyToClipboard } from '../../../utils/dom';
 
 type AboutProps = {
   requestClose: () => void;
 };
 export function About({ requestClose }: AboutProps) {
   const mx = useMatrixClient();
+  const desktop = canInvoke();
+  const [logPath, setLogPath] = useState<string>();
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!desktop) return;
+    invoke<string | null>('log_path')
+      .then((path) => setLogPath(path ?? undefined))
+      .catch(() => undefined);
+  }, [desktop]);
 
   return (
     <SettingsPage title="About" requestClose={requestClose}>
@@ -86,6 +98,49 @@ export function About({ requestClose }: AboutProps) {
           />
         </InsetGroup>
       </InsetSection>
+      {desktop && (
+        <InsetSection
+          title="Diagnostics"
+          footer="The log file holds technical events and errors, no message texts. Attach it to a bug report."
+        >
+          <InsetGroup>
+            <InsetRow
+              title="Log file"
+              description={logPath ?? 'Not available'}
+              after={
+                <Box gap="200">
+                  <Button
+                    className={sheetCss.Pill}
+                    onClick={() => invoke('open_log_folder').catch(() => undefined)}
+                    variant="Secondary"
+                    fill="Soft"
+                    size="300"
+                    radii="Pill"
+                  >
+                    <Text size="B300">Open Folder</Text>
+                  </Button>
+                  <Button
+                    className={sheetCss.Pill}
+                    disabled={!logPath}
+                    onClick={() => {
+                      if (!logPath) return;
+                      copyToClipboard(logPath);
+                      setCopied(true);
+                      window.setTimeout(() => setCopied(false), 1500);
+                    }}
+                    variant="Secondary"
+                    fill="Soft"
+                    size="300"
+                    radii="Pill"
+                  >
+                    <Text size="B300">{copied ? 'Copied' : 'Copy Path'}</Text>
+                  </Button>
+                </Box>
+              }
+            />
+          </InsetGroup>
+        </InsetSection>
+      )}
       <InsetSection title="Credits">
         <InsetGroup>
           <InsetItem>

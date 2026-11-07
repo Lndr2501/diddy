@@ -341,6 +341,7 @@ pub fn run() {
         }
     }
 
+    diag::init(env!("CARGO_PKG_VERSION"));
     let context = tauri::generate_context!();
     let builder = tauri::Builder::default();
     // Forward additional launches into the existing process instead of opening the same account
@@ -362,6 +363,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             app_icon::set_app_icon,
             diag::diag_log,
+            diag::log_path,
+            diag::open_log_folder,
             myinstants::myinstants_fetch_text,
             myinstants::myinstants_fetch_audio,
             connections::connection_profiles,

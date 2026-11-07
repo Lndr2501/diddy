@@ -72,7 +72,7 @@ import { ReactionViewer } from '../reaction-viewer';
 import { MessageEditor } from './MessageEditor';
 import { UserAvatar } from '../../../components/user-avatar';
 import { copyToClipboard } from '../../../utils/dom';
-import { deferToNativeMenu, describeElement, diagContextMenu } from '../../../plugins/contextMenu';
+import { deferToNativeMenu } from '../../../plugins/contextMenu';
 import { stopPropagation } from '../../../utils/keyboard';
 import { getMatrixToRoomEvent } from '../../../plugins/matrix-to';
 import { getViaServers } from '../../../plugins/via-servers';
@@ -776,25 +776,6 @@ export const Message = as<'div', MessageProps>(
     const { hoverProps } = useHover({ onHoverChange: setHover });
     const { focusWithinProps } = useFocusWithin({ onFocusWithinChange: setHover });
     const [menuAnchor, setMenuAnchor] = useState<RectCords>();
-    // DIAGNOSE (right-click opens nothing): where the menu ends up and why it closes.
-    const menuOpenedAt = useRef(0);
-    const menuAge = () => Math.round(performance.now() - menuOpenedAt.current);
-    useEffect(() => {
-      if (!menuAnchor || menuAnchor.width !== 0) return undefined;
-      const frame = requestAnimationFrame(() => {
-        const portal = document.getElementById('portalContainer');
-        const last = portal?.lastElementChild as HTMLElement | null | undefined;
-        const rect = last?.getBoundingClientRect();
-        const style = last ? getComputedStyle(last) : undefined;
-        diagContextMenu(
-          `message menu rendered age=${menuAge()}ms portalChildren=${portal?.childElementCount ?? -1} ` +
-            `rect=${rect ? `${Math.round(rect.x)},${Math.round(rect.y)} ${Math.round(rect.width)}x${Math.round(rect.height)}` : 'none'} ` +
-            `visibility=${style?.visibility} opacity=${style?.opacity} ` +
-            `window=${window.innerWidth}x${window.innerHeight} last=${describeElement(last, 2)}`
-        );
-      });
-      return () => cancelAnimationFrame(frame);
-    }, [menuAnchor]);
     const [emojiBoardAnchor, setEmojiBoardAnchor] = useState<RectCords>();
     const [deletionOpen, setDeletionOpen] = useState(false);
 
@@ -913,14 +894,8 @@ export const Message = as<'div', MessageProps>(
     );
 
     const handleContextMenu: MouseEventHandler<HTMLDivElement> = (evt) => {
-      const defer = deferToNativeMenu(evt);
-      // DIAGNOSE (right-click opens nothing): did the handler run, and did it step aside?
-      diagContextMenu(
-        `message handler event=${mEvent.getId()} defer=${defer} edit=${!!edit} hover=${hover} call=${!!document.querySelector('[data-call-embed-container] iframe')} focus=${document.hasFocus()} active=${describeElement(document.activeElement, 2)}`
-      );
-      if (defer || edit) return;
+      if (deferToNativeMenu(evt) || edit) return;
       evt.preventDefault();
-      menuOpenedAt.current = performance.now();
       setMenuAnchor({
         x: evt.clientX,
         y: evt.clientY,
@@ -1049,16 +1024,8 @@ export const Message = as<'div', MessageProps>(
                     <FocusTrap
                       focusTrapOptions={{
                         initialFocus: false,
-                        onDeactivate: () => {
-                          diagContextMenu(`message menu closed age=${menuAge()}ms`);
-                          setMenuAnchor(undefined);
-                        },
-                        clickOutsideDeactivates: (e: MouseEvent | TouchEvent) => {
-                          diagContextMenu(
-                            `message menu outside ${e.type} age=${menuAge()}ms target=${describeElement(e.target, 3)}`
-                          );
-                          return true;
-                        },
+                        onDeactivate: () => setMenuAnchor(undefined),
+                        clickOutsideDeactivates: true,
                         isKeyForward: (evt: KeyboardEvent) => evt.key === 'ArrowDown',
                         isKeyBackward: (evt: KeyboardEvent) => evt.key === 'ArrowUp',
                         escapeDeactivates: stopPropagation,

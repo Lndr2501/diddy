@@ -12,6 +12,8 @@ fn main() {
             .app_manifest(tauri_build::AppManifest::new().commands(&[
                 "set_app_icon",
                 "diag_log",
+                "log_path",
+                "open_log_folder",
                 "myinstants_fetch_text",
                 "myinstants_fetch_audio",
                 "connection_profiles",
