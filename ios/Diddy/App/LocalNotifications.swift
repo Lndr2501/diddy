@@ -83,7 +83,7 @@ final class LocalNotifications: NSObject, UNUserNotificationCenterDelegate {
             content.body = mention ? "You were mentioned" : "New message"
         }
         let sound: Sound = mention ? .mention : .message
-        if sound.setting.isOn { content.sound = .default }
+        if sound.setting.isOn { content.sound = Self.notificationSound(mention ? "mention.caf" : "notification_message.caf") }
         post(content, id: Self.identifier(account, room.id), account: account, roomId: room.id)
     }
 
@@ -91,7 +91,7 @@ final class LocalNotifications: NSObject, UNUserNotificationCenterDelegate {
         let content = UNMutableNotificationContent()
         content.title = room.name
         content.body = room.inviterName.map { "\($0) invited you" } ?? "You were invited"
-        if Sound.invite.setting.isOn { content.sound = .default }
+        if Sound.invite.setting.isOn { content.sound = Self.notificationSound("invite.caf") }
         post(content, id: Self.identifier(account, room.id), account: account, roomId: room.id)
     }
 
@@ -103,7 +103,7 @@ final class LocalNotifications: NSObject, UNUserNotificationCenterDelegate {
         let content = UNMutableNotificationContent()
         content.title = name
         content.body = "Incoming call"
-        if Sound.ringtone.setting.isOn { content.sound = .default }
+        if Sound.ringtone.setting.isOn { content.sound = Self.notificationSound("notification_ringtone.caf") }
         post(content, id: "call|" + Self.identifier(account, roomId), account: account, roomId: roomId)
         return true
     }
@@ -115,6 +115,13 @@ final class LocalNotifications: NSObject, UNUserNotificationCenterDelegate {
     }
 
     // MARK: Plumbing
+
+    /// Notifications cannot play MP3, so the pack's message and ringing sounds have CAF copies
+    /// (made with afconvert, see Resources/Sounds/README.md). Falls back to the system sound.
+    private static func notificationSound(_ file: String) -> UNNotificationSound {
+        Bundle.main.url(forResource: file, withExtension: nil) != nil
+            ? UNNotificationSound(named: UNNotificationSoundName(file)) : .default
+    }
 
     /// One notification per room, replaced by the newest, so a busy chat does not fill the screen.
     private func post(_ content: UNMutableNotificationContent, id: String, account: MatrixAccount, roomId: String) {

@@ -11,6 +11,10 @@
 
 - Neuer Schalter "Notifications in the background" (aus ab Werk). Diddy läuft dann im Hintergrund weiter und zeigt neue Nachrichten, Erwähnungen, Einladungen und Anrufe als Mitteilung, auch ohne bezahltes Apple-Konto. Kostet Akku; nach einem Neustart des iPhones muss die App einmal geöffnet werden.
 
+### iOS: Soundpack
+
+- Die iOS-App spielt jetzt die Sounds aus Diddys Soundpack (dieselben MP3s wie am Desktop). Wo das Pack nichts hat (Freizeichen, Erwähnung, Einladung, ...), bleiben die bisherigen Töne.
+
 ### Teilnehmerliste: online und offline getrennt
 
 - Die Teilnehmerliste rechts sortiert wie bei Discord: wer online oder abwesend ist, steht oben, weiter nach Rang gruppiert. Alle, die offline sind, stehen gesammelt in einer eigenen Gruppe „Offline“ darunter, auch Admins. Vorher konnte ein Offline-Mitglied direkt zwischen Online-Mitgliedern stehen.

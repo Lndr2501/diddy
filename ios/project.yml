@@ -32,6 +32,9 @@ targets:
     platform: iOS
     sources:
       - path: Diddy
+      # The desktop sound pack, shared so both apps sound the same (see Diddy/App/Sounds.swift).
+      - path: ../cinny/public/sound/diddy
+        buildPhase: resources
       # RNNoise, optimized in every configuration: it runs on the audio thread during calls.
       - path: Vendor/rnnoise
         excludes:

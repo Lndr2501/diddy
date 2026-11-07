@@ -1,4 +1,5 @@
-"""Synthesizes Diddy's own sound set into ios/Diddy/Resources/Sounds as 16-bit mono CAF files.
+"""Synthesizes the iOS sounds that Diddy's sound pack (cinny/public/sound/diddy, MP3) has no
+file for, into ios/Diddy/Resources/Sounds as 16-bit mono CAF files.
 
 Every sound is made here from sine partials, so there are no samples to license. Change a recipe
 and run it again. Needs macOS for afconvert; uses only the Python standard library.
@@ -88,30 +89,11 @@ def fade_out(samples, length=0.012):
     return samples
 
 
-def ringtone():
-    phrase = [D5, FS5, A5, FS5, B5, A5]
-    parts = [(0.17 * i, tone(p, 1.1, decay=0.28, volume=0.9 if i % 2 else 1.0)) for i, p in enumerate(phrase)]
-    parts += [(0.17 * 6, tone(D6, 1.4, decay=0.38))]
-    return mix(3.4, *parts)
-
-
+# The sound pack covers the rest (see Diddy/App/Sounds.swift, Sound.packFile).
 # Name, samples, peak in dB. The peak sets how present a sound is against a call.
 SOUNDS = [
-    ("ringtone", ringtone, -2),
     ("ringback", lambda: mix(3.4, (0, pad((A4, E5), 1.2))), -14),
     ("call_joined", lambda: notes((A5, D6), 0.09, 0.35), -6),
-    ("call_left", lambda: notes((D6, A5), 0.1, 0.35), -6),
-    ("user_joined", lambda: notes((FS5, A5), 0.07, 0.26, partials=SOFT), -9),
-    ("user_left", lambda: notes((A5, FS5), 0.08, 0.26, partials=SOFT), -10),
-    ("mute", lambda: tone(D5, 0.1, decay=0.03, partials=SOFT), -9),
-    ("unmute", lambda: tone(A5, 0.1, decay=0.03, partials=SOFT), -9),
-    ("deafen", lambda: notes((A5, D5), 0.055, 0.14, decay=0.04, partials=SOFT), -9),
-    ("undeafen", lambda: notes((D5, A5), 0.055, 0.14, decay=0.04, partials=SOFT), -9),
-    ("screen_share_started", lambda: notes((D5, A5, D6), 0.075, 0.45, decay=0.14, partials=BRIGHT), -7),
-    ("screen_share_stopped", lambda: notes((D6, A5, D5), 0.075, 0.42, decay=0.13, partials=BRIGHT), -8),
-    ("camera_on", lambda: notes((E5, B5), 0.05, 0.16, decay=0.05, partials=BRIGHT), -10),
-    ("camera_off", lambda: notes((B5, E5), 0.05, 0.16, decay=0.05, partials=BRIGHT), -10),
-    ("message", lambda: glide(620, 1040, 0.2), -8),
     ("mention", lambda: mix(0.5, (0, glide(620, 1040, 0.2)), (0.09, tone(FS6, 0.4, decay=0.12))), -6),
     ("invite", lambda: notes((FS5, A5, D6, FS6), 0.1, 0.5, decay=0.16), -7),
     ("call_declined", lambda: notes((B4, B4, B4), 0.16, 0.14, decay=0.05, partials=SOFT), -7),

@@ -20,7 +20,7 @@ Die App ist Beta: Alles in der Tabelle ist gebaut und läuft bei den ersten Test
 | Bildschirmübertragung | 🧪 ab iOS 27 ganzer Bildschirm, davor nur Diddy selbst |
 | Stummschalten, Taubschalten, Kamera | 🧪 |
 | Klingeln in Direktnachrichten mit Annehmen und Ablehnen, kompatibel zu Desktop-Diddy und Element Call | 🧪 nur solange die App geöffnet ist |
-| Eigene Sounds für Anrufe, Bildschirmübertragung, Nachrichten, Erwähnungen und Einladungen, unter Einstellungen > Sounds abschaltbar und anhörbar | 🧪 |
+| Sounds aus Diddys Soundpack (wie am Desktop) für Anrufe, Bildschirmübertragung, Nachrichten, Erwähnungen und Einladungen, unter Einstellungen > Sounds abschaltbar und anhörbar | 🧪 |
 | Offline-Bildschirm: Sitzung bleibt erhalten, wenn der Server nicht erreichbar ist, und verbindet sich von selbst wieder | 🧪 |
 | App-Icon wechseln (Pink, Blau, Lila, Schwarz, Magenta) | 🧪 |
 | Benachrichtigungen im Hintergrund (Nachrichten, Erwähnungen, Einladungen, Anrufe) | 🧪 Einstellung, aus ab Werk: die App läuft dafür im Hintergrund weiter (stilles Audio, kostet Akku). Ohne bezahltes Apple-Konto gibt es keinen Push-Dienst; nach einem Neustart des iPhones oder wenn iOS die App beendet, kommt bis zum nächsten Öffnen nichts |
@@ -31,7 +31,7 @@ Die App ist Beta: Alles in der Tabelle ist gebaut und läuft bei den ersten Test
 
 **Verschlüsselung in Sprachkanälen:** In verschlüsselten Räumen sind die Medien Ende-zu-Ende verschlüsselt wie bei Element Call. Es fehlen aber noch die Schlüsselrotation beim Verlassen (wer den Kanal verlässt, kennt den Schlüssel bis zum Ende des Anrufs weiter), und den eigenen Schlüssel bekommen die Geräte aus der LiveKit-Teilnehmerliste statt nur die Geräte mit einer MatrixRTC-Mitgliedschaft im Raum. Die Härtung ist geplant, siehe [SECURITY-TODO.md](SECURITY-TODO.md).
 
-**Sounds:** Alle Sounds sind eigene, mit [Tools/make_sounds.py](Tools/make_sounds.py) synthetisierte Klänge. Das Skript schreibt sie nach `Diddy/Resources/Sounds`. Der Klingelton folgt dem Stummschalter des iPhones und vibriert zusätzlich.
+**Sounds:** Die meisten Sounds kommen aus Diddys Soundpack in `cinny/public/sound/diddy` (MP3), das auch die Desktop-App spielt; `project.yml` nimmt den Ordner in die App auf, die Zuordnung steht in `Sound.packFile` (`Diddy/App/Sounds.swift`). Für Freizeichen, eigenen Beitritt, Erwähnung, Einladung, abgelehnten Anruf, keine Antwort und Verbindungsabbruch hat das Pack keinen Sound; die synthetisiert [Tools/make_sounds.py](Tools/make_sounds.py) nach `Diddy/Resources/Sounds`. Mitteilungen können kein MP3 abspielen, deshalb liegen dort auch CAF-Kopien von Nachricht und Klingeln (`afconvert -f caff -d ima4 -c 1 message1.mp3 notification_message.caf`, ebenso `call_ringing.mp3` → `notification_ringtone.caf`). Der Klingelton folgt dem Stummschalter des iPhones und vibriert zusätzlich.
 
 ## Voraussetzungen am Server
 

@@ -3,7 +3,9 @@ import AudioToolbox
 import Foundation
 import os
 
-/// The app's sounds, made by Tools/make_sounds.py. The raw value is the file name.
+/// The app's sounds. Most come from Diddy's sound pack, the MP3s the desktop app plays too
+/// (cinny/public/sound/diddy); the rest, which the pack has no sound for, are made by
+/// Tools/make_sounds.py. The raw value is the name of the made file.
 enum Sound: String, CaseIterable, Identifiable {
     case ringtone, ringback
     case callJoined = "call_joined", callLeft = "call_left"
@@ -38,6 +40,26 @@ enum Sound: String, CaseIterable, Identifiable {
         case .callDeclined: return "Call declined"
         case .noAnswer: return "No answer"
         case .connectionLost: return "Connection lost"
+        }
+    }
+
+    /// The desktop sound pack's file for this sound, if it has one.
+    var packFile: String? {
+        switch self {
+        case .ringtone: return "call_ringing"
+        case .callLeft: return "disconnect"
+        case .userJoined: return "user_join"
+        case .userLeft: return "user_leave"
+        case .mute: return "mute"
+        case .unmute: return "unmute"
+        case .deafen: return "deafen"
+        case .undeafen: return "undeafen"
+        case .screenShareStarted: return "stream_started"
+        case .screenShareStopped: return "stream_ended"
+        case .cameraOn: return "camera_on"
+        case .cameraOff: return "camera_off"
+        case .message: return "message1"
+        default: return nil
         }
     }
 
@@ -152,7 +174,9 @@ final class Sounds {
 
     private func player(for sound: Sound) -> AVAudioPlayer? {
         if let player = players[sound] { return player }
-        guard let url = Bundle.main.url(forResource: sound.rawValue, withExtension: "caf"),
+        let url = sound.packFile.flatMap { Bundle.main.url(forResource: $0, withExtension: "mp3") }
+            ?? Bundle.main.url(forResource: sound.rawValue, withExtension: "caf")
+        guard let url,
               let player = try? AVAudioPlayer(contentsOf: url) else { return nil }
         player.prepareToPlay()
         players[sound] = player
