@@ -19,6 +19,7 @@
     "allow-log-path",
     "allow-open-log-folder",
     "allow-connection-profiles",
-    "allow-open-connection-profile"
+    "allow-open-connection-profile",
+    "allow-agent-voice-state"
   ]
 }

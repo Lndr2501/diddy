@@ -7,6 +7,11 @@
 - Rechtsklick auf eine Kachel öffnete zwei Menüs übereinander: Diddys Personenmenü und das eigene Menü von Element Call (Mute for me, Lautstärke). Diddy nimmt das Ereignis jetzt vor Element Call ab, es erscheint nur noch Diddys Menü.
 - "Volume & Mute for me…" öffnet das Menü von Element Call dort, wo man geklickt hat (vorher ein simulierter Klick, der bei der Maus nicht auslöste). Tests in `callFrameMenu.test.cjs`. Nicht in einem echten Call geprüft, die Ursache stammt aus dem Quelltext des mitgelieferten Element Call.
 
+### Redet mit Agent (#57)
+
+- **Neue Einstellung unter Allgemein → „Talking to an agent“ (standardmäßig aus).** Dieselbe Taste wie im Diktier-Tool (OpenWhispr, Wispr Flow, ...) eintragen: solange sie gedrückt ist (oder bis zum zweiten Druck), zeigt Diddy „Talking to agent“ an deinem Bild unten links, schaltet auf Wunsch das Mikro im Call stumm und danach wieder an, und die anderen im Call sehen „redet mit Agent“ an deinem Namen (kurzlebige To-Device-Nachricht nur an die Call-Teilnehmer, abschaltbar).
+- Im Diddy-Fenster funktioniert jede Taste. Im Hintergrund liest die macOS-App Fn/Globe, die Modifier-Tasten und F13–F20 direkt vom System. Für alles andere (Linux, eigene Tastenkürzel): `diddy --agent-voice start|stop|toggle`, z. B. aus Karabiner, Hammerspoon, skhd oder sxhkd; Diddy bekommt dabei nicht den Fokus.
+
 ### Teilnehmer eines Calls in der Raumliste
 
 - Wer gerade im Call ist, steht jetzt wie bei Discord untereinander direkt unter dem Call-Raum in der Seitenleiste (Profilbild und Name, eine Person pro Zeile). Die kleinen Avatare in der Raumzeile entfallen, das "n Live"-Badge bleibt.

@@ -29,7 +29,7 @@ const exported = {};
 const imports = {
   react: React,
   folds,
-  '../../hooks/useMatrixClient': { useMatrixClient: () => ({}) },
+  '../../hooks/useMatrixClient': { useMatrixClient: () => ({ getUserId: () => '@me:x.de' }) },
   '../../hooks/useMediaAuthentication': { useMediaAuthentication: () => false },
   '../../hooks/useRoom': { useRoom: () => ({ roomId: '!r:x.de' }) },
   '../../state/hooks/userRoomProfile': { useOpenUserRoomProfile: () => () => {} },
@@ -53,6 +53,8 @@ const imports = {
   '../../utils/dom': { getMouseEventCords: () => ({ x: 0, y: 0 }) },
   '../../plugins/callFrameMenu': { openCallUserMenu: () => {} },
   './styles.css': css,
+  // #57: @single:x.de is talking to an agent
+  '../../state/agentVoice': { useAgentTalking: (userId) => userId === '@single:x.de' },
 };
 vm.runInNewContext(
   output,
@@ -95,4 +97,17 @@ test('the roster names everyone and falls back to initials or the avatar image',
   assert.ok(html.includes('pic'), 'nameless members fall back to their local part');
   assert.ok(html.includes('D'), 'single-word names produce one capital');
   assert.ok(!html.includes('undefined'), 'members without a user id are skipped cleanly');
+});
+
+test('a member talking to an agent is marked (#57)', () => {
+  const html = renderToStaticMarkup(
+    React.createElement(exported.CallRoster, {
+      members: [
+        { memberId: 'm1', userId: '@anna.beispiel:org', callIntent: 'audio' },
+        { memberId: 'm3', userId: '@single:x.de', callIntent: 'audio' },
+      ],
+    })
+  );
+  assert.equal(html.split('redet mit Agent').length - 1, 2, 'label and tooltip, once each');
+  assert.equal(html.split('data-agent').length - 1, 1, 'only that one chip is marked');
 });

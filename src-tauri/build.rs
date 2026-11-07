@@ -18,6 +18,7 @@ fn main() {
                 "myinstants_fetch_audio",
                 "connection_profiles",
                 "open_connection_profile",
+                "agent_voice_state",
             ])),
     )
     .expect("failed to run tauri-build");

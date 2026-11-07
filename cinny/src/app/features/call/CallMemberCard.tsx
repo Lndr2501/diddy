@@ -10,6 +10,7 @@ import { getMxIdLocalPart, mxcUrlToHttp } from '../../utils/matrix';
 import { UserAvatar } from '../../components/user-avatar';
 import { getMouseEventCords } from '../../utils/dom';
 import * as css from './styles.css';
+import { useAgentTalking } from '../../state/agentVoice';
 import { openCallUserMenu } from '../../plugins/callFrameMenu';
 
 type CallMemberCardProps = {
@@ -24,15 +25,56 @@ export function initialsFromName(name: string): string {
   return (first + second).toUpperCase() || '?';
 }
 
-/**
- * Compact participant strip for the joined call (issue #23): the embedded call fills the whole
- * area, so who is on the call was not visible from the Diddy window itself. Avatars when the
- * profile has one, capital initials otherwise, always with the display name.
- */
-export function CallRoster({ members }: { members: CallMembership[] }) {
+function CallRosterChip({ userId }: { userId: string }) {
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
   const room = useRoom();
+  const agent = useAgentTalking(userId, mx.getUserId() ?? undefined);
+  const name = getMemberDisplayName(room, userId) ?? getMxIdLocalPart(userId) ?? userId;
+  const avatarMxc = getMemberAvatarMxc(room, userId);
+  const avatarUrl = avatarMxc
+    ? mxcUrlToHttp(mx, avatarMxc, useAuthentication, 64, 64) ?? undefined
+    : undefined;
+  return (
+    <Box
+      className={css.CallRosterChip}
+      alignItems="Center"
+      gap="200"
+      data-agent={agent || undefined}
+      title={agent ? `${name} redet mit Agent` : undefined}
+    >
+      <Avatar size="200" radii="Pill">
+        <UserAvatar
+          surface="call"
+          userId={userId}
+          src={avatarUrl}
+          alt={name}
+          renderFallback={() => (
+            <Text as="span" size="T200" style={{ fontSize: toRem(11), fontWeight: 600 }}>
+              {initialsFromName(name)}
+            </Text>
+          )}
+        />
+      </Avatar>
+      <Text as="span" size="T200" className={css.CallRosterName} truncate>
+        {name}
+      </Text>
+      {agent && (
+        <Text as="span" size="T200" priority="300" className={css.CallRosterAgent}>
+          redet mit Agent
+        </Text>
+      )}
+    </Box>
+  );
+}
+
+/**
+ * Compact participant strip for the joined call (issue #23): the embedded call fills the whole
+ * area, so who is on the call was not visible from the Diddy window itself. Avatars when the
+ * profile has one, capital initials otherwise, always with the display name. Somebody who talks
+ * to an agent (dictation, #57) is marked.
+ */
+export function CallRoster({ members }: { members: CallMembership[] }) {
   if (members.length === 0) return null;
 
   return (
@@ -40,35 +82,9 @@ export function CallRoster({ members }: { members: CallMembership[] }) {
       <Text as="span" size="T200" className={css.CallRosterLabel}>
         Im Gespräch
       </Text>
-      {members.map((member) => {
-        const { userId } = member;
-        if (!userId) return null;
-        const name = getMemberDisplayName(room, userId) ?? getMxIdLocalPart(userId) ?? userId;
-        const avatarMxc = getMemberAvatarMxc(room, userId);
-        const avatarUrl = avatarMxc
-          ? mxcUrlToHttp(mx, avatarMxc, useAuthentication, 64, 64) ?? undefined
-          : undefined;
-        return (
-          <Box key={member.memberId} className={css.CallRosterChip} alignItems="Center" gap="200">
-            <Avatar size="200" radii="Pill">
-              <UserAvatar
-                surface="call"
-                userId={userId}
-                src={avatarUrl}
-                alt={name}
-                renderFallback={() => (
-                  <Text as="span" size="T200" style={{ fontSize: toRem(11), fontWeight: 600 }}>
-                    {initialsFromName(name)}
-                  </Text>
-                )}
-              />
-            </Avatar>
-            <Text as="span" size="T200" className={css.CallRosterName} truncate>
-              {name}
-            </Text>
-          </Box>
-        );
-      })}
+      {members.map((member) =>
+        member.userId ? <CallRosterChip key={member.memberId} userId={member.userId} /> : null
+      )}
     </Box>
   );
 }

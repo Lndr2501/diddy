@@ -13,6 +13,7 @@ const connections = require('../lib/connections.cjs');
 const myinstants = require('../lib/myinstants.cjs');
 const { fitIntoArea, parseWindowState } = require('../lib/windowFit.cjs');
 const { resolveFile, contentType, startStaticServer } = require('../lib/staticServer.cjs');
+const { parseAgentVoiceLaunch, createAgentVoiceTrigger } = require('../lib/agentVoice.cjs');
 
 const tempDir = () => fs.mkdtempSync(path.join(os.tmpdir(), 'diddy-shell-'));
 const ID = '0123456789ab4def8123456789abcdef';
@@ -222,4 +223,20 @@ test('static server answers only for its own host name and only GET/HEAD', async
   } finally {
     server.close();
   }
+});
+
+test('agent voice trigger (#57): launch options and state', () => {
+  assert.equal(parseAgentVoiceLaunch(['diddy']), undefined);
+  assert.equal(parseAgentVoiceLaunch(['diddy', '--connection-id', 'main']), undefined);
+  assert.deepEqual(parseAgentVoiceLaunch(['diddy', '--agent-voice', 'start']), { command: 'start' });
+  assert.ok(parseAgentVoiceLaunch(['diddy', '--agent-voice']).error);
+  assert.ok(parseAgentVoiceLaunch(['diddy', '--agent-voice', 'now']).error);
+
+  const trigger = createAgentVoiceTrigger();
+  assert.deepEqual(trigger.state(), { key: null, trigger: false });
+  assert.equal(trigger.apply('start'), true);
+  assert.equal(trigger.apply('toggle'), false);
+  assert.equal(trigger.apply('toggle'), true);
+  assert.equal(trigger.apply('stop'), false);
+  assert.deepEqual(trigger.state(), { key: null, trigger: false });
 });
