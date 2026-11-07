@@ -106,24 +106,39 @@ fn metadata_path(app: &AppHandle) -> Result<std::path::PathBuf, String> {
         .join("connections.json"))
 }
 
-fn read_profiles(app: &AppHandle) -> Result<Vec<ConnectionProfile>, String> {
-    let path = metadata_path(app)?;
-    if !path.exists() { return Ok(Vec::new()); }
-    let length = fs::metadata(&path).map_err(|_| "Verbindungsliste konnte nicht gelesen werden.")?.len();
-    if length > 128 * 1024 { return Err("Verbindungsliste ist zu groß.".into()); }
-    let raw = fs::read(path).map_err(|_| "Gespeicherte Verbindungen konnten nicht gelesen werden.")?;
-    let profiles: Vec<ConnectionProfile> = serde_json::from_slice(&raw)
+/// Parses and validates a stored registry blob (issue #7: pure so the lifecycle is unit-testable).
+fn decode_profiles(raw: &[u8]) -> Result<Vec<ConnectionProfile>, String> {
+    if raw.len() > 128 * 1024 { return Err("Verbindungsliste ist zu groß.".into()); }
+    let profiles: Vec<ConnectionProfile> = serde_json::from_slice(raw)
         .map_err(|_| "Die gespeicherte Verbindungsliste ist ungültig; sie wurde nicht verändert.")?;
+    validate_profiles(&profiles)?;
+    Ok(profiles)
+}
+
+fn validate_profiles(profiles: &[ConnectionProfile]) -> Result<(), String> {
     if profiles.len() > 20 { return Err("Zu viele gespeicherte Verbindungen.".into()); }
     let mut ids = std::collections::HashSet::new();
-    for profile in &profiles {
+    for profile in profiles {
         if !ids.insert(&profile.id) { return Err("Doppelte Verbindungskennung in der gespeicherten Liste.".into()); }
         profile_identifier(&profile.id)?;
         if normalize_server(&profile.server)? != profile.server {
             return Err("Eine gespeicherte Server-Adresse ist ungültig.".into());
         }
     }
-    Ok(profiles)
+    Ok(())
+}
+
+fn encode_profiles(profiles: &[ConnectionProfile]) -> Result<Vec<u8>, String> {
+    serde_json::to_vec_pretty(profiles).map_err(|_| "Verbindungen konnten nicht gespeichert werden.".into())
+}
+
+fn read_profiles(app: &AppHandle) -> Result<Vec<ConnectionProfile>, String> {
+    let path = metadata_path(app)?;
+    if !path.exists() { return Ok(Vec::new()); }
+    let length = fs::metadata(&path).map_err(|_| "Verbindungsliste konnte nicht gelesen werden.")?.len();
+    if length > 128 * 1024 { return Err("Verbindungsliste ist zu groß.".into()); }
+    let raw = fs::read(path).map_err(|_| "Gespeicherte Verbindungen konnten nicht gelesen werden.")?;
+    decode_profiles(&raw)
 }
 
 fn save_profiles(app: &AppHandle, profiles: &[ConnectionProfile]) -> Result<(), String> {
@@ -131,7 +146,7 @@ fn save_profiles(app: &AppHandle, profiles: &[ConnectionProfile]) -> Result<(), 
     let parent = path.parent().ok_or("Verbindungsverzeichnis fehlt.")?;
     fs::create_dir_all(parent).map_err(|_| "Verbindungsverzeichnis konnte nicht angelegt werden.")?;
     let temporary = path.with_extension("json.new");
-    let data = serde_json::to_vec_pretty(profiles).map_err(|_| "Verbindungen konnten nicht gespeichert werden.")?;
+    let data = encode_profiles(profiles)?;
     let mut options = fs::OpenOptions::new();
     options.write(true).create(true).truncate(true);
     #[cfg(unix)]
@@ -268,6 +283,125 @@ pub async fn open_connection_profile(
         drop(guard);
     }
     Ok(())
+}
+
+/// Removes one saved entry from a profile list. The original `main` login is never part of the
+/// list, so a request for it (or for an unknown id) must fail without touching the file.
+fn remove_profile(profiles: &[ConnectionProfile], id: &str) -> Result<Vec<ConnectionProfile>, String> {
+    if id == "main" {
+        return Err("Die ursprüngliche Anmeldung kann nicht entfernt werden.".into());
+    }
+    profile_identifier(id)?;
+    if !profiles.iter().any(|profile| profile.id == id) {
+        return Err("Diese Verbindung ist nicht gespeichert.".into());
+    }
+    Ok(profiles.iter().filter(|profile| profile.id != id).cloned().collect())
+}
+
+#[tauri::command]
+pub async fn remove_connection_profile(
+    app: AppHandle,
+    state: State<'_, ConnectionState>,
+    id: String,
+) -> Result<(), String> {
+    if id == "main" {
+        return Err("Die ursprüngliche Anmeldung kann nicht entfernt werden.".into());
+    }
+    profile_identifier(&id)?;
+    let label = format!("connection-{id}");
+    {
+        let opening = state.opening.lock().map_err(|_| "Verbindungsfenster ist gerade belegt.")?;
+        if opening.contains_key(&label) {
+            return Err("Das Verbindungsfenster wird gerade geöffnet; bitte danach erneut versuchen.".into());
+        }
+    }
+    {
+        let _guard = state.lock.lock().map_err(|_| "Verbindungsliste ist gerade belegt.")?;
+        let profiles = read_profiles(&app)?;
+        let kept = remove_profile(&profiles, &id)?;
+        // Close the window before registry and data go away, so nothing can still write into the
+        // store afterwards. destroy() bypasses close requests; the window has no state to save.
+        if let Some(window) = app.get_webview_window(&label) {
+            window.destroy().map_err(|_| "Das Fenster konnte nicht geschlossen werden.".to_string())?;
+        }
+        save_profiles(&app, &kept)?;
+    }
+    let data = remove_connection_data(&app, &id);
+    match &data {
+        Ok(()) => crate::diag::diag_log(format!("connection: removed profile {id}")),
+        Err(error) => crate::diag::diag_log(format!("connection: removed profile {id} but data cleanup failed: {error}")),
+    }
+    data
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "linux")))]
+fn remove_connection_data(_app: &AppHandle, _id: &str) -> Result<(), String> {
+    Ok(())
+}
+
+/// Linux: the profile's webview data lives in one dedicated directory (see build_client_window).
+/// The id was validated as a UUID hex string, so it cannot escape the connections directory.
+#[cfg(target_os = "linux")]
+fn remove_connection_data(app: &AppHandle, id: &str) -> Result<(), String> {
+    profile_identifier(id)?;
+    let dir = app.path().app_data_dir()
+        .map_err(|_| "Profilverzeichnis nicht verfügbar.".to_string())?
+        .join("connections").join(id);
+    if dir.exists() {
+        fs::remove_dir_all(&dir)
+            .map_err(|_| String::from("Der Datenspeicher der Verbindung konnte nicht gelöscht werden."))?;
+    }
+    Ok(())
+}
+
+/// macOS: the profile's WebKit store is addressed by its UUID. All data types since the epoch
+/// must be removed through WebKit itself; deleting files under ~/Library would race with WebKit.
+#[cfg(target_os = "macos")]
+fn remove_connection_data(app: &AppHandle, id: &str) -> Result<(), String> {
+    let identifier = profile_identifier(id)?;
+    let (sender, receiver) = mpsc::sync_channel(1);
+    // WKWebsiteDataStore calls must originate on the main thread, but the completion arrives on a
+    // WebKit queue; waiting on the main thread could deadlock, so only start it there.
+    app.run_on_main_thread(move || {
+        let _ = sender.send(start_webkit_store_wipe(identifier));
+    }).map_err(|_| "Der Hauptthread war nicht erreichbar.".to_string())?;
+    let done = tauri::async_runtime::spawn_blocking(move || {
+        receiver.recv_timeout(Duration::from_secs(10))
+            .map_err(|_| "Die Löschung des Speichers konnte nicht gestartet werden.".to_string())
+    }).await.map_err(|_| "Die Löschung des Speichers ging verloren.".to_string())??;
+    for _ in 0..80 {
+        if done.load(Ordering::SeqCst) {
+            return Ok(());
+        }
+        std::thread::sleep(Duration::from_millis(100));
+    }
+    Err("Die Löschung der Anmeldedaten wurde WebKit übergeben; die Rückmeldung steht aus.".into())
+}
+
+/// Starts the removal and returns a flag that WebKit flips when it reports completion.
+#[cfg(target_os = "macos")]
+fn start_webkit_store_wipe(identifier: [u8; 16]) -> Result<Arc<AtomicBool>, String> {
+    use block2::RcBlock;
+    use objc2::{class, msg_send, sel, MainThreadMarker};
+    use objc2::runtime::Bool;
+    use objc2_foundation::{NSDate, NSUUID};
+    use objc2_web_kit::WKWebsiteDataStore;
+    let mtm = MainThreadMarker::new().ok_or("Der Speicherzugriff braucht den Hauptthread.")?;
+    unsafe {
+        let supported: Bool = msg_send![class!(WKWebsiteDataStore), respondsToSelector: sel!(dataStoreForIdentifier:)];
+        if !supported.as_bool() {
+            return Err("Dein macOS kann gespeicherte Anmeldungen nicht löschen (macOS 14 oder neuer nötig).".into());
+        }
+        let store = WKWebsiteDataStore::dataStoreForIdentifier(&NSUUID::from_bytes(identifier), mtm);
+        let types = WKWebsiteDataStore::allWebsiteDataTypes(mtm);
+        let done = Arc::new(AtomicBool::new(false));
+        let signal = Arc::clone(&done);
+        let completion = RcBlock::new(move || {
+            signal.store(true, Ordering::SeqCst);
+        });
+        store.removeDataOfTypes_modifiedSince_completionHandler(&types, &NSDate::distantPast(), &completion);
+        Ok(done)
+    }
 }
 
 /// A plain relaunch without connection arguments must restore the main window when the user closed
@@ -414,10 +548,79 @@ mod tests {
         assert!(opening.is_empty());
     }
     #[test]
+    fn removal_never_touches_the_original_login_or_unknown_ids() {
+        let profiles = vec![ConnectionProfile {
+            id: "0123456789ab4def8123456789abcdef".into(),
+            server: "https://example.org".into(),
+        }];
+        assert!(remove_profile(&profiles, "main").is_err());
+        assert!(remove_profile(&profiles, "../data").is_err());
+        assert!(remove_profile(&profiles, "0123456789ab4def8123456789abcccc").is_err());
+        let kept = remove_profile(&profiles, "0123456789ab4def8123456789abcdef").unwrap();
+        assert!(kept.is_empty());
+    }
+    #[test]
     fn registry_contains_only_public_connection_metadata() {
         let profile = ConnectionProfile { id: "0123456789ab4def8123456789abcdef".into(), server: "https://example.org".into() };
         let value = serde_json::to_value(profile).unwrap();
         assert_eq!(value.as_object().unwrap().len(), 2);
         assert!(value.get("accessToken").is_none());
+    }
+    #[test]
+    fn the_saved_registry_round_trips_and_removal_persists_through_the_format() {
+        let profiles = vec![
+            ConnectionProfile {
+                id: "aaaaaaaaaaaa4aaaaaaaaaaaaaaaaaaa".into(),
+                server: "https://matrix.example.org".into(),
+            },
+            ConnectionProfile {
+                id: "bbbbbbbbbbbb4bbbbbbbbbbbbbbbbbbb".into(),
+                server: "http://127.0.0.1:8008".into(),
+            },
+        ];
+        let back = decode_profiles(&encode_profiles(&profiles).unwrap()).unwrap();
+        let ids: Vec<&str> = back.iter().map(|p| p.id.as_str()).collect();
+        assert_eq!(ids, ["aaaaaaaaaaaa4aaaaaaaaaaaaaaaaaaa", "bbbbbbbbbbbb4bbbbbbbbbbbbbbbbbbb"]);
+        let kept = remove_profile(&back, "aaaaaaaaaaaa4aaaaaaaaaaaaaaaaaaa").unwrap();
+        assert_eq!(kept.len(), 1);
+        assert_eq!(kept[0].id, "bbbbbbbbbbbb4bbbbbbbbbbbbbbbbbbb");
+        assert_eq!(decode_profiles(&encode_profiles(&kept).unwrap()).unwrap().len(), 1);
+    }
+    #[test]
+    fn a_broken_or_hostile_registry_is_refused_instead_of_half_applied() {
+        assert!(decode_profiles(b"not json at all").is_err(), "truncated or garbage file");
+        assert!(decode_profiles(b"[\"just a string\"]").is_err(), "wrong element type");
+        assert!(
+            decode_profiles(b"[{\"id\":\"../data\",\"server\":\"https://example.org\"}]").is_err(),
+            "id that could escape the storage directory"
+        );
+        assert!(
+            decode_profiles(
+                b"[{\"id\":\"aaaaaaaaaaaa4aaaaaaaaaaaaaaaaaaa\",\"server\":\"https://example.org\"},\
+                  {\"id\":\"aaaaaaaaaaaa4aaaaaaaaaaaaaaaaaaa\",\"server\":\"https://other.example\"}]"
+            )
+            .is_err(),
+            "duplicate ids would overwrite each other on reopen"
+        );
+        assert!(
+            decode_profiles(
+                b"[{\"id\":\"aaaaaaaaaaaa4aaaaaaaaaaaaaaaaaaa\",\"server\":\"https://example.org/x/\"}]"
+            )
+            .is_err(),
+            "servers must be stored already normalized"
+        );
+        let huge = format!(
+            "[{{\"id\":\"aaaaaaaaaaaa4aaaaaaaaaaaaaaaaaaa\",\"server\":\"https://example.org/{}\"}}]",
+            "x".repeat(130 * 1024)
+        );
+        assert!(decode_profiles(huge.as_bytes()).is_err(), "size limit protects the read path");
+        let many: Vec<ConnectionProfile> = (0..21)
+            .map(|i| ConnectionProfile {
+                id: format!("{:012x}4000{}{}", i, "89ab".chars().nth(i % 4).unwrap(), "0".repeat(15)),
+                server: "https://example.org".into(),
+            })
+            .collect();
+        assert!(validate_profiles(&many).is_err(), "the registry is capped at 20 entries");
+        assert!(validate_profiles(&many[..20]).is_ok());
     }
 }

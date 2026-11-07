@@ -11,6 +11,7 @@ import {
   getConnectionProfile,
   listConnections,
   openConnection,
+  removeConnection,
   visibleHomeserver,
 } from '../../plugins/connections';
 import { ConnectionsMenu } from './AccountSwitcher';
@@ -27,6 +28,7 @@ export function ConnectionOverview({ open, onClose }: { open: boolean; onClose: 
   const [server, setServer] = useState('');
   const [error, setError] = useState<string>();
   const [pending, setPending] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState<string>();
   const pendingRef = useRef(false);
   const desktop = canInvoke();
   const current = getConnectionProfile();
@@ -84,6 +86,39 @@ export function ConnectionOverview({ open, onClose }: { open: boolean; onClose: 
     event.preventDefault();
     void act(() => createConnection(server));
   };
+  // Two taps: the first arms the button, the second actually removes window, entry and data.
+  const armRemove = (row: ConnectionRow) => {
+    if (pendingRef.current || row.id === 'main' || row.current) return;
+    setConfirmRemove(confirmRemove === row.id ? undefined : row.id);
+  };
+  const removeRow = async (row: ConnectionRow) => {
+    if (pendingRef.current) return;
+    pendingRef.current = true;
+    setPending(true);
+    setError(undefined);
+    try {
+      await removeConnection(row.id);
+      setRows(buildConnectionRows(await listConnections(), getConnectionProfile()?.id));
+    } catch (err) {
+      setError(
+        typeof err === 'string'
+          ? err
+          : err instanceof Error
+          ? err.message
+          : 'Die Verbindung konnte nicht entfernt werden.'
+      );
+      // The entry may already be gone (data cleanup failed after the removal) - reload either way.
+      try {
+        setRows(buildConnectionRows(await listConnections(), getConnectionProfile()?.id));
+      } catch {
+        // Keeping the current list is better than losing the dialog.
+      }
+    } finally {
+      setConfirmRemove(undefined);
+      pendingRef.current = false;
+      setPending(false);
+    }
+  };
 
   return (
     <dialog
@@ -111,7 +146,9 @@ export function ConnectionOverview({ open, onClose }: { open: boolean; onClose: 
         <Text size="T300">
           Ein anderes Konto wird in einem eigenen Diddy-Fenster geöffnet. Dein bisheriger Login,
           Nachrichten und Verschlüsselungsschlüssel bleiben erhalten. Ein anderer Homeserver braucht
-          einen eigenen Account; dein Konto wird nicht übertragen.
+          einen eigenen Account; dein Konto wird nicht übertragen. Ein gespeicherter Eintrag lässt
+          sich löschen: Das Fenster schließt, und die getrennt gespeicherte Anmeldung dieses Servers
+          wird mitsamt ihren Schlüsseln entfernt.
         </Text>
         {!desktop && (
           <Text className={css.Error}>
@@ -126,13 +163,32 @@ export function ConnectionOverview({ open, onClose }: { open: boolean; onClose: 
                 {row.current ? 'Dieses Fenster' : row.hint}
               </Text>
             </Box>
-            <Button
-              variant="Secondary"
-              disabled={!desktop || pending || row.current}
-              onClick={() => void act(() => openConnection(row.id))}
-            >
-              <Text>{row.current ? 'Dieses Fenster' : 'Öffnen'}</Text>
-            </Button>
+            <Box alignItems="Center" gap="200">
+              <Button
+                variant="Secondary"
+                disabled={!desktop || pending || row.current}
+                onClick={() => void act(() => openConnection(row.id))}
+              >
+                <Text>{row.current ? 'Dieses Fenster' : 'Öffnen'}</Text>
+              </Button>
+              {desktop && row.id !== 'main' && !row.current && (
+                <Button
+                  variant={confirmRemove === row.id ? 'Critical' : 'Secondary'}
+                  fill="None"
+                  disabled={pending}
+                  aria-label={`Verbindung ${row.title} löschen`}
+                  onClick={() => {
+                    if (confirmRemove !== row.id) {
+                      armRemove(row);
+                      return;
+                    }
+                    removeRow(row).catch(() => {});
+                  }}
+                >
+                  <Text>{confirmRemove === row.id ? 'Wirklich löschen?' : 'Löschen'}</Text>
+                </Button>
+              )}
+            </Box>
           </div>
         ))}
         <form onSubmit={submit}>

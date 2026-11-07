@@ -35,12 +35,19 @@ const imports = {
   '../../plugins/connections': {
     buildConnectionRows: () => [
       { id: 'main', title: 'Ursprüngliches Fenster', hint: '', current: true },
+      {
+        id: '0123456789ab4def8123456789abcdef',
+        title: 'https://matrix.example.org',
+        hint: 'Eigene Anmeldung · 012345',
+        current: false,
+      },
     ],
     getConnectionProfile: () => undefined,
     visibleHomeserver: (url) => url.replace(/\/$/, ''),
     listConnections: () => Promise.resolve([]),
     openConnection: () => Promise.resolve(),
     createConnection: () => Promise.resolve(),
+    removeConnection: () => Promise.resolve(),
   },
   './AccountSwitcher': { ConnectionsMenu: () => null },
   './AccountSwitcher.css': css,
@@ -79,4 +86,14 @@ test('the connections button renders as a closed menu trigger', () => {
   assert.ok(html.includes('aria-haspopup="menu"'));
   assert.ok(html.includes('aria-expanded="false"'));
   assert.ok(html.includes('Verbindungen'));
+});
+
+test('the overview offers removal for saved connections but never for the original login', () => {
+  const html = renderToStaticMarkup(
+    React.createElement(exported.ConnectionOverview, { open: true, onClose() {} })
+  );
+  assert.ok(html.includes('Löschen'));
+  assert.ok(html.includes('aria-label="Verbindung https://matrix.example.org löschen"'));
+  assert.ok(!html.includes('Verbindung Ursprüngliches Fenster löschen'));
+  assert.ok(!html.includes('Wirklich löschen?'), 'removal must stay two-tap confirmed');
 });

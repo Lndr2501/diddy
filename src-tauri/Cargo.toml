@@ -51,9 +51,10 @@ webkit2gtk = { version = "2.0", features = ["v2_40"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6"
-objc2-web-kit = { version = "0.3", features = ["WKWebViewConfiguration", "WKPreferences", "WKWebsiteDataStore"] }
+objc2-web-kit = { version = "0.3", features = ["WKWebViewConfiguration", "WKPreferences", "WKWebsiteDataStore", "block2"] }
 objc2-app-kit = { version = "0.3", features = ["NSApplication", "NSImage", "NSResponder", "NSWorkspace"] }
-objc2-foundation = { version = "0.3", features = ["NSArray", "NSData", "NSDictionary", "NSObject", "NSString", "NSUUID", "NSValue"] }
+objc2-foundation = { version = "0.3", features = ["NSArray", "NSData", "NSDate", "NSDictionary", "NSObject", "NSSet", "NSString", "NSUUID", "NSValue"] }
+block2 = "0.6"
 # System-audio bridge for screen sharing (capture: src/audio_tap.rs, Core Audio process tap)
 tungstenite = "0.30"
 

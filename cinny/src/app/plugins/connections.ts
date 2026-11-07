@@ -98,6 +98,15 @@ export const buildConnectionRows = (
 export const listConnections = (): Promise<ConnectionProfile[]> => invoke('connection_profiles');
 export const openConnection = (id: string): Promise<void> =>
   invoke('open_connection_profile', { id });
+/**
+ * Removes one saved connection: the native side closes its window, drops the registry entry and
+ * wipes the separated login data. The original `main` login is never removable.
+ */
+export const removeConnection = async (id: string): Promise<void> => {
+  if (id === 'main') throw new Error('Die ursprüngliche Anmeldung kann nicht entfernt werden.');
+  if (!PROFILE_ID.test(id)) throw new Error('Ungültige Verbindungskennung.');
+  await invoke('remove_connection_profile', { id });
+};
 export const createConnection = async (server: string): Promise<void> => {
   const normalized = normalizeHomeserver(server);
   const bytes = crypto.getRandomValues(new Uint8Array(16));

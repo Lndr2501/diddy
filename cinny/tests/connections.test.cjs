@@ -151,3 +151,15 @@ test('connection rows list the original window first and mark the current one', 
   assert.deepEqual(fromSecond.map((row) => row.current), [false, false, true]);
   assert.equal([...env.buildConnectionRows([], undefined)].length, 1);
 });
+test('removing a connection refuses the original login and malformed ids before native sees them', async () => {
+  const env = setup();
+  for (const id of ['main', '../data', '0123456789AB4def8123456789abcdef', 'nope']) {
+    await assert.rejects(env.removeConnection(id));
+  }
+  assert.equal(env.calls.length, 0, 'nothing destructive may be invoked for invalid ids');
+  await env.removeConnection('0123456789ab4def8123456789abcdef');
+  assert.equal(env.calls.length, 1);
+  assert.equal(env.calls[0].command, 'remove_connection_profile');
+  assert.deepEqual(Object.keys(env.calls[0].args), ['id']);
+  assert.equal(env.calls[0].args.id, '0123456789ab4def8123456789abcdef');
+});

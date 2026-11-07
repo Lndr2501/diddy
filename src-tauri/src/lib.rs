@@ -239,7 +239,8 @@ pub fn run() {
             myinstants::myinstants_fetch_text,
             myinstants::myinstants_fetch_audio,
             connections::connection_profiles,
-            connections::open_connection_profile
+            connections::open_connection_profile,
+            connections::remove_connection_profile
         ])
         .manage(connections::ConnectionState::default())
         .plugin(tauri_plugin_dialog::init())
