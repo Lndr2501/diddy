@@ -26,7 +26,16 @@ const getVariant = (variant: TContainerColor): ComplexStyleRule => ({
 });
 
 export const ContainerColor = recipe({
-  base: [DefaultReset],
+  base: [
+    DefaultReset,
+    {
+      // Diddy (#21): soft hover / press changes, instant under prefers-reduced-motion (index.css)
+      transition: [
+        `background-color var(--diddy-dur-fast, 120ms) var(--diddy-ease, ease-out)`,
+        `border-color var(--diddy-dur-fast, 120ms) var(--diddy-ease, ease-out)`,
+      ].join(', '),
+    },
+  ],
   variants: {
     variant: {
       Background: getVariant('Background'),

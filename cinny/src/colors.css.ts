@@ -1,4 +1,4 @@
-import { createTheme } from '@vanilla-extract/css';
+import { createTheme, globalStyle } from '@vanilla-extract/css';
 import { color } from 'folds';
 import { PRESET_COLORS, darkPalette } from './themePalette';
 
@@ -95,7 +95,8 @@ export const silverTheme = createTheme(color, {
   Other: {
     FocusRing: 'rgba(0 0 0 / 50%)',
     Shadow: 'rgba(0 0 0 / 20%)',
-    Overlay: 'rgba(0 0 0 / 50%)',
+    // lighter dim, the backdrop also blurs (app/styles/Modal.css.ts)
+    Overlay: 'rgba(0 0 0 / 30%)',
   },
 });
 
@@ -192,7 +193,8 @@ const darkThemeData = {
   Other: {
     FocusRing: 'rgba(255, 255, 255, 0.5)',
     Shadow: 'rgba(0, 0, 0, 1)',
-    Overlay: 'rgba(0, 0, 0, 0.8)',
+    // lighter dim, the backdrop also blurs (app/styles/Modal.css.ts)
+    Overlay: 'rgba(0, 0, 0, 0.55)',
   },
 };
 
@@ -357,6 +359,38 @@ export const diddyTheme = createTheme(color, {
   Other: {
     FocusRing: 'rgba(229, 81, 124, 0.6)',
     Shadow: 'rgba(0, 0, 0, 1)',
-    Overlay: 'rgba(10, 6, 12, 0.78)',
+    Overlay: 'rgba(10, 6, 12, 0.55)',
+  },
+});
+
+/*
+ * Diddy design tokens that depend on the active theme (#21). The theme classes sit on <body>, so the
+ * folds colour variables resolve there; the rest of the tokens are in index.css. Dark is the
+ * default, `prism-light` marks the light themes (Light, Silver).
+ *   --diddy-accent           accent colour (Primary.Main)
+ *   --diddy-material         translucent fill for sidebars / popovers / menus (use with --diddy-blur)
+ *   --diddy-material-strong  denser translucent fill for sheets / dialogs
+ *   --diddy-selected         quiet accent tinted fill for selected rows
+ *   --diddy-selection        text selection background
+ *   --diddy-focus-ring       keyboard focus ring colour
+ */
+globalStyle('body', {
+  vars: {
+    '--diddy-accent': color.Primary.Main,
+    '--diddy-material': `color-mix(in srgb, ${color.SurfaceVariant.Container} 78%, transparent)`,
+    '--diddy-material-strong': `color-mix(in srgb, ${color.Surface.Container} 92%, transparent)`,
+    '--diddy-selected': `color-mix(in srgb, ${color.Primary.Main} 18%, transparent)`,
+    '--diddy-selection': `color-mix(in srgb, ${color.Primary.Main} 34%, transparent)`,
+    '--diddy-focus-ring': `color-mix(in srgb, ${color.Primary.Main} 65%, transparent)`,
+  },
+});
+
+globalStyle('body.prism-light', {
+  vars: {
+    '--diddy-material': `color-mix(in srgb, ${color.Surface.Container} 78%, transparent)`,
+    '--diddy-material-strong': `color-mix(in srgb, ${color.Surface.Container} 94%, transparent)`,
+    '--diddy-selected': `color-mix(in srgb, ${color.Primary.Main} 13%, transparent)`,
+    '--diddy-selection': `color-mix(in srgb, ${color.Primary.Main} 24%, transparent)`,
+    '--diddy-focus-ring': `color-mix(in srgb, ${color.Primary.Main} 55%, transparent)`,
   },
 });

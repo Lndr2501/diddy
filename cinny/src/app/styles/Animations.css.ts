@@ -31,17 +31,29 @@ const glowPulse = keyframes({
   },
 });
 
+// Diddy (#21): decorative loops stop when the system asks for reduced motion
+const reducedMotion = {
+  '@media': {
+    '(prefers-reduced-motion: reduce)': {
+      animation: 'none',
+    },
+  },
+};
+
 export const WobbleAnimation = style({
   animation: `${wobble} 2000ms ease-in-out`,
   animationIterationCount: 'infinite',
+  ...reducedMotion,
 });
 
 export const GlowAnimation = style({
   animation: `${glowPulse} 2000ms ease-out`,
   animationIterationCount: 'infinite',
+  ...reducedMotion,
 });
 
 export const CallAvatarAnimation = style({
   animation: `${wobble} 2000ms ease-in-out, ${glowPulse} 2000ms ease-out`,
   animationIterationCount: 'infinite',
+  ...reducedMotion,
 });
