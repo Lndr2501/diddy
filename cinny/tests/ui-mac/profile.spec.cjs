@@ -48,11 +48,9 @@ for (const [sizeName, size] of Object.entries(SIZES)) {
   });
 }
 
-// KNOWN BUG: the five tabs (Identity, Profile card, images, ...) are wider than their container and
-// the last tab is cut off, at every window size. test.fail() keeps the suite green while the bug
-// exists and turns red as soon as it is fixed, so this marker is removed then.
+// The tab strip wraps instead of cutting off its last tabs (it used to scroll with a hidden
+// scrollbar, leaving tabs unreachable).
 test('profile editor tab strip is not cut off', async ({ browser }) => {
-  test.fail(true, 'known bug: tab strip wider than its container, last tab cut off');
   test.setTimeout(60000);
   const page = await openApp(browser, 'testa');
   await dismissOnboarding(page, 3000);

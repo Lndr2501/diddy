@@ -102,6 +102,13 @@ async function openApp(browser, user, viewport = { width: 1100, height: 750 }) {
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e)));
   await page.goto('/');
+  // The specs navigate by URL hash, so the bundle must be built with the repo's config.json.
+  const cfg = await page.request.get('/config.json').then((r) => r.json()).catch(() => ({}));
+  if (!cfg.hashRouter || !cfg.hashRouter.enabled) {
+    throw new Error(
+      'config.json has hashRouter disabled: build with the repo config (cp ../config.json . && npm run build)'
+    );
+  }
   const hs = page.getByRole('textbox').first();
   await hs.fill(HS);
   await hs.press('Enter');

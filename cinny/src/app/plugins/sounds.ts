@@ -19,6 +19,7 @@ import streamStarted from '../../../public/sound/diddy/stream_started.mp3';
 import streamEnded from '../../../public/sound/diddy/stream_ended.mp3';
 import message from '../../../public/sound/diddy/message1.mp3';
 import ringing from '../../../public/sound/diddy/call_ringing.mp3';
+import ringback from '../../../public/sound/diddy/call_calling.mp3';
 import invite from '../../../public/sound/invite.ogg';
 
 export type SoundId =
@@ -35,8 +36,13 @@ export type SoundId =
   | 'streamStarted'
   | 'streamEnded'
   | 'message'
+  | 'mention'
   | 'invite'
-  | 'ringing';
+  | 'ringing'
+  | 'ringback'
+  | 'callJoined'
+  | 'callDeclined'
+  | 'connectionLost';
 
 export type SoundInfo = { id: SoundId; title: string; description: string; url: string };
 
@@ -48,6 +54,12 @@ export const SOUND_GROUPS: { title: string; sounds: SoundInfo[] }[] = [
         id: 'message',
         title: 'New message',
         description: 'A message that notifies you.',
+        url: message,
+      },
+      {
+        id: 'mention',
+        title: 'Mention',
+        description: 'A message that mentions you.',
         url: message,
       },
       { id: 'invite', title: 'Invitation', description: 'You are invited to a room.', url: invite },
@@ -63,6 +75,18 @@ export const SOUND_GROUPS: { title: string; sounds: SoundInfo[] }[] = [
         url: ringing,
       },
       {
+        id: 'ringback',
+        title: 'Outgoing call',
+        description: 'Rings while you call someone, until they answer or decline.',
+        url: ringback,
+      },
+      {
+        id: 'callJoined',
+        title: 'You join',
+        description: 'You enter a call.',
+        url: userJoin,
+      },
+      {
         id: 'userJoin',
         title: 'Someone joins',
         description: 'Another person joins your call.',
@@ -75,6 +99,18 @@ export const SOUND_GROUPS: { title: string; sounds: SoundInfo[] }[] = [
         url: userLeave,
       },
       { id: 'disconnect', title: 'You leave', description: 'You leave the call.', url: disconnect },
+      {
+        id: 'callDeclined',
+        title: 'Call declined',
+        description: 'The person you call declines.',
+        url: userLeave,
+      },
+      {
+        id: 'connectionLost',
+        title: 'Connection lost',
+        description: 'Your call loses its connection.',
+        url: userLeave,
+      },
     ],
   },
   {
@@ -125,6 +161,7 @@ const DEFAULT_URLS = Object.fromEntries(
 /** Custom files are stored as data URLs; keep them small so localStorage stays healthy. */
 export const MAX_CUSTOM_SOUND_BYTES = 800 * 1024;
 
+const DEFAULT_OFF: SoundId[] = ['invite'];
 const ENABLED_KEY = 'diddySoundEnabled';
 const CUSTOM_KEY = (id: SoundId) => `diddySoundCustom:${id}`;
 
@@ -143,9 +180,11 @@ const safeGet = (key: string): string | null => {
 };
 
 const readState = (): State => {
-  let disabled = new Set<SoundId>();
+  // Sounds that are off until the user turns them on.
+  let disabled = new Set<SoundId>(DEFAULT_OFF);
   try {
-    disabled = new Set(JSON.parse(safeGet(ENABLED_KEY) ?? '[]') as SoundId[]);
+    const stored = safeGet(ENABLED_KEY);
+    if (stored !== null) disabled = new Set(JSON.parse(stored) as SoundId[]);
   } catch {
     // damaged value: everything on
   }
@@ -306,6 +345,74 @@ export const playSound = (id: SoundId, options?: { volume?: number; force?: bool
     diag(`sound ${id}: no audio context (${String(e)})`);
     playWithElement(url, volume);
   }
+};
+
+/**
+ * Plays a sound over and over until the returned function is called (the ringback while you call
+ * someone). Does nothing when the sound is switched off.
+ */
+export const startSoundLoop = (id: SoundId, options?: { volume?: number }): (() => void) => {
+  if (!isSoundEnabled(id)) return () => undefined;
+  const url = getSoundUrl(id);
+  const volume = options?.volume ?? 0.5;
+  let stopped = false;
+  let stopPlayback: (() => void) | undefined;
+
+  const loopWithElement = () => {
+    try {
+      const audio = new Audio(url);
+      audio.loop = true;
+      audio.volume = volume;
+      audio.play().catch((e) => diag(`sound loop ${id} element play failed: ${String(e)}`));
+      stopPlayback = () => {
+        audio.pause();
+        audio.removeAttribute('src');
+        audio.load();
+      };
+    } catch (e) {
+      diag(`sound loop ${id} element failed: ${String(e)}`);
+    }
+  };
+
+  try {
+    const ctx = getSharedAudioContext();
+    loadBuffer(ctx, url)
+      .then((buffer) => {
+        if (stopped) return;
+        const source = ctx.createBufferSource();
+        const gain = ctx.createGain();
+        source.buffer = buffer;
+        source.loop = true;
+        gain.gain.value = volume;
+        source.connect(gain);
+        gain.connect(ctx.destination);
+        source.start();
+        stopPlayback = () => {
+          try {
+            source.stop();
+          } catch {
+            // already stopped
+          }
+          source.disconnect();
+          gain.disconnect();
+        };
+      })
+      .catch((e) => {
+        if (stopped) return;
+        diag(`sound loop ${id} via Web Audio failed (${String(e)}), using audio element`);
+        loopWithElement();
+      });
+  } catch (e) {
+    diag(`sound loop ${id}: no audio context (${String(e)})`);
+    loopWithElement();
+  }
+
+  return () => {
+    if (stopped) return;
+    stopped = true;
+    stopPlayback?.();
+    stopPlayback = undefined;
+  };
 };
 
 const subscribe = (listener: () => void) => {

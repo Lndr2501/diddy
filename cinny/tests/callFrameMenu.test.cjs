@@ -271,3 +271,23 @@ test("Element Call's tile menu is opened with a right-click at the given point, 
   assert.equal(last.clientX, 100);
   assert.equal(last.clientY, 50);
 });
+
+test('muted people are read from the mute icon in the call tiles', () => {
+  const mod = load();
+  const tile = (userId, muted) => ({
+    querySelector: (sel) => {
+      if (sel === '[aria-label]') return { getAttribute: () => userId };
+      if (sel === '[data-muted="true"]') return muted ? {} : null;
+      return null;
+    },
+  });
+  const doc = {
+    querySelectorAll: () => [
+      tile('@a:x.org', true),
+      tile('@b:x.org', false),
+      tile('not an id', true),
+    ],
+  };
+  assert.deepEqual([...mod.mutedCallUsers(doc)], ['@a:x.org']);
+  assert.equal(mod.mutedCallUsers(undefined).size, 0);
+});

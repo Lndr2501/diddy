@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { useAtomValue } from 'jotai';
 import { Avatar, Icon, Icons, Text } from 'folds';
 import { CallMembership } from 'matrix-js-sdk/lib/matrixrtc/CallMembership';
 import { Room } from 'matrix-js-sdk';
@@ -9,13 +10,48 @@ import { getMouseEventCords } from '../../utils/dom';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
 import { useOpenUserRoomProfile } from '../../state/hooks/userRoomProfile';
-import { openCallUserMenu } from '../../plugins/callFrameMenu';
+import { mutedCallUsers, openCallUserMenu } from '../../plugins/callFrameMenu';
+import { callEmbedAtom } from '../../state/callEmbed';
 import * as css from './styles.css';
 
 type CallMemberListProps = {
   room: Room;
   members: CallMembership[];
 };
+
+const MUTE_POLL_MS = 500;
+
+/**
+ * Who is muted in the call of `roomId`, read from the call you are in (Matrix does not carry the
+ * mute state of the others). Empty when you are not in that call.
+ */
+function useMutedCallUsers(roomId: string): ReadonlySet<string> {
+  const callEmbed = useAtomValue(callEmbedAtom);
+  const [muted, setMuted] = useState<ReadonlySet<string>>(new Set());
+
+  useEffect(() => {
+    if (!callEmbed || callEmbed.roomId !== roomId) {
+      setMuted((prev) => (prev.size === 0 ? prev : new Set()));
+      return undefined;
+    }
+    const update = () => {
+      let next: Set<string>;
+      try {
+        next = mutedCallUsers(callEmbed.document);
+      } catch {
+        next = new Set(); // torn-down or not yet loaded iframe
+      }
+      setMuted((prev) =>
+        prev.size === next.size && [...next].every((id) => prev.has(id)) ? prev : next
+      );
+    };
+    update();
+    const timer = window.setInterval(update, MUTE_POLL_MS);
+    return () => window.clearInterval(timer);
+  }, [callEmbed, roomId]);
+
+  return muted;
+}
 
 /**
  * Who is in the call, one person per row right under the call room in the room list (like the
@@ -25,6 +61,7 @@ export function CallMemberList({ room, members }: CallMemberListProps) {
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
   const openUserProfile = useOpenUserRoomProfile();
+  const mutedUsers = useMutedCallUsers(room.roomId);
 
   const shown = members.filter((m) => !!m.userId);
   if (shown.length === 0) return null;
@@ -69,6 +106,15 @@ export function CallMemberList({ room, members }: CallMemberListProps) {
             <Text as="span" size="T300" className={css.CallMemberRowName} truncate>
               {name}
             </Text>
+            {mutedUsers.has(userId) && (
+              <Icon
+                className={css.CallMemberRowMuted}
+                src={Icons.MicMute}
+                size="100"
+                filled
+                aria-label="Muted"
+              />
+            )}
           </button>
         );
       })}

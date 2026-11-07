@@ -12,6 +12,12 @@ import { diag } from '../diagnostics';
 
 /** RNNoise only works at 48 kHz. */
 const RNNOISE_RATE = 48000;
+/**
+ * The worklet only filters the first `maxChannels` channels and leaves the rest silent. With 1, a
+ * stereo microphone (common on Linux/PipeWire) lost its right channel. A mono microphone still
+ * produces a mono output, which the call destination duplicates to both sides.
+ */
+const MAX_CHANNELS = 2;
 /** A call must never wait long for the filter: without it the plain microphone is used. */
 const SETUP_TIMEOUT_MS = 4000;
 
@@ -32,7 +38,7 @@ const setup = async (ctx: AudioContext): Promise<AudioNode> => {
     module.catch(() => workletModules.delete(ctx));
   }
   await module;
-  return new RnnoiseWorkletNode(ctx, { maxChannels: 1, wasmBinary: await wasm });
+  return new RnnoiseWorkletNode(ctx, { maxChannels: MAX_CHANNELS, wasmBinary: await wasm });
 };
 
 /**

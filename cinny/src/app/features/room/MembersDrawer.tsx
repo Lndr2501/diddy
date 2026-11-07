@@ -133,6 +133,8 @@ type MemberItemProps = {
   pressed?: boolean;
   typing?: boolean;
   admin?: boolean;
+  /** shown in the "Offline" group: the row is greyed out */
+  offline?: boolean;
 };
 function MemberItem({
   mx,
@@ -143,6 +145,7 @@ function MemberItem({
   pressed,
   typing,
   admin,
+  offline,
 }: MemberItemProps) {
   const name =
     getMemberDisplayName(room, member.userId) ?? getMxIdLocalPart(member.userId) ?? member.userId;
@@ -172,7 +175,7 @@ function MemberItem({
 
   return (
     <MenuItem
-      className={css.MemberRow}
+      className={classNames(css.MemberRow, offline && css.MemberRowOffline)}
       style={{ padding: `0 ${config.space.S200}`, ...nameplateStyle }}
       aria-pressed={pressed}
       data-user-id={member.userId}
@@ -288,7 +291,7 @@ const groupMembersByPresence = (
   mx: MatrixClient,
   members: RoomMember[],
   getTag: GetMemberPowerTag
-): Array<MemberGroupLabel | RoomMember> => {
+): { items: Array<MemberGroupLabel | RoomMember>; offline: ReadonlySet<string> } => {
   const myUserId = mx.getUserId();
   const hasPresence = members.some(
     (m) => m.userId !== myUserId && mx.getUser(m.userId)?.events.presence !== undefined
@@ -313,7 +316,7 @@ const groupMembersByPresence = (
     items.push({ ...OFFLINE_TAG, count: absent.length });
     items.push(...absent);
   }
-  return items;
+  return { items, offline: new Set(absent.map((m) => m.userId)) };
 };
 
 const SEARCH_OPTIONS: UseAsyncSearchOptions = {
@@ -377,7 +380,7 @@ export function MembersDrawer({ room, members }: MembersDrawerProps) {
   const processMembers = result ? result.items : filteredMembers;
 
   const presenceVersion = usePresenceVersion(mx);
-  const PLTagOrRoomMember = useMemo(
+  const { items: PLTagOrRoomMember, offline: offlineIds } = useMemo(
     () => groupMembersByPresence(mx, processMembers, getPowerTag),
     // presenceVersion changes whenever someone goes online/offline
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -588,6 +591,7 @@ export function MembersDrawer({ room, members }: MembersDrawerProps) {
                           creators.has(tagOrMember.userId) ||
                           getPowerLevel(tagOrMember.userId) >= ADMIN_POWER_LEVEL
                         }
+                        offline={offlineIds.has(tagOrMember.userId)}
                         typing={typingMembers.some(
                           (receipt) => receipt.userId === tagOrMember.userId
                         )}

@@ -31,6 +31,7 @@ import { installCallFrameMenu } from '../callFrameMenu';
 import { installSoundboard } from './soundboard';
 import { installCallTheme } from './callTheme';
 import { installScreenShareGrid } from './screenShareGrid';
+import { trackPeerConnections } from './streamStats';
 
 export class CallEmbed {
   private mx: MatrixClient;
@@ -195,6 +196,8 @@ export class CallEmbed {
     // Installed as early as possible because Element Call may ask for the microphone right away;
     // both installers are idempotent, so the load handler is just a safety net.
     const installMediaPatches = () => {
+      // the call's peer connections: stream diagnostics and the "connection lost" sound
+      trackPeerConnections(iframe.contentWindow);
       installScreenShareAudio(iframe.contentWindow);
       // the call view is its own document: without this it showed the web view menu again
       installContextMenuGuard(iframe.contentWindow?.document);
@@ -236,6 +239,15 @@ export class CallEmbed {
 
   get roomId(): string {
     return this.room.roomId;
+  }
+
+  /** This call rings the other side (you start it in a direct message): you hear the ringback. */
+  get ringsOthers(): boolean {
+    try {
+      return new URL(this.iframe.src).searchParams.get('sendNotificationType') === 'ring';
+    } catch {
+      return false;
+    }
   }
 
   get document(): Document | undefined {
