@@ -45,6 +45,9 @@ extension Error {
             if case .MatrixApi(_, _, let message, _) = error { return message }
             if case .Generic(let message, _) = error { return message }
         }
+        if let error = self as? ClientBuildError, case .ServerUnreachable = error {
+            return "The server could not be reached. Check your connection and try again."
+        }
         return localizedDescription
     }
 }
