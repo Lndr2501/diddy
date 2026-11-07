@@ -1,8 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { Box, Button, config, Menu, Spinner, Text } from 'folds';
 import { AuthDict, IMyDevice, MatrixError } from 'matrix-js-sdk';
-import { SequenceCard } from '../../../components/sequence-card';
-import { SequenceCardStyle } from '../styles.css';
+import { InsetGroup, InsetItem, InsetRow, InsetSection } from '../inset-list';
 import { ActionUIA, ActionUIAFlowsLoader } from '../../../components/ActionUIA';
 import { DeviceDeleteBtn, DeviceTile } from './DeviceTile';
 import { AsyncState, AsyncStatus, useAsync } from '../../../hooks/useAsyncCallback';
@@ -14,7 +13,6 @@ import { VerificationStatus } from '../../../hooks/useDeviceVerificationStatus';
 import { useAuthMetadata } from '../../../hooks/useAuthMetadata';
 import { withSearchParam } from '../../../pages/pathUtils';
 import { useAccountManagementActions } from '../../../hooks/useAccountManagement';
-import { SettingTile } from '../../../components/setting-tile';
 
 type OtherDevicesProps = {
   devices: IMyDevice[];
@@ -103,16 +101,10 @@ export function OtherDevices({ devices, refreshDeviceList, showVerification }: O
 
   return devices.length > 0 ? (
     <>
-      <Box direction="Column" gap="100">
-        <Text size="L400">Others</Text>
+      <InsetSection title="Other Devices">
         {authMetadata && (
-          <SequenceCard
-            className={SequenceCardStyle}
-            variant="SurfaceVariant"
-            direction="Column"
-            gap="400"
-          >
-            <SettingTile
+          <InsetGroup>
+            <InsetRow
               title="Device Dashboard"
               description="Manage your devices on OIDC dashboard."
               after={
@@ -121,66 +113,64 @@ export function OtherDevices({ devices, refreshDeviceList, showVerification }: O
                   variant="Secondary"
                   fill="Soft"
                   radii="300"
-                  outlined
                   onClick={handleDashboardOIDC}
                 >
                   <Text size="B300">Open</Text>
                 </Button>
               }
             />
-          </SequenceCard>
+          </InsetGroup>
         )}
-        {devices
-          .sort((d1, d2) => {
-            if (!d1.last_seen_ts || !d2.last_seen_ts) return 0;
-            return d1.last_seen_ts < d2.last_seen_ts ? 1 : -1;
-          })
-          .map((device) => (
-            <SequenceCard
-              key={device.device_id}
-              className={SequenceCardStyle}
-              variant={deleted.has(device.device_id) ? 'Critical' : 'SurfaceVariant'}
-              direction="Column"
-              gap="400"
-            >
-              <DeviceTile
-                device={device}
-                deleted={deleted.has(device.device_id)}
-                refreshDeviceList={refreshDeviceList}
-                disabled={deleting}
-                options={
-                  authMetadata ? (
-                    <DeviceDeleteBtn
-                      deviceId={device.device_id}
-                      deleted={false}
-                      onDeleteToggle={handleDeleteOIDC}
-                    />
-                  ) : (
-                    <DeviceDeleteBtn
-                      deviceId={device.device_id}
-                      deleted={deleted.has(device.device_id)}
-                      onDeleteToggle={handleToggleDelete}
-                      disabled={deleting}
-                    />
-                  )
-                }
-              />
-              {showVerification && crypto && (
-                <DeviceVerificationStatus
-                  crypto={crypto}
-                  userId={mx.getSafeUserId()}
-                  deviceId={device.device_id}
-                >
-                  {(status) =>
-                    status === VerificationStatus.Unverified && (
-                      <VerifyOtherDeviceTile crypto={crypto} deviceId={device.device_id} />
+        <InsetGroup>
+          {devices
+            .sort((d1, d2) => {
+              if (!d1.last_seen_ts || !d2.last_seen_ts) return 0;
+              return d1.last_seen_ts < d2.last_seen_ts ? 1 : -1;
+            })
+            .map((device) => (
+              <InsetItem
+                key={device.device_id}
+                variant={deleted.has(device.device_id) ? 'Critical' : 'Default'}
+              >
+                <DeviceTile
+                  device={device}
+                  deleted={deleted.has(device.device_id)}
+                  refreshDeviceList={refreshDeviceList}
+                  disabled={deleting}
+                  options={
+                    authMetadata ? (
+                      <DeviceDeleteBtn
+                        deviceId={device.device_id}
+                        deleted={false}
+                        onDeleteToggle={handleDeleteOIDC}
+                      />
+                    ) : (
+                      <DeviceDeleteBtn
+                        deviceId={device.device_id}
+                        deleted={deleted.has(device.device_id)}
+                        onDeleteToggle={handleToggleDelete}
+                        disabled={deleting}
+                      />
                     )
                   }
-                </DeviceVerificationStatus>
-              )}
-            </SequenceCard>
-          ))}
-      </Box>
+                />
+                {showVerification && crypto && (
+                  <DeviceVerificationStatus
+                    crypto={crypto}
+                    userId={mx.getSafeUserId()}
+                    deviceId={device.device_id}
+                  >
+                    {(status) =>
+                      status === VerificationStatus.Unverified && (
+                        <VerifyOtherDeviceTile crypto={crypto} deviceId={device.device_id} />
+                      )
+                    }
+                  </DeviceVerificationStatus>
+                )}
+              </InsetItem>
+            ))}
+        </InsetGroup>
+      </InsetSection>
       {deleted.size > 0 && (
         <Menu
           style={{

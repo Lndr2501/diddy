@@ -1,8 +1,6 @@
 import React, { ChangeEventHandler, FormEventHandler, useCallback, useState } from 'react';
-import { Box, Button, Chip, Icon, IconButton, Icons, Input, Spinner, Text, config } from 'folds';
-import { SequenceCard } from '../../../components/sequence-card';
-import { SequenceCardStyle } from '../styles.css';
-import { SettingTile } from '../../../components/setting-tile';
+import { Box, Button, Icon, IconButton, Icons, Input, Spinner, Text, config } from 'folds';
+import { InsetGroup, InsetRow, InsetSection } from '../inset-list';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { AsyncStatus, useAsyncCallback } from '../../../hooks/useAsyncCallback';
 import { isUserId } from '../../../utils/matrix';
@@ -57,6 +55,7 @@ function IgnoreUserInput({ userList }: { userList: string[] }) {
         <Input
           required
           name="userIdInput"
+          placeholder="@user:server"
           value={userId}
           onChange={handleChange}
           variant="Secondary"
@@ -95,7 +94,7 @@ function IgnoreUserInput({ userList }: { userList: string[] }) {
   );
 }
 
-function IgnoredUserChip({ userId, userList }: { userId: string; userList: string[] }) {
+function IgnoredUserRow({ userId, userList }: { userId: string; userList: string[] }) {
   const mx = useMatrixClient();
   const [unignoreState, unignore] = useAsyncCallback(
     useCallback(
@@ -108,23 +107,22 @@ function IgnoredUserChip({ userId, userList }: { userId: string; userList: strin
 
   const unIgnoring = unignoreState.status === AsyncStatus.Loading;
   return (
-    <Chip
-      variant="Secondary"
-      radii="Pill"
+    <InsetRow
+      title={userId}
       after={
-        unIgnoring ? (
-          <Spinner variant="Secondary" size="100" />
-        ) : (
-          <Icon src={Icons.Cross} size="100" />
-        )
+        <Button
+          size="300"
+          variant="Secondary"
+          fill="Soft"
+          radii="300"
+          onClick={handleUnignore}
+          disabled={unIgnoring}
+          before={unIgnoring && <Spinner variant="Secondary" size="100" />}
+        >
+          <Text size="B300">Unblock</Text>
+        </Button>
       }
-      onClick={handleUnignore}
-      disabled={unIgnoring}
-    >
-      <Text size="T200" truncate>
-        {userId}
-      </Text>
-    </Chip>
+    />
   );
 }
 
@@ -132,35 +130,18 @@ export function IgnoredUserList() {
   const ignoredUsers = useIgnoredUsers();
 
   return (
-    <Box direction="Column" gap="100">
-      <Box alignItems="Center" justifyContent="SpaceBetween" gap="200">
-        <Text size="L400">Blocked Users</Text>
-      </Box>
-      <SequenceCard
-        className={SequenceCardStyle}
-        variant="SurfaceVariant"
-        direction="Column"
-        gap="400"
-      >
-        <SettingTile
-          title="Select User"
-          description="Prevent receiving messages or invites from user by adding their userId."
+    <InsetSection title="Blocked Users">
+      <InsetGroup>
+        <InsetRow
+          title="Block User"
+          description="Prevent receiving messages or invites from a user by adding their user ID."
         >
-          <Box direction="Column" gap="300">
-            <IgnoreUserInput userList={ignoredUsers} />
-            {ignoredUsers.length > 0 && (
-              <Box direction="Inherit" gap="100">
-                <Text size="L400">Users</Text>
-                <Box wrap="Wrap" gap="200">
-                  {ignoredUsers.map((userId) => (
-                    <IgnoredUserChip key={userId} userId={userId} userList={ignoredUsers} />
-                  ))}
-                </Box>
-              </Box>
-            )}
-          </Box>
-        </SettingTile>
-      </SequenceCard>
-    </Box>
+          <IgnoreUserInput userList={ignoredUsers} />
+        </InsetRow>
+        {ignoredUsers.map((userId) => (
+          <IgnoredUserRow key={userId} userId={userId} userList={ignoredUsers} />
+        ))}
+      </InsetGroup>
+    </InsetSection>
   );
 }

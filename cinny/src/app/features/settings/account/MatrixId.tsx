@@ -1,33 +1,31 @@
 import React from 'react';
-import { Box, Text, Chip } from 'folds';
+import { Button, Text } from 'folds';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
-import { SequenceCard } from '../../../components/sequence-card';
-import { SequenceCardStyle } from '../styles.css';
-import { SettingTile } from '../../../components/setting-tile';
 import { copyToClipboard } from '../../../utils/dom';
+import { InsetGroup, InsetRow, InsetSection } from '../inset-list';
 
 export function MatrixId() {
   const mx = useMatrixClient();
   const userId = mx.getUserId()!;
 
   return (
-    <Box direction="Column" gap="100">
-      <Text size="L400">Matrix ID</Text>
-      <SequenceCard
-        className={SequenceCardStyle}
-        variant="SurfaceVariant"
-        direction="Column"
-        gap="400"
-      >
-        <SettingTile
+    <InsetSection title="Matrix ID">
+      <InsetGroup>
+        <InsetRow
           title={userId}
           after={
-            <Chip variant="Secondary" radii="Pill" onClick={() => copyToClipboard(userId)}>
-              <Text size="T200">Copy</Text>
-            </Chip>
+            <Button
+              size="300"
+              variant="Secondary"
+              fill="Soft"
+              radii="300"
+              onClick={() => copyToClipboard(userId)}
+            >
+              <Text size="B300">Copy</Text>
+            </Button>
           }
         />
-      </SequenceCard>
-    </Box>
+      </InsetGroup>
+    </InsetSection>
   );
 }

@@ -1,8 +1,6 @@
 import React, { useCallback, useEffect } from 'react';
-import { Box, Text, Chip } from 'folds';
-import { SequenceCard } from '../../../components/sequence-card';
-import { SequenceCardStyle } from '../styles.css';
-import { SettingTile } from '../../../components/setting-tile';
+import { Text, Chip } from 'folds';
+import { InsetGroup, InsetRow, InsetSection } from '../inset-list';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { AsyncStatus, useAsyncCallback } from '../../../hooks/useAsyncCallback';
 
@@ -21,25 +19,26 @@ export function ContactInformation() {
   }, [loadThreePIds]);
 
   return (
-    <Box direction="Column" gap="100">
-      <Text size="L400">Contact Information</Text>
-      <SequenceCard
-        className={SequenceCardStyle}
-        variant="SurfaceVariant"
-        direction="Column"
-        gap="400"
-      >
-        <SettingTile title="Email Address" description="Email address attached to your account.">
-          <Box>
-            {emailIds?.map((email) => (
-              <Chip key={email.address} as="span" variant="Secondary" radii="Pill">
-                <Text size="T200">{email.address}</Text>
-              </Chip>
-            ))}
-          </Box>
-          {/* <Input defaultValue="" variant="Secondary" radii="300" /> */}
-        </SettingTile>
-      </SequenceCard>
-    </Box>
+    <InsetSection title="Contact Information">
+      <InsetGroup>
+        <InsetRow
+          title="Email Address"
+          description="Email address attached to your account."
+          after={
+            emailIds && emailIds.length > 0 ? (
+              emailIds.map((email) => (
+                <Chip key={email.address} as="span" variant="Secondary" radii="Pill">
+                  <Text size="T200">{email.address}</Text>
+                </Chip>
+              ))
+            ) : (
+              <Text size="T200" priority="300">
+                {threePIds ? 'None' : ''}
+              </Text>
+            )
+          }
+        />
+      </InsetGroup>
+    </InsetSection>
   );
 }

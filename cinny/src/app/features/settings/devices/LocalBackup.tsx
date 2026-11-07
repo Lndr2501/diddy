@@ -1,9 +1,8 @@
 import React, { FormEventHandler, useCallback, useEffect, useState } from 'react';
 import { Box, Button, color, Icon, Icons, Spinner, Text, toRem } from 'folds';
 import FileSaver from 'file-saver';
-import { SequenceCard } from '../../../components/sequence-card';
 import { SettingTile } from '../../../components/setting-tile';
-import { SequenceCardStyle } from '../styles.css';
+import { InsetGroup, InsetItem, InsetSection } from '../inset-list';
 import { PasswordInput } from '../../../components/password-input';
 import { ConfirmPasswordMatch } from '../../../components/ConfirmPasswordMatch';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
@@ -302,24 +301,15 @@ function ImportKeysTile() {
 
 export function LocalBackup() {
   return (
-    <Box direction="Column" gap="100">
-      <Text size="L400">Local Backup</Text>
-      <SequenceCard
-        className={SequenceCardStyle}
-        variant="SurfaceVariant"
-        direction="Column"
-        gap="400"
-      >
-        <ExportKeysTile />
-      </SequenceCard>
-      <SequenceCard
-        className={SequenceCardStyle}
-        variant="SurfaceVariant"
-        direction="Column"
-        gap="400"
-      >
-        <ImportKeysTile />
-      </SequenceCard>
-    </Box>
+    <InsetSection title="Local Backup">
+      <InsetGroup>
+        <InsetItem>
+          <ExportKeysTile />
+        </InsetItem>
+        <InsetItem>
+          <ImportKeysTile />
+        </InsetItem>
+      </InsetGroup>
+    </InsetSection>
   );
 }
