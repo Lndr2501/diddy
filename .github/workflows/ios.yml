@@ -22,6 +22,10 @@ on:
           - debugging
           - app-store-connect
         default: release-testing
+      release_tag:
+        description: "Publish the IPA as a GitHub release with this new tag, e.g. ios-v1.1.0-beta.1 (empty: artifact only)"
+        type: string
+        default: ""
   push:
     tags:
       - "v*"
@@ -152,11 +156,12 @@ jobs:
           if-no-files-found: error
 
       - name: Publish GitHub release
-        if: startsWith(github.ref, 'refs/tags/ios-v')
+        if: startsWith(github.ref, 'refs/tags/ios-v') || inputs.release_tag != ''
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ inputs.release_tag || github.ref_name }}
         run: |
+          case "$TAG" in ios-v*) ;; *) echo "::error::Release tags must start with ios-v"; exit 1 ;; esac
           flags=()
           case "$TAG" in *alpha*|*beta*|*rc*) flags+=(--prerelease) ;; esac
           if [ "$SIGNED" = "true" ]; then
@@ -173,8 +178,9 @@ jobs:
 
           Built with $(xcodebuild -version | head -n 1), iOS SDK $(xcrun --sdk iphoneos --show-sdk-version).
           NOTES
-          gh release create "$TAG" dist/*.ipa --repo "$GITHUB_REPOSITORY" --title "Diddy iOS ${TAG#ios-v}" \
-            --notes-file "$RUNNER_TEMP/notes.md" "${flags[@]}"
+          # --target creates the tag on the built commit when it does not exist yet (manual runs).
+          gh release create "$TAG" dist/*.ipa --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "Diddy iOS ${TAG#ios-v}" --notes-file "$RUNNER_TEMP/notes.md" "${flags[@]}"
 
       - name: Upload build log
         if: failure()
