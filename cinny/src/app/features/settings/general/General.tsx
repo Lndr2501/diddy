@@ -872,6 +872,17 @@ function CallSettings() {
     <InsetSection title="Calls">
       <InsetGroup>
         <InsetRow
+          title="Noise suppression"
+          description="Removes background noise such as keyboard, fan and room noise from your microphone (RNNoise, open source). It runs inside Diddy and does not turn your music down. Applies the next time you join a call."
+          after={
+            <Switch
+              variant="Primary"
+              value={prefs.noiseSuppression}
+              onChange={(noiseSuppression) => updateCallPrefs({ noiseSuppression })}
+            />
+          }
+        />
+        <InsetRow
           title="Voice processing"
           description="Echo cancellation, noise suppression and auto gain. Off keeps your music and other apps sounding normal and avoids short audio glitches when you join a call. Turn it on if you use speakers instead of headphones. Applies the next time you join a call."
           after={

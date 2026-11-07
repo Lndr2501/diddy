@@ -11,10 +11,15 @@ type Prefs = {
   echoCancellation: boolean;
   /** Short tones when you mute / unmute / deafen / undeafen. */
   callSounds: boolean;
+  /**
+   * Removes background noise from the microphone with RNNoise (open source), inside Diddy. Unlike
+   * "Voice processing" it does not switch macOS to its system voice mode.
+   */
+  noiseSuppression: boolean;
 };
 
 const KEY = 'diddyCallPrefs';
-const DEFAULTS: Prefs = { echoCancellation: false, callSounds: true };
+const DEFAULTS: Prefs = { echoCancellation: false, callSounds: true, noiseSuppression: true };
 
 const read = (): Prefs => {
   try {

@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<!--
+  Diddy built-in plugin: quick note. Saved automatically through Diddy's storage (key "note")
+  half a second after you stop typing. Max 5000 characters.
+  Self-contained, offline. Plugin API: docs/plugins.md (apiVersion 1, storage extension).
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Notes</title>
+    <style>
+      :root { --fg: #1d1d1f; --muted: rgba(0, 0, 0, 0.55); --card: rgba(0, 0, 0, 0.05); --line: rgba(0, 0, 0, 0.1); --accent: #007aff; --error: #d70015; --paper: rgba(255, 214, 10, 0.12); color-scheme: light; }
+      :root[data-theme="dark"] { --fg: #f5f5f7; --muted: rgba(255, 255, 255, 0.6); --card: rgba(255, 255, 255, 0.08); --line: rgba(255, 255, 255, 0.14); --accent: #0a84ff; --error: #ff6961; --paper: rgba(255, 214, 10, 0.08); color-scheme: dark; }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; background: transparent; color: var(--fg); font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+      main { padding: 12px 14px 12px; display: flex; flex-direction: column; gap: 6px; }
+      textarea { display: block; width: 100%; height: 168px; min-height: 64px; max-height: 520px; resize: vertical; font: inherit; line-height: 1.45; color: inherit; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+      textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
+      textarea::placeholder { color: var(--muted); }
+      .foot { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--muted); }
+      .count { font-variant-numeric: tabular-nums; white-space: nowrap; }
+      .count.full { color: var(--error); }
+      .error { color: var(--error); }
+      :root[data-layout="compact"] main { padding: 6px 8px; }
+      :root[data-layout="compact"] textarea { height: calc(3 * 1.45em + 10px); min-height: 0; resize: none; padding: 4px 8px; font-size: 13px; border-radius: 8px; }
+      :root[data-layout="compact"] .foot { display: none; }
+      :root[data-layout="compact"] .foot:has(.error) { display: flex; }
+      :root[data-layout="compact"] .count { display: none; }
+    </style>
+    <style id="diddy-custom-css"></style>
+  </head>
+  <body>
+    <main id="app">
+      <textarea id="note" maxlength="5000" spellcheck="true" aria-label="Note" placeholder="Loading…" readonly></textarea>
+      <div class="foot">
+        <span id="status" role="status"></span>
+        <span class="count" id="count" aria-live="off"></span>
+      </div>
+    </main>
+
+    <script>
+      (() => {
+        "use strict";
+
+        const API_VERSION = 1;
+        const MAX = 5000;
+        const host = window.parent;
+        const embedded = host !== window;
+        const root = document.documentElement;
+        const $ = (id) => document.getElementById(id);
+        const send = (message) => {
+          if (embedded) host.postMessage(message, "*");
+        };
+        let locale = navigator.language || "en";
+        root.dataset.theme = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        root.dataset.layout = "full";
+
+        // ---- storage through Diddy (the sandbox blocks localStorage) ----------------------
+        const KEY = /^[a-z0-9_.-]{1,40}$/;
+        const waiting = new Map();
+        let nextId = 0;
+        let storageAnswered = false; // did Diddy ever answer a storage request?
+        let initDone;
+        const initSeen = new Promise((resolve) => (initDone = resolve));
+        const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+        async function storageGet(key) {
+          if (!embedded || !KEY.test(key)) return null;
+          await Promise.race([initSeen, delay(1000)]);
+          return new Promise((resolve) => {
+            const id = `get-${++nextId}`;
+            const timer = setTimeout(() => finish(null), 2000);
+            function finish(value) {
+              clearTimeout(timer);
+              waiting.delete(id);
+              resolve(value);
+            }
+            waiting.set(id, { key, finish });
+            send({ type: "diddy:storage:get", id, key });
+          });
+        }
+        function storageSet(key, value) {
+          if (!KEY.test(key) || typeof value !== "string" || value.length > 20000) return false;
+          send({ type: "diddy:storage:set", key, value });
+          return true;
+        }
+
+        window.addEventListener("message", (event) => {
+          if (!embedded || event.source !== host) return;
+          const data = event.data;
+          if (!data || typeof data !== "object") return;
+          if (data.type === "diddy:init") {
+            if (data.apiVersion !== API_VERSION) return;
+            if (data.theme === "light" || data.theme === "dark") root.dataset.theme = data.theme;
+            root.dataset.layout = data.layout === "compact" ? "compact" : "full";
+            $("diddy-custom-css").textContent = typeof data.customCss === "string" ? data.customCss : "";
+            if (typeof data.locale === "string") {
+              try {
+                locale = Intl.getCanonicalLocales(data.locale)[0] || locale;
+              } catch {}
+            }
+            initDone();
+            updateCount();
+          } else if (data.type === "diddy:storage:value") {
+            const entry = typeof data.id === "string" ? waiting.get(data.id) : undefined;
+            if (!entry || data.key !== entry.key) return;
+            if (data.value !== null && typeof data.value !== "string") return;
+            storageAnswered = true;
+            entry.finish(data.value);
+          }
+        });
+
+        const app = $("app");
+        let lastHeight = 0;
+        const reportHeight = () => {
+          const height = Math.ceil(app.getBoundingClientRect().height);
+          if (height !== lastHeight) {
+            lastHeight = height;
+            send({ type: "diddy:resize", height });
+          }
+        };
+        new ResizeObserver(reportHeight).observe(app);
+
+        // ---- note -------------------------------------------------------------------------
+        const note = $("note");
+        let saveTimer = 0;
+        let dirty = false;
+
+        const number = (n) => {
+          try {
+            return new Intl.NumberFormat(locale).format(n);
+          } catch {
+            return String(n);
+          }
+        };
+        function updateCount() {
+          const n = note.value.length;
+          $("count").textContent = `${number(n)} / ${number(MAX)}`;
+          $("count").classList.toggle("full", n >= MAX);
+        }
+        function setStatus(text, isError) {
+          $("status").textContent = text;
+          $("status").className = isError ? "error" : "";
+        }
+
+        function save() {
+          clearTimeout(saveTimer);
+          saveTimer = 0;
+          if (!dirty) return;
+          dirty = false;
+          if (!embedded) {
+            setStatus("Not saved: open this inside Diddy.", true);
+          } else if (!storageSet("note", note.value.slice(0, MAX))) {
+            setStatus("Could not save this note.", true);
+          } else if (!storageAnswered) {
+            setStatus("Storage unavailable. This note may not be kept.", true);
+          } else {
+            setStatus("Saved");
+          }
+        }
+
+        note.addEventListener("input", () => {
+          if (note.value.length > MAX) note.value = note.value.slice(0, MAX);
+          dirty = true;
+          updateCount();
+          if (!$("status").classList.contains("error")) setStatus("Editing…");
+          clearTimeout(saveTimer);
+          saveTimer = setTimeout(save, 500);
+        });
+        note.addEventListener("blur", save);
+        window.addEventListener("pagehide", save);
+        // Escape leaves the text field, so keyboard users are not trapped in it
+        note.addEventListener("keydown", (event) => {
+          if (event.key === "Escape") note.blur();
+        });
+
+        // ---- start ------------------------------------------------------------------------
+        send({
+          type: "diddy:ready",
+          apiVersion: API_VERSION,
+          manifest: { name: "Notes", description: "A quick note, saved automatically", height: 220 },
+        });
+        updateCount();
+        reportHeight();
+        storageGet("note").then((value) => {
+          if (typeof value === "string") note.value = value.slice(0, MAX);
+          note.readOnly = false;
+          note.placeholder = "Write something…";
+          updateCount();
+          if (!embedded) setStatus("Not saved: open this inside Diddy.", true);
+          else if (!storageAnswered) setStatus("Storage unavailable. This note may not be kept.", true);
+          else setStatus(value ? "Saved" : "");
+        });
+      })();
+    </script>
+  </body>
+</html>

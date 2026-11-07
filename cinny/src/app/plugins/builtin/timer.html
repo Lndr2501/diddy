@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<!--
+  Diddy built-in plugin: focus timer (Pomodoro 25/5 and a free countdown).
+  Self-contained, offline. Plugin API: docs/plugins.md (apiVersion 1, storage extension).
+  Stored keys: "settings" = {"mode":"focus"|"break"|"custom","custom":minutes}.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Timer</title>
+    <style>
+      :root { --fg: #1d1d1f; --muted: rgba(0, 0, 0, 0.55); --card: rgba(0, 0, 0, 0.05); --line: rgba(0, 0, 0, 0.1); --accent: #007aff; --break: #34c759; --error: #d70015; color-scheme: light; }
+      :root[data-theme="dark"] { --fg: #f5f5f7; --muted: rgba(255, 255, 255, 0.6); --card: rgba(255, 255, 255, 0.08); --line: rgba(255, 255, 255, 0.14); --accent: #0a84ff; --break: #30d158; --error: #ff6961; color-scheme: dark; }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; background: transparent; color: var(--fg); font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+      main { padding: 14px 16px 16px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+      .modes { display: flex; gap: 2px; padding: 2px; background: var(--card); border-radius: 9px; width: 100%; max-width: 280px; }
+      .modes button { flex: 1; border: 0; background: transparent; color: inherit; font: inherit; font-size: 12px; padding: 4px 6px; border-radius: 7px; cursor: pointer; }
+      .modes button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+      .custom { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+      .custom input { width: 64px; font: inherit; color: var(--fg); background: var(--card); border: 1px solid var(--line); border-radius: 7px; padding: 3px 6px; text-align: right; }
+      .dial { position: relative; width: 132px; height: 132px; }
+      .dial svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+      .track { stroke: var(--line); }
+      .progress { stroke: var(--accent); transition: stroke-dashoffset 0.3s linear; }
+      :root[data-phase="break"] .progress, :root[data-phase="break"] .bar span { stroke: var(--break); background: var(--break); }
+      .center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+      .time { font-size: 30px; font-weight: 300; font-variant-numeric: tabular-nums; letter-spacing: -0.5px; }
+      .label { font-size: 12px; color: var(--muted); }
+      .buttons { display: flex; gap: 8px; }
+      .buttons button { font: inherit; border-radius: 8px; padding: 6px 16px; cursor: pointer; border: 1px solid var(--line); background: var(--card); color: inherit; min-width: 76px; }
+      .buttons .primary { background: var(--accent); border-color: transparent; color: #fff; }
+      .status { margin: 0; font-size: 13px; color: var(--muted); min-height: 0; text-align: center; }
+      .status:empty { display: none; }
+      .status.done { color: var(--fg); font-weight: 600; }
+      .bar { display: none; height: 3px; border-radius: 2px; background: var(--line); overflow: hidden; width: 100%; }
+      .bar span { display: block; height: 100%; background: var(--accent); width: 0; }
+      .error { color: var(--error); margin: 0; font-size: 12px; }
+      :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+      [hidden] { display: none !important; }
+      .flash { animation: flash 0.6s ease-in-out 3; }
+      @keyframes flash { 50% { opacity: 0.35; } }
+      @media (prefers-reduced-motion: reduce) { .progress { transition: none; } .flash { animation: none; } }
+      /* compact: remaining time + one start/pause button, thin progress bar */
+      :root[data-layout="compact"] main { padding: 8px 10px; gap: 6px; display: grid; grid-template-columns: 1fr auto; align-items: center; }
+      :root[data-layout="compact"] .modes, :root[data-layout="compact"] .custom, :root[data-layout="compact"] svg,
+      :root[data-layout="compact"] #reset, :root[data-layout="compact"] .status { display: none !important; }
+      :root[data-layout="compact"] .dial { width: auto; height: auto; }
+      :root[data-layout="compact"] .center { position: static; flex-direction: row; align-items: baseline; justify-content: flex-start; gap: 6px; }
+      :root[data-layout="compact"] .time { font-size: 22px; }
+      :root[data-layout="compact"] .buttons button { padding: 4px 12px; min-width: 64px; }
+      :root[data-layout="compact"] .bar { display: block; grid-column: 1 / -1; }
+    </style>
+    <style id="diddy-custom-css"></style>
+  </head>
+  <body>
+    <main id="app">
+      <div class="modes" role="group" aria-label="Mode">
+        <button type="button" data-mode="focus">Focus 25</button>
+        <button type="button" data-mode="break">Break 5</button>
+        <button type="button" data-mode="custom">Custom</button>
+      </div>
+      <label class="custom" id="customRow">Minutes
+        <input id="minutes" type="number" min="1" max="180" step="1" value="10" inputmode="numeric" />
+      </label>
+      <div class="dial">
+        <svg viewBox="0 0 120 120" aria-hidden="true">
+          <circle class="track" cx="60" cy="60" r="54" fill="none" stroke-width="6" />
+          <circle class="progress" id="ring" cx="60" cy="60" r="54" fill="none" stroke-width="6" stroke-linecap="round" />
+        </svg>
+        <div class="center">
+          <div class="time" id="time" role="timer" aria-label="Remaining time">25:00</div>
+          <div class="label" id="label">Focus</div>
+        </div>
+      </div>
+      <div class="buttons">
+        <button type="button" class="primary" id="toggle">Start</button>
+        <button type="button" id="reset">Reset</button>
+      </div>
+      <div class="bar" aria-hidden="true"><span id="bar"></span></div>
+      <p class="status" id="status" role="status"></p>
+    </main>
+
+    <script>
+      (() => {
+        "use strict";
+
+        const API_VERSION = 1;
+        const host = window.parent;
+        const embedded = host !== window;
+        const root = document.documentElement;
+        const $ = (id) => document.getElementById(id);
+        const send = (message) => {
+          if (embedded) host.postMessage(message, "*");
+        };
+        root.dataset.theme = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        root.dataset.layout = "full";
+
+        // ---- storage through Diddy (the sandbox blocks localStorage) ----------------------
+        const KEY = /^[a-z0-9_.-]{1,40}$/;
+        const waiting = new Map();
+        let nextId = 0;
+        let initDone;
+        const initSeen = new Promise((resolve) => (initDone = resolve));
+        const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+        async function storageGet(key) {
+          if (!embedded || !KEY.test(key)) return null;
+          await Promise.race([initSeen, delay(1000)]);
+          return new Promise((resolve) => {
+            const id = `get-${++nextId}`;
+            const timer = setTimeout(() => finish(null), 2000);
+            function finish(value) {
+              clearTimeout(timer);
+              waiting.delete(id);
+              resolve(value);
+            }
+            waiting.set(id, { key, finish });
+            send({ type: "diddy:storage:get", id, key });
+          });
+        }
+        function storageSet(key, value) {
+          if (!KEY.test(key) || typeof value !== "string" || value.length > 20000) return;
+          send({ type: "diddy:storage:set", key, value });
+        }
+
+        window.addEventListener("message", (event) => {
+          if (!embedded || event.source !== host) return;
+          const data = event.data;
+          if (!data || typeof data !== "object") return;
+          if (data.type === "diddy:init") {
+            if (data.apiVersion !== API_VERSION) return;
+            if (data.theme === "light" || data.theme === "dark") root.dataset.theme = data.theme;
+            root.dataset.layout = data.layout === "compact" ? "compact" : "full";
+            $("diddy-custom-css").textContent = typeof data.customCss === "string" ? data.customCss : "";
+            initDone();
+          } else if (data.type === "diddy:storage:value") {
+            const entry = typeof data.id === "string" ? waiting.get(data.id) : undefined;
+            if (!entry || data.key !== entry.key) return;
+            if (data.value !== null && typeof data.value !== "string") return;
+            entry.finish(data.value);
+          }
+        });
+
+        const app = $("app");
+        let lastHeight = 0;
+        const reportHeight = () => {
+          const height = Math.ceil(app.getBoundingClientRect().height);
+          if (height !== lastHeight) {
+            lastHeight = height;
+            send({ type: "diddy:resize", height });
+          }
+        };
+        new ResizeObserver(reportHeight).observe(app);
+
+        // ---- timer ------------------------------------------------------------------------
+        const LABELS = { focus: "Focus", break: "Break", custom: "Timer" };
+        const ring = $("ring");
+        const CIRCUMFERENCE = 2 * Math.PI * 54;
+        ring.style.strokeDasharray = String(CIRCUMFERENCE);
+
+        let mode = "focus";
+        let customMinutes = 10;
+        let total = 0;
+        let remaining = 0;
+        let endAt = 0;
+        let interval = 0;
+        let touched = false; // the user changed something before storage answered
+
+        const clampMinutes = (value) => Math.min(180, Math.max(1, Math.round(value)));
+        const minutesFor = (m) => (m === "focus" ? 25 : m === "break" ? 5 : customMinutes);
+        const running = () => interval !== 0;
+        const fmtTime = (ms) => {
+          const s = Math.ceil(ms / 1000);
+          const h = Math.floor(s / 3600);
+          const mm = String(Math.floor((s % 3600) / 60)).padStart(2, "0");
+          const ss = String(s % 60).padStart(2, "0");
+          return h ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+        };
+
+        function draw() {
+          const fraction = total ? remaining / total : 0;
+          ring.style.strokeDashoffset = String(CIRCUMFERENCE * (1 - fraction));
+          $("bar").style.width = `${(fraction * 100).toFixed(2)}%`;
+          $("time").textContent = fmtTime(remaining);
+          $("label").textContent = running() ? LABELS[mode] : remaining === total ? LABELS[mode] : remaining ? "Paused" : "Done";
+          $("toggle").textContent = running() ? "Pause" : remaining < total && remaining > 0 ? "Resume" : "Start";
+          $("toggle").setAttribute("aria-label", `${$("toggle").textContent} timer`);
+          root.dataset.phase = mode;
+          for (const b of document.querySelectorAll(".modes button")) b.setAttribute("aria-pressed", String(b.dataset.mode === mode));
+          $("customRow").hidden = mode !== "custom";
+          $("minutes").disabled = running();
+        }
+
+        function setStatus(text, done) {
+          $("status").textContent = text;
+          $("status").classList.toggle("done", !!done);
+        }
+
+        function stopInterval() {
+          clearInterval(interval);
+          interval = 0;
+        }
+
+        function reset() {
+          stopInterval();
+          total = minutesFor(mode) * 60000;
+          remaining = total;
+          document.title = "Timer";
+          draw();
+        }
+
+        function tick() {
+          remaining = Math.max(0, endAt - Date.now());
+          if (remaining === 0) finish();
+          else draw();
+        }
+
+        function finish() {
+          stopInterval();
+          remaining = 0;
+          draw();
+          const finished = mode;
+          document.title = `⏰ ${LABELS[finished]} done`;
+          app.classList.remove("flash");
+          void app.offsetWidth; // restart the animation
+          app.classList.add("flash");
+          if (finished === "focus") {
+            mode = "break";
+            reset();
+            document.title = "⏰ Focus done";
+            setStatus("Focus done. Time for a break.", true);
+          } else if (finished === "break") {
+            mode = "focus";
+            reset();
+            document.title = "⏰ Break over";
+            setStatus("Break over. Ready to focus?", true);
+          } else {
+            setStatus("Time's up!", true);
+          }
+        }
+
+        function toggle() {
+          touched = true;
+          if (running()) {
+            remaining = Math.max(0, endAt - Date.now());
+            stopInterval();
+            draw();
+            return;
+          }
+          if (remaining <= 0) reset();
+          setStatus("");
+          document.title = "Timer";
+          endAt = Date.now() + remaining;
+          interval = setInterval(tick, 250);
+          draw();
+        }
+
+        const save = () => storageSet("settings", JSON.stringify({ mode, custom: customMinutes }));
+
+        function setMode(next) {
+          if (!LABELS[next]) return;
+          touched = true;
+          mode = next;
+          setStatus("");
+          reset();
+          save();
+        }
+
+        for (const b of document.querySelectorAll(".modes button")) b.addEventListener("click", () => setMode(b.dataset.mode));
+        $("toggle").addEventListener("click", toggle);
+        $("reset").addEventListener("click", () => {
+          touched = true;
+          setStatus("");
+          reset();
+        });
+        $("minutes").addEventListener("change", () => {
+          const value = Number($("minutes").value);
+          if (!Number.isFinite(value) || value <= 0) {
+            setStatus("Enter 1–180 minutes.", false);
+            $("minutes").value = String(customMinutes);
+            return;
+          }
+          touched = true;
+          customMinutes = clampMinutes(value);
+          $("minutes").value = String(customMinutes);
+          setStatus("");
+          if (mode === "custom") reset();
+          save();
+        });
+
+        // ---- start ------------------------------------------------------------------------
+        send({
+          type: "diddy:ready",
+          apiVersion: API_VERSION,
+          manifest: { name: "Timer", description: "Focus timer", height: 290 },
+        });
+        reset();
+        reportHeight();
+        storageGet("settings").then((raw) => {
+          if (touched || typeof raw !== "string") return;
+          try {
+            const saved = JSON.parse(raw);
+            if (saved && typeof saved === "object") {
+              if (typeof saved.custom === "number" && Number.isFinite(saved.custom)) customMinutes = clampMinutes(saved.custom);
+              if (saved.mode === "focus" || saved.mode === "break" || saved.mode === "custom") mode = saved.mode;
+            }
+          } catch {
+            return; // broken value: keep the defaults
+          }
+          $("minutes").value = String(customMinutes);
+          reset();
+        });
+      })();
+    </script>
+  </body>
+</html>

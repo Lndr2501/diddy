@@ -16,6 +16,7 @@ import { getCallPrefs } from '../../state/callPrefs';
 import { getAudioPrefs, registerInputGain } from './audioDevices';
 import { applyAudioProcessingPolicy } from './audioConstraints';
 import { getSharedAudioContext } from './sharedAudio';
+import { createNoiseSuppressor } from './noiseSuppression';
 import { isNativeMic, nativeMicAvailable, openNativeMic, preferredNativeMic } from './nativeMic';
 
 export type Clip = {
@@ -346,7 +347,13 @@ class Soundboard {
     // keep the plain microphone: the most direct, glitch-free path to the call. (A chosen
     // microphone goes through the mixer so it can be switched live without Element Call's help.)
     const audioPrefs = getAudioPrefs();
-    if (this.clips.length === 0 && audioPrefs.inputVolume === 1 && audioPrefs.input === '') {
+    const wantNoiseSuppression = getCallPrefs().noiseSuppression;
+    if (
+      this.clips.length === 0 &&
+      audioPrefs.inputVolume === 1 &&
+      audioPrefs.input === '' &&
+      !wantNoiseSuppression
+    ) {
       return stream;
     }
 
@@ -366,7 +373,11 @@ class Soundboard {
     // Input volume preference (live)
     const micGain = ctx.createGain();
     const unregisterGain = registerInputGain(micGain);
-    source.connect(micGain);
+    // Noise suppression sits between the microphone and the volume (not on the soundboard bus)
+    const suppressor = wantNoiseSuppression ? await createNoiseSuppressor(ctx) : undefined;
+    const micEntry: AudioNode = suppressor ?? micGain;
+    if (suppressor) suppressor.connect(micGain);
+    source.connect(micEntry);
     micGain.connect(destination);
     bus.connect(destination);
 
@@ -389,6 +400,7 @@ class Soundboard {
         currentMic.removeEventListener('ended', onMicEnded);
         unregisterGain();
         source.disconnect();
+        suppressor?.disconnect();
         micGain.disconnect();
         bus.disconnect();
         this.mixes.delete(mix);
@@ -401,7 +413,7 @@ class Soundboard {
         source.disconnect();
         currentMic = track;
         source = ctx.createMediaStreamSource(new MediaStream([track]));
-        source.connect(micGain);
+        source.connect(micEntry);
         track.addEventListener('ended', onMicEnded);
         old.stop();
       },

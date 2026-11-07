@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<!--
+  Diddy built-in plugin: month calendar (offline, weeks start on Monday, today highlighted).
+  Self-contained, stores nothing. Plugin API: docs/plugins.md (apiVersion 1).
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Calendar</title>
+    <style>
+      :root { --fg: #1d1d1f; --muted: rgba(0, 0, 0, 0.55); --faint: rgba(0, 0, 0, 0.28); --card: rgba(0, 0, 0, 0.05); --line: rgba(0, 0, 0, 0.1); --accent: #007aff; --error: #d70015; color-scheme: light; }
+      :root[data-theme="dark"] { --fg: #f5f5f7; --muted: rgba(255, 255, 255, 0.6); --faint: rgba(255, 255, 255, 0.28); --card: rgba(255, 255, 255, 0.08); --line: rgba(255, 255, 255, 0.14); --accent: #0a84ff; --error: #ff6961; color-scheme: dark; }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; background: transparent; color: var(--fg); font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+      main { padding: 12px 14px 12px; display: flex; flex-direction: column; gap: 8px; }
+      header { display: flex; align-items: center; gap: 4px; }
+      .title { flex: 1; font-size: 16px; font-weight: 600; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .title span { color: var(--accent); font-weight: 400; }
+      header button { font: inherit; color: inherit; background: transparent; border: 0; border-radius: 7px; height: 28px; min-width: 28px; padding: 0 8px; cursor: pointer; }
+      header button:hover:not(:disabled) { background: var(--card); }
+      header button:disabled { opacity: 0.4; cursor: default; }
+      #today { font-size: 12px; border: 1px solid var(--line); height: 24px; }
+      .nav { font-size: 18px; line-height: 1; color: var(--accent) !important; }
+      table { width: 100%; border-collapse: collapse; table-layout: fixed; font-variant-numeric: tabular-nums; }
+      th { font-size: 11px; font-weight: 500; color: var(--muted); padding: 0 0 4px; text-transform: uppercase; letter-spacing: 0.02em; }
+      td { text-align: center; padding: 1px 0; font-size: 13px; }
+      td span { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; }
+      td.other span { color: var(--faint); }
+      td.weekend:not(.other) span { color: var(--muted); }
+      td.today span { background: var(--accent); color: #fff !important; font-weight: 600; }
+      .error { color: var(--error); margin: 0; font-size: 12px; }
+      .error:empty { display: none; }
+      :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+      [hidden] { display: none !important; }
+      /* compact: this month only, no navigation, small cells */
+      :root[data-layout="compact"] main { padding: 4px 8px; gap: 1px; }
+      :root[data-layout="compact"] .nav, :root[data-layout="compact"] #today { display: none; }
+      :root[data-layout="compact"] .title { font-size: 11px; line-height: 13px; }
+      :root[data-layout="compact"] th { font-size: 9px; line-height: 10px; padding: 0; }
+      :root[data-layout="compact"] td { font-size: 9.5px; line-height: 10px; padding: 0; }
+      :root[data-layout="compact"] td span { width: 15px; height: 10px; border-radius: 3px; }
+    </style>
+    <style id="diddy-custom-css"></style>
+  </head>
+  <body>
+    <main id="app">
+      <header>
+        <h1 class="title" id="title" aria-live="polite"></h1>
+        <button type="button" class="nav" id="prev" aria-label="Previous month">‹</button>
+        <button type="button" id="today">Today</button>
+        <button type="button" class="nav" id="next" aria-label="Next month">›</button>
+      </header>
+      <table id="grid">
+        <thead><tr id="head"></tr></thead>
+        <tbody id="body"></tbody>
+      </table>
+      <p class="error" id="error" role="alert"></p>
+    </main>
+
+    <script>
+      (() => {
+        "use strict";
+
+        const API_VERSION = 1;
+        const host = window.parent;
+        const embedded = host !== window;
+        const root = document.documentElement;
+        const $ = (id) => document.getElementById(id);
+        const send = (message) => {
+          if (embedded) host.postMessage(message, "*");
+        };
+        let locale = navigator.language || "en";
+        root.dataset.theme = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        root.dataset.layout = "full";
+
+        window.addEventListener("message", (event) => {
+          if (!embedded || event.source !== host) return;
+          const data = event.data;
+          if (!data || typeof data !== "object" || data.type !== "diddy:init") return;
+          if (data.apiVersion !== API_VERSION) return;
+          if (data.theme === "light" || data.theme === "dark") root.dataset.theme = data.theme;
+          root.dataset.layout = data.layout === "compact" ? "compact" : "full";
+          $("diddy-custom-css").textContent = typeof data.customCss === "string" ? data.customCss : "";
+          if (typeof data.locale === "string") {
+            try {
+              locale = Intl.getCanonicalLocales(data.locale)[0] || locale;
+            } catch {}
+          }
+          if (root.dataset.layout === "compact") view = monthOf(new Date());
+          safeRender();
+        });
+
+        const app = $("app");
+        let lastHeight = 0;
+        const reportHeight = () => {
+          const height = Math.ceil(app.getBoundingClientRect().height);
+          if (height !== lastHeight) {
+            lastHeight = height;
+            send({ type: "diddy:resize", height });
+          }
+        };
+        new ResizeObserver(reportHeight).observe(app);
+
+        // ---- calendar ---------------------------------------------------------------------
+        const monthOf = (date) => ({ y: date.getFullYear(), m: date.getMonth() });
+        let view = monthOf(new Date());
+
+        const fmt = (options, date) => {
+          try {
+            return new Intl.DateTimeFormat(locale, options).format(date);
+          } catch {
+            return new Intl.DateTimeFormat("en", options).format(date);
+          }
+        };
+
+        function render() {
+          const compact = root.dataset.layout === "compact";
+          const now = new Date();
+          const first = new Date(view.y, view.m, 1);
+
+          // title: month name + year (the year in accent colour, like macOS Calendar)
+          const title = $("title");
+          const month = document.createElement("strong");
+          month.textContent = fmt({ month: "long" }, first);
+          const year = document.createElement("span");
+          year.textContent = ` ${fmt({ year: "numeric" }, first)}`;
+          title.replaceChildren(month, year);
+          $("grid").setAttribute("aria-label", fmt({ month: "long", year: "numeric" }, first));
+
+          // weekday names, Monday first (1 Jan 2024 was a Monday)
+          $("head").replaceChildren(
+            ...Array.from({ length: 7 }, (_, i) => {
+              const th = document.createElement("th");
+              const day = new Date(2024, 0, 1 + i);
+              th.scope = "col";
+              th.abbr = fmt({ weekday: "long" }, day);
+              th.textContent = fmt({ weekday: compact ? "narrow" : "short" }, day);
+              return th;
+            })
+          );
+
+          // weeks: from the Monday on or before the 1st to the Sunday on or after the last day
+          const lead = (first.getDay() + 6) % 7;
+          const daysInMonth = new Date(view.y, view.m + 1, 0).getDate();
+          const weeks = Math.ceil((lead + daysInMonth) / 7);
+          const rows = [];
+          for (let w = 0; w < weeks; w++) {
+            const tr = document.createElement("tr");
+            for (let d = 0; d < 7; d++) {
+              const date = new Date(view.y, view.m, 1 - lead + w * 7 + d);
+              const td = document.createElement("td");
+              const span = document.createElement("span");
+              span.textContent = String(date.getDate());
+              const classes = [];
+              if (date.getMonth() !== view.m) classes.push("other");
+              if (d >= 5) classes.push("weekend");
+              if (date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth() && date.getDate() === now.getDate()) {
+                classes.push("today");
+                td.setAttribute("aria-current", "date");
+                span.title = "Today";
+              }
+              td.className = classes.join(" ");
+              td.append(span);
+              tr.append(td);
+            }
+            rows.push(tr);
+          }
+          $("body").replaceChildren(...rows);
+          const current = monthOf(now);
+          $("today").disabled = view.y === current.y && view.m === current.m;
+        }
+
+        function safeRender() {
+          try {
+            render();
+            $("error").textContent = "";
+          } catch {
+            $("error").textContent = "Could not draw the calendar.";
+          }
+        }
+
+        const shift = (delta) => {
+          const d = new Date(view.y, view.m + delta, 1);
+          view = monthOf(d);
+          safeRender();
+        };
+        $("prev").addEventListener("click", () => shift(-1));
+        $("next").addEventListener("click", () => shift(1));
+        $("today").addEventListener("click", () => {
+          view = monthOf(new Date());
+          safeRender();
+          $("next").focus();
+        });
+        // PageUp / PageDown also flip months when the card has focus
+        app.addEventListener("keydown", (event) => {
+          if (root.dataset.layout === "compact") return;
+          if (event.key === "PageUp") shift(-1);
+          else if (event.key === "PageDown") shift(1);
+          else return;
+          event.preventDefault();
+        });
+
+        // redraw after midnight so "today" moves on; follow the month if it was the current one
+        let shownDay = new Date().toDateString();
+        function watchDay() {
+          const now = new Date();
+          if (now.toDateString() !== shownDay) {
+            const prev = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+            if (view.y === prev.getFullYear() && view.m === prev.getMonth()) view = monthOf(now);
+            shownDay = now.toDateString();
+            safeRender();
+          }
+        }
+        setInterval(watchDay, 30000);
+        document.addEventListener("visibilitychange", watchDay);
+
+        // ---- start ------------------------------------------------------------------------
+        send({
+          type: "diddy:ready",
+          apiVersion: API_VERSION,
+          manifest: { name: "Calendar", description: "Month view", height: 260 },
+        });
+        safeRender();
+        reportHeight();
+      })();
+    </script>
+  </body>
+</html>
