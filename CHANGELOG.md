@@ -4,6 +4,7 @@
 
 ### Stand 2026-11-07
 
+- iOS/iPadOS: Diddy läuft als iPhone- und iPad-App. Neuer Workflow *Build iOS* baut eine IPA (unsigniert zum Sideloaden oder signiert mit Secrets). Die Oberfläche hält Notch und Home-Indikator frei, das Eingabefeld bleibt über der Tastatur, externe Links öffnen in Safari, Calls bleiben im Hintergrund hörbar. Getrennte Anmeldungen und Bildschirmübertragung gibt es auf iOS nicht.
 - Systemschrift: SF auf macOS, Inter auf Linux (#21, erster Schritt)
 - Optionsraum: Profil und Badges werden nicht mehr bei jedem App-Start neu gesendet, nur bei Beitritten (sonst füllt sich der Raum und ältere Daten fallen aus dem Lesefenster)
 - README überarbeitet (#18), VM-Anleitung für Linux/NixOS auf dem Mac (`docs/vm-macos.md`)

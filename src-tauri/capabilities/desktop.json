@@ -1,15 +1,27 @@
 {
   "identifier": "desktop-capability",
+  "description": "Desktop-only plugins (not built for iOS/Android, so their permissions must not be referenced there)",
   "platforms": [
     "macOS",
     "windows",
     "linux"
   ],
+  "local": true,
+  "remote": {
+    "urls": [
+      "http://localhost:44548"
+    ]
+  },
   "windows": [
     "main",
     "connection-*"
   ],
   "permissions": [
-    "global-shortcut:default"
+    "global-shortcut:default",
+    "global-shortcut:allow-is-registered",
+    "global-shortcut:allow-register",
+    "global-shortcut:allow-register-all",
+    "global-shortcut:allow-unregister",
+    "global-shortcut:allow-unregister-all"
   ]
 }

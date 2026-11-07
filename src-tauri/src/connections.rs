@@ -178,6 +178,10 @@ pub async fn open_connection_profile(
     let (profile, is_new) = if id == "main" {
         if server.is_some() { return Err("Die ursprüngliche Anmeldung wird nicht verändert.".into()); }
         (None, false)
+    } else if cfg!(target_os = "ios") {
+        // iOS runs one full-screen web view on the default WebKit store; a second, separated
+        // login would need its own window and data store, which iOS apps do not get.
+        return Err("Getrennte Anmeldungen gibt es auf iOS nicht. Dein bisheriges Konto wurde nicht verändert.".into());
     } else {
         profile_identifier(&id)?;
         let guard = state.lock.lock().map_err(|_| "Verbindungsliste ist gerade belegt.")?;
@@ -407,6 +411,8 @@ fn start_webkit_store_wipe(identifier: [u8; 16]) -> Result<Arc<AtomicBool>, Stri
 
 /// A plain relaunch without connection arguments must restore the main window when the user closed
 /// it while the process kept running (for example with only a secondary window left open).
+/// Desktop only: mobile has neither relaunches nor closable windows.
+#[cfg_attr(mobile, allow(dead_code))]
 pub fn focus_or_reopen_main(app: &AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.show();
@@ -432,12 +438,14 @@ pub fn focus_or_reopen_main(app: &AppHandle) {
     }
 }
 
+#[cfg_attr(mobile, allow(dead_code))]
 #[derive(Debug, PartialEq)]
 struct LaunchRequest {
     id: String,
     server: Option<String>,
 }
 
+#[cfg_attr(mobile, allow(dead_code))]
 fn parse_launch(args: &[String]) -> Result<Option<LaunchRequest>, String> {
     let option = |name: &str| -> Result<Option<String>, String> {
         let positions: Vec<_> = args.iter().enumerate().filter(|(_, arg)| arg.as_str() == name).map(|(i, _)| i).collect();
@@ -458,6 +466,7 @@ fn parse_launch(args: &[String]) -> Result<Option<LaunchRequest>, String> {
 
 /// Supported launch arguments contain public metadata only, never passwords or access tokens.
 /// The official single-instance plugin forwards later launches to this same validated code path.
+#[cfg_attr(mobile, allow(dead_code))]
 pub fn handle_launch(app: &AppHandle, args: &[String]) -> bool {
     let request = match parse_launch(args) {
         Ok(None) => return false,

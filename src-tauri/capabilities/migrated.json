@@ -64,11 +64,6 @@
     "dialog:allow-confirm",
     "http:default",
     "notification:default",
-    "global-shortcut:allow-is-registered",
-    "global-shortcut:allow-register",
-    "global-shortcut:allow-register-all",
-    "global-shortcut:allow-unregister",
-    "global-shortcut:allow-unregister-all",
     "os:allow-platform",
     "os:allow-version",
     "os:allow-os-type",
@@ -86,7 +81,7 @@
     "clipboard-manager:default",
     {
       "identifier": "opener:allow-open-url",
-      "allow": [{ "url": "http://*" }, { "url": "https://*" }]
+      "allow": [{ "url": "http://*" }, { "url": "https://*" }, { "url": "mailto:*" }, { "url": "tel:*" }]
     }
   ]
 }

@@ -56,6 +56,34 @@
 html {
   height: 100%;
   overflow: hidden;
+  /* iOS: no automatic font inflation in landscape */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/*
+ * iPhone / iPad app (html.ios, set by plugins/ios.ts). The web view runs edge to edge
+ * (viewport-fit=cover); keep content out of the notch, the rounded corners and the home
+ * indicator, and size the app to the area the software keyboard leaves free.
+ */
+html.ios,
+html.ios body {
+  /* no rubber-band bounce of the whole app; scroll areas inside keep theirs */
+  overscroll-behavior: none;
+}
+html.ios body,
+html.ios #root {
+  height: var(--diddy-viewport-height, 100%);
+}
+html.ios #root {
+  padding-top: env(safe-area-inset-top);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+}
+/* The keyboard covers the home indicator, so its inset would only leave a gap above the keys. */
+html.ios.ios-keyboard-open #root {
+  padding-bottom: 0;
 }
 
 body {

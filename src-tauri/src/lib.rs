@@ -5,7 +5,13 @@
 
 // mod menu;
 
-use tauri::{webview::{NewWindowResponse, WebviewWindowBuilder}, Manager, WebviewUrl, TitleBarStyle};
+use tauri::{webview::WebviewWindowBuilder, WebviewUrl};
+#[cfg(target_os = "macos")]
+use tauri::Manager;
+#[cfg(desktop)]
+use tauri::webview::NewWindowResponse;
+#[cfg(target_os = "macos")]
+use tauri::TitleBarStyle;
 mod app_icon;
 mod diag;
 mod connections;
@@ -16,6 +22,7 @@ mod audio_tap;
 mod system_audio;
 
 use tauri::utils::config::BackgroundThrottlingPolicy;
+#[cfg(desktop)]
 use tauri_plugin_opener::OpenerExt;
 
 const APP_PORT: u16 = 44548;
@@ -83,23 +90,30 @@ pub(crate) fn build_client_window(
     let window_url = WebviewUrl::App(Default::default());
     #[cfg(not(debug_assertions))]
     let window_url = WebviewUrl::External(format!("http://localhost:{port}").parse().unwrap());
-    let app_handle = app.clone();
     let title = profile.map(|p| format!("Diddy · {}", p.server)).unwrap_or_else(|| "Diddy".into());
     let window_builder = WebviewWindowBuilder::new(app, label.to_string(), window_url)
         .title(title)
         .disable_drag_drop_handler()
-        .background_throttling(BackgroundThrottlingPolicy::Disabled)
-        .on_new_window(move |url, _features| {
+        // iOS 17+ honours this too, so a running call keeps its audio while the screen is locked
+        // (together with the `audio` background mode in Info.ios.plist).
+        .background_throttling(BackgroundThrottlingPolicy::Disabled);
+    // Mobile has no new-window callback; there the page routes target=_blank links to the opener
+    // plugin itself (cinny/src/app/plugins/ios.ts).
+    #[cfg(desktop)]
+    let window_builder = {
+        let app_handle = app.clone();
+        window_builder.on_new_window(move |url, _features| {
             let _ = app_handle.opener().open_url(url.as_str(), None::<&str>);
             NewWindowResponse::Deny
-        });
+        })
+    };
     let window_builder = if let Some(profile) = profile {
         let metadata = serde_json::to_string(profile).map_err(|_| "Verbindung konnte nicht vorbereitet werden.".to_string())?;
         window_builder.initialization_script(format!(
             "Object.defineProperty(window,'__DIDDY_CONNECTION__',{{value:Object.freeze({metadata})}});"
         ))
     } else { window_builder };
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(not(any(target_os = "macos", target_os = "ios")))]
     let window_builder = if let Some(profile) = profile {
         use tauri::Manager;
         window_builder.data_directory(app.path().app_data_dir()
@@ -201,8 +215,9 @@ pub fn system_audio_helper(args: &[String]) -> Option<i32> {
     }
 }
 
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    
+
     for key in ["NO_PROXY", "no_proxy"] {
         let current_val = std::env::var(key).unwrap_or_default();
         if !current_val.contains("localhost") {
@@ -232,6 +247,9 @@ pub fn run() {
     #[cfg(feature = "updater")]
     let builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
 
+    #[cfg(desktop)]
+    let builder = builder.plugin(tauri_plugin_window_state::Builder::default().build());
+
     builder
         .invoke_handler(tauri::generate_handler![
             app_icon::set_app_icon,
@@ -245,7 +263,6 @@ pub fn run() {
         .manage(connections::ConnectionState::default())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_localhost::Builder::new(APP_PORT).build())
-        .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(tauri_plugin_opener::init())
         .setup(move |app| {
             #[cfg(feature = "updater")]
