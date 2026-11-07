@@ -6,14 +6,20 @@ export const Editor = style([
   {
     backgroundColor: color.SurfaceVariant.Container,
     color: color.SurfaceVariant.OnContainer,
-    border: `${config.borderWidth.B300} solid ${color.SurfaceVariant.ContainerLine}`,
-    borderRadius: toRem(18),
+    border: `${config.borderWidth.B300} solid color-mix(in srgb, ${color.SurfaceVariant.OnContainer} 10%, transparent)`,
+    borderRadius: 'var(--diddy-radius-card, 18px)',
     overflow: 'hidden',
-    transition: 'border-color 150ms ease, box-shadow 150ms ease',
+    transition:
+      'border-color var(--diddy-dur, 160ms) var(--diddy-ease, ease-out), box-shadow var(--diddy-dur, 160ms) var(--diddy-ease, ease-out)',
+    '@media': {
+      '(prefers-reduced-motion: reduce)': {
+        transition: 'none',
+      },
+    },
     selectors: {
       '&:focus-within': {
-        borderColor: `color-mix(in srgb, ${color.Primary.Main} 55%, transparent)`,
-        boxShadow: `0 0 0 ${toRem(3)} color-mix(in srgb, ${color.Primary.Main} 16%, transparent)`,
+        borderColor: `color-mix(in srgb, ${color.Primary.Main} 45%, transparent)`,
+        boxShadow: `0 0 0 ${toRem(3)} color-mix(in srgb, ${color.Primary.Main} 14%, transparent)`,
       },
     },
   },

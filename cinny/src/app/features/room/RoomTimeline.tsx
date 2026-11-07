@@ -142,12 +142,12 @@ const TimelineFloat = as<'div', css.TimelineFloatVariants>(
   )
 );
 
-const TimelineDivider = as<'div', { variant?: ContainerColor | 'Inherit' }>(
-  ({ variant, children, ...props }, ref) => (
-    <Box gap="100" justifyContent="Center" alignItems="Center" {...props} ref={ref}>
-      <Line style={{ flexGrow: 1 }} variant={variant} size="300" />
+const TimelineDivider = as<'div', { variant?: ContainerColor | 'Inherit'; lines?: boolean }>(
+  ({ variant, lines = true, children, ...props }, ref) => (
+    <Box gap="200" justifyContent="Center" alignItems="Center" {...props} ref={ref}>
+      {lines && <Line className={css.DividerLine} variant={variant} size="300" />}
       {children}
-      <Line style={{ flexGrow: 1 }} variant={variant} size="300" />
+      {lines && <Line className={css.DividerLine} variant={variant} size="300" />}
     </Box>
   )
 );
@@ -1723,7 +1723,9 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
       newDivider = prevEvent?.getId() === readUptoEventIdRef.current;
     }
     if (isVisible && !dayDivider) {
-      dayDivider = prevRenderedEvent ? !inSameDay(prevRenderedEvent.getTs(), mEvent.getTs()) : false;
+      dayDivider = prevRenderedEvent
+        ? !inSameDay(prevRenderedEvent.getTs(), mEvent.getTs())
+        : false;
     }
 
     const collapsed =
@@ -1752,10 +1754,19 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
 
     const newDividerJSX =
       newDivider && eventJSX && eventSender !== mx.getUserId() ? (
-        <MessageBase space={messageSpacing}>
+        <MessageBase className={css.DividerRow} space={messageSpacing}>
           <TimelineDivider style={{ color: color.Primary.Main }} variant="Inherit">
-            <Badge as="span" size="500" variant="Primary" fill="Solid" radii="Pill">
-              <Text size="L400">New Messages</Text>
+            <Badge
+              className={css.NewPill}
+              as="span"
+              size="500"
+              variant="Primary"
+              fill="Solid"
+              radii="Pill"
+            >
+              <Text className={css.PillText} size="L400">
+                New Messages
+              </Text>
             </Badge>
           </TimelineDivider>
         </MessageBase>
@@ -1763,10 +1774,17 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
 
     const dayDividerJSX =
       dayDivider && eventJSX ? (
-        <MessageBase space={messageSpacing}>
-          <TimelineDivider variant="Surface">
-            <Badge as="span" size="500" variant="Secondary" fill="Soft" radii="Pill">
-              <Text size="L400">
+        <MessageBase className={css.DividerRow} space={messageSpacing}>
+          <TimelineDivider variant="Surface" lines={false}>
+            <Badge
+              className={css.DayPill}
+              as="span"
+              size="500"
+              variant="Secondary"
+              fill="Soft"
+              radii="Pill"
+            >
+              <Text className={classNames(css.PillText, css.PillTextMuted)} size="L400">
                 {(() => {
                   if (today(mEvent.getTs())) return 'Today';
                   if (yesterday(mEvent.getTs())) return 'Yesterday';
@@ -1802,6 +1820,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
             variant="Primary"
             radii="Pill"
             outlined
+            className={css.FloatChip}
             before={<Icon size="50" src={Icons.MessageUnread} />}
             onClick={handleJumpToUnread}
           >
@@ -1812,6 +1831,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
             variant="SurfaceVariant"
             radii="Pill"
             outlined
+            className={css.FloatChip}
             before={<Icon size="50" src={Icons.CheckTwice} />}
             onClick={handleMarkAsRead}
           >
@@ -1912,6 +1932,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
             variant="SurfaceVariant"
             radii="Pill"
             outlined
+            className={css.FloatChip}
             before={<Icon size="50" src={Icons.ArrowBottom} />}
             onClick={handleJumpToLatest}
           >

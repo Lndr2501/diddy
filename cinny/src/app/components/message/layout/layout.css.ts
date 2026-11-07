@@ -7,6 +7,8 @@ export const StickySection = style({
   top: config.space.S100,
 });
 
+const ROW_RADIUS = 'var(--diddy-radius-row, 12px)';
+
 const SpacingVar = createVar();
 const SpacingVariant = styleVariants({
   '0': {
@@ -67,7 +69,7 @@ const HighlightVariant = styleVariants({
 
 const SelectedVariant = styleVariants({
   true: {
-    backgroundColor: color.Surface.ContainerActive,
+    backgroundColor: `var(--diddy-selected, color-mix(in srgb, ${color.SurfaceVariant.OnContainer} 9%, transparent))`,
   },
 });
 
@@ -87,17 +89,27 @@ export const MessageBase = recipe({
       padding: `${config.space.S100} ${config.space.S200} ${config.space.S100} ${config.space.S300}`,
       marginLeft: config.space.S200,
       marginRight: config.space.S200,
-      borderRadius: toRem(12),
-      transition: 'background-color 120ms ease',
+      borderRadius: ROW_RADIUS,
+      transition:
+        'background-color var(--diddy-dur, 160ms) var(--diddy-ease, cubic-bezier(0.25, 0.1, 0.25, 1))',
+      '@media': {
+        '(prefers-reduced-motion: reduce)': {
+          transition: 'none',
+        },
+      },
       selectors: {
         '&:hover': {
-          backgroundColor: `color-mix(in srgb, ${color.SurfaceVariant.OnContainer} 6%, transparent)`,
+          backgroundColor: `var(--diddy-hover, color-mix(in srgb, ${color.SurfaceVariant.OnContainer} 5%, transparent))`,
+        },
+        '&:focus-visible': {
+          outline: `2px solid var(--diddy-focus-ring, ${color.Primary.Main})`,
+          outlineOffset: toRem(-2),
         },
         // Subtle highlight for messages mentioning / replying to the current user
         '&:has([data-reply-highlight="true"]), &:has([data-highlight="true"][data-mention-id])': {
           backgroundColor: `color-mix(in srgb, ${color.Primary.Main} 8%, transparent)`,
           boxShadow: `inset ${toRem(3)} 0 0 ${color.Primary.Main}`,
-          borderRadius: toRem(4),
+          borderRadius: `4px ${ROW_RADIUS} ${ROW_RADIUS} 4px`,
         },
         '&:has([data-reply-highlight="true"]):hover, &:has([data-highlight="true"][data-mention-id]):hover':
           {
@@ -136,14 +148,14 @@ export const CompactHeader = style([
 ]);
 
 export const AvatarBase = style({
-  paddingTop: toRem(4),
-  transition: 'transform 200ms cubic-bezier(0, 0.8, 0.67, 0.97)',
+  paddingTop: toRem(2),
+  transition: 'opacity var(--diddy-dur, 160ms) var(--diddy-ease, ease-out)',
   display: 'flex',
   alignSelf: 'start',
 
   selectors: {
     '&:hover': {
-      transform: `translateY(${toRem(-2)})`,
+      opacity: 0.85,
     },
   },
 });
@@ -158,10 +170,10 @@ export const BubbleBefore = style({
 
 export const BubbleContent = style({
   maxWidth: toRem(800),
-  padding: `${config.space.S200} ${config.space.S300}`,
+  padding: `${toRem(7)} ${toRem(12)}`,
   backgroundColor: color.SurfaceVariant.Container,
   color: color.SurfaceVariant.OnContainer,
-  borderRadius: toRem(16),
+  borderRadius: 'var(--diddy-radius-card, 18px)',
   position: 'relative',
 });
 
@@ -194,7 +206,8 @@ export const Username = style({
 });
 
 export const UsernameBold = style({
-  fontWeight: 500,
+  fontWeight: 600,
+  letterSpacing: '-0.005em',
 });
 
 export const MessageTextBody = recipe({

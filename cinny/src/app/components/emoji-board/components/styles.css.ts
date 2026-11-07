@@ -9,11 +9,15 @@ export const Base = style({
   maxWidth: toRem(432),
   width: `calc(100vw - 2 * ${config.space.S400})`,
   height: toRem(450),
-  backgroundColor: color.Surface.Container,
+  // popover material: translucent surface with blur, hairline and a soft layered shadow
+  backgroundColor: `var(--diddy-material-strong, color-mix(in srgb, ${color.Surface.Container} 92%, transparent))`,
+  backdropFilter: 'saturate(180%) blur(24px)',
+  WebkitBackdropFilter: 'saturate(180%) blur(24px)',
   color: color.Surface.OnContainer,
-  border: `${config.borderWidth.B300} solid ${color.Surface.ContainerLine}`,
-  borderRadius: toRem(18),
-  boxShadow: config.shadow.E200,
+  border: `var(--diddy-border, 1px solid color-mix(in srgb, ${color.Surface.OnContainer} 10%, transparent))`,
+  borderRadius: 'var(--diddy-radius-card, 18px)',
+  boxShadow:
+    'var(--diddy-shadow-3, 0 2px 6px rgba(0, 0, 0, 0.12), 0 16px 40px rgba(0, 0, 0, 0.24))',
   overflow: 'hidden',
 });
 
@@ -28,7 +32,7 @@ export const Header = style({
 
 export const Sidebar = style({
   width: toRem(54),
-  backgroundColor: color.Surface.Container,
+  backgroundColor: 'transparent',
   color: color.Surface.OnContainer,
   position: 'relative',
 });
@@ -37,9 +41,12 @@ export const SidebarContent = style({
   padding: `${config.space.S200} 0`,
 });
 
+// sticky part of the sidebar: same material, so icons scrolling beneath it are blurred away
 export const SidebarStack = style({
   width: '100%',
-  backgroundColor: color.Surface.Container,
+  backgroundColor: `var(--diddy-material-strong, color-mix(in srgb, ${color.Surface.Container} 92%, transparent))`,
+  backdropFilter: 'saturate(180%) blur(24px)',
+  WebkitBackdropFilter: 'saturate(180%) blur(24px)',
 });
 
 export const SidebarDivider = style({
@@ -62,9 +69,9 @@ export const Preview = style({
   marginTop: 0,
   minHeight: toRem(40),
 
-  borderRadius: toRem(14),
-  backgroundColor: color.SurfaceVariant.Container,
-  color: color.SurfaceVariant.OnContainer,
+  borderRadius: 'var(--diddy-radius-row, 12px)',
+  backgroundColor: `color-mix(in srgb, ${color.Surface.OnContainer} 5%, transparent)`,
+  color: color.Surface.OnContainer,
 });
 
 export const PreviewEmoji = style([
@@ -100,9 +107,12 @@ export const EmojiGroupLabel = style({
   zIndex: 1,
 
   margin: 'auto',
-  padding: `${config.space.S100} ${config.space.S200}`,
+  padding: `${toRem(3)} ${toRem(10)}`,
   borderRadius: config.radii.Pill,
-  backgroundColor: color.SurfaceVariant.Container,
+  backgroundColor: `var(--diddy-material, color-mix(in srgb, ${color.SurfaceVariant.Container} 85%, transparent))`,
+  backdropFilter: 'saturate(180%) blur(20px)',
+  WebkitBackdropFilter: 'saturate(180%) blur(20px)',
+  border: `var(--diddy-border, 1px solid color-mix(in srgb, ${color.Surface.OnContainer} 8%, transparent))`,
   color: color.SurfaceVariant.OnContainer,
 });
 
@@ -125,11 +135,12 @@ export const EmojiItem = style([
     height: toRem(48),
     fontSize: toRem(32),
     lineHeight: toRem(32),
-    borderRadius: config.radii.R400,
+    borderRadius: 'var(--diddy-radius-ctl, 10px)',
     cursor: 'pointer',
+    transition: 'background-color 120ms var(--diddy-ease, ease-out)',
 
     ':hover': {
-      backgroundColor: color.Surface.ContainerHover,
+      backgroundColor: `var(--diddy-hover, color-mix(in srgb, ${color.Surface.OnContainer} 8%, transparent))`,
     },
   },
 ]);

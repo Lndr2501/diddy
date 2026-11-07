@@ -23,6 +23,7 @@ import {
   Button,
 } from 'folds';
 import { useNavigate } from 'react-router-dom';
+import classNames from 'classnames';
 import { Room } from 'matrix-js-sdk';
 import { useStateEvent } from '../../hooks/useStateEvent';
 import { PageHeader } from '../../components/page';
@@ -73,10 +74,7 @@ import { useLivekitSupport } from '../../hooks/useLivekitSupport';
 import { webRTCSupported } from '../../utils/rtc';
 import { useCallMembers, useCallSession } from '../../hooks/useCall';
 import { millify } from '../../plugins/millify';
-import {
-  HeaderBellButton,
-  HeaderSearchField,
-} from '../../components/top-actions';
+import { HeaderBellButton, HeaderSearchField } from '../../components/top-actions';
 
 type RoomMenuProps = {
   room: Room;
@@ -344,7 +342,8 @@ function CallButton() {
             className={css.SoftButton}
             variant="Surface"
             fill="Soft"
-            radii="400"
+            size="300"
+            radii="300"
             ref={triggerRef}
             onClick={handleOpenMenu}
             onContextMenu={(evt: React.MouseEvent<HTMLButtonElement>) => {
@@ -358,7 +357,7 @@ function CallButton() {
             disabled={inAnotherCall || callStarted}
             aria-pressed={!!menuAnchor}
           >
-            <Icon size="400" src={Icons.VideoCamera} filled={!!menuAnchor} />
+            <Icon size="200" src={Icons.VideoCamera} filled={!!menuAnchor} />
           </IconButton>
         )}
       </TooltipProvider>
@@ -430,7 +429,9 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
   let countLabel: string | undefined;
   if (isCallRoom || callView) {
     if (callMembers.length > 0) {
-      countLabel = `${callMembers.length} ${callMembers.length === 1 ? 'participant' : 'participants'}`;
+      countLabel = `${callMembers.length} ${
+        callMembers.length === 1 ? 'participant' : 'participants'
+      }`;
     }
   } else if (!direct) {
     const joined = room.getJoinedMemberCount();
@@ -467,7 +468,7 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
 
   return (
     <PageHeader
-      className={ContainerColor({ variant: 'Surface' })}
+      className={classNames(ContainerColor({ variant: 'Surface' }), css.RoomHeader)}
       outlined={false}
       balance={screenSize === ScreenSize.Mobile}
     >
@@ -515,8 +516,8 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
           )}
           <Box className={css.HeaderTitle} direction="Column">
             <Box alignItems="Baseline" gap="200">
-              <Text size={topic ? 'H5' : 'H4'} truncate>
-                <b>{name}</b>
+              <Text className={css.HeaderName} size="H5" truncate>
+                {name}
               </Text>
               {countLabel && (
                 <Text as="span" className={css.HeaderCount} size="T300" priority="300">
@@ -580,11 +581,12 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
                   className={css.SoftButton}
                   variant="Surface"
                   fill="Soft"
-                  radii="400"
+                  size="300"
+                  radii="300"
                   ref={triggerRef}
                   onClick={handleSearchClick}
                 >
-                  <Icon size="400" src={Icons.Search} />
+                  <Icon size="200" src={Icons.Search} />
                 </IconButton>
               )}
             </TooltipProvider>
@@ -603,7 +605,8 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
                 className={css.SoftButton}
                 variant="Surface"
                 fill="Soft"
-                radii="400"
+                size="300"
+                radii="300"
                 onClick={handleOpenPinMenu}
                 ref={triggerRef}
                 aria-pressed={!!pinMenuAnchor}
@@ -625,7 +628,7 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
                     </Text>
                   </Badge>
                 )}
-                <Icon size="400" src={Icons.Pin} filled={!!pinMenuAnchor} />
+                <Icon size="200" src={Icons.Pin} filled={!!pinMenuAnchor} />
               </IconButton>
             )}
           </TooltipProvider>
@@ -670,12 +673,13 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
                   className={css.SoftButton}
                   variant="Surface"
                   fill="Soft"
-                  radii="400"
+                  size="300"
+                  radii="300"
                   ref={triggerRef}
                   onClick={handleMemberToggle}
                   aria-pressed={!callView && peopleDrawer}
                 >
-                  <Icon size="400" src={Icons.User} filled={!callView && peopleDrawer} />
+                  <Icon size="200" src={Icons.User} filled={!callView && peopleDrawer} />
                 </IconButton>
               )}
             </TooltipProvider>
@@ -696,12 +700,13 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
                 className={css.SoftButton}
                 variant="Surface"
                 fill="Soft"
-                radii="400"
+                size="300"
+                radii="300"
                 onClick={handleOpenMenu}
                 ref={triggerRef}
                 aria-pressed={!!menuAnchor}
               >
-                <Icon size="400" src={Icons.VerticalDots} filled={!!menuAnchor} />
+                <Icon size="200" src={Icons.VerticalDots} filled={!!menuAnchor} />
               </IconButton>
             )}
           </TooltipProvider>

@@ -18,8 +18,9 @@ export const RoomViewFollowing = recipe({
       width: '100%',
       backgroundColor: 'transparent',
       color: color.SurfaceVariant.OnContainer,
-      opacity: 0.8,
+      opacity: 0.75,
       outline: 'none',
+      transition: 'color var(--diddy-dur, 160ms) var(--diddy-ease, ease-out)',
     },
   ],
   variants: {

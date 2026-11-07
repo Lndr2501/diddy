@@ -84,8 +84,14 @@ function MemberDrawerHeader({ room }: MemberDrawerHeaderProps) {
       <Box grow="Yes" alignItems="Center" gap="200">
         <Box grow="Yes" alignItems="Center" gap="200">
           <Icon size="200" src={Icons.User} />
-          <Text title={`${room.getJoinedMemberCount()} Members`} size="H5" truncate>
-            <b>{`Participants (${millify(room.getJoinedMemberCount())})`}</b>
+          <Text
+            className={css.MembersDrawerTitle}
+            title={`${room.getJoinedMemberCount()} Members`}
+            size="H5"
+            truncate
+          >
+            Participants{' '}
+            <span className={css.MembersDrawerCount}>{millify(room.getJoinedMemberCount())}</span>
           </Text>
         </Box>
         <Box shrink="No" alignItems="Center">
@@ -164,6 +170,7 @@ function MemberItem({
 
   return (
     <MenuItem
+      className={css.MemberRow}
       style={{ padding: `0 ${config.space.S200}`, ...nameplateStyle }}
       aria-pressed={pressed}
       data-user-id={member.userId}
@@ -305,7 +312,7 @@ export function MembersDrawer({ room, members }: MembersDrawerProps) {
   const virtualizer = useVirtualizer({
     count: PLTagOrRoomMember.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => 40,
+    estimateSize: () => 36,
     overscan: 10,
   });
 

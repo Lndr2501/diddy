@@ -532,7 +532,7 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
     };
 
     return (
-      <div ref={ref}>
+      <div ref={ref} className={css.Composer}>
         {selectedFiles.length > 0 && (
           <UploadBoard
             header={
@@ -670,6 +670,7 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
               onClick={() => pickFile('*')}
               variant="SurfaceVariant"
               fill="None"
+              className={css.ComposerIconButton}
               size="300"
               radii="Pill"
             >
@@ -682,6 +683,7 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
               <IconButton
                 variant="SurfaceVariant"
                 fill="None"
+                className={css.ComposerIconButton}
                 size="300"
                 radii="Pill"
                 onClick={() => setToolbar(!toolbar)}
@@ -727,6 +729,7 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
                         onClick={() => setEmojiBoardTab(EmojiBoardTab.Sticker)}
                         variant="SurfaceVariant"
                         fill="None"
+                        className={css.ComposerIconButton}
                         size="300"
                         radii="Pill"
                       >
@@ -744,6 +747,7 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
                       onClick={() => setEmojiBoardTab(EmojiBoardTab.Emoji)}
                       variant="SurfaceVariant"
                       fill="None"
+                      className={css.ComposerIconButton}
                       size="300"
                       radii="Pill"
                     >
