@@ -1,9 +1,13 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Box, Icon, IconButton, Icons, Spinner, Text } from 'folds';
+import { getBuiltinHtml } from '../../plugins/builtinPlugins';
+import { getPluginData, setPluginData } from '../../state/pluginData';
 import { DOCK_DEFAULT_HEIGHT, PluginStyle } from '../../state/pluginDock';
 import {
+  builtinSlug,
   createInitMessage,
   DEFAULT_FRAME_HEIGHT,
+  HostStorageValueMessage,
   parsePluginMessage,
   PluginManifest,
   PluginTheme,
@@ -42,6 +46,18 @@ const browserLocale = (): string | undefined => {
   }
 };
 
+const MISSING_BUILTIN =
+  '<!doctype html><meta charset="utf-8"><body style="font:13px system-ui;padding:12px;color:gray">This built-in plugin is not part of this version of Diddy.</body>';
+
+/** Opens a link a plugin asked for in the system browser (https only, checked before). */
+const openExternal = (url: string) => {
+  const a = document.createElement('a');
+  a.href = url;
+  a.target = '_blank';
+  a.rel = 'noopener noreferrer';
+  a.click();
+};
+
 type PluginFrameProps = {
   plugin: UserPlugin;
   /** small sidebar card: no frame, no status row, capped height */
@@ -59,6 +75,8 @@ export function PluginFrame({ plugin, compact, look }: PluginFrameProps) {
   const layout = compact ? 'compact' : 'full';
   const layoutRef = useRef<'full' | 'compact'>(layout);
   layoutRef.current = layout;
+  const pluginIdRef = useRef(plugin.id);
+  pluginIdRef.current = plugin.id;
   const cssRef = useRef<string | undefined>(look?.css);
   cssRef.current = look?.css;
   const frameRef = useRef<HTMLIFrameElement>(null);
@@ -100,7 +118,29 @@ export function PluginFrame({ plugin, compact, look }: PluginFrameProps) {
         postInit();
         return;
       }
-      setHeight(message.height);
+      if (message.type === 'diddy:resize') {
+        setHeight(message.height);
+        return;
+      }
+      if (message.type === 'diddy:storage:get') {
+        frameWindow.postMessage(
+          {
+            type: 'diddy:storage:value',
+            id: message.id,
+            key: message.key,
+            value: getPluginData(pluginIdRef.current, message.key),
+          } satisfies HostStorageValueMessage,
+          '*'
+        );
+        return;
+      }
+      if (message.type === 'diddy:storage:set') {
+        setPluginData(pluginIdRef.current, message.key, message.value);
+        return;
+      }
+      if (message.type === 'diddy:open') {
+        openExternal(message.url);
+      }
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
@@ -132,6 +172,9 @@ export function PluginFrame({ plugin, compact, look }: PluginFrameProps) {
   const zoom = compact ? (look?.zoom ?? 100) / 100 : 1;
   const shownHeight = compact ? Math.min(height, look?.height ?? DOCK_DEFAULT_HEIGHT) : height;
 
+  const slug = builtinSlug(plugin.url);
+  const builtinHtml = slug ? getBuiltinHtml(slug) ?? MISSING_BUILTIN : undefined;
+
   let status: string | undefined = manifest?.description;
   if (!ready) {
     status = silent
@@ -157,7 +200,7 @@ export function PluginFrame({ plugin, compact, look }: PluginFrameProps) {
               : {}),
           }}
           title={plugin.name}
-          src={plugin.url}
+          {...(builtinHtml !== undefined ? { srcDoc: builtinHtml } : { src: plugin.url })}
           sandbox="allow-scripts"
           referrerPolicy="no-referrer"
           allow={DENIED_FEATURES}

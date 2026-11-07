@@ -250,3 +250,111 @@ test('frame heights clamp, non-finite input falls back to the default', () => {
   assert.equal(P.clampFrameHeight(601), 600);
   assert.equal(P.clampFrameHeight(NaN), P.DEFAULT_FRAME_HEIGHT);
 });
+
+test('storage and open messages are accepted only in their exact shape', () => {
+  assert.deepEqual(
+    plain(P.parsePluginMessage({ type: 'diddy:storage:get', id: 'a1', key: 'city' })),
+    {
+      type: 'diddy:storage:get',
+      id: 'a1',
+      key: 'city',
+    }
+  );
+  assert.deepEqual(
+    plain(P.parsePluginMessage({ type: 'diddy:storage:set', key: 'a.b-c_1', value: 'x' })),
+    {
+      type: 'diddy:storage:set',
+      key: 'a.b-c_1',
+      value: 'x',
+    }
+  );
+  for (const bad of [
+    { type: 'diddy:storage:get', id: '', key: 'k' },
+    { type: 'diddy:storage:get', id: 'a', key: 'Bad Key' },
+    { type: 'diddy:storage:get', id: 'a', key: 'k', extra: 1 },
+    { type: 'diddy:storage:set', key: 'k', value: 5 },
+    { type: 'diddy:storage:set', key: 'k'.repeat(41), value: 'x' },
+    { type: 'diddy:storage:set', key: 'k', value: 'x'.repeat(20001) },
+    { type: 'diddy:storage:set', key: '__proto__', value: 'x' },
+    { type: 'diddy:storage:get', id: 'a', key: 'constructor' },
+  ]) {
+    assert.equal(P.parsePluginMessage(bad), undefined, JSON.stringify(bad).slice(0, 60));
+  }
+  assert.equal(
+    P.parsePluginMessage({ type: 'diddy:storage:set', key: 'k', value: 'x'.repeat(20000) }).type,
+    'diddy:storage:set'
+  );
+});
+
+test('plugins may only ask to open plain https links', () => {
+  assert.equal(
+    P.parsePluginMessage({ type: 'diddy:open', url: 'https://open-meteo.com/' }).url,
+    'https://open-meteo.com/'
+  );
+  for (const url of [
+    'http://example.com/',
+    'javascript:alert(1)',
+    'file:///etc/passwd',
+    'data:text/html,hi',
+    'https://user:pw@example.com/',
+    'https://exa mple.com/',
+    42,
+    undefined,
+  ]) {
+    assert.equal(P.parsePluginMessage({ type: 'diddy:open', url }), undefined, String(url));
+  }
+  assert.equal(
+    P.parsePluginMessage({ type: 'diddy:open', url: 'https://example.com/', x: 1 }),
+    undefined
+  );
+});
+
+test('built-in plugins: slug check, add rules and stored entries survive', () => {
+  assert.equal(P.builtinSlug('diddy:builtin/clock'), 'clock');
+  assert.equal(P.builtinSlug('diddy:builtin/Clock'), undefined);
+  assert.equal(P.builtinSlug('diddy:builtin/../x'), undefined);
+  assert.equal(P.builtinSlug('https://example.com/'), undefined);
+  // a user cannot type a built-in address
+  assert.equal(P.normalizePluginUrl('diddy:builtin/clock').ok, false);
+
+  const first = P.addBuiltinPlugin([], { id: 'b1', now: 1, slug: 'clock', name: 'Clock' });
+  assert.equal(first.ok, true);
+  assert.equal(first.value[0].url, 'diddy:builtin/clock');
+  assert.equal(
+    P.addBuiltinPlugin(first.value, { id: 'b2', now: 2, slug: 'clock', name: 'Clock 2' }).ok,
+    false
+  );
+  assert.equal(
+    P.addBuiltinPlugin(first.value, { id: 'b3', now: 2, slug: 'notes', name: 'clock' }).ok,
+    false
+  );
+  assert.equal(P.addBuiltinPlugin([], { id: 'b4', now: 2, slug: 'Bad Slug', name: 'X' }).ok, false);
+
+  const restored = P.parseStoredPlugins(JSON.parse(P.serializePlugins(first.value)), APP);
+  assert.equal(restored.length, 1);
+  assert.equal(restored[0].url, 'diddy:builtin/clock');
+  // damaged built-in addresses are dropped
+  const damaged = {
+    version: 1,
+    plugins: [{ id: 'x', name: 'N', url: 'diddy:builtin/..', enabled: true, addedAt: 0 }],
+  };
+  assert.equal(P.parseStoredPlugins(damaged, APP).length, 0);
+});
+
+test('plugin storage enforces the key, size and count limits', () => {
+  let data = {};
+  for (let i = 0; i < 50; i += 1) {
+    const result = P.applyStorageSet(data, `k${i}`, 'v');
+    assert.equal(result.ok, true);
+    data = result.value;
+  }
+  assert.equal(P.applyStorageSet(data, 'one-more', 'v').ok, false);
+  // overwriting an existing key is still fine at the limit
+  assert.equal(P.applyStorageSet(data, 'k3', 'new').ok, true);
+  assert.equal(P.applyStorageSet({}, 'Bad', 'v').ok, false);
+  assert.equal(P.applyStorageSet({}, 'k', 'x'.repeat(20001)).ok, false);
+  // the input object is never mutated
+  const before = { a: '1' };
+  P.applyStorageSet(before, 'b', '2');
+  assert.deepEqual(plain(before), { a: '1' });
+});

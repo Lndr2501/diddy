@@ -23,6 +23,15 @@ export const MAX_FRAME_HEIGHT = 600;
 export const DEFAULT_FRAME_HEIGHT = 240;
 export const PLUGINS_STORAGE_VERSION = 1;
 export const MAX_CUSTOM_CSS_LENGTH = 4000;
+/** Built-in plugins ship with the app and are stored as `diddy:builtin/<slug>`. */
+export const BUILTIN_URL_PREFIX = 'diddy:builtin/';
+export const MAX_STORAGE_KEYS = 50;
+export const MAX_STORAGE_VALUE_LENGTH = 20000;
+export const STORAGE_KEY_PATTERN = /^[a-z0-9_.-]{1,40}$/;
+const RESERVED_KEYS = ['__proto__', 'constructor', 'prototype'];
+/** A key a plugin may use for its own data (never a name that could reach object internals). */
+export const isValidStorageKey = (key: unknown): key is string =>
+  typeof key === 'string' && STORAGE_KEY_PATTERN.test(key) && !RESERVED_KEYS.includes(key);
 
 /** Origins a plugin may never point at: the app itself (the desktop build serves it here). */
 export const RESERVED_PLUGIN_ORIGINS = ['http://localhost:44548'];
@@ -52,7 +61,15 @@ export type PluginResizeMessage = {
   type: 'diddy:resize';
   height: number;
 };
-export type PluginMessage = PluginReadyMessage | PluginResizeMessage;
+export type PluginStorageGetMessage = { type: 'diddy:storage:get'; id: string; key: string };
+export type PluginStorageSetMessage = { type: 'diddy:storage:set'; key: string; value: string };
+export type PluginOpenMessage = { type: 'diddy:open'; url: string };
+export type PluginMessage =
+  | PluginReadyMessage
+  | PluginResizeMessage
+  | PluginStorageGetMessage
+  | PluginStorageSetMessage
+  | PluginOpenMessage;
 
 export type HostInitMessage = {
   type: 'diddy:init';
@@ -63,6 +80,13 @@ export type HostInitMessage = {
   layout: 'full' | 'compact';
   /** the user's own CSS for this plugin; the plugin decides whether to apply it */
   customCss?: string;
+};
+
+export type HostStorageValueMessage = {
+  type: 'diddy:storage:value';
+  id: string;
+  key: string;
+  value: string | null;
 };
 
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string };
@@ -143,6 +167,13 @@ export const normalizePluginUrl = (input: string, appOrigin?: string): Result<st
   return ok(href);
 };
 
+/** `diddy:builtin/clock` -> `clock`; anything else -> undefined. */
+export const builtinSlug = (url: string): string | undefined => {
+  if (!url.startsWith(BUILTIN_URL_PREFIX)) return undefined;
+  const slug = url.slice(BUILTIN_URL_PREFIX.length);
+  return /^[a-z0-9-]{1,30}$/.test(slug) ? slug : undefined;
+};
+
 /* ---------- registry ---------- */
 
 export type PluginInput = { name: string; url: string };
@@ -205,7 +236,9 @@ export const parseStoredPlugins = (raw: unknown, appOrigin?: string): UserPlugin
     if (typeof id !== 'string' || !id || id.length > 64) return;
     if (typeof name !== 'string' || typeof url !== 'string') return;
     const cleanName = normalizePluginName(name);
-    const cleanUrl = normalizePluginUrl(url, appOrigin);
+    const cleanUrl: Result<string> = builtinSlug(url)
+      ? ok(url)
+      : normalizePluginUrl(url, appOrigin);
     if (!cleanName.ok || !cleanUrl.ok) return;
     if (
       result.some(
@@ -264,6 +297,22 @@ const parseManifest = (value: unknown): PluginManifest | undefined => {
   return manifest;
 };
 
+/** A link a plugin asks the app to open in the browser: https only, no credentials. */
+export const normalizeExternalUrl = (input: unknown): string | undefined => {
+  if (typeof input !== 'string' || input.length > MAX_PLUGIN_URL_LENGTH || /\s/.test(input)) {
+    return undefined;
+  }
+  try {
+    const url = new URL(input);
+    if (url.protocol !== 'https:' || url.username || url.password || !url.hostname) {
+      return undefined;
+    }
+    return url.href;
+  } catch {
+    return undefined;
+  }
+};
+
 /**
  * Validates a message received from a plugin frame. The caller must already have checked that
  * `event.source` is the plugin's iframe window. Returns `undefined` for anything that is not
@@ -299,7 +348,67 @@ export const parsePluginMessage = (data: unknown): PluginMessage | undefined => 
     return { type: 'diddy:resize', height: clampFrameHeight(data.height) };
   }
 
+  if (data.type === 'diddy:storage:get') {
+    if (!hasOnlyKeys(data, ['type', 'id', 'key'])) return undefined;
+    if (typeof data.id !== 'string' || data.id.length < 1 || data.id.length > 64) return undefined;
+    if (!isValidStorageKey(data.key)) return undefined;
+    return { type: 'diddy:storage:get', id: data.id, key: data.key };
+  }
+
+  if (data.type === 'diddy:storage:set') {
+    if (!hasOnlyKeys(data, ['type', 'key', 'value'])) return undefined;
+    if (!isValidStorageKey(data.key)) return undefined;
+    if (typeof data.value !== 'string' || data.value.length > MAX_STORAGE_VALUE_LENGTH) {
+      return undefined;
+    }
+    return { type: 'diddy:storage:set', key: data.key, value: data.value };
+  }
+
+  if (data.type === 'diddy:open') {
+    if (!hasOnlyKeys(data, ['type', 'url'])) return undefined;
+    const url = normalizeExternalUrl(data.url);
+    return url ? { type: 'diddy:open', url } : undefined;
+  }
+
   return undefined;
+};
+
+export type AddBuiltinOptions = { id: string; now: number; slug: string; name: string };
+
+/** Adds a built-in plugin (no address check: it is code that ships with Diddy). */
+export const addBuiltinPlugin = (
+  plugins: UserPlugin[],
+  { id, now, slug, name }: AddBuiltinOptions
+): Result<UserPlugin[]> => {
+  if (plugins.length >= MAX_PLUGINS) {
+    return fail(`You can add at most ${MAX_PLUGINS} plugins. Remove one first.`);
+  }
+  if (!/^[a-z0-9-]{1,30}$/.test(slug)) return fail('Could not add the plugin.');
+  const url = `${BUILTIN_URL_PREFIX}${slug}`;
+  if (plugins.some((plugin) => plugin.url === url))
+    return fail('This plugin has already been added.');
+  const cleanName = normalizePluginName(name);
+  if (!cleanName.ok) return cleanName;
+  const lower = cleanName.value.toLowerCase();
+  if (plugins.some((plugin) => plugin.name.toLowerCase() === lower)) {
+    return fail('A plugin with this name already exists.');
+  }
+  if (!id || plugins.some((plugin) => plugin.id === id)) return fail('Could not add the plugin.');
+  return ok([...plugins, { id, name: cleanName.value, url, enabled: true, addedAt: now }]);
+};
+
+/** Plugin-owned key/value data: applies one write and enforces the key and size limits. */
+export const applyStorageSet = (
+  data: Record<string, string>,
+  key: string,
+  value: string
+): Result<Record<string, string>> => {
+  if (!isValidStorageKey(key)) return fail('Invalid key.');
+  if (value.length > MAX_STORAGE_VALUE_LENGTH) return fail('Value too large.');
+  if (!(key in data) && Object.keys(data).length >= MAX_STORAGE_KEYS) {
+    return fail('Too many keys.');
+  }
+  return ok({ ...data, [key]: value });
 };
 
 export const normalizeLocale = (locale: string | undefined): string => {
@@ -311,7 +420,7 @@ export const normalizeLocale = (locale: string | undefined): string => {
 export const createInitMessage = (
   theme: PluginTheme,
   locale: string | undefined,
-  layout: 'full' | 'compact' = 'full',
+  layout?: 'full' | 'compact',
   customCss?: string
 ): HostInitMessage => ({
   type: 'diddy:init',

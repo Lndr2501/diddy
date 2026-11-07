@@ -4,7 +4,9 @@
  * The rules themselves live in plugins/userPlugins.ts.
  */
 import { useSyncExternalStore } from 'react';
+import { clearPluginData } from './pluginData';
 import {
+  addBuiltinPlugin,
   addPlugin,
   PluginInput,
   parseStoredPlugins,
@@ -83,11 +85,18 @@ export const addUserPlugin = (input: PluginInput): Result<UserPlugin[]> => {
   return result;
 };
 
+export const addBuiltinUserPlugin = (slug: string, name: string): Result<UserPlugin[]> => {
+  const result = addBuiltinPlugin(current, { id: newId(), now: Date.now(), slug, name });
+  if (result.ok) commit(result.value);
+  return result;
+};
+
 export const setUserPluginEnabled = (id: string, enabled: boolean) => {
   commit(setPluginEnabled(current, id, enabled));
 };
 
 export const removeUserPlugin = (id: string) => {
+  clearPluginData(id);
   commit(removePlugin(current, id));
 };
 

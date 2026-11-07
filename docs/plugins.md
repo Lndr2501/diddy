@@ -80,6 +80,54 @@ Plugin Diddys Origin nicht (Desktop-App, Web-Version, Entwicklung). Das ist unkr
 keiner Richtung etwas Vertrauliches übertragen wird. Ein Plugin muss eingehende Nachrichten
 trotzdem selbst prüfen: `event.source === window.parent` und die Form von `event.data`.
 
+### Speicher und Links
+
+Die Sandbox sperrt `localStorage`. Plugins bitten deshalb Diddy, kleine Werte für sie zu merken.
+Jedes Plugin sieht nur seine eigenen Daten, sie bleiben auf diesem Gerät.
+
+| Richtung       | Nachricht                                                        | Bedeutung                                                         |
+| -------------- | ---------------------------------------------------------------- | ----------------------------------------------------------------- |
+| Plugin → Diddy | `{ type: 'diddy:storage:get', id: 'a1', key: 'city' }`           | Wert lesen. `id` ist eine frei gewählte Kennung für die Antwort.  |
+| Diddy → Plugin | `{ type: 'diddy:storage:value', id: 'a1', key: 'city', value }`  | Antwort; `value` ist ein String oder `null`.                      |
+| Plugin → Diddy | `{ type: 'diddy:storage:set', key: 'city', value: 'Berlin' }`    | Wert speichern (keine Antwort).                                   |
+| Plugin → Diddy | `{ type: 'diddy:open', url: 'https://…' }`                       | Link im Browser öffnen (nur `https://`, keine Zugangsdaten).      |
+
+Grenzen: Schlüssel `[a-z0-9_.-]`, 1–40 Zeichen (nicht `__proto__`, `constructor`, `prototype`);
+Werte bis 20 000 Zeichen; höchstens 50 Schlüssel pro Plugin. Antwortet Diddy nicht (alte Version),
+muss das Plugin mit Standardwerten weiterarbeiten. Werte aus dem Speicher sind Fremddaten wie jede
+andere Eingabe: nie als HTML einsetzen.
+
+Hilfsfunktion zum Kopieren:
+
+```js
+let counter = 0;
+const waiting = new Map();
+window.addEventListener("message", (e) => {
+  if (e.source !== window.parent || e.data?.type !== "diddy:storage:value") return;
+  waiting.get(e.data.id)?.(e.data.value);
+  waiting.delete(e.data.id);
+});
+const storageGet = (key) =>
+  new Promise((resolve) => {
+    const id = `s${++counter}`;
+    waiting.set(id, resolve);
+    window.parent.postMessage({ type: "diddy:storage:get", id, key }, "*");
+    setTimeout(() => {
+      if (waiting.delete(id)) resolve(null);
+    }, 2000);
+  });
+const storageSet = (key, value) =>
+  window.parent.postMessage({ type: "diddy:storage:set", key, value }, "*");
+```
+
+### Mitgelieferte Plugins
+
+Unter Einstellungen > Plugins > „Built-in Plugins“ gibt es fertige Plugins zum Hinzufügen mit einem
+Klick (ohne Konto, ohne Schlüssel): Uhr, Wetter, Fokus-Timer, Notizen, To-do, Währungsrechner,
+Würfel und Kalender. Sie laufen in derselben Sandbox wie jedes andere Plugin, werden aber aus der
+App selbst geladen (`srcdoc`, Adresse `diddy:builtin/<name>`). Ihre Quelltexte liegen in
+`cinny/src/app/plugins/builtin/` und sind gute Vorlagen für eigene Plugins.
+
 ### Aussehen anpassen (Seitenleiste und eigenes CSS)
 
 - **Karte in der Seitenleiste:** In Einstellungen > Plugins schaltest du „Sidebar“ an. Höhe und

@@ -16,8 +16,10 @@ import { InsetGroup, InsetItem, InsetRow, InsetSection, SettingsPage } from '../
 import * as sheetCss from '../../../components/sheet/Sheet.css';
 import { BreakWord } from '../../../styles/Text.css';
 import { APP_REPO_URL } from '../../../appInfo';
-import { MAX_PLUGINS, UserPlugin } from '../../../plugins/userPlugins';
+import { BUILTIN_URL_PREFIX, MAX_PLUGINS, UserPlugin } from '../../../plugins/userPlugins';
+import { getBuiltinPlugins } from '../../../plugins/builtinPlugins';
 import {
+  addBuiltinUserPlugin,
   addUserPlugin,
   removeUserPlugin,
   setUserPluginEnabled,
@@ -288,8 +290,49 @@ export function Plugins({ requestClose }: PluginsProps) {
   const [confirmId, setConfirmId] = useState<string>();
   const full = plugins.length >= MAX_PLUGINS;
 
+  const builtins = getBuiltinPlugins();
+
   return (
     <SettingsPage title="Plugins" requestClose={requestClose}>
+      {builtins.length > 0 && (
+        <InsetSection
+          title="Built-in Plugins"
+          footer="Ready to use: no account, no key. They run isolated like every other plugin and show up as small cards in the sidebar."
+        >
+          <InsetGroup>
+            {builtins.map((builtin) => {
+              const added = plugins.some((p) => p.url === `${BUILTIN_URL_PREFIX}${builtin.slug}`);
+              return (
+                <InsetRow
+                  key={builtin.slug}
+                  title={builtin.name}
+                  description={builtin.description}
+                  after={
+                    <Button
+                      className={sheetCss.Pill}
+                      variant={added ? 'Secondary' : 'Primary'}
+                      fill={added ? 'None' : 'Soft'}
+                      size="300"
+                      radii="Pill"
+                      disabled={added || full}
+                      onClick={() => {
+                        const result = addBuiltinUserPlugin(builtin.slug, builtin.name);
+                        if (!result.ok) return;
+                        const created = result.value.find(
+                          (p) => p.url === `${BUILTIN_URL_PREFIX}${builtin.slug}`
+                        );
+                        if (created) setPluginPinned(created.id, true);
+                      }}
+                    >
+                      <Text size="B300">{added ? 'Added' : 'Add'}</Text>
+                    </Button>
+                  }
+                />
+              );
+            })}
+          </InsetGroup>
+        </InsetSection>
+      )}
       <InsetSection
         title="Add Plugin"
         footer={
