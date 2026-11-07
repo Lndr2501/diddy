@@ -47,9 +47,12 @@ jobs:
       - name: Cache Nix store
         uses: nix-community/cache-nix-action@7df957e333c1e5da7721f60227dbba6d06080569 # v7
         with:
-          primary-key: nix-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('flake.lock', 'flake.nix', 'nix/**', 'cinny/package-lock.json') }}
-          restore-prefixes-first-match: nix-v1-${{ runner.os }}-${{ runner.arch }}-
-          gc-max-store-size: 2G
+          primary-key: nix-v2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('flake.lock', 'flake.nix', 'nix/**', 'cinny/package-lock.json') }}
+          restore-prefixes-first-match: |
+            nix-v2-${{ runner.os }}-${{ runner.arch }}-
+            nix-v1-${{ runner.os }}-${{ runner.arch }}-
+          # Keep build inputs: GC here would discard Node/npm and force redownloads
+          # on the next source edit. The immutable key rotates per dependency set.
 
       - name: Evaluate flake without updating inputs
         run: nix flake check --no-build --no-update-lock-file

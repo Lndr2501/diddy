@@ -18,7 +18,9 @@ Rust tests run in parallel on macOS. No checks were removed.
   so future tag builds can restore them; application-only main pushes do not trigger
   these packaging jobs. Tags retain their existing release behavior.
 - Nix caches its store per dependency definition set, with older caches as a fallback.
-  Source changes still produce their own derivations. Frontend sources exclude Electron
+  Build-time inputs are retained in the snapshot; collecting them as garbage before
+  saving would force downloads again after source edits. Source changes still produce
+  their own derivations. Frontend sources exclude Electron
   and Rust implementation files; shell sources include Electron, icons, the version
   configuration needed by shell tests and the license.
   Default-branch cache warming runs on dependency/workflow definition changes, not every
