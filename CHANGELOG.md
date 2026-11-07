@@ -2,6 +2,11 @@
 
 ## Unveröffentlicht
 
+### Teilnehmerliste: online und offline getrennt
+
+- Die Teilnehmerliste rechts sortiert wie bei Discord: wer online oder abwesend ist, steht oben, weiter nach Rang gruppiert. Alle, die offline sind, stehen gesammelt in einer eigenen Gruppe „Offline“ darunter, auch Admins. Vorher konnte ein Offline-Mitglied direkt zwischen Online-Mitgliedern stehen.
+- Die Gruppenüberschriften zeigen die Anzahl („Admin — 3“, „Offline — 12“), und die Liste sortiert sich neu, wenn jemand online oder offline geht. Schickt der Server gar keine Presence, bleibt es bei der bisherigen Gruppierung nach Rang. In `features/room/MembersDrawer.tsx`.
+
 ### "… is typing" sauber über dem Composer
 
 - Die Tipp-Anzeige hing am linken Fensterrand statt an der Composer-Spalte und lag über der letzten Nachricht und der Ecke des Eingabefelds. Sie steht jetzt in derselben Spalte wie der Composer (zentriert, max. 900 px), bündig mit seiner linken Kante, direkt darüber.

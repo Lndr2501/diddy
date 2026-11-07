@@ -3,6 +3,7 @@ import React, {
   CSSProperties,
   MouseEventHandler,
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -29,7 +30,7 @@ import {
   color,
   config,
 } from 'folds';
-import { MatrixClient, Room, RoomMember } from 'matrix-js-sdk';
+import { MatrixClient, Room, RoomMember, UserEvent } from 'matrix-js-sdk';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import classNames from 'classnames';
 
@@ -60,7 +61,8 @@ import { MemberSortMenu } from '../../components/MemberSortMenu';
 import { useOpenUserRoomProfile, useUserRoomProfileState } from '../../state/hooks/userRoomProfile';
 import { useSpaceOptionally } from '../../hooks/useSpace';
 import { ContainerColor } from '../../styles/ContainerColor.css';
-import { useFlattenPowerTagMembers, useGetMemberPowerTag } from '../../hooks/useMemberPowerTag';
+import { GetMemberPowerTag, useGetMemberPowerTag } from '../../hooks/useMemberPowerTag';
+import { MemberPowerTag } from '../../../types/matrix/room';
 import { useRoomCreators } from '../../hooks/useRoomCreators';
 import { Presence, useUserPresence } from '../../hooks/useUserPresence';
 import { AvatarPresence, PresenceBadge } from '../../components/presence';
@@ -247,6 +249,73 @@ function MemberItem({
 
 const ADMIN_POWER_LEVEL = 100;
 
+const OFFLINE_TAG: MemberPowerTag = { name: 'Offline' };
+
+type MemberGroupLabel = MemberPowerTag & { count: number };
+
+const isPresent = (mx: MatrixClient, userId: string): boolean => {
+  const presence = mx.getUser(userId)?.presence;
+  return presence === Presence.Online || presence === Presence.Unavailable;
+};
+
+/** Re-renders when anyone's presence changes, batched so busy rooms don't re-sort on every event. */
+const usePresenceVersion = (mx: MatrixClient): number => {
+  const [version, setVersion] = useState(0);
+  useEffect(() => {
+    let timer: number | undefined;
+    const bump = () => {
+      if (timer !== undefined) return;
+      timer = window.setTimeout(() => {
+        timer = undefined;
+        setVersion((v) => v + 1);
+      }, 300);
+    };
+    mx.on(UserEvent.Presence, bump);
+    return () => {
+      mx.removeListener(UserEvent.Presence, bump);
+      if (timer !== undefined) window.clearTimeout(timer);
+    };
+  }, [mx]);
+  return version;
+};
+
+/**
+ * Discord-style member list: people who are online (or idle) grouped by their power tag,
+ * then everyone who is offline in one shared "Offline" group at the bottom.
+ * If the server sends no presence at all, the list stays grouped by power tag only.
+ */
+const groupMembersByPresence = (
+  mx: MatrixClient,
+  members: RoomMember[],
+  getTag: GetMemberPowerTag
+): Array<MemberGroupLabel | RoomMember> => {
+  const myUserId = mx.getUserId();
+  const hasPresence = members.some(
+    (m) => m.userId !== myUserId && mx.getUser(m.userId)?.events.presence !== undefined
+  );
+  const present = hasPresence ? members.filter((m) => isPresent(mx, m.userId)) : members;
+  const absent = hasPresence ? members.filter((m) => !isPresent(mx, m.userId)) : [];
+
+  const items: Array<MemberGroupLabel | RoomMember> = [];
+  let label: MemberGroupLabel | undefined;
+  let prevTag: MemberPowerTag | undefined;
+  present.forEach((member) => {
+    const tag = getTag(member.userId);
+    if (!label || tag !== prevTag) {
+      prevTag = tag;
+      label = { ...tag, count: 0 };
+      items.push(label);
+    }
+    label.count += 1;
+    items.push(member);
+  });
+  if (absent.length > 0) {
+    items.push({ ...OFFLINE_TAG, count: absent.length });
+    items.push(...absent);
+  }
+  return items;
+};
+
 const SEARCH_OPTIONS: UseAsyncSearchOptions = {
   limit: 1000,
   matchOptions: {
@@ -307,7 +376,13 @@ export function MembersDrawer({ room, members }: MembersDrawerProps) {
 
   const processMembers = result ? result.items : filteredMembers;
 
-  const PLTagOrRoomMember = useFlattenPowerTagMembers(processMembers, getPowerTag);
+  const presenceVersion = usePresenceVersion(mx);
+  const PLTagOrRoomMember = useMemo(
+    () => groupMembersByPresence(mx, processMembers, getPowerTag),
+    // presenceVersion changes whenever someone goes online/offline
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [mx, processMembers, getPowerTag, presenceVersion]
+  );
 
   const virtualizer = useVirtualizer({
     count: PLTagOrRoomMember.length,
@@ -487,7 +562,7 @@ export function MembersDrawer({ room, members }: MembersDrawerProps) {
                         className={classNames(css.MembersGroupLabel, css.DrawerVirtualItem)}
                         size="L400"
                       >
-                        {tagOrMember.name}
+                        {`${tagOrMember.name} — ${tagOrMember.count}`}
                       </Text>
                     );
                   }
