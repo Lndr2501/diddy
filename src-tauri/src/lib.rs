@@ -130,8 +130,61 @@ pub(crate) fn build_client_window(
         .with_webview_configuration(media_enabled_webview_configuration(
             profile.map(|p| connections::profile_identifier(&p.id)).transpose()?
         )?);
-    window_builder.build().map_err(|_| "Verbindungsfenster konnte nicht geöffnet werden.".to_string())?;
+    let window = window_builder.build().map_err(|_| "Verbindungsfenster konnte nicht geöffnet werden.".to_string())?;
+    #[cfg(target_os = "linux")]
+    enable_linux_media(&window);
+    #[cfg(not(target_os = "linux"))]
+    let _ = window;
     Ok(())
+}
+
+/// Linux: WebKitGTK ships with media capture and WebRTC switched off and denies every permission
+/// request that nobody handles, so Element Call can neither open the microphone nor connect.
+/// Turn the media settings on and allow camera / microphone / screen and device-list requests.
+#[cfg(target_os = "linux")]
+fn enable_linux_media(window: &tauri::WebviewWindow) {
+    // Test hook for machines without camera/microphone (CI, containers): mock capture devices and
+    // a probe in the real page that reports through diag_log. Never set in normal use.
+    let selftest = std::env::var_os("DIDDY_MEDIA_SELFTEST").is_some();
+    let result = window.with_webview(move |webview| {
+        use webkit2gtk::glib::prelude::ObjectExt;
+        use webkit2gtk::{
+            DeviceInfoPermissionRequest, PermissionRequestExt, SettingsExt, UserMediaPermissionRequest,
+            WebViewExt,
+        };
+        let view = webview.inner();
+        if let Some(settings) = WebViewExt::settings(&view) {
+            settings.set_enable_media_stream(true);
+            settings.set_enable_mediasource(true);
+            settings.set_enable_media_capabilities(true);
+            settings.set_enable_webrtc(true);
+            settings.set_media_playback_requires_user_gesture(false);
+            if selftest {
+                settings.set_enable_mock_capture_devices(true);
+            }
+        }
+        view.connect_permission_request(|_, request| {
+            let media = request.is::<UserMediaPermissionRequest>()
+                || request.is::<DeviceInfoPermissionRequest>();
+            if media {
+                request.allow();
+            }
+            media
+        });
+        eprintln!("diddy: linux media capture and WebRTC enabled");
+        diag::diag_log("linux: media capture and WebRTC enabled".into());
+    });
+    if let Err(e) = result {
+        eprintln!("diddy: linux media setup failed: {e}");
+        diag::diag_log(format!("linux: media setup failed: {e}"));
+    }
+    if selftest {
+        let window = window.clone();
+        std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_secs(12));
+            let _ = window.eval(include_str!("linux_media_selftest.js"));
+        });
+    }
 }
 
 /// The system-audio helper is this same executable started with a flag (see system_audio.rs).
