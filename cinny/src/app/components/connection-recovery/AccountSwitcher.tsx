@@ -45,12 +45,20 @@ type ConnectionsMenuProps = {
   /** the signed in account of this window (avatar, name, id); not shown on the login page */
   account?: ReactNode;
   onSettings?: () => void;
+  /** opens the "Matrix for Discord users" intro */
+  onIntro?: () => void;
   onManage: () => void;
   onDone: () => void;
 };
 
 /** Content of the account switcher: this account, the other windows, add / settings. */
-export function ConnectionsMenu({ account, onSettings, onManage, onDone }: ConnectionsMenuProps) {
+export function ConnectionsMenu({
+  account,
+  onSettings,
+  onIntro,
+  onManage,
+  onDone,
+}: ConnectionsMenuProps) {
   const { rows, failed } = useConnectionRows(true);
   const [error, setError] = useState<string>();
   const busy = useRef(false);
@@ -121,6 +129,12 @@ export function ConnectionsMenu({ account, onSettings, onManage, onDone }: Conne
           <button type="button" role="menuitem" className={css.Row} onClick={onSettings}>
             <Icon size="200" src={Icons.Setting} />
             <Text size="T300">Einstellungen</Text>
+          </button>
+        )}
+        {onIntro && (
+          <button type="button" role="menuitem" className={css.Row} onClick={onIntro}>
+            <Icon size="200" src={Icons.Info} />
+            <Text size="T300">Einführung: Matrix für Discord-Umsteiger</Text>
           </button>
         )}
       </div>

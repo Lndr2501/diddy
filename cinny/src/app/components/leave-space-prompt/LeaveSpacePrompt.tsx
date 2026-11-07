@@ -5,13 +5,7 @@ import {
   Overlay,
   OverlayCenter,
   OverlayBackdrop,
-  Header,
-  config,
-  Box,
   Text,
-  IconButton,
-  Icon,
-  Icons,
   color,
   Button,
   Spinner,
@@ -21,6 +15,8 @@ import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { AsyncStatus, useAsyncCallback } from '../../hooks/useAsyncCallback';
 import { stopPropagation } from '../../utils/keyboard';
 import { leaveRoom as leaveRoomAndSync } from '../../utils/leaveRoom';
+import { AppLogo } from '../app-logo/AppLogo';
+import * as sheetCss from '../sheet/Sheet.css';
 
 type LeaveSpacePromptProps = {
   roomId: string;
@@ -48,7 +44,7 @@ export function LeaveSpacePrompt({ roomId, onDone, onCancel }: LeaveSpacePromptP
   }, [leaveState, onDone]);
 
   return (
-    <Overlay open backdrop={<OverlayBackdrop />}>
+    <Overlay open backdrop={<OverlayBackdrop className={sheetCss.Backdrop} />}>
       <OverlayCenter>
         <FocusTrap
           focusTrapOptions={{
@@ -58,50 +54,50 @@ export function LeaveSpacePrompt({ roomId, onDone, onCancel }: LeaveSpacePromptP
             escapeDeactivates: stopPropagation,
           }}
         >
-          <Dialog variant="Surface">
-            <Header
-              style={{
-                padding: `0 ${config.space.S200} 0 ${config.space.S400}`,
-                borderBottomWidth: config.borderWidth.B300,
-              }}
-              variant="Surface"
-              size="500"
-            >
-              <Box grow="Yes">
-                <Text size="H4">Leave Space</Text>
-              </Box>
-              <IconButton size="300" onClick={onCancel} radii="300">
-                <Icon src={Icons.Cross} />
-              </IconButton>
-            </Header>
-            <Box style={{ padding: config.space.S400 }} direction="Column" gap="400">
-              <Box direction="Column" gap="200">
-                <Text priority="400">Are you sure you want to leave this space?</Text>
-                {leaveState.status === AsyncStatus.Error && (
-                  <Text style={{ color: color.Critical.Main }} size="T300">
-                    Failed to leave space! {leaveState.error.message}
-                  </Text>
-                )}
-              </Box>
-              <Button
-                type="submit"
-                variant="Critical"
-                onClick={handleLeave}
-                before={
-                  leaveState.status === AsyncStatus.Loading ? (
-                    <Spinner fill="Solid" variant="Critical" size="200" />
-                  ) : undefined
-                }
-                aria-disabled={
-                  leaveState.status === AsyncStatus.Loading ||
-                  leaveState.status === AsyncStatus.Success
-                }
-              >
-                <Text size="B400">
-                  {leaveState.status === AsyncStatus.Loading ? 'Leaving...' : 'Leave'}
+          <Dialog variant="Surface" className={sheetCss.Alert}>
+            <div className={sheetCss.AlertBody}>
+              <AppLogo className={sheetCss.AlertIcon} size={64} />
+              <Text as="h2" className={sheetCss.AlertTitle}>
+                Leave Space
+              </Text>
+              <Text as="p" className={sheetCss.AlertText}>
+                Are you sure you want to leave this space?
+              </Text>
+              {leaveState.status === AsyncStatus.Error && (
+                <Text style={{ color: color.Critical.Main }} size="T300">
+                  Failed to leave space! {leaveState.error.message}
                 </Text>
-              </Button>
-            </Box>
+              )}
+              <div className={sheetCss.AlertActions}>
+                <Button
+                  className={sheetCss.Pill}
+                  type="submit"
+                  variant="Critical"
+                  onClick={handleLeave}
+                  before={
+                    leaveState.status === AsyncStatus.Loading ? (
+                      <Spinner fill="Solid" variant="Critical" size="200" />
+                    ) : undefined
+                  }
+                  aria-disabled={
+                    leaveState.status === AsyncStatus.Loading ||
+                    leaveState.status === AsyncStatus.Success
+                  }
+                >
+                  <Text size="B400">
+                    {leaveState.status === AsyncStatus.Loading ? 'Leaving...' : 'Leave'}
+                  </Text>
+                </Button>
+                <Button
+                  className={sheetCss.Pill}
+                  variant="Secondary"
+                  fill="Soft"
+                  onClick={onCancel}
+                >
+                  <Text size="B400">Cancel</Text>
+                </Button>
+              </div>
+            </div>
           </Dialog>
         </FocusTrap>
       </OverlayCenter>

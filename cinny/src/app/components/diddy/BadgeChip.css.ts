@@ -10,6 +10,16 @@ export const BadgeChipStyle = style({
   lineHeight: 1,
   userSelect: 'none',
   verticalAlign: 'middle',
+  transition: 'transform 140ms ease',
+  selectors: {
+    '&:hover': { transform: 'scale(1.15)' },
+  },
+  '@media': {
+    '(prefers-reduced-motion: reduce)': {
+      transition: 'none',
+      selectors: { '&:hover': { transform: 'none' } },
+    },
+  },
 });
 
 export const BadgeImage = style({

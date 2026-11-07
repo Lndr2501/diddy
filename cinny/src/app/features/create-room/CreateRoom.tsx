@@ -14,6 +14,7 @@ import {
   Text,
   TextArea,
 } from 'folds';
+import * as sheetCss from '../../components/sheet/Sheet.css';
 import { SettingTile } from '../../components/setting-tile';
 import { SequenceCard } from '../../components/sequence-card';
 import {
@@ -324,16 +325,17 @@ export function CreateRoomForm({
           </Text>
         </Box>
       )}
-      <Box shrink="No" direction="Column" gap="200">
+      <Box shrink="No" className={sheetCss.SheetFooter}>
         <Button
+          className={sheetCss.Pill}
           type="submit"
-          size="500"
+          size="400"
           variant="Primary"
-          radii="400"
+          radii="Pill"
           disabled={disabled}
           before={loading && <Spinner variant="Primary" fill="Solid" size="200" />}
         >
-          <Text size="B500">Create</Text>
+          <Text size="B400">Create</Text>
         </Button>
       </Box>
     </Box>

@@ -34,7 +34,7 @@ export function MicrophoneButton({ enabled, onToggle }: MicrophoneButtonProps) {
           ref={anchorRef}
           variant={enabled ? 'SurfaceVariant' : 'Critical'}
           fill="Soft"
-          radii="400"
+          radii="Pill"
           size="400"
           className={css.ControlButton}
           onClick={toggleMic}
@@ -67,7 +67,7 @@ export function SoundButton({ enabled, onToggle }: SoundButtonProps) {
           ref={anchorRef}
           variant={enabled ? 'SurfaceVariant' : 'Critical'}
           fill="Soft"
-          radii="400"
+          radii="Pill"
           size="400"
           className={css.ControlButton}
           onClick={() => onToggle()}
@@ -104,9 +104,9 @@ export function VideoButton({ enabled, onToggle }: VideoButtonProps) {
       {(anchorRef) => (
         <IconButton
           ref={anchorRef}
-          variant={enabled ? 'Success' : 'SurfaceVariant'}
+          variant={enabled ? 'Primary' : 'SurfaceVariant'}
           fill="Soft"
-          radii="400"
+          radii="Pill"
           size="400"
           className={css.ControlButton}
           onClick={toggleVideo}
@@ -141,9 +141,9 @@ export function ScreenShareButton({ enabled, onToggle }: ScreenShareButtonProps)
       {(anchorRef) => (
         <IconButton
           ref={anchorRef}
-          variant={enabled ? 'Success' : 'SurfaceVariant'}
+          variant={enabled ? 'Primary' : 'SurfaceVariant'}
           fill="Soft"
-          radii="400"
+          radii="Pill"
           size="400"
           className={css.ControlButton}
           onClick={() => onToggle()}
@@ -173,18 +173,14 @@ export function ScreenShareAudioButton({ enabled, onToggle }: ScreenShareAudioBu
       {(anchorRef) => (
         <IconButton
           ref={anchorRef}
-          variant={enabled ? 'Success' : 'Critical'}
+          variant={enabled ? 'Primary' : 'Critical'}
           fill="Soft"
-          radii="400"
+          radii="Pill"
           size="400"
           className={css.ControlButton}
           onClick={() => onToggle()}
         >
-          <Icon
-            size="400"
-            src={enabled ? Icons.VolumeHigh : Icons.VolumeMute}
-            filled={!enabled}
-          />
+          <Icon size="400" src={enabled ? Icons.VolumeHigh : Icons.VolumeMute} filled={!enabled} />
         </IconButton>
       )}
     </TooltipProvider>
@@ -207,9 +203,9 @@ export function ChatButton() {
       {(anchorRef) => (
         <IconButton
           ref={anchorRef}
-          variant={chat ? 'Success' : 'SurfaceVariant'}
+          variant={chat ? 'Primary' : 'SurfaceVariant'}
           fill="Soft"
-          radii="400"
+          radii="Pill"
           size="400"
           className={css.ControlButton}
           onClick={() => setChat(!chat)}
@@ -239,9 +235,9 @@ export function SpotlightButton({ active, onToggle }: ViewToggleButtonProps) {
       {(anchorRef) => (
         <IconButton
           ref={anchorRef}
-          variant={active ? 'Success' : 'SurfaceVariant'}
+          variant={active ? 'Primary' : 'SurfaceVariant'}
           fill="Soft"
-          radii="400"
+          radii="Pill"
           size="400"
           className={css.ControlButton}
           onClick={() => onToggle()}
@@ -274,7 +270,7 @@ export function ReactionsButton({ onClick }: SimpleControlButtonProps) {
           ref={anchorRef}
           variant="SurfaceVariant"
           fill="Soft"
-          radii="400"
+          radii="Pill"
           size="400"
           className={css.ControlButton}
           onClick={() => onClick()}
@@ -303,7 +299,7 @@ export function CallSettingsButton({ onClick }: SimpleControlButtonProps) {
           ref={anchorRef}
           variant="SurfaceVariant"
           fill="Soft"
-          radii="400"
+          radii="Pill"
           size="400"
           className={css.ControlButton}
           onClick={() => onClick()}

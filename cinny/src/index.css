@@ -19,20 +19,51 @@
   --mx-uc-8: hsl(94, 100%, 35%);
 
   --font-emoji: 'Twemoji_DISABLED';
-  --font-secondary: -apple-system, BlinkMacSystemFont, 'InterVariable', var(--font-emoji), sans-serif;
+  --font-secondary: -apple-system, BlinkMacSystemFont, 'InterVariable', var(--font-emoji),
+    sans-serif;
 
   /*
-   * Diddy shape tokens (shared by all redesigned components, usable in .css.ts via `var(--diddy-*)`):
-   *   --diddy-radius-card  big panels / cards / call tiles / composer card
-   *   --diddy-radius-row   list rows, buttons, inputs
-   *   --diddy-border       thin low-contrast 1px border, usage: `border: var(--diddy-border)`
-   *   --diddy-glow-accent  soft pink glow, usage: `box-shadow: var(--diddy-glow-accent)`
-   *   --diddy-focus-ring   colour of the global keyboard focus ring
+   * Diddy design tokens (#21, Apple look). Use them in .css.ts via `var(--diddy-*)`, always with a
+   * fallback. Theme independent ones live here on :root; colour ones are set on `body` below
+   * (dark default, `body.prism-light` for light themes) and in colors.css.ts (values derived from
+   * the active folds theme: --diddy-accent, --diddy-material, --diddy-material-strong,
+   * --diddy-selected, --diddy-selection, --diddy-focus-ring).
+   *
+   *   --diddy-radius-card / -panel / -row / -ctl / -pill   18 / 16 / 12 / 10 / 999 px
+   *   --diddy-blur        backdrop-filter for materials
+   *   --diddy-ease, --diddy-dur (+ -fast / -slow)   motion; 0.01ms under prefers-reduced-motion
+   *   --diddy-fs-*        type scale 11/12/13/15/17/22/28 (caption2 … title1)
+   *   --diddy-border      full 1px hairline border shorthand: `border: var(--diddy-border)`
+   *   --diddy-separator   hairline colour: `border-top: 1px solid var(--diddy-separator)`
+   *   --diddy-rim         edge colour of floating material (menus, sheets)
+   *   --diddy-hover / --diddy-pressed   quiet fills for hover / mouse down
+   *   --diddy-shadow-1/2/3   small elevation / popover+menu / sheet+dialog
+   *   --diddy-scrollbar(-hover)   overlay scrollbar thumb
+   *   --diddy-glow-accent soft pink glow, usage: `box-shadow: var(--diddy-glow-accent)`
    */
   --diddy-radius-card: 18px;
+  --diddy-radius-panel: 16px;
   --diddy-radius-row: 12px;
-  --diddy-border: 1px solid rgba(255, 255, 255, 0.06);
+  --diddy-radius-ctl: 10px;
+  --diddy-radius-pill: 999px;
+
+  --diddy-blur: blur(24px) saturate(1.6);
+
+  --diddy-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --diddy-dur-fast: 120ms;
+  --diddy-dur: 160ms;
+  --diddy-dur-slow: 200ms;
+
+  --diddy-fs-caption2: 0.6875rem; /* 11 */
+  --diddy-fs-caption: 0.75rem; /* 12 */
+  --diddy-fs-body: 0.8125rem; /* 13 */
+  --diddy-fs-callout: 0.9375rem; /* 15 */
+  --diddy-fs-headline: 1.0625rem; /* 17 */
+  --diddy-fs-title2: 1.375rem; /* 22 */
+  --diddy-fs-title1: 1.75rem; /* 28 */
+
   --diddy-glow-accent: 0 0 0 1px rgba(229, 81, 124, 0.35), 0 6px 24px rgba(229, 81, 124, 0.25);
+  /* fallback only, colors.css.ts sets the accent based ring on body */
   --diddy-focus-ring: rgba(128, 128, 128, 0.7);
 }
 
@@ -50,7 +81,8 @@
   --mx-uc-7: hsl(243, 100%, 80%);
   --mx-uc-8: hsl(94, 100%, 80%);
 
-  --font-secondary: -apple-system, BlinkMacSystemFont, 'InterVariable', var(--font-emoji), sans-serif;
+  --font-secondary: -apple-system, BlinkMacSystemFont, 'InterVariable', var(--font-emoji),
+    sans-serif;
 }
 
 html {
@@ -70,7 +102,44 @@ body {
   font-variant-ligatures: no-contextual;
   /* Diddy (#21): system font (SF on macOS, Inter elsewhere) rendered like native macOS apps */
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-optical-sizing: auto;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+
+  /* Diddy colour tokens, dark default (every theme except Light/Silver is dark) */
+  --diddy-separator: rgba(255, 255, 255, 0.08);
+  --diddy-border: 1px solid var(--diddy-separator);
+  --diddy-rim: rgba(255, 255, 255, 0.1);
+  --diddy-hover: rgba(255, 255, 255, 0.06);
+  --diddy-pressed: rgba(255, 255, 255, 0.1);
+  --diddy-shadow-1: 0 0 0 0.5px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.28),
+    0 2px 6px rgba(0, 0, 0, 0.16);
+  --diddy-shadow-2: 0 0 0 0.5px rgba(0, 0, 0, 0.45), 0 4px 12px rgba(0, 0, 0, 0.28),
+    0 12px 32px rgba(0, 0, 0, 0.36);
+  --diddy-shadow-3: 0 0 0 0.5px rgba(0, 0, 0, 0.5), 0 10px 24px rgba(0, 0, 0, 0.32),
+    0 28px 72px rgba(0, 0, 0, 0.5);
+  --diddy-scrollbar: rgba(255, 255, 255, 0.22);
+  --diddy-scrollbar-hover: rgba(255, 255, 255, 0.38);
 }
+
+/* Light themes (Light, Silver) carry the `prism-light` class on body. */
+body.prism-light {
+  --diddy-separator: rgba(0, 0, 0, 0.09);
+  --diddy-border: 1px solid var(--diddy-separator);
+  --diddy-rim: rgba(0, 0, 0, 0.1);
+  --diddy-hover: rgba(0, 0, 0, 0.045);
+  --diddy-pressed: rgba(0, 0, 0, 0.08);
+  --diddy-shadow-1: 0 0 0 0.5px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.06),
+    0 2px 6px rgba(0, 0, 0, 0.04);
+  --diddy-shadow-2: 0 0 0 0.5px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.1),
+    0 12px 32px rgba(0, 0, 0, 0.14);
+  --diddy-shadow-3: 0 0 0 0.5px rgba(0, 0, 0, 0.14), 0 10px 24px rgba(0, 0, 0, 0.14),
+    0 28px 72px rgba(0, 0, 0, 0.24);
+  --diddy-scrollbar: rgba(0, 0, 0, 0.24);
+  --diddy-scrollbar-hover: rgba(0, 0, 0, 0.4);
+}
+
 #root {
   position: relative;
   z-index: 1;
@@ -83,7 +152,6 @@ body {
 /* Diddy theme: dark violet window with soft magenta glows in the corners (behind #root). */
 body.diddy-theme {
   background-color: #140916;
-  --diddy-focus-ring: rgba(229, 81, 124, 0.65);
 }
 body.diddy-theme::before {
   content: '';
@@ -105,28 +173,110 @@ body.diddy-theme::before {
     );
 }
 
-/* Thin, subtle scrollbars. Zero specificity beyond the pseudo-element, so folds' own scroll styling wins. */
+/* Text selection in the accent colour (value from colors.css.ts). */
+::selection {
+  background-color: var(--diddy-selection, rgba(229, 81, 124, 0.32));
+}
+
+/*
+ * Overlay-like scrollbars (macOS "show automatically"): thin pill thumb, no track, only visible
+ * while the scroll area is hovered. Low specificity, folds' Scroll component is handled below.
+ */
 *::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
-*::-webkit-scrollbar-track {
+*::-webkit-scrollbar-track,
+*::-webkit-scrollbar-corner {
   background: transparent;
 }
 *::-webkit-scrollbar-thumb {
-  background-color: rgba(128, 128, 128, 0.28);
-  border-radius: 8px;
+  background-color: transparent;
+  border-radius: 999px;
   border: 2px solid transparent;
-  background-clip: content-box;
+  background-clip: padding-box;
+  min-height: 32px;
+}
+*:hover::-webkit-scrollbar-thumb {
+  background-color: var(--diddy-scrollbar);
 }
 *::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(128, 128, 128, 0.5);
+  background-color: var(--diddy-scrollbar-hover);
+}
+
+/*
+ * folds 2.7.2 `Scroll` (dist class names: base _4yxtfd2, visibility Always _4yxtfdb / Hover _4yxtfdc).
+ * folds paints an opaque track and a ContainerLine thumb; make both variants overlay-like. If folds
+ * changes its class hashes these rules simply stop matching and folds' defaults return.
+ */
+._4yxtfd2:is(._4yxtfdb, ._4yxtfdc)::-webkit-scrollbar-track,
+._4yxtfd2:is(._4yxtfdb, ._4yxtfdc):hover::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+._4yxtfd2._4yxtfdb::-webkit-scrollbar-thumb {
+  background-color: transparent;
+}
+._4yxtfd2:is(._4yxtfdb, ._4yxtfdc):hover::-webkit-scrollbar-thumb {
+  background-color: var(--diddy-scrollbar);
+}
+._4yxtfd2:is(._4yxtfdb, ._4yxtfdc):hover::-webkit-scrollbar-thumb:hover {
+  background-color: var(--diddy-scrollbar-hover);
 }
 
 /* Global keyboard focus ring; :where() keeps specificity at 0 so component styles can override it. */
-:where(a, button, [role='button'], [tabindex]):focus-visible {
+:where(
+    a,
+    button,
+    select,
+    summary,
+    [role='button'],
+    [role='menuitem'],
+    [role='tab'],
+    [role='switch'],
+    [role='option'],
+    [tabindex]
+  ):focus-visible {
   outline: 2px solid var(--diddy-focus-ring);
   outline-offset: 2px;
+}
+
+/*
+ * Soft state changes for interactive elements (folds Button epr39zd, IconButton brs7ce5,
+ * MenuItem _13tt0gb6, Chip _1bv8u1w6, plus plain links/role buttons). Zero specificity: any
+ * component that sets its own `transition` wins. Only colour-like properties, no layout.
+ */
+:where(
+    .epr39zd,
+    .brs7ce5,
+    ._13tt0gb6,
+    ._1bv8u1w6,
+    a,
+    [role='button'],
+    [role='menuitem'],
+    [role='tab']
+  ) {
+  transition-property: background-color, border-color, color, box-shadow, opacity;
+  transition-duration: var(--diddy-dur-fast);
+  transition-timing-function: var(--diddy-ease);
+}
+
+/*
+ * Reduce motion: transitions become instant (0.01ms instead of 0 so transitionend still fires).
+ * Keyframe animations are switched off per component (spinners keep running on purpose).
+ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --diddy-dur-fast: 0.01ms;
+    --diddy-dur: 0.01ms;
+    --diddy-dur-slow: 0.01ms;
+  }
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 *,

@@ -35,8 +35,9 @@ export const PlayButton = style({
   cursor: 'pointer',
   // invisible extension of the hit target to 44 x 44
   boxShadow: '0 0 0 4px transparent',
-  transition: 'transform 120ms ease, opacity 120ms ease',
+  transition: 'transform 120ms ease-out, opacity 120ms ease-out, background-color 160ms ease-out',
   selectors: {
+    '&:hover:not(:disabled)': { background: color.Primary.MainHover },
     '&:active:not(:disabled)': { transform: 'scale(0.94)' },
     '&:disabled': { opacity: 0.6, cursor: 'default' },
     '&:focus-visible': { outline: `2px solid ${color.Primary.Main}`, outlineOffset: 2 },
@@ -102,15 +103,17 @@ export const Recorder = style({
   alignItems: 'center',
   gap: config.space.S200,
   height: 36,
-  padding: '0 4px 0 6px',
+  padding: '0 4px',
   borderRadius: 18,
-  background: color.SurfaceVariant.Container,
+  // a quiet capsule that stays visible on the composer card it sits on
+  background: `color-mix(in srgb, ${color.SurfaceVariant.OnContainer} 7%, transparent)`,
+  boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${color.SurfaceVariant.OnContainer} 8%, transparent)`,
 });
 export const RecordDot = style({
   width: 8,
   height: 8,
   borderRadius: '50%',
-  background: '#FF3B30', // systemRed
+  background: color.Critical.Main, // systemRed role
   animation: `${pulse} 1.2s ease-in-out infinite`,
   flexShrink: 0,
 });

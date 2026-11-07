@@ -20,6 +20,7 @@ import { SecretStorageRecoveryKey, SecretStorageRecoveryPassphrase } from './Sec
 import { useMatrixClient } from '../hooks/useMatrixClient';
 import { AsyncStatus, useAsyncCallback } from '../hooks/useAsyncCallback';
 import { storePrivateKey } from '../../client/secretStorageKeys';
+import * as sheetCss from './sheet/Sheet.css';
 
 export enum ManualVerificationMethod {
   RecoveryPassphrase = 'passphrase',
@@ -77,9 +78,10 @@ export function ManualVerificationMethodSwitcher({
               escapeDeactivates: stopPropagation,
             }}
           >
-            <Menu>
+            <Menu className={sheetCss.MenuMaterial}>
               <Box direction="Column" gap="100" style={{ padding: config.space.S100 }}>
                 <MenuItem
+                  className={sheetCss.MenuRow}
                   size="300"
                   variant="Surface"
                   aria-selected={value === ManualVerificationMethod.RecoveryPassphrase}
@@ -91,6 +93,7 @@ export function ManualVerificationMethodSwitcher({
                   </Box>
                 </MenuItem>
                 <MenuItem
+                  className={sheetCss.MenuRow}
                   size="300"
                   variant="Surface"
                   aria-selected={value === ManualVerificationMethod.RecoveryKey}

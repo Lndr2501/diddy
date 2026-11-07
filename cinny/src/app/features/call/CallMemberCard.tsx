@@ -1,10 +1,9 @@
 import { CallMembership } from 'matrix-js-sdk/lib/matrixrtc/CallMembership';
 import React, { useState } from 'react';
-import { Avatar, Box, Icon, Icons, Text } from 'folds';
+import { Avatar, Box, Icon, Icons, Text, toRem } from 'folds';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
 import { useOpenUserRoomProfile } from '../../state/hooks/userRoomProfile';
-import { SequenceCard } from '../../components/sequence-card';
 import { getMemberAvatarMxc, getMemberDisplayName } from '../../utils/room';
 import { useRoom } from '../../hooks/useRoom';
 import { getMxIdLocalPart, mxcUrlToHttp } from '../../utils/matrix';
@@ -37,7 +36,7 @@ export function CallRoster({ members }: { members: CallMembership[] }) {
 
   return (
     <Box className={css.CallRoster} alignItems="Center" gap="200" wrap="Wrap">
-      <Text size="T200" priority="300">
+      <Text as="span" size="T200" className={css.CallRosterLabel}>
         Im Gespräch
       </Text>
       {members.map((member) => {
@@ -50,19 +49,19 @@ export function CallRoster({ members }: { members: CallMembership[] }) {
           : undefined;
         return (
           <Box key={member.memberId} className={css.CallRosterChip} alignItems="Center" gap="200">
-            <Avatar size="300" radii="Pill">
+            <Avatar size="200" radii="Pill">
               <UserAvatar
                 userId={userId}
                 src={avatarUrl}
                 alt={name}
                 renderFallback={() => (
-                  <Text as="span" size="T200">
+                  <Text as="span" size="T200" style={{ fontSize: toRem(11), fontWeight: 600 }}>
                     {initialsFromName(name)}
                   </Text>
                 )}
               />
             </Avatar>
-            <Text size="T300" truncate>
+            <Text as="span" size="T200" className={css.CallRosterName} truncate>
               {name}
             </Text>
           </Box>
@@ -91,13 +90,11 @@ export function CallMemberCard({ member }: CallMemberCardProps) {
   const audioOnly = member.callIntent === 'audio';
 
   return (
-    <SequenceCard
-      as="button"
+    <button
+      type="button"
       key={member.memberId}
       className={css.CallMemberCard}
-      variant="SurfaceVariant"
-      radii="500"
-      onClick={(evt: any) =>
+      onClick={(evt) =>
         openUserProfile(
           room.roomId,
           undefined,
@@ -107,23 +104,21 @@ export function CallMemberCard({ member }: CallMemberCardProps) {
         )
       }
     >
-      <Box grow="Yes" gap="300" alignItems="Center">
-        <Avatar size="200" radii="Pill">
-          <UserAvatar
-            userId={userId}
-            src={avatarUrl}
-            alt={name}
-            renderFallback={() => <Icon size="50" src={Icons.User} filled />}
-          />
-        </Avatar>
-        <Box grow="Yes">
-          <Text size="L400" truncate>
-            {name}
-          </Text>
-        </Box>
-        {audioOnly && <Icon src={Icons.VideoCameraMute} size="100" />}
+      <Avatar size="300" radii="Pill">
+        <UserAvatar
+          userId={userId}
+          src={avatarUrl}
+          alt={name}
+          renderFallback={() => <Icon size="100" src={Icons.User} filled />}
+        />
+      </Avatar>
+      <Box grow="Yes" style={{ minWidth: 0 }}>
+        <Text size="T300" truncate style={{ fontWeight: 500 }}>
+          {name}
+        </Text>
       </Box>
-    </SequenceCard>
+      {audioOnly && <Icon className={css.MemberMeta} src={Icons.VideoCameraMute} size="100" />}
+    </button>
   );
 }
 
@@ -139,33 +134,38 @@ export function CallMemberRenderer({
   const truncatedMembers = viewMore ? members : members.slice(0, 4);
   const remaining = members.length - truncatedMembers.length;
 
+  if (members.length === 0) return null;
+
   return (
-    <>
+    <div className={css.MemberGroup}>
       {truncatedMembers.map((member) => (
         <CallMemberCard key={member.memberId} member={member} />
       ))}
       {members.length > max && (
-        <SequenceCard
-          as="button"
+        <button
+          type="button"
           className={css.CallMemberCard}
-          variant="SurfaceVariant"
-          radii="500"
           onClick={() => setViewMore(!viewMore)}
+          aria-expanded={viewMore}
         >
           <Box grow="Yes" gap="300" alignItems="Center">
             {viewMore ? (
-              <Text size="L400" truncate>
+              <Text size="T300" priority="300" truncate>
                 Collapse
               </Text>
             ) : (
-              <Text size="L400" truncate>
+              <Text size="T300" priority="300" truncate>
                 {remaining === 0 ? `+${remaining} Other` : `+${remaining} Others`}
               </Text>
             )}
           </Box>
-          <Icon src={viewMore ? Icons.ChevronTop : Icons.ChevronBottom} size="100" />
-        </SequenceCard>
+          <Icon
+            className={css.MemberMeta}
+            src={viewMore ? Icons.ChevronTop : Icons.ChevronBottom}
+            size="100"
+          />
+        </button>
       )}
-    </>
+    </div>
   );
 }

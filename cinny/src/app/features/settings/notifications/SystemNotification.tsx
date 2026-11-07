@@ -1,9 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Text, Switch, Button, color, Spinner } from 'folds';
 import { IPusherRequest } from 'matrix-js-sdk';
-import { SequenceCard } from '../../../components/sequence-card';
-import { SequenceCardStyle } from '../styles.css';
-import { SettingTile } from '../../../components/setting-tile';
+import { InsetGroup, InsetRow, InsetSection } from '../inset-list';
 import { useSetting } from '../../../state/hooks/settings';
 import { settingsAtom } from '../../../state/settings';
 import { getNotificationState, usePermissionState } from '../../../hooks/usePermission';
@@ -69,7 +67,7 @@ function EmailNotification() {
   };
 
   return (
-    <SettingTile
+    <InsetRow
       title="Email Notification"
       description={
         <>
@@ -99,6 +97,7 @@ function EmailNotification() {
           {loading && <Spinner variant="Secondary" />}
           {stableResult?.email && (
             <Switch
+              variant="Primary"
               disabled={loading}
               value={optimisticEnabled ?? stableResult.enabled}
               onChange={handleChange}
@@ -123,15 +122,9 @@ export function SystemNotification() {
   };
 
   return (
-    <Box direction="Column" gap="100">
-      <Text size="L400">System</Text>
-      <SequenceCard
-        className={SequenceCardStyle}
-        variant="SurfaceVariant"
-        direction="Column"
-        gap="400"
-      >
-        <SettingTile
+    <InsetSection title="System">
+      <InsetGroup>
+        <InsetRow
           title="Desktop Notifications"
           description={
             notifPermission === 'denied' ? (
@@ -151,6 +144,7 @@ export function SystemNotification() {
               </Button>
             ) : (
               <Switch
+                variant="Primary"
                 disabled={notifPermission !== 'granted'}
                 value={showNotifications}
                 onChange={setShowNotifications}
@@ -158,27 +152,19 @@ export function SystemNotification() {
             )
           }
         />
-      </SequenceCard>
-      <SequenceCard
-        className={SequenceCardStyle}
-        variant="SurfaceVariant"
-        direction="Column"
-        gap="400"
-      >
-        <SettingTile
+        <InsetRow
           title="Notification Sound"
           description="Play sound when new message arrive."
-          after={<Switch value={isNotificationSounds} onChange={setIsNotificationSounds} />}
+          after={
+            <Switch
+              variant="Primary"
+              value={isNotificationSounds}
+              onChange={setIsNotificationSounds}
+            />
+          }
         />
-      </SequenceCard>
-      <SequenceCard
-        className={SequenceCardStyle}
-        variant="SurfaceVariant"
-        direction="Column"
-        gap="400"
-      >
         <EmailNotification />
-      </SequenceCard>
-    </Box>
+      </InsetGroup>
+    </InsetSection>
   );
 }

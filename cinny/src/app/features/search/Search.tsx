@@ -6,15 +6,14 @@ import {
   Icon,
   Icons,
   Input,
-  Line,
   MenuItem,
   Modal,
   Overlay,
   OverlayCenter,
   Scroll,
   Text,
-  toRem,
 } from 'folds';
+import classNames from 'classnames';
 import React, {
   ChangeEventHandler,
   KeyboardEventHandler,
@@ -59,6 +58,8 @@ import { useKeyDown } from '../../hooks/useKeyDown';
 import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
 import { KeySymbol } from '../../utils/key-symbol';
 import { isMacOS } from '../../utils/user-agent';
+import * as sheetCss from '../../components/sheet/Sheet.css';
+import * as css from './Search.css';
 
 enum SearchRoomType {
   Rooms = '#',
@@ -243,7 +244,7 @@ export function Search({ requestClose }: SearchProps) {
 
   return (
     <Overlay open>
-      <OverlayCenter>
+      <OverlayCenter className={css.Position}>
         <FocusTrap
           focusTrapOptions={{
             initialFocus: () => inputRef.current,
@@ -257,28 +258,24 @@ export function Search({ requestClose }: SearchProps) {
             },
           }}
         >
-          <Modal size="400" style={{ maxHeight: toRem(400), borderRadius: config.radii.R500 }}>
-            <Box
-              shrink="No"
-              style={{ padding: config.space.S400, paddingBottom: 0 }}
-              direction="Column"
-            >
+          <Modal size="400" className={classNames(sheetCss.Sheet, css.Panel)}>
+            <div className={css.Field}>
               <Input
                 ref={inputRef}
+                className={css.FieldInput}
                 size="500"
-                variant="Background"
-                radii="400"
-                outlined
+                variant="Surface"
                 placeholder="Search"
-                before={<Icon size="200" src={Icons.Search} />}
+                aria-label="Search rooms, people and spaces"
+                before={<Icon className={css.FieldIcon} size="300" src={Icons.Search} />}
                 onChange={handleInputChange}
                 onKeyDown={handleInputKeyDown}
               />
-            </Box>
+            </div>
             <Box grow="Yes">
               {roomsToRender.length === 0 && (
                 <Box
-                  style={{ paddingTop: config.space.S700 }}
+                  style={{ padding: `${config.space.S700} ${config.space.S400}` }}
                   grow="Yes"
                   alignItems="Center"
                   justifyContent="Center"
@@ -297,7 +294,10 @@ export function Search({ requestClose }: SearchProps) {
               )}
               {roomsToRender.length > 0 && (
                 <Scroll ref={scrollRef} size="300" hideTrack>
-                  <div style={{ padding: config.space.S400, paddingRight: config.space.S200 }}>
+                  <div className={css.List}>
+                    <Text as="span" size="T200" className={css.ListLabel}>
+                      {result ? 'Results' : 'Recent'}
+                    </Text>
                     {roomsToRender.map((roomId, index) => {
                       const room = getRoom(roomId);
                       if (!room) return null;
@@ -329,6 +329,7 @@ export function Search({ requestClose }: SearchProps) {
                           onClick={handleRoomClick}
                           variant={listFocus.index === index ? 'Primary' : 'Surface'}
                           aria-pressed={listFocus.index === index}
+                          className={css.Row}
                           radii="400"
                           after={
                             <Box gap="100">
@@ -406,13 +407,12 @@ export function Search({ requestClose }: SearchProps) {
                 </Scroll>
               )}
             </Box>
-            <Line size="300" />
-            <Box shrink="No" justifyContent="Center" style={{ padding: config.space.S200 }}>
-              <Text size="T200" priority="300">
+            <div className={css.Hint}>
+              <Text size="T200" priority="300" align="Center">
                 Type <b>#</b> for rooms, <b>@</b> for DMs and <b>*</b> for spaces. Hotkey:{' '}
                 <b>{isMacOS() ? KeySymbol.Command : 'Ctrl'} + k</b>
               </Text>
-            </Box>
+            </div>
           </Modal>
         </FocusTrap>
       </OverlayCenter>

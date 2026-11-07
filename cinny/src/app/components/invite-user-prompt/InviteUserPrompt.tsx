@@ -12,12 +12,8 @@ import {
   OverlayBackdrop,
   OverlayCenter,
   Box,
-  Header,
   config,
   Text,
-  IconButton,
-  Icon,
-  Icons,
   Input,
   Button,
   Spinner,
@@ -32,6 +28,8 @@ import {
 import { Room } from 'matrix-js-sdk';
 import { isKeyHotkey } from 'is-hotkey';
 import FocusTrap from 'focus-trap-react';
+import { SheetHeader } from '../sheet';
+import * as sheetCss from '../sheet/Sheet.css';
 import { stopPropagation } from '../../utils/keyboard';
 import { useDirectUsers } from '../../hooks/useDirectUsers';
 import { getMxIdLocalPart, getMxIdServer, isUserId } from '../../utils/matrix';
@@ -151,7 +149,7 @@ export function InviteUserPrompt({ room, requestClose }: InviteUserProps) {
   };
 
   return (
-    <Overlay open backdrop={<OverlayBackdrop />}>
+    <Overlay open backdrop={<OverlayBackdrop className={sheetCss.Backdrop} />}>
       <OverlayCenter>
         <FocusTrap
           focusTrapOptions={{
@@ -161,30 +159,15 @@ export function InviteUserPrompt({ room, requestClose }: InviteUserProps) {
             escapeDeactivates: stopPropagation,
           }}
         >
-          <Dialog>
+          <Dialog className={sheetCss.Sheet}>
             <Box grow="Yes" direction="Column">
-              <Header
-                size="500"
-                style={{ padding: `0 ${config.space.S200} 0 ${config.space.S400}` }}
-              >
-                <Box grow="Yes">
-                  <Text size="H4" truncate>
-                    Invite
-                  </Text>
-                </Box>
-                <Box shrink="No">
-                  <IconButton size="300" radii="300" onClick={requestClose}>
-                    <Icon src={Icons.Cross} />
-                  </IconButton>
-                </Box>
-              </Header>
+              <SheetHeader title="Invite" onClose={requestClose} />
               <Box
                 as="form"
                 onSubmit={handleSubmit}
                 shrink="No"
-                style={{ padding: config.space.S400 }}
+                className={sheetCss.SheetBody}
                 direction="Column"
-                gap="400"
               >
                 <Box direction="Column" gap="100">
                   <Text size="L400">User ID</Text>
@@ -215,7 +198,10 @@ export function InviteUserPrompt({ room, requestClose }: InviteUserProps) {
                         }}
                       >
                         <Box style={{ position: 'relative' }}>
-                          <Menu style={{ position: 'absolute', top: 0, zIndex: 1, width: '100%' }}>
+                          <Menu
+                            className={sheetCss.MenuMaterial}
+                            style={{ position: 'absolute', top: 0, zIndex: 1, width: '100%' }}
+                          >
                             <Scroll size="300" style={{ maxHeight: toRem(100) }}>
                               <div style={{ padding: config.space.S100 }}>
                                 {result.items.map((userId) => {
@@ -274,13 +260,25 @@ export function InviteUserPrompt({ room, requestClose }: InviteUserProps) {
                     <b>{inviteState.error.message}</b>
                   </Text>
                 )}
-                <Button
-                  type="submit"
-                  disabled={!validUserId || inviting}
-                  before={inviting && <Spinner size="200" variant="Primary" fill="Solid" />}
-                >
-                  <Text size="B400">Invite</Text>
-                </Button>
+                <div className={sheetCss.SheetFooter}>
+                  <Button
+                    className={sheetCss.Pill}
+                    type="button"
+                    variant="Secondary"
+                    fill="Soft"
+                    onClick={requestClose}
+                  >
+                    <Text size="B400">Cancel</Text>
+                  </Button>
+                  <Button
+                    className={sheetCss.Pill}
+                    type="submit"
+                    disabled={!validUserId || inviting}
+                    before={inviting && <Spinner size="200" variant="Primary" fill="Solid" />}
+                  >
+                    <Text size="B400">Invite</Text>
+                  </Button>
+                </div>
               </Box>
             </Box>
           </Dialog>

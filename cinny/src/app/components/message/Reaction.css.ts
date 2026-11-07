@@ -11,16 +11,24 @@ export const Reaction = style([
   FocusOutline,
   {
     vars: {
-      [Container]: color.SurfaceVariant.Container,
-      [ContainerHover]: color.SurfaceVariant.ContainerHover,
-      [ContainerActive]: color.SurfaceVariant.ContainerActive,
-      [ContainerLine]: color.SurfaceVariant.ContainerLine,
+      [Container]: `color-mix(in srgb, ${color.SurfaceVariant.OnContainer} 6%, transparent)`,
+      [ContainerHover]: `color-mix(in srgb, ${color.SurfaceVariant.OnContainer} 11%, transparent)`,
+      [ContainerActive]: `color-mix(in srgb, ${color.SurfaceVariant.OnContainer} 15%, transparent)`,
+      [ContainerLine]: `color-mix(in srgb, ${color.SurfaceVariant.OnContainer} 10%, transparent)`,
       [OnContainer]: color.SurfaceVariant.OnContainer,
     },
-    padding: `${toRem(2)} ${config.space.S300} ${toRem(2)} ${config.space.S200}`,
+    padding: `${toRem(2)} ${toRem(10)} ${toRem(2)} ${toRem(8)}`,
+    minHeight: toRem(26),
     backgroundColor: Container,
     border: `${config.borderWidth.B300} solid ${ContainerLine}`,
     borderRadius: toRem(999),
+    transition:
+      'background-color var(--diddy-dur, 160ms) var(--diddy-ease, ease-out), border-color var(--diddy-dur, 160ms) var(--diddy-ease, ease-out), transform 120ms var(--diddy-ease, ease-out)',
+    '@media': {
+      '(prefers-reduced-motion: reduce)': {
+        transition: 'none',
+      },
+    },
 
     selectors: {
       'button&': {
@@ -31,7 +39,7 @@ export const Reaction = style([
           [Container]: color.Primary.Container,
           [ContainerHover]: color.Primary.ContainerHover,
           [ContainerActive]: color.Primary.ContainerActive,
-          [ContainerLine]: color.Primary.ContainerLine,
+          [ContainerLine]: `color-mix(in srgb, ${color.Primary.Main} 45%, transparent)`,
           [OnContainer]: color.Primary.OnContainer,
         },
         backgroundColor: Container,
@@ -45,6 +53,7 @@ export const Reaction = style([
       },
       '&:active': {
         backgroundColor: ContainerActive,
+        transform: 'scale(0.96)',
       },
       '&[aria-disabled=true], &:disabled': {
         cursor: 'not-allowed',

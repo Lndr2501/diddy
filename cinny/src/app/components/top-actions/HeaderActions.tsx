@@ -12,7 +12,7 @@ import { useUserProfile } from '../../hooks/useUserProfile';
 import { getMxIdLocalPart, mxcUrlToHttp } from '../../utils/matrix';
 import { nameInitials } from '../../utils/common';
 import { UserAvatar } from '../user-avatar';
-import { Modal500 } from '../Modal500';
+import { SettingsSheet } from '../SettingsSheet';
 import { Settings } from '../../features/settings';
 
 /** Search field that opens the global search modal (same as the Mod+K shortcut). */
@@ -67,11 +67,12 @@ export function HeaderBellButton() {
           className={css.SoftIconButton}
           variant="Surface"
           fill="Soft"
-          radii="400"
+          size="300"
+          radii="300"
           onClick={() => navigate(getInboxNotificationsPath())}
           aria-label="Notifications"
         >
-          <Icon size="400" src={Icons.Bell} />
+          <Icon size="200" src={Icons.Bell} />
           {hasHighlight && <span className={css.BellDot} />}
         </IconButton>
       )}
@@ -112,7 +113,7 @@ export function HeaderProfileButton() {
             onClick={() => setSettings(true)}
             aria-label="User Settings"
           >
-            <Avatar size="300" radii="400">
+            <Avatar size="300" radii="300">
               <UserAvatar
                 userId={userId}
                 src={avatarUrl}
@@ -123,9 +124,9 @@ export function HeaderProfileButton() {
         )}
       </TooltipProvider>
       {settings && (
-        <Modal500 requestClose={() => setSettings(false)}>
+        <SettingsSheet requestClose={() => setSettings(false)}>
           <Settings requestClose={() => setSettings(false)} />
-        </Modal500>
+        </SettingsSheet>
       )}
     </>
   );

@@ -117,7 +117,7 @@ export function UserBanAlert({ userId, reason, canUnban, bannedBy, ts }: UserBan
             <Button
               size="300"
               variant="Critical"
-              radii="300"
+              radii="400"
               onClick={unban}
               before={banning && <Spinner size="100" variant="Critical" fill="Solid" />}
               disabled={banning}
@@ -194,7 +194,7 @@ export function UserInviteAlert({ userId, reason, canKick, invitedBy, ts }: User
               variant="Success"
               fill="Soft"
               outlined
-              radii="300"
+              radii="400"
               onClick={kick}
               before={kicking && <Spinner size="100" variant="Success" fill="Soft" />}
               disabled={kicking}
@@ -262,7 +262,7 @@ export function UserModeration({ userId, canKick, canBan, canInvite }: UserModer
             placeholder="Reason"
             size="300"
             variant="Background"
-            radii="300"
+            radii="400"
             disabled={disabled}
           />
           {kickState.status === AsyncStatus.Error && (
@@ -288,7 +288,7 @@ export function UserModeration({ userId, canKick, canBan, canInvite }: UserModer
               size="300"
               variant="Secondary"
               fill="Soft"
-              radii="300"
+              radii="400"
               before={
                 inviteState.status === AsyncStatus.Loading ? (
                   <Spinner size="50" variant="Secondary" fill="Soft" />
@@ -308,7 +308,7 @@ export function UserModeration({ userId, canKick, canBan, canInvite }: UserModer
               size="300"
               variant="Critical"
               fill="Soft"
-              radii="300"
+              radii="400"
               before={
                 kickState.status === AsyncStatus.Loading ? (
                   <Spinner size="50" variant="Critical" fill="Soft" />
@@ -328,7 +328,7 @@ export function UserModeration({ userId, canKick, canBan, canInvite }: UserModer
               size="300"
               variant="Critical"
               fill="Solid"
-              radii="300"
+              radii="400"
               before={
                 banState.status === AsyncStatus.Loading ? (
                   <Spinner size="50" variant="Critical" fill="Solid" />

@@ -41,7 +41,9 @@ export function SidebarItemTooltip({
       position="Right"
       tooltip={
         <Tooltip style={{ maxWidth: toRem(280) }}>
-          <Text size="H5">{tooltip}</Text>
+          <Text size="T300" style={{ fontWeight: 500 }}>
+            {tooltip}
+          </Text>
         </Tooltip>
       }
     >

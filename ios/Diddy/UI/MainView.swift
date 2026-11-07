@@ -123,7 +123,7 @@ struct ServerRail: View {
                         unread: account.unreadCount(inSpace: space.roomId) > 0,
                         badge: account.mentionCount(inSpace: space.roomId)
                     ) {
-                        AvatarView(url: space.avatarUrl, name: space.displayName, size: 48, cornerRadius: 0)
+                        AvatarView(url: space.avatarUrl, name: space.displayName, size: 48, cornerRadius: 0, account: account)
                     }
                     .accessibilityLabel(space.displayName)
                 }
@@ -470,7 +470,7 @@ struct InviteRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
-                AvatarView(url: invite.avatarUrl, name: invite.name, size: 36, cornerRadius: invite.isSpace ? 10 : nil)
+                AvatarView(url: invite.avatarUrl, name: invite.name, size: 36, cornerRadius: invite.isSpace ? 10 : nil, account: account)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(invite.name).font(.subheadline.weight(.semibold)).foregroundStyle(Theme.text).lineLimit(1)
                     Text(subtitle).font(.caption).foregroundStyle(Theme.muted).lineLimit(1)
@@ -543,12 +543,13 @@ struct ChannelRow: View {
             }
             // Discord lists who is connected right under a voice channel.
             if let session = calls.current, session.roomId == channel.roomId {
-                LiveVoiceRoster(session: session)
+                LiveVoiceRoster(session: session, account: account)
             } else if let participants = summary?.callParticipants, !participants.isEmpty {
                 ForEach(participants, id: \.self) { userId in
                     VoiceRosterRow(
                         name: account.name(of: userId),
-                        avatarUrl: account.profiles[userId]?.avatarUrl
+                        avatarUrl: account.profiles[userId]?.avatarUrl,
+                        account: account
                     )
                 }
             }
@@ -560,6 +561,7 @@ struct ChannelRow: View {
 /// Who is in the call you are in, with mute and speaking state from the media server.
 private struct LiveVoiceRoster: View {
     @ObservedObject var session: CallSession
+    let account: MatrixAccount
 
     var body: some View {
         ForEach(session.members) { member in
@@ -568,7 +570,8 @@ private struct LiveVoiceRoster: View {
                 avatarUrl: member.avatarUrl,
                 isSpeaking: member.isSpeaking && member.microphoneOn,
                 isMuted: !member.microphoneOn,
-                isConnecting: member.isConnecting
+                isConnecting: member.isConnecting,
+                account: account
             )
         }
     }
@@ -580,10 +583,11 @@ struct VoiceRosterRow: View {
     var isSpeaking = false
     var isMuted = false
     var isConnecting = false
+    var account: MatrixAccount?
 
     var body: some View {
         HStack(spacing: 6) {
-            AvatarView(url: avatarUrl, name: name, size: 22)
+            AvatarView(url: avatarUrl, name: name, size: 22, account: account)
                 .overlay(Circle().stroke(isSpeaking ? Theme.online : .clear, lineWidth: 2))
             Text(name).font(.caption).foregroundStyle(isSpeaking ? Theme.text : Theme.muted).lineLimit(1)
             Spacer(minLength: 0)
@@ -608,7 +612,7 @@ struct RoomRow: View {
             if let icon {
                 Image(systemName: icon).foregroundStyle(Theme.faint).frame(width: 20)
             } else {
-                AvatarView(url: room.avatarUrl, name: room.name, size: 32)
+                AvatarView(url: room.avatarUrl, name: room.name, size: 32, account: account)
             }
             VStack(alignment: .leading, spacing: 1) {
                 Text(room.name)
@@ -635,7 +639,7 @@ struct UserPanel: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            AvatarView(url: account.avatarUrl, name: account.title, size: 34)
+            AvatarView(url: account.avatarUrl, name: account.title, size: 34, account: account)
                 .overlay(alignment: .bottomTrailing) {
                     Circle().fill(account.syncState == .running ? Theme.online : Theme.faint)
                         .frame(width: 11, height: 11)

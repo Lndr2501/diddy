@@ -9,11 +9,12 @@ import { nameInitials } from '../../../utils/common';
 import { useMediaAuthentication } from '../../../hooks/useMediaAuthentication';
 import { Settings } from '../../../features/settings';
 import { useUserProfile } from '../../../hooks/useUserProfile';
-import { Modal500 } from '../../../components/Modal500';
+import { SettingsSheet } from '../../../components/SettingsSheet';
 import { stopPropagation } from '../../../utils/keyboard';
 import { ConnectionsMenu } from '../../../components/connection-recovery/AccountSwitcher';
 import { ConnectionOverview } from '../../../components/connection-recovery/ConnectionRecovery';
 import { getConnectionProfile, visibleHomeserver } from '../../../plugins/connections';
+import { openIntro } from '../../../plugins/diddy/intro';
 
 export function SettingsTab() {
   const mx = useMatrixClient();
@@ -87,6 +88,10 @@ export function SettingsTab() {
                       closeMenu();
                       setSettings(true);
                     }}
+                    onIntro={() => {
+                      closeMenu();
+                      openIntro();
+                    }}
                     onManage={() => {
                       closeMenu();
                       setManage(true);
@@ -104,9 +109,9 @@ export function SettingsTab() {
         )}
       </SidebarItemTooltip>
       {settings && (
-        <Modal500 requestClose={closeSettings}>
+        <SettingsSheet requestClose={closeSettings}>
           <Settings requestClose={closeSettings} />
-        </Modal500>
+        </SettingsSheet>
       )}
       <ConnectionOverview open={manage} onClose={() => setManage(false)} />
     </SidebarItem>

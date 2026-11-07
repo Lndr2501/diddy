@@ -3,9 +3,7 @@ import { ConditionKind, IPushRules, PushRuleKind, RuleId } from 'matrix-js-sdk';
 import { Box, Text, Badge } from 'folds';
 import { useAccountData } from '../../../hooks/useAccountData';
 import { AccountDataEvent } from '../../../../types/matrix/accountData';
-import { SequenceCard } from '../../../components/sequence-card';
-import { SequenceCardStyle } from '../styles.css';
-import { SettingTile } from '../../../components/setting-tile';
+import { InsetGroup, InsetRow, InsetSection } from '../inset-list';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { useUserProfile } from '../../../hooks/useUserProfile';
 import { getMxIdLocalPart } from '../../../utils/matrix';
@@ -122,24 +120,23 @@ export function SpecialMessagesNotifications() {
   );
 
   return (
-    <Box direction="Column" gap="100">
-      <Box alignItems="Center" justifyContent="SpaceBetween" gap="200">
-        <Text size="L400">Special Messages</Text>
-        <Box gap="100">
-          <Text size="T200">Badge: </Text>
+    <InsetSection
+      title="Mentions"
+      after={
+        <Box gap="100" alignItems="Center">
+          <Text size="T200" priority="300">
+            Badge
+          </Text>
           <Badge radii="300" variant="Success" fill="Solid">
             <Text size="L400">1</Text>
           </Badge>
         </Box>
-      </Box>
-      <SequenceCard
-        className={SequenceCardStyle}
-        variant="SurfaceVariant"
-        direction="Column"
-        gap="400"
-      >
-        <SettingTile
-          title={`Mention User ID ("${userId}")`}
+      }
+    >
+      <InsetGroup>
+        <InsetRow
+          title="Mention User ID"
+          description={userId}
           after={
             <MentionModeSwitcher
               pushRules={pushRules}
@@ -148,15 +145,9 @@ export function SpecialMessagesNotifications() {
             />
           }
         />
-      </SequenceCard>
-      <SequenceCard
-        className={SequenceCardStyle}
-        variant="SurfaceVariant"
-        direction="Column"
-        gap="400"
-      >
-        <SettingTile
-          title={`Contains Displayname ${displayName ? `("${displayName}")` : ''}`}
+        <InsetRow
+          title="Contains Display Name"
+          description={displayName ? `"${displayName}"` : undefined}
           after={
             <MentionModeSwitcher
               pushRules={pushRules}
@@ -165,15 +156,9 @@ export function SpecialMessagesNotifications() {
             />
           }
         />
-      </SequenceCard>
-      <SequenceCard
-        className={SequenceCardStyle}
-        variant="SurfaceVariant"
-        direction="Column"
-        gap="400"
-      >
-        <SettingTile
-          title={`Contains Username ("${getMxIdLocalPart(userId)}")`}
+        <InsetRow
+          title="Contains Username"
+          description={`"${getMxIdLocalPart(userId)}"`}
           after={
             <MentionModeSwitcher
               pushRules={pushRules}
@@ -182,14 +167,7 @@ export function SpecialMessagesNotifications() {
             />
           }
         />
-      </SequenceCard>
-      <SequenceCard
-        className={SequenceCardStyle}
-        variant="SurfaceVariant"
-        direction="Column"
-        gap="400"
-      >
-        <SettingTile
+        <InsetRow
           title="Mention @room"
           after={
             <MentionModeSwitcher
@@ -199,14 +177,7 @@ export function SpecialMessagesNotifications() {
             />
           }
         />
-      </SequenceCard>
-      <SequenceCard
-        className={SequenceCardStyle}
-        variant="SurfaceVariant"
-        direction="Column"
-        gap="400"
-      >
-        <SettingTile
+        <InsetRow
           title="Contains @room"
           after={
             <MentionModeSwitcher
@@ -216,7 +187,7 @@ export function SpecialMessagesNotifications() {
             />
           }
         />
-      </SequenceCard>
-    </Box>
+      </InsetGroup>
+    </InsetSection>
   );
 }

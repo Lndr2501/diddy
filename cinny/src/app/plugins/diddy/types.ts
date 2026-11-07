@@ -1,3 +1,10 @@
+import type {
+  CardLayoutSettings,
+  ProfileAbout,
+  ProfileActivity,
+  ProfileLink,
+} from './profileExtras';
+
 /**
  * Diddy profile system: data model.
  *
@@ -90,6 +97,14 @@ export type DiddyProfile = {
   shownBadges?: string[];
   /** short text under the name on the card */
   bio?: string;
+  /** short facts (pronouns, place, age, ...) the user chose to show */
+  about?: ProfileAbout;
+  interests?: string[];
+  links?: ProfileLink[];
+  /** manually typed current activity */
+  activity?: ProfileActivity;
+  /** card layout and module visibility chosen by the owner */
+  cardLayout?: CardLayoutSettings;
 };
 
 export const MAX_SHOWN_BADGES = 4;

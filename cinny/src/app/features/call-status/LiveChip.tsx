@@ -61,6 +61,7 @@ export function LiveChip({ count, room, members }: LiveChipProps) {
           }}
         >
           <Menu
+            className={css.MemberMenu}
             style={{
               maxHeight: '75vh',
               maxWidth: toRem(300),
@@ -85,7 +86,7 @@ export function LiveChip({ count, room, members }: LiveChipProps) {
                         key={callMember.memberId}
                         size="400"
                         variant="Surface"
-                        radii="300"
+                        radii="400"
                         style={{ paddingLeft: config.space.S200 }}
                         onClick={(evt: React.MouseEvent<HTMLButtonElement>) =>
                           openUserProfile(
@@ -97,7 +98,7 @@ export function LiveChip({ count, room, members }: LiveChipProps) {
                           )
                         }
                         before={
-                          <Avatar size="200" radii="400">
+                          <Avatar size="200" radii="Pill">
                             <UserAvatar
                               userId={userId}
                               src={avatarUrl}

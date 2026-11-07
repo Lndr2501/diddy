@@ -45,7 +45,10 @@ export function CallControls({ callEmbed }: CallControlsProps) {
   const handleReactionsClick = useCallback(() => callEmbed.control.toggleReactions(), [callEmbed]);
   const handleSettingsClick = useCallback(() => callEmbed.control.toggleSettings(), [callEmbed]);
 
-  const handleMicrophoneToggle = useCallback(() => callEmbed.control.toggleMicrophone(), [callEmbed]);
+  const handleMicrophoneToggle = useCallback(
+    () => callEmbed.control.toggleMicrophone(),
+    [callEmbed]
+  );
   const handleVideoToggle = useCallback(() => callEmbed.control.toggleVideo(), [callEmbed]);
 
   const [hangupState, hangup] = useAsyncCallback(
@@ -98,12 +101,12 @@ export function CallControls({ callEmbed }: CallControlsProps) {
         <Button
           className={css.ControlPrimaryButton}
           style={compact ? { flexGrow: 1 } : undefined}
-          variant="Primary"
+          variant="Critical"
           fill="Solid"
           onClick={hangup}
           before={
             exiting ? (
-              <Spinner variant="Primary" fill="Solid" size="200" />
+              <Spinner variant="Critical" fill="Solid" size="200" />
             ) : (
               <Icon src={Icons.PhoneDown} size="200" filled />
             )

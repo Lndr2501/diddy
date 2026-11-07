@@ -4,9 +4,7 @@ import { ConditionKind, IPushRules, PushRuleCondition, PushRuleKind, RuleId } fr
 import { useAccountData } from '../../../hooks/useAccountData';
 import { AccountDataEvent } from '../../../../types/matrix/accountData';
 import { NotificationModeSwitcher } from './NotificationModeSwitcher';
-import { SequenceCard } from '../../../components/sequence-card';
-import { SequenceCardStyle } from '../styles.css';
-import { SettingTile } from '../../../components/setting-tile';
+import { InsetGroup, InsetRow, InsetSection } from '../inset-list';
 import { PushRuleData, usePushRule } from '../../../hooks/usePushRule';
 import {
   getNotificationModeActions,
@@ -80,34 +78,25 @@ export function AllMessagesNotifications() {
   );
 
   return (
-    <Box direction="Column" gap="100">
-      <Box alignItems="Center" justifyContent="SpaceBetween" gap="200">
-        <Text size="L400">All Messages</Text>
-        <Box gap="100">
-          <Text size="T200">Badge: </Text>
+    <InsetSection
+      title="All Messages"
+      after={
+        <Box gap="100" alignItems="Center">
+          <Text size="T200" priority="300">
+            Badge
+          </Text>
           <Badge radii="300" variant="Secondary" fill="Solid">
             <Text size="L400">1</Text>
           </Badge>
         </Box>
-      </Box>
-      <SequenceCard
-        className={SequenceCardStyle}
-        variant="SurfaceVariant"
-        direction="Column"
-        gap="400"
-      >
-        <SettingTile
+      }
+    >
+      <InsetGroup>
+        <InsetRow
           title="1-to-1 Chats"
           after={<AllMessagesModeSwitcher pushRules={pushRules} ruleId={RuleId.DM} oneToOne />}
         />
-      </SequenceCard>
-      <SequenceCard
-        className={SequenceCardStyle}
-        variant="SurfaceVariant"
-        direction="Column"
-        gap="400"
-      >
-        <SettingTile
+        <InsetRow
           title="1-to-1 Chats (Encrypted)"
           after={
             <AllMessagesModeSwitcher
@@ -118,25 +107,11 @@ export function AllMessagesNotifications() {
             />
           }
         />
-      </SequenceCard>
-      <SequenceCard
-        className={SequenceCardStyle}
-        variant="SurfaceVariant"
-        direction="Column"
-        gap="400"
-      >
-        <SettingTile
+        <InsetRow
           title="Rooms"
           after={<AllMessagesModeSwitcher pushRules={pushRules} ruleId={RuleId.Message} />}
         />
-      </SequenceCard>
-      <SequenceCard
-        className={SequenceCardStyle}
-        variant="SurfaceVariant"
-        direction="Column"
-        gap="400"
-      >
-        <SettingTile
+        <InsetRow
           title="Rooms (Encrypted)"
           after={
             <AllMessagesModeSwitcher
@@ -146,7 +121,7 @@ export function AllMessagesNotifications() {
             />
           }
         />
-      </SequenceCard>
-    </Box>
+      </InsetGroup>
+    </InsetSection>
   );
 }

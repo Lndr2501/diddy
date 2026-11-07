@@ -2,6 +2,7 @@ import FocusTrap from 'focus-trap-react';
 import { Box, Button, config, Menu, PopOut, RectCords, Text } from 'folds';
 import React, { MouseEventHandler, ReactNode, useState } from 'react';
 import { stopPropagation } from '../utils/keyboard';
+import * as sheetCss from './sheet/Sheet.css';
 
 type HexColorPickerPopOutProps = {
   children: (onOpen: MouseEventHandler<HTMLElement>, opened: boolean) => ReactNode;
@@ -29,9 +30,9 @@ export function HexColorPickerPopOut({ picker, onRemove, children }: HexColorPic
           }}
         >
           <Menu
+            className={sheetCss.MenuMaterial}
             style={{
               padding: config.space.S100,
-              borderRadius: config.radii.R500,
               overflow: 'initial',
             }}
           >

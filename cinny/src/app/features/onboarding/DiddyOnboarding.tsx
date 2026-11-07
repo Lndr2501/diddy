@@ -4,7 +4,7 @@ import { Box, Button, Modal, Overlay, OverlayBackdrop, OverlayCenter, Spinner, T
 import { MatrixClient } from 'matrix-js-sdk';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { stopPropagation } from '../../utils/keyboard';
-import { Modal500 } from '../../components/Modal500';
+import { SettingsSheet } from '../../components/SettingsSheet';
 import { Settings, SettingsPages } from '../settings/Settings';
 import { NAME_FONTS, DiddyStatus } from '../../plugins/diddy/types';
 import {
@@ -111,8 +111,8 @@ function JoinPanel({ rooms, connected, onConnected, onOpenProfile, compact }: Jo
     <Box direction="Column" gap="300">
       <Text size="H4">{compact ? 'This server uses Diddy' : 'Join a Diddy server'}</Text>
       <Text size="T300" priority="300">
-        This server uses Diddy features. Join its Diddy room to see profiles, name styles and
-        badges of other Diddy users.
+        This server uses Diddy features. Join its Diddy room to see profiles, name styles and badges
+        of other Diddy users.
       </Text>
       <div className={css.RoomList}>
         {rooms.map((r) => (
@@ -262,7 +262,10 @@ function MiniEditor({ hasRoom }: { hasRoom: boolean }) {
               }
             }}
           />
-          <Text size="T300" style={{ fontFamily: NAME_FONTS.find((f) => f.id === font)?.css, color: nameColor }}>
+          <Text
+            size="T300"
+            style={{ fontFamily: NAME_FONTS.find((f) => f.id === font)?.css, color: nameColor }}
+          >
             Your name
           </Text>
         </div>
@@ -402,9 +405,9 @@ export function DiddyOnboarding() {
 
   if (settingsOpen) {
     return (
-      <Modal500 requestClose={closeSettings}>
+      <SettingsSheet requestClose={closeSettings}>
         <Settings initialPage={SettingsPages.ProfilePage} requestClose={closeSettings} />
-      </Modal500>
+      </SettingsSheet>
     );
   }
 
@@ -470,7 +473,10 @@ export function DiddyOnboarding() {
                   </Button>
                   <div className={css.Dots}>
                     {[0, 1, 2, 3].map((i) => (
-                      <span key={i} className={step === i ? `${css.Dot} ${css.DotActive}` : css.Dot} />
+                      <span
+                        key={i}
+                        className={step === i ? `${css.Dot} ${css.DotActive}` : css.Dot}
+                      />
                     ))}
                   </div>
                   <Box gap="200">

@@ -8,6 +8,7 @@ import {
   useSetRoomNotificationPreference,
 } from '../hooks/useRoomsNotificationPreferences';
 import { AsyncStatus } from '../hooks/useAsyncCallback';
+import * as sheetCss from './sheet/Sheet.css';
 
 const useRoomNotificationModes = (): RoomNotificationMode[] =>
   useMemo(
@@ -85,10 +86,11 @@ export function RoomNotificationModeSwitcher({
             escapeDeactivates: stopPropagation,
           }}
         >
-          <Menu>
+          <Menu className={sheetCss.MenuMaterial}>
             <Box direction="Column" gap="100" style={{ padding: config.space.S100 }}>
               {modes.map((mode) => (
                 <MenuItem
+                  className={sheetCss.MenuRow}
                   key={mode}
                   size="300"
                   variant="Surface"

@@ -4,6 +4,7 @@ import { useVoiceRecorder, VoiceRecording } from '../../hooks/useVoiceRecorder';
 import { millisecondsToMinutesAndSeconds } from '../../utils/common';
 import { ArrowUpGlyph, TrashGlyph } from '../../components/message/content/VoiceIcons';
 import * as css from '../../components/message/content/VoiceContent.css';
+import { ComposerIconButton } from './RoomInput.css';
 
 type VoiceRecorderButtonProps = {
   /** sends the finished recording; may reject, the recording is then kept by the caller */
@@ -22,6 +23,7 @@ export function VoiceRecorderButton({ onRecorded, disabled }: VoiceRecorderButto
   if ((state === 'idle' || state === 'starting') && !sending) {
     return (
       <IconButton
+        className={ComposerIconButton}
         variant="SurfaceVariant"
         fill="None"
         size="300"

@@ -3,9 +3,7 @@ import { IPushRule, IPushRules, PushRuleKind } from 'matrix-js-sdk';
 import { Box, Text, Badge, Button, Input, config, IconButton, Icons, Icon, Spinner } from 'folds';
 import { useAccountData } from '../../../hooks/useAccountData';
 import { AccountDataEvent } from '../../../../types/matrix/accountData';
-import { SequenceCard } from '../../../components/sequence-card';
-import { SequenceCardStyle } from '../styles.css';
-import { SettingTile } from '../../../components/setting-tile';
+import { InsetGroup, InsetRow, InsetSection } from '../inset-list';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import {
   getNotificationModeActions,
@@ -160,44 +158,35 @@ export function KeywordMessagesNotifications() {
   }, [pushRules]);
 
   return (
-    <Box direction="Column" gap="100">
-      <Box alignItems="Center" justifyContent="SpaceBetween" gap="200">
-        <Text size="L400">Keyword Messages</Text>
-        <Box gap="100">
-          <Text size="T200">Badge: </Text>
+    <InsetSection
+      title="Keywords"
+      after={
+        <Box gap="100" alignItems="Center">
+          <Text size="T200" priority="300">
+            Badge
+          </Text>
           <Badge radii="300" variant="Success" fill="Solid">
             <Text size="L400">1</Text>
           </Badge>
         </Box>
-      </Box>
-      <SequenceCard
-        className={SequenceCardStyle}
-        variant="SurfaceVariant"
-        direction="Column"
-        gap="400"
-      >
-        <SettingTile
-          title="Select Keyword"
-          description="Set a notification preference for message containing given keyword."
+      }
+    >
+      <InsetGroup>
+        <InsetRow
+          title="Add Keyword"
+          description="Set a notification preference for messages containing the given keyword."
         >
           <KeywordInput />
-        </SettingTile>
-      </SequenceCard>
-      {keywordPushRules.map((pushRule) => (
-        <SequenceCard
-          key={pushRule.rule_id}
-          className={SequenceCardStyle}
-          variant="SurfaceVariant"
-          direction="Column"
-          gap="400"
-        >
-          <SettingTile
+        </InsetRow>
+        {keywordPushRules.map((pushRule) => (
+          <InsetRow
+            key={pushRule.rule_id}
             title={`"${pushRule.pattern}"`}
             before={<KeywordCross pushRule={pushRule} />}
             after={<KeywordModeSwitcher pushRule={pushRule} />}
           />
-        </SequenceCard>
-      ))}
-    </Box>
+        ))}
+      </InsetGroup>
+    </InsetSection>
   );
 }

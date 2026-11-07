@@ -3,6 +3,7 @@ import { Dialog, Text, Box, Button, config } from 'folds';
 import { AuthType } from 'matrix-js-sdk';
 import ReCAPTCHA from 'react-google-recaptcha';
 import { StageComponentProps } from './types';
+import * as sheetCss from '../sheet/Sheet.css';
 
 function ReCaptchaErrorDialog({
   title,
@@ -14,13 +15,21 @@ function ReCaptchaErrorDialog({
   onCancel: () => void;
 }) {
   return (
-    <Dialog>
+    <Dialog className={sheetCss.Sheet}>
       <Box style={{ padding: config.space.S400 }} direction="Column" gap="400">
         <Box direction="Column" gap="100">
-          <Text size="H4">{title}</Text>
+          <Text className={sheetCss.SheetTitle} size="H4">
+            {title}
+          </Text>
           <Text>{message}</Text>
         </Box>
-        <Button variant="Critical" fill="None" outlined onClick={onCancel}>
+        <Button
+          className={sheetCss.Pill}
+          variant="Critical"
+          fill="None"
+          outlined
+          onClick={onCancel}
+        >
           <Text as="span" size="B400">
             Cancel
           </Text>
@@ -54,7 +63,7 @@ export function ReCaptchaStageDialog({ stageData, submitAuthDict, onCancel }: St
   }
 
   return (
-    <Dialog>
+    <Dialog className={sheetCss.Sheet}>
       <Box style={{ padding: config.space.S400 }} direction="Column" gap="400">
         <Text>Please check the box below to proceed.</Text>
         <ReCAPTCHA sitekey={publicKey} onChange={handleChange} />

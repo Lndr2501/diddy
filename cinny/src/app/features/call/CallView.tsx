@@ -1,5 +1,5 @@
 import React, { RefObject, useRef } from 'react';
-import { Badge, Box, color, Header, Scroll, Text, toRem } from 'folds';
+import { Box, color, Scroll, Text, toRem } from 'folds';
 import { CallMembership } from 'matrix-js-sdk/lib/matrixrtc/CallMembership';
 import { useCallEmbed, useCallJoined, useCallEmbedPlacementSync } from '../../hooks/useCallEmbed';
 import { ContainerColor } from '../../styles/ContainerColor.css';
@@ -19,7 +19,7 @@ import { webRTCSupported } from '../../utils/rtc';
 
 function LivekitServerMissingMessage() {
   return (
-    <Text style={{ margin: 'auto', color: color.Critical.Main }} size="L400" align="Center">
+    <Text style={{ margin: 'auto', color: color.Critical.Main }} size="T300" align="Center">
       Your homeserver does not support calling.
     </Text>
   );
@@ -27,7 +27,7 @@ function LivekitServerMissingMessage() {
 
 function WebRTCMissingError() {
   return (
-    <Text style={{ margin: 'auto', color: color.Critical.Main }} size="L400" align="Center">
+    <Text style={{ margin: 'auto', color: color.Critical.Main }} size="T300" align="Center">
       Your browser does not support WebRTC, which is required for calling.
     </Text>
   );
@@ -53,7 +53,7 @@ function JoinMessage({
   if (hasParticipant) return null;
 
   return (
-    <Text style={{ margin: 'auto' }} size="L400" align="Center">
+    <Text style={{ margin: 'auto' }} size="T300" priority="300" align="Center">
       Voice chat’s empty — Be the first to hop in!
     </Text>
   );
@@ -61,7 +61,7 @@ function JoinMessage({
 
 function NoPermissionMessage() {
   return (
-    <Text style={{ margin: 'auto' }} size="L400" align="Center">
+    <Text style={{ margin: 'auto' }} size="T300" priority="300" align="Center">
       You don&#39;t have permission to join!
     </Text>
   );
@@ -69,7 +69,7 @@ function NoPermissionMessage() {
 
 function AlreadyInCallMessage() {
   return (
-    <Text style={{ margin: 'auto', color: color.Warning.Main }} size="L400" align="Center">
+    <Text style={{ margin: 'auto', color: color.Warning.Main }} size="T300" align="Center">
       Already in another call — End the current call to join!
     </Text>
   );
@@ -102,20 +102,21 @@ function CallPrescreen() {
   return (
     <Scroll variant="Surface" hideTrack>
       <Box className={css.CallViewContent} alignItems="Center" justifyContent="Center">
-        <Box style={{ maxWidth: toRem(382), width: '100%' }} direction="Column" gap="100">
+        <div className={css.PrescreenColumn}>
           {hasParticipant && (
-            <Header size="300">
-              <Box grow="Yes" alignItems="Center">
-                <Text size="L400">Participant</Text>
-              </Box>
-              <Badge variant="Primary" fill="Solid" size="400" radii="Pill">
-                <Text as="span" size="L400" truncate>
-                  {callMembers.length} Live
+            <Box direction="Column" gap="200">
+              <div className={css.SectionHeader}>
+                <Text as="span" size="T200" className={css.SectionLabel}>
+                  Participants
                 </Text>
-              </Badge>
-            </Header>
+                <span className={css.CountPill}>
+                  <span className={css.CountPillDot} aria-hidden />
+                  {callMembers.length} Live
+                </span>
+              </div>
+              <CallMemberRenderer members={callMembers} />
+            </Box>
           )}
-          <CallMemberRenderer members={callMembers} />
           <PrescreenControls canJoin={canJoin} />
           <Box className={css.PrescreenMessage} alignItems="Center">
             {!inOtherCall &&
@@ -130,7 +131,7 @@ function CallPrescreen() {
               ))}
             {inOtherCall && <AlreadyInCallMessage />}
           </Box>
-        </Box>
+        </div>
       </Box>
     </Scroll>
   );

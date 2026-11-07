@@ -1,18 +1,5 @@
 import React, { FormEventHandler, forwardRef, useCallback, useState } from 'react';
-import {
-  Dialog,
-  Header,
-  Box,
-  Text,
-  IconButton,
-  Icon,
-  Icons,
-  config,
-  Button,
-  Chip,
-  color,
-  Spinner,
-} from 'folds';
+import { Dialog, Box, Text, config, Button, Chip, color, Spinner } from 'folds';
 import FileSaver from 'file-saver';
 import to from 'await-to-js';
 import { AuthDict, IAuthData, MatrixError, UIAuthCallback } from 'matrix-js-sdk';
@@ -25,6 +12,8 @@ import { ActionUIA, ActionUIAFlowsLoader } from './ActionUIA';
 import { useMatrixClient } from '../hooks/useMatrixClient';
 import { useAlive } from '../hooks/useAlive';
 import { UseStateProvider } from './UseStateProvider';
+import { SheetHeader } from './sheet';
+import * as sheetCss from './sheet/Sheet.css';
 
 type UIACallback<T> = (
   authDict: AuthDict | null
@@ -190,6 +179,7 @@ function SetupVerification({ onComplete }: SetupVerificationProps) {
         <PasswordInput name="passphraseInput" size="400" readOnly={loading} />
       </Box>
       <Button
+        className={sheetCss.Pill}
         type="submit"
         disabled={loading}
         before={loading && <Spinner size="200" variant="Primary" fill="Solid" />}
@@ -270,10 +260,10 @@ function RecoveryKeyDisplay({ recoveryKey }: RecoveryKeyDisplayProps) {
         </Box>
       </Box>
       <Box direction="Column" gap="200">
-        <Button onClick={handleCopy}>
+        <Button className={sheetCss.Pill} onClick={handleCopy}>
           <Text size="B400">Copy</Text>
         </Button>
-        <Button onClick={handleDownload} fill="Soft">
+        <Button className={sheetCss.Pill} onClick={handleDownload} fill="Soft">
           <Text size="B400">Download</Text>
         </Button>
       </Box>
@@ -289,23 +279,9 @@ export const DeviceVerificationSetup = forwardRef<HTMLDivElement, DeviceVerifica
     const [recoveryKey, setRecoveryKey] = useState<string>();
 
     return (
-      <Dialog ref={ref}>
-        <Header
-          style={{
-            padding: `0 ${config.space.S200} 0 ${config.space.S400}`,
-            borderBottomWidth: config.borderWidth.B300,
-          }}
-          variant="Surface"
-          size="500"
-        >
-          <Box grow="Yes">
-            <Text size="H4">Setup Device Verification</Text>
-          </Box>
-          <IconButton size="300" radii="300" onClick={onCancel}>
-            <Icon src={Icons.Cross} />
-          </IconButton>
-        </Header>
-        <Box style={{ padding: config.space.S400 }} direction="Column" gap="400">
+      <Dialog ref={ref} className={sheetCss.Sheet}>
+        <SheetHeader title="Setup Device Verification" onClose={onCancel} />
+        <Box className={sheetCss.SheetBody} direction="Column">
           {recoveryKey ? (
             <RecoveryKeyDisplay recoveryKey={recoveryKey} />
           ) : (
@@ -324,24 +300,10 @@ export const DeviceVerificationReset = forwardRef<HTMLDivElement, DeviceVerifica
     const [reset, setReset] = useState(false);
 
     return (
-      <Dialog ref={ref}>
-        <Header
-          style={{
-            padding: `0 ${config.space.S200} 0 ${config.space.S400}`,
-            borderBottomWidth: config.borderWidth.B300,
-          }}
-          variant="Surface"
-          size="500"
-        >
-          <Box grow="Yes">
-            <Text size="H4">Reset Device Verification</Text>
-          </Box>
-          <IconButton size="300" radii="300" onClick={onCancel}>
-            <Icon src={Icons.Cross} />
-          </IconButton>
-        </Header>
+      <Dialog ref={ref} className={sheetCss.Sheet}>
+        <SheetHeader title="Reset Device Verification" onClose={onCancel} />
         {reset ? (
-          <Box style={{ padding: config.space.S400 }} direction="Column" gap="400">
+          <Box className={sheetCss.SheetBody} direction="Column">
             <UseStateProvider initial={undefined}>
               {(recoveryKey: string | undefined, setRecoveryKey) =>
                 recoveryKey ? (
@@ -353,7 +315,7 @@ export const DeviceVerificationReset = forwardRef<HTMLDivElement, DeviceVerifica
             </UseStateProvider>
           </Box>
         ) : (
-          <Box style={{ padding: config.space.S400 }} direction="Column" gap="400">
+          <Box className={sheetCss.SheetBody} direction="Column">
             <Box direction="Column" gap="200">
               <Text size="H1">✋🧑‍🚒🤚</Text>
               <Text size="T300">Resetting device verification is permanent.</Text>
@@ -364,7 +326,7 @@ export const DeviceVerificationReset = forwardRef<HTMLDivElement, DeviceVerifica
                 from.
               </Text>
             </Box>
-            <Button variant="Critical" onClick={() => setReset(true)}>
+            <Button className={sheetCss.Pill} variant="Critical" onClick={() => setReset(true)}>
               <Text size="B400">Reset</Text>
             </Button>
           </Box>

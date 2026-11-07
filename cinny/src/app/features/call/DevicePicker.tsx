@@ -2,7 +2,6 @@ import React, { MouseEventHandler, useCallback, useEffect, useRef, useState } fr
 import { useAtomValue } from 'jotai';
 import {
   Box,
-  color,
   config,
   Icon,
   IconButton,
@@ -28,6 +27,7 @@ import {
 import { switchLiveMicrophone, useSoundboard } from '../../plugins/call';
 import { callEmbedAtom } from '../../state/callEmbed';
 import { RangeInput } from '../../components/diddy/RangeInput';
+import * as css from './styles.css';
 
 type DeviceListProps = {
   devices: AudioDevice[];
@@ -47,7 +47,7 @@ function DeviceList({ devices, selected, disabled, onSelect }: DeviceListProps) 
           key={device.deviceId || 'default'}
           size="300"
           variant="Surface"
-          radii="300"
+          radii="400"
           disabled={disabled}
           aria-pressed={effective === device.deviceId}
           after={effective === device.deviceId ? <Icon size="100" src={Icons.Check} /> : undefined}
@@ -72,7 +72,9 @@ function VolumeSlider({ label, value, disabled, onChange }: VolumeSliderProps) {
   return (
     <Box direction="Column" gap="100">
       <Box alignItems="Center" justifyContent="SpaceBetween">
-        <Text size="L400">{label}</Text>
+        <Text size="T200" style={{ fontWeight: 500 }}>
+          {label}
+        </Text>
         <Text size="T200" priority="300">
           {Math.round(value * 100)}%
         </Text>
@@ -91,8 +93,8 @@ function VolumeSlider({ label, value, disabled, onChange }: VolumeSliderProps) {
   );
 }
 
-const MENU_STYLE = { width: toRem(272), maxWidth: '100vw' };
-const SECTION_STYLE = { padding: config.space.S200 };
+const MENU_STYLE = { width: toRem(280), maxWidth: '100vw' };
+const SECTION_STYLE = { padding: config.space.S300 };
 const LIST_STYLE = { maxHeight: toRem(220), overflowY: 'auto' as const };
 
 export function InputDeviceMenu() {
@@ -119,21 +121,24 @@ export function InputDeviceMenu() {
   };
 
   return (
-    <Menu style={MENU_STYLE}>
+    <Menu className={css.PopoverMenu} style={MENU_STYLE}>
       <Box direction="Column" gap="200" style={SECTION_STYLE}>
-        <Text size="L400">Input device</Text>
+        <Text size="T300" className={css.PopoverTitle}>
+          Input device
+        </Text>
         <div style={LIST_STYLE}>
           <DeviceList devices={inputs} selected={input} onSelect={handleSelect} />
         </div>
         {!permitted && (
-          <MenuItem size="300" variant="Surface" radii="300" onClick={handleReveal}>
+          <MenuItem size="300" variant="Surface" radii="400" onClick={handleReveal}>
             <Text size="T200" priority="300" truncate>
               Allow microphone access to list devices
             </Text>
           </MenuItem>
         )}
       </Box>
-      <Box direction="Column" gap="200" style={{ ...SECTION_STYLE, paddingTop: 0 }}>
+      <div className={css.PopoverSeparator} />
+      <Box direction="Column" gap="200" style={SECTION_STYLE}>
         <VolumeSlider label="Input volume" value={inputVolume} onChange={setInputVolume} />
         {callEmbed && !inCall && (
           <Text size="T200" priority="300">
@@ -151,9 +156,11 @@ export function OutputDeviceMenu() {
   const supported = isOutputSelectionSupported();
 
   return (
-    <Menu style={MENU_STYLE}>
+    <Menu className={css.PopoverMenu} style={MENU_STYLE}>
       <Box direction="Column" gap="200" style={SECTION_STYLE}>
-        <Text size="L400">Output device</Text>
+        <Text size="T300" className={css.PopoverTitle}>
+          Output device
+        </Text>
         <div style={LIST_STYLE}>
           <DeviceList
             devices={supported ? outputs : []}
@@ -168,7 +175,8 @@ export function OutputDeviceMenu() {
           </Text>
         )}
       </Box>
-      <Box direction="Column" gap="200" style={{ ...SECTION_STYLE, paddingTop: 0 }}>
+      <div className={css.PopoverSeparator} />
+      <Box direction="Column" gap="200" style={SECTION_STYLE}>
         <VolumeSlider label="Output volume" value={outputVolume} onChange={setOutputVolume} />
       </Box>
     </Menu>
@@ -233,7 +241,7 @@ export function DeviceChevron({ kind, size = 'panel', className }: DeviceChevron
         variant="SurfaceVariant"
         fill="None"
         size="300"
-        radii="300"
+        radii="400"
         className={className}
         onClick={handleToggle}
         aria-pressed={open}

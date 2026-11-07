@@ -175,6 +175,13 @@ fn process_objects() -> Result<Vec<AudioObjectID>, String> {
     Ok(ids)
 }
 
+/// Asks Core Audio for the default output device. Used as a health probe: when coreaudiod does not
+/// answer, this call blocks (forever), and so does WebKit's GPU process, which leaves every web view
+/// unpainted (#26). Call it on a thread that may hang.
+pub fn probe_default_output() -> Result<AudioObjectID, String> {
+    get_pod(SYSTEM_OBJECT, DEFAULT_OUTPUT_DEVICE, "default output device")
+}
+
 /// The UID of the default output device (the aggregate device is clocked by it).
 fn default_output_uid() -> Result<Retained<NSString>, String> {
     let device: AudioObjectID = get_pod(SYSTEM_OBJECT, DEFAULT_OUTPUT_DEVICE, "default output device")?;

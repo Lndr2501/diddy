@@ -113,7 +113,8 @@ struct MembersView: View {
                                     name: entry?.name ?? account.name(of: userId),
                                     subtitle: "In voice",
                                     avatarUrl: entry?.avatarUrl ?? account.profiles[userId]?.avatarUrl,
-                                    trailing: "speaker.wave.2.fill"
+                                    trailing: "speaker.wave.2.fill",
+                                    account: account
                                 )
                             }
                             .listRowBackground(Color.clear)
@@ -126,7 +127,7 @@ struct MembersView: View {
                         Section {
                             ForEach(entries) { entry in
                                 Button { selected = entry } label: {
-                                    PersonRow(name: entry.name, subtitle: entry.userId, avatarUrl: entry.avatarUrl)
+                                    PersonRow(name: entry.name, subtitle: entry.userId, avatarUrl: entry.avatarUrl, account: account)
                                 }
                                 .listRowBackground(Color.clear)
                             }
@@ -182,10 +183,11 @@ struct PersonRow: View {
     var subtitle: String?
     let avatarUrl: String?
     var trailing: String?
+    var account: MatrixAccount?
 
     var body: some View {
         HStack(spacing: 12) {
-            AvatarView(url: avatarUrl, name: name, size: 36)
+            AvatarView(url: avatarUrl, name: name, size: 36, account: account)
             VStack(alignment: .leading, spacing: 1) {
                 Text(name).foregroundStyle(Theme.text).lineLimit(1)
                 if let subtitle { Text(subtitle).font(.caption).foregroundStyle(Theme.faint).lineLimit(1) }
@@ -228,7 +230,7 @@ struct UserProfileSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
-                    AvatarView(url: avatar, name: name, size: 96)
+                    AvatarView(url: avatar, name: name, size: 96, account: account)
                     VStack(spacing: 4) {
                         Text(name).font(.title2.bold()).foregroundStyle(Theme.text)
                         Text(userId).font(.footnote).foregroundStyle(Theme.muted).textSelection(.enabled)

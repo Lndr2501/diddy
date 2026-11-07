@@ -1,10 +1,6 @@
 import React, { ChangeEventHandler, useRef, useState } from 'react';
-import { Box, Button, color, config, Input, Spinner, Text } from 'folds';
-import { SequenceCard } from '../../../components/sequence-card';
-import { SettingTile } from '../../../components/setting-tile';
+import { Box, Button, color, config, Icons, Spinner, Text } from 'folds';
 import { BadgeChip } from '../../../components/diddy/BadgeChip';
-import { AwardBadgeButton } from '../../../components/diddy/AwardBadgeMenu';
-import { SequenceCardStyle } from '../styles.css';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { useOptionsRooms } from '../../../plugins/diddy/optionsRoom';
 import {
@@ -18,12 +14,14 @@ import {
 } from '../../../plugins/diddy/profiles';
 import { BadgeDef, MAX_SHOWN_BADGES } from '../../../plugins/diddy/types';
 import { uploadDiddyMedia } from '../../../plugins/diddy/media';
+import * as css from './DiddyProfileSettings.css';
+import { Field, SettingsCard } from './ProfileSettingsUI';
 
-const USER_ID_REGEX = /^@[^\s:]+:[^\s]+$/;
 const DEFAULT_BADGE_COLOR = '#7AA2F7';
 const MAX_EMOJI_CODEPOINTS = 6;
 
-const errorMessage = (e: unknown, fallback: string): string => (e instanceof Error ? e.message : fallback);
+const errorMessage = (e: unknown, fallback: string): string =>
+  e instanceof Error ? e.message : fallback;
 
 const normalizeColor = (c?: string): string => (c ?? '').trim().toLowerCase();
 
@@ -62,89 +60,88 @@ function BadgeLibrary() {
   };
 
   return (
-    <Box direction="Column" gap="100">
-      <Text size="L400">Badge library</Text>
-      <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column" gap="300">
-        <SettingTile
-          title="Browse all badges"
-          description={`Built-in and community badges. You own ${owned.length} of ${defs.length}.`}
+    <SettingsCard
+      wide
+      icon={Icons.Category}
+      title="Badge library"
+      description={`Built-in and community badges. You own ${owned.length} of ${defs.length}.`}
+      action={
+        <input
+          className={css.Input}
+          style={{ width: 240 }}
+          value={filter}
+          onChange={(evt) => setFilter(evt.target.value)}
+          placeholder="Search badges"
+          aria-label="Search badges"
+        />
+      }
+    >
+      {visible.length === 0 ? (
+        <Text size="T200" priority="300">
+          No badges match your search.
+        </Text>
+      ) : (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+            gap: config.space.S300,
+            maxHeight: 440,
+            overflowY: 'auto',
+            padding: 2,
+          }}
         >
-          <Input
-            value={filter}
-            onChange={(evt) => setFilter((evt.target as HTMLInputElement).value)}
-            placeholder="Search badges"
-            aria-label="Search badges"
-            variant="Secondary"
-            radii="300"
-            size="400"
-            style={{ width: '100%' }}
-          />
-        </SettingTile>
-        {visible.length === 0 ? (
-          <Text size="T200" priority="300">
-            No badges match your search.
-          </Text>
-        ) : (
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))',
-              gap: config.space.S200,
-              maxHeight: 360,
-              overflowY: 'auto',
-            }}
-          >
-            {visible.map((badge) => {
-              const isOwned = ownedIds.has(badge.id);
-              return (
-                <Box
-                  key={badge.id}
-                  direction="Column"
-                  gap="200"
-                  style={{
-                    padding: config.space.S200,
-                    borderRadius: config.radii.R400,
-                    border: `${config.borderWidth.B300} solid ${color.SurfaceVariant.ContainerLine}`,
-                  }}
-                >
-                  <Box gap="200" alignItems="Center">
-                    <BadgeChip badge={badge} size={28} />
-                    <Box direction="Column" grow="Yes" style={{ minWidth: 0 }}>
-                      <Text size="T300" truncate>
-                        {badge.name}
-                      </Text>
-                      <Text size="T200" priority="300" truncate>
-                        {authorLabel(badge)}
-                      </Text>
-                    </Box>
+          {visible.map((badge) => {
+            const isOwned = ownedIds.has(badge.id);
+            return (
+              <Box
+                key={badge.id}
+                direction="Column"
+                gap="200"
+                style={{
+                  padding: config.space.S300,
+                  borderRadius: 14,
+                  background: color.Surface.Container,
+                  border: `${config.borderWidth.B300} solid ${color.Surface.ContainerLine}`,
+                }}
+              >
+                <Box gap="200" alignItems="Center">
+                  <BadgeChip badge={badge} size={28} />
+                  <Box direction="Column" grow="Yes" style={{ minWidth: 0 }}>
+                    <Text size="T300" truncate>
+                      {badge.name}
+                    </Text>
+                    <Text size="T200" priority="300" truncate>
+                      {authorLabel(badge)}
+                    </Text>
                   </Box>
-                  <Button
-                    size="300"
-                    radii="300"
-                    variant={isOwned ? 'Critical' : 'Primary'}
-                    fill="Soft"
-                    disabled={busyId !== undefined}
-                    before={
-                      busyId === badge.id ? (
-                        <Spinner size="100" variant={isOwned ? 'Critical' : 'Primary'} />
-                      ) : undefined
-                    }
-                    onClick={() => handleToggle(badge)}
-                  >
-                    <Text size="B300">{isOwned ? 'Remove' : 'Add to me'}</Text>
-                  </Button>
                 </Box>
-              );
-            })}
-          </div>
-        )}
-        {error && (
-          <Text size="T200" style={{ color: color.Critical.Main }}>
-            {error}
-          </Text>
-        )}
-      </SequenceCard>
-    </Box>
+                <Button
+                  size="300"
+                  radii="300"
+                  variant={isOwned ? 'Critical' : 'Primary'}
+                  fill="Soft"
+                  disabled={busyId !== undefined}
+                  before={
+                    busyId === badge.id ? (
+                      <Spinner size="100" variant={isOwned ? 'Critical' : 'Primary'} />
+                    ) : undefined
+                  }
+                  onClick={() => handleToggle(badge)}
+                >
+                  <Text size="B300">{isOwned ? 'Remove' : 'Add to me'}</Text>
+                </Button>
+              </Box>
+            );
+          })}
+        </div>
+      )}
+      {error && (
+        <Text size="T200" style={{ color: color.Critical.Main }}>
+          {error}
+        </Text>
+      )}
+    </SettingsCard>
   );
 }
 
@@ -174,48 +171,50 @@ function YourBadges() {
   };
 
   return (
-    <Box direction="Column" gap="100">
-      <Text size="L400">Your badges</Text>
-      <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column" gap="300">
-        <SettingTile
-          title="Shown badges"
-          description={`Pick up to ${MAX_SHOWN_BADGES} badges to show next to your name (${shownIds.length}/${MAX_SHOWN_BADGES}).`}
-        />
-        {owned.length === 0 ? (
-          <Text size="T200" priority="300">
-            You do not have any badges yet. Create one below or ask someone to give you one.
-          </Text>
-        ) : (
-          <Box gap="200" wrap="Wrap">
-            {owned.map((badge) => {
-              const selected = shownIds.includes(badge.id);
-              const full = !selected && shownIds.length >= MAX_SHOWN_BADGES;
-              return (
-                <Button
-                  key={badge.id}
-                  size="300"
-                  radii="300"
-                  variant={selected ? 'Primary' : 'Secondary'}
-                  fill={selected ? 'Soft' : 'None'}
-                  outlined={!selected}
-                  aria-pressed={selected}
-                  disabled={saving || full}
-                  before={<BadgeChip badge={badge} size={18} />}
-                  onClick={() => handleToggle(badge)}
-                >
-                  <Text size="B300">{badge.name}</Text>
-                </Button>
-              );
-            })}
-          </Box>
-        )}
-        {error && (
-          <Text size="T200" style={{ color: color.Critical.Main }}>
-            {error}
-          </Text>
-        )}
-      </SequenceCard>
-    </Box>
+    <SettingsCard
+      icon={Icons.Star}
+      title="Equipped badges"
+      description={`Pick up to ${MAX_SHOWN_BADGES} badges to show next to your name. Saved right away.`}
+      action={
+        <Text size="T200" priority="300">
+          {shownIds.length}/{MAX_SHOWN_BADGES}
+        </Text>
+      }
+    >
+      {owned.length === 0 ? (
+        <Text size="T200" priority="300">
+          You do not have any badges yet. Create one below or ask someone to give you one.
+        </Text>
+      ) : (
+        <Box gap="200" wrap="Wrap">
+          {owned.map((badge) => {
+            const selected = shownIds.includes(badge.id);
+            const full = !selected && shownIds.length >= MAX_SHOWN_BADGES;
+            return (
+              <Button
+                key={badge.id}
+                size="300"
+                radii="300"
+                variant={selected ? 'Primary' : 'Secondary'}
+                fill={selected ? 'Soft' : 'None'}
+                outlined={!selected}
+                aria-pressed={selected}
+                disabled={saving || full}
+                before={<BadgeChip badge={badge} size={18} />}
+                onClick={() => handleToggle(badge)}
+              >
+                <Text size="B300">{badge.name}</Text>
+              </Button>
+            );
+          })}
+        </Box>
+      )}
+      {error && (
+        <Text size="T200" style={{ color: color.Critical.Main }}>
+          {error}
+        </Text>
+      )}
+    </SettingsCard>
   );
 }
 
@@ -235,7 +234,10 @@ function CreateBadge() {
   const trimmedEmoji = emoji.trim();
   const emojiTooLong = Array.from(trimmedEmoji).length > MAX_EMOJI_CODEPOINTS;
   const canCreate =
-    trimmedName.length > 0 && (!!imageMxc || (trimmedEmoji.length > 0 && !emojiTooLong)) && !uploading && !creating;
+    trimmedName.length > 0 &&
+    (!!imageMxc || (trimmedEmoji.length > 0 && !emojiTooLong)) &&
+    !uploading &&
+    !creating;
 
   const preview: BadgeDef = {
     id: 'preview',
@@ -313,38 +315,36 @@ function CreateBadge() {
   };
 
   return (
-    <Box direction="Column" gap="100">
-      <Text size="L400">Create custom badge</Text>
-      <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column" gap="400">
-        <SettingTile title="Name" description="Shown when hovering the badge.">
-          <Input
-            value={name}
-            onChange={(evt) => setName((evt.target as HTMLInputElement).value)}
-            maxLength={32}
-            placeholder="Badge name"
-            variant="Secondary"
-            radii="300"
-            size="400"
-          />
-        </SettingTile>
-        <SettingTile
-          title="Emoji or image"
-          description={imageMxc ? 'Using an uploaded image.' : 'Type an emoji, or upload an image instead.'}
-        >
+    <SettingsCard
+      icon={Icons.Plus}
+      title="Create custom badge"
+      description="A new badge for the shared library. It is given to you right away."
+      action={<BadgeChip badge={preview} size={32} />}
+    >
+      <Field label="Name">
+        <input
+          className={css.Input}
+          value={name}
+          onChange={(evt) => setName(evt.target.value)}
+          maxLength={32}
+          placeholder="Badge name"
+          aria-label="Badge name"
+        />
+      </Field>
+      <Field label="Emoji or image" top>
+        <Box direction="Column" gap="200" style={{ minWidth: 0 }}>
           <Box gap="200" alignItems="Center" wrap="Wrap">
-            <Input
+            <input
+              className={css.Input}
               value={emoji}
-              onChange={(evt) => setEmoji((evt.target as HTMLInputElement).value)}
+              onChange={(evt) => setEmoji(evt.target.value)}
               disabled={!!imageMxc}
               placeholder="😀"
               aria-label="Emoji"
-              variant="Secondary"
-              radii="300"
-              size="400"
-              style={{ width: 96 }}
+              style={{ width: 80, textAlign: 'center' }}
             />
             <Button
-              size="400"
+              size="300"
               radii="300"
               variant="Secondary"
               fill="Soft"
@@ -356,10 +356,10 @@ function CreateBadge() {
             </Button>
             {imageMxc && (
               <Button
-                size="400"
+                size="300"
                 radii="300"
                 variant="Critical"
-                fill="Soft"
+                fill="None"
                 onClick={() => setImageMxc(undefined)}
               >
                 <Text size="B300">Remove image</Text>
@@ -373,130 +373,91 @@ function CreateBadge() {
               style={{ display: 'none' }}
             />
           </Box>
+          <Text size="T200" priority="300">
+            {imageMxc ? 'Using an uploaded image.' : 'Type an emoji, or upload an image instead.'}
+          </Text>
           {emojiTooLong && (
             <Text size="T200" style={{ color: color.Critical.Main }}>
               Use a single emoji.
             </Text>
           )}
-        </SettingTile>
-        <SettingTile
-          title="Color"
-          after={
-            <input
-              type="color"
-              aria-label="Badge color"
-              value={badgeColor}
-              onChange={(evt) => setBadgeColor(evt.target.value)}
-              style={{ width: 40, height: 28, padding: 0, border: 'none', background: 'none' }}
-            />
-          }
-        />
-        <SettingTile
-          title="Preview"
-          after={<BadgeChip badge={preview} size={32} />}
-        />
-        {duplicate && (
-          <Box direction="Column" gap="200" alignItems="Start">
-            <Text size="T200" style={{ color: color.Warning.Main }}>
-              This badge already exists in the library
-            </Text>
-            <Box gap="200" alignItems="Center">
-              <BadgeChip badge={duplicate} size={24} />
-              <Text size="T200" priority="300">
-                {duplicate.name}
-              </Text>
-              <Button
-                size="300"
-                variant="Secondary"
-                fill="Soft"
-                radii="300"
-                disabled={creating}
-                before={creating ? <Spinner size="100" variant="Secondary" /> : undefined}
-                onClick={handleUseExisting}
-              >
-                <Text size="B300">Use the existing badge</Text>
-              </Button>
-            </Box>
-          </Box>
-        )}
-        {error && (
-          <Text size="T200" style={{ color: color.Critical.Main }}>
-            {error}
-          </Text>
-        )}
-        <Box>
-          <Button
-            size="300"
-            variant="Primary"
-            radii="300"
-            disabled={!canCreate || !!duplicate}
-            before={creating ? <Spinner size="100" variant="Primary" fill="Solid" /> : undefined}
-            onClick={handleCreate}
-          >
-            <Text size="B300">Create</Text>
-          </Button>
         </Box>
-      </SequenceCard>
-    </Box>
-  );
-}
-
-function GiveBadge() {
-  const [userId, setUserId] = useState('');
-  const trimmed = userId.trim();
-  const valid = USER_ID_REGEX.test(trimmed);
-
-  return (
-    <Box direction="Column" gap="100">
-      <Text size="L400">Give a badge</Text>
-      <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column" gap="300">
-        <SettingTile
-          title="User"
-          description="Enter a user id like @name:server, then pick the badges to give or remove."
-        >
-          <Box gap="200" alignItems="Center">
-            <Box grow="Yes">
-              <Input
-                value={userId}
-                onChange={(evt) => setUserId((evt.target as HTMLInputElement).value)}
-                placeholder="@name:server"
-                variant="Secondary"
-                radii="300"
-                size="400"
-                style={{ width: '100%' }}
-              />
-            </Box>
-            {valid && <AwardBadgeButton userId={trimmed} />}
+      </Field>
+      <Field label="Color">
+        <input
+          type="color"
+          aria-label="Badge color"
+          className={css.ColorInput}
+          value={badgeColor}
+          onChange={(evt) => setBadgeColor(evt.target.value)}
+        />
+        <span className={css.HexLabel}>{badgeColor.toUpperCase()}</span>
+      </Field>
+      {duplicate && (
+        <Box direction="Column" gap="200" alignItems="Start">
+          <Text size="T200" style={{ color: color.Warning.Main }}>
+            This badge already exists in the library
+          </Text>
+          <Box gap="200" alignItems="Center" wrap="Wrap">
+            <BadgeChip badge={duplicate} size={24} />
+            <Text size="T200" priority="300">
+              {duplicate.name}
+            </Text>
+            <Button
+              size="300"
+              variant="Secondary"
+              fill="Soft"
+              radii="300"
+              disabled={creating}
+              before={creating ? <Spinner size="100" variant="Secondary" /> : undefined}
+              onClick={handleUseExisting}
+            >
+              <Text size="B300">Use the existing badge</Text>
+            </Button>
           </Box>
-        </SettingTile>
-      </SequenceCard>
-    </Box>
+        </Box>
+      )}
+      {error && (
+        <Text size="T200" style={{ color: color.Critical.Main }}>
+          {error}
+        </Text>
+      )}
+      <Box justifyContent="End">
+        <Button
+          size="300"
+          variant="Primary"
+          radii="300"
+          disabled={!canCreate || !!duplicate}
+          before={creating ? <Spinner size="100" variant="Primary" fill="Solid" /> : undefined}
+          onClick={handleCreate}
+        >
+          <Text size="B300">Create badge</Text>
+        </Button>
+      </Box>
+    </SettingsCard>
   );
 }
 
+/** Badge cards for the "Status & badges" tab; renders straight into the tab grid. */
 export function BadgeEditor() {
   const mx = useMatrixClient();
   const optionsRooms = useOptionsRooms(mx);
 
   if (optionsRooms.length === 0) {
     return (
-      <Box direction="Column" gap="100">
-        <Text size="L400">Badges</Text>
-        <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column">
-          <Text size="T300" priority="300">
-            Set up the Diddy Options room first
-          </Text>
-        </SequenceCard>
-      </Box>
+      <SettingsCard
+        icon={Icons.Star}
+        title="Badges"
+        description="Set up the Diddy Options room first."
+      />
     );
   }
 
   return (
-    <Box direction="Column" gap="400">
+    <>
       <YourBadges />
       <BadgeLibrary />
       <CreateBadge />
-      <GiveBadge />
-    </Box>
+    </>
   );
 }

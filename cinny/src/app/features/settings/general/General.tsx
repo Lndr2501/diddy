@@ -8,10 +8,8 @@ import React, {
 } from 'react';
 import dayjs from 'dayjs';
 import {
-  as,
   Box,
   Button,
-  Chip,
   config,
   Header,
   Icon,
@@ -22,24 +20,19 @@ import {
   MenuItem,
   PopOut,
   RectCords,
-  Scroll,
   Switch,
   Text,
   toRem,
 } from 'folds';
 import { isKeyHotkey } from 'is-hotkey';
 import FocusTrap from 'focus-trap-react';
-import { Page, PageContent, PageHeader } from '../../../components/page';
-import { SequenceCard } from '../../../components/sequence-card';
 import { useSetting } from '../../../state/hooks/settings';
-import { DateFormat, MessageLayout, MessageSpacing, settingsAtom } from '../../../state/settings';
-import { SettingTile } from '../../../components/setting-tile';
+import { DateFormat, MessageSpacing, settingsAtom } from '../../../state/settings';
 import { KeySymbol } from '../../../utils/key-symbol';
 import { isMacOS } from '../../../utils/user-agent';
 import {
   DarkTheme,
   LightTheme,
-  Theme,
   ThemeKind,
   useSystemThemeKind,
   useThemeNames,
@@ -49,219 +42,94 @@ import { stopPropagation } from '../../../utils/keyboard';
 import { useMessageLayoutItems } from '../../../hooks/useMessageLayout';
 import { useMessageSpacingItems } from '../../../hooks/useMessageSpacing';
 import { useDateFormatItems } from '../../../hooks/useDateFormat';
-import { SequenceCardStyle } from '../styles.css';
 import { AppIconPicker } from './AppIconPicker';
 import { BackgroundSettings, CustomThemeSettings } from './CustomThemeSettings';
+import { ThemeTiles } from './ThemeTiles';
 import { updateCallPrefs, useCallPrefs } from '../../../state/callPrefs';
 import { resetDiddyOnboarding } from '../../../plugins/diddy/onboarding';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { canChangeAppIcon } from '../../../plugins/appIcon';
+import {
+  InsetGroup,
+  InsetItem,
+  InsetRow,
+  InsetSection,
+  SegmentedControl,
+  SettingsPage,
+} from '../inset-list';
 
-type ThemeSelectorProps = {
-  themeNames: Record<string, string>;
-  themes: Theme[];
-  selected: Theme;
-  onSelect: (theme: Theme) => void;
-};
-const ThemeSelector = as<'div', ThemeSelectorProps>(
-  ({ themeNames, themes, selected, onSelect, ...props }, ref) => (
-    <Menu {...props} ref={ref}>
-      <Box direction="Column" gap="100" style={{ padding: config.space.S100 }}>
-        {themes.map((theme) => (
-          <MenuItem
-            key={theme.id}
-            size="300"
-            variant={theme.id === selected.id ? 'Primary' : 'Surface'}
-            radii="300"
-            onClick={() => onSelect(theme)}
-          >
-            <Text size="T300">{themeNames[theme.id] ?? theme.id}</Text>
-          </MenuItem>
-        ))}
-      </Box>
-    </Menu>
-  )
-);
-
-function SelectTheme({ disabled }: { disabled?: boolean }) {
+function ThemeSettings() {
   const themes = useThemes();
   const themeNames = useThemeNames();
+  const systemThemeKind = useSystemThemeKind();
+  const [systemTheme, setSystemTheme] = useSetting(settingsAtom, 'useSystemTheme');
   const [themeId, setThemeId] = useSetting(settingsAtom, 'themeId');
-  const [menuCords, setMenuCords] = useState<RectCords>();
-  const selectedTheme = themes.find((theme) => theme.id === themeId) ?? LightTheme;
-
-  const handleThemeMenu: MouseEventHandler<HTMLButtonElement> = (evt) => {
-    setMenuCords(evt.currentTarget.getBoundingClientRect());
-  };
-
-  const handleThemeSelect = (theme: Theme) => {
-    setThemeId(theme.id);
-    setMenuCords(undefined);
-  };
-
-  return (
-    <>
-      <Button
-        size="300"
-        variant="Primary"
-        outlined
-        fill="Soft"
-        radii="300"
-        after={<Icon size="300" src={Icons.ChevronBottom} />}
-        onClick={disabled ? undefined : handleThemeMenu}
-        aria-disabled={disabled}
-      >
-        <Text size="T300">{themeNames[selectedTheme.id] ?? selectedTheme.id}</Text>
-      </Button>
-      <PopOut
-        anchor={menuCords}
-        offset={5}
-        position="Bottom"
-        align="End"
-        content={
-          <FocusTrap
-            focusTrapOptions={{
-              initialFocus: false,
-              onDeactivate: () => setMenuCords(undefined),
-              clickOutsideDeactivates: true,
-              isKeyForward: (evt: KeyboardEvent) =>
-                evt.key === 'ArrowDown' || evt.key === 'ArrowRight',
-              isKeyBackward: (evt: KeyboardEvent) =>
-                evt.key === 'ArrowUp' || evt.key === 'ArrowLeft',
-              escapeDeactivates: stopPropagation,
-            }}
-          >
-            <ThemeSelector
-              themeNames={themeNames}
-              themes={themes}
-              selected={selectedTheme}
-              onSelect={handleThemeSelect}
-            />
-          </FocusTrap>
-        }
-      />
-    </>
-  );
-}
-
-function SystemThemePreferences() {
-  const themeKind = useSystemThemeKind();
-  const themeNames = useThemeNames();
-  const themes = useThemes();
   const [lightThemeId, setLightThemeId] = useSetting(settingsAtom, 'lightThemeId');
   const [darkThemeId, setDarkThemeId] = useSetting(settingsAtom, 'darkThemeId');
 
   const lightThemes = themes.filter((theme) => theme.kind === ThemeKind.Light);
   const darkThemes = themes.filter((theme) => theme.kind === ThemeKind.Dark);
 
+  const selectedTheme = themes.find((theme) => theme.id === themeId) ?? LightTheme;
   const selectedLightTheme = lightThemes.find((theme) => theme.id === lightThemeId) ?? LightTheme;
   const selectedDarkTheme = darkThemes.find((theme) => theme.id === darkThemeId) ?? DarkTheme;
 
-  const [ltCords, setLTCords] = useState<RectCords>();
-  const [dtCords, setDTCords] = useState<RectCords>();
-
-  const handleLightThemeMenu: MouseEventHandler<HTMLButtonElement> = (evt) => {
-    setLTCords(evt.currentTarget.getBoundingClientRect());
-  };
-  const handleDarkThemeMenu: MouseEventHandler<HTMLButtonElement> = (evt) => {
-    setDTCords(evt.currentTarget.getBoundingClientRect());
-  };
-
-  const handleLightThemeSelect = (theme: Theme) => {
-    setLightThemeId(theme.id);
-    setLTCords(undefined);
-  };
-
-  const handleDarkThemeSelect = (theme: Theme) => {
-    setDarkThemeId(theme.id);
-    setDTCords(undefined);
-  };
-
   return (
-    <Box wrap="Wrap" gap="400">
-      <SettingTile
-        title="Light Theme:"
-        after={
-          <Chip
-            variant={themeKind === ThemeKind.Light ? 'Primary' : 'Secondary'}
-            outlined={themeKind === ThemeKind.Light}
-            radii="Pill"
-            after={<Icon size="200" src={Icons.ChevronBottom} />}
-            onClick={handleLightThemeMenu}
-          >
-            <Text size="B300">{themeNames[selectedLightTheme.id] ?? selectedLightTheme.id}</Text>
-          </Chip>
-        }
-      />
-      <PopOut
-        anchor={ltCords}
-        offset={5}
-        position="Bottom"
-        align="End"
-        content={
-          <FocusTrap
-            focusTrapOptions={{
-              initialFocus: false,
-              onDeactivate: () => setLTCords(undefined),
-              clickOutsideDeactivates: true,
-              isKeyForward: (evt: KeyboardEvent) =>
-                evt.key === 'ArrowDown' || evt.key === 'ArrowRight',
-              isKeyBackward: (evt: KeyboardEvent) =>
-                evt.key === 'ArrowUp' || evt.key === 'ArrowLeft',
-              escapeDeactivates: stopPropagation,
-            }}
-          >
-            <ThemeSelector
+    <InsetSection title="Theme">
+      <InsetGroup>
+        <InsetRow
+          title="Match System Appearance"
+          description="Switch between a light and a dark theme together with your system."
+          after={<Switch variant="Primary" value={systemTheme} onChange={setSystemTheme} />}
+        />
+        {systemTheme ? (
+          <>
+            <InsetRow
+              title="Light Appearance"
+              description={
+                systemThemeKind === ThemeKind.Light
+                  ? 'In use now.'
+                  : 'Used when your system is in light mode.'
+              }
+            >
+              <ThemeTiles
+                aria-label="Light theme"
+                themes={lightThemes}
+                themeNames={themeNames}
+                selectedId={selectedLightTheme.id}
+                onSelect={(theme) => setLightThemeId(theme.id)}
+              />
+            </InsetRow>
+            <InsetRow
+              title="Dark Appearance"
+              description={
+                systemThemeKind === ThemeKind.Dark
+                  ? 'In use now.'
+                  : 'Used when your system is in dark mode.'
+              }
+            >
+              <ThemeTiles
+                aria-label="Dark theme"
+                themes={darkThemes}
+                themeNames={themeNames}
+                selectedId={selectedDarkTheme.id}
+                onSelect={(theme) => setDarkThemeId(theme.id)}
+              />
+            </InsetRow>
+          </>
+        ) : (
+          <InsetItem>
+            <ThemeTiles
+              aria-label="Theme"
+              themes={themes}
               themeNames={themeNames}
-              themes={lightThemes}
-              selected={selectedLightTheme}
-              onSelect={handleLightThemeSelect}
+              selectedId={selectedTheme.id}
+              onSelect={(theme) => setThemeId(theme.id)}
             />
-          </FocusTrap>
-        }
-      />
-      <SettingTile
-        title="Dark Theme:"
-        after={
-          <Chip
-            variant={themeKind === ThemeKind.Dark ? 'Primary' : 'Secondary'}
-            outlined={themeKind === ThemeKind.Dark}
-            radii="Pill"
-            after={<Icon size="200" src={Icons.ChevronBottom} />}
-            onClick={handleDarkThemeMenu}
-          >
-            <Text size="B300">{themeNames[selectedDarkTheme.id] ?? selectedDarkTheme.id}</Text>
-          </Chip>
-        }
-      />
-      <PopOut
-        anchor={dtCords}
-        offset={5}
-        position="Bottom"
-        align="End"
-        content={
-          <FocusTrap
-            focusTrapOptions={{
-              initialFocus: false,
-              onDeactivate: () => setDTCords(undefined),
-              clickOutsideDeactivates: true,
-              isKeyForward: (evt: KeyboardEvent) =>
-                evt.key === 'ArrowDown' || evt.key === 'ArrowRight',
-              isKeyBackward: (evt: KeyboardEvent) =>
-                evt.key === 'ArrowUp' || evt.key === 'ArrowLeft',
-              escapeDeactivates: stopPropagation,
-            }}
-          >
-            <ThemeSelector
-              themeNames={themeNames}
-              themes={darkThemes}
-              selected={selectedDarkTheme}
-              onSelect={handleDarkThemeSelect}
-            />
-          </FocusTrap>
-        }
-      />
-    </Box>
+          </InsetItem>
+        )}
+      </InsetGroup>
+    </InsetSection>
   );
 }
 
@@ -309,70 +177,44 @@ function PageZoomInput() {
   );
 }
 
-function Appearance() {
-  const [systemTheme, setSystemTheme] = useSetting(settingsAtom, 'useSystemTheme');
+function DisplaySettings() {
   const [monochromeMode, setMonochromeMode] = useSetting(settingsAtom, 'monochromeMode');
   const [dynamicPageTitle, setDynamicPageTitle] = useSetting(settingsAtom, 'showDynamicPageTitle');
 
   return (
-    <Box direction="Column" gap="100">
-      <Text size="L400">Appearance</Text>
-      <SequenceCard
-        className={SequenceCardStyle}
-        variant="SurfaceVariant"
-        direction="Column"
-        gap="400"
-      >
-        <SettingTile
-          title="System Theme"
-          description="Choose between light and dark theme based on system preference."
-          after={<Switch variant="Primary" value={systemTheme} onChange={setSystemTheme} />}
-        />
-        {systemTheme && <SystemThemePreferences />}
-      </SequenceCard>
-
-      <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column">
-        <SettingTile
-          title="Theme"
-          description="Theme to use when system theme is not enabled."
-          after={<SelectTheme disabled={systemTheme} />}
-        />
-      </SequenceCard>
-
-      <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column">
-        <SettingTile
+    <InsetSection title="Display">
+      <InsetGroup>
+        <InsetRow
           title="Monochrome Mode"
           after={<Switch variant="Primary" value={monochromeMode} onChange={setMonochromeMode} />}
         />
-      </SequenceCard>
-
-      <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column">
-        <SettingTile
+        <InsetRow
           title="Dynamic Page Title"
           description="Display your current room and space in the window title."
           after={
             <Switch variant="Primary" value={dynamicPageTitle} onChange={setDynamicPageTitle} />
           }
         />
-      </SequenceCard>
+        <InsetRow
+          title="Page Zoom"
+          description="Between 75% and 150%. Press Enter to apply."
+          after={<PageZoomInput />}
+        />
+      </InsetGroup>
+    </InsetSection>
+  );
+}
 
-      <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column">
-        <SettingTile title="Page Zoom" after={<PageZoomInput />} />
-      </SequenceCard>
-
-      {canChangeAppIcon() && (
-        <SequenceCard
-          className={SequenceCardStyle}
-          variant="SurfaceVariant"
-          direction="Column"
-          gap="400"
-        >
-          <SettingTile title="App Icon" description="Icon shown in the Dock or taskbar.">
-            <AppIconPicker />
-          </SettingTile>
-        </SequenceCard>
-      )}
-    </Box>
+function AppIconSettings() {
+  if (!canChangeAppIcon()) return null;
+  return (
+    <InsetSection title="App Icon" footer="Icon shown in the Dock or taskbar.">
+      <InsetGroup>
+        <InsetItem>
+          <AppIconPicker />
+        </InsetItem>
+      </InsetGroup>
+    </InsetSection>
   );
 }
 
@@ -576,35 +418,33 @@ function CustomDateFormat({ value, onChange }: CustomDateFormatProps) {
 
   const hasChanges = dateFormatCustom !== value;
   return (
-    <SettingTile>
-      <Box as="form" onSubmit={handleSubmit} gap="200">
-        <Box grow="Yes" direction="Column">
-          <Input
-            required
-            name="customDateFormatInput"
-            value={dateFormatCustom}
-            onChange={handleChange}
-            maxLength={16}
-            autoComplete="off"
-            variant="Secondary"
-            radii="300"
-            style={{ paddingRight: config.space.S200 }}
-            after={<DateHint hasChanges={hasChanges} handleReset={handleReset} />}
-          />
-        </Box>
-        <Button
-          size="400"
-          variant={hasChanges ? 'Success' : 'Secondary'}
-          fill={hasChanges ? 'Solid' : 'Soft'}
-          outlined
+    <Box as="form" onSubmit={handleSubmit} gap="200">
+      <Box grow="Yes" direction="Column">
+        <Input
+          required
+          name="customDateFormatInput"
+          value={dateFormatCustom}
+          onChange={handleChange}
+          maxLength={16}
+          autoComplete="off"
+          variant="Secondary"
           radii="300"
-          disabled={!hasChanges}
-          type="submit"
-        >
-          <Text size="B400">Save</Text>
-        </Button>
+          style={{ paddingRight: config.space.S200 }}
+          after={<DateHint hasChanges={hasChanges} handleReset={handleReset} />}
+        />
       </Box>
-    </SettingTile>
+      <Button
+        size="400"
+        variant={hasChanges ? 'Success' : 'Secondary'}
+        fill={hasChanges ? 'Solid' : 'Soft'}
+        outlined
+        radii="300"
+        disabled={!hasChanges}
+        type="submit"
+      >
+        <Text size="B400">Save</Text>
+      </Button>
+    </Box>
   );
 }
 
@@ -696,16 +536,15 @@ function SelectDateFormat() {
   };
 
   return (
-    <>
-      <SettingTile
-        title="Date Format"
-        description={customDateFormat ? dayjs().format(dateFormatString) : ''}
-        after={<PresetDateFormat value={selectedDateFormat} onChange={handlePresetChange} />}
-      />
+    <InsetRow
+      title="Date Format"
+      description={customDateFormat ? dayjs().format(dateFormatString) : undefined}
+      after={<PresetDateFormat value={selectedDateFormat} onChange={handlePresetChange} />}
+    >
       {customDateFormat && (
         <CustomDateFormat value={dateFormatString} onChange={setDateFormatString} />
       )}
-    </>
+    </InsetRow>
   );
 }
 
@@ -713,19 +552,15 @@ function DateAndTime() {
   const [hour24Clock, setHour24Clock] = useSetting(settingsAtom, 'hour24Clock');
 
   return (
-    <Box direction="Column" gap="100">
-      <Text size="L400">Date & Time</Text>
-      <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column">
-        <SettingTile
+    <InsetSection title="Date & Time">
+      <InsetGroup>
+        <InsetRow
           title="24-Hour Time Format"
           after={<Switch variant="Primary" value={hour24Clock} onChange={setHour24Clock} />}
         />
-      </SequenceCard>
-
-      <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column">
         <SelectDateFormat />
-      </SequenceCard>
-    </Box>
+      </InsetGroup>
+    </InsetSection>
   );
 }
 
@@ -735,100 +570,46 @@ function Editor() {
   const [hideActivity, setHideActivity] = useSetting(settingsAtom, 'hideActivity');
 
   return (
-    <Box direction="Column" gap="100">
-      <Text size="L400">Editor</Text>
-      <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column">
-        <SettingTile
+    <InsetSection title="Editor">
+      <InsetGroup>
+        <InsetRow
           title="ENTER for Newline"
           description={`Use ${
             isMacOS() ? KeySymbol.Command : 'Ctrl'
           } + ENTER to send message and ENTER for newline.`}
           after={<Switch variant="Primary" value={enterForNewline} onChange={setEnterForNewline} />}
         />
-      </SequenceCard>
-      <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column">
-        <SettingTile
+        <InsetRow
           title="Markdown Formatting"
           after={<Switch variant="Primary" value={isMarkdown} onChange={setIsMarkdown} />}
         />
-      </SequenceCard>
-      <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column">
-        <SettingTile
+        <InsetRow
           title="Hide Typing & Read Receipts"
           description="Turn off both typing status and read receipts to keep your activity private."
           after={<Switch variant="Primary" value={hideActivity} onChange={setHideActivity} />}
         />
-      </SequenceCard>
-    </Box>
+      </InsetGroup>
+    </InsetSection>
   );
 }
 
 function SelectMessageLayout() {
-  const [menuCords, setMenuCords] = useState<RectCords>();
   const [messageLayout, setMessageLayout] = useSetting(settingsAtom, 'messageLayout');
   const messageLayoutItems = useMessageLayoutItems();
 
-  const handleMenu: MouseEventHandler<HTMLButtonElement> = (evt) => {
-    setMenuCords(evt.currentTarget.getBoundingClientRect());
-  };
-
-  const handleSelect = (layout: MessageLayout) => {
-    setMessageLayout(layout);
-    setMenuCords(undefined);
-  };
-
   return (
-    <>
-      <Button
-        size="300"
-        variant="Secondary"
-        outlined
-        fill="Soft"
-        radii="300"
-        after={<Icon size="300" src={Icons.ChevronBottom} />}
-        onClick={handleMenu}
-      >
-        <Text size="T300">
-          {messageLayoutItems.find((i) => i.layout === messageLayout)?.name ?? messageLayout}
-        </Text>
-      </Button>
-      <PopOut
-        anchor={menuCords}
-        offset={5}
-        position="Bottom"
-        align="End"
-        content={
-          <FocusTrap
-            focusTrapOptions={{
-              initialFocus: false,
-              onDeactivate: () => setMenuCords(undefined),
-              clickOutsideDeactivates: true,
-              isKeyForward: (evt: KeyboardEvent) =>
-                evt.key === 'ArrowDown' || evt.key === 'ArrowRight',
-              isKeyBackward: (evt: KeyboardEvent) =>
-                evt.key === 'ArrowUp' || evt.key === 'ArrowLeft',
-              escapeDeactivates: stopPropagation,
-            }}
-          >
-            <Menu>
-              <Box direction="Column" gap="100" style={{ padding: config.space.S100 }}>
-                {messageLayoutItems.map((item) => (
-                  <MenuItem
-                    key={item.layout}
-                    size="300"
-                    variant={messageLayout === item.layout ? 'Primary' : 'Surface'}
-                    radii="300"
-                    onClick={() => handleSelect(item.layout)}
-                  >
-                    <Text size="T300">{item.name}</Text>
-                  </MenuItem>
-                ))}
-              </Box>
-            </Menu>
-          </FocusTrap>
-        }
-      />
-    </>
+    <SegmentedControl<string>
+      aria-label="Message Layout"
+      options={messageLayoutItems.map((item) => ({
+        value: String(item.layout),
+        label: item.name,
+      }))}
+      value={String(messageLayout)}
+      onChange={(layout) => {
+        const item = messageLayoutItems.find((i) => String(i.layout) === layout);
+        if (item) setMessageLayout(item.layout);
+      }}
+    />
   );
 }
 
@@ -920,83 +701,78 @@ function Messages() {
   const [showHiddenEvents, setShowHiddenEvents] = useSetting(settingsAtom, 'showHiddenEvents');
 
   return (
-    <Box direction="Column" gap="100">
-      <Text size="L400">Messages</Text>
-      <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column">
-        <SettingTile title="Message Layout" after={<SelectMessageLayout />} />
-      </SequenceCard>
-      <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column">
-        <SettingTile title="Message Spacing" after={<SelectMessageSpacing />} />
-      </SequenceCard>
-      <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column">
-        <SettingTile
-          title="Legacy Username Color"
-          after={
-            <Switch
-              variant="Primary"
-              value={legacyUsernameColor}
-              onChange={setLegacyUsernameColor}
-            />
-          }
-        />
-      </SequenceCard>
-      <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column">
-        <SettingTile
-          title="Hide Membership Change"
-          after={
-            <Switch
-              variant="Primary"
-              value={hideMembershipEvents}
-              onChange={setHideMembershipEvents}
-            />
-          }
-        />
-      </SequenceCard>
-      <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column">
-        <SettingTile
-          title="Hide Profile Change"
-          after={
-            <Switch
-              variant="Primary"
-              value={hideNickAvatarEvents}
-              onChange={setHideNickAvatarEvents}
-            />
-          }
-        />
-      </SequenceCard>
-      <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column">
-        <SettingTile
-          title="Disable Media Auto Load"
-          after={
-            <Switch
-              variant="Primary"
-              value={!mediaAutoLoad}
-              onChange={(v) => setMediaAutoLoad(!v)}
-            />
-          }
-        />
-      </SequenceCard>
-      <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column">
-        <SettingTile
-          title="Url Preview"
-          after={<Switch variant="Primary" value={urlPreview} onChange={setUrlPreview} />}
-        />
-      </SequenceCard>
-      <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column">
-        <SettingTile
-          title="Url Preview in Encrypted Room"
-          after={<Switch variant="Primary" value={encUrlPreview} onChange={setEncUrlPreview} />}
-        />
-      </SequenceCard>
-      <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column">
-        <SettingTile
-          title="Show Hidden Events"
-          after={
-            <Switch variant="Primary" value={showHiddenEvents} onChange={setShowHiddenEvents} />
-          }
-        />
-      </SequenceCard>
-    </Box>
+    <>
+      <InsetSection title="Messages">
+        <InsetGroup>
+          <InsetRow title="Message Layout" after={<SelectMessageLayout />} />
+          <InsetRow title="Message Spacing" after={<SelectMessageSpacing />} />
+          <InsetRow
+            title="Legacy Username Color"
+            after={
+              <Switch
+                variant="Primary"
+                value={legacyUsernameColor}
+                onChange={setLegacyUsernameColor}
+              />
+            }
+          />
+        </InsetGroup>
+      </InsetSection>
+
+      <InsetSection title="Timeline">
+        <InsetGroup>
+          <InsetRow
+            title="Hide Membership Change"
+            after={
+              <Switch
+                variant="Primary"
+                value={hideMembershipEvents}
+                onChange={setHideMembershipEvents}
+              />
+            }
+          />
+          <InsetRow
+            title="Hide Profile Change"
+            after={
+              <Switch
+                variant="Primary"
+                value={hideNickAvatarEvents}
+                onChange={setHideNickAvatarEvents}
+              />
+            }
+          />
+          <InsetRow
+            title="Show Hidden Events"
+            after={
+              <Switch variant="Primary" value={showHiddenEvents} onChange={setShowHiddenEvents} />
+            }
+          />
+        </InsetGroup>
+      </InsetSection>
+
+      <InsetSection title="Media & Previews">
+        <InsetGroup>
+          <InsetRow
+            title="Disable Media Auto Load"
+            after={
+              <Switch
+                variant="Primary"
+                value={!mediaAutoLoad}
+                onChange={(v) => setMediaAutoLoad(!v)}
+              />
+            }
+          />
+          <InsetRow
+            title="Url Preview"
+            after={<Switch variant="Primary" value={urlPreview} onChange={setUrlPreview} />}
+          />
+          <InsetRow
+            title="Url Preview in Encrypted Room"
+            after={<Switch variant="Primary" value={encUrlPreview} onChange={setEncUrlPreview} />}
+          />
+        </InsetGroup>
+      </InsetSection>
+    </>
   );
 }
 
@@ -1005,10 +781,9 @@ function WelcomeGuideSettings() {
   const [shown, setShown] = useState(false);
 
   return (
-    <Box direction="Column" gap="100">
-      <Text size="L400">Diddy</Text>
-      <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column">
-        <SettingTile
+    <InsetSection title="Diddy">
+      <InsetGroup>
+        <InsetRow
           title="Welcome guide"
           description="Show the setup walkthrough for Diddy servers again."
           after={
@@ -1016,6 +791,7 @@ function WelcomeGuideSettings() {
               size="300"
               variant="Secondary"
               fill="Soft"
+              radii="300"
               onClick={() => {
                 resetDiddyOnboarding(mx.getSafeUserId());
                 setShown(true);
@@ -1025,8 +801,8 @@ function WelcomeGuideSettings() {
             </Button>
           }
         />
-      </SequenceCard>
-    </Box>
+      </InsetGroup>
+    </InsetSection>
   );
 }
 
@@ -1034,10 +810,9 @@ function CallSettings() {
   const prefs = useCallPrefs();
 
   return (
-    <Box direction="Column" gap="100">
-      <Text size="L400">Calls</Text>
-      <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column">
-        <SettingTile
+    <InsetSection title="Calls">
+      <InsetGroup>
+        <InsetRow
           title="Mute sounds"
           description="Play a short tone when you mute, unmute, deafen or undeafen."
           after={
@@ -1048,9 +823,7 @@ function CallSettings() {
             />
           }
         />
-      </SequenceCard>
-      <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column">
-        <SettingTile
+        <InsetRow
           title="Voice processing"
           description="Echo cancellation, noise suppression and auto gain. Off keeps your music and other apps sounding normal and avoids short audio glitches when you join a call. Turn it on if you use speakers instead of headphones. Applies the next time you join a call."
           after={
@@ -1061,8 +834,8 @@ function CallSettings() {
             />
           }
         />
-      </SequenceCard>
-    </Box>
+      </InsetGroup>
+    </InsetSection>
   );
 }
 
@@ -1071,35 +844,13 @@ type GeneralProps = {
 };
 export function General({ requestClose }: GeneralProps) {
   return (
-    <Page>
-      <PageHeader outlined={false}>
-        <Box grow="Yes" gap="200">
-          <Box grow="Yes" alignItems="Center" gap="200">
-            <Text size="H3" truncate>
-              General
-            </Text>
-          </Box>
-          <Box shrink="No">
-            <IconButton onClick={requestClose} variant="Surface">
-              <Icon src={Icons.Cross} />
-            </IconButton>
-          </Box>
-        </Box>
-      </PageHeader>
-      <Box grow="Yes">
-        <Scroll hideTrack visibility="Hover">
-          <PageContent>
-            <Box direction="Column" gap="700">
-              <CallSettings />
-              <WelcomeGuideSettings />
-              <DateAndTime />
-              <Editor />
-              <Messages />
-            </Box>
-          </PageContent>
-        </Scroll>
-      </Box>
-    </Page>
+    <SettingsPage title="General" requestClose={requestClose}>
+      <CallSettings />
+      <WelcomeGuideSettings />
+      <DateAndTime />
+      <Editor />
+      <Messages />
+    </SettingsPage>
   );
 }
 
@@ -1108,32 +859,12 @@ type AppearanceSettingsProps = {
 };
 export function AppearanceSettings({ requestClose }: AppearanceSettingsProps) {
   return (
-    <Page>
-      <PageHeader outlined={false}>
-        <Box grow="Yes" gap="200">
-          <Box grow="Yes" alignItems="Center" gap="200">
-            <Text size="H3" truncate>
-              Appearance
-            </Text>
-          </Box>
-          <Box shrink="No">
-            <IconButton onClick={requestClose} variant="Surface">
-              <Icon src={Icons.Cross} />
-            </IconButton>
-          </Box>
-        </Box>
-      </PageHeader>
-      <Box grow="Yes">
-        <Scroll hideTrack visibility="Hover">
-          <PageContent>
-            <Box direction="Column" gap="700">
-              <Appearance />
-              <BackgroundSettings />
-              <CustomThemeSettings />
-            </Box>
-          </PageContent>
-        </Scroll>
-      </Box>
-    </Page>
+    <SettingsPage title="Appearance" requestClose={requestClose}>
+      <ThemeSettings />
+      <CustomThemeSettings />
+      <BackgroundSettings />
+      <DisplaySettings />
+      <AppIconSettings />
+    </SettingsPage>
   );
 }

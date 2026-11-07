@@ -23,22 +23,19 @@ import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { timeDayMonYear, timeHourMinute, today, yesterday } from '../../../utils/time';
 import { BreakWord } from '../../../styles/Text.css';
 import { AsyncStatus, useAsyncCallback } from '../../../hooks/useAsyncCallback';
-import { SequenceCard } from '../../../components/sequence-card';
-import { SequenceCardStyle } from '../styles.css';
+import { InsetGroup, InsetItem } from '../inset-list';
 import { LogoutDialog } from '../../../components/LogoutDialog';
 import { stopPropagation } from '../../../utils/keyboard';
 import { useSetting } from '../../../state/hooks/settings';
 import { settingsAtom } from '../../../state/settings';
 
-export function DeviceTilePlaceholder() {
+export function DeviceTilePlaceholder({ count = 1 }: { count?: number }) {
   return (
-    <SequenceCard
-      className={SequenceCardStyle}
-      style={{ height: toRem(66) }}
-      variant="SurfaceVariant"
-      direction="Column"
-      gap="400"
-    />
+    <InsetGroup aria-busy>
+      {Array.from({ length: count }, (_, i) => (
+        <InsetItem key={i} style={{ height: toRem(66) }} />
+      ))}
+    </InsetGroup>
   );
 }
 

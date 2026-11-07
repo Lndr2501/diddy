@@ -1,20 +1,35 @@
 import { style } from '@vanilla-extract/css';
 import { recipe, RecipeVariants } from '@vanilla-extract/recipes';
 import { DefaultReset, color, config, toRem } from 'folds';
+import {
+  BLUR,
+  BORDER,
+  FOCUS_RING,
+  HOVER,
+  MATERIAL,
+  MATERIAL_STRONG,
+  RADIUS_CARD,
+  RADIUS_CTL,
+  RADIUS_ROW,
+  REDUCED_MOTION,
+  SEPARATOR,
+  SHADOW_1,
+  SHADOW_2,
+  transition,
+} from '../sidebar/diddyTokens';
 
-const SUBTLE_BORDER = 'var(--diddy-border, 1px solid rgba(255, 255, 255, 0.06))';
-
-// Glass-like rounded panel used by the client navigation columns.
+// Translucent sidebar "material" used by the client navigation columns (macOS sidebar look):
+// the window background shows through, blurred and saturated.
 export const PageNavPanel = style({
   margin: `${config.space.S200} ${config.space.S200} ${config.space.S200} 0`,
-  borderRadius: toRem(18),
+  borderRadius: RADIUS_CARD,
   overflow: 'hidden',
-  backgroundColor: color.Surface.Container,
+  backgroundColor: MATERIAL,
+  backdropFilter: BLUR,
+  WebkitBackdropFilter: BLUR,
   color: color.Surface.OnContainer,
-  // soft accent glow behind the top of the panel
-  backgroundImage: `radial-gradient(120% 55% at 50% 0%, color-mix(in srgb, ${color.Primary.Main} 12%, transparent), transparent 70%)`,
-  border: SUBTLE_BORDER,
-  boxShadow: '0 10px 30px rgba(0, 0, 0, 0.18)',
+  border: BORDER,
+  boxShadow: SHADOW_2,
 });
 
 export const PageNav = recipe({
@@ -55,18 +70,26 @@ export const PageNavHeader = recipe({
     padding: `0 ${config.space.S200} 0 ${config.space.S400}`,
     flexShrink: 0,
     backgroundColor: 'transparent',
+    transition: transition('background-color'),
     selectors: {
       'button&': {
         cursor: 'pointer',
       },
-      'button&[aria-pressed=true]': {
-        backgroundColor: color.Background.ContainerActive,
+      'button&:hover, button&[aria-pressed=true]': {
+        backgroundColor: HOVER,
       },
-      'button&:hover, button&:focus-visible': {
-        backgroundColor: color.Background.ContainerHover,
+      'button&:focus-visible': {
+        backgroundColor: HOVER,
+        outline: `2px solid ${FOCUS_RING}`,
+        outlineOffset: '-2px',
       },
       'button&:active': {
-        backgroundColor: color.Background.ContainerActive,
+        backgroundColor: `color-mix(in srgb, ${color.Surface.OnContainer} 11%, transparent)`,
+      },
+    },
+    '@media': {
+      [REDUCED_MOTION]: {
+        transition: 'none',
       },
     },
   },
@@ -74,7 +97,8 @@ export const PageNavHeader = recipe({
   variants: {
     outlined: {
       true: {
-        borderBottom: SUBTLE_BORDER,
+        // hairline instead of a hard border
+        boxShadow: `inset 0 -1px 0 ${SEPARATOR}`,
       },
     },
   },
@@ -83,6 +107,58 @@ export const PageNavHeader = recipe({
   },
 });
 export type PageNavHeaderVariants = RecipeVariants<typeof PageNavHeader>;
+
+// Title (space / section name) in the nav header: 15 px semibold, like a macOS sidebar title.
+// `header &` outranks the folds Text size class.
+export const PageNavHeaderTitle = style({
+  selectors: {
+    'header &': {
+      fontSize: toRem(15),
+      lineHeight: toRem(20),
+      fontWeight: 600,
+      letterSpacing: '-0.01em',
+    },
+  },
+});
+
+// Quiet icon buttons in the nav header (more / options).
+export const PageNavHeaderButton = style({
+  transition: transition('background-color'),
+  selectors: {
+    'button&': {
+      borderRadius: RADIUS_CTL,
+      backgroundColor: 'transparent',
+    },
+    'button&:hover, button&[aria-pressed=true]': {
+      backgroundColor: HOVER,
+    },
+  },
+  '@media': {
+    [REDUCED_MOTION]: {
+      transition: 'none',
+    },
+  },
+});
+
+// Bottom of the nav column: call panel + user panel share one card, split by a hairline.
+export const PageNavFooter = style([
+  DefaultReset,
+  {
+    flexShrink: 0,
+    margin: config.space.S200,
+    marginTop: config.space.S100,
+    display: 'flex',
+    flexDirection: 'column',
+    // concentric with the nav panel (18 px radius, 8 px inset)
+    borderRadius: RADIUS_ROW,
+    overflow: 'hidden',
+    // already sits on the blurred nav material, so no second backdrop blur here
+    backgroundColor: MATERIAL_STRONG,
+    color: color.SurfaceVariant.OnContainer,
+    border: BORDER,
+    boxShadow: SHADOW_1,
+  },
+]);
 
 export const PageNavContent = style({
   minHeight: '100%',
@@ -104,7 +180,7 @@ export const PageHeader = recipe({
     },
     outlined: {
       true: {
-        borderBottom: SUBTLE_BORDER,
+        boxShadow: `inset 0 -1px 0 ${SEPARATOR}`,
       },
     },
   },
@@ -128,7 +204,7 @@ export const PageHeroEmpty = style([
   DefaultReset,
   {
     padding: config.space.S400,
-    borderRadius: config.radii.R400,
+    borderRadius: RADIUS_ROW,
     minHeight: toRem(450),
   },
 ]);
@@ -142,7 +218,6 @@ export const PageHeroSection = style([
     margin: 'auto',
   },
 ]);
-
 
 export const PageContentCenter = style([
   DefaultReset,

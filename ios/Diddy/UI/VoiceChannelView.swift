@@ -70,7 +70,7 @@ struct VoiceChannelView: View {
                     VStack(spacing: 10) {
                         ForEach(participants, id: \.self) { userId in
                             Button { profile = ProfileTarget(userId: userId) } label: {
-                                PersonRow(name: account.name(of: userId), avatarUrl: account.profiles[userId]?.avatarUrl)
+                                PersonRow(name: account.name(of: userId), avatarUrl: account.profiles[userId]?.avatarUrl, account: account)
                             }
                             .buttonStyle(.plain)
                         }
@@ -114,6 +114,10 @@ private struct ConnectedVoiceView: View {
     @ObservedObject var session: CallSession
     let showProfile: (String) -> Void
     @EnvironmentObject private var calls: CallManager
+    @EnvironmentObject private var app: AppModel
+
+    /// The login that joined this call: member avatars are that account's media.
+    private var callAccount: MatrixAccount? { app.accounts.first { $0.id == session.accountId } }
 
     private var columns: [GridItem] { [GridItem(.adaptive(minimum: 150), spacing: 10)] }
 
@@ -138,7 +142,7 @@ private struct ConnectedVoiceView: View {
                     }
                     LazyVGrid(columns: columns, spacing: 10) {
                         ForEach(session.members) { member in
-                            Button { showProfile(member.userId) } label: { ParticipantTile(member: member) }
+                            Button { showProfile(member.userId) } label: { ParticipantTile(member: member, account: callAccount) }
                                 .buttonStyle(.plain)
                         }
                     }
@@ -207,6 +211,7 @@ private struct ControlButton: View {
 
 private struct ParticipantTile: View {
     let member: CallMember
+    let account: MatrixAccount?
 
     var body: some View {
         ZStack {
@@ -216,7 +221,7 @@ private struct ParticipantTile: View {
                     .clipShape(RoundedRectangle(cornerRadius: 12))
             } else {
                 // Sits a little high so the name pill below never covers it.
-                AvatarView(url: member.avatarUrl, name: member.name, size: 52)
+                AvatarView(url: member.avatarUrl, name: member.name, size: 52, account: account)
                     .offset(y: -12)
             }
         }
@@ -342,7 +347,7 @@ struct CallBanner: View {
                 HStack(spacing: 8) {
                     HStack(spacing: -6) {
                         ForEach(participants.prefix(4), id: \.self) { userId in
-                            AvatarView(url: account.profiles[userId]?.avatarUrl, name: account.name(of: userId), size: 24)
+                            AvatarView(url: account.profiles[userId]?.avatarUrl, name: account.name(of: userId), size: 24, account: account)
                                 .overlay(Circle().stroke(Theme.online, lineWidth: 1.5))
                         }
                     }

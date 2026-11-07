@@ -1,8 +1,6 @@
 import React, { ChangeEvent, useRef, useState } from 'react';
-import { Box, Button, color, Switch, Text } from 'folds';
-import { SequenceCard } from '../../../components/sequence-card';
-import { SettingTile } from '../../../components/setting-tile';
-import { SequenceCardStyle } from '../styles.css';
+import { Box, Button, color, Switch, Text, toRem } from 'folds';
+import { InsetGroup, InsetRow, InsetSection } from '../inset-list';
 import {
   CustomThemeConfig,
   DEFAULT_CUSTOM_THEME,
@@ -13,22 +11,32 @@ import {
 } from '../../../state/customTheme';
 import { RangeInput } from '../../../components/diddy/RangeInput';
 
-type ColorFieldProps = {
+type ColorWellProps = {
   label: string;
   value: string;
   onChange: (value: string) => void;
 };
-function ColorField({ label, value, onChange }: ColorFieldProps) {
+function ColorWell({ label, value, onChange }: ColorWellProps) {
   return (
     <Box alignItems="Center" gap="200">
+      <Text size="T200" style={{ fontFamily: 'monospace', opacity: 0.7 }}>
+        {value.toUpperCase()}
+      </Text>
       <input
         type="color"
         aria-label={label}
         value={value}
         onChange={(evt) => onChange(evt.target.value)}
-        style={{ width: 36, height: 28, padding: 0, border: 'none', background: 'none' }}
+        style={{
+          width: toRem(44),
+          height: toRem(26),
+          padding: 0,
+          border: 'none',
+          borderRadius: toRem(6),
+          background: 'none',
+          cursor: 'pointer',
+        }}
       />
-      <Text size="T200">{label}</Text>
     </Box>
   );
 }
@@ -44,7 +52,7 @@ type SliderProps = {
 };
 function Slider({ label, value, min, max, step, format, onChange }: SliderProps) {
   return (
-    <Box alignItems="Center" gap="200">
+    <Box alignItems="Center" gap="300">
       <RangeInput
         aria-label={label}
         min={min}
@@ -52,10 +60,10 @@ function Slider({ label, value, min, max, step, format, onChange }: SliderProps)
         step={step}
         value={value}
         onChange={(evt) => onChange(Number(evt.target.value))}
-        style={{ width: 160 }}
+        style={{ width: toRem(180) }}
       />
-      <Text size="T200">
-        {label}: {format ? format(value) : value}
+      <Text size="T200" style={{ minWidth: toRem(40), textAlign: 'right' }}>
+        {format ? format(value) : value}
       </Text>
     </Box>
   );
@@ -66,36 +74,58 @@ export function CustomThemeSettings() {
   const set = (patch: Partial<CustomThemeConfig>) => updateCustomTheme(patch);
 
   return (
-    <Box direction="Column" gap="100">
-      <Text size="L400">Custom Theme</Text>
-      <Text size="T200" priority="300">
-        Pick the &quot;Custom&quot; theme above to use these colors.
-      </Text>
-
-      <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column" gap="400">
-        <SettingTile title="Colors">
-          <Box gap="400" wrap="Wrap">
-            <ColorField label="Accent" value={config.accent} onChange={(accent) => set({ accent })} />
-            <ColorField
+    <InsetSection
+      title="Custom Theme"
+      footer={'Pick the "Custom" theme above to use these colors.'}
+    >
+      <InsetGroup>
+        <InsetRow
+          title="Accent"
+          after={
+            <ColorWell
+              label="Accent"
+              value={config.accent}
+              onChange={(accent) => set({ accent })}
+            />
+          }
+        />
+        <InsetRow
+          title="Background"
+          after={
+            <ColorWell
               label="Background"
               value={config.background}
               onChange={(background) => set({ background })}
             />
-            <ColorField label="Text" value={config.text} onChange={(text) => set({ text })} />
-          </Box>
-        </SettingTile>
-      </SequenceCard>
-
-      <Box>
-        <Button size="300" variant="Secondary" fill="None" onClick={() => set({
-              accent: DEFAULT_CUSTOM_THEME.accent,
-              background: DEFAULT_CUSTOM_THEME.background,
-              text: DEFAULT_CUSTOM_THEME.text,
-            })}>
-          <Text size="B300">Reset colors</Text>
-        </Button>
-      </Box>
-    </Box>
+          }
+        />
+        <InsetRow
+          title="Text"
+          after={<ColorWell label="Text" value={config.text} onChange={(text) => set({ text })} />}
+        />
+        <InsetRow
+          title="Reset Colors"
+          description="Go back to the default custom colors."
+          after={
+            <Button
+              size="300"
+              variant="Secondary"
+              fill="Soft"
+              radii="300"
+              onClick={() =>
+                set({
+                  accent: DEFAULT_CUSTOM_THEME.accent,
+                  background: DEFAULT_CUSTOM_THEME.background,
+                  text: DEFAULT_CUSTOM_THEME.text,
+                })
+              }
+            >
+              <Text size="B300">Reset</Text>
+            </Button>
+          }
+        />
+      </InsetGroup>
+    </InsetSection>
   );
 }
 
@@ -108,8 +138,10 @@ export function BackgroundSettings() {
   const set = (patch: Partial<CustomThemeConfig>) => updateCustomTheme(patch);
 
   const handleFile = async (evt: ChangeEvent<HTMLInputElement>) => {
-    const file = evt.target.files?.[0];
-    evt.target.value = '';
+    const input = evt.target;
+    const file = input.files?.[0];
+    // allow picking the same file again
+    input.value = '';
     if (!file) return;
     setError(undefined);
     try {
@@ -120,87 +152,113 @@ export function BackgroundSettings() {
   };
 
   return (
-    <Box direction="Column" gap="100">
-      <Text size="L400">Background</Text>
-      <Text size="T200" priority="300">
-        Shown behind the app with any theme.
-      </Text>
-
-      <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column" gap="400">
-        <SettingTile
-          title="Gradient background"
+    <InsetSection title="Background" footer="Shown behind the app with any theme.">
+      <InsetGroup>
+        <InsetRow
+          title="Gradient Background"
           after={
-            <Switch variant="Primary" value={config.gradient} onChange={(gradient) => set({ gradient })} />
+            <Switch
+              variant="Primary"
+              value={config.gradient}
+              onChange={(gradient) => set({ gradient })}
+            />
           }
         />
         {config.gradient && (
-          <Box gap="400" wrap="Wrap" alignItems="Center">
-            <ColorField
-              label="From"
-              value={config.gradientFrom}
-              onChange={(gradientFrom) => set({ gradientFrom })}
+          <>
+            <InsetRow
+              title="Gradient Start"
+              after={
+                <ColorWell
+                  label="Gradient start"
+                  value={config.gradientFrom}
+                  onChange={(gradientFrom) => set({ gradientFrom })}
+                />
+              }
             />
-            <ColorField label="To" value={config.gradientTo} onChange={(gradientTo) => set({ gradientTo })} />
-            <Slider
-              label="Angle"
-              value={config.gradientAngle}
-              min={0}
-              max={360}
-              step={5}
-              format={(v) => `${v}°`}
-              onChange={(gradientAngle) => set({ gradientAngle })}
+            <InsetRow
+              title="Gradient End"
+              after={
+                <ColorWell
+                  label="Gradient end"
+                  value={config.gradientTo}
+                  onChange={(gradientTo) => set({ gradientTo })}
+                />
+              }
             />
-          </Box>
+            <InsetRow
+              title="Angle"
+              after={
+                <Slider
+                  label="Angle"
+                  value={config.gradientAngle}
+                  min={0}
+                  max={360}
+                  step={5}
+                  format={(v) => `${v}°`}
+                  onChange={(gradientAngle) => set({ gradientAngle })}
+                />
+              }
+            />
+          </>
         )}
-      </SequenceCard>
-
-      <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column" gap="400">
-        <SettingTile
-          title="Background image, GIF or video"
+        <InsetRow
+          title="Image, GIF or Video"
           description={config.mediaName ?? 'No file chosen.'}
           after={
-            <Box gap="200">
-              <Button size="300" variant="Secondary" fill="Soft" onClick={() => fileRef.current?.click()}>
-                <Text size="B300">Choose file</Text>
-              </Button>
+            <>
               {config.mediaKind && (
                 <Button
                   size="300"
                   variant="Critical"
-                  fill="Soft"
+                  fill="None"
+                  radii="300"
                   onClick={() => removeBackgroundMedia()}
                 >
                   <Text size="B300">Remove</Text>
                 </Button>
               )}
-            </Box>
+              <Button
+                size="300"
+                variant="Secondary"
+                fill="Soft"
+                radii="300"
+                onClick={() => fileRef.current?.click()}
+              >
+                <Text size="B300">Choose File…</Text>
+              </Button>
+            </>
           }
-        />
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/*,video/*"
-          onChange={handleFile}
-          style={{ display: 'none' }}
-        />
-        {error && (
-          <Text size="T200" style={{ color: color.Critical.Main }}>
-            {error}
-          </Text>
-        )}
+        >
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*,video/*"
+            onChange={handleFile}
+            style={{ display: 'none' }}
+          />
+          {error && (
+            <Text size="T200" style={{ color: color.Critical.Main }}>
+              {error}
+            </Text>
+          )}
+        </InsetRow>
         {config.mediaKind === 'video' && (
-          <Box direction="Column" gap="300">
-            <SettingTile
-              title="Video sound"
-              after={
-                <Switch
-                  variant="Primary"
-                  value={config.mediaSound}
-                  onChange={(mediaSound) => set({ mediaSound })}
-                />
-              }
-            />
-            {config.mediaSound && (
+          <InsetRow
+            title="Video Sound"
+            after={
+              <Switch
+                variant="Primary"
+                value={config.mediaSound}
+                onChange={(mediaSound) => set({ mediaSound })}
+              />
+            }
+          />
+        )}
+        {config.mediaKind === 'video' && config.mediaSound && (
+          <InsetRow
+            title="Volume"
+            after={
               <Slider
                 label="Volume"
                 value={config.mediaVolume}
@@ -210,22 +268,27 @@ export function BackgroundSettings() {
                 format={(v) => `${Math.round(v * 100)}%`}
                 onChange={(mediaVolume) => set({ mediaVolume })}
               />
-            )}
-          </Box>
-        )}
-        {(config.gradient || config.mediaKind) && (
-          <Slider
-            label="Panel opacity"
-            value={config.surfaceOpacity}
-            min={0.3}
-            max={1}
-            step={0.05}
-            format={(v) => `${Math.round(v * 100)}%`}
-            onChange={(surfaceOpacity) => set({ surfaceOpacity })}
+            }
           />
         )}
-      </SequenceCard>
-
-    </Box>
+        {(config.gradient || config.mediaKind) && (
+          <InsetRow
+            title="Panel Opacity"
+            description="How much of the background shows through the panels."
+            after={
+              <Slider
+                label="Panel opacity"
+                value={config.surfaceOpacity}
+                min={0.3}
+                max={1}
+                step={0.05}
+                format={(v) => `${Math.round(v * 100)}%`}
+                onChange={(surfaceOpacity) => set({ surfaceOpacity })}
+              />
+            }
+          />
+        )}
+      </InsetGroup>
+    </InsetSection>
   );
 }

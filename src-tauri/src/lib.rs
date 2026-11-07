@@ -5,7 +5,7 @@
 
 // mod menu;
 
-use tauri::{webview::{NewWindowResponse, WebviewWindowBuilder}, Manager, WebviewUrl, TitleBarStyle};
+use tauri::{webview::{NewWindowResponse, PageLoadEvent, WebviewWindowBuilder}, Manager, WebviewUrl, TitleBarStyle};
 mod app_icon;
 mod diag;
 mod connections;
@@ -88,6 +88,13 @@ pub(crate) fn build_client_window(
     let window_builder = WebviewWindowBuilder::new(app, label.to_string(), window_url)
         .title(title)
         .disable_drag_drop_handler()
+        // Stay hidden until the page has loaded; a small movable startup window covers the wait (#25).
+        .visible(false)
+        .on_page_load(move |window, payload| {
+            if payload.event() == PageLoadEvent::Finished {
+                reveal_window(window);
+            }
+        })
         .background_throttling(BackgroundThrottlingPolicy::Disabled)
         .on_new_window(move |url, _features| {
             let _ = app_handle.opener().open_url(url.as_str(), None::<&str>);
@@ -131,11 +138,130 @@ pub(crate) fn build_client_window(
             profile.map(|p| connections::profile_identifier(&p.id)).transpose()?
         )?);
     let window = window_builder.build().map_err(|_| "Verbindungsfenster konnte nicht geöffnet werden.".to_string())?;
+    if label == "main" {
+        show_startup_window(app);
+    }
+    // If the page never finishes loading, show the window anyway so the problem is visible (#26).
+    let fallback = window.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_secs(10));
+        reveal_window(fallback);
+    });
     #[cfg(target_os = "linux")]
     enable_linux_media(&window);
     #[cfg(not(target_os = "linux"))]
     let _ = window;
     Ok(())
+}
+
+/// Fits a restored window rectangle into a screen area: never larger than the area, and the whole
+/// window (title bar included) inside it. The saved window state can hold a size or position from a
+/// different display setup, which left the window bigger than the screen and impossible to move (#26).
+pub(crate) fn fit_into_area(
+    pos: (i32, i32),
+    size: (u32, u32),
+    area: (i32, i32, u32, u32),
+) -> ((i32, i32), (u32, u32)) {
+    let (ax, ay, aw, ah) = area;
+    let w = size.0.min(aw);
+    let h = size.1.min(ah);
+    let x = pos.0.clamp(ax, ax + (aw - w) as i32);
+    let y = pos.1.clamp(ay, ay + (ah - h) as i32);
+    ((x, y), (w, h))
+}
+
+fn fit_window_to_screen(window: &tauri::WebviewWindow) {
+    let monitor = window.current_monitor().ok().flatten().or_else(|| window.primary_monitor().ok().flatten());
+    let (Some(monitor), Ok(pos), Ok(size)) = (monitor, window.outer_position(), window.outer_size()) else { return };
+    let area = monitor.work_area();
+    let (new_pos, new_size) = fit_into_area(
+        (pos.x, pos.y),
+        (size.width, size.height),
+        (area.position.x, area.position.y, area.size.width, area.size.height),
+    );
+    if new_size != (size.width, size.height) {
+        let _ = window.set_size(tauri::PhysicalSize::new(new_size.0, new_size.1));
+    }
+    if new_pos != (pos.x, pos.y) {
+        let _ = window.set_position(tauri::PhysicalPosition::new(new_pos.0, new_pos.1));
+    }
+    if new_pos != (pos.x, pos.y) || new_size != (size.width, size.height) {
+        diag::diag_log(format!("window: restored rect {pos:?} {size:?} did not fit the screen, now {new_pos:?} {new_size:?}"));
+    }
+}
+
+/// Shows a finished (or timed-out) client window, after fitting it to the screen, and closes the startup window.
+fn reveal_window(window: tauri::WebviewWindow) {
+    fit_window_to_screen(&window);
+    let _ = window.show();
+    if window.label() == "main" {
+        let _ = window.set_focus();
+    }
+    if let Some(splash) = window.app_handle().get_webview_window("startup") {
+        let _ = splash.close();
+    }
+}
+
+/// A small startup window that can be moved while the real window is still loading (#25).
+fn show_startup_window(app: &tauri::AppHandle) {
+    if app.get_webview_window("startup").is_some() {
+        return;
+    }
+    let html = "<body style='margin:0;height:100vh;display:flex;align-items:center;justify-content:center;background:#140812;color:#e8dfe6;font:600 17px -apple-system,sans-serif'>Diddy startet...</body>";
+    let encoded = html.replace('%', "%25").replace('#', "%23").replace(' ', "%20").replace('\'', "%27");
+    let Ok(url) = format!("data:text/html;charset=utf-8,{encoded}").parse() else { return };
+    let _ = WebviewWindowBuilder::new(app, "startup", WebviewUrl::External(url))
+        .title("Diddy")
+        .inner_size(320.0, 180.0)
+        .resizable(false)
+        .minimizable(false)
+        .maximizable(false)
+        .center()
+        .build();
+}
+
+/// macOS: WebKit's GPU process asks Core Audio for the default device while it connects to a page.
+/// When coreaudiod does not answer (seen on macOS 27: even `AudioObjectGetPropertyData` for the
+/// default output device never returns, Music.app hangs the same way), the GPU process blocks, WebKit
+/// kills it as unresponsive and the window stays black and then shows only the background colour (#26).
+/// Diddy cannot repair that, so probe Core Audio on a side thread and tell the user what to do.
+#[cfg(target_os = "macos")]
+fn watch_core_audio(app: tauri::AppHandle) {
+    const TIMEOUT: std::time::Duration = std::time::Duration::from_secs(8);
+    let (tx, rx) = std::sync::mpsc::channel();
+    let started = std::time::Instant::now();
+    // The probe thread may block forever when coreaudiod hangs; it is detached on purpose.
+    let spawned = std::thread::Builder::new().name("coreaudio-probe".into()).spawn(move || {
+        let _ = tx.send(audio_tap::probe_default_output());
+    });
+    if spawned.is_err() {
+        return;
+    }
+    std::thread::spawn(move || match rx.recv_timeout(TIMEOUT) {
+        Ok(Ok(_)) => {}
+        Ok(Err(e)) => diag::diag_log(format!("coreaudio: probe failed: {e}")),
+        Err(_) => {
+            diag::diag_log(format!(
+                "coreaudio: no answer from coreaudiod after {} s; WebKit cannot draw the window (#26)",
+                TIMEOUT.as_secs()
+            ));
+            use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
+            app.dialog()
+                .message(
+                    "Das Audiosystem von macOS (coreaudiod) antwortet nicht. Deshalb kann das Diddy-Fenster \
+                     nicht gezeichnet werden und bleibt leer. Andere Apps (z. B. Musik) hängen dann ebenfalls.\n\n\
+                     Abhilfe: Im Terminal „sudo killall coreaudiod“ ausführen (oder den Mac neu starten) \
+                     und Diddy danach neu öffnen.",
+                )
+                .title("Diddy kann nicht starten")
+                .kind(MessageDialogKind::Warning)
+                .show(|_| {});
+            // Log when (if ever) Core Audio comes back, to tell a slow start from a hang.
+            if rx.recv().is_ok() {
+                diag::diag_log(format!("coreaudio: answered after {:.1} s", started.elapsed().as_secs_f64()));
+            }
+        }
+    });
 }
 
 /// Linux: WebKitGTK ships with media capture and WebRTC switched off and denies every permission
@@ -215,6 +341,7 @@ pub fn run() {
         }
     }
 
+    diag::init(env!("CARGO_PKG_VERSION"));
     let context = tauri::generate_context!();
     let builder = tauri::Builder::default();
     // Forward additional launches into the existing process instead of opening the same account
@@ -236,6 +363,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             app_icon::set_app_icon,
             diag::diag_log,
+            diag::log_path,
+            diag::open_log_folder,
             myinstants::myinstants_fetch_text,
             myinstants::myinstants_fetch_audio,
             connections::connection_profiles,
@@ -245,7 +374,15 @@ pub fn run() {
         .manage(connections::ConnectionState::default())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_localhost::Builder::new(APP_PORT).build())
-        .plugin(tauri_plugin_window_state::Builder::default().build())
+        // Without VISIBLE: the plugin would show every restored window right away (on window ready),
+        // which defeats the hidden-until-loaded start (#25); reveal_window shows it instead.
+        // The startup window is temporary and has no state worth keeping.
+        .plugin(
+            tauri_plugin_window_state::Builder::default()
+                .with_state_flags(tauri_plugin_window_state::StateFlags::all() & !tauri_plugin_window_state::StateFlags::VISIBLE)
+                .with_denylist(&["startup"])
+                .build(),
+        )
         .plugin(tauri_plugin_opener::init())
         .setup(move |app| {
             #[cfg(feature = "updater")]
@@ -282,6 +419,8 @@ pub fn run() {
                 });
             }
 
+            #[cfg(target_os = "macos")]
+            watch_core_audio(app.handle().clone());
             build_client_window(app.handle(), "main", None)
                 .map_err(|message| std::io::Error::new(std::io::ErrorKind::Other, message))?;
             app_icon::apply_saved(app.handle());
@@ -291,4 +430,28 @@ pub fn run() {
         })
         .run(context)
         .expect("error while building tauri application");
+}
+
+#[cfg(test)]
+mod window_fit_tests {
+    use super::fit_into_area;
+
+    const SCREEN: (i32, i32, u32, u32) = (0, 30, 1920, 1050);
+
+    #[test]
+    fn leaves_a_fitting_window_alone() {
+        assert_eq!(fit_into_area((100, 80), (1200, 800), SCREEN), ((100, 80), (1200, 800)));
+    }
+
+    #[test]
+    fn shrinks_the_issue_26_window_to_the_screen() {
+        // Saved state from #26: 2991 wide at x=742 on a 1920 wide display.
+        assert_eq!(fit_into_area((742, 30), (2991, 1050), SCREEN), ((0, 30), (1920, 1050)));
+    }
+
+    #[test]
+    fn pulls_an_offscreen_window_back() {
+        assert_eq!(fit_into_area((-500, -200), (800, 600), SCREEN), ((0, 30), (800, 600)));
+        assert_eq!(fit_into_area((5000, 4000), (800, 600), SCREEN), ((1120, 480), (800, 600)));
+    }
 }

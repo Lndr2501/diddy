@@ -10,9 +10,14 @@ const clamp = (n: number, min = 0, max = 255) => Math.min(max, Math.max(min, n))
 
 export const hexToRgb = (hex: string): Rgb => {
   let h = hex.replace('#', '').trim();
-  if (h.length === 3) h = h.split('').map((c) => c + c).join('');
+  if (h.length === 3)
+    h = h
+      .split('')
+      .map((c) => c + c)
+      .join('');
   const n = parseInt(h.slice(0, 6), 16);
   if (Number.isNaN(n)) return [0, 0, 0];
+  // eslint-disable-next-line no-bitwise
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 };
 
@@ -68,11 +73,12 @@ export type MainTone = Tone & {
   OnMain: string;
 };
 
+// Diddy (#21): quiet steps like macOS: hover/active as soft fills, lines as hairlines
 const tone = (base: string, text: string): Tone => ({
   Container: base,
   ContainerHover: mix(base, WHITE, 0.06),
   ContainerActive: mix(base, WHITE, 0.11),
-  ContainerLine: mix(base, WHITE, 0.17),
+  ContainerLine: mix(base, WHITE, 0.14),
   OnContainer: text,
 });
 

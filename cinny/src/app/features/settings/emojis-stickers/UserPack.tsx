@@ -1,13 +1,12 @@
 import React from 'react';
-import { Avatar, AvatarFallback, AvatarImage, Box, Button, Icon, Icons, Text } from 'folds';
+import { Avatar, AvatarFallback, AvatarImage, Button, Icon, Icons, Text } from 'folds';
 import { useUserImagePack } from '../../../hooks/useImagePacks';
-import { SequenceCard } from '../../../components/sequence-card';
-import { SequenceCardStyle } from '../styles.css';
-import { SettingTile } from '../../../components/setting-tile';
 import { ImagePack, ImageUsage } from '../../../plugins/custom-emoji';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { mxcUrlToHttp } from '../../../utils/matrix';
 import { useMediaAuthentication } from '../../../hooks/useMediaAuthentication';
+import { InsetGroup, InsetRow, InsetSection } from '../inset-list';
+import * as sheetCss from '../../../components/sheet/Sheet.css';
 
 type UserPackProps = {
   onViewPack: (imagePack: ImagePack) => void;
@@ -30,15 +29,9 @@ export function UserPack({ onViewPack }: UserPackProps) {
   };
 
   return (
-    <Box direction="Column" gap="100">
-      <Text size="L400">Default Pack</Text>
-      <SequenceCard
-        className={SequenceCardStyle}
-        variant="SurfaceVariant"
-        direction="Column"
-        gap="400"
-      >
-        <SettingTile
+    <InsetSection title="Default Pack">
+      <InsetGroup>
+        <InsetRow
           title={userPack?.meta.name ?? 'Unknown'}
           description={userPack?.meta.attribution}
           before={
@@ -54,18 +47,18 @@ export function UserPack({ onViewPack }: UserPackProps) {
           }
           after={
             <Button
+              className={sheetCss.Pill}
               variant="Secondary"
               fill="Soft"
               size="300"
-              radii="300"
-              outlined
+              radii="Pill"
               onClick={handleView}
             >
               <Text size="B300">View</Text>
             </Button>
           }
         />
-      </SequenceCard>
-    </Box>
+      </InsetGroup>
+    </InsetSection>
   );
 }

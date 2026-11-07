@@ -6,7 +6,7 @@ export const Attachment = recipe({
   base: {
     backgroundColor: color.SurfaceVariant.Container,
     color: color.SurfaceVariant.OnContainer,
-    borderRadius: toRem(14),
+    borderRadius: 'var(--diddy-radius-row, 12px)',
     overflow: 'hidden',
     maxWidth: '100%',
     width: toRem(400),
@@ -14,7 +14,7 @@ export const Attachment = recipe({
   variants: {
     outlined: {
       true: {
-        boxShadow: `inset 0 0 0 ${config.borderWidth.B300} ${color.SurfaceVariant.ContainerLine}`,
+        boxShadow: `inset 0 0 0 ${config.borderWidth.B300} color-mix(in srgb, ${color.SurfaceVariant.OnContainer} 10%, transparent)`,
       },
     },
   },

@@ -15,6 +15,11 @@ export const UnverifiedTab = style({
   animationDuration: '400ms',
   animationIterationCount: 30,
   animationDirection: 'alternate',
+  '@media': {
+    '(prefers-reduced-motion: reduce)': {
+      animationName: 'none',
+    },
+  },
 });
 
 export const UnverifiedAvatar = style({

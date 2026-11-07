@@ -59,6 +59,7 @@ import { mDirectAtom } from '../../../state/mDirectList';
 import { useCategoryHandler } from '../../../hooks/useCategoryHandler';
 import { useNavToActivePathMapper } from '../../../hooks/useNavToActivePathMapper';
 import { PageNav, PageNavHeader, PageNavContent } from '../../../components/page';
+import * as pageCss from '../../../components/page/style.css';
 import { useRoomsUnread } from '../../../state/hooks/unread';
 import { markAsRead } from '../../../utils/notifications';
 import { useClosedNavCategoriesAtom } from '../../../state/hooks/closedNavCategories';
@@ -123,12 +124,19 @@ function HomeHeader() {
       <PageNavHeader>
         <Box alignItems="Center" grow="Yes" gap="300">
           <Box grow="Yes">
-            <Text size="H4" truncate>
+            <Text size="H4" className={pageCss.PageNavHeaderTitle} truncate>
               Home
             </Text>
           </Box>
           <Box>
-            <IconButton aria-pressed={!!menuAnchor} variant="Background" onClick={handleOpenMenu}>
+            <IconButton
+              className={pageCss.PageNavHeaderButton}
+              aria-pressed={!!menuAnchor}
+              aria-label="More Options"
+              variant="Background"
+              radii="300"
+              onClick={handleOpenMenu}
+            >
               <Icon src={Icons.VerticalDots} size="200" />
             </IconButton>
           </Box>

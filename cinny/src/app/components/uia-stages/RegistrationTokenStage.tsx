@@ -2,6 +2,7 @@ import React, { useEffect, useCallback, FormEventHandler } from 'react';
 import { Dialog, Text, Box, Button, config, Input } from 'folds';
 import { AuthType } from 'matrix-js-sdk';
 import { StageComponentProps } from './types';
+import * as sheetCss from '../sheet/Sheet.css';
 
 function RegistrationTokenErrorDialog({
   title,
@@ -26,7 +27,7 @@ function RegistrationTokenErrorDialog({
   };
 
   return (
-    <Dialog>
+    <Dialog className={sheetCss.Sheet}>
       <Box
         as="form"
         onSubmit={handleFormSubmit}
@@ -35,7 +36,9 @@ function RegistrationTokenErrorDialog({
         gap="400"
       >
         <Box direction="Column" gap="100">
-          <Text size="H4">{title}</Text>
+          <Text className={sheetCss.SheetTitle} size="H4">
+            {title}
+          </Text>
           <Text>{message}</Text>
           <Text as="label" size="L400" style={{ paddingTop: config.space.S400 }}>
             Registration Token
@@ -49,12 +52,19 @@ function RegistrationTokenErrorDialog({
             required
           />
         </Box>
-        <Button variant="Critical" type="submit">
+        <Button className={sheetCss.Pill} variant="Critical" type="submit">
           <Text as="span" size="B400">
             Retry
           </Text>
         </Button>
-        <Button variant="Critical" fill="None" outlined type="button" onClick={onCancel}>
+        <Button
+          className={sheetCss.Pill}
+          variant="Critical"
+          fill="None"
+          outlined
+          type="button"
+          onClick={onCancel}
+        >
           <Text as="span" size="B400">
             Cancel
           </Text>

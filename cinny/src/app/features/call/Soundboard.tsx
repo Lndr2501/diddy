@@ -24,7 +24,8 @@ type SoundboardMenuProps = {
   onClose: () => void;
   onImport: () => void;
 };
-function SoundboardMenu({ onClose, onImport }: SoundboardMenuProps) {
+// Also opened from the "more" menu of the sidebar call panel (issue #31).
+export function SoundboardMenu({ onClose, onImport }: SoundboardMenuProps) {
   const { clips, volume, inCall, playing } = useSoundboard();
   const fileRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string>();
@@ -35,8 +36,9 @@ function SoundboardMenu({ onClose, onImport }: SoundboardMenuProps) {
     : clips;
 
   const handleFiles = async (evt: ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(evt.target.files ?? []);
-    evt.target.value = '';
+    const input = evt.target;
+    const files = Array.from(input.files ?? []);
+    input.value = '';
     setError(undefined);
     for (let i = 0; i < files.length; i += 1) {
       try {
@@ -49,10 +51,12 @@ function SoundboardMenu({ onClose, onImport }: SoundboardMenuProps) {
   };
 
   return (
-    <Menu style={{ width: toRem(300), maxWidth: '100vw' }}>
+    <Menu className={css.PopoverMenu} style={{ width: toRem(312), maxWidth: '100vw' }}>
       <Box direction="Column" gap="300" style={{ padding: config.space.S300 }}>
         <Box alignItems="Center" justifyContent="SpaceBetween" gap="200">
-          <Text size="L400">Soundboard</Text>
+          <Text size="T300" className={css.PopoverTitle}>
+            Soundboard
+          </Text>
           <Box alignItems="Center" gap="100">
             <Button
               size="300"
@@ -63,7 +67,12 @@ function SoundboardMenu({ onClose, onImport }: SoundboardMenuProps) {
             >
               <Text size="B300">Stop</Text>
             </Button>
-            <Button size="300" variant="Primary" fill="Soft" onClick={() => fileRef.current?.click()}>
+            <Button
+              size="300"
+              variant="Primary"
+              fill="Soft"
+              onClick={() => fileRef.current?.click()}
+            >
               <Text size="B300">Add sound</Text>
             </Button>
             <IconButton
@@ -116,8 +125,9 @@ function SoundboardMenu({ onClose, onImport }: SoundboardMenuProps) {
                   <Box key={clip.id} alignItems="Center" gap="100">
                     <Button
                       size="300"
-                      variant={playing === clip.id ? 'Success' : 'Secondary'}
+                      variant={playing === clip.id ? 'Primary' : 'Secondary'}
                       fill="Soft"
+                      radii="Pill"
                       onClick={() =>
                         playing === clip.id ? soundboard.stopAll() : soundboard.play(clip.id)
                       }
@@ -149,8 +159,11 @@ function SoundboardMenu({ onClose, onImport }: SoundboardMenuProps) {
           </>
         )}
 
-        <Box alignItems="Center" gap="200">
-          <Text size="T200">Volume</Text>
+        <div className={css.PopoverSeparator} />
+        <Box alignItems="Center" gap="300">
+          <Text size="T200" style={{ fontWeight: 500 }}>
+            Volume
+          </Text>
           <RangeInput
             aria-label="Soundboard volume"
             min={0.05}
@@ -216,36 +229,36 @@ export function SoundboardButton() {
     <>
       {importing && <MyInstantsImport onClose={() => setImporting(false)} />}
       <PopOut
-      anchor={cords}
-      position="Top"
-      align="Center"
-      content={
-        <div ref={menuRef}>
-          <SoundboardMenu
-            onClose={() => setCords(undefined)}
-            onImport={() => {
-              setCords(undefined);
-              setImporting(true);
-            }}
-          />
-        </div>
-      }
-    >
-      <IconButton
-        ref={buttonRef}
-        className={css.ControlButton}
-        variant="SurfaceVariant"
-        fill="Soft"
-        radii="400"
-        size="400"
-        onClick={handleToggle}
-        aria-pressed={open}
-        aria-label="Soundboard"
-        title="Soundboard"
+        anchor={cords}
+        position="Top"
+        align="Center"
+        content={
+          <div ref={menuRef}>
+            <SoundboardMenu
+              onClose={() => setCords(undefined)}
+              onImport={() => {
+                setCords(undefined);
+                setImporting(true);
+              }}
+            />
+          </div>
+        }
       >
-        <Icon size="400" src={Icons.Play} filled={open} />
-      </IconButton>
-    </PopOut>
+        <IconButton
+          ref={buttonRef}
+          className={css.ControlButton}
+          variant="SurfaceVariant"
+          fill="Soft"
+          radii="Pill"
+          size="400"
+          onClick={handleToggle}
+          aria-pressed={open}
+          aria-label="Soundboard"
+          title="Soundboard"
+        >
+          <Icon size="400" src={Icons.Play} filled={open} />
+        </IconButton>
+      </PopOut>
     </>
   );
 }

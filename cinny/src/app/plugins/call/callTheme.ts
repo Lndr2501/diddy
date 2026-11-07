@@ -1,7 +1,8 @@
 /**
  * Restyles the Element Call web app (same-origin iframe) so its participant tiles match the
- * Diddy look: rounded dark translucent cards, round avatar, name pill, green speaking ring and a
- * transparent page background so the app backdrop shows through.
+ * Diddy look (#21, Apple style): rounded translucent cards with a hairline, round avatar, name tag
+ * as a frosted material pill, a speaking ring in the Diddy accent colour (read from the app theme)
+ * and a transparent page background so the app backdrop shows through.
  *
  * Element Call ships hashed CSS-module class names (`_tile_ghafa_8`). To survive rebuilds we
  * prefer stable hooks and only use attribute-substring selectors (`[class*="_speaking_"]`) where
@@ -19,6 +20,8 @@
  * The call footer/controls (which CallControl.ts drives programmatically) are not touched.
  */
 
+import { color } from 'folds';
+
 const STYLE_ATTR = 'data-diddy-call-theme';
 const OBSERVER_ATTR = 'data-diddy-call-theme-observer';
 
@@ -28,22 +31,25 @@ const TILE_ROUNDED = `html body ${TILE}:not([class*="_edgeToEdge_"])`;
 const CALL_THEME_CSS = `
 /* --- theme tokens (dark default, light override) --- */
 body {
-  --diddy-tile-bg: rgba(35, 39, 42, 0.78);
-  --diddy-tile-line: rgba(255, 255, 255, 0.07);
-  --diddy-tag-bg: rgba(16, 18, 20, 0.62);
+  --diddy-tile-bg: rgba(38, 34, 42, 0.72);
+  --diddy-tile-line: rgba(255, 255, 255, 0.08);
+  --diddy-tile-shadow: 0 1px 2px rgba(0, 0, 0, 0.18), 0 8px 24px rgba(0, 0, 0, 0.22);
+  --diddy-tag-bg: rgba(22, 20, 26, 0.55);
   --diddy-tag-fg: #ffffff;
-  --diddy-status-fg: rgba(255, 255, 255, 0.88);
+  --diddy-status-fg: rgba(255, 255, 255, 0.86);
   --diddy-avatar-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-  --diddy-speaking: #3ddc84;
+  /* overwritten inline with the app's accent colour (syncAccent), this is only the fallback */
+  --diddy-speaking: #e5517c;
   --diddy-muted: #ff6b81;
 }
 body[class*="cpd-theme-light"] {
-  --diddy-tile-bg: rgba(255, 255, 255, 0.72);
+  --diddy-tile-bg: rgba(255, 255, 255, 0.7);
   --diddy-tile-line: rgba(0, 0, 0, 0.08);
-  --diddy-tag-bg: rgba(255, 255, 255, 0.82);
+  --diddy-tile-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.08);
+  --diddy-tag-bg: rgba(255, 255, 255, 0.72);
   --diddy-tag-fg: #1b1d22;
-  --diddy-status-fg: rgba(27, 29, 34, 0.85);
-  --diddy-avatar-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  --diddy-status-fg: rgba(27, 29, 34, 0.82);
+  --diddy-avatar-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
   --diddy-muted: #d1304a;
 }
 
@@ -67,8 +73,10 @@ html body ${TILE}[class] {
 }
 ${TILE_ROUNDED} {
   --media-view-border-radius: 18px;
-  --media-view-fg-inset: 12px;
+  --media-view-fg-inset: 10px;
   border-radius: 18px;
+  box-shadow: var(--diddy-tile-shadow);
+  transition: box-shadow 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 ${TILE} > div:first-child {
   background-color: var(--diddy-tile-bg);
@@ -86,12 +94,14 @@ ${TILE} > div:first-child [class*="_translucent_"] {
   mix-blend-mode: normal;
 }
 
-/* --- speaking: green 3px ring (inset on the layer so it follows the radius) --- */
-${TILE}[class*="_speaking_"] {
-  box-shadow: 0 0 22px rgba(61, 220, 132, 0.22);
+/* --- speaking: 2px accent ring (inset on the layer so it follows the radius) + soft glow --- */
+/* same specificity as TILE_ROUNDED and later, so it wins over the resting tile shadow */
+html body ${TILE}[class*="_speaking_"] {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--diddy-speaking) 35%, transparent),
+    0 0 24px color-mix(in srgb, var(--diddy-speaking) 28%, transparent);
 }
 ${TILE}[class*="_speaking_"] > div:first-child {
-  box-shadow: inset 0 0 0 3px var(--diddy-speaking);
+  box-shadow: inset 0 0 0 2px var(--diddy-speaking);
 }
 /* drop Element Call's blue/teal speaking glow in favour of the ring */
 ${TILE}[class*="_speaking_"]::before {
@@ -99,16 +109,19 @@ ${TILE}[class*="_speaking_"]::before {
   background: none !important;
 }
 
-/* --- name pill (bottom-left) --- */
+/* --- name tag (bottom-left): frosted material pill --- */
 ${TILE} [class*="_nameTag_"] {
   background-color: var(--diddy-tag-bg);
   color: var(--diddy-tag-fg);
   border: 1px solid var(--diddy-tile-line);
   border-radius: 999px;
-  padding: 4px 10px 4px 8px;
-  box-shadow: none;
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
+  padding: 3px 10px 3px 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
 }
 ${TILE} :has(> [data-testid="name_tag"]) {
   color: var(--diddy-tag-fg);
@@ -116,6 +129,8 @@ ${TILE} :has(> [data-testid="name_tag"]) {
 ${TILE} [data-testid="name_tag"] {
   color: var(--diddy-tag-fg);
   padding-inline: 6px 2px;
+  font-size: 12px;
+  font-weight: 500;
 }
 ${TILE} [data-muted="true"] {
   color: var(--diddy-muted) !important;
@@ -127,7 +142,7 @@ ${TILE} [data-muted="false"] {
 /* --- "Waiting for media..." / status text: readable --- */
 ${TILE} [class*="_status_"] {
   color: var(--diddy-status-fg);
-  font-size: 0.95rem;
+  font-size: 13px;
   font-weight: 500;
 }
 ${TILE} [class*="_status_"] svg {
@@ -139,6 +154,8 @@ ${TILE} > div:nth-child(2) > button:first-of-type {
   background: transparent;
   box-shadow: none;
   opacity: 0.75;
+  border-radius: 50%;
+  transition: opacity 160ms ease-out, background-color 160ms ease-out;
 }
 ${TILE} > div:nth-child(2) > button:first-of-type:hover {
   background: var(--diddy-tag-bg);
@@ -146,6 +163,12 @@ ${TILE} > div:nth-child(2) > button:first-of-type:hover {
 }
 ${TILE} > div:nth-child(2) > button:first-of-type > svg {
   color: var(--diddy-tag-fg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ${TILE_ROUNDED}, ${TILE} > div:nth-child(2) > button:first-of-type {
+    transition: none;
+  }
 }
 `;
 
@@ -164,6 +187,20 @@ const syncColorScheme = (win: Window, doc: Document) => {
   doc.documentElement.style.setProperty('color-scheme', kind);
   const frame = win.frameElement as HTMLElement | null;
   frame?.style.setProperty('color-scheme', kind);
+};
+
+/** Name of the CSS variable behind a folds colour token (`var(--abc)` -> `--abc`). */
+const ACCENT_VAR = /var\((--[^,)\s]+)/.exec(color.Primary.Main)?.[1];
+
+/**
+ * The speaking ring uses the Diddy accent of the current app theme. The iframe cannot see the
+ * app's CSS variables, so the resolved value is copied onto its body (re-run on theme changes).
+ */
+const syncAccent = (win: Window, doc: Document) => {
+  const appBody = (win.frameElement as HTMLElement | null)?.ownerDocument?.body;
+  if (!ACCENT_VAR || !appBody || !doc.body) return;
+  const accent = getComputedStyle(appBody).getPropertyValue(ACCENT_VAR).trim();
+  if (accent) doc.body.style.setProperty('--diddy-speaking', accent);
 };
 
 /**
@@ -186,10 +223,14 @@ export function installCallTheme(win: Window | null | undefined): void {
 
     if (doc.body) {
       syncColorScheme(win, doc);
+      syncAccent(win, doc);
       if (!doc.documentElement.hasAttribute(OBSERVER_ATTR)) {
         doc.documentElement.setAttribute(OBSERVER_ATTR, 'true');
         // Element Call switches the body theme class on the `theme` param / ThemeChange action.
-        new MutationObserver(() => syncColorScheme(win, doc)).observe(doc.body, {
+        new MutationObserver(() => {
+          syncColorScheme(win, doc);
+          syncAccent(win, doc);
+        }).observe(doc.body, {
           attributes: true,
           attributeFilter: ['class'],
         });

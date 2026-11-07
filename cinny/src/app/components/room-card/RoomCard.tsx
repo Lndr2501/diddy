@@ -15,7 +15,6 @@ import {
   Text,
   as,
   color,
-  config,
 } from 'folds';
 import classNames from 'classnames';
 import FocusTrap from 'focus-trap-react';
@@ -33,6 +32,7 @@ import { useElementSizeObserver } from '../../hooks/useElementSizeObserver';
 import { getRoomAvatarUrl, getStateEvent } from '../../utils/room';
 import { useStateEventCallback } from '../../hooks/useStateEventCallback';
 import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
+import * as sheetCss from '../sheet/Sheet.css';
 
 type GridColumnCount = '1' | '2' | '3';
 const getGridColumnCount = (gridWidth: number): GridColumnCount => {
@@ -101,7 +101,7 @@ function ErrorDialog({
   return (
     <>
       {children(openError)}
-      <Overlay open={viewError} backdrop={<OverlayBackdrop />}>
+      <Overlay open={viewError} backdrop={<OverlayBackdrop className={sheetCss.Backdrop} />}>
         <OverlayCenter>
           <FocusTrap
             focusTrapOptions={{
@@ -111,18 +111,26 @@ function ErrorDialog({
               escapeDeactivates: stopPropagation,
             }}
           >
-            <Dialog variant="Surface">
-              <Box style={{ padding: config.space.S400 }} direction="Column" gap="400">
-                <Box direction="Column" gap="100">
-                  <Text>{title}</Text>
-                  <Text style={{ color: color.Critical.Main }} size="T300" priority="400">
-                    {message}
-                  </Text>
-                </Box>
-                <Button size="400" variant="Secondary" fill="Soft" onClick={closeError}>
-                  <Text size="B400">Cancel</Text>
-                </Button>
-              </Box>
+            <Dialog variant="Surface" className={sheetCss.Alert}>
+              <div className={sheetCss.AlertBody}>
+                <Text as="h2" className={sheetCss.AlertTitle}>
+                  {title}
+                </Text>
+                <Text style={{ color: color.Critical.Main }} size="T300" priority="400">
+                  {message}
+                </Text>
+                <div className={sheetCss.AlertActions}>
+                  <Button
+                    className={sheetCss.Pill}
+                    size="400"
+                    variant="Secondary"
+                    fill="Soft"
+                    onClick={closeError}
+                  >
+                    <Text size="B400">Cancel</Text>
+                  </Button>
+                </div>
+              </div>
             </Dialog>
           </FocusTrap>
         </OverlayCenter>
@@ -234,7 +242,7 @@ export const RoomCard = as<'div', RoomCardProps>(
             {roomTopic}
           </RoomCardTopic>
 
-          <Overlay open={viewTopic} backdrop={<OverlayBackdrop />}>
+          <Overlay open={viewTopic} backdrop={<OverlayBackdrop className={sheetCss.Backdrop} />}>
             <OverlayCenter>
               <FocusTrap
                 focusTrapOptions={{

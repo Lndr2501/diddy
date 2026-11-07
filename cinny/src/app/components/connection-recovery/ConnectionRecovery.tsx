@@ -130,10 +130,11 @@ export function ConnectionOverview({ open, onClose }: { open: boolean; onClose: 
     >
       <Box direction="Column" gap="400">
         <Box justifyContent="SpaceBetween" alignItems="Center" gap="200">
-          <Text id={headingId} size="H3">
+          <Text as="h2" id={headingId} className={css.Title}>
             Deine Verbindungen
           </Text>
           <Button
+            className={css.Pill}
             variant="Secondary"
             fill="None"
             onClick={onClose}
@@ -165,6 +166,7 @@ export function ConnectionOverview({ open, onClose }: { open: boolean; onClose: 
             </Box>
             <Box alignItems="Center" gap="200">
               <Button
+                className={css.Pill}
                 variant="Secondary"
                 disabled={!desktop || pending || row.current}
                 onClick={() => void act(() => openConnection(row.id))}
@@ -173,6 +175,7 @@ export function ConnectionOverview({ open, onClose }: { open: boolean; onClose: 
               </Button>
               {desktop && row.id !== 'main' && !row.current && (
                 <Button
+                  className={css.Pill}
                   variant={confirmRemove === row.id ? 'Critical' : 'Secondary'}
                   fill="None"
                   disabled={pending}
@@ -211,6 +214,7 @@ export function ConnectionOverview({ open, onClose }: { open: boolean; onClose: 
             />
             <div className={css.Actions}>
               <Button
+                className={css.Pill}
                 type="submit"
                 variant="Primary"
                 disabled={!desktop || pending || !server.trim()}
@@ -218,6 +222,7 @@ export function ConnectionOverview({ open, onClose }: { open: boolean; onClose: 
                 <Text>{pending ? 'Fenster wird geöffnet …' : 'Eigene Anmeldung öffnen'}</Text>
               </Button>
               <Button
+                className={css.Pill}
                 type="button"
                 variant="Secondary"
                 fill="Soft"
@@ -276,7 +281,7 @@ export function ConnectionsButton() {
               escapeDeactivates: stopPropagation,
             }}
           >
-            <Menu>
+            <Menu className={css.MenuMaterial}>
               <ConnectionsMenu
                 onManage={() => {
                   setCords(undefined);
@@ -289,6 +294,7 @@ export function ConnectionsButton() {
         }
       >
         <Button
+          className={css.Pill}
           variant="Secondary"
           fill="None"
           onClick={toggle}
@@ -360,14 +366,19 @@ export function ConnectionRecovery({
               : 'Beim Vorbereiten der Anmeldung oder der Synchronisierung ist ein Fehler aufgetreten.'}
           </Text>
           <div className={css.Actions}>
-            <Button variant="Primary" onClick={onRetry}>
+            <Button className={css.Pill} variant="Primary" onClick={onRetry}>
               <Text>Erneut versuchen</Text>
             </Button>
-            <Button variant="Secondary" fill="Soft" onClick={() => setOverview(true)}>
+            <Button
+              className={css.Pill}
+              variant="Secondary"
+              fill="Soft"
+              onClick={() => setOverview(true)}
+            >
               <Text>Anderen Server verbinden</Text>
             </Button>
             {onContinue && (
-              <Button variant="Secondary" fill="None" onClick={onContinue}>
+              <Button className={css.Pill} variant="Secondary" fill="None" onClick={onContinue}>
                 <Text>Mit vorhandenen Daten fortfahren</Text>
               </Button>
             )}

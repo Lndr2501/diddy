@@ -169,13 +169,13 @@ private struct UserSearch: View {
         Group {
             if let typedId {
                 Button { action(typedId) } label: {
-                    PersonRow(name: MatrixAccount.localpart(typedId), subtitle: typedId, avatarUrl: nil)
+                    PersonRow(name: MatrixAccount.localpart(typedId), subtitle: typedId, avatarUrl: nil, account: account)
                 }
                 .listRowBackground(Color.clear)
             }
             ForEach(results, id: \.userId) { user in
                 Button { action(user.userId) } label: {
-                    PersonRow(name: user.displayName ?? MatrixAccount.localpart(user.userId), subtitle: user.userId, avatarUrl: user.avatarUrl)
+                    PersonRow(name: user.displayName ?? MatrixAccount.localpart(user.userId), subtitle: user.userId, avatarUrl: user.avatarUrl, account: account)
                 }
                 .listRowBackground(Color.clear)
             }
@@ -335,7 +335,7 @@ struct ChannelInfoView: View {
             Form {
                 Section {
                     HStack(spacing: 12) {
-                        AvatarView(url: summary?.avatarUrl, name: summary?.name ?? "?", size: 52, cornerRadius: 14)
+                        AvatarView(url: summary?.avatarUrl, name: summary?.name ?? "?", size: 52, cornerRadius: 14, account: account)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(summary?.name ?? "").font(.headline)
                             if let alias = summary?.canonicalAlias { Text(alias).font(.caption).foregroundStyle(Theme.muted) }

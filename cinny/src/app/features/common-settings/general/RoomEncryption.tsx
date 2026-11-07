@@ -28,6 +28,7 @@ import { useRoom } from '../../../hooks/useRoom';
 import { useStateEvent } from '../../../hooks/useStateEvent';
 import { stopPropagation } from '../../../utils/keyboard';
 import { RoomPermissionsAPI } from '../../../hooks/useRoomPermissions';
+import * as sheetCss from '../../../components/sheet/Sheet.css';
 
 const ROOM_ENC_ALGO = 'm.megolm.v1.aes-sha2';
 
@@ -82,6 +83,7 @@ export function RoomEncryption({ permissions }: RoomEncryptionProps) {
             </Badge>
           ) : (
             <Button
+              className={sheetCss.Pill}
               size="300"
               variant="Primary"
               fill="Solid"
@@ -101,7 +103,7 @@ export function RoomEncryption({ permissions }: RoomEncryptionProps) {
           </Text>
         )}
         {prompt && (
-          <Overlay open backdrop={<OverlayBackdrop />}>
+          <Overlay open backdrop={<OverlayBackdrop className={sheetCss.Backdrop} />}>
             <OverlayCenter>
               <FocusTrap
                 focusTrapOptions={{
@@ -111,8 +113,9 @@ export function RoomEncryption({ permissions }: RoomEncryptionProps) {
                   escapeDeactivates: stopPropagation,
                 }}
               >
-                <Dialog variant="Surface">
+                <Dialog className={sheetCss.Sheet} variant="Surface">
                   <Header
+                    className={sheetCss.SheetHeader}
                     style={{
                       padding: `0 ${config.space.S200} 0 ${config.space.S400}`,
                       borderBottomWidth: config.borderWidth.B300,
@@ -121,7 +124,9 @@ export function RoomEncryption({ permissions }: RoomEncryptionProps) {
                     size="500"
                   >
                     <Box grow="Yes">
-                      <Text size="H4">Enable Encryption</Text>
+                      <Text className={sheetCss.SheetTitle} size="H4">
+                        Enable Encryption
+                      </Text>
                     </Box>
                     <IconButton size="300" onClick={() => setPrompt(false)} radii="300">
                       <Icon src={Icons.Cross} />
@@ -131,7 +136,12 @@ export function RoomEncryption({ permissions }: RoomEncryptionProps) {
                     <Text priority="400">
                       Are you sure? Once enabled, encryption cannot be disabled!
                     </Text>
-                    <Button type="submit" variant="Primary" onClick={handleEnable}>
+                    <Button
+                      className={sheetCss.Pill}
+                      type="submit"
+                      variant="Primary"
+                      onClick={handleEnable}
+                    >
                       <Text size="B400">Enable E2E Encryption</Text>
                     </Button>
                   </Box>

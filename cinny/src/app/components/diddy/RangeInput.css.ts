@@ -1,8 +1,8 @@
 import { globalStyle, style } from '@vanilla-extract/css';
 import { color, toRem } from 'folds';
 
-const TRACK = toRem(6);
-const THUMB = toRem(16);
+const TRACK = toRem(4);
+const THUMB = toRem(18);
 
 // --fill is set inline from the value (0-100%)
 export const RangeInput = style({
@@ -37,8 +37,8 @@ globalStyle(`${RangeInput}::-webkit-slider-thumb`, {
   borderRadius: '50%',
   background: '#fff',
   border: 'none',
-  boxShadow: '0 1px 4px rgba(0, 0, 0, 0.5)',
-  transition: 'transform 80ms ease',
+  boxShadow: '0 0 0 0.5px rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.3)',
+  transition: 'transform 120ms ease-out',
 });
 
 globalStyle(`${RangeInput}:hover::-webkit-slider-thumb`, {
@@ -47,6 +47,12 @@ globalStyle(`${RangeInput}:hover::-webkit-slider-thumb`, {
 
 globalStyle(`${RangeInput}:focus-visible::-webkit-slider-thumb`, {
   boxShadow: `0 0 0 3px color-mix(in srgb, ${color.Primary.Main} 45%, transparent)`,
+});
+
+globalStyle(`${RangeInput}::-webkit-slider-thumb`, {
+  '@media': {
+    '(prefers-reduced-motion: reduce)': { transition: 'none' },
+  },
 });
 
 // Firefox / WebKitGTK fallbacks
@@ -66,4 +72,5 @@ globalStyle(`${RangeInput}::-moz-range-thumb`, {
   borderRadius: '50%',
   background: '#fff',
   border: 'none',
+  boxShadow: '0 0 0 0.5px rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.3)',
 });

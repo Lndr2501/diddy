@@ -28,6 +28,8 @@ import { useGlobalImagePacks, useRoomsImagePacks } from '../../../hooks/useImage
 import { SequenceCardStyle } from '../styles.css';
 import { SequenceCard } from '../../../components/sequence-card';
 import { SettingTile } from '../../../components/setting-tile';
+import { InsetGroup, InsetRow, InsetSection } from '../inset-list';
+import * as sheetCss from '../../../components/sheet/Sheet.css';
 import { mxcUrlToHttp } from '../../../utils/matrix';
 import { useMediaAuthentication } from '../../../hooks/useMediaAuthentication';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
@@ -353,95 +355,83 @@ export function GlobalPacks({ onViewPack }: GlobalPacksProps) {
     const removed = !!removedPacks.find((addr) => packAddressEqual(addr, address));
 
     return (
-      <SequenceCard
+      <InsetRow
         key={pack.id}
-        className={SequenceCardStyle}
-        variant={removed ? 'Critical' : 'SurfaceVariant'}
-        direction="Column"
-        gap="400"
-      >
-        <SettingTile
-          title={
-            <span style={{ textDecoration: removed ? 'line-through' : undefined }}>
-              {pack.meta.name ?? 'Unknown'}
-            </span>
-          }
-          description={<span className={LineClamp2}>{pack.meta.attribution}</span>}
-          before={
-            <Box alignItems="Center" gap="300">
-              {removed ? (
-                <IconButton
-                  size="300"
-                  radii="Pill"
-                  variant="Critical"
-                  onClick={() => handleUndoRemove(address)}
-                  disabled={applyingChanges}
-                >
-                  <Icon src={Icons.Plus} size="100" />
-                </IconButton>
-              ) : (
-                <IconButton
-                  size="300"
-                  radii="Pill"
-                  variant="Secondary"
-                  onClick={() => handleRemove(address)}
-                  disabled={applyingChanges}
-                >
-                  <Icon src={Icons.Cross} size="100" />
-                </IconButton>
-              )}
-              <Avatar size="300" radii="300">
-                {avatarUrl ? (
-                  <AvatarImage style={{ objectFit: 'contain' }} src={avatarUrl} />
-                ) : (
-                  <AvatarFallback>
-                    <Icon size="400" src={Icons.Sticker} filled />
-                  </AvatarFallback>
-                )}
-              </Avatar>
-            </Box>
-          }
-          after={
-            !removed && (
-              <Button
-                variant="Secondary"
-                fill="Soft"
+        variant={removed ? 'Critical' : 'Default'}
+        title={
+          <span style={{ textDecoration: removed ? 'line-through' : undefined }}>
+            {pack.meta.name ?? 'Unknown'}
+          </span>
+        }
+        description={<span className={LineClamp2}>{pack.meta.attribution}</span>}
+        before={
+          <Box alignItems="Center" gap="300">
+            {removed ? (
+              <IconButton
                 size="300"
-                radii="300"
-                outlined
-                onClick={() => onViewPack(pack)}
+                radii="Pill"
+                variant="Critical"
+                onClick={() => handleUndoRemove(address)}
+                disabled={applyingChanges}
               >
-                <Text size="B300">View</Text>
-              </Button>
-            )
-          }
-        />
-      </SequenceCard>
+                <Icon src={Icons.Plus} size="100" />
+              </IconButton>
+            ) : (
+              <IconButton
+                size="300"
+                radii="Pill"
+                variant="Secondary"
+                onClick={() => handleRemove(address)}
+                disabled={applyingChanges}
+              >
+                <Icon src={Icons.Cross} size="100" />
+              </IconButton>
+            )}
+            <Avatar size="300" radii="300">
+              {avatarUrl ? (
+                <AvatarImage style={{ objectFit: 'contain' }} src={avatarUrl} />
+              ) : (
+                <AvatarFallback>
+                  <Icon size="400" src={Icons.Sticker} filled />
+                </AvatarFallback>
+              )}
+            </Avatar>
+          </Box>
+        }
+        after={
+          !removed && (
+            <Button
+              className={sheetCss.Pill}
+              variant="Secondary"
+              fill="Soft"
+              size="300"
+              radii="Pill"
+              onClick={() => onViewPack(pack)}
+            >
+              <Text size="B300">View</Text>
+            </Button>
+          )
+        }
+      />
     );
   };
 
   return (
     <>
-      <Box direction="Column" gap="100">
-        <Text size="L400">Favorite Packs</Text>
-        <SequenceCard
-          className={SequenceCardStyle}
-          variant="SurfaceVariant"
-          direction="Column"
-          gap="400"
-        >
-          <SettingTile
+      <InsetSection title="Favorite Packs">
+        <InsetGroup>
+          <InsetRow
             title="Select Pack"
             description="Pick emojis and stickers pack from rooms to use in all rooms."
             after={
               <>
                 <Button
+                  className={sheetCss.Pill}
                   onClick={handleSelectMenu}
                   variant="Secondary"
                   fill="Soft"
                   size="300"
-                  radii="300"
-                  outlined
+                  radii="Pill"
                   after={<Icon size="300" src={Icons.ChevronBottom} />}
                 >
                   <Text size="B300">Select</Text>
@@ -464,6 +454,7 @@ export function GlobalPacks({ onViewPack }: GlobalPacksProps) {
                       }}
                     >
                       <Menu
+                        className={sheetCss.MenuMaterial}
                         style={{
                           display: 'flex',
                           maxWidth: toRem(400),
@@ -483,14 +474,15 @@ export function GlobalPacks({ onViewPack }: GlobalPacksProps) {
               </>
             }
           />
-        </SequenceCard>
-        {globalPacks.map(renderPack)}
-        {nonGlobalPacks
-          .filter((pack) => !!selectedPacks.find((addr) => packAddressEqual(pack.address, addr)))
-          .map(renderPack)}
-      </Box>
+          {globalPacks.map(renderPack)}
+          {nonGlobalPacks
+            .filter((pack) => !!selectedPacks.find((addr) => packAddressEqual(pack.address, addr)))
+            .map(renderPack)}
+        </InsetGroup>
+      </InsetSection>
       {hasChanges && (
         <Menu
+          className={sheetCss.Sheet}
           style={{
             position: 'sticky',
             padding: config.space.S200,
@@ -516,19 +508,21 @@ export function GlobalPacks({ onViewPack }: GlobalPacksProps) {
             </Box>
             <Box shrink="No" gap="200">
               <Button
+                className={sheetCss.Pill}
                 size="300"
                 variant="Success"
                 fill="None"
-                radii="300"
+                radii="Pill"
                 disabled={applyingChanges}
                 onClick={resetChanges}
               >
                 <Text size="B300">Reset</Text>
               </Button>
               <Button
+                className={sheetCss.Pill}
                 size="300"
                 variant="Success"
-                radii="300"
+                radii="Pill"
                 disabled={applyingChanges}
                 before={applyingChanges && <Spinner variant="Success" fill="Solid" size="100" />}
                 onClick={applyChanges}

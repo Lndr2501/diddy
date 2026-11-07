@@ -1,11 +1,24 @@
 import React, { useState } from 'react';
-import { Text, Tooltip, TooltipProvider } from 'folds';
+import { Box, Text, Tooltip, TooltipProvider, toRem } from 'folds';
 import { BadgeDef } from '../../plugins/diddy/types';
 import { useMxcUrl } from '../../plugins/diddy/media';
 import { safeColor } from '../../plugins/diddy/sanitize';
 import * as css from './BadgeChip.css';
 
 const DEFAULT_COLOR = '#9B9BAA';
+
+/** A description when the badge definition carries one (custom badges may), else its kind. */
+const badgeSubtitle = (badge: BadgeDef): string => {
+  const raw = (badge as BadgeDef & { description?: unknown }).description;
+  if (typeof raw === 'string') {
+    // eslint-disable-next-line no-control-regex
+    const text = Array.from(raw.replace(/[\u0000-\u001f\u007f]/g, ' ').trim())
+      .slice(0, 120)
+      .join('');
+    if (text) return text;
+  }
+  return badge.global ? 'Diddy badge' : 'Community badge';
+};
 
 type BadgeChipProps = {
   badge: BadgeDef;
@@ -31,8 +44,13 @@ export function BadgeChip({ badge, size = 18 }: BadgeChipProps) {
       offset={4}
       delay={200}
       tooltip={
-        <Tooltip>
-          <Text size="T200">{badge.name}</Text>
+        <Tooltip style={{ maxWidth: toRem(240) }}>
+          <Box direction="Column">
+            <Text size="L400">{badge.name}</Text>
+            <Text size="T200" priority="300">
+              {badgeSubtitle(badge)}
+            </Text>
+          </Box>
         </Tooltip>
       }
     >

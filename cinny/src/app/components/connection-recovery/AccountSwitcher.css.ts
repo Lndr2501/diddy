@@ -1,5 +1,6 @@
 import { style } from '@vanilla-extract/css';
-import { color, config } from 'folds';
+import { color, config, toRem } from 'folds';
+import { EASE, SELECTED, SEPARATOR } from '../sheet/Sheet.css';
 
 export const Menu = style({
   width: 'min(340px, calc(100vw - 24px))',
@@ -21,18 +22,24 @@ export const Row = style({
   alignItems: 'center',
   gap: config.space.S200,
   width: '100%',
+  minHeight: toRem(32),
   padding: config.space.S200,
   border: 'none',
-  borderRadius: config.radii.R300,
+  borderRadius: toRem(8),
   background: 'transparent',
+  transition: `background-color 120ms ${EASE}, color 120ms ${EASE}`,
   color: 'inherit',
   font: 'inherit',
   textAlign: 'left',
   cursor: 'pointer',
   selectors: {
-    '&:hover:not(:disabled)': { background: color.Surface.ContainerHover },
+    '&[aria-current="true"]': { background: SELECTED },
+    // macOS menu: the hovered row is filled with the accent colour
+    '&:hover:not(:disabled), &:focus-visible': {
+      background: color.Primary.Main,
+      color: color.Primary.OnMain,
+    },
     '&:disabled': { cursor: 'default' },
-    '&[aria-current="true"]': { background: color.Primary.Container },
   },
 });
 export const RowText = style({ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 });
@@ -43,7 +50,7 @@ export const Ellipsis = style({
 });
 export const Divider = style({
   height: 1,
-  background: 'rgba(128,128,128,0.2)',
+  background: SEPARATOR,
   margin: `${config.space.S100} 0`,
 });
 export const Dot = style({

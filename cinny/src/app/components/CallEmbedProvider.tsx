@@ -392,6 +392,8 @@ export function CallEmbedProvider({ children }: CallEmbedProviderProps) {
         data-call-embed-container
         style={{
           visibility: callVisible ? undefined : 'hidden',
+          // a hidden call view must never catch clicks meant for the chat behind it
+          pointerEvents: callVisible ? undefined : 'none',
           position: 'fixed',
           top: 0,
           left: 0,

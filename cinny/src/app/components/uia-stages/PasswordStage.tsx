@@ -4,6 +4,7 @@ import { AuthType } from 'matrix-js-sdk';
 import { StageComponentProps } from './types';
 import { ErrorCode } from '../../cs-errorcode';
 import { PasswordInput } from '../password-input';
+import * as sheetCss from '../sheet/Sheet.css';
 
 export function PasswordStage({
   stageData,
@@ -34,8 +35,9 @@ export function PasswordStage({
   };
 
   return (
-    <Dialog>
+    <Dialog className={sheetCss.Sheet}>
       <Header
+        className={sheetCss.SheetHeader}
         style={{
           padding: `0 ${config.space.S200} 0 ${config.space.S400}`,
         }}
@@ -43,7 +45,9 @@ export function PasswordStage({
         size="500"
       >
         <Box grow="Yes">
-          <Text size="H4">Account Password</Text>
+          <Text className={sheetCss.SheetTitle} size="H4">
+            Account Password
+          </Text>
         </Box>
         <IconButton size="300" onClick={onCancel} radii="300">
           <Icon src={Icons.Cross} />
@@ -78,7 +82,7 @@ export function PasswordStage({
             )}
           </Box>
         </Box>
-        <Button variant="Primary" type="submit">
+        <Button className={sheetCss.Pill} variant="Primary" type="submit">
           <Text as="span" size="B400">
             Continue
           </Text>

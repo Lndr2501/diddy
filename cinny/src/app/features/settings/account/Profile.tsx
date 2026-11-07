@@ -25,9 +25,7 @@ import {
   Spinner,
 } from 'folds';
 import FocusTrap from 'focus-trap-react';
-import { SequenceCard } from '../../../components/sequence-card';
-import { SequenceCardStyle } from '../styles.css';
-import { SettingTile } from '../../../components/setting-tile';
+import { InsetGroup, InsetRow, InsetSection } from '../inset-list';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { UserProfile, useUserProfile } from '../../../hooks/useUserProfile';
 import { getMxIdLocalPart, mxcUrlToHttp } from '../../../utils/matrix';
@@ -88,13 +86,8 @@ function ProfileAvatar({ profile, userId }: ProfileProps) {
   };
 
   return (
-    <SettingTile
-      title={
-        <Text as="span" size="L400">
-          Avatar
-        </Text>
-      }
-      after={
+    <InsetRow
+      before={
         <Avatar size="500" radii="300">
           <UserAvatar
             userId={userId}
@@ -103,40 +96,44 @@ function ProfileAvatar({ profile, userId }: ProfileProps) {
           />
         </Avatar>
       }
+      title="Profile Picture"
+      description={defaultDisplayName}
+      after={
+        !uploadAtom && (
+          <>
+            {avatarUrl && (
+              <Button
+                size="300"
+                variant="Critical"
+                fill="None"
+                radii="300"
+                disabled={disableSetAvatar}
+                onClick={() => setAlertRemove(true)}
+              >
+                <Text size="B300">Remove</Text>
+              </Button>
+            )}
+            <Button
+              onClick={() => pickFile('image/*')}
+              size="300"
+              variant="Secondary"
+              fill="Soft"
+              radii="300"
+              disabled={disableSetAvatar}
+            >
+              <Text size="B300">Upload…</Text>
+            </Button>
+          </>
+        )
+      }
     >
-      {uploadAtom ? (
+      {uploadAtom && (
         <Box gap="200" direction="Column">
           <CompactUploadCardRenderer
             uploadAtom={uploadAtom}
             onRemove={handleRemoveUpload}
             onComplete={handleUploaded}
           />
-        </Box>
-      ) : (
-        <Box gap="200">
-          <Button
-            onClick={() => pickFile('image/*')}
-            size="300"
-            variant="Secondary"
-            fill="Soft"
-            outlined
-            radii="300"
-            disabled={disableSetAvatar}
-          >
-            <Text size="B300">Upload</Text>
-          </Button>
-          {avatarUrl && (
-            <Button
-              size="300"
-              variant="Critical"
-              fill="None"
-              radii="300"
-              disabled={disableSetAvatar}
-              onClick={() => setAlertRemove(true)}
-            >
-              <Text size="B300">Remove</Text>
-            </Button>
-          )}
         </Box>
       )}
 
@@ -201,7 +198,7 @@ function ProfileAvatar({ profile, userId }: ProfileProps) {
           </FocusTrap>
         </OverlayCenter>
       </Overlay>
-    </SettingTile>
+    </InsetRow>
   );
 }
 
@@ -245,13 +242,7 @@ function ProfileDisplayName({ profile, userId }: ProfileProps) {
 
   const hasChanges = displayName !== defaultDisplayName;
   return (
-    <SettingTile
-      title={
-        <Text as="span" size="L400">
-          Display Name
-        </Text>
-      }
-    >
+    <InsetRow title="Display Name" description="Shown to others instead of your user ID.">
       <Box direction="Column" grow="Yes" gap="100">
         <Box
           as="form"
@@ -299,7 +290,7 @@ function ProfileDisplayName({ profile, userId }: ProfileProps) {
           </Button>
         </Box>
       </Box>
-    </SettingTile>
+    </InsetRow>
   );
 }
 
@@ -309,17 +300,11 @@ export function Profile() {
   const profile = useUserProfile(userId);
 
   return (
-    <Box direction="Column" gap="100">
-      <Text size="L400">Profile</Text>
-      <SequenceCard
-        className={SequenceCardStyle}
-        variant="SurfaceVariant"
-        direction="Column"
-        gap="400"
-      >
+    <InsetSection title="Profile">
+      <InsetGroup>
         <ProfileAvatar userId={userId} profile={profile} />
         <ProfileDisplayName userId={userId} profile={profile} />
-      </SequenceCard>
-    </Box>
+      </InsetGroup>
+    </InsetSection>
   );
 }

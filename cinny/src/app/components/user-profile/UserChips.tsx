@@ -84,7 +84,7 @@ export function ServerChip({ server }: { server: string }) {
                 variant="Surface"
                 fill="None"
                 size="300"
-                radii="300"
+                radii="400"
                 onClick={() => {
                   copyToClipboard(server);
                   setCopied();
@@ -97,7 +97,7 @@ export function ServerChip({ server }: { server: string }) {
                 variant="Surface"
                 fill="None"
                 size="300"
-                radii="300"
+                radii="400"
                 onClick={() => {
                   navigate(getExploreServerPath(server));
                   closeProfile();
@@ -112,7 +112,7 @@ export function ServerChip({ server }: { server: string }) {
                 variant={myServer === server ? 'Surface' : 'Critical'}
                 fill="None"
                 size="300"
-                radii="300"
+                radii="400"
                 onClick={() => {
                   window.open(`https://${server}`, '_blank');
                   close();
@@ -180,7 +180,7 @@ export function ShareChip({ userId }: { userId: string }) {
                 variant="Surface"
                 fill="None"
                 size="300"
-                radii="300"
+                radii="400"
                 onClick={() => {
                   copyToClipboard(userId);
                   setCopied();
@@ -193,7 +193,7 @@ export function ShareChip({ userId }: { userId: string }) {
                 variant="Surface"
                 fill="None"
                 size="300"
-                radii="300"
+                radii="400"
                 onClick={() => {
                   copyToClipboard(getMatrixToUser(userId));
                   setCopied();
@@ -301,7 +301,7 @@ export function MutualRoomsChip({ userId }: { userId: string }) {
         variant="Surface"
         fill="None"
         size="300"
-        radii="300"
+        radii="400"
         style={{ paddingLeft: config.space.S100 }}
         onClick={() => {
           if (room.isSpaceRoom()) {
@@ -487,7 +487,7 @@ export function OptionsChip({ userId }: { userId: string }) {
                 variant="Critical"
                 fill="None"
                 size="300"
-                radii="300"
+                radii="400"
                 onClick={() => {
                   toggleIgnore();
                   close();

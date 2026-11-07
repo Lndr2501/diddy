@@ -18,11 +18,13 @@ import './app/i18n';
 import { pushSessionToSW } from './sw-session';
 import { getFallbackSession } from './app/state/sessions';
 import { installContextMenuGuard } from './app/plugins/contextMenu';
+import { installErrorLogging } from './app/plugins/diagnostics';
 
 document.body.classList.add(configClass, varsClass);
 
 // the desktop app only shows its own right-click menus (see plugins/contextMenu.ts)
 installContextMenuGuard();
+installErrorLogging();
 
 // Register Service Worker
 if ('serviceWorker' in navigator) {

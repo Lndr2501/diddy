@@ -1,20 +1,19 @@
 import { style } from '@vanilla-extract/css';
 import { DefaultReset, color, config, toRem } from 'folds';
+import { FOCUS_RING, HOVER, RADIUS_CTL, REDUCED_MOTION, transition } from '../sidebar/diddyTokens';
 
+// Bottom row of the nav column. The card around it (shared with the call panel) is
+// PageNavFooter in components/page.
 export const UserPanel = style([
   DefaultReset,
   {
     flexShrink: 0,
-    margin: config.space.S200,
-    marginTop: config.space.S100,
-    padding: `${config.space.S200} ${config.space.S200} ${config.space.S200} ${config.space.S300}`,
+    minHeight: toRem(52),
+    padding: `${toRem(6)} ${config.space.S200}`,
     display: 'flex',
     alignItems: 'center',
-    gap: config.space.S200,
-    borderRadius: toRem(16),
-    backgroundColor: color.SurfaceVariant.Container,
+    gap: config.space.S100,
     color: color.SurfaceVariant.OnContainer,
-    border: 'var(--diddy-border, 1px solid rgba(255, 255, 255, 0.06))',
   },
 ]);
 
@@ -33,18 +32,27 @@ export const UserPanelProfile = style([
 export const UserPanelProfileButton = style([
   UserPanelProfile,
   {
-    margin: `${toRem(-3)} 0 ${toRem(-3)} ${toRem(-4)}`,
-    padding: `${toRem(3)} ${toRem(4)}`,
+    padding: `${toRem(4)} ${toRem(6)} ${toRem(4)} ${toRem(4)}`,
     background: 'none',
     border: 'none',
     font: 'inherit',
     color: 'inherit',
     textAlign: 'left',
     cursor: 'pointer',
-    borderRadius: toRem(12),
+    borderRadius: RADIUS_CTL,
+    transition: transition('background-color'),
     selectors: {
       '&:hover, &[aria-pressed=true]': {
-        backgroundColor: color.SurfaceVariant.ContainerHover,
+        backgroundColor: HOVER,
+      },
+      '&:focus-visible': {
+        outline: `2px solid ${FOCUS_RING}`,
+        outlineOffset: '0px',
+      },
+    },
+    '@media': {
+      [REDUCED_MOTION]: {
+        transition: 'none',
       },
     },
   },
@@ -63,13 +71,14 @@ export const UserPanelOnlineDot = style([
   DefaultReset,
   {
     position: 'absolute',
-    right: toRem(-2),
-    bottom: toRem(-2),
-    width: toRem(11),
-    height: toRem(11),
+    right: toRem(-1),
+    bottom: toRem(-1),
+    width: toRem(12),
+    height: toRem(12),
     borderRadius: '50%',
     backgroundColor: color.Success.Main,
-    border: `${toRem(2)} solid ${color.SurfaceVariant.Container}`,
+    // cut-out ring in the panel colour
+    boxShadow: `0 0 0 ${toRem(2.5)} ${color.SurfaceVariant.Container}`,
   },
 ]);
 
@@ -105,14 +114,27 @@ export const UserPanelActions = style([
   },
 ]);
 
+// Quiet icon buttons (mic, headphones, settings): transparent until hovered.
 export const UserPanelButton = style({
+  transition: transition('background-color', 'color'),
   selectors: {
+    'button&': {
+      borderRadius: RADIUS_CTL,
+    },
+    'button&:hover:not([data-inactive=true])': {
+      backgroundColor: HOVER,
+    },
     '&[data-muted=true]': {
       color: color.Critical.Main,
     },
     '&[data-inactive=true]': {
       opacity: config.opacity.Disabled,
       cursor: 'default',
+    },
+  },
+  '@media': {
+    [REDUCED_MOTION]: {
+      transition: 'none',
     },
   },
 });
