@@ -30,6 +30,7 @@ import { installContextMenuGuard } from '../contextMenu';
 import { installCallFrameMenu } from '../callFrameMenu';
 import { installSoundboard } from './soundboard';
 import { installCallTheme } from './callTheme';
+import { installScreenShareGrid } from './screenShareGrid';
 import { trackPeerConnections } from './streamStats';
 
 export class CallEmbed {
@@ -204,6 +205,8 @@ export class CallEmbed {
       installSoundboard(iframe.contentWindow);
       // Restyle the Element Call tiles to match the app theme.
       installCallTheme(iframe.contentWindow);
+      // Show all screen shares at once instead of Element Call's one-at-a-time carousel (#66).
+      installScreenShareGrid(iframe.contentWindow);
     };
     const earlyInstall = window.setInterval(() => {
       const target = iframe.contentWindow;

@@ -2,6 +2,11 @@
 
 ## Unveröffentlicht
 
+### Call: alle Bildschirmübertragungen gleichzeitig (#66)
+
+- Teilen mehrere Leute ihren Bildschirm, zeigt der Call alle Übertragungen nebeneinander als eigene Kacheln mit dem Namen unten, statt sie einzeln durchzublättern (keine Pfeile und Striche mehr). Die Kamera-Kacheln bzw. Profilbilder bleiben unverändert daneben.
+- Das Layout bestimmt der eingebettete Element Call; Diddy formt dessen Bildschirm-Karussell per Stylesheet zum Raster um (`plugins/call/screenShareGrid.ts`). Die Übertragungen bleiben deshalb im großen Bereich und werden nicht zwischen die Kamera-Kacheln gemischt. Der Lautstärke-Knopf für Übertragungston wirkt weiter nur auf eine Übertragung.
+
 ### Teilnehmerliste: Offline-Mitglieder dunkler ausgegraut
 
 - Wer in der Gruppe „Offline“ steht, ist jetzt deutlich abgedunkelt (halbe Deckkraft), damit man auf einen Blick sieht, wer da ist. Unter dem Mauszeiger, bei Tastaturfokus und bei geöffnetem Profil ist die Zeile wieder voll lesbar. In `features/room/MembersDrawer.tsx`.
