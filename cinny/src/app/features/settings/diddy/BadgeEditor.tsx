@@ -1,7 +1,6 @@
 import React, { ChangeEventHandler, useRef, useState } from 'react';
 import { Box, Button, color, config, Icons, Spinner, Text } from 'folds';
 import { BadgeChip } from '../../../components/diddy/BadgeChip';
-import { AwardBadgeButton } from '../../../components/diddy/AwardBadgeMenu';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { useOptionsRooms } from '../../../plugins/diddy/optionsRoom';
 import {
@@ -18,7 +17,6 @@ import { uploadDiddyMedia } from '../../../plugins/diddy/media';
 import * as css from './DiddyProfileSettings.css';
 import { Field, SettingsCard } from './ProfileSettingsUI';
 
-const USER_ID_REGEX = /^@[^\s:]+:[^\s]+$/;
 const DEFAULT_BADGE_COLOR = '#7AA2F7';
 const MAX_EMOJI_CODEPOINTS = 6;
 
@@ -440,34 +438,6 @@ function CreateBadge() {
   );
 }
 
-function GiveBadge() {
-  const [userId, setUserId] = useState('');
-  const trimmed = userId.trim();
-  const valid = USER_ID_REGEX.test(trimmed);
-
-  return (
-    <SettingsCard
-      icon={Icons.Mention}
-      title="Give a badge"
-      description="Enter a user id like @name:server, then pick the badges to give or remove."
-    >
-      <Box gap="200" alignItems="Center">
-        <Box grow="Yes">
-          <input
-            className={css.Input}
-            style={{ maxWidth: '100%' }}
-            value={userId}
-            onChange={(evt) => setUserId(evt.target.value)}
-            placeholder="@name:server"
-            aria-label="User id"
-          />
-        </Box>
-        {valid && <AwardBadgeButton userId={trimmed} />}
-      </Box>
-    </SettingsCard>
-  );
-}
-
 /** Badge cards for the "Status & badges" tab; renders straight into the tab grid. */
 export function BadgeEditor() {
   const mx = useMatrixClient();
@@ -488,7 +458,6 @@ export function BadgeEditor() {
       <YourBadges />
       <BadgeLibrary />
       <CreateBadge />
-      <GiveBadge />
     </>
   );
 }

@@ -6,7 +6,6 @@ import { ProfileStatus, UserHero, UserHeroName } from './UserHero';
 import { safeColor } from '../../plugins/diddy/sanitize';
 import * as css from './styles.css';
 import { useDiddyProfile } from '../../plugins/diddy/profiles';
-import { AwardBadgeButton } from '../diddy/AwardBadgeMenu';
 import { getMxIdServer, mxcUrlToHttp } from '../../utils/matrix';
 import { getMemberAvatarMxc, getMemberDisplayName } from '../../utils/room';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
@@ -86,22 +85,19 @@ export function UserRoomProfile({ userId }: UserRoomProfileProps) {
 
   const notMe = userId !== myUserId;
   const actions = notMe ? (
-    <>
-      <AwardBadgeButton userId={userId} />
-      <Button
-        size="300"
-        variant="Primary"
-        fill="Solid"
-        radii="Pill"
-        before={<Icon size="50" src={Icons.Message} filled />}
-        onClick={handleMessage}
-        style={
-          accent ? { backgroundColor: accent, color: accentText, borderColor: accent } : undefined
-        }
-      >
-        <Text size="B300">Message</Text>
-      </Button>
-    </>
+    <Button
+      size="300"
+      variant="Primary"
+      fill="Solid"
+      radii="Pill"
+      before={<Icon size="50" src={Icons.Message} filled />}
+      onClick={handleMessage}
+      style={
+        accent ? { backgroundColor: accent, color: accentText, borderColor: accent } : undefined
+      }
+    >
+      <Text size="B300">Message</Text>
+    </Button>
   ) : undefined;
 
   return (
