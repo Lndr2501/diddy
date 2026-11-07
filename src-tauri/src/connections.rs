@@ -326,7 +326,7 @@ pub async fn remove_connection_profile(
         }
         save_profiles(&app, &kept)?;
     }
-    let data = remove_connection_data(&app, &id);
+    let data = remove_connection_data(&app, &id).await;
     match &data {
         Ok(()) => crate::diag::diag_log(format!("connection: removed profile {id}")),
         Err(error) => crate::diag::diag_log(format!("connection: removed profile {id} but data cleanup failed: {error}")),
@@ -335,14 +335,14 @@ pub async fn remove_connection_profile(
 }
 
 #[cfg(not(any(target_os = "macos", target_os = "linux")))]
-fn remove_connection_data(_app: &AppHandle, _id: &str) -> Result<(), String> {
+async fn remove_connection_data(_app: &AppHandle, _id: &str) -> Result<(), String> {
     Ok(())
 }
 
 /// Linux: the profile's webview data lives in one dedicated directory (see build_client_window).
 /// The id was validated as a UUID hex string, so it cannot escape the connections directory.
 #[cfg(target_os = "linux")]
-fn remove_connection_data(app: &AppHandle, id: &str) -> Result<(), String> {
+async fn remove_connection_data(app: &AppHandle, id: &str) -> Result<(), String> {
     profile_identifier(id)?;
     let dir = app.path().app_data_dir()
         .map_err(|_| "Profilverzeichnis nicht verfügbar.".to_string())?
@@ -357,7 +357,7 @@ fn remove_connection_data(app: &AppHandle, id: &str) -> Result<(), String> {
 /// macOS: the profile's WebKit store is addressed by its UUID. All data types since the epoch
 /// must be removed through WebKit itself; deleting files under ~/Library would race with WebKit.
 #[cfg(target_os = "macos")]
-fn remove_connection_data(app: &AppHandle, id: &str) -> Result<(), String> {
+async fn remove_connection_data(app: &AppHandle, id: &str) -> Result<(), String> {
     let identifier = profile_identifier(id)?;
     let (sender, receiver) = mpsc::sync_channel(1);
     // WKWebsiteDataStore calls must originate on the main thread, but the completion arrives on a
@@ -365,17 +365,18 @@ fn remove_connection_data(app: &AppHandle, id: &str) -> Result<(), String> {
     app.run_on_main_thread(move || {
         let _ = sender.send(start_webkit_store_wipe(identifier));
     }).map_err(|_| "Der Hauptthread war nicht erreichbar.".to_string())?;
-    let done = tauri::async_runtime::spawn_blocking(move || {
-        receiver.recv_timeout(Duration::from_secs(10))
-            .map_err(|_| "Die Löschung des Speichers konnte nicht gestartet werden.".to_string())
-    }).await.map_err(|_| "Die Löschung des Speichers ging verloren.".to_string())??;
-    for _ in 0..80 {
-        if done.load(Ordering::SeqCst) {
-            return Ok(());
+    // Waiting (start + completion) happens off the async worker so a slow wipe never blocks it.
+    tauri::async_runtime::spawn_blocking(move || {
+        let done = receiver.recv_timeout(Duration::from_secs(10))
+            .map_err(|_| "Die Löschung des Speichers konnte nicht gestartet werden.".to_string())??;
+        for _ in 0..80 {
+            if done.load(Ordering::SeqCst) {
+                return Ok(());
+            }
+            std::thread::sleep(Duration::from_millis(100));
         }
-        std::thread::sleep(Duration::from_millis(100));
-    }
-    Err("Die Löschung der Anmeldedaten wurde WebKit übergeben; die Rückmeldung steht aus.".into())
+        Err("Die Löschung der Anmeldedaten wurde WebKit übergeben; die Rückmeldung steht aus.".into())
+    }).await.map_err(|_| "Die Löschung des Speichers ging verloren.".to_string())?
 }
 
 /// Starts the removal and returns a flag that WebKit flips when it reports completion.
