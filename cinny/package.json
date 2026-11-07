@@ -19,7 +19,8 @@
     "test": "node --test --test-concurrency=1 tests/*.test.cjs",
     "prepare": "husky install",
     "commit": "git-cz",
-    "bump": "node scripts/update-version.js"
+    "bump": "node scripts/update-version.js",
+    "test:e2e": "playwright test"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": "eslint",
@@ -93,6 +94,7 @@
   "devDependencies": {
     "@element-hq/element-call-embedded": "0.20.1",
     "@esbuild-plugins/node-globals-polyfill": "0.2.3",
+    "@playwright/test": "1.65.0",
     "@rollup/plugin-inject": "5.0.3",
     "@rollup/plugin-wasm": "6.1.1",
     "@types/chroma-js": "3.1.1",

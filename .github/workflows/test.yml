@@ -36,6 +36,33 @@ jobs:
           NODE_OPTIONS: "--max_old_space_size=4096"
         run: cp config.json cinny/ && cd cinny && npm run build
 
+  e2e:
+    # Playwright smoke test of the built web bundle (issue #16): no Matrix account, no hardware.
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: ".node-version"
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: cd cinny && npm ci
+
+      - name: Build web app
+        env:
+          NODE_OPTIONS: "--max_old_space_size=4096"
+        run: cp config.json cinny/ && cd cinny && npm run build
+
+      - name: Install browser
+        run: cd cinny && npx playwright install --with-deps chromium
+
+      - name: Smoke test the login screen
+        run: cd cinny && npm run test:e2e
+
   native:
     # Rust unit tests of the desktop shell (connections, audio bridge, resampler).
     runs-on: macos-latest
