@@ -10,6 +10,8 @@ struct RoomSummary: Identifiable, Hashable {
     var isSpace: Bool
     var unread: UInt64
     var mentions: UInt64
+    /// Unread messages your notification settings say should alert you.
+    var notifications: UInt64
     var hasCall: Bool
     var callParticipants: [String]
     var isEncrypted: Bool
@@ -23,6 +25,9 @@ struct RoomSummary: Identifiable, Hashable {
 
     var isJoined: Bool { membership == .joined }
     var isInvite: Bool { membership == .invited }
+    /// The number on the room's red badge. A call notification mentions the room without being an
+    /// unread message, so a direct message counts whichever is higher.
+    var badge: UInt64 { isDirect ? max(unread, mentions) : mentions }
 }
 
 /// Name and avatar of a user, as the call roster, member list and profile sheet show them.
@@ -69,7 +74,11 @@ final class MatrixAccount: ObservableObject, Identifiable {
     @Published private(set) var displayName: String?
     @Published private(set) var avatarUrl: String?
     @Published private(set) var rooms: [RoomSummary] = [] {
-        didSet { roomsById = Dictionary(rooms.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first }) }
+        didSet {
+            let previous = roomsById
+            roomsById = Dictionary(rooms.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+            onRoomsChanged?(previous, rooms)
+        }
     }
     @Published private(set) var profiles: [String: UserSummary] = [:]
     /// Servers whose channel list finished loading, so an empty server is not an endless spinner.
@@ -98,6 +107,12 @@ final class MatrixAccount: ObservableObject, Identifiable {
     private var resolvingProfiles: Set<String> = []
     private var knownJoinedRooms: Set<String> = []
     private var restartTask: Task<Void, Never>?
+    /// Set once sync has had time to catch up, so calls and messages that are already old when the
+    /// app starts are not announced as if they just happened.
+    private var alertsFrom: Date?
+
+    var onRoomsChanged: (([String: RoomSummary], [RoomSummary]) -> Void)?
+    var canRing: Bool { alertsFrom.map { Date() >= $0 } ?? false }
 
     init(record: AccountRecord, client: Client) {
         self.record = record
@@ -178,6 +193,7 @@ final class MatrixAccount: ObservableObject, Identifiable {
 
     private func syncStateChanged(_ state: SyncServiceState) {
         syncState = state
+        if state == .running, alertsFrom == nil { alertsFrom = Date().addingTimeInterval(5) }
         guard state == .error, started else { return }
         restartTask?.cancel()
         restartTask = Task { [weak self] in
@@ -240,6 +256,7 @@ final class MatrixAccount: ObservableObject, Identifiable {
             isSpace: info.isSpace,
             unread: info.numUnreadMessages,
             mentions: info.numUnreadMentions,
+            notifications: info.numUnreadNotifications,
             hasCall: info.hasRoomCall,
             callParticipants: participants,
             isEncrypted: info.encryptionState == .encrypted,

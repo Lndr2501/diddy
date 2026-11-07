@@ -110,8 +110,8 @@ struct ServerRail: View {
             VStack(spacing: 8) {
                 railButton(
                     id: nil,
-                    unread: account.directMessages.contains { $0.unread > 0 },
-                    badge: account.directMessages.reduce(UInt64(account.invites.count)) { $0 + $1.unread }
+                    unread: account.directMessages.contains { $0.badge > 0 },
+                    badge: account.directMessages.reduce(UInt64(account.invites.count)) { $0 + $1.badge }
                 ) {
                     Image("DiddyLogo").resizable().scaledToFill()
                 }
@@ -625,9 +625,7 @@ struct RoomRow: View {
             }
             Spacer()
             if room.hasCall { Image(systemName: "speaker.wave.2.fill").foregroundStyle(Theme.online) }
-            if room.mentions > 0 || (room.isDirect && room.unread > 0) {
-                UnreadBadge(count: room.isDirect ? room.unread : room.mentions)
-            }
+            if room.badge > 0 { UnreadBadge(count: room.badge) }
         }
     }
 }

@@ -19,13 +19,18 @@ Die App ist Beta: Alles in der Tabelle ist gebaut und läuft bei den ersten Test
 | Sprachkanäle mit Desktop-Diddy und Element Call (gleiches MatrixRTC, gleiche Medien-Verschlüsselung) | 🧪 |
 | Bildschirmübertragung | 🧪 ab iOS 27 ganzer Bildschirm, davor nur Diddy selbst |
 | Stummschalten, Taubschalten, Kamera | 🧪 |
+| Klingeln in Direktnachrichten mit Annehmen und Ablehnen, kompatibel zu Desktop-Diddy und Element Call | 🧪 nur solange die App geöffnet ist |
+| Eigene Sounds für Anrufe, Bildschirmübertragung, Nachrichten, Erwähnungen und Einladungen, unter Einstellungen > Sounds abschaltbar und anhörbar | 🧪 |
+| Offline-Bildschirm: Sitzung bleibt erhalten, wenn der Server nicht erreichbar ist, und verbindet sich von selbst wieder | 🧪 |
 | App-Icon wechseln (Pink, Blau, Lila, Schwarz, Magenta) | 🧪 |
-| Push-Benachrichtigungen | ❌ (braucht einen Push-Gateway und ein bezahltes Apple-Konto) |
+| Push-Benachrichtigungen, Klingeln bei geschlossener App | ❌ (braucht einen Push-Gateway und ein bezahltes Apple-Konto) |
 | Online-Status | ❌ (Sliding Sync liefert keine Presence) |
 
 🧪 Beta: gebaut, läuft bei Testern, noch nicht im Alltag geprüft · ❌ fehlt noch
 
 **Verschlüsselung in Sprachkanälen:** In verschlüsselten Räumen sind die Medien Ende-zu-Ende verschlüsselt wie bei Element Call. Es fehlen aber noch die Schlüsselrotation beim Verlassen (wer den Kanal verlässt, kennt den Schlüssel bis zum Ende des Anrufs weiter), und den eigenen Schlüssel bekommen die Geräte aus der LiveKit-Teilnehmerliste statt nur die Geräte mit einer MatrixRTC-Mitgliedschaft im Raum. Die Härtung ist geplant, siehe [SECURITY-TODO.md](SECURITY-TODO.md).
+
+**Sounds:** Alle Sounds sind eigene, mit [Tools/make_sounds.py](Tools/make_sounds.py) synthetisierte Klänge. Das Skript schreibt sie nach `Diddy/Resources/Sounds`. Der Klingelton folgt dem Stummschalter des iPhones und vibriert zusätzlich.
 
 ## Voraussetzungen am Server
 

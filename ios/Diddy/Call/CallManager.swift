@@ -23,17 +23,30 @@ struct CallMember: Identifiable {
 
 @MainActor
 final class CallManager: ObservableObject {
-    @Published private(set) var current: CallSession?
+    @Published private(set) var current: CallSession? {
+        didSet { Sounds.shared.inCall = current != nil }
+    }
+    @Published private(set) var incoming: IncomingCall?
     @Published var error: String?
     /// Shows the call full screen; set when a call starts somewhere that has no call UI of its own.
     @Published var showCallScreen = false
+    /// Switches to the account a call came in on, since the call screen shows the active account.
+    var onAnswer: ((MatrixAccount) async -> Void)?
+
+    private let incomingWindow = IncomingCallWindow()
+    private var ringTimeout: Task<Void, Never>?
+    /// Calls that have rung already, until they end. Declining must not ring again on the next update.
+    private var rungRooms: Set<String> = []
+    /// How long a call rings: the lifetime every notification we send and Element Call's carry.
+    private static let ringSeconds: UInt64 = 30
 
     func join(account: MatrixAccount, roomId: String, roomName: String, showCallScreen present: Bool = false) async {
         if current?.roomId == roomId {
             if present { showCallScreen = true }
             return
         }
-        await leave()
+        if incoming?.roomId == roomId { endRinging() }
+        await leave(silently: true)
         guard let room = account.room(roomId) else {
             error = "Join the channel first."
             return
@@ -42,12 +55,21 @@ final class CallManager: ObservableObject {
         session.onDropped = { [weak self, weak session] in
             guard let self, let session, self.current === session else { return }
             self.error = "The connection to the voice server was lost."
-            Task { await self.leave() }
+            Sounds.shared.play(.connectionLost)
+            Task { await self.leave(silently: true) }
+        }
+        session.onDeclined = { [weak self, weak session] userId in
+            guard let self, let session, self.current === session else { return }
+            self.error = "\(account.name(of: userId)) declined the call."
+            Sounds.shared.play(.callDeclined)
+            Task { await self.leave(silently: true) }
         }
         current = session
         if present { showCallScreen = true }
         do {
             try await session.connect()
+            Sounds.shared.play(.callJoined)
+            await session.notifyRoom()
         } catch {
             self.error = error.friendlyMessage
             await session.disconnect()
@@ -58,11 +80,78 @@ final class CallManager: ObservableObject {
         }
     }
 
-    func leave() async {
+    func leave(silently: Bool = false) async {
         guard let session = current else { return }
         current = nil
         showCallScreen = false
         await session.disconnect()
+        if !silently { Sounds.shared.play(.callLeft) }
+    }
+
+    // MARK: Ringing
+
+    /// Rings when someone starts a call in a direct message. Reads room state rather than waiting
+    /// for the notification event, so it also works when that event cannot be decrypted (yet).
+    func roomsChanged(account: MatrixAccount, from old: [String: RoomSummary], to new: [RoomSummary]) {
+        for room in new where room.isDirect && !room.isSpace && room.isJoined {
+            let others = room.callParticipants.filter { $0 != account.userId }
+            if others.isEmpty { rungRooms.remove(room.id) }
+            if let ringing = incoming, ringing.roomId == room.id {
+                // Everyone left, or you picked up on another device.
+                if others.isEmpty || room.callParticipants.contains(account.userId) { endRinging() }
+                continue
+            }
+            let hadOthers = old[room.id]?.callParticipants.contains { $0 != account.userId } ?? false
+            guard let caller = others.first, !hadOthers, account.canRing,
+                  incoming == nil, current?.roomId != room.id, !rungRooms.contains(room.id),
+                  !room.callParticipants.contains(account.userId) else { continue }
+            startRinging(account: account, roomId: room.id, callerId: caller)
+        }
+    }
+
+    private func startRinging(account: MatrixAccount, roomId: String, callerId: String) {
+        rungRooms.insert(roomId)
+        account.resolveProfiles([callerId], in: roomId)
+        let call = IncomingCall(account: account, roomId: roomId, callerId: callerId)
+        call.onCancelled = { [weak self, weak call] in
+            guard let self, let call, self.incoming === call else { return }
+            self.endRinging()
+        }
+        incoming = call
+        Sounds.shared.startRinging()
+        incomingWindow.show(call, manager: self)
+        Task { await call.watchTimeline() }
+        ringTimeout = Task { [weak self, weak call] in
+            try? await Task.sleep(nanoseconds: Self.ringSeconds * 1_000_000_000)
+            guard !Task.isCancelled, let self, let call, self.incoming === call else { return }
+            self.endRinging()
+        }
+    }
+
+    private func endRinging() {
+        ringTimeout?.cancel()
+        Sounds.shared.stopLoop()
+        incoming?.stopWatching()
+        incoming = nil
+        incomingWindow.hide()
+    }
+
+    func answerIncoming() {
+        guard let call = incoming else { return }
+        let account = call.account
+        let roomId = call.roomId
+        let name = call.name
+        endRinging()
+        Task {
+            await onAnswer?(account)
+            await join(account: account, roomId: roomId, roomName: name, showCallScreen: true)
+        }
+    }
+
+    func declineIncoming() async {
+        guard let call = incoming else { return }
+        endRinging()
+        await call.decline()
     }
 }
 
@@ -79,6 +168,7 @@ final class CallSession: NSObject, ObservableObject {
     @Published private(set) var cameraOn = false
     @Published private(set) var screenSharing = false
     @Published private(set) var speakerOn = true
+    @Published private(set) var outgoing: OutgoingRing = .none
     /// A hint under the tiles that clears itself, so an old problem does not look like a current one.
     @Published var lastError: String? {
         didSet {
@@ -92,6 +182,9 @@ final class CallSession: NSObject, ObservableObject {
     }
     private var errorDismissal: Task<Void, Never>?
     var onDropped: (() -> Void)?
+    var onDeclined: ((String) -> Void)?
+
+    enum OutgoingRing { case none, ringing, noAnswer }
 
     let roomId: String
     let roomName: String
@@ -111,11 +204,17 @@ final class CallSession: NSObject, ObservableObject {
     private var mutedBeforeDeafen = false
     private var leaving = false
     private var observers: Set<AnyCancellable> = []
+    private var membershipEventId: String?
+    private var declineHandle: TaskHandle?
+    private var ringTimeout: Task<Void, Never>?
 
     private static let memberEventType = "org.matrix.msc3401.call.member"
     private static let keysEventType = "io.element.call.encryption_keys"
     /// Same as matrix-js-sdk's default membership expiry (4 h); refreshed before it runs out.
     private static let membershipExpiryMs: UInt64 = 4 * 60 * 60 * 1000
+    /// MSC4075, what Diddy desktop and Element Call send and listen for.
+    private static let notificationEventType = "org.matrix.msc4075.rtc.notification"
+    private static let ringLifetimeMs: UInt64 = 30_000
 
     init(account: MatrixAccount, room: MatrixRustSDK.Room, roomName: String) {
         self.account = account
@@ -211,6 +310,7 @@ final class CallSession: NSObject, ObservableObject {
 
     func disconnect() async {
         leaving = true
+        stopOutgoingRing()
         errorDismissal?.cancel()
         observers.removeAll()
         membershipRefresh?.cancel()
@@ -239,6 +339,7 @@ final class CallSession: NSObject, ObservableObject {
         do {
             _ = try await liveKitRoom.localParticipant.setMicrophone(enabled: enable)
             microphoneOn = enable
+            Sounds.shared.play(enable ? .unmute : .mute)
         } catch { lastError = error.friendlyMessage }
         refreshMembers()
     }
@@ -249,6 +350,7 @@ final class CallSession: NSObject, ObservableObject {
         if !deafened { mutedBeforeDeafen = !microphoneOn }
         deafened.toggle()
         applyDeafen()
+        Sounds.shared.play(deafened ? .deafen : .undeafen)
         let enable = !deafened && !mutedBeforeDeafen
         do {
             _ = try await liveKitRoom.localParticipant.setMicrophone(enabled: enable)
@@ -266,6 +368,7 @@ final class CallSession: NSObject, ObservableObject {
         do {
             _ = try await liveKitRoom.localParticipant.setCamera(enabled: !cameraOn)
             cameraOn.toggle()
+            Sounds.shared.play(cameraOn ? .cameraOn : .cameraOff)
         } catch {
             lastError = "The camera could not be started. Check that Diddy may use it under Settings > Diddy."
         }
@@ -278,8 +381,15 @@ final class CallSession: NSObject, ObservableObject {
     func toggleScreenShare() async {
         do {
             _ = try await liveKitRoom.localParticipant.setScreenShare(enabled: !screenSharing)
-            screenSharing = liveKitRoom.localParticipant.isScreenShareEnabled()
-        } catch { lastError = error.friendlyMessage }
+            let sharing = liveKitRoom.localParticipant.isScreenShareEnabled()
+            if sharing != screenSharing {
+                Sounds.shared.play(sharing ? .screenShareStarted : .screenShareStopped)
+            } else if !sharing {
+                // Cancelling the system prompt, or a device that cannot capture, ends here without an error.
+                lastError = "Screen sharing did not start."
+            }
+            screenSharing = sharing
+        } catch { lastError = "Screen sharing did not start: \(error.friendlyMessage)" }
         refreshMembers()
     }
 
@@ -380,8 +490,67 @@ final class CallSession: NSObject, ObservableObject {
         ]
         if membershipCreatedTs != nil { content["created_ts"] = created }
         let json = String(data: try JSONSerialization.data(withJSONObject: content), encoding: .utf8) ?? "{}"
-        _ = try await matrixRoom.sendStateEventRaw(eventType: Self.memberEventType, stateKey: stateKey, content: json, requestConfigOverride: nil)
+        membershipEventId = try await matrixRoom.sendStateEventRaw(eventType: Self.memberEventType, stateKey: stateKey, content: json, requestConfigOverride: nil)
         membershipCreatedTs = created
+    }
+
+    // MARK: Ringing others
+
+    /// Starting a call tells the room, as Diddy desktop does: a direct message rings, a text channel
+    /// gets a quiet notification. Voice channels stay silent, being in one is the whole point.
+    func notifyRoom() async {
+        guard let membershipEventId, !account.isVoiceChannel(roomId), !someoneElseIsHere,
+              let summary = account.summary(for: roomId) else { return }
+        let content: [String: Any] = [
+            "m.mentions": ["user_ids": [String](), "room": true],
+            "notification_type": summary.isDirect ? "ring" : "notification",
+            "m.relates_to": ["event_id": membershipEventId, "rel_type": "m.reference"],
+            "sender_ts": UInt64(Date().timeIntervalSince1970 * 1000),
+            "lifetime": Self.ringLifetimeMs,
+            "m.call.intent": "audio",
+        ]
+        guard let data = try? JSONSerialization.data(withJSONObject: content),
+              let eventId = try? await matrixRoom.sendRaw(
+                eventType: Self.notificationEventType,
+                content: String(decoding: data, as: UTF8.self),
+                requestConfigOverride: nil
+              ),
+              summary.isDirect, !leaving else { return }
+
+        outgoing = .ringing
+        Sounds.shared.startRingback()
+        let ownUserId = ownUserId
+        declineHandle = try? matrixRoom.subscribeToCallDeclineEvents(
+            rtcNotificationEventId: eventId,
+            listener: CallDeclineUpdates { [weak self] userId in
+                guard userId != ownUserId else { return }
+                Task { @MainActor in
+                    guard let self, self.outgoing != .none else { return }
+                    self.stopOutgoingRing()
+                    self.onDeclined?(userId)
+                }
+            }
+        )
+        ringTimeout = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: Self.ringLifetimeMs * 1_000_000)
+            guard !Task.isCancelled, let self, self.outgoing == .ringing else { return }
+            self.stopOutgoingRing()
+            self.outgoing = .noAnswer
+            Sounds.shared.play(.noAnswer)
+        }
+    }
+
+    private var someoneElseIsHere: Bool {
+        !liveKitRoom.remoteParticipants.isEmpty
+            || (account.summary(for: roomId)?.callParticipants.contains { $0 != ownUserId } ?? false)
+    }
+
+    private func stopOutgoingRing() {
+        ringTimeout?.cancel()
+        declineHandle?.cancel()
+        declineHandle = nil
+        if outgoing == .ringing { Sounds.shared.stopLoop() }
+        outgoing = .none
     }
 
     private func scheduleMembershipRefresh() {
@@ -471,6 +640,12 @@ final class CallSession: NSObject, ObservableObject {
 
     // MARK: Members
 
+    /// What other people do. Deafened means silence, and the join itself is not news to anyone.
+    fileprivate func playForOthers(_ sound: Sound) {
+        guard connected, !leaving, !deafened else { return }
+        Sounds.shared.play(sound)
+    }
+
     fileprivate func refreshMembers() {
         var result: [CallMember] = []
         let local = liveKitRoom.localParticipant
@@ -498,6 +673,7 @@ final class CallSession: NSObject, ObservableObject {
         account.resolveProfiles(result.map(\.userId), in: roomId)
         members = result
         screenSharing = local.isScreenShareEnabled()
+        if outgoing != .none, someoneElseIsHere { stopOutgoingRing() }
     }
 
     private func member(for participant: LiveKit.Participant, isLocal: Bool) -> CallMember {
@@ -529,11 +705,15 @@ extension CallSession: LiveKit.RoomDelegate {
         Task { @MainActor in
             await self.distributeKey(to: [participant])
             self.refreshMembers()
+            self.playForOthers(.userJoined)
         }
     }
 
     nonisolated func room(_ room: LiveKit.Room, participantDidDisconnect participant: LiveKit.RemoteParticipant) {
-        Task { @MainActor in self.refreshMembers() }
+        Task { @MainActor in
+            self.refreshMembers()
+            self.playForOthers(.userLeft)
+        }
     }
 
     nonisolated func room(_ room: LiveKit.Room, didUpdateSpeakingParticipants participants: [LiveKit.Participant]) {
@@ -560,11 +740,17 @@ extension CallSession: LiveKit.RoomDelegate {
     }
 
     nonisolated func room(_ room: LiveKit.Room, participant: LiveKit.RemoteParticipant, didPublishTrack publication: LiveKit.RemoteTrackPublication) {
-        Task { @MainActor in self.refreshMembers() }
+        Task { @MainActor in
+            self.refreshMembers()
+            if publication.source == .screenShareVideo { self.playForOthers(.screenShareStarted) }
+        }
     }
 
     nonisolated func room(_ room: LiveKit.Room, participant: LiveKit.RemoteParticipant, didUnpublishTrack publication: LiveKit.RemoteTrackPublication) {
-        Task { @MainActor in self.refreshMembers() }
+        Task { @MainActor in
+            self.refreshMembers()
+            if publication.source == .screenShareVideo { self.playForOthers(.screenShareStopped) }
+        }
     }
 
     nonisolated func room(_ room: LiveKit.Room, didDisconnectWithError error: LiveKit.LiveKitError?) {

@@ -70,6 +70,10 @@ struct SettingsView: View {
                     Text("Changes the icon on your home screen.")
                 }
 
+                Section {
+                    NavigationLink("Sounds") { SoundSettingsView() }
+                }
+
                 Section("Security") {
                     LabeledContent("Session", value: account.verificationState == .verified ? "Verified" : "Not verified")
                     LabeledContent("Device ID", value: account.deviceId)
@@ -105,6 +109,50 @@ struct SettingsView: View {
             }
             .sheet(isPresented: $showRecovery) { RecoveryView(account: account) }
         }
+    }
+}
+
+/// What Diddy may play, and a place to hear each sound.
+private struct SoundSettingsView: View {
+    var body: some View {
+        List {
+            Section {
+                ForEach(SoundSetting.allCases) { SoundToggle(setting: $0) }
+            } footer: {
+                Text("Diddy can only ring while it is open. The ringtone follows the silent switch and also vibrates.")
+            }
+            Section("Listen") {
+                ForEach(Sound.allCases) { sound in
+                    Button { Sounds.shared.preview(sound) } label: {
+                        HStack {
+                            Text(sound.title).foregroundStyle(Theme.text)
+                            Spacer()
+                            Image(systemName: "play.circle.fill").foregroundStyle(Theme.accent)
+                        }
+                    }
+                    .accessibilityLabel("Play \(sound.title)")
+                }
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .background(Theme.sidebar)
+        .navigationTitle("Sounds")
+        .navigationBarTitleDisplayMode(.inline)
+        .onDisappear { Sounds.shared.stopLoop() }
+    }
+}
+
+private struct SoundToggle: View {
+    let setting: SoundSetting
+    @AppStorage private var isOn: Bool
+
+    init(setting: SoundSetting) {
+        self.setting = setting
+        _isOn = AppStorage(wrappedValue: true, setting.rawValue)
+    }
+
+    var body: some View {
+        Toggle(setting.title, isOn: $isOn)
     }
 }
 

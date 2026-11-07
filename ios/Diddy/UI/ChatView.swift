@@ -130,7 +130,11 @@ private struct ChatContent: View {
         .onChange(of: draft) { text in
             controller.setTyping(!text.isEmpty && editing == nil)
         }
-        .onDisappear { controller.setTyping(false) }
+        .onAppear { Sounds.shared.openRoomId = roomId }
+        .onDisappear {
+            controller.setTyping(false)
+            if Sounds.shared.openRoomId == roomId { Sounds.shared.openRoomId = nil }
+        }
         .task {
             await memberStore.load(account: account, roomId: roomId)
             if let levels = try? await controller.room.getPowerLevels() {

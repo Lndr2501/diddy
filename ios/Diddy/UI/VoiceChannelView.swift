@@ -121,13 +121,21 @@ private struct ConnectedVoiceView: View {
 
     private var columns: [GridItem] { [GridItem(.adaptive(minimum: 150), spacing: 10)] }
 
+    private var statusLine: String {
+        switch session.outgoing {
+        case .ringing: return "Ringing…"
+        case .noAnswer: return "No answer"
+        case .none: return session.connected ? "\(session.members.count) in voice" : session.state
+        }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 6) {
                 if !session.connected { ProgressView().scaleEffect(0.7) }
-                Text(session.connected ? "\(session.members.count) in voice" : session.state)
+                Text(statusLine)
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(session.connected ? Theme.online : Theme.muted)
+                    .foregroundStyle(session.connected && session.outgoing != .noAnswer ? Theme.online : Theme.muted)
                 Spacer()
             }
             .padding(.horizontal, 14)
