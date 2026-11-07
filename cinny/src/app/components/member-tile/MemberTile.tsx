@@ -29,7 +29,7 @@ export const MemberTile = as<'button', MemberTileProps>(
     return (
       <AsMemberTile className={css.MemberTile} {...props} ref={ref}>
         <Avatar size="300" radii="400">
-          <UserAvatar
+          <UserAvatar surface="members"
             userId={member.userId}
             src={avatarUrl ?? undefined}
             alt={name}

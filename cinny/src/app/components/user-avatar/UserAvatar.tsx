@@ -1,18 +1,23 @@
 import { AvatarFallback, AvatarImage, color } from 'folds';
 import React, { ReactEventHandler, ReactNode, useState } from 'react';
 import classNames from 'classnames';
+import { useAtomValue } from 'jotai';
 import * as css from './UserAvatar.css';
 import colorMXID from '../../../util/colorMXID';
 import { useMatrixClient, useMatrixClientOptional } from '../../hooks/useMatrixClient';
 import { useDiddyProfile } from '../../plugins/diddy/profiles';
 import { useMxcUrl } from '../../plugins/diddy/media';
 import { PositionedImg } from '../diddy/PositionedImg';
+import { AvatarSurface, useAvatarPrefs } from '../../state/avatarPrefs';
+import { speakingUsersAtom } from '../../state/speakingUsers';
 
 type UserAvatarProps = {
   className?: string;
   userId: string;
   src?: string;
   alt?: string;
+  /** where the avatar is shown; the animation can be switched off per place in the settings */
+  surface?: AvatarSurface;
   renderFallback: () => ReactNode;
 };
 
@@ -58,18 +63,22 @@ function PlainUserAvatar(props: UserAvatarProps) {
  * then the initials are shown.
  */
 function DiddyUserAvatar(props: UserAvatarProps) {
-  const { className, userId, alt } = props;
+  const { className, userId, alt, surface = 'chat' } = props;
   const mx = useMatrixClient();
   const profile = useDiddyProfile(mx, userId);
+  const prefs = useAvatarPrefs();
+  const animate = prefs[surface];
+  const speaking = useAtomValue(speakingUsersAtom).has(userId);
   const url = useMxcUrl(profile?.animatedAvatarMxc, undefined, { animated: true });
   const [error, setError] = useState(false);
 
-  if (!url || error) return <PlainUserAvatar {...props} />;
+  if (!animate || !url || error) return <PlainUserAvatar {...props} />;
   return (
     <PositionedImg
       className={classNames(css.UserAvatar, className)}
       src={url}
       pos={profile?.avatarPos}
+      paused={prefs.speakingOnly && !speaking}
       alt={alt}
       onError={() => setError(true)}
     />

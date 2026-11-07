@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { getCallPrefs } from '../../state/callPrefs';
 import { diag } from '../diagnostics';
+import { playCallSound } from './callSounds';
 import { applyAudioProcessingPolicy } from './audioConstraints';
 import { listNativeInputs, nativeMicAvailable, NATIVE_DEVICE_PREFIX } from './nativeMic';
 
@@ -81,6 +82,7 @@ export const subscribeAudioPrefs = (listener: () => void): (() => void) => {
 export const getAudioPrefs = (): AudioPrefs => current;
 
 export const setAudioInput = (deviceId: string, label = '') => {
+  if (deviceId !== current.input) playCallSound('micChange');
   current = { ...current, input: deviceId, inputLabel: deviceId ? label : '' };
   write(INPUT_KEY, deviceId);
   write(INPUT_LABEL_KEY, current.inputLabel);
@@ -136,11 +138,19 @@ export const isOutputSelectionSupported = (): boolean =>
 /** The sink id WE applied last to an element, so unchanged elements are never touched again. */
 const appliedSinks = new WeakMap<HTMLMediaElement, { sink: string }>();
 
+/** Output volume WE applied last to an element (the call's own per-user volume is left alone). */
+const appliedVolumes = new WeakMap<HTMLMediaElement, number>();
+
 /** Applies the output device and output volume to one media element of the call. */
 export const applyAudioOutput = (el: HTMLMediaElement): void => {
   const { output, outputVolume } = current;
-  // eslint-disable-next-line no-param-reassign
-  if (el.volume !== outputVolume) el.volume = outputVolume;
+  // Only write the volume when our preference changed (or on first sight). Writing it on every
+  // call overwrote the per-user volume slider of the call (#38).
+  if (appliedVolumes.get(el) !== outputVolume) {
+    appliedVolumes.set(el, outputVolume);
+    // eslint-disable-next-line no-param-reassign
+    el.volume = outputVolume;
+  }
 
   const sink = el as SinkElement;
   if (typeof sink.setSinkId !== 'function') return;

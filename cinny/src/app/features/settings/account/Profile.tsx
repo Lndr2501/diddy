@@ -89,7 +89,7 @@ function ProfileAvatar({ profile, userId }: ProfileProps) {
     <InsetRow
       before={
         <Avatar size="500" radii="300">
-          <UserAvatar
+          <UserAvatar surface="account"
             userId={userId}
             src={avatarUrl}
             renderFallback={() => <Text size="H4">{nameInitials(defaultDisplayName)}</Text>}

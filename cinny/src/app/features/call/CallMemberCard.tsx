@@ -50,7 +50,7 @@ export function CallRoster({ members }: { members: CallMembership[] }) {
         return (
           <Box key={member.memberId} className={css.CallRosterChip} alignItems="Center" gap="200">
             <Avatar size="200" radii="Pill">
-              <UserAvatar
+              <UserAvatar surface="call"
                 userId={userId}
                 src={avatarUrl}
                 alt={name}
@@ -105,7 +105,7 @@ export function CallMemberCard({ member }: CallMemberCardProps) {
       }
     >
       <Avatar size="300" radii="Pill">
-        <UserAvatar
+        <UserAvatar surface="call"
           userId={userId}
           src={avatarUrl}
           alt={name}

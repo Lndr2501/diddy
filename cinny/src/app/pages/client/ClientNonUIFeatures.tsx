@@ -6,8 +6,7 @@ import { roomToUnreadAtom, unreadEqual, unreadInfoToUnread } from '../../state/r
 import { APP_ICON_IMAGES } from '../../plugins/appIconImages';
 import { getAppIcon, useAppIcon } from '../../plugins/appIcon';
 import { makeBadgedIcon } from '../../utils/badgedIcon';
-import NotificationSound from '../../../../public/sound/notification.ogg';
-import InviteSound from '../../../../public/sound/invite.ogg';
+import { getSoundUrl, isSoundEnabled, SoundId } from '../../plugins/sounds';
 import { notificationPermission, setFavicon } from '../../utils/dom';
 import { useSetting } from '../../state/hooks/settings';
 import { settingsAtom } from '../../state/settings';
@@ -36,6 +35,7 @@ import { getLocalStatus, useDiddyStatusSync } from '../../plugins/diddy/status';
 import { DiddyOnboarding } from '../../features/onboarding/DiddyOnboarding';
 import { MatrixIntro } from '../../features/intro/MatrixIntro';
 import { CallFrameMenu } from '../../components/CallFrameMenu';
+import { UpdateNotice } from '../../components/update-notice/UpdateNotice';
 
 /**
  * Notification sounds go through Web Audio instead of an <audio> element. A played <audio> element
@@ -65,9 +65,10 @@ const playViaWebAudio = async (url: string): Promise<void> => {
   source.start();
 };
 
-const playNotificationSound = (audio: HTMLAudioElement | null) => {
-  if (!audio) return;
-  const url = audio.querySelector('source')?.src;
+const playNotificationSound = (audio: HTMLAudioElement | null, id: SoundId) => {
+  if (!audio || !isSoundEnabled(id)) return;
+  const url = getSoundUrl(id);
+  audio.src = url;
   const fallback = () => {
     audio.addEventListener('ended', () => audio.load(), { once: true });
     audio.play().catch(() => {});
@@ -180,7 +181,7 @@ function InviteNotifications() {
 
   const playSound = useCallback(() => {
     const audioElement = audioRef.current;
-    playNotificationSound(audioElement);
+    playNotificationSound(audioElement, 'invite');
   }, []);
 
   useEffect(() => {
@@ -198,9 +199,7 @@ function InviteNotifications() {
 
   return (
     // eslint-disable-next-line jsx-a11y/media-has-caption
-    <audio ref={audioRef} style={{ display: 'none' }}>
-      <source src={InviteSound} type="audio/ogg" />
-    </audio>
+    <audio ref={audioRef} style={{ display: 'none' }} />
   );
 }
 
@@ -250,7 +249,7 @@ function MessageNotifications() {
 
   const playSound = useCallback(() => {
     const audioElement = audioRef.current;
-    playNotificationSound(audioElement);
+    playNotificationSound(audioElement, 'message');
   }, []);
 
   useEffect(() => {
@@ -324,9 +323,7 @@ function MessageNotifications() {
 
   return (
     // eslint-disable-next-line jsx-a11y/media-has-caption
-    <audio ref={audioRef} style={{ display: 'none' }}>
-      <source src={NotificationSound} type="audio/ogg" />
-    </audio>
+    <audio ref={audioRef} style={{ display: 'none' }} />
   );
 }
 
@@ -382,6 +379,7 @@ export function ClientNonUIFeatures({ children }: ClientNonUIFeaturesProps) {
       <DiddyOnboarding />
       <MatrixIntro />
       <CallFrameMenu />
+      <UpdateNotice />
       {children}
     </>
   );

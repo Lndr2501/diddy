@@ -41,7 +41,7 @@ export function SettingsTab() {
     : mx.getDomain() ?? '';
 
   const avatar = (
-    <UserAvatar
+    <UserAvatar surface="account"
       userId={userId}
       src={avatarUrl}
       renderFallback={() => <Text size="H4">{nameInitials(displayName)}</Text>}

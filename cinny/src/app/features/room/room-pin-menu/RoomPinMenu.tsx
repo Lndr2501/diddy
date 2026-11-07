@@ -194,7 +194,7 @@ function PinnedMessage({
       before={
         <AvatarBase>
           <Avatar size="300">
-            <UserAvatar
+            <UserAvatar surface="chat"
               userId={sender}
               src={
                 senderAvatarMxc

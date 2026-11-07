@@ -136,7 +136,7 @@ export const Reply = as<'div', ReplyProps>(
             sender && (
               <Box alignItems="Center" gap="100">
                 <span className={css.ReplyAvatar}>
-                  <UserAvatar
+                  <UserAvatar surface="chat"
                     userId={sender}
                     src={senderAvatarUrl}
                     alt=""

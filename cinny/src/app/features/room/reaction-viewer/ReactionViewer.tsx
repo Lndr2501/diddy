@@ -143,7 +143,7 @@ export const ReactionViewer = as<'div', ReactionViewerProps>(
                       }}
                       before={
                         <Avatar size="200">
-                          <UserAvatar
+                          <UserAvatar surface="members"
                             userId={senderId}
                             src={avatarUrl ?? undefined}
                             alt={name}

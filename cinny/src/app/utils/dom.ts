@@ -1,3 +1,5 @@
+import { invoke } from '../plugins/tauri';
+
 export const targetFromEvent = (evt: Event, selector: string): Element | undefined => {
   const targets = evt.composedPath() as Element[];
   return targets.find((target) => target.matches?.(selector));
@@ -82,8 +84,60 @@ export const selectFile = <M extends boolean | undefined = undefined>(
 export const getDataTransferFiles = (dataTransfer: DataTransfer): File[] | undefined => {
   const fileList = dataTransfer.files;
   const files: File[] = getFilesFromFileList(fileList);
+  if (files.length === 0) {
+    // WebKitGTK (Linux) often leaves `files` empty and only offers file items (screenshots).
+    Array.from(dataTransfer.items ?? []).forEach((item) => {
+      if (item.kind !== 'file') return;
+      const file = item.getAsFile();
+      if (file) files.push(file);
+    });
+  }
   if (files.length === 0) return undefined;
   return files;
+};
+
+const MIME_BY_EXT: Record<string, string> = {
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  webp: 'image/webp',
+  mp4: 'video/mp4',
+  webm: 'video/webm',
+  mp3: 'audio/mpeg',
+  ogg: 'audio/ogg',
+  pdf: 'application/pdf',
+  txt: 'text/plain',
+};
+
+/**
+ * Linux file managers (Dolphin, Nautilus) put copied / dragged files on the clipboard as a
+ * `text/uri-list` of file:// URLs, which WebKitGTK does not turn into File objects. In the
+ * desktop app those are read from disk.
+ */
+export const getDataTransferUriFiles = async (
+  dataTransfer: DataTransfer
+): Promise<File[] | undefined> => {
+  const list = dataTransfer.getData('text/uri-list');
+  if (!list) return undefined;
+  const paths = list
+    .split(/\r?\n/)
+    .filter((line) => line.startsWith('file://'))
+    .map((line) => decodeURIComponent(line.slice('file://'.length)));
+  if (paths.length === 0) return undefined;
+  try {
+    const files: File[] = [];
+    await paths.reduce(async (previous, path) => {
+      await previous;
+      const name = path.split('/').pop() ?? 'file';
+      const ext = name.includes('.') ? (name.split('.').pop() ?? '').toLowerCase() : '';
+      const bytes = new Uint8Array(await invoke<ArrayBuffer>('plugin:fs|read_file', { path }));
+      files.push(new File([bytes], name, { type: MIME_BY_EXT[ext] ?? '' }));
+    }, Promise.resolve());
+    return files.length > 0 ? files : undefined;
+  } catch {
+    return undefined;
+  }
 };
 
 export const renameFile = (file: File, name: string): File =>

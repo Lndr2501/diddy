@@ -187,7 +187,7 @@ function MemberItem({
           }
         >
           <Avatar size="200">
-            <UserAvatar
+            <UserAvatar surface="members"
               userId={member.userId}
               src={avatarUrl ?? undefined}
               alt={name}

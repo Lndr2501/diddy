@@ -40,7 +40,7 @@ export function CallMemberAvatars({ room, members, max = 4 }: CallMemberAvatarsP
             size="200"
             radii="Pill"
           >
-            <UserAvatar
+            <UserAvatar surface="call"
               userId={userId}
               src={src}
               alt={name}

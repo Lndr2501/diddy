@@ -1,4 +1,7 @@
 import React, { ReactNode, useState } from 'react';
+import { useAtomValue } from 'jotai';
+import { speakingUsersAtom } from '../../state/speakingUsers';
+import { useAvatarPrefs } from '../../state/avatarPrefs';
 import {
   Avatar,
   Box,
@@ -141,7 +144,10 @@ export function UserHero({
   // the original file, not a fixed-ratio thumbnail: a cropped thumbnail was stretched to the
   // card's shape and looked blurry (#36)
   const bannerUrl = useMxcUrl(safeMxc(profile?.card?.bannerMxc), undefined, { animated: true });
-  const animatedAvatarUrl = useMxcUrl(safeMxc(profile?.animatedAvatarMxc));
+  const animatedAvatarMxcUrl = useMxcUrl(safeMxc(profile?.animatedAvatarMxc));
+  const avatarPrefs = useAvatarPrefs();
+  const speaking = useAtomValue(speakingUsersAtom).has(userId);
+  const animatedAvatarUrl = avatarPrefs.profile ? animatedAvatarMxcUrl : undefined;
   const shownAvatarUrl = animatedAvatarUrl || avatarUrl;
   const diddyStatus = profile?.status;
   const avatarSize = compact ? 60 : 88;
@@ -180,10 +186,12 @@ export function UserHero({
                 className={css.UserHeroAvatarImg}
                 src={animatedAvatarUrl}
                 pos={profile.avatarPos}
+                paused={avatarPrefs.speakingOnly && !speaking}
                 alt={userId}
               />
             ) : (
               <UserAvatar
+                surface="profile"
                 className={css.UserHeroAvatarImg}
                 userId={userId}
                 src={shownAvatarUrl}

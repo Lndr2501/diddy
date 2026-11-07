@@ -40,7 +40,10 @@ import { CallEmbed } from '../plugins/call';
 import { useSelectedRoom } from '../hooks/router/useSelectedRoom';
 import { ScreenSize, useScreenSizeContext } from '../hooks/useScreenSize';
 import { useMatrixClient } from '../hooks/useMatrixClient';
-import CallSound from '../../../public/sound/call.ogg';
+import { getSoundUrl, isSoundEnabled } from '../plugins/sounds';
+import { playCallSound } from '../plugins/call/callSounds';
+import { useCallSpeakers } from '../hooks/useCallSpeakers';
+import { speakingUsersAtom } from '../state/speakingUsers';
 import { useCallMembersChange, useCallSession } from '../hooks/useCall';
 import { useRoomAvatar, useRoomName } from '../hooks/useRoomMeta';
 import { mDirectAtom } from '../state/mDirectList';
@@ -104,7 +107,9 @@ function IncomingCall({ dm, info, onIgnore, onAnswer, onReject }: IncomingCallPr
 
   const playSound = useCallback(() => {
     const audioElement = audioRef.current;
-    audioElement?.play();
+    if (!audioElement || !isSoundEnabled('ringing')) return;
+    audioElement.src = getSoundUrl('ringing');
+    audioElement.play().catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -214,9 +219,7 @@ function IncomingCall({ dm, info, onIgnore, onAnswer, onReject }: IncomingCallPr
           </FocusTrap>
         </OverlayCenter>
       </Overlay>
-      <audio ref={audioRef} loop style={{ display: 'none' }}>
-        <source src={CallSound} type="audio/ogg" />
-      </audio>
+      <audio ref={audioRef} loop style={{ display: 'none' }} />
     </>
   );
 }
@@ -365,6 +368,47 @@ function CallUtils({ embed }: { embed: CallEmbed }) {
   return null;
 }
 
+/** Publishes who is speaking so profile pictures can move while their owner talks. */
+function CallSpeakingSync({ embed }: { embed: CallEmbed }) {
+  const speakers = useCallSpeakers(embed);
+  const setSpeaking = useSetAtom(speakingUsersAtom);
+  useEffect(() => {
+    setSpeaking(speakers);
+  }, [speakers, setSpeaking]);
+  useEffect(() => () => setSpeaking(new Set()), [setSpeaking]);
+  return null;
+}
+
+/** Join / leave sounds for the other people in the call you are in. */
+function CallParticipantSounds({ embed }: { embed: CallEmbed }) {
+  const mx = useMatrixClient();
+  const room = mx.getRoom(embed.roomId);
+  const known = useRef<Set<string> | undefined>();
+  const mountedAt = useRef(Date.now());
+  const ownId = mx.getUserId();
+
+  const session = mx.matrixRTC.getRoomSession(room as Room);
+  useCallMembersChange(
+    session,
+    useCallback(
+      (members) => {
+        const ids = new Set(members.map((m) => m.userId).filter((id) => id !== ownId));
+        const before = known.current;
+        known.current = ids;
+        // the people already in the call appear right after you join: no sound for them
+        if (!before || Date.now() - mountedAt.current < 4000) return;
+        if ([...ids].some((id) => !before.has(id))) playCallSound('userJoin');
+        else if ([...before].some((id) => !ids.has(id))) playCallSound('userLeave');
+      },
+      [ownId]
+    )
+  );
+  useEffect(() => {
+    known.current = new Set(session.memberships.map((m) => m.userId).filter((id) => id !== ownId));
+  }, [session, ownId]);
+  return null;
+}
+
 type CallEmbedProviderProps = {
   children?: ReactNode;
 };
@@ -384,6 +428,8 @@ export function CallEmbedProvider({ children }: CallEmbedProviderProps) {
   return (
     <CallEmbedContextProvider value={callEmbed}>
       {callEmbed && <CallUtils embed={callEmbed} />}
+      {callEmbed && joined && <CallParticipantSounds embed={callEmbed} />}
+      {callEmbed && joined && <CallSpeakingSync embed={callEmbed} />}
       <CallEmbedRefContextProvider value={callEmbedRef}>
         <IncomingCallListener callEmbed={callEmbed} joined={joined} />
         {children}

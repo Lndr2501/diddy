@@ -165,3 +165,50 @@ export const startStatsLogging = (
   const timer = window.setInterval(poll, POLL_MS);
   return () => window.clearInterval(timer);
 };
+
+/**
+ * The real round-trip time (ms) between this device and the call server, taken from the active
+ * connection of the call's peer connections (ICE candidate pair, or the RTCP round trip of a
+ * sent stream as a fallback). Undefined while nothing is connected or the WebView reports none.
+ */
+export const measureRoundTripMs = async (
+  win: Window | null | undefined
+): Promise<number | undefined> => {
+  const list = win ? registries.get(win) : undefined;
+  if (!list) return undefined;
+  const samples: number[] = [];
+  await Promise.all(
+    list
+      .filter((pc) => pc.connectionState === 'connected')
+      .map(async (pc) => {
+        try {
+          const report = await pc.getStats();
+          let pairRtt: number | undefined;
+          let rtpRtt: number | undefined;
+          report.forEach((r: Record<string, any>) => {
+            if (
+              r.type === 'candidate-pair' &&
+              r.state === 'succeeded' &&
+              (r.nominated || r.selected) &&
+              typeof r.currentRoundTripTime === 'number' &&
+              r.currentRoundTripTime > 0
+            ) {
+              pairRtt = r.currentRoundTripTime;
+            } else if (
+              r.type === 'remote-inbound-rtp' &&
+              typeof r.roundTripTime === 'number' &&
+              r.roundTripTime > 0
+            ) {
+              rtpRtt = r.roundTripTime;
+            }
+          });
+          const seconds = pairRtt ?? rtpRtt;
+          if (seconds !== undefined) samples.push(seconds * 1000);
+        } catch {
+          // closed while reading: ignore this connection
+        }
+      })
+  );
+  if (samples.length === 0) return undefined;
+  return Math.round(Math.min(...samples));
+};

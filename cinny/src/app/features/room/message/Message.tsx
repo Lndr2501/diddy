@@ -852,7 +852,7 @@ export const Message = as<'div', MessageProps>(
           data-user-id={senderId}
           onClick={onUserClick}
         >
-          <UserAvatar
+          <UserAvatar surface="chat"
             userId={senderId}
             src={
               senderAvatarMxc

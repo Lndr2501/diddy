@@ -108,8 +108,6 @@ export const MessageBase = recipe({
         // Subtle highlight for messages mentioning / replying to the current user
         '&:has([data-reply-highlight="true"]), &:has([data-highlight="true"][data-mention-id])': {
           backgroundColor: `color-mix(in srgb, ${color.Primary.Main} 8%, transparent)`,
-          boxShadow: `inset ${toRem(3)} 0 0 ${color.Primary.Main}`,
-          borderRadius: `4px ${ROW_RADIUS} ${ROW_RADIUS} 4px`,
         },
         '&:has([data-reply-highlight="true"]):hover, &:has([data-highlight="true"][data-mention-id]):hover':
           {

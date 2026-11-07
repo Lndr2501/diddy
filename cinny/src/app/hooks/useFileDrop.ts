@@ -1,11 +1,17 @@
 import { useCallback, DragEventHandler, RefObject, useState, useEffect } from 'react';
-import { getDataTransferFiles } from '../utils/dom';
+import { getDataTransferFiles, getDataTransferUriFiles } from '../utils/dom';
 
 export const useFileDropHandler = (onDrop: (file: File[]) => void): DragEventHandler =>
   useCallback(
     (evt) => {
       const files = getDataTransferFiles(evt.dataTransfer);
-      if (files) onDrop(files);
+      if (files) {
+        onDrop(files);
+      } else {
+        getDataTransferUriFiles(evt.dataTransfer).then((uriFiles) => {
+          if (uriFiles) onDrop(uriFiles);
+        });
+      }
     },
     [onDrop]
   );
@@ -23,7 +29,13 @@ export const useFileDropZone = (
       setActive(false);
       if (!evt.dataTransfer) return;
       const files = getDataTransferFiles(evt.dataTransfer);
-      if (files) onDrop(files);
+      if (files) {
+        onDrop(files);
+      } else {
+        getDataTransferUriFiles(evt.dataTransfer).then((uriFiles) => {
+          if (uriFiles) onDrop(uriFiles);
+        });
+      }
     };
 
     target?.addEventListener('drop', handleDrop);

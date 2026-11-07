@@ -30,6 +30,7 @@ import { CallEmbed, useCallControlState, useScreenShareAudio } from '../../plugi
 import { callEmbedAtom } from '../../state/callEmbed';
 import { callPanelCountAtom } from '../../state/callPanel';
 import { useCallJoined } from '../../hooks/useCallEmbed';
+import { useCallLatency } from '../../hooks/useCallLatency';
 import { useCallMembers, useCallSession } from '../../hooks/useCall';
 import { useRoomName } from '../../hooks/useRoomMeta';
 import { useRoomNavigate } from '../../hooks/useRoomNavigate';
@@ -39,18 +40,60 @@ import { AsyncStatus, useAsyncCallback } from '../../hooks/useAsyncCallback';
 import { SoundboardMenu } from '../../features/call/Soundboard';
 import { MyInstantsImport } from '../../features/call/MyInstantsImport';
 
-/**
- * Static "connected" bars. There is no real link-quality value available for the call, so this
- * only ever says "joined" and is never shown in any other state.
- */
-function SignalBars() {
+/** Latency (ms) to the call server -> number of lit bars (3 = good). */
+const barsFor = (ms: number): number => {
+  if (ms < 100) return 3;
+  if (ms < 250) return 2;
+  return 1;
+};
+
+/** Signal bars and the real round-trip time to the call server; dimmed until a value exists. */
+function SignalBars({ latency }: { latency?: number }) {
+  const lit = latency === undefined ? 0 : barsFor(latency);
+  const label = latency === undefined ? 'Measuring ping' : `Ping ${latency} ms`;
+  const color = lit === 1 ? 'var(--diddy-warning, #e0a030)' : undefined;
   return (
-    <span className={css.CallPanelSignal} role="img" aria-label="Connected" title="Connected">
+    <span
+      className={css.CallPanelSignal}
+      style={{ alignItems: 'center', ...(color ? { color } : {}) }}
+      role="img"
+      aria-label={label}
+      title={label}
+    >
       <svg width={toRem(20)} height={toRem(20)} viewBox="0 0 20 20" aria-hidden>
-        <rect x="3" y="12" width="3.2" height="5" rx="1.2" fill="currentColor" />
-        <rect x="8.4" y="8" width="3.2" height="9" rx="1.2" fill="currentColor" />
-        <rect x="13.8" y="3" width="3.2" height="14" rx="1.2" fill="currentColor" />
+        <rect
+          x="3"
+          y="12"
+          width="3.2"
+          height="5"
+          rx="1.2"
+          fill="currentColor"
+          opacity={lit >= 1 ? 1 : 0.3}
+        />
+        <rect
+          x="8.4"
+          y="8"
+          width="3.2"
+          height="9"
+          rx="1.2"
+          fill="currentColor"
+          opacity={lit >= 2 ? 1 : 0.3}
+        />
+        <rect
+          x="13.8"
+          y="3"
+          width="3.2"
+          height="14"
+          rx="1.2"
+          fill="currentColor"
+          opacity={lit >= 3 ? 1 : 0.3}
+        />
       </svg>
+      {latency !== undefined && (
+        <span style={{ fontSize: toRem(11), lineHeight: toRem(20), marginLeft: toRem(4) }}>
+          {latency} ms
+        </span>
+      )}
     </span>
   );
 }
@@ -104,6 +147,7 @@ type ActiveCallPanelProps = {
 };
 function ActiveCallPanel({ callEmbed }: ActiveCallPanelProps) {
   const { room } = callEmbed;
+  const latency = useCallLatency(callEmbed);
   const roomName = useRoomName(room);
   const callSession = useCallSession(room);
   const callMembers = useCallMembers(callSession);
@@ -255,7 +299,7 @@ function ActiveCallPanel({ callEmbed }: ActiveCallPanelProps) {
     <section className={css.CallPanel} aria-label="Sprachchat">
       {importing && <MyInstantsImport onClose={() => setImporting(false)} />}
       <div className={css.CallPanelHeader}>
-        <SignalBars />
+        <SignalBars latency={latency} />
         <button
           type="button"
           className={css.CallPanelTitleButton}

@@ -99,7 +99,7 @@ export function LiveChip({ count, room, members }: LiveChipProps) {
                         }
                         before={
                           <Avatar size="200" radii="Pill">
-                            <UserAvatar
+                            <UserAvatar surface="call"
                               userId={userId}
                               src={avatarUrl}
                               alt={name}

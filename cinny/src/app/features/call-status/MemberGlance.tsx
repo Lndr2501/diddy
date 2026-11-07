@@ -56,7 +56,7 @@ export function MemberGlance({ room, members, speakers, max = 6 }: MemberGlanceP
               )
             }
           >
-            <UserAvatar
+            <UserAvatar surface="call"
               userId={userId}
               src={avatarUrl}
               alt={name}

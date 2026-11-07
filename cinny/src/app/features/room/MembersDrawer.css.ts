@@ -123,6 +123,10 @@ export const MemberRow = style({
     '&&:hover, &&:focus-visible': {
       backgroundColor: `var(--diddy-hover, color-mix(in srgb, ${color.Surface.OnContainer} 6%, transparent))`,
     },
+    // inset ring: an outside ring is clipped by the drawer and collides with the next row
+    '&&:focus-visible': {
+      outlineOffset: toRem(-2),
+    },
     '&&[aria-pressed=true]': {
       backgroundColor: `var(--diddy-selected, color-mix(in srgb, ${color.Surface.OnContainer} 10%, transparent))`,
     },

@@ -89,6 +89,8 @@ export class CallControl extends EventEmitter implements CallControlState {
     return gridButton ?? undefined;
   }
 
+  private appliedDeafened = new WeakMap<HTMLMediaElement, boolean>();
+
   constructor(state: CallControlState, call: ClientWidgetApi, iframe: HTMLIFrameElement) {
     super();
 
@@ -231,7 +233,14 @@ export class CallControl extends EventEmitter implements CallControlState {
     callDocument?.querySelectorAll<HTMLMediaElement>('audio, video').forEach((el) => {
       const target = el;
       if (target.tagName === 'AUDIO') {
-        if (target.muted !== deafened) target.muted = deafened;
+        // Only touch `muted` when our deafen state changed: a blanket write undid the per-user
+        // mute of the call (#38).
+        const before = this.appliedDeafened.get(target);
+        if (before !== deafened) {
+          this.appliedDeafened.set(target, deafened);
+          // first sight while not deafened: keep whatever the call set (per-user mute)
+          if (deafened || before === true) target.muted = deafened;
+        }
       } else if (CallControl.carriesLocalShareAudio(target)) {
         // Never replay our own captured system audio locally (would echo / feed back).
         if (!target.muted) target.muted = true;
@@ -295,6 +304,9 @@ export class CallControl extends EventEmitter implements CallControlState {
     const screenshare: boolean = this.screenshareButton?.getAttribute('data-kind') === 'primary';
     const spotlight: boolean = this.spotlightButton?.checked ?? false;
 
+    if (screenshare !== this.screenshare) {
+      playCallSound(screenshare ? 'streamStarted' : 'streamEnded');
+    }
     this.state = new CallControlState(
       this.microphone,
       this.video,
@@ -315,6 +327,7 @@ export class CallControl extends EventEmitter implements CallControlState {
   }
 
   public toggleVideo() {
+    playCallSound(this.video ? 'cameraOff' : 'cameraOn');
     const payload: ElementMediaStatePayload = {
       audio_enabled: this.microphone,
       video_enabled: !this.video,
@@ -392,6 +405,7 @@ export class CallControl extends EventEmitter implements CallControlState {
   }
 
   public dispose() {
+    playCallSound('disconnect');
     this.bodyMutationObserver.disconnect();
     this.controlMutationObserver.disconnect();
     this.stopAudioPrefs();

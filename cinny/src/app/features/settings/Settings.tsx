@@ -30,6 +30,7 @@ import { EmojisStickers } from './emojis-stickers';
 import { DeveloperTools } from './developer-tools';
 import { About } from './about';
 import { DiddyProfileSettings } from './diddy/DiddyProfileSettings';
+import { Plugins } from './plugins';
 import { stopPropagation } from '../../utils/keyboard';
 import { LogoutDialog } from '../../components/LogoutDialog';
 import * as css from './styles.css';
@@ -44,6 +45,7 @@ export enum SettingsPages {
   EmojisStickersPage,
   DeveloperToolsPage,
   AboutPage,
+  PluginsPage,
 }
 
 type SettingsMenuItem = {
@@ -108,6 +110,15 @@ const SETTINGS_MENU: SettingsMenuItem[][] = [
       icon: Icons.Smile,
       tone: 'Orange',
       keywords: 'emoji sticker pack image',
+    },
+  ],
+  [
+    {
+      page: SettingsPages.PluginsPage,
+      name: 'Plugins',
+      icon: Icons.Category,
+      tone: 'Green',
+      keywords: 'plugin widget extension add-on addon weather web page',
     },
   ],
   [
@@ -271,7 +282,7 @@ export function Settings({ initialPage, requestClose }: SettingsProps) {
               title="Edit profile"
             >
               <Avatar size="400" radii="Pill">
-                <UserAvatar
+                <UserAvatar surface="account"
                   userId={userId}
                   src={avatarUrl}
                   renderFallback={() => <Text size="H5">{nameInitials(displayName)}</Text>}
@@ -375,6 +386,9 @@ export function Settings({ initialPage, requestClose }: SettingsProps) {
           )}
           {activePage === SettingsPages.EmojisStickersPage && (
             <EmojisStickers requestClose={handlePageRequestClose} />
+          )}
+          {activePage === SettingsPages.PluginsPage && (
+            <Plugins requestClose={handlePageRequestClose} />
           )}
           {activePage === SettingsPages.DeveloperToolsPage && (
             <DeveloperTools requestClose={handlePageRequestClose} />

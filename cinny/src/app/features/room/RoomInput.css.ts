@@ -45,14 +45,13 @@ export const ComposerIconButton = style({
   },
 });
 
-// Reply preview inside the composer card: an inset row with a slim accent bar.
+// Reply preview inside the composer card: an inset row with no accent bar.
 export const ReplyChip = style({
   margin: `${config.space.S200} ${config.space.S200} 0`,
   padding: `${config.space.S100} ${config.space.S200}`,
   borderRadius: 'var(--diddy-radius-row, 12px)',
   backgroundColor: `color-mix(in srgb, ${color.SurfaceVariant.OnContainer} 5%, transparent)`,
   border: `${config.borderWidth.B300} solid color-mix(in srgb, ${color.SurfaceVariant.OnContainer} 8%, transparent)`,
-  boxShadow: `inset ${toRem(3)} 0 0 ${color.Primary.Main}`,
   minWidth: 0,
 });
 

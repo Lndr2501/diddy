@@ -242,7 +242,7 @@ export function UserPanel() {
         >
           <span className={css.UserPanelAvatarWrap}>
             <Avatar size="300" radii="Pill">
-              <UserAvatar
+              <UserAvatar surface="account"
                 userId={userId}
                 src={avatarUrl}
                 renderFallback={() => <Text size="H6">{nameInitials(displayName)}</Text>}

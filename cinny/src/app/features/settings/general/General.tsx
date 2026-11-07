@@ -46,6 +46,8 @@ import { AppIconPicker } from './AppIconPicker';
 import { BackgroundSettings, CustomThemeSettings } from './CustomThemeSettings';
 import { ThemeTiles } from './ThemeTiles';
 import { updateCallPrefs, useCallPrefs } from '../../../state/callPrefs';
+import { SoundSettings } from './SoundSettings';
+import { AvatarSurface, setAvatarAnimation, useAvatarPrefs } from '../../../state/avatarPrefs';
 import { resetDiddyOnboarding } from '../../../plugins/diddy/onboarding';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { canChangeAppIcon } from '../../../plugins/appIcon';
@@ -806,23 +808,68 @@ function WelcomeGuideSettings() {
   );
 }
 
+const AVATAR_PLACES: { surface: AvatarSurface; title: string; description: string }[] = [
+  { surface: 'profile', title: 'Profile card', description: 'The big picture on a profile.' },
+  {
+    surface: 'chat',
+    title: 'Chat',
+    description: 'Next to messages, replies, search results and pins.',
+  },
+  {
+    surface: 'members',
+    title: 'Member list',
+    description: 'Member list, mentions and who reacted or read.',
+  },
+  {
+    surface: 'account',
+    title: 'Your account',
+    description: 'The picture at the bottom left and in settings.',
+  },
+  { surface: 'call', title: 'Calls', description: 'Participants in voice chat and call status.' },
+];
+
+function AnimatedAvatarSettings() {
+  const prefs = useAvatarPrefs();
+
+  return (
+    <InsetSection title="Animated profile pictures">
+      <InsetGroup>
+        <InsetRow
+          title="Only while speaking"
+          description="The picture stands still and moves only while the person speaks in the call you are in."
+          after={
+            <Switch
+              variant="Primary"
+              value={prefs.speakingOnly}
+              onChange={(value) => setAvatarAnimation('speakingOnly', value)}
+            />
+          }
+        />
+        {AVATAR_PLACES.map(({ surface, title, description }) => (
+          <InsetRow
+            key={surface}
+            title={title}
+            description={description}
+            after={
+              <Switch
+                variant="Primary"
+                value={prefs[surface]}
+                onChange={(value) => setAvatarAnimation(surface, value)}
+              />
+            }
+          />
+        ))}
+      </InsetGroup>
+    </InsetSection>
+  );
+}
+
 function CallSettings() {
   const prefs = useCallPrefs();
 
   return (
     <InsetSection title="Calls">
       <InsetGroup>
-        <InsetRow
-          title="Mute sounds"
-          description="Play a short tone when you mute, unmute, deafen or undeafen."
-          after={
-            <Switch
-              variant="Primary"
-              value={prefs.callSounds}
-              onChange={(callSounds) => updateCallPrefs({ callSounds })}
-            />
-          }
-        />
         <InsetRow
           title="Voice processing"
           description="Echo cancellation, noise suppression and auto gain. Off keeps your music and other apps sounding normal and avoids short audio glitches when you join a call. Turn it on if you use speakers instead of headphones. Applies the next time you join a call."
@@ -845,7 +892,9 @@ type GeneralProps = {
 export function General({ requestClose }: GeneralProps) {
   return (
     <SettingsPage title="General" requestClose={requestClose}>
+      <AnimatedAvatarSettings />
       <CallSettings />
+      <SoundSettings />
       <WelcomeGuideSettings />
       <DateAndTime />
       <Editor />

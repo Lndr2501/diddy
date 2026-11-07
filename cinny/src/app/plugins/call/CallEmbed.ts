@@ -148,6 +148,15 @@ export class CallEmbed {
     );
     iframe.allow = 'microphone; camera; display-capture; autoplay; clipboard-write; fullscreen;';
     iframe.allowFullscreen = true;
+    // Element Call has its own join / leave / screen share / reaction sounds. Diddy plays its
+    // own sound pack for these, so the call's are silenced (it reads these settings from the
+    // shared localStorage when it starts).
+    try {
+      localStorage.setItem('matrix-setting-sound-effect-volume', '0');
+      localStorage.setItem('matrix-setting-reactions-play-sound', 'false');
+    } catch {
+      // storage unavailable: the call's sounds stay on
+    }
     iframe.src = url;
 
     iframe.style.width = '100%';

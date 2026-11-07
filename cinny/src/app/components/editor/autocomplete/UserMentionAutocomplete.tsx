@@ -47,7 +47,7 @@ function UnknownMentionItem({
       onClick={() => handleAutocomplete(userId, name)}
       before={
         <Avatar size="200">
-          <UserAvatar
+          <UserAvatar surface="members"
             userId={userId}
             renderFallback={() => <Icon size="50" src={Icons.User} filled />}
           />
@@ -173,7 +173,7 @@ export function UserMentionAutocomplete({
               }
               before={
                 <Avatar size="200">
-                  <UserAvatar
+                  <UserAvatar surface="members"
                     userId={roomMember.userId}
                     src={avatarUrl ?? undefined}
                     alt={getName(roomMember)}

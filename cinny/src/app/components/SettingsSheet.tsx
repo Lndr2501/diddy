@@ -9,6 +9,8 @@ import * as css from './SettingsSheet.css';
 type SettingsSheetProps = {
   requestClose: () => void;
   children: ReactNode;
+  /** Accessible name of the dialog. */
+  label?: string;
 };
 /**
  * The settings as a near full-window sheet (like System Settings on the Mac): it fills the window
@@ -16,7 +18,7 @@ type SettingsSheetProps = {
  * On macOS the overlay title bar (traffic lights) stays free and draggable; on phones the sheet
  * takes the whole window. Esc or a click on the backdrop closes it.
  */
-export function SettingsSheet({ requestClose, children }: SettingsSheetProps) {
+export function SettingsSheet({ requestClose, children, label = 'Settings' }: SettingsSheetProps) {
   const sheetRef = useRef<HTMLDivElement>(null);
   const titleBar = useHasCustomTitleBar();
   const compact = useScreenSizeContext() === ScreenSize.Mobile;
@@ -42,7 +44,7 @@ export function SettingsSheet({ requestClose, children }: SettingsSheetProps) {
             data-compact={compact}
             role="dialog"
             aria-modal="true"
-            aria-label="Settings"
+            aria-label={label}
             tabIndex={-1}
           >
             {children}

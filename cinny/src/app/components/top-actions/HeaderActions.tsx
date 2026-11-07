@@ -114,7 +114,7 @@ export function HeaderProfileButton() {
             aria-label="User Settings"
           >
             <Avatar size="300" radii="300">
-              <UserAvatar
+              <UserAvatar surface="account"
                 userId={userId}
                 src={avatarUrl}
                 renderFallback={() => <Text size="H6">{nameInitials(displayName)}</Text>}
