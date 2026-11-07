@@ -1,13 +1,6 @@
 import React from 'react';
-import { Line, toRem } from 'folds';
+import * as css from './Sidebar.css';
 
 export function SidebarStackSeparator() {
-  return (
-    <Line
-      role="separator"
-      style={{ width: toRem(24), margin: '0 auto' }}
-      variant="Background"
-      size="300"
-    />
-  );
+  return <div role="separator" className={css.SidebarSeparator} />;
 }

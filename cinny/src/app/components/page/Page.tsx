@@ -49,10 +49,10 @@ export function PageNav({ size, children }: ClientDrawerLayoutProps & css.PageNa
       <Box grow="Yes" direction="Column">
         {children}
         {showUserPanel && (
-          <>
+          <div className={css.PageNavFooter}>
             <CallPanel />
             <UserPanel />
-          </>
+          </div>
         )}
       </Box>
     </Box>

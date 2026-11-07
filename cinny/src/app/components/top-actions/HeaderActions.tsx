@@ -67,11 +67,12 @@ export function HeaderBellButton() {
           className={css.SoftIconButton}
           variant="Surface"
           fill="Soft"
-          radii="400"
+          size="300"
+          radii="300"
           onClick={() => navigate(getInboxNotificationsPath())}
           aria-label="Notifications"
         >
-          <Icon size="400" src={Icons.Bell} />
+          <Icon size="200" src={Icons.Bell} />
           {hasHighlight && <span className={css.BellDot} />}
         </IconButton>
       )}
@@ -112,7 +113,7 @@ export function HeaderProfileButton() {
             onClick={() => setSettings(true)}
             aria-label="User Settings"
           >
-            <Avatar size="300" radii="400">
+            <Avatar size="300" radii="300">
               <UserAvatar
                 userId={userId}
                 src={avatarUrl}

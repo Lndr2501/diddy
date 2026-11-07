@@ -36,6 +36,7 @@ import { getMxIdServer } from '../../../utils/matrix';
 import { AsyncStatus, useAsyncCallback } from '../../../hooks/useAsyncCallback';
 import { useNavToActivePathMapper } from '../../../hooks/useNavToActivePathMapper';
 import { PageNav, PageNavContent, PageNavHeader } from '../../../components/page';
+import * as pageCss from '../../../components/page/style.css';
 import { stopPropagation } from '../../../utils/keyboard';
 
 export function AddServer() {
@@ -172,7 +173,7 @@ export function Explore() {
       <PageNavHeader>
         <Box grow="Yes" gap="300">
           <Box grow="Yes">
-            <Text size="H4" truncate>
+            <Text size="H4" className={pageCss.PageNavHeaderTitle} truncate>
               Explore Community
             </Text>
           </Box>

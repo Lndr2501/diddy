@@ -11,6 +11,7 @@ import { UnreadBadge } from '../../../components/unread-badge';
 import { allInvitesAtom } from '../../../state/room-list/inviteList';
 import { useNavToActivePathMapper } from '../../../hooks/useNavToActivePathMapper';
 import { PageNav, PageNavContent, PageNavHeader } from '../../../components/page';
+import * as pageCss from '../../../components/page/style.css';
 
 function InvitesNavItem() {
   const invitesSelected = useInboxInvitesSelected();
@@ -52,7 +53,7 @@ export function Inbox() {
       <PageNavHeader>
         <Box grow="Yes" gap="300">
           <Box grow="Yes">
-            <Text size="H4" truncate>
+            <Text size="H4" className={pageCss.PageNavHeaderTitle} truncate>
               Inbox
             </Text>
           </Box>

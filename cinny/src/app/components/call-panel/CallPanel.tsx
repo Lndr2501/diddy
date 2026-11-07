@@ -289,6 +289,7 @@ function ActiveCallPanel({ callEmbed }: ActiveCallPanelProps) {
               ref={anchorRef}
               className={css.CallPanelButton}
               variant={microphone ? 'SurfaceVariant' : 'Critical'}
+              data-quiet={microphone}
               fill="Soft"
               size="300"
               radii="400"
@@ -307,6 +308,7 @@ function ActiveCallPanel({ callEmbed }: ActiveCallPanelProps) {
               ref={anchorRef}
               className={css.CallPanelButton}
               variant={sound ? 'SurfaceVariant' : 'Critical'}
+              data-quiet={sound}
               fill="Soft"
               size="300"
               radii="400"
@@ -328,6 +330,7 @@ function ActiveCallPanel({ callEmbed }: ActiveCallPanelProps) {
               ref={anchorRef}
               className={css.CallPanelButton}
               variant={video ? 'Success' : 'SurfaceVariant'}
+              data-quiet={!video}
               fill="Soft"
               size="300"
               radii="400"
@@ -375,6 +378,7 @@ function ActiveCallPanel({ callEmbed }: ActiveCallPanelProps) {
                   }}
                   className={css.CallPanelButton}
                   variant={screenshare ? 'Success' : 'SurfaceVariant'}
+                  data-quiet={!screenshare}
                   fill="Soft"
                   size="300"
                   radii="400"
