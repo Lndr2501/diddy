@@ -2,6 +2,14 @@ name: Nix
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "flake.nix"
+      - "flake.lock"
+      - "nix/**"
+      - "cinny/package-lock.json"
+      - ".github/workflows/nix.yml"
   pull_request:
     paths:
       - "flake.nix"
@@ -12,6 +20,10 @@ on:
       - "src-tauri/**"
       - "config.json"
       - ".github/workflows/nix.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -31,6 +43,13 @@ jobs:
             experimental-features = nix-command flakes
             max-jobs = 1
             cores = 2
+
+      - name: Cache Nix store
+        uses: nix-community/cache-nix-action@7df957e333c1e5da7721f60227dbba6d06080569 # v7
+        with:
+          primary-key: nix-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('flake.lock', 'flake.nix', 'nix/**', 'cinny/package-lock.json') }}
+          restore-prefixes-first-match: nix-v1-${{ runner.os }}-${{ runner.arch }}-
+          gc-max-store-size: 2G
 
       - name: Evaluate flake without updating inputs
         run: nix flake check --no-build --no-update-lock-file

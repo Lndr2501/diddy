@@ -15,6 +15,17 @@ name: Build
 on:
   workflow_dispatch:
   push:
+    # Seed release dependency caches on the default branch; application-only edits
+    # still use the fast Test workflow. Tag runs keep producing releases as before.
+    branches: [main]
+    paths:
+      - "src-tauri/Cargo.toml"
+      - "src-tauri/Cargo.lock"
+      - "package-lock.json"
+      - "cinny/package-lock.json"
+      - ".node-version"
+      - ".github/workflows/build.yml"
+      - ".github/scripts/timestamp-log.py"
     tags:
       - "v*"
 
@@ -64,6 +75,12 @@ jobs:
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+        with:
+          workspaces: src-tauri -> target
+          key: release-${{ runner.arch }}
+
       - name: Install Linux dependencies
         if: matrix.platform == 'ubuntu-22.04'
         run: |
@@ -72,8 +89,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          (cd cinny && npm ci)
-          npm ci
+          (cd cinny && HUSKY=0 npm ci --no-audit --no-fund)
+          npm ci --no-audit --no-fund
 
       - name: Build
         env:
@@ -102,7 +119,21 @@ jobs:
               echo "macOS signing: ad hoc (no certificate secrets set)"
             fi
           fi
-          npm run tauri -- build --bundles ${{ matrix.bundles }}
+          set -o pipefail
+          npm run tauri -- build --verbose --bundles ${{ matrix.bundles }} -- --locked --timings 2>&1 \
+            | python3 -u .github/scripts/timestamp-log.py \
+            | tee "$RUNNER_TEMP/build-${{ matrix.name }}.log"
+
+      - name: Upload build timing diagnostics
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: build-timings-${{ matrix.name }}
+          path: |
+            src-tauri/target/cargo-timings/*.html
+            ${{ runner.temp }}/build-${{ matrix.name }}.log
+          retention-days: 7
+          if-no-files-found: ignore
 
       - name: Upload installers
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -162,6 +193,6 @@ jobs:
 
           NOTES
           cat "$RUNNER_TEMP/changes.md" >> "$RUNNER_TEMP/notes.md"
-          (cd dist && sha256sum *.dmg > SHA256SUMS && cat SHA256SUMS)
+          (cd dist && sha256sum ./*.dmg > SHA256SUMS && cat SHA256SUMS)
           gh release create "$TAG" dist/*.dmg dist/SHA256SUMS --repo "$GITHUB_REPOSITORY" \
             --verify-tag --title "Diddy $version" --notes-file "$RUNNER_TEMP/notes.md"

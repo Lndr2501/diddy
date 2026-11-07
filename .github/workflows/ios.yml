@@ -27,6 +27,12 @@ on:
         type: string
         default: ""
   push:
+    # Default-branch dependency caches can be reused by PR and tag builds.
+    branches: [main]
+    paths:
+      - "ios/project.yml"
+      - "ios/Package.resolved"
+      - ".github/workflows/ios.yml"
     tags:
       # iOS-only releases: builds the IPA and publishes it as a GitHub release (pre-release while
       # the tag contains "beta"/"alpha"/"rc"). Desktop v* tags are left to build.yml, and an iOS
@@ -36,6 +42,11 @@ on:
     paths:
       - "ios/**"
       - ".github/workflows/ios.yml"
+
+# A new PR revision supersedes the old archive. Tags/manual releases never cancel one another.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   ios:
@@ -64,14 +75,17 @@ jobs:
         # Whole-screen sharing without an extension (ScreenCaptureKit on iOS) is only compiled into
         # LiveKit with the iOS 27 SDK, so use the newest Xcode the runner has.
         run: |
-          newest=$(ls -d /Applications/Xcode_*.app | grep -E 'Xcode_[0-9.]+\.app$' | sort -V | tail -n 1)
+          newest=$(printf '%s\n' /Applications/Xcode_*.app | grep -E 'Xcode_[0-9.]+\.app$' | sort -V | tail -n 1)
           sudo xcode-select -s "$newest"
           xcodebuild -version && swift --version
           sdk=$(xcrun --sdk iphoneos --show-sdk-version)
           echo "iOS SDK $sdk"
-          echo "xcode=$(xcodebuild -version | head -n 1)" >> "$GITHUB_OUTPUT"
-          echo "sdk=$sdk" >> "$GITHUB_OUTPUT"
-          echo "signed=$SIGNED" >> "$GITHUB_OUTPUT"
+          {
+            echo "xcode=$(xcodebuild -version | head -n 1)"
+            echo "sdk=$sdk"
+            echo "cache-key=$(xcodebuild -version | shasum -a 256 | cut -d ' ' -f 1)"
+            echo "signed=$SIGNED"
+          } >> "$GITHUB_OUTPUT"
           if [ "${sdk%%.*}" -lt 27 ]; then
             echo "::warning::iOS SDK $sdk: screen sharing will only cover the Diddy app itself, even on iOS 27 devices. Needs Xcode 27."
           fi
@@ -84,8 +98,29 @@ jobs:
           DIDDY_DEVELOPMENT_TEAM: ${{ secrets.APPLE_TEAM_ID }}
         run: xcodegen generate
 
-      - name: Resolve Swift packages
-        run: xcodebuild -resolvePackageDependencies -project Diddy.xcodeproj -scheme Diddy -clonedSourcePackagesDirPath build/spm
+      - name: Restore pinned Swift dependency resolution
+        run: |
+          mkdir -p Diddy.xcodeproj/project.xcworkspace/xcshareddata/swiftpm
+          cp Package.resolved Diddy.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+
+      - name: Cache Xcode and Swift packages
+        uses: irgaly/xcode-cache@4141f139f00e335c6e1031fb93e667181f86146f # v1
+        with:
+          key: xcode-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.toolchain.outputs.cache-key }}-${{ env.SIGNED }}-${{ hashFiles('ios/Package.resolved', 'ios/project.yml') }}-${{ github.sha }}
+          restore-keys: xcode-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.toolchain.outputs.cache-key }}-${{ env.SIGNED }}-${{ hashFiles('ios/Package.resolved', 'ios/project.yml') }}-
+          deriveddata-directory: ${{ github.workspace }}/ios/build/DerivedData
+          sourcepackages-directory: ${{ github.workspace }}/ios/build/spm
+          swiftpm-package-resolved-file: ios/Package.resolved
+          swiftpm-cache-key: spm-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.toolchain.outputs.cache-key }}-${{ hashFiles('ios/Package.resolved') }}
+          restore-mtime-targets: |
+            ios/**/*.pbxproj
+            ios/project.yml
+
+      - name: Resolve Swift packages from lockfile
+        run: |
+          xcodebuild -resolvePackageDependencies -project Diddy.xcodeproj -scheme Diddy \
+            -clonedSourcePackagesDirPath build/spm -onlyUsePackageVersionsFromResolvedFile
+          cmp Package.resolved Diddy.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
 
       - name: Build unsigned archive
         if: env.SIGNED != 'true'
@@ -95,9 +130,14 @@ jobs:
             -project Diddy.xcodeproj -scheme Diddy -configuration Release \
             -destination 'generic/platform=iOS' \
             -clonedSourcePackagesDirPath build/spm \
+            -derivedDataPath build/DerivedData -disableAutomaticPackageResolution \
+            -showBuildTimingSummary \
             -archivePath build/Diddy.xcarchive \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
-            | tee build/xcodebuild.log | grep -E "error:|warning: .*deprecated|\*\* (ARCHIVE|BUILD)" || true
+            | tee build/xcodebuild.log | grep -E "error:|warning: .*deprecated|\*\* (ARCHIVE|BUILD)|Build Timing Summary" || {
+              status=("${PIPESTATUS[@]}")
+              [ "${status[0]}" -eq 0 ] && [ "${status[1]}" -eq 0 ] || exit 1
+            }
           test -d build/Diddy.xcarchive/Products/Applications/Diddy.app || {
             echo "::error::Archive failed"; grep -E "error:" build/xcodebuild.log | sort -u | head -n 80; exit 1; }
 
@@ -126,8 +166,13 @@ jobs:
             -project Diddy.xcodeproj -scheme Diddy -configuration Release \
             -destination 'generic/platform=iOS' \
             -clonedSourcePackagesDirPath build/spm \
+            -derivedDataPath build/DerivedData -disableAutomaticPackageResolution \
+            -showBuildTimingSummary \
             -archivePath build/Diddy.xcarchive \
-            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" "${auth[@]}" | tee build/xcodebuild.log | grep -E "error:|\*\* ARCHIVE" || true
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" "${auth[@]}" | tee build/xcodebuild.log | grep -E "error:|\*\* ARCHIVE|Build Timing Summary" || {
+              status=("${PIPESTATUS[@]}")
+              [ "${status[0]}" -eq 0 ] && [ "${status[1]}" -eq 0 ] || exit 1
+            }
           test -d build/Diddy.xcarchive || { grep -E "error:" build/xcodebuild.log | sort -u | head -n 80; exit 1; }
           /usr/libexec/PlistBuddy -c "Add :method string $EXPORT_METHOD" -c "Add :teamID string $APPLE_TEAM_ID" -c "Add :signingStyle string automatic" "$RUNNER_TEMP/ExportOptions.plist"
           xcodebuild -exportArchive -archivePath build/Diddy.xcarchive -exportPath build/export \
@@ -149,7 +194,9 @@ jobs:
           fi
           missing=0
           for binary in "$app/Diddy" "$app"/Frameworks/*.framework/*; do
-            [ -f "$binary" ] && file "$binary" | grep -q Mach-O || continue
+            if [ ! -f "$binary" ] || ! file "$binary" | grep -q Mach-O; then
+              continue
+            fi
             for lib in $(otool -L "$binary" | awk '/@rpath\//{print $1}'); do
               name=${lib#@rpath/}
               if [ ! -e "$app/Frameworks/$name" ]; then

@@ -12,10 +12,6 @@ Aus dem Review von PR #32. Bewusst noch nicht umgesetzt, weil sie das Speicherfo
 - **Schlüsselrotation.** Verlässt jemand den Kanal, bleibt der Schlüssel gleich. Element Call erzeugt dann einen neuen Schlüssel und verteilt ihn an die Verbliebenen.
 - **E2EE-Anzeige im Sprachkanal.** Die Oberfläche zeigt nicht, ob der Anruf verschlüsselt ist (verschlüsselter Raum) und ob für alle Teilnehmer ein Schlüssel vorliegt.
 
-## Build
-
-- **`Package.resolved` einchecken.** Die Pakete sind mit `exactVersion` festgelegt, ihre eigenen Abhängigkeiten aber nicht. Das erzeugte Projekt ist nicht eingecheckt; die Auflösung müsste nach `xcodegen generate` aus dem Projekt nach `ios/` kopiert und im Workflow zurückgelegt werden.
-
 ## Konten und Sitzungen
 
 - **Verwaiste Konten aufräumen.** Ordner unter `Accounts/` und Schlüsselbund-Einträge ohne Eintrag in der Kontoliste (z. B. nach einem Absturz mitten im Login) werden nie gelöscht.

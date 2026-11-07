@@ -1,0 +1,42 @@
+{
+  "originHash" : "f9f0ad18a095c2c36f12b2daf6b56dcda298d86acec02f5ed11fec62249bfade",
+  "pins" : [
+    {
+      "identity" : "client-sdk-swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/livekit/client-sdk-swift",
+      "state" : {
+        "revision" : "93a7251057bdb6a80a7b1f6d11464d578ebdc09b",
+        "version" : "2.18.0"
+      }
+    },
+    {
+      "identity" : "livekit-uniffi-xcframework",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/livekit/livekit-uniffi-xcframework.git",
+      "state" : {
+        "revision" : "7a9bf91b1601d5c408ae0cac7dc2047b5a4f615e",
+        "version" : "0.1.9"
+      }
+    },
+    {
+      "identity" : "matrix-rust-components-swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/element-hq/matrix-rust-components-swift",
+      "state" : {
+        "revision" : "aaed1190a928db9085e8c2e58a7b1c109128b922",
+        "version" : "26.10.27"
+      }
+    },
+    {
+      "identity" : "webrtc-xcframework",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/livekit/webrtc-xcframework.git",
+      "state" : {
+        "revision" : "a41df9e9bcc7ab1d62131fda75c123ea391e5188",
+        "version" : "150.7871.3"
+      }
+    }
+  ],
+  "version" : 3
+}

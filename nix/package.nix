@@ -18,31 +18,39 @@
 let
   version = (lib.importJSON ../src-tauri/tauri.conf.json).version;
 
-  # Only application sources enter the store, never local handovers, credentials,
-  # build output or dependencies installed outside Nix.
-  src = lib.cleanSourceWith {
-    name = "diddy-source";
+  # Keep frontend inputs independent of Electron/Rust changes. Ancestor directories
+  # must remain traversable, while ignored/generated files never enter either source.
+  sourceFor = name: paths: lib.cleanSourceWith {
+    inherit name;
     src = ../.;
     filter = path: type:
       let
         relative = lib.removePrefix "${toString ../.}/" (toString path);
-        top = builtins.head (lib.splitString "/" relative);
+        included = builtins.any (wanted:
+          relative == wanted
+          || lib.hasPrefix "${wanted}/" relative
+          || lib.hasPrefix "${relative}/" wanted
+        ) paths;
       in
       lib.cleanSourceFilter path type
-      && (toString path == toString ../. || builtins.elem top [
-        "cinny"
-        "electron"
-        "src-tauri"
-        "config.json"
-        "LICENSE"
-      ])
+      && (toString path == toString ../. || included)
       && !(builtins.elem (baseNameOf path) [ "node_modules" "dist" "target" ".claude" ]);
   };
 
+  frontendSrc = sourceFor "diddy-frontend-source" [ "cinny" "config.json" ];
+  shellSrc = sourceFor "diddy-shell-source" [
+    "electron"
+    "src-tauri/app-icons"
+    "src-tauri/icons"
+    "src-tauri/tauri.conf.json"
+    "LICENSE"
+  ];
+
   frontend = (buildNpmPackage.override { nodejs = nodejs_24; }) {
     pname = "diddy-frontend";
-    inherit version src;
-    sourceRoot = "${src.name}/cinny";
+    inherit version;
+    src = frontendSrc;
+    sourceRoot = "${frontendSrc.name}/cinny";
 
     # Use the integrity hashes already recorded in the lockfile. No fake hashes
     # and no network access from the actual build sandbox are needed.
@@ -81,7 +89,8 @@ let
 in
 stdenvNoCC.mkDerivation {
   pname = "diddy";
-  inherit version src;
+  inherit version;
+  src = shellSrc;
 
   nativeBuildInputs = [
     makeWrapper
