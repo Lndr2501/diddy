@@ -24,7 +24,8 @@ type SoundboardMenuProps = {
   onClose: () => void;
   onImport: () => void;
 };
-function SoundboardMenu({ onClose, onImport }: SoundboardMenuProps) {
+// Also opened from the "more" menu of the sidebar call panel (issue #31).
+export function SoundboardMenu({ onClose, onImport }: SoundboardMenuProps) {
   const { clips, volume, inCall, playing } = useSoundboard();
   const fileRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string>();
