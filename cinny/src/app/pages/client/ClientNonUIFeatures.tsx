@@ -35,6 +35,7 @@ import { useDiddyOptionsAutoJoin } from '../../plugins/diddy/autoJoin';
 import { getLocalStatus, useDiddyStatusSync } from '../../plugins/diddy/status';
 import { DiddyOnboarding } from '../../features/onboarding/DiddyOnboarding';
 import { MatrixIntro } from '../../features/intro/MatrixIntro';
+import { CallFrameMenu } from '../../components/CallFrameMenu';
 
 /**
  * Notification sounds go through Web Audio instead of an <audio> element. A played <audio> element
@@ -380,6 +381,7 @@ export function ClientNonUIFeatures({ children }: ClientNonUIFeaturesProps) {
       <DiddyStatusFeature />
       <DiddyOnboarding />
       <MatrixIntro />
+      <CallFrameMenu />
       {children}
     </>
   );

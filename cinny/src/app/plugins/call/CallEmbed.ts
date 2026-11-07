@@ -188,7 +188,7 @@ export class CallEmbed {
       installScreenShareAudio(iframe.contentWindow);
       // the call view is its own document: without this it showed the web view menu again
       installContextMenuGuard(iframe.contentWindow?.document);
-      installCallFrameMenu(iframe.contentWindow?.document, diagContextMenu);
+      installCallFrameMenu(iframe.contentWindow?.document, iframe, diagContextMenu);
       installSoundboard(iframe.contentWindow);
       // Restyle the Element Call tiles to match the app theme.
       installCallTheme(iframe.contentWindow);
