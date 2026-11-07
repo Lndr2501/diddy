@@ -2,25 +2,9 @@
 // Room + invite are created through the Matrix API (fast, robust); sending/receiving goes through the UI.
 // Needs the local Synapse test server and accounts file, see loggedin.spec.cjs.
 const { test, expect } = require('@playwright/test');
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
+const { openApp, accounts, HS } = require('./helpers.cjs');
 
-const HS = process.env.DIDDY_TEST_HOMESERVER || 'http://127.0.0.1:8008';
-const file =
-  process.env.DIDDY_TEST_ACCOUNTS || path.join(os.homedir(), 'diddy-testserver', 'accounts.txt');
-const accounts = {};
-try {
-  fs.readFileSync(file, 'utf8')
-    .split('\n')
-    .forEach((l) => {
-      const [u, p] = l.trim().split(/\s+/);
-      if (u && p) accounts[u] = p;
-    });
-} catch (e) {
-  /* skipped below */
-}
-test.skip(!accounts.testa || !accounts.testb, `need testa and testb in ${file}`);
+test.skip(!accounts.testa || !accounts.testb, "need testa and testb accounts (DIDDY_TEST_ACCOUNTS)");
 
 const api = async (method, url, token, body) => {
   // Synapse rate-limits bursts (429 + retry_after_ms): wait and retry instead of failing.
@@ -52,36 +36,19 @@ const apiLogin = async (user) =>
     })
   ).access_token;
 
-async function openApp(browser, user) {
-  const context = await browser.newContext({ viewport: { width: 1100, height: 750 } });
-  await context.addInitScript(() => {
-    Object.defineProperty(window.navigator, 'platform', { get: () => 'MacIntel' });
-    window.__TAURI_INTERNALS__ = {
-      invoke: async (cmd) => (cmd === 'connection_profiles' ? [] : null),
-      transformCallback: () => 0,
-      metadata: { currentWindow: { label: 'main' }, currentWebview: { label: 'main' } },
-    };
-  });
-  const page = await context.newPage();
-  await page.goto('/');
-  const hs = page.getByRole('textbox').first();
-  await hs.fill(HS);
-  await hs.press('Enter');
-  await expect(page.getByRole('button', { name: 'Login', exact: true })).toBeVisible({
-    timeout: 30000,
-  });
-  await page.getByRole('textbox').nth(1).fill(user);
-  await page.locator('input[type=password]').fill(accounts[user]);
-  await page.getByRole('button', { name: 'Login', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Back' })).toBeVisible({ timeout: 60000 });
-  // Onboarding dialogs (English "Skip", German "Überspringen") may appear one after another.
-  const skip = page.getByRole('button', { name: /^(Skip|Überspringen)$/ });
-  for (let i = 0; i < 6; i += 1) {
-    if (!(await skip.first().isVisible({ timeout: 2500 }).catch(() => false))) break;
-    // A dialog may be swapped for the next one mid-click: short timeout, then look again.
-    await skip.first().click({ timeout: 3000 }).catch(() => undefined);
-  }
-  return page;
+/** Opens a room by id. The room list is alphabetical and virtualized (a new "ui-test-..." room is
+ * usually outside the rendered rows), so navigate by hash. Navigation right after login can be
+ * ignored while the first sync runs, and re-setting the same hash fires no event: so every retry
+ * first goes to #/home/ and then to the room. */
+async function openRoomById(page, roomId, roomName, expectText = roomName) {
+  await expect(async () => {
+    await page.evaluate(async (id) => {
+      window.location.hash = '#/home/';
+      await new Promise((r) => setTimeout(r, 300));
+      window.location.hash = `#/home/${id}/`;
+    }, roomId);
+    await expect(page.getByText(expectText).first()).toBeVisible({ timeout: 3000 });
+  }).toPass({ timeout: 40000, intervals: [500, 1000, 2000] });
 }
 
 test('testa messages testb in a fresh room', async ({ browser }) => {
@@ -97,8 +64,7 @@ test('testa messages testb in a fresh room', async ({ browser }) => {
 
   const a = await openApp(browser, 'testa');
   // Open by id: the room list is virtualized and grows with every test run.
-  await a.evaluate((id) => { window.location.hash = `#/home/${id}/`; }, roomId);
-  await expect(a.getByText(roomName).first()).toBeVisible({ timeout: 30000 });
+  await openRoomById(a, roomId, roomName);
   const composer = a.getByRole('textbox').last();
   await composer.click();
   await composer.pressSequentially(text);
@@ -121,7 +87,6 @@ test('testa messages testb in a fresh room', async ({ browser }) => {
     .last()
     .getByRole('button', { name: /accept/i })
     .click();
-  await b.evaluate((id) => { window.location.hash = `#/home/${id}/`; }, roomId);
-  await expect(b.getByText(text).first()).toBeVisible({ timeout: 30000 });
+  await openRoomById(b, roomId, roomName, text);
   await b.screenshot({ path: 'test-results/ui-mac/screens/chat-testb.png' });
 });
