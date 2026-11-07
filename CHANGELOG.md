@@ -2,6 +2,11 @@
 
 ## Unveröffentlicht
 
+### Call: nur noch ein Rechtsklick-Menü
+
+- Rechtsklick auf eine Kachel öffnete zwei Menüs übereinander: Diddys Personenmenü und das eigene Menü von Element Call (Mute for me, Lautstärke). Diddy nimmt das Ereignis jetzt vor Element Call ab, es erscheint nur noch Diddys Menü.
+- "Volume & Mute for me…" öffnet das Menü von Element Call dort, wo man geklickt hat (vorher ein simulierter Klick, der bei der Maus nicht auslöste). Tests in `callFrameMenu.test.cjs`. Nicht in einem echten Call geprüft, die Ursache stammt aus dem Quelltext des mitgelieferten Element Call.
+
 ### Teilnehmer eines Calls in der Raumliste
 
 - Wer gerade im Call ist, steht jetzt wie bei Discord untereinander direkt unter dem Call-Raum in der Seitenleiste (Profilbild und Name, eine Person pro Zeile). Die kleinen Avatare in der Raumzeile entfallen, das "n Live"-Badge bleibt.

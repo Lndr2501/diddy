@@ -147,6 +147,9 @@ const textToCopy = (doc: Document, target: EventTarget | null): string => {
   return '';
 };
 
+/** True while `openCallTileMenu` dispatches its right-click, so the capture handler lets it pass. */
+let openingTileMenu = false;
+
 export const installCallFrameMenu = (
   doc: Document | null | undefined,
   iframe: HTMLIFrameElement
@@ -155,6 +158,25 @@ export const installCallFrameMenu = (
   const marked = doc as Document & { __diddyFrameMenu?: boolean };
   if (marked.__diddyFrameMenu) return;
   marked.__diddyFrameMenu = true;
+
+  // A person's tile: the person menu (profile, message, volume ...). Element Call opens its own
+  // menu from the same event, so this runs in the capture phase and keeps the event from it;
+  // "Volume & Mute for me" asks for that menu again with `openCallTileMenu`.
+  doc.addEventListener(
+    'contextmenu',
+    (evt) => {
+      if (openingTileMenu || evt.altKey) return;
+      if (isCallFrameHidden(getComputedStyle(iframe))) return;
+      const tile = (evt.target as Element | null)?.closest?.(CALL_TILE_SELECTOR);
+      const tileUser = tileUserId(tile);
+      if (!tileUser) return;
+      evt.preventDefault();
+      evt.stopPropagation();
+      const box = iframe.getBoundingClientRect();
+      openCallUserMenu(tileUser, box.left + evt.clientX, box.top + evt.clientY);
+    },
+    true
+  );
 
   doc.addEventListener('contextmenu', (evt) => {
     const box = iframe.getBoundingClientRect();
@@ -174,13 +196,6 @@ export const installCallFrameMenu = (
     }
     // the guard already prevented the event unless the native menu is wanted (inputs, Option)
     if (!evt.defaultPrevented) return;
-    // a person's tile: the person menu (profile, message, volume ...) instead of plain Copy
-    const tile = (evt.target as Element | null)?.closest?.(CALL_TILE_SELECTOR);
-    const tileUser = tileUserId(tile);
-    if (tileUser) {
-      openCallUserMenu(tileUser, box.left + evt.clientX, box.top + evt.clientY);
-      return;
-    }
     const text = textToCopy(doc, evt.target);
     if (!text) return;
     const detail: CallFrameMenuDetail = {
@@ -193,21 +208,29 @@ export const installCallFrameMenu = (
 };
 
 /**
- * Open Element Call's own menu of a tile (mute for me, volume slider): its trigger is the tile
- * itself and opens on a primary-button pointerdown.
+ * Open Element Call's own menu of a tile (mute for me, volume slider): it is a context menu of
+ * the tile, so it gets a right-click at `point` (coordinates in the call document, default: the
+ * middle of the tile).
  */
-export const openCallTileMenu = (tile: Element): void => {
+export const openCallTileMenu = (tile: Element, point?: { x: number; y: number }): void => {
   const win = tile.ownerDocument.defaultView as (Window & typeof globalThis) | null;
-  const PointerCtor = win?.PointerEvent ?? win?.MouseEvent;
-  if (!win || !PointerCtor) return;
-  tile.dispatchEvent(
-    new PointerCtor('pointerdown', {
-      bubbles: true,
-      cancelable: true,
-      button: 0,
-      buttons: 1,
-      ctrlKey: false,
-      view: win,
-    })
-  );
+  if (!win) return;
+  const rect = tile.getBoundingClientRect();
+  openingTileMenu = true;
+  try {
+    tile.dispatchEvent(
+      new win.MouseEvent('contextmenu', {
+        bubbles: true,
+        cancelable: true,
+        composed: true,
+        button: 2,
+        buttons: 2,
+        clientX: point?.x ?? rect.left + rect.width / 2,
+        clientY: point?.y ?? rect.top + rect.height / 2,
+        view: win,
+      })
+    );
+  } finally {
+    openingTileMenu = false;
+  }
 };
