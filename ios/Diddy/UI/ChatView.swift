@@ -1,22 +1,28 @@
 import MatrixRustSDK
 import PhotosUI
+import QuickLook
 import SwiftUI
 
 struct ChatView: View {
     @ObservedObject var account: MatrixAccount
     let roomId: String
+    /// The text chat of a voice channel, opened from inside it: no call button or banner needed.
+    var isVoiceChat = false
     @StateObject private var holder = TimelineHolder()
 
     var body: some View {
         Group {
             if let controller = holder.controller {
-                ChatContent(account: account, controller: controller, summary: account.summary(for: roomId))
+                ChatContent(account: account, controller: controller, summary: account.summary(for: roomId), isVoiceChat: isVoiceChat)
             } else {
                 ZStack { Theme.chat.ignoresSafeArea(); ProgressView() }
             }
         }
         .task {
-            guard holder.controller == nil, let room = account.room(roomId) else { return }
+            guard holder.controller == nil else { return }
+            // A channel joined a moment ago may still be on its way from the server.
+            try? await account.waitForRoom(roomId)
+            guard let room = account.room(roomId) else { return }
             let controller = TimelineController(room: room, ownUserId: account.userId)
             holder.controller = controller
             await controller.start()
@@ -33,18 +39,43 @@ private struct ChatContent: View {
     @ObservedObject var account: MatrixAccount
     @ObservedObject var controller: TimelineController
     let summary: RoomSummary?
+    let isVoiceChat: Bool
     @EnvironmentObject private var calls: CallManager
+    @StateObject private var memberStore = MemberStore()
     @State private var draft = ""
     @State private var replyTo: MessageRow?
+    @State private var editing: MessageRow?
     @State private var photo: PhotosPickerItem?
+    @State private var showMembers = false
+    @State private var showInfo = false
+    @State private var profile: ProfileTarget?
+    @State private var viewedImage: ViewedImage?
+    @State private var openedFile: URL?
+    @State private var atBottom = true
+    /// While a chat opens, rows and images keep arriving and push the bottom out of view.
+    @State private var settling = true
+    @State private var mentions: [String: String] = [:]
+    @State private var canSend = true
     @FocusState private var composerFocused: Bool
 
     private var title: String { summary?.name ?? "Channel" }
+    private var roomId: String { controller.room.id() }
+    private var trimmedDraft: String { draft.trimmingCharacters(in: .whitespacesAndNewlines) }
 
     var body: some View {
         VStack(spacing: 0) {
+            if !isVoiceChat { CallBanner(account: account, summary: summary, roomId: roomId, title: title) }
             messages
-            composer
+            typingLine
+            if canSend {
+                composer
+            } else {
+                Text("You do not have permission to send messages here.")
+                    .font(.footnote).foregroundStyle(Theme.muted)
+                    .frame(maxWidth: .infinity)
+                    .padding(14)
+                    .background(Theme.chat)
+            }
         }
         .background(Theme.chat.ignoresSafeArea())
         .navigationTitle(title)
@@ -53,23 +84,37 @@ private struct ChatContent: View {
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .principal) {
-                HStack(spacing: 6) {
-                    Image(systemName: summary?.isDirect == true ? "at" : "number").foregroundStyle(Theme.faint)
-                    Text(title).font(.headline).foregroundStyle(Theme.text).lineLimit(1)
-                    if summary?.isEncrypted == true {
-                        Image(systemName: "lock.fill").font(.caption2).foregroundStyle(Theme.faint)
+                Button { showInfo = true } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: summary?.isDirect == true ? "at" : "number").foregroundStyle(Theme.faint)
+                        Text(title).font(.headline).foregroundStyle(Theme.text).lineLimit(1)
+                        if summary?.isEncrypted == true {
+                            Image(systemName: "lock.fill").font(.caption2).foregroundStyle(Theme.faint)
+                        }
                     }
                 }
+                .accessibilityLabel("\(title), channel details")
             }
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button {
-                    Task { await calls.join(account: account, roomId: controller.room.id(), roomName: title) }
-                } label: {
-                    Image(systemName: "phone.fill")
+            ToolbarItemGroup(placement: .navigationBarTrailing) {
+                if !isVoiceChat {
+                    Button {
+                        Task { await calls.join(account: account, roomId: roomId, roomName: title, showCallScreen: true) }
+                    } label: {
+                        Image(systemName: "phone.fill")
+                    }
+                    .accessibilityLabel("Start voice call")
                 }
-                .accessibilityLabel("Start voice call")
+                Button { showMembers = true } label: {
+                    Image(systemName: "person.2.fill")
+                }
+                .accessibilityLabel("Members")
             }
         }
+        .sheet(isPresented: $showMembers) { MembersView(account: account, roomId: roomId) }
+        .sheet(isPresented: $showInfo) { ChannelInfoView(account: account, roomId: roomId) }
+        .sheet(item: $profile) { UserProfileSheet(account: account, userId: $0.userId, roomId: roomId) }
+        .fullScreenCover(item: $viewedImage) { ImageViewer(image: $0.image) }
+        .quickLookPreview($openedFile)
         .alert("Message", isPresented: Binding(get: { controller.sendError != nil }, set: { if !$0 { controller.sendError = nil } })) {
             Button("OK", role: .cancel) {}
         } message: { Text(controller.sendError ?? "") }
@@ -80,6 +125,16 @@ private struct ChatContent: View {
                     await controller.sendImage(image)
                 }
                 photo = nil
+            }
+        }
+        .onChange(of: draft) { text in
+            controller.setTyping(!text.isEmpty && editing == nil)
+        }
+        .onDisappear { controller.setTyping(false) }
+        .task {
+            await memberStore.load(account: account, roomId: roomId)
+            if let levels = try? await controller.room.getPowerLevels() {
+                canSend = levels.canOwnUserSendMessage(message: .roomMessage)
             }
         }
     }
@@ -94,36 +149,90 @@ private struct ChatContent: View {
                         ProgressView()
                             .frame(maxWidth: .infinity)
                             .padding()
-                            .onAppear { Task { await controller.paginate() } }
+                            // Runs again after each page, in case the spinner is still in view.
+                            .task(id: controller.rows.count) {
+                                let top = controller.rows.first?.id
+                                await controller.loadOlderMessages()
+                                if let top, !atBottom { proxy.scrollTo(top, anchor: .top) }
+                            }
                     }
                     ForEach(controller.rows) { row in
-                        MessageRowView(row: row, client: account.client)
-                            .id(row.id)
-                            .contextMenu { menu(for: row) }
+                        MessageRowView(
+                            row: row,
+                            client: account.client,
+                            onProfile: { profile = ProfileTarget(userId: row.sender) },
+                            onReact: { key in Task { await controller.toggleReaction(key, on: row) } },
+                            onImage: { viewedImage = ViewedImage(image: $0) },
+                            onFile: { openedFile = $0 }
+                        )
+                        .id(row.id)
+                        .contextMenu { menu(for: row) }
                     }
                     Color.clear.frame(height: 8).id("bottom")
+                        .onAppear { atBottom = true; controller.markRead() }
+                        .onDisappear {
+                            if settling { proxy.scrollTo("bottom", anchor: .bottom) } else { atBottom = false }
+                        }
                 }
             }
             .scrollDismissesKeyboard(.interactively)
+            .simultaneousGesture(DragGesture(minimumDistance: 10).onChanged { _ in settling = false })
+            .task {
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                settling = false
+            }
             .onChange(of: controller.rows.last?.id) { _ in
+                // Reading further up stays put when a message comes in, unless it is your own.
+                guard atBottom || controller.rows.last?.isOwn == true else { return }
                 withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo("bottom", anchor: .bottom) }
                 controller.markRead()
             }
+            .onChange(of: composerFocused) { focused in
+                guard focused, atBottom else { return }
+                withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo("bottom", anchor: .bottom) }
+            }
             .onAppear { proxy.scrollTo("bottom", anchor: .bottom) }
+            .overlay(alignment: .bottomTrailing) {
+                if !atBottom {
+                    Button {
+                        withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo("bottom", anchor: .bottom) }
+                    } label: {
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(.white)
+                            .frame(width: 40, height: 40)
+                            .background(Circle().fill(Theme.elevated))
+                            .overlay(Circle().stroke(Theme.faint.opacity(0.4), lineWidth: 1))
+                    }
+                    .padding(12)
+                    .accessibilityLabel("Jump to latest messages")
+                }
+            }
         }
     }
 
     @ViewBuilder
     private func menu(for row: MessageRow) -> some View {
-        Button { replyTo = row; composerFocused = true } label: { Label("Reply", systemImage: "arrowshape.turn.up.left") }
+        Button { replyTo = row; editing = nil; composerFocused = true } label: { Label("Reply", systemImage: "arrowshape.turn.up.left") }
         Menu {
             ForEach(["👍", "❤️", "😂", "😮", "😢", "🔥", "👀", "✅"], id: \.self) { emoji in
                 Button(emoji) { Task { await controller.toggleReaction(emoji, on: row) } }
             }
         } label: { Label("Add Reaction", systemImage: "face.smiling") }
         if case .text(let text) = row.body {
-            Button { UIPasteboard.general.string = text } label: { Label("Copy Text", systemImage: "doc.on.doc") }
+            let readable = Self.readableMentions(in: text)
+            Button { UIPasteboard.general.string = readable.text } label: { Label("Copy Text", systemImage: "doc.on.doc") }
+            if row.isOwn {
+                Button {
+                    editing = row
+                    replyTo = nil
+                    draft = readable.text
+                    mentions = readable.mentions
+                    composerFocused = true
+                } label: { Label("Edit Message", systemImage: "pencil") }
+            }
         }
+        Button { profile = ProfileTarget(userId: row.sender) } label: { Label("View Profile", systemImage: "person.crop.circle") }
         if row.isOwn {
             Button(role: .destructive) { Task { await controller.redact(row) } } label: {
                 Label("Delete Message", systemImage: "trash")
@@ -131,41 +240,95 @@ private struct ChatContent: View {
         }
     }
 
+    /// Discord's line under the chat, always reserving no space when nobody types.
+    @ViewBuilder
+    private var typingLine: some View {
+        let names = controller.typingUserIds.map { account.name(of: $0) }
+        if !names.isEmpty {
+            Text(names.count == 1 ? "\(names[0]) is typing…"
+                 : names.count == 2 ? "\(names[0]) and \(names[1]) are typing…"
+                 : "Several people are typing…")
+                .font(.caption.weight(.medium))
+                .foregroundStyle(Theme.muted)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 3)
+                .onAppear { account.resolveProfiles(controller.typingUserIds, in: roomId) }
+        }
+    }
+
+    /// The `@word` being typed at the end of the message, if any.
+    private var mentionQuery: String? {
+        guard let at = draft.lastIndex(of: "@") else { return nil }
+        if at != draft.startIndex, !draft[draft.index(before: at)].isWhitespace { return nil }
+        let query = draft[draft.index(after: at)...]
+        return query.contains(where: \.isWhitespace) ? nil : String(query)
+    }
+
+    private var mentionSuggestions: [MemberEntry] {
+        guard let query = mentionQuery else { return [] }
+        let found = memberStore.members.filter {
+            $0.userId != account.userId && (query.isEmpty || $0.name.localizedCaseInsensitiveContains(query) || $0.userId.localizedCaseInsensitiveContains(query))
+        }
+        return Array(found.prefix(6))
+    }
+
+    private func insertMention(_ member: MemberEntry) {
+        guard let at = draft.lastIndex(of: "@") else { return }
+        draft = String(draft[..<at]) + "@\(member.name) "
+        mentions[member.name] = member.userId
+    }
+
     private var composer: some View {
         VStack(spacing: 0) {
-            if let replyTo {
-                HStack {
-                    Text("Replying to ").foregroundColor(Theme.muted) + Text(replyTo.senderName).bold().foregroundColor(Theme.text)
-                    Spacer()
-                    Button { self.replyTo = nil } label: { Image(systemName: "xmark.circle.fill") }
-                        .foregroundStyle(Theme.muted)
+            if !mentionSuggestions.isEmpty {
+                VStack(spacing: 0) {
+                    ForEach(mentionSuggestions) { member in
+                        Button { insertMention(member) } label: {
+                            PersonRow(name: member.name, subtitle: member.userId, avatarUrl: member.avatarUrl)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 6)
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
-                .font(.footnote)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
                 .background(Theme.elevated)
             }
-            HStack(alignment: .bottom, spacing: 10) {
-                PhotosPicker(selection: $photo, matching: .images) {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 26))
-                        .foregroundStyle(Theme.muted)
+            if let replyTo {
+                composerContext(Text("Replying to ").foregroundColor(Theme.muted) + Text(replyTo.senderName).bold().foregroundColor(Theme.text)) {
+                    self.replyTo = nil
                 }
-                .accessibilityLabel("Send a photo")
+            }
+            if editing != nil {
+                composerContext(Text("Editing message").foregroundColor(Theme.muted)) {
+                    editing = nil
+                    draft = ""
+                }
+            }
+            HStack(alignment: .bottom, spacing: 10) {
+                if editing == nil {
+                    PhotosPicker(selection: $photo, matching: .images) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 26))
+                            .foregroundStyle(Theme.muted)
+                            .frame(width: 36, height: 36)
+                    }
+                    .accessibilityLabel("Send a photo")
+                }
                 TextField("Message \(summary?.isDirect == true ? "@" : "#")\(title)", text: $draft, axis: .vertical)
                     .lineLimit(1...6)
                     .focused($composerFocused)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 9)
                     .background(RoundedRectangle(cornerRadius: 20).fill(Theme.input))
-                if !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                if !trimmedDraft.isEmpty {
                     Button(action: send) {
-                        Image(systemName: "paperplane.fill")
+                        Image(systemName: editing == nil ? "paperplane.fill" : "checkmark")
                             .foregroundStyle(.white)
                             .frame(width: 36, height: 36)
                             .background(Circle().fill(Theme.accent))
                     }
-                    .accessibilityLabel("Send")
+                    .accessibilityLabel(editing == nil ? "Send" : "Save edit")
                 }
             }
             .padding(.horizontal, 12)
@@ -174,12 +337,115 @@ private struct ChatContent: View {
         .background(Theme.chat)
     }
 
+    private func composerContext(_ text: Text, cancel: @escaping () -> Void) -> some View {
+        HStack {
+            text
+            Spacer()
+            Button(action: cancel) { Image(systemName: "xmark.circle.fill").frame(width: 30, height: 30) }
+                .foregroundStyle(Theme.muted)
+                .accessibilityLabel("Cancel")
+        }
+        .font(.footnote)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 4)
+        .background(Theme.elevated)
+    }
+
     private func send() {
-        let text = draft
+        var text = draft
+        // Picked mentions become real links, so they highlight and notify the person.
+        var mentioned: [String] = []
+        for (name, userId) in mentions where text.contains("@\(name)") {
+            text = text.replacingOccurrences(of: "@\(name)", with: "[\(name)](https://matrix.to/#/\(userId))")
+            mentioned.append(userId)
+        }
         let reply = replyTo?.eventId
+        let edited = editing
         draft = ""
         replyTo = nil
-        Task { await controller.send(text: text, replyTo: reply) }
+        editing = nil
+        mentions = [:]
+        Task {
+            if let edited {
+                await controller.edit(edited, text: text, mentions: mentioned)
+            } else {
+                await controller.send(text: text, replyTo: reply, mentions: mentioned)
+            }
+        }
+    }
+
+    /// Mentions are stored as Markdown links, the reverse of what `send` does.
+    private static func readableMentions(in text: String) -> (text: String, mentions: [String: String]) {
+        var mentions: [String: String] = [:]
+        let readable = text.replacing(#/\[([^\]]+)\]\(https://matrix\.to/\#/(@[^)\s]+)\)/#) { match in
+            mentions[String(match.1)] = String(match.2)
+            return "@\(match.1)"
+        }
+        return (readable, mentions)
+    }
+}
+
+struct ViewedImage: Identifiable {
+    let id = UUID()
+    let image: UIImage
+}
+
+/// Full screen photo: pinch to zoom, drag when zoomed, share or save.
+private struct ImageViewer: View {
+    let image: UIImage
+    @Environment(\.dismiss) private var dismiss
+    @State private var scale: CGFloat = 1
+    @State private var lastScale: CGFloat = 1
+    @State private var offset: CGSize = .zero
+    @State private var lastOffset: CGSize = .zero
+
+    var body: some View {
+        ZStack(alignment: .top) {
+            Color.black.ignoresSafeArea()
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFit()
+                .scaleEffect(scale)
+                .offset(offset)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .contentShape(Rectangle())
+                .gesture(MagnificationGesture()
+                    .onChanged { scale = max(1, lastScale * $0) }
+                    .onEnded { _ in
+                        lastScale = scale
+                        if scale == 1 { offset = .zero; lastOffset = .zero }
+                    })
+                .simultaneousGesture(DragGesture()
+                    .onChanged { value in
+                        guard scale > 1 else { return }
+                        offset = CGSize(width: lastOffset.width + value.translation.width, height: lastOffset.height + value.translation.height)
+                    }
+                    .onEnded { value in
+                        lastOffset = offset
+                        if scale == 1 && value.translation.height > 120 { dismiss() }
+                    })
+                .onTapGesture(count: 2) {
+                    withAnimation(.spring(response: 0.3)) {
+                        scale = scale > 1 ? 1 : 2.5
+                        lastScale = scale
+                        offset = .zero
+                        lastOffset = .zero
+                    }
+                }
+            HStack {
+                Button { dismiss() } label: {
+                    Image(systemName: "xmark").font(.headline).frame(width: 44, height: 44)
+                }
+                .accessibilityLabel("Close")
+                Spacer()
+                ShareLink(item: Image(uiImage: image), preview: SharePreview("Image", image: Image(uiImage: image))) {
+                    Image(systemName: "square.and.arrow.up").font(.headline).frame(width: 44, height: 44)
+                }
+                .accessibilityLabel("Share or save")
+            }
+            .foregroundStyle(.white)
+            .padding(.horizontal, 8)
+        }
     }
 }
 
@@ -206,6 +472,10 @@ private struct ChannelIntro: View {
 struct MessageRowView: View {
     let row: MessageRow
     let client: Client
+    var onProfile: () -> Void = {}
+    var onReact: (String) -> Void = { _ in }
+    var onImage: (UIImage) -> Void = { _ in }
+    var onFile: (URL) -> Void = { _ in }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -244,14 +514,21 @@ struct MessageRowView: View {
             }
             HStack(alignment: .top, spacing: 12) {
                 if row.showsHeader {
-                    AvatarView(url: row.senderAvatar, name: row.senderName, size: 40)
+                    Button(action: onProfile) {
+                        AvatarView(url: row.senderAvatar, name: row.senderName, size: 40)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("\(row.senderName), view profile")
                 } else {
                     Color.clear.frame(width: 40, height: 1)
                 }
                 VStack(alignment: .leading, spacing: 3) {
                     if row.showsHeader {
                         HStack(alignment: .firstTextBaseline, spacing: 8) {
-                            Text(row.senderName).font(.subheadline.weight(.semibold)).foregroundStyle(Theme.color(for: row.sender))
+                            Button(action: onProfile) {
+                                Text(row.senderName).font(.subheadline.weight(.semibold)).foregroundStyle(Theme.color(for: row.sender))
+                            }
+                            .buttonStyle(.plain)
                             Text(row.date.chatTimestamp).font(.caption2).foregroundStyle(Theme.faint)
                         }
                     }
@@ -274,10 +551,9 @@ struct MessageRowView: View {
                 .foregroundStyle(Theme.text)
                 .textSelection(.enabled)
         case .image(let source, _, let width, let height):
-            ChatImage(source: source, client: client, aspect: (width ?? 4) / max(height ?? 3, 1))
-        case .file(let name):
-            Label(name, systemImage: "doc").padding(10)
-                .background(RoundedRectangle(cornerRadius: 8).fill(Theme.elevated))
+            ChatImage(source: source, client: client, aspect: (width ?? 4) / max(height ?? 3, 1), onTap: onImage)
+        case .file(let name, let source, _):
+            FileAttachment(name: name, source: source, client: client, onOpen: onFile)
         case .undecryptable:
             Label("Waiting for this message's key. Verify this device in Settings.", systemImage: "lock")
                 .font(.footnote).foregroundStyle(Theme.faint)
@@ -291,22 +567,39 @@ struct MessageRowView: View {
     private var reactions: some View {
         HStack(spacing: 6) {
             ForEach(row.reactions, id: \.key) { reaction in
-                HStack(spacing: 4) {
-                    Text(reaction.key)
-                    Text("\(reaction.count)").font(.caption.weight(.semibold))
+                Button { onReact(reaction.key) } label: {
+                    HStack(spacing: 4) {
+                        Text(reaction.key)
+                        Text("\(reaction.count)").font(.caption.weight(.semibold))
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .background(RoundedRectangle(cornerRadius: 8).fill(reaction.mine ? Theme.accent.opacity(0.3) : Theme.elevated))
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(reaction.mine ? Theme.accent : .clear, lineWidth: 1))
                 }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
-                .background(RoundedRectangle(cornerRadius: 8).fill(reaction.mine ? Theme.accent.opacity(0.3) : Theme.elevated))
-                .overlay(RoundedRectangle(cornerRadius: 8).stroke(reaction.mine ? Theme.accent : .clear, lineWidth: 1))
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(reaction.key), \(reaction.count), \(reaction.mine ? "remove your reaction" : "add your reaction")")
             }
         }
         .padding(.top, 2)
     }
 
+    private static let linkDetector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
+
+    /// Markdown plus tappable bare links, which Markdown alone leaves as plain text.
     private static func markdown(_ text: String) -> AttributedString {
-        (try? AttributedString(markdown: text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)))
+        var result = (try? AttributedString(markdown: text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)))
             ?? AttributedString(text)
+        let plain = String(result.characters)
+        let matches = linkDetector?.matches(in: plain, range: NSRange(plain.startIndex..., in: plain)) ?? []
+        for match in matches {
+            guard let url = match.url, let range = Range(match.range, in: plain),
+                  let start = AttributedString.Index(range.lowerBound, within: result),
+                  let end = AttributedString.Index(range.upperBound, within: result),
+                  result[start..<end].link == nil else { continue }
+            result[start..<end].link = url
+        }
+        return result
     }
 }
 
@@ -314,13 +607,17 @@ private struct ChatImage: View {
     let source: MediaSource
     let client: Client
     let aspect: CGFloat
+    let onTap: (UIImage) -> Void
     @State private var image: UIImage?
+    @State private var failed = false
 
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 8).fill(Theme.elevated)
             if let image {
                 Image(uiImage: image).resizable().scaledToFit()
+            } else if failed {
+                Image(systemName: "photo").foregroundStyle(Theme.faint)
             } else {
                 ProgressView()
             }
@@ -328,6 +625,57 @@ private struct ChatImage: View {
         .aspectRatio(aspect, contentMode: .fit)
         .frame(maxWidth: 280, maxHeight: 320, alignment: .leading)
         .clipShape(RoundedRectangle(cornerRadius: 8))
-        .task { image = await MediaLoader.shared.image(source: source, size: 800, client: client) }
+        .onTapGesture {
+            guard image != nil else { return }
+            Task {
+                // Show the original rather than the chat thumbnail.
+                let full = await MediaLoader.shared.image(source: source, size: nil, client: client)
+                if let shown = full ?? image { onTap(shown) }
+            }
+        }
+        .task {
+            image = await MediaLoader.shared.image(source: source, size: 800, client: client)
+            failed = image == nil
+        }
+    }
+}
+
+private struct FileAttachment: View {
+    let name: String
+    let source: MediaSource
+    let client: Client
+    let onOpen: (URL) -> Void
+    @State private var loading = false
+    @State private var failed = false
+
+    var body: some View {
+        Button { Task { await open() } } label: {
+            HStack(spacing: 10) {
+                Image(systemName: failed ? "exclamationmark.triangle" : "arrow.down.circle.fill")
+                    .foregroundStyle(failed ? Theme.danger : Theme.accent)
+                Text(name).lineLimit(2).multilineTextAlignment(.leading).foregroundStyle(Theme.text)
+                if loading { ProgressView() }
+            }
+            .padding(10)
+            .background(RoundedRectangle(cornerRadius: 8).fill(Theme.elevated))
+        }
+        .buttonStyle(.plain)
+        .disabled(loading)
+    }
+
+    private func open() async {
+        loading = true
+        failed = false
+        defer { loading = false }
+        // Encrypted attachments need the SDK; the decrypted copy stays in the temporary folder.
+        guard let data = try? await client.getMediaContent(mediaSource: source) else { failed = true; return }
+        let filename = name.split(separator: " ").dropFirst().joined(separator: " ")
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let url = folder.appendingPathComponent(filename.isEmpty ? "file" : filename)
+        do {
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            try data.write(to: url)
+            onOpen(url)
+        } catch { failed = true }
     }
 }

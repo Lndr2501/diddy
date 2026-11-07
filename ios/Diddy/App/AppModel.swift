@@ -23,7 +23,10 @@ final class AppModel: ObservableObject {
     func restore() async {
         defer { restoring = false }
         for record in AccountList.load() {
-            guard let session = SessionStore.load(accountId: record.id) else { continue }
+            guard let session = SessionStore.load(accountId: record.id) else {
+                restoreErrors.append("\(record.userId): this device no longer has the saved login. Please sign in again.")
+                continue
+            }
             do {
                 let client = try await ClientFactory.builder(for: record)
                     .homeserverUrl(url: session.homeserverUrl)
@@ -31,7 +34,7 @@ final class AppModel: ObservableObject {
                 try await client.restoreSession(session: session)
                 accounts.append(MatrixAccount(record: record, client: client))
             } catch {
-                restoreErrors.append("\(record.userId): \(error.localizedDescription)")
+                restoreErrors.append("\(record.userId): \(error.friendlyMessage)")
             }
         }
         activeAccountId = AccountList.activeAccountId.flatMap { id in accounts.contains { $0.id == id } ? id : nil }

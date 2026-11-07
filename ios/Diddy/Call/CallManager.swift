@@ -1,4 +1,5 @@
 import AVFoundation
+import Combine
 import Foundation
 import LiveKit
 import MatrixRustSDK
@@ -16,34 +17,51 @@ struct CallMember: Identifiable {
     var microphoneOn: Bool
     var screenShare: LiveKit.VideoTrack?
     var camera: LiveKit.VideoTrack?
+    /// In the call according to Matrix, but not connected to the media server (yet).
+    var isConnecting = false
 }
 
 @MainActor
 final class CallManager: ObservableObject {
     @Published private(set) var current: CallSession?
     @Published var error: String?
+    /// Shows the call full screen; set when a call starts somewhere that has no call UI of its own.
+    @Published var showCallScreen = false
 
-    func join(account: MatrixAccount, roomId: String, roomName: String) async {
-        if current?.roomId == roomId { return }
+    func join(account: MatrixAccount, roomId: String, roomName: String, showCallScreen present: Bool = false) async {
+        if current?.roomId == roomId {
+            if present { showCallScreen = true }
+            return
+        }
         await leave()
         guard let room = account.room(roomId) else {
             error = "Join the channel first."
             return
         }
         let session = CallSession(account: account, room: room, roomName: roomName)
+        session.onDropped = { [weak self, weak session] in
+            guard let self, let session, self.current === session else { return }
+            self.error = "The connection to the voice server was lost."
+            Task { await self.leave() }
+        }
         current = session
+        if present { showCallScreen = true }
         do {
             try await session.connect()
         } catch {
-            self.error = error.localizedDescription
+            self.error = error.friendlyMessage
             await session.disconnect()
-            if current === session { current = nil }
+            if current === session {
+                current = nil
+                showCallScreen = false
+            }
         }
     }
 
     func leave() async {
         guard let session = current else { return }
         current = nil
+        showCallScreen = false
         await session.disconnect()
     }
 }
@@ -60,7 +78,20 @@ final class CallSession: NSObject, ObservableObject {
     @Published private(set) var deafened = false
     @Published private(set) var cameraOn = false
     @Published private(set) var screenSharing = false
-    @Published var lastError: String?
+    @Published private(set) var speakerOn = true
+    /// A hint under the tiles that clears itself, so an old problem does not look like a current one.
+    @Published var lastError: String? {
+        didSet {
+            errorDismissal?.cancel()
+            guard lastError != nil else { return }
+            errorDismissal = Task { [weak self] in
+                try? await Task.sleep(nanoseconds: 6_000_000_000)
+                if !Task.isCancelled { self?.lastError = nil }
+            }
+        }
+    }
+    private var errorDismissal: Task<Void, Never>?
+    var onDropped: (() -> Void)?
 
     let roomId: String
     let roomName: String
@@ -77,7 +108,9 @@ final class CallSession: NSObject, ObservableObject {
     private var membershipRefresh: Task<Void, Never>?
     private var membershipCreatedTs: UInt64?
     private var transport: (serviceUrl: String, alias: String)?
-    private var names: [String: (name: String, avatar: String?)] = [:]
+    private var mutedBeforeDeafen = false
+    private var leaving = false
+    private var observers: Set<AnyCancellable> = []
 
     private static let memberEventType = "org.matrix.msc3401.call.member"
     private static let keysEventType = "io.element.call.encryption_keys"
@@ -100,6 +133,12 @@ final class CallSession: NSObject, ObservableObject {
         liveKitRoom = LiveKit.Room()
         super.init()
         liveKitRoom.add(delegate: self)
+        // Names arrive after the first tile is drawn, and people show up in Matrix before LiveKit.
+        account.$profiles.dropFirst().receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.refreshMembers() }.store(in: &observers)
+        account.$rooms.dropFirst().receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.refreshMembers() }.store(in: &observers)
+        refreshMembers()
     }
 
     private var ownUserId: String { account.userId }
@@ -144,18 +183,36 @@ final class CallSession: NSObject, ObservableObject {
         if encrypted {
             keyProvider.setKey(keyData: ownKey, participantId: liveKitRoom.localParticipant.identity?.stringValue ?? ownIdentity, index: ownKeyIndex)
         }
-        try await sendMembership()
+        refreshMembers()
+        do {
+            try await sendMembership()
+        } catch {
+            throw DiddyError("You do not have permission to join a call in this room. An admin has to allow it.")
+        }
         if encrypted { await distributeKey(to: Array(liveKitRoom.remoteParticipants.values)) }
 
-        _ = try await liveKitRoom.localParticipant.setMicrophone(enabled: true)
+        // Without microphone access you still join and listen, as on Discord.
+        if await AVCaptureDevice.requestAccess(for: .audio) {
+            do {
+                _ = try await liveKitRoom.localParticipant.setMicrophone(enabled: true)
+            } catch {
+                microphoneOn = false
+                lastError = "The microphone could not be started: \(error.friendlyMessage)"
+            }
+        } else {
+            microphoneOn = false
+            lastError = "Microphone access is off. You can listen, and turn it on under Settings > Diddy."
+        }
         connected = true
         state = "Voice connected"
         scheduleMembershipRefresh()
-        await loadNames()
         refreshMembers()
     }
 
     func disconnect() async {
+        leaving = true
+        errorDismissal?.cancel()
+        observers.removeAll()
         membershipRefresh?.cancel()
         toDeviceHandle?.cancel()
         toDeviceHandle = nil
@@ -172,30 +229,46 @@ final class CallSession: NSObject, ObservableObject {
 
     func toggleMicrophone() async {
         let enable = !microphoneOn
-        if enable && deafened { deafened = false; applyDeafen() }
+        if enable {
+            guard await AVCaptureDevice.requestAccess(for: .audio) else {
+                lastError = "Microphone access is off. Turn it on under Settings > Diddy."
+                return
+            }
+            if deafened { deafened = false; applyDeafen() }
+        }
         do {
             _ = try await liveKitRoom.localParticipant.setMicrophone(enabled: enable)
             microphoneOn = enable
-        } catch { lastError = error.localizedDescription }
+        } catch { lastError = error.friendlyMessage }
         refreshMembers()
     }
 
-    /// Discord semantics: deafen silences everyone and mutes the microphone; undeafen restores both.
+    /// Discord semantics: deafen silences everyone and mutes the microphone; undeafen restores
+    /// both, but stays muted if you had muted yourself before.
     func toggleDeafen() async {
+        if !deafened { mutedBeforeDeafen = !microphoneOn }
         deafened.toggle()
         applyDeafen()
+        let enable = !deafened && !mutedBeforeDeafen
         do {
-            _ = try await liveKitRoom.localParticipant.setMicrophone(enabled: !deafened)
-            microphoneOn = !deafened
-        } catch { lastError = error.localizedDescription }
+            _ = try await liveKitRoom.localParticipant.setMicrophone(enabled: enable)
+            microphoneOn = enable
+        } catch { lastError = error.friendlyMessage }
         refreshMembers()
+    }
+
+    func toggleSpeaker() {
+        speakerOn.toggle()
+        AudioManager.shared.isSpeakerOutputPreferred = speakerOn
     }
 
     func toggleCamera() async {
         do {
             _ = try await liveKitRoom.localParticipant.setCamera(enabled: !cameraOn)
             cameraOn.toggle()
-        } catch { lastError = error.localizedDescription }
+        } catch {
+            lastError = "The camera could not be started. Check that Diddy may use it under Settings > Diddy."
+        }
         refreshMembers()
     }
 
@@ -206,7 +279,7 @@ final class CallSession: NSObject, ObservableObject {
         do {
             _ = try await liveKitRoom.localParticipant.setScreenShare(enabled: !screenSharing)
             screenSharing = liveKitRoom.localParticipant.isScreenShareEnabled()
-        } catch { lastError = error.localizedDescription }
+        } catch { lastError = error.friendlyMessage }
         refreshMembers()
     }
 
@@ -359,7 +432,7 @@ final class CallSession: NSObject, ObservableObject {
         do {
             _ = try await account.client.sendEncryptedToDeviceMessage(eventType: Self.keysEventType, recipients: recipients, content: json)
         } catch {
-            lastError = "Could not share the call key: \(error.localizedDescription)"
+            lastError = "Could not share the call key: \(error.friendlyMessage)"
         }
     }
 
@@ -394,16 +467,6 @@ final class CallSession: NSObject, ObservableObject {
 
     // MARK: Members
 
-    private func loadNames() async {
-        guard let iterator = try? await matrixRoom.membersNoSync() else { return }
-        while let chunk = iterator.nextChunk(chunkSize: 200) {
-            for member in chunk {
-                names[member.userId] = (member.displayName ?? member.userId, member.avatarUrl)
-            }
-            if chunk.isEmpty { break }
-        }
-    }
-
     fileprivate func refreshMembers() {
         var result: [CallMember] = []
         let local = liveKitRoom.localParticipant
@@ -411,14 +474,32 @@ final class CallSession: NSObject, ObservableObject {
         for participant in liveKitRoom.remoteParticipants.values.sorted(by: { ($0.identity?.stringValue ?? "") < ($1.identity?.stringValue ?? "") }) {
             result.append(member(for: participant, isLocal: false))
         }
+        // Whoever Matrix says is in the call but LiveKit has not delivered. Without this they are
+        // simply missing from the call. Identities we cannot read could be any of them, so then
+        // nothing is added rather than showing somebody twice.
+        let unreadable = liveKitRoom.remoteParticipants.values.contains { participant in
+            participant.identity.flatMap { Self.split(identity: $0.stringValue) } == nil
+        }
+        if !unreadable {
+            let present = Set(result.map(\.userId))
+            for userId in account.summary(for: roomId)?.callParticipants ?? [] where !present.contains(userId) {
+                let profile = account.profiles[userId]
+                result.append(CallMember(
+                    id: "matrix:\(userId)", userId: userId,
+                    name: account.name(of: userId), avatarUrl: profile?.avatarUrl,
+                    isLocal: false, isSpeaking: false, microphoneOn: true, isConnecting: true
+                ))
+            }
+        }
+        account.resolveProfiles(result.map(\.userId), in: roomId)
         members = result
         screenSharing = local.isScreenShareEnabled()
     }
 
     private func member(for participant: LiveKit.Participant, isLocal: Bool) -> CallMember {
-        let identity = participant.identity?.stringValue ?? UUID().uuidString
+        let identity = participant.identity?.stringValue ?? (isLocal ? ownIdentity : UUID().uuidString)
         let userId = Self.split(identity: identity)?.userId ?? identity
-        let profile = names[userId]
+        let known = account.profiles[userId]
         var screen: LiveKit.VideoTrack?
         var camera: LiveKit.VideoTrack?
         for publication in participant.videoTracks {
@@ -428,8 +509,8 @@ final class CallSession: NSObject, ObservableObject {
         return CallMember(
             id: identity,
             userId: userId,
-            name: profile?.name ?? participant.name.flatMap { $0.isEmpty ? nil : $0 } ?? userId,
-            avatarUrl: profile?.avatar,
+            name: known?.name ?? participant.name.flatMap { $0.isEmpty ? nil : $0 } ?? account.name(of: userId),
+            avatarUrl: known?.avatarUrl,
             isLocal: isLocal,
             isSpeaking: participant.isSpeaking,
             microphoneOn: isLocal ? microphoneOn : participant.isMicrophoneEnabled(),
@@ -443,7 +524,6 @@ extension CallSession: LiveKit.RoomDelegate {
     nonisolated func room(_ room: LiveKit.Room, participantDidConnect participant: LiveKit.RemoteParticipant) {
         Task { @MainActor in
             await self.distributeKey(to: [participant])
-            await self.loadNames()
             self.refreshMembers()
         }
     }
@@ -465,6 +545,30 @@ extension CallSession: LiveKit.RoomDelegate {
 
     nonisolated func room(_ room: LiveKit.Room, participant: LiveKit.RemoteParticipant, didUnsubscribeTrack publication: LiveKit.RemoteTrackPublication) {
         Task { @MainActor in self.refreshMembers() }
+    }
+
+    nonisolated func room(_ room: LiveKit.Room, participant: LiveKit.Participant, trackPublication: LiveKit.TrackPublication, didUpdateIsMuted isMuted: Bool) {
+        Task { @MainActor in self.refreshMembers() }
+    }
+
+    nonisolated func room(_ room: LiveKit.Room, participant: LiveKit.Participant, didUpdateName name: String) {
+        Task { @MainActor in self.refreshMembers() }
+    }
+
+    nonisolated func room(_ room: LiveKit.Room, participant: LiveKit.RemoteParticipant, didPublishTrack publication: LiveKit.RemoteTrackPublication) {
+        Task { @MainActor in self.refreshMembers() }
+    }
+
+    nonisolated func room(_ room: LiveKit.Room, participant: LiveKit.RemoteParticipant, didUnpublishTrack publication: LiveKit.RemoteTrackPublication) {
+        Task { @MainActor in self.refreshMembers() }
+    }
+
+    nonisolated func room(_ room: LiveKit.Room, didDisconnectWithError error: LiveKit.LiveKitError?) {
+        Task { @MainActor in
+            // LiveKit has given up reconnecting. Without this the call UI would stay up, silently dead.
+            guard self.connected, !self.leaving else { return }
+            self.onDropped?()
+        }
     }
 
     nonisolated func room(_ room: LiveKit.Room, participant: LiveKit.LocalParticipant, didPublishTrack publication: LiveKit.LocalTrackPublication) {

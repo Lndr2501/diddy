@@ -9,9 +9,9 @@ import UIKit
 final class LoginService: ObservableObject {
     enum Method { case password, oauth }
 
-    @Published var homeserver = "matrix.org"
-    @Published var username = ""
-    @Published var password = ""
+    @Published var homeserver = "matrix.org" { didSet { clearStaleError(homeserver != oldValue) } }
+    @Published var username = "" { didSet { clearStaleError(username != oldValue) } }
+    @Published var password = "" { didSet { clearStaleError(password != oldValue) } }
     @Published private(set) var method: Method?
     @Published private(set) var resolvedServer: String?
     @Published private(set) var busy = false
@@ -33,6 +33,11 @@ final class LoginService: ObservableObject {
         policyUri: nil,
         staticRegistrations: [:]
     )
+
+    /// An error stays up only until you start correcting it.
+    private func clearStaleError(_ changed: Bool) {
+        if changed && !busy { error = nil }
+    }
 
     func reset() {
         record?.removeDirectories()
@@ -76,6 +81,10 @@ final class LoginService: ObservableObject {
     /// Step 2a: user name and password.
     func loginWithPassword() async -> (AccountRecord, Client)? {
         guard let client, var record else { return nil }
+        guard !username.trimmingCharacters(in: .whitespaces).isEmpty, !password.isEmpty else {
+            error = "Enter your username and password."
+            return nil
+        }
         error = nil
         busy = true
         defer { busy = false }
@@ -89,7 +98,7 @@ final class LoginService: ObservableObject {
             password = ""
             return try finish(client: client, record: &record)
         } catch {
-            self.error = error.localizedDescription
+            self.error = error.friendlyMessage
             return nil
         }
     }
@@ -121,7 +130,7 @@ final class LoginService: ObservableObject {
         } catch let error as ASWebAuthenticationSessionError where error.code == .canceledLogin {
             return nil
         } catch {
-            self.error = error.localizedDescription
+            self.error = error.friendlyMessage
             return nil
         }
     }
@@ -161,7 +170,7 @@ final class LoginService: ObservableObject {
     }
 
     private static func describe(_ error: Error, server: String) -> String {
-        let text = error.localizedDescription
+        let text = error.friendlyMessage
         if text.localizedCaseInsensitiveContains("sliding sync") {
             return "\(server) does not support Simplified Sliding Sync (MSC4186), which the iOS app needs. Synapse 1.114+ and Continuwuity have it."
         }

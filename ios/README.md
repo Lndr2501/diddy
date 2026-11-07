@@ -6,7 +6,11 @@ Eigene, native App (SwiftUI), keine Web-Ansicht: [matrix-rust-sdk](https://githu
 |---|---|
 | Server (Spaces) links, Kanäle daneben, Unter-Spaces als Kategorien | ✅ |
 | Text- und Sprachkanäle, Direktnachrichten unter „Home“ | ✅ |
-| Antworten, Reaktionen, Bilder senden, Nachrichten löschen | ✅ |
+| Server beitreten und erstellen, Kanäle erstellen, Einladungen annehmen, „Alle Kanäle beitreten“, Server verlassen | ✅ |
+| Mitgliederliste nach Rollen mit Suche, Profilkarte (Nachricht, Blockieren, Entfernen, Bannen) | ✅ |
+| Live sehen, wer im Sprachkanal ist, mit Namen und Profilbild, auch in der Kanalliste | ✅ |
+| Antworten, Reaktionen, Bearbeiten, Löschen, @-Erwähnungen, Tippanzeige, Bilder senden und ansehen, Dateien öffnen | ✅ |
+| Eigenen Namen und Profilbild ändern | ✅ |
 | Ende-zu-Ende-Verschlüsselung, Gerät mit Wiederherstellungsschlüssel bestätigen | ✅ |
 | Mehrere Konten auf verschiedenen Servern, jedes mit eigenem Speicher | ✅ |
 | Anmeldung mit Passwort oder über die Login-Seite des Servers (OAuth/MAS) | ✅ |
@@ -15,6 +19,7 @@ Eigene, native App (SwiftUI), keine Web-Ansicht: [matrix-rust-sdk](https://githu
 | Stummschalten, Taubschalten, Kamera | ✅ |
 | App-Icon wechseln (Pink, Blau, Lila, Schwarz, Magenta) | ✅ |
 | Push-Benachrichtigungen | ❌ (braucht einen Push-Gateway und ein bezahltes Apple-Konto) |
+| Online-Status | ❌ (Sliding Sync liefert keine Presence) |
 
 ## Voraussetzungen am Server
 

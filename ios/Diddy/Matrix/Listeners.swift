@@ -58,6 +58,12 @@ final class RoomInfoUpdates: RoomInfoListener, @unchecked Sendable {
     func call(roomInfo: RoomInfo) { handler(roomInfo) }
 }
 
+final class TypingUpdates: TypingNotificationsListener, @unchecked Sendable {
+    private let handler: ([String]) -> Void
+    init(_ handler: @escaping ([String]) -> Void) { self.handler = handler }
+    func call(typingUserIds: [String]) { handler(typingUserIds) }
+}
+
 /// Applies an SDK list diff to a plain array (same shape for rooms, spaces and timeline items).
 enum ListDiff<Element> {
     case append([Element])

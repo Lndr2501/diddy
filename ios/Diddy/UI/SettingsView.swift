@@ -1,4 +1,5 @@
 import MatrixRustSDK
+import PhotosUI
 import SwiftUI
 
 struct SettingsView: View {
@@ -13,6 +14,8 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             List {
+                ProfileSection(account: account)
+
                 Section("Accounts") {
                     ForEach(app.accounts) { other in
                         AccountRow(account: other, isActive: other.id == account.id) {
@@ -41,7 +44,7 @@ struct SettingsView: View {
                                     do {
                                         try await choice.apply()
                                         icon = choice
-                                    } catch { iconError = error.localizedDescription }
+                                    } catch { iconError = error.friendlyMessage }
                                 }
                             } label: {
                                 VStack(spacing: 6) {
@@ -105,6 +108,74 @@ struct SettingsView: View {
     }
 }
 
+/// Your name and picture, as others see them.
+private struct ProfileSection: View {
+    @ObservedObject var account: MatrixAccount
+    @State private var name = ""
+    @State private var photo: PhotosPickerItem?
+    @State private var saving = false
+    @State private var error: String?
+
+    var body: some View {
+        Section("Profile") {
+            HStack(spacing: 14) {
+                PhotosPicker(selection: $photo, matching: .images) {
+                    AvatarView(url: account.avatarUrl, name: account.title, size: 60)
+                        .overlay(alignment: .bottomTrailing) {
+                            Image(systemName: "pencil.circle.fill")
+                                .foregroundStyle(.white, Theme.accent)
+                                .font(.title3)
+                        }
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Change profile picture")
+                VStack(alignment: .leading, spacing: 4) {
+                    TextField("Display name", text: $name)
+                        .font(.headline)
+                        .submitLabel(.done)
+                        .onSubmit { saveName() }
+                    Text(account.userId).font(.caption).foregroundStyle(Theme.faint).lineLimit(1)
+                }
+                if saving { ProgressView() }
+            }
+            if name != (account.displayName ?? "") && !name.trimmingCharacters(in: .whitespaces).isEmpty {
+                Button("Save Name") { saveName() }.disabled(saving)
+            }
+            if let error { Text(error).font(.footnote).foregroundStyle(Theme.danger) }
+        }
+        .task(id: account.displayName) { name = account.displayName ?? "" }
+        .onChange(of: photo) { item in
+            guard let item else { return }
+            run {
+                guard let raw = try await item.loadTransferable(type: Data.self), let image = UIImage(data: raw),
+                      let data = image.jpegData(compressionQuality: 0.85) else {
+                    throw DiddyError("This image could not be read.")
+                }
+                try await account.client.uploadAvatar(mimeType: "image/jpeg", data: data)
+            }
+            photo = nil
+        }
+    }
+
+    private func saveName() {
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty, trimmed != account.displayName else { return }
+        run { try await account.client.setDisplayName(name: trimmed) }
+    }
+
+    private func run(_ work: @escaping () async throws -> Void) {
+        saving = true
+        error = nil
+        Task {
+            do {
+                try await work()
+                await account.refreshProfile()
+            } catch { self.error = error.friendlyMessage }
+            saving = false
+        }
+    }
+}
+
 private struct AccountRow: View {
     @ObservedObject var account: MatrixAccount
     let isActive: Bool
@@ -152,7 +223,7 @@ struct RecoveryView: View {
                         do {
                             try await account.recover(with: key)
                             dismiss()
-                        } catch { self.error = error.localizedDescription }
+                        } catch { self.error = error.friendlyMessage }
                         busy = false
                     }
                 } label: {
