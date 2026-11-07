@@ -4,9 +4,14 @@ import SwiftUI
 struct VoiceChannelView: View {
     @ObservedObject var account: MatrixAccount
     let roomId: String
+    /// Set when shown full screen over wherever the call was started.
+    var showsClose = false
     @EnvironmentObject private var calls: CallManager
+    @Environment(\.dismiss) private var dismiss
     @State private var showChat = false
+    @State private var showMembers = false
     @State private var joining = false
+    @State private var profile: ProfileTarget?
 
     private var summary: RoomSummary? { account.summary(for: roomId) }
     private var title: String { summary?.name ?? "Voice" }
@@ -15,7 +20,7 @@ struct VoiceChannelView: View {
         ZStack {
             Theme.rail.ignoresSafeArea()
             if let session = calls.current, session.roomId == roomId {
-                ConnectedVoiceView(session: session)
+                ConnectedVoiceView(session: session) { profile = ProfileTarget(userId: $0) }
             } else {
                 lobby
             }
@@ -25,14 +30,29 @@ struct VoiceChannelView: View {
         .toolbarBackground(Theme.rail, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
+            if showsClose {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button { calls.showCallScreen = false } label: { Image(systemName: "chevron.down") }
+                        .accessibilityLabel("Minimize call")
+                }
+            }
+            ToolbarItemGroup(placement: .navigationBarTrailing) {
+                Button { showMembers = true } label: { Image(systemName: "person.2.fill") }
+                    .accessibilityLabel("Members")
                 Button { showChat = true } label: { Image(systemName: "bubble.left.fill") }
                     .accessibilityLabel("Text chat")
             }
         }
         .sheet(isPresented: $showChat) {
-            NavigationStack { ChatView(account: account, roomId: roomId) }
+            NavigationStack {
+                ChatView(account: account, roomId: roomId, isVoiceChat: true)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) { Button("Close") { showChat = false } }
+                    }
+            }
         }
+        .sheet(isPresented: $showMembers) { MembersView(account: account, roomId: roomId) }
+        .sheet(item: $profile) { UserProfileSheet(account: account, userId: $0.userId, roomId: roomId) }
     }
 
     private var lobby: some View {
@@ -40,16 +60,24 @@ struct VoiceChannelView: View {
             Spacer()
             Image(systemName: "speaker.wave.2.circle.fill")
                 .font(.system(size: 72))
-                .foregroundStyle(Theme.accent)
+                .foregroundStyle(summary?.hasCall == true ? Theme.online : Theme.accent)
             Text(title).font(.title2.bold()).foregroundStyle(Theme.text)
             if let participants = summary?.callParticipants, !participants.isEmpty {
-                Text("\(participants.count) in voice").foregroundStyle(Theme.online)
-                HStack(spacing: -8) {
-                    ForEach(participants.prefix(6), id: \.self) { userId in
-                        AvatarView(url: nil, name: String(userId.dropFirst()), size: 36)
-                            .overlay(Circle().stroke(Theme.rail, lineWidth: 3))
+                Text(participants.count == 1 ? "1 person in voice" : "\(participants.count) people in voice")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.online)
+                ScrollView {
+                    VStack(spacing: 10) {
+                        ForEach(participants, id: \.self) { userId in
+                            Button { profile = ProfileTarget(userId: userId) } label: {
+                                PersonRow(name: account.name(of: userId), avatarUrl: account.profiles[userId]?.avatarUrl, account: account)
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
+                    .padding(.horizontal, 32)
                 }
+                .frame(maxHeight: 280)
             } else {
                 Text("No one is here yet.").foregroundStyle(Theme.muted)
             }
@@ -63,7 +91,7 @@ struct VoiceChannelView: View {
             } label: {
                 HStack {
                     if joining { ProgressView().tint(.white) }
-                    Text(joining ? "Connecting…" : "Join Voice").bold()
+                    Text(joining ? "Connecting…" : (calls.current == nil ? "Join Voice" : "Switch to This Channel")).bold()
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
@@ -77,8 +105,14 @@ struct VoiceChannelView: View {
     }
 }
 
+struct ProfileTarget: Identifiable {
+    let userId: String
+    var id: String { userId }
+}
+
 private struct ConnectedVoiceView: View {
     @ObservedObject var session: CallSession
+    let showProfile: (String) -> Void
     @EnvironmentObject private var calls: CallManager
     @EnvironmentObject private var app: AppModel
 
@@ -87,8 +121,25 @@ private struct ConnectedVoiceView: View {
 
     private var columns: [GridItem] { [GridItem(.adaptive(minimum: 150), spacing: 10)] }
 
+    private var statusLine: String {
+        switch session.outgoing {
+        case .ringing: return "Ringing…"
+        case .noAnswer: return "No answer"
+        case .none: return session.connected ? "\(session.members.count) in voice" : session.state
+        }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
+            HStack(spacing: 6) {
+                if !session.connected { ProgressView().scaleEffect(0.7) }
+                Text(statusLine)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(session.connected && session.outgoing != .noAnswer ? Theme.online : Theme.muted)
+                Spacer()
+            }
+            .padding(.horizontal, 14)
+            .padding(.top, 10)
             ScrollView {
                 VStack(spacing: 10) {
                     // Screen shares get the full width, like Discord's stream view.
@@ -99,7 +150,8 @@ private struct ConnectedVoiceView: View {
                     }
                     LazyVGrid(columns: columns, spacing: 10) {
                         ForEach(session.members) { member in
-                            ParticipantTile(member: member, account: callAccount)
+                            Button { showProfile(member.userId) } label: { ParticipantTile(member: member, account: callAccount) }
+                                .buttonStyle(.plain)
                         }
                     }
                 }
@@ -110,27 +162,31 @@ private struct ConnectedVoiceView: View {
                     .font(.footnote).foregroundStyle(Theme.muted).padding(.horizontal)
             }
             if let error = session.lastError {
-                Text(error).font(.footnote).foregroundStyle(Theme.danger).padding(.horizontal)
+                Text(error).font(.footnote).foregroundStyle(Theme.danger).padding(.horizontal).padding(.bottom, 6)
+                    .multilineTextAlignment(.center)
             }
             controls
         }
     }
 
     private var controls: some View {
-        HStack(spacing: 14) {
-            ControlButton(icon: session.cameraOn ? "video.fill" : "video.slash.fill", active: session.cameraOn) {
+        HStack(spacing: 10) {
+            ControlButton(icon: session.speakerOn ? "speaker.wave.2.fill" : "speaker.fill", label: session.speakerOn ? "Use earpiece" : "Use speaker", active: session.speakerOn) {
+                session.toggleSpeaker()
+            }
+            ControlButton(icon: session.cameraOn ? "video.fill" : "video.slash.fill", label: session.cameraOn ? "Turn off camera" : "Turn on camera", active: session.cameraOn) {
                 Task { await session.toggleCamera() }
             }
-            ControlButton(icon: session.microphoneOn ? "mic.fill" : "mic.slash.fill", active: session.microphoneOn, warn: !session.microphoneOn) {
+            ControlButton(icon: session.microphoneOn ? "mic.fill" : "mic.slash.fill", label: session.microphoneOn ? "Mute" : "Unmute", active: session.microphoneOn, warn: !session.microphoneOn) {
                 Task { await session.toggleMicrophone() }
             }
-            ControlButton(icon: session.deafened ? "speaker.slash.fill" : "headphones", active: !session.deafened, warn: session.deafened) {
+            ControlButton(icon: session.deafened ? "speaker.slash.fill" : "headphones", label: session.deafened ? "Undeafen" : "Deafen", active: !session.deafened, warn: session.deafened) {
                 Task { await session.toggleDeafen() }
             }
-            ControlButton(icon: "rectangle.on.rectangle", active: session.screenSharing, highlight: session.screenSharing) {
+            ControlButton(icon: "rectangle.on.rectangle", label: session.screenSharing ? "Stop sharing screen" : "Share screen", active: session.screenSharing, highlight: session.screenSharing) {
                 Task { await session.toggleScreenShare() }
             }
-            ControlButton(icon: "phone.down.fill", active: true, destructive: true) {
+            ControlButton(icon: "phone.down.fill", label: "Leave call", active: true, destructive: true) {
                 Task { await calls.leave() }
             }
         }
@@ -142,6 +198,7 @@ private struct ConnectedVoiceView: View {
 
 private struct ControlButton: View {
     let icon: String
+    let label: String
     var active = true
     var warn = false
     var highlight = false
@@ -151,11 +208,12 @@ private struct ControlButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: icon)
-                .font(.system(size: 20, weight: .semibold))
+                .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(warn ? Theme.danger : .white)
-                .frame(width: 54, height: 54)
+                .frame(width: 50, height: 50)
                 .background(Circle().fill(destructive ? Theme.danger : (highlight ? Theme.accent : Theme.elevated)))
         }
+        .accessibilityLabel(label)
     }
 }
 
@@ -170,17 +228,24 @@ private struct ParticipantTile: View {
                 SwiftUIVideoView(camera, layoutMode: .fill)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
             } else {
-                AvatarView(url: member.avatarUrl, name: member.name, size: 64, account: account)
+                // Sits a little high so the name pill below never covers it.
+                AvatarView(url: member.avatarUrl, name: member.name, size: 52, account: account)
+                    .offset(y: -12)
             }
         }
         .aspectRatio(16 / 10, contentMode: .fit)
+        .opacity(member.isConnecting ? 0.55 : 1)
         .overlay(
             RoundedRectangle(cornerRadius: 12)
                 .stroke(member.isSpeaking && member.microphoneOn ? Theme.online : .clear, lineWidth: 3)
         )
         .overlay(alignment: .bottomLeading) {
             HStack(spacing: 4) {
-                if !member.microphoneOn { Image(systemName: "mic.slash.fill").foregroundStyle(Theme.danger) }
+                if member.isConnecting {
+                    ProgressView().scaleEffect(0.6).frame(width: 12, height: 12)
+                } else if !member.microphoneOn {
+                    Image(systemName: "mic.slash.fill").foregroundStyle(Theme.danger)
+                }
                 Text(member.isLocal ? "\(member.name) (you)" : member.name).lineLimit(1)
             }
             .font(.caption.weight(.semibold))
@@ -226,35 +291,109 @@ private struct VideoTile: View {
     }
 }
 
-/// Discord's green "Voice Connected" panel above the user panel.
+/// Discord's green "Voice Connected" panel above the user panel. Tapping it opens the call.
 struct VoiceStatusBar: View {
     @ObservedObject var session: CallSession
     @EnvironmentObject private var calls: CallManager
 
     var body: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
-                Label(session.state, systemImage: "antenna.radiowaves.left.and.right")
-                    .font(.footnote.weight(.bold))
-                    .foregroundStyle(session.connected ? Theme.online : Theme.muted)
-                Text(session.roomName).font(.caption).foregroundStyle(Theme.muted).lineLimit(1)
+        HStack(spacing: 4) {
+            Button { calls.showCallScreen = true } label: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Label(session.state, systemImage: "antenna.radiowaves.left.and.right")
+                        .font(.footnote.weight(.bold))
+                        .foregroundStyle(session.connected ? Theme.online : Theme.muted)
+                    Text("\(session.roomName) · \(session.members.count) in voice")
+                        .font(.caption).foregroundStyle(Theme.muted).lineLimit(1)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
             }
-            Spacer()
-            Button { Task { await session.toggleMicrophone() } } label: {
-                Image(systemName: session.microphoneOn ? "mic.fill" : "mic.slash.fill")
-                    .foregroundStyle(session.microphoneOn ? Theme.muted : Theme.danger)
+            .buttonStyle(.plain)
+            .accessibilityLabel("Open call")
+            barButton(session.microphoneOn ? "mic.fill" : "mic.slash.fill", tint: session.microphoneOn ? Theme.muted : Theme.danger, label: session.microphoneOn ? "Mute" : "Unmute") {
+                Task { await session.toggleMicrophone() }
             }
-            Button { Task { await session.toggleDeafen() } } label: {
-                Image(systemName: session.deafened ? "speaker.slash.fill" : "headphones")
-                    .foregroundStyle(session.deafened ? Theme.danger : Theme.muted)
+            barButton(session.deafened ? "speaker.slash.fill" : "headphones", tint: session.deafened ? Theme.danger : Theme.muted, label: session.deafened ? "Undeafen" : "Deafen") {
+                Task { await session.toggleDeafen() }
             }
-            Button { Task { await calls.leave() } } label: {
-                Image(systemName: "phone.down.fill").foregroundStyle(Theme.danger)
+            barButton("phone.down.fill", tint: Theme.danger, label: "Leave call") {
+                Task { await calls.leave() }
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
+        .padding(.leading, 14)
+        .padding(.trailing, 4)
+        .padding(.vertical, 4)
         .background(Theme.rail.opacity(0.85))
         .overlay(Rectangle().fill(Theme.elevated).frame(height: 1), alignment: .top)
+    }
+
+    private func barButton(_ icon: String, tint: Color, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon).foregroundStyle(tint).frame(width: 40, height: 44)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
+    }
+}
+
+/// On top of a chat: the call you are in, or the one you could join here.
+struct CallBanner: View {
+    @ObservedObject var account: MatrixAccount
+    let summary: RoomSummary?
+    let roomId: String
+    let title: String
+    @EnvironmentObject private var calls: CallManager
+
+    var body: some View {
+        if let session = calls.current {
+            OngoingCallBanner(session: session)
+        } else if let participants = summary?.callParticipants, !participants.isEmpty {
+            Button {
+                Task { await calls.join(account: account, roomId: roomId, roomName: title, showCallScreen: true) }
+            } label: {
+                HStack(spacing: 8) {
+                    HStack(spacing: -6) {
+                        ForEach(participants.prefix(4), id: \.self) { userId in
+                            AvatarView(url: account.profiles[userId]?.avatarUrl, name: account.name(of: userId), size: 24, account: account)
+                                .overlay(Circle().stroke(Theme.online, lineWidth: 1.5))
+                        }
+                    }
+                    Text(participants.count == 1 ? "\(account.name(of: participants[0])) is in a call" : "\(participants.count) people are in a call")
+                        .font(.footnote.weight(.semibold))
+                        .lineLimit(1)
+                    Spacer()
+                    Text("Join").font(.footnote.bold())
+                        .padding(.horizontal, 12).padding(.vertical, 4)
+                        .background(Capsule().fill(.white.opacity(0.2)))
+                }
+                .foregroundStyle(.white)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 7)
+                .background(Theme.online)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+}
+
+private struct OngoingCallBanner: View {
+    @ObservedObject var session: CallSession
+    @EnvironmentObject private var calls: CallManager
+
+    var body: some View {
+        Button { calls.showCallScreen = true } label: {
+            HStack(spacing: 8) {
+                Image(systemName: session.microphoneOn ? "waveform" : "mic.slash.fill")
+                Text("\(session.roomName) · \(session.members.count) in voice").font(.footnote.weight(.semibold)).lineLimit(1)
+                Spacer()
+                Text("Return").font(.footnote.bold())
+            }
+            .foregroundStyle(.white)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Theme.online)
+        }
+        .buttonStyle(.plain)
     }
 }

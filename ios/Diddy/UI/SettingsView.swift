@@ -1,4 +1,5 @@
 import MatrixRustSDK
+import PhotosUI
 import SwiftUI
 
 struct SettingsView: View {
@@ -13,6 +14,8 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             List {
+                ProfileSection(account: account)
+
                 Section("Accounts") {
                     ForEach(app.accounts) { other in
                         AccountRow(account: other, isActive: other.id == account.id) {
@@ -41,7 +44,7 @@ struct SettingsView: View {
                                     do {
                                         try await choice.apply()
                                         icon = choice
-                                    } catch { iconError = error.localizedDescription }
+                                    } catch { iconError = error.friendlyMessage }
                                 }
                             } label: {
                                 VStack(spacing: 6) {
@@ -65,6 +68,10 @@ struct SettingsView: View {
                     Text("App Icon")
                 } footer: {
                     Text("Changes the icon on your home screen.")
+                }
+
+                Section {
+                    NavigationLink("Sounds") { SoundSettingsView() }
                 }
 
                 Section("Security") {
@@ -101,6 +108,118 @@ struct SettingsView: View {
                 Text("Encrypted messages can only be read again with your recovery key or another verified device.")
             }
             .sheet(isPresented: $showRecovery) { RecoveryView(account: account) }
+        }
+    }
+}
+
+/// What Diddy may play, and a place to hear each sound.
+private struct SoundSettingsView: View {
+    var body: some View {
+        List {
+            Section {
+                ForEach(SoundSetting.allCases) { SoundToggle(setting: $0) }
+            } footer: {
+                Text("Diddy can only ring while it is open. The ringtone follows the silent switch and also vibrates.")
+            }
+            Section("Listen") {
+                ForEach(Sound.allCases) { sound in
+                    Button { Sounds.shared.preview(sound) } label: {
+                        HStack {
+                            Text(sound.title).foregroundStyle(Theme.text)
+                            Spacer()
+                            Image(systemName: "play.circle.fill").foregroundStyle(Theme.accent)
+                        }
+                    }
+                    .accessibilityLabel("Play \(sound.title)")
+                }
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .background(Theme.sidebar)
+        .navigationTitle("Sounds")
+        .navigationBarTitleDisplayMode(.inline)
+        .onDisappear { Sounds.shared.stopLoop() }
+    }
+}
+
+private struct SoundToggle: View {
+    let setting: SoundSetting
+    @AppStorage private var isOn: Bool
+
+    init(setting: SoundSetting) {
+        self.setting = setting
+        _isOn = AppStorage(wrappedValue: true, setting.rawValue)
+    }
+
+    var body: some View {
+        Toggle(setting.title, isOn: $isOn)
+    }
+}
+
+/// Your name and picture, as others see them.
+private struct ProfileSection: View {
+    @ObservedObject var account: MatrixAccount
+    @State private var name = ""
+    @State private var photo: PhotosPickerItem?
+    @State private var saving = false
+    @State private var error: String?
+
+    var body: some View {
+        Section("Profile") {
+            HStack(spacing: 14) {
+                PhotosPicker(selection: $photo, matching: .images) {
+                    AvatarView(url: account.avatarUrl, name: account.title, size: 60, account: account)
+                        .overlay(alignment: .bottomTrailing) {
+                            Image(systemName: "pencil.circle.fill")
+                                .foregroundStyle(.white, Theme.accent)
+                                .font(.title3)
+                        }
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Change profile picture")
+                VStack(alignment: .leading, spacing: 4) {
+                    TextField("Display name", text: $name)
+                        .font(.headline)
+                        .submitLabel(.done)
+                        .onSubmit { saveName() }
+                    Text(account.userId).font(.caption).foregroundStyle(Theme.faint).lineLimit(1)
+                }
+                if saving { ProgressView() }
+            }
+            if name != (account.displayName ?? "") && !name.trimmingCharacters(in: .whitespaces).isEmpty {
+                Button("Save Name") { saveName() }.disabled(saving)
+            }
+            if let error { Text(error).font(.footnote).foregroundStyle(Theme.danger) }
+        }
+        .task(id: account.displayName) { name = account.displayName ?? "" }
+        .onChange(of: photo) { item in
+            guard let item else { return }
+            run {
+                guard let raw = try await item.loadTransferable(type: Data.self), let image = UIImage(data: raw),
+                      let data = image.jpegData(compressionQuality: 0.85) else {
+                    throw DiddyError("This image could not be read.")
+                }
+                try await account.client.uploadAvatar(mimeType: "image/jpeg", data: data)
+            }
+            photo = nil
+        }
+    }
+
+    private func saveName() {
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty, trimmed != account.displayName else { return }
+        run { try await account.client.setDisplayName(name: trimmed) }
+    }
+
+    private func run(_ work: @escaping () async throws -> Void) {
+        saving = true
+        error = nil
+        Task {
+            do {
+                try await work()
+                await account.refreshProfile()
+            } catch { self.error = error.friendlyMessage }
+            saving = false
         }
     }
 }
@@ -152,7 +271,7 @@ struct RecoveryView: View {
                         do {
                             try await account.recover(with: key)
                             dismiss()
-                        } catch { self.error = error.localizedDescription }
+                        } catch { self.error = error.friendlyMessage }
                         busy = false
                     }
                 } label: {

@@ -13,7 +13,7 @@ struct MessageRow: Identifiable {
     enum Body {
         case text(String)
         case image(MediaSource, filename: String, width: CGFloat?, height: CGFloat?)
-        case file(String)
+        case file(String, source: MediaSource, mimeType: String?)
         case notice(String)
         case undecryptable
         case redacted
@@ -42,19 +42,25 @@ final class TimelineController: ObservableObject {
     @Published private(set) var reachedStart = false
     @Published private(set) var loading = false
     @Published var sendError: String?
+    @Published private(set) var typingUserIds: [String] = []
 
     let room: Room
     let ownUserId: String
     private var timeline: Timeline?
     private var items: [TimelineItem] = []
     private var listener: TaskHandle?
+    private var typingListener: TaskHandle?
+    private var isTyping = false
 
     init(room: Room, ownUserId: String) {
         self.room = room
         self.ownUserId = ownUserId
     }
 
-    deinit { listener?.cancel() }
+    deinit {
+        listener?.cancel()
+        typingListener?.cancel()
+    }
 
     func start() async {
         guard timeline == nil else { return }
@@ -64,10 +70,14 @@ final class TimelineController: ObservableObject {
             listener = await timeline.addListener(listener: TimelineUpdates { [weak self] diffs in
                 Task { @MainActor in self?.apply(diffs) }
             })
+            let me = ownUserId
+            typingListener = room.subscribeToTypingNotifications(listener: TypingUpdates { [weak self] ids in
+                Task { @MainActor in self?.typingUserIds = ids.filter { $0 != me } }
+            })
             await paginate()
             try? await timeline.markAsRead(receiptType: .read)
         } catch {
-            sendError = error.localizedDescription
+            sendError = error.friendlyMessage
         }
     }
 
@@ -78,6 +88,22 @@ final class TimelineController: ObservableObject {
         if let end = try? await timeline.paginateBackwards(numEvents: 40) { reachedStart = end }
     }
 
+    /// A page can hold nothing the chat shows (state changes only), so keep going until something
+    /// new appears; otherwise the spinner at the top of the channel would stay forever.
+    func loadOlderMessages() async {
+        let before = rows.count
+        for _ in 0..<5 where !reachedStart && rows.count == before {
+            await paginate()
+        }
+    }
+
+    func setTyping(_ typing: Bool) {
+        guard typing != isTyping else { return }
+        isTyping = typing
+        let room = room
+        Task { try? await room.typingNotice(isTyping: typing) }
+    }
+
     func markRead() {
         guard let timeline else { return }
         Task { try? await timeline.markAsRead(receiptType: .read) }
@@ -85,10 +111,12 @@ final class TimelineController: ObservableObject {
 
     // MARK: Sending
 
-    func send(text: String, replyTo: EventOrTransactionId?) async {
+    func send(text: String, replyTo: EventOrTransactionId?, mentions: [String] = []) async {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let timeline, !trimmed.isEmpty else { return }
-        let content = messageEventContentFromMarkdown(md: trimmed)
+        var content = messageEventContentFromMarkdown(md: trimmed)
+        if !mentions.isEmpty { content = content.withMentions(mentions: Mentions(userIds: mentions, room: false)) }
+        setTyping(false)
         do {
             if case .eventId(let id) = replyTo {
                 _ = try await timeline.sendReply(msg: content, eventId: id)
@@ -96,7 +124,7 @@ final class TimelineController: ObservableObject {
                 _ = try await timeline.send(msg: content)
             }
         } catch {
-            sendError = error.localizedDescription
+            sendError = error.friendlyMessage
         }
     }
 
@@ -124,18 +152,38 @@ final class TimelineController: ObservableObject {
             let handle = try timeline.sendImage(params: params, thumbnailSource: nil, imageInfo: info)
             try await handle.join()
         } catch {
-            sendError = error.localizedDescription
+            sendError = error.friendlyMessage
+        }
+    }
+
+    func edit(_ row: MessageRow, text: String, mentions: [String] = []) async {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let timeline, let id = row.eventId, !trimmed.isEmpty else { return }
+        var content = messageEventContentFromMarkdown(md: trimmed)
+        if !mentions.isEmpty { content = content.withMentions(mentions: Mentions(userIds: mentions, room: false)) }
+        do {
+            try await timeline.edit(eventOrTransactionId: id, newContent: .roomMessage(content: content))
+        } catch {
+            sendError = error.friendlyMessage
         }
     }
 
     func toggleReaction(_ key: String, on row: MessageRow) async {
         guard let timeline, let id = row.eventId else { return }
-        _ = try? await timeline.toggleReaction(itemId: id, key: key)
+        do {
+            _ = try await timeline.toggleReaction(itemId: id, key: key)
+        } catch {
+            sendError = error.friendlyMessage
+        }
     }
 
     func redact(_ row: MessageRow) async {
         guard let timeline, let id = row.eventId else { return }
-        try? await timeline.redactEvent(eventOrTransactionId: id, reason: nil)
+        do {
+            try await timeline.redactEvent(eventOrTransactionId: id, reason: nil)
+        } catch {
+            sendError = error.friendlyMessage
+        }
     }
 
     // MARK: Diffs → rows
@@ -184,7 +232,7 @@ final class TimelineController: ObservableObject {
             if let details = content.inReplyTo, case .ready(let replied, let sender, let profile, _, _) = details.event() {
                 var replyName = sender
                 if case .ready(let displayName, _, _, _, _) = profile, let displayName { replyName = displayName }
-                reply = (sender: replyName, text: Self.preview(of: replied))
+                reply = (sender: replyName, text: Self.preview(of: replied) ?? "…")
             }
             switch content.kind {
             case .message(let message):
@@ -202,7 +250,9 @@ final class TimelineController: ObservableObject {
                 return nil
             }
         case .roomMembership(let userId, let displayName, let change, _):
-            body = .notice(Self.membershipText(name: displayName ?? userId, change: change))
+            // Profile edits and other no-ops are noise in a channel; Discord does not show them either.
+            guard let text = Self.membershipText(name: displayName ?? userId, change: change) else { return nil }
+            body = .notice(text)
         case .rtcNotification, .callInvite:
             body = .notice("\(name) started a call")
         default:
@@ -237,26 +287,42 @@ final class TimelineController: ObservableObject {
         case .image(let image):
             return .image(image.source, filename: image.filename,
                           width: image.info?.width.map { CGFloat($0) }, height: image.info?.height.map { CGFloat($0) })
-        case .video(let video): return .file("🎬 \(video.filename)")
-        case .audio(let audio): return .file("🔊 \(audio.filename)")
-        case .file(let file): return .file("📎 \(file.filename)")
+        case .video(let video): return .file("🎬 \(video.filename)", source: video.source, mimeType: video.info?.mimetype)
+        case .audio(let audio): return .file("🔊 \(audio.filename)", source: audio.source, mimeType: audio.info?.mimetype)
+        case .file(let file): return .file("📎 \(file.filename)", source: file.source, mimeType: file.info?.mimetype)
         default: return .text(message.body)
         }
     }
 
-    private static func preview(of content: TimelineItemContent) -> String {
-        if case .msgLike(let like) = content, case .message(let message) = like.kind { return message.body }
-        return "…"
+    /// One line for reply previews and the direct message list.
+    static func preview(of content: TimelineItemContent) -> String? {
+        guard case .msgLike(let like) = content else { return nil }
+        switch like.kind {
+        case .message(let message):
+            switch message.msgType {
+            case .image: return "📷 Photo"
+            case .video: return "🎬 Video"
+            case .audio: return "🔊 Audio"
+            case .file(let file): return "📎 \(file.filename)"
+            default: return message.body
+            }
+        case .sticker: return "Sticker"
+        case .redacted: return "Message deleted"
+        case .unableToDecrypt: return "🔒 Encrypted message"
+        default: return nil
+        }
     }
 
-    private static func membershipText(name: String, change: MembershipChange?) -> String {
+    private static func membershipText(name: String, change: MembershipChange?) -> String? {
         switch change {
-        case .joined?: return "\(name) joined"
+        case .joined?, .invitationAccepted?, .knockAccepted?: return "\(name) joined"
         case .left?: return "\(name) left"
         case .invited?: return "\(name) was invited"
         case .banned?, .kickedAndBanned?: return "\(name) was banned"
+        case .unbanned?: return "\(name) was unbanned"
         case .kicked?: return "\(name) was removed"
-        default: return "\(name) updated their membership"
+        case .invitationRejected?: return "\(name) declined the invite"
+        default: return nil
         }
     }
 }

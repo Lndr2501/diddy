@@ -34,6 +34,12 @@ final class TimelineUpdates: TimelineListener, @unchecked Sendable {
     func onUpdate(diff: [TimelineDiff]) { handler(diff) }
 }
 
+final class CallDeclineUpdates: CallDeclineListener, @unchecked Sendable {
+    private let handler: (String) -> Void
+    init(_ handler: @escaping (String) -> Void) { self.handler = handler }
+    func call(declinerUserId: String) { handler(declinerUserId) }
+}
+
 final class RecoveryListener: RecoveryStateListener, @unchecked Sendable {
     private let handler: (RecoveryState) -> Void
     init(_ handler: @escaping (RecoveryState) -> Void) { self.handler = handler }
@@ -56,6 +62,12 @@ final class RoomInfoUpdates: RoomInfoListener, @unchecked Sendable {
     private let handler: (RoomInfo) -> Void
     init(_ handler: @escaping (RoomInfo) -> Void) { self.handler = handler }
     func call(roomInfo: RoomInfo) { handler(roomInfo) }
+}
+
+final class TypingUpdates: TypingNotificationsListener, @unchecked Sendable {
+    private let handler: ([String]) -> Void
+    init(_ handler: @escaping ([String]) -> Void) { self.handler = handler }
+    func call(typingUserIds: [String]) { handler(typingUserIds) }
 }
 
 /// Applies an SDK list diff to a plain array (same shape for rooms, spaces and timeline items).
