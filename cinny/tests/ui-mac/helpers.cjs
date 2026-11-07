@@ -35,10 +35,87 @@ const findOverlaps = (page) =>
         const cx = (left + right) / 2;
         const cy = (top + bottom) / 2;
         if (clippedAt(a.el, cx, cy) || clippedAt(b.el, cx, cy)) continue;
+        // Elements under a modal/backdrop are not really overlapping: another layer lies between.
+        const stack = document.elementsFromPoint(cx, cy);
+        const idx = (x) => stack.findIndex((n) => n === x || x.contains(n));
+        const ia = idx(a.el);
+        const ib = idx(b.el);
+        if (ia < 0 || ib < 0) continue;
+        const between = stack.slice(Math.min(ia, ib) + 1, Math.max(ia, ib));
+        if (between.some((n) => !a.el.contains(n) && !b.el.contains(n) && !n.contains(a.el) && !n.contains(b.el))) continue;
         found.push(`${desc(a.el)} <-> ${desc(b.el)}`);
       }
     }
     return found;
   });
 
-module.exports = { findOverlaps };
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const { expect } = require('@playwright/test');
+
+const HS = process.env.DIDDY_TEST_HOMESERVER || 'http://127.0.0.1:8008';
+const accountsFile =
+  process.env.DIDDY_TEST_ACCOUNTS || path.join(os.homedir(), 'diddy-testserver', 'accounts.txt');
+const accounts = {};
+try {
+  fs.readFileSync(accountsFile, 'utf8')
+    .split('\n')
+    .forEach((l) => {
+      const [u, p] = l.trim().split(/\s+/);
+      if (u && p) accounts[u] = p;
+    });
+} catch (e) {
+  /* specs skip themselves when no accounts exist */
+}
+
+/** Closes the onboarding dialogs (English "Skip", German "Überspringen"); some appear late. */
+async function dismissOnboarding(page, wait = 2500) {
+  const skip = page.getByRole('button', { name: /^(Skip|Überspringen)$/ });
+  for (let i = 0; i < 6; i += 1) {
+    if (!(await skip.first().isVisible({ timeout: wait }).catch(() => false))) return;
+    await skip.first().click({ timeout: 3000 }).catch(() => undefined);
+  }
+}
+
+/** Opens the app in a fresh WebKit context as macOS + mocked Tauri, logs in and skips onboarding. */
+async function openApp(browser, user, viewport = { width: 1100, height: 750 }) {
+  const context = await browser.newContext({ viewport });
+  // The German intro ("Matrix für Discord-Umsteiger") pops up 4 s after load and would cover the
+  // UI under test: mark it as seen unless a test wants it (options.intro = true).
+  await context.addInitScript((id) => {
+    try {
+      localStorage.setItem(`diddy-intro-seen:${id}`, '1');
+    } catch (e) {
+      /* storage unavailable */
+    }
+  }, `@${user}:localhost`);
+  await context.addInitScript(() => {
+    Object.defineProperty(window.navigator, 'platform', { get: () => 'MacIntel' });
+    window.__TAURI_INTERNALS__ = {
+      invoke: async (cmd) => (cmd === 'connection_profiles' ? [] : null),
+      transformCallback: () => 0,
+      metadata: { currentWindow: { label: 'main' }, currentWebview: { label: 'main' } },
+    };
+  });
+  const page = await context.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.goto('/');
+  const hs = page.getByRole('textbox').first();
+  await hs.fill(HS);
+  await hs.press('Enter');
+  await expect(page.getByRole('button', { name: 'Login', exact: true })).toBeVisible({
+    timeout: 30000,
+  });
+  await page.getByRole('textbox').nth(1).fill(user);
+  await page.locator('input[type=password]').fill(accounts[user]);
+  await page.getByRole('button', { name: 'Login', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Back' })).toBeVisible({ timeout: 60000 });
+  await dismissOnboarding(page);
+  page.appErrors = () =>
+    errors.filter((e) => !/fetch|network|net::|abort|load failed/i.test(e));
+  return page;
+}
+
+module.exports = { findOverlaps, openApp, dismissOnboarding, accounts, HS };
