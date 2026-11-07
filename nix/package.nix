@@ -1,33 +1,22 @@
 {
   lib,
+  stdenvNoCC,
   buildNpmPackage,
   importNpmLock,
   nodejs_24,
-  rustPlatform,
-  cargo-tauri,
-  pkg-config,
-  wrapGAppsHook3,
+  electron,
+  alsa-lib,
+  makeWrapper,
+  makeDesktopItem,
+  copyDesktopItems,
   jq,
-  desktop-file-utils,
-  glib-networking,
-  openssl,
-  gtk3,
-  librsvg,
-  webkitgtk_4_1,
-  gst_all_1,
-  libnice,
-  pipewire,
-  xdg-utils,
-  # Voice/video calls need WebRTC in WebKitGTK. The default nixpkgs WebKitGTK has none
-  # (ENABLE_WEB_RTC belongs to its experimental features), so `RTCPeerConnection` is
-  # missing and Element Call cannot connect. `true` uses WebKitGTK with its experimental
-  # features (WebRTC via GStreamer). cache.nixos.org currently has that build for
-  # x86_64-linux and aarch64-linux; when it does not, it is built locally (hours).
-  withWebRTC ? false,
 }:
+# Diddy on Linux: the Cinny-based frontend in Electron (Chromium). The Tauri build uses the system
+# web engine, which on Linux is WebKitGTK; its GStreamer WebRTC cannot run Element Call (no frame
+# encryption, so no encrypted calls at all). Chromium brings libwebrtc, like WKWebView on macOS.
+# Nothing big is compiled here: Electron comes from the binary cache, only the frontend is built.
 let
   version = (lib.importJSON ../src-tauri/tauri.conf.json).version;
-  webkitgtk = if withWebRTC then webkitgtk_4_1.override { enableExperimental = true; } else webkitgtk_4_1;
 
   # Only application sources enter the store, never local handovers, credentials,
   # build output or dependencies installed outside Nix.
@@ -42,6 +31,7 @@ let
       lib.cleanSourceFilter path type
       && (toString path == toString ../. || builtins.elem top [
         "cinny"
+        "electron"
         "src-tauri"
         "config.json"
         "LICENSE"
@@ -89,60 +79,65 @@ let
     '';
   };
 in
-rustPlatform.buildRustPackage {
+stdenvNoCC.mkDerivation {
   pname = "diddy";
   inherit version src;
-  sourceRoot = "${src.name}/src-tauri";
-  cargoLock.lockFile = ../src-tauri/Cargo.lock;
 
   nativeBuildInputs = [
-    cargo-tauri.hook
-    pkg-config
-    wrapGAppsHook3
+    makeWrapper
+    copyDesktopItems
     jq
-    desktop-file-utils
+    nodejs_24
   ];
 
-  buildInputs = [
-    glib-networking
-    openssl
-    gtk3
-    librsvg
-    webkitgtk
-    gst_all_1.gstreamer
-    gst_all_1.gst-plugins-base
-    gst_all_1.gst-plugins-good
-    gst_all_1.gst-plugins-bad
-    gst_all_1.gst-libav
-    # ICE transport (nicesrc/nicesink) for GStreamer WebRTC
-    libnice
-    # Screen sharing through xdg-desktop-portal (pipewiresrc)
-    pipewire
+  dontBuild = true;
+
+  # Tests of the Electron shell (log, connections, MyInstants, local server); no Electron needed.
+  doCheck = true;
+  checkPhase = ''
+    runHook preCheck
+    (cd electron && node --test tests/*.test.cjs)
+    runHook postCheck
+  '';
+
+  desktopItems = [
+    (makeDesktopItem {
+      name = "Diddy";
+      desktopName = "Diddy";
+      comment = "Matrix chat client";
+      exec = "diddy %U";
+      icon = "diddy";
+      categories = [ "Network" "InstantMessaging" ];
+      startupWMClass = "Diddy";
+    })
   ];
 
-  # Tauri's Nix hook extracts its temporary deb bundle into a native store
-  # package, including the desktop entry and icons. It does not install a deb.
-  postPatch = ''
-    jq --arg frontend "${frontend}" '
-      .build.frontendDist = $frontend
-      | del(.build.beforeBuildCommand, .build.beforeDevCommand)
-      | .bundle.createUpdaterArtifacts = false
-    ' tauri.conf.json > tauri.conf.json.tmp
-    mv tauri.conf.json.tmp tauri.conf.json
+  installPhase = ''
+    runHook preInstall
+
+    share=$out/share/diddy
+    mkdir -p $share/electron $share/app-icons
+    cp -r electron/lib electron/main.cjs electron/preload.cjs $share/electron/
+    jq --arg version "${version}" '.version = $version | del(.scripts)' electron/package.json \
+      > $share/electron/package.json
+    ln -s ${frontend} $share/frontend
+    cp src-tauri/app-icons/{pink,blue,purple,black,magenta}.png $share/app-icons/
+
+    install -Dm644 src-tauri/icons/32x32.png $out/share/icons/hicolor/32x32/apps/diddy.png
+    install -Dm644 src-tauri/icons/128x128.png $out/share/icons/hicolor/128x128/apps/diddy.png
+    install -Dm644 src-tauri/icons/128x128@2x.png $out/share/icons/hicolor/256x256/apps/diddy.png
+    install -Dm644 src-tauri/icons/icon.png $out/share/icons/hicolor/512x512/apps/diddy.png
+
+    # A global LD_LIBRARY_PATH (e.g. for JACK) may point at an alsa-lib from a newer nixpkgs that
+    # needs a newer glibc than this Electron; ours goes first so audio keeps working.
+    makeWrapper ${lib.getExe electron} $out/bin/diddy \
+      --add-flags $share/electron \
+      --prefix LD_LIBRARY_PATH : ${lib.makeLibraryPath [ alsa-lib ]}
+
+    runHook postInstall
   '';
 
-  preFixup = ''
-    gappsWrapperArgs+=(--prefix PATH : ${lib.makeBinPath [ xdg-utils ]})
-  '';
-
-  postInstall = ''
-    desktop-file-edit --set-comment="Matrix chat client" \
-      --set-key=Categories --set-value="Network;InstantMessaging;" \
-      "$out/share/applications/Diddy.desktop"
-    desktop-file-validate "$out/share/applications/Diddy.desktop"
-  '';
-
-  passthru = { inherit frontend webkitgtk withWebRTC; };
+  passthru = { inherit frontend electron; };
 
   meta = {
     description = "Matrix chat client based on Cinny";

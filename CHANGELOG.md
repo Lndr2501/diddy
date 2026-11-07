@@ -1,5 +1,15 @@
 # Changelog
 
+## Unveröffentlicht
+
+### Linux: Diddy läuft jetzt in Electron, Calls funktionieren
+
+- **Sprach- und Videoanrufe unter Linux, auch verschlüsselt.** Vorher endete jeder Beitritt mit „Something went wrong“ (`UNKNOWN_ERROR`). Die Ursache ist WebKitGTKs WebRTC (GStreamer): fehlende BUNDLE-Gruppe, ein Deadlock beim Beitritt, kaputte Empfangs-Transceiver und vor allem keine Frame-Verschlüsselung. Damit sind verschlüsselte Calls unmöglich. Unter Linux läuft dasselbe Frontend deshalb in Electron (Chromium, libwebrtc wie Safari auf macOS). macOS bleibt Tauri.
+- Das NixOS-Paket `diddy` baut nur noch das Frontend, Electron kommt aus dem Binär-Cache. Das deutlich schneller zu bauende Paket ersetzt `diddy-webrtc`, das entfällt.
+- Beim Umstieg einmal neu anmelden und das Gerät verifizieren: Chromium kann den WebKitGTK-Speicher nicht lesen. Verbindungen, App-Icon und Log bleiben erhalten.
+- Ein global gesetztes `LD_LIBRARY_PATH` mit neuerer `alsa-lib` (z. B. für JACK) bricht das Paket nicht mehr.
+- Details und Messungen: `docs/nixos.md`.
+
 ## 1.2.0 (2026-11-07)
 
 ### Highlights

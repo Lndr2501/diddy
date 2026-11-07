@@ -31,6 +31,9 @@ jobs:
       - name: Tests
         run: cd cinny && npm test
 
+      - name: Linux shell tests (Electron main process helpers, no Electron needed)
+        run: cd electron && npm test
+
       - name: Build web app
         env:
           NODE_OPTIONS: "--max_old_space_size=4096"
