@@ -1,12 +1,13 @@
-import { Box, Button, Icon, Icons, Text } from 'folds';
-import React from 'react';
+import { Box, Button, color, Icon, Icons, Text } from 'folds';
+import React, { useCallback, useState } from 'react';
+import { ICreateRoomStateEvent, Preset, Visibility } from 'matrix-js-sdk';
 import classNames from 'classnames';
 import { useNavigate } from 'react-router-dom';
 import { ProfileStatus, UserHero, UserHeroName } from './UserHero';
 import { safeColor } from '../../plugins/diddy/sanitize';
 import * as css from './styles.css';
 import { useDiddyProfile } from '../../plugins/diddy/profiles';
-import { getMxIdServer, mxcUrlToHttp } from '../../utils/matrix';
+import { addRoomIdToMDirect, getMxIdServer, mxcUrlToHttp } from '../../utils/matrix';
 import { getMemberAvatarMxc, getMemberDisplayName } from '../../utils/room';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
@@ -24,11 +25,17 @@ import { useRoomCreators } from '../../hooks/useRoomCreators';
 import { useRoomPermissions } from '../../hooks/useRoomPermissions';
 import { useMemberPowerCompare } from '../../hooks/useMemberPowerCompare';
 import { CreatorChip } from './CreatorChip';
-import { getDirectCreatePath, withSearchParam } from '../../pages/pathUtils';
+import { getDirectCreatePath, getDirectRoomPath, withSearchParam } from '../../pages/pathUtils';
 import { DirectCreateSearchParams } from '../../pages/paths';
 import { ProfileModules, readableTextOn } from './ProfileModules';
 import { DarkTheme, LightTheme } from '../../hooks/useTheme';
 import { visibleModules } from '../../plugins/diddy/profileExtras';
+import { findDirectRoomId, PROFILE_CALL_PREFERENCES } from '../../plugins/directCall';
+import { createRoomEncryptionState } from '../create-room';
+import { useCallEmbed, useCallStart } from '../../hooks/useCallEmbed';
+import { useLivekitSupport } from '../../hooks/useLivekitSupport';
+import { webRTCSupported } from '../../utils/rtc';
+import { AccountDataEvent } from '../../../types/matrix/accountData';
 
 type UserRoomProfileProps = {
   userId: string;
@@ -83,21 +90,91 @@ export function UserRoomProfile({ userId }: UserRoomProfileProps) {
     navigate(withSearchParam(getDirectCreatePath(), directSearchParam));
   };
 
+  const callEmbed = useCallEmbed();
+  const startDirectCall = useCallStart(true);
+  const livekitSupported = useLivekitSupport();
+  const canCall = livekitSupported && webRTCSupported();
+  const [calling, setCalling] = useState(false);
+  const [callError, setCallError] = useState<string>();
+
+  /** The private chat with this user: the existing one, or a new encrypted one. */
+  const getOrCreateDirectRoom = useCallback(async () => {
+    const existingId = findDirectRoomId(
+      mx.getAccountData(AccountDataEvent.Direct as never)?.getContent(),
+      userId,
+      (id) => mx.getRoom(id)?.getMyMembership() === 'join'
+    );
+    const existing = existingId ? mx.getRoom(existingId) : null;
+    if (existing) return existing;
+
+    const initialState: ICreateRoomStateEvent[] = [createRoomEncryptionState()];
+    const result = await mx.createRoom({
+      is_direct: true,
+      invite: [userId],
+      visibility: Visibility.Private,
+      preset: Preset.TrustedPrivateChat,
+      initial_state: initialState,
+    });
+    addRoomIdToMDirect(mx, result.room_id, userId).catch((error) => console.warn(error));
+
+    // the new room shows up with the next sync
+    for (let i = 0; i < 50; i += 1) {
+      const created = mx.getRoom(result.room_id);
+      if (created) return created;
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((resolve) => {
+        setTimeout(resolve, 200);
+      });
+    }
+    throw new Error('The chat was created but has not arrived yet. Try again in a moment.');
+  }, [mx, userId]);
+
+  const handleCall = () => {
+    setCalling(true);
+    setCallError(undefined);
+    getOrCreateDirectRoom()
+      .then((directRoom) => {
+        startDirectCall(directRoom, { ...PROFILE_CALL_PREFERENCES });
+        closeUserRoomProfile();
+        navigate(getDirectRoomPath(directRoom.roomId));
+      })
+      .catch((error: Error) => {
+        setCallError(error?.message || 'Could not start the call.');
+        setCalling(false);
+      });
+  };
+
   const notMe = userId !== myUserId;
   const actions = notMe ? (
-    <Button
-      size="300"
-      variant="Primary"
-      fill="Solid"
-      radii="Pill"
-      before={<Icon size="50" src={Icons.Message} filled />}
-      onClick={handleMessage}
-      style={
-        accent ? { backgroundColor: accent, color: accentText, borderColor: accent } : undefined
-      }
-    >
-      <Text size="B300">Message</Text>
-    </Button>
+    <>
+      {canCall && (
+        <Button
+          size="300"
+          variant="Secondary"
+          fill="Soft"
+          radii="Pill"
+          before={<Icon size="50" src={Icons.Phone} filled />}
+          onClick={handleCall}
+          disabled={!!callEmbed || calling}
+          title={callEmbed ? 'Already in a call. End it first.' : 'Call privately'}
+        >
+          <Text size="B300">Call</Text>
+        </Button>
+      )}
+      <Button
+        size="300"
+        variant="Primary"
+        fill="Solid"
+        radii="Pill"
+        before={<Icon size="50" src={Icons.Message} filled />}
+        onClick={handleMessage}
+        style={
+          accent ? { backgroundColor: accent, color: accentText, borderColor: accent } : undefined
+        }
+      >
+        <Text size="B300">Message</Text>
+      </Button>
+    </>
   ) : undefined;
 
   return (
@@ -154,6 +231,11 @@ export function UserRoomProfile({ userId }: UserRoomProfileProps) {
             )}
             {notMe && <OptionsChip userId={userId} />}
           </div>
+          {callError && (
+            <Text size="T200" style={{ color: color.Critical.Main }}>
+              {callError}
+            </Text>
+          )}
           {ignored && <IgnoredUserAlert />}
           {member && membership === Membership.Ban && (
             <UserBanAlert
