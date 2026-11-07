@@ -15,6 +15,13 @@ import {
   NameplateStyle,
   NameStyle,
 } from './types';
+import {
+  sanitizeAbout,
+  sanitizeActivity,
+  sanitizeCardLayout,
+  sanitizeInterests,
+  sanitizeLinks,
+} from './profileExtras';
 
 const HEX_COLOR = /^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/;
 const MXC_URI = /^mxc:\/\/[A-Za-z0-9.\-:[\]]+\/[A-Za-z0-9_-]+$/;
@@ -156,6 +163,16 @@ export const sanitizeProfile = (raw: unknown): DiddyProfile | undefined => {
   }
   const bio = safeText(raw.bio, 160);
   if (bio) out.bio = bio;
+  const about = sanitizeAbout(raw.about);
+  if (about) out.about = about;
+  const interests = sanitizeInterests(raw.interests);
+  if (interests) out.interests = interests;
+  const links = sanitizeLinks(raw.links);
+  if (links) out.links = links;
+  const activity = sanitizeActivity(raw.activity);
+  if (activity) out.activity = activity;
+  const cardLayout = sanitizeCardLayout(raw.cardLayout);
+  if (cardLayout) out.cardLayout = cardLayout;
   return out;
 };
 
