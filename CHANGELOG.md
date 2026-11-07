@@ -2,6 +2,11 @@
 
 ## Unveröffentlicht
 
+### "Jump to Latest" scrollt sanft runter
+
+- Klick auf "Jump to Latest" springt nicht mehr hart ans Ende, sondern fährt in ca. 350–600 ms mit Auslaufen runter. Sind die neuesten Nachrichten schon geladen, wird die Timeline nicht neu geladen; sonst wird sie geladen und die Fahrt startet höchstens 2,5 Bildschirmhöhen über dem Ende.
+- Mausrad oder Touch bricht die Animation ab, bei "Bewegung reduzieren" springt es wie vorher. In `features/room/RoomTimeline.tsx`. Nicht in der laufenden App geprüft.
+
 ### Call: nur noch ein Rechtsklick-Menü
 
 - Rechtsklick auf eine Kachel öffnete zwei Menüs übereinander: Diddys Personenmenü und das eigene Menü von Element Call (Mute for me, Lautstärke). Diddy nimmt das Ereignis jetzt vor Element Call ab, es erscheint nur noch Diddys Menü.

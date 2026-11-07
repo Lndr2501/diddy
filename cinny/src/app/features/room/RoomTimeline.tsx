@@ -551,9 +551,63 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
     [cancelSmoothScroll]
   );
 
+  // "Jump to Latest": glide down to the bottom with a time-based ease-out.
+  // Position is tracked relative to the bottom, so items added/removed above
+  // (virtual paginator) or growing content below don't make it stutter.
+  // Long distances start at most a few viewports above the bottom instead of
+  // racing through the whole history.
+  const doAnimatedScrollToBottom = useCallback(
+    (scrollEl: HTMLElement) => {
+      cancelSmoothScroll();
+      const s = smoothScrollRef.current;
+
+      const getTarget = () => scrollEl.scrollHeight - scrollEl.offsetHeight;
+      const maxDistance = scrollEl.offsetHeight * 2.5;
+      const distance = Math.min(getTarget() - scrollEl.scrollTop, maxDistance);
+
+      if (distance <= 1 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        scrollToBottom(scrollEl, 'instant');
+        return;
+      }
+
+      const setTop = (top: number) => scrollEl.scrollTo({ top, behavior: 'instant' });
+      setTop(getTarget() - distance);
+
+      const onUserScroll = () => cancelSmoothScroll();
+      scrollEl.addEventListener('wheel', onUserScroll, { passive: true });
+      scrollEl.addEventListener('touchstart', onUserScroll, { passive: true });
+      s.cancel = () => {
+        scrollEl.removeEventListener('wheel', onUserScroll);
+        scrollEl.removeEventListener('touchstart', onUserScroll);
+      };
+
+      const duration = 350 + Math.min(distance / scrollEl.offsetHeight, 2.5) * 100;
+      const easeOutCubic = (t: number) => 1 - (1 - t) ** 3;
+      let start: number | null = null;
+
+      const step = (now: number) => {
+        if (start === null) start = now;
+        const t = Math.min((now - start) / duration, 1);
+        const remaining = distance * (1 - easeOutCubic(t));
+        setTop(getTarget() - remaining);
+
+        if (t >= 1) {
+          setTop(getTarget());
+          cancelSmoothScroll();
+          return;
+        }
+        s.rafId = requestAnimationFrame(step);
+      };
+
+      s.rafId = requestAnimationFrame(step);
+    },
+    [cancelSmoothScroll]
+  );
+
   const scrollToBottomRef = useRef({
     count: 0,
     smooth: true,
+    animated: false,
   });
 
   const [focusItem, setFocusItem] = useState<
@@ -908,7 +962,10 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
     if (scrollToBottomCount > 0) {
       const scrollEl = scrollRef.current;
       if (scrollEl) {
-        if (scrollToBottomRef.current.smooth) {
+        if (scrollToBottomRef.current.animated) {
+          scrollToBottomRef.current.animated = false;
+          doAnimatedScrollToBottom(scrollEl);
+        } else if (scrollToBottomRef.current.smooth) {
           doSmoothScrollToBottom(scrollEl);
         } else {
           cancelSmoothScroll();
@@ -916,7 +973,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
         }
       }
     }
-  }, [doSmoothScrollToBottom, cancelSmoothScroll, scrollToBottomCount]);
+  }, [doSmoothScrollToBottom, doAnimatedScrollToBottom, cancelSmoothScroll, scrollToBottomCount]);
 
   useEffect(() => () => cancelSmoothScroll(), [cancelSmoothScroll]);
 
@@ -947,9 +1004,18 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
     if (eventId) {
       navigateRoom(room.roomId, undefined, { replace: true });
     }
+    // Latest messages already rendered: keep the DOM and just glide down.
+    // Otherwise reload the live timeline first (the animation then starts a
+    // couple of viewports above the new bottom).
+    if (!eventId && atLiveEndRef.current) {
+      const scrollEl = scrollRef.current;
+      if (scrollEl) doAnimatedScrollToBottom(scrollEl);
+      return;
+    }
     setTimeline(getInitialTimeline(room));
     scrollToBottomRef.current.count += 1;
     scrollToBottomRef.current.smooth = false;
+    scrollToBottomRef.current.animated = true;
   };
 
   const handleJumpToUnread = () => {
