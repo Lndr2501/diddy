@@ -23,7 +23,7 @@ struct ChannelCategory: Identifiable, Hashable {
 }
 
 extension SpaceRoom: Identifiable {
-    var id: String { roomId }
+    public var id: String { roomId }
 
     /// Cinny/Diddy voice channels are rooms of the MSC3417 call room type.
     var isVoiceChannel: Bool {
