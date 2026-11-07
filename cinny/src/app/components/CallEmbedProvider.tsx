@@ -18,12 +18,15 @@ import {
   toRem,
 } from 'folds';
 import {
+  ClientEvent,
   EventTimelineSetHandlerMap,
   EventType,
   RelationType,
   Room,
   RoomEvent,
+  SyncState,
 } from 'matrix-js-sdk';
+import { MatrixRTCSessionEvent } from 'matrix-js-sdk/lib/matrixrtc/MatrixRTCSession';
 import { IRTCNotificationContent, RTCNotificationType } from 'matrix-js-sdk/lib/matrixrtc/types';
 import { CryptoBackend } from 'matrix-js-sdk/lib/common-crypto/CryptoBackend';
 import {
@@ -36,12 +39,22 @@ import {
   useCallStart,
 } from '../hooks/useCallEmbed';
 import { callChatAtom, callEmbedAtom } from '../state/callEmbed';
-import { CallEmbed } from '../plugins/call';
+import { CallEmbed, ElementWidgetActions, useClientWidgetApiEvent } from '../plugins/call';
 import { useSelectedRoom } from '../hooks/router/useSelectedRoom';
 import { ScreenSize, useScreenSizeContext } from '../hooks/useScreenSize';
 import { useMatrixClient } from '../hooks/useMatrixClient';
 import { getSoundUrl, isSoundEnabled } from '../plugins/sounds';
-import { playCallSound } from '../plugins/call/callSounds';
+import { playCallSound, startRingback, stopRingback } from '../plugins/call/callSounds';
+import {
+  ConnectionLossDetector,
+  isDeclineOfOwnRing,
+  RINGBACK_MAX_MS,
+  RINGBACK_START_DELAY_MS,
+} from '../plugins/soundLogic';
+import {
+  getTrackedPeerConnections,
+  onPeerConnectionCreated,
+} from '../plugins/call/streamStats';
 import { useCallSpeakers } from '../hooks/useCallSpeakers';
 import { speakingUsersAtom } from '../state/speakingUsers';
 import { useCallMembersChange, useCallSession } from '../hooks/useCall';
@@ -356,6 +369,18 @@ function IncomingCallListener({ callEmbed, joined }: IncomingCallListenerProps) 
 
 function CallUtils({ embed }: { embed: CallEmbed }) {
   const setCallEmbed = useSetAtom(callEmbedAtom);
+  const joinSoundPlayed = useRef(false);
+
+  // "you join": once, when the call reports that you are in
+  useClientWidgetApiEvent(
+    embed.call,
+    ElementWidgetActions.JoinCall,
+    useCallback(() => {
+      if (joinSoundPlayed.current) return;
+      joinSoundPlayed.current = true;
+      playCallSound('callJoined');
+    }, [])
+  );
 
   useCallMemberSoundSync(embed);
   useCallThemeSync(embed);
@@ -377,6 +402,133 @@ function CallSpeakingSync({ embed }: { embed: CallEmbed }) {
     setSpeaking(speakers);
   }, [speakers, setSpeaking]);
   useEffect(() => () => setSpeaking(new Set()), [setSpeaking]);
+  return null;
+}
+
+/**
+ * The ringback while you call someone in a direct message. It loops until someone else is in the
+ * call, the ring is declined (then the decline sound plays and the call ends, like on iOS), the
+ * ring times out, or you leave.
+ */
+function CallRingback({ embed }: { embed: CallEmbed }) {
+  const mx = useMatrixClient();
+
+  useEffect(() => {
+    if (!embed.ringsOthers) return undefined;
+    const ownId = mx.getSafeUserId();
+    const { room } = embed;
+    const session = mx.matrixRTC.getRoomSession(room);
+    const othersHere = () => session.memberships.some((m) => m.userId !== ownId);
+    if (othersHere()) return undefined;
+
+    let active = true;
+    // the listeners and the timeout are added below; finish() removes them again
+    const cleanups: Array<() => void> = [];
+    const finish = () => {
+      if (!active) return;
+      active = false;
+      cleanups.forEach((cleanup) => cleanup());
+      stopRingback();
+    };
+
+    const handleMembers = () => {
+      if (othersHere()) finish();
+    };
+    const handleTimeline: EventTimelineSetHandlerMap[RoomEvent.Timeline] = async (
+      event,
+      eventRoom,
+      toStartOfTimeline,
+      removed,
+      data
+    ) => {
+      if (!active || eventRoom?.roomId !== room.roomId || !data.liveEvent) return;
+      const relation = event.getRelation();
+      if (relation?.rel_type !== RelationType.Reference || !relation.event_id) return;
+      if (event.isEncrypted()) await mx.decryptEventIfNeeded(event);
+      if (!active || event.getType() !== EventType.RTCDecline) return;
+      const declined = isDeclineOfOwnRing(
+        {
+          sender: event.getSender(),
+          relatesTo: relation.event_id,
+          relatesToSender: room.findEventById(relation.event_id)?.getSender(),
+        },
+        ownId
+      );
+      if (!declined) return;
+      finish();
+      playCallSound('callDeclined');
+      embed.hangup().catch(() => undefined);
+    };
+
+    const timeout = window.setTimeout(finish, RINGBACK_MAX_MS);
+    session.on(MatrixRTCSessionEvent.MembershipsChanged, handleMembers);
+    mx.on(RoomEvent.Timeline, handleTimeline);
+    cleanups.push(
+      () => window.clearTimeout(timeout),
+      () => session.off(MatrixRTCSessionEvent.MembershipsChanged, handleMembers),
+      () => mx.off(RoomEvent.Timeline, handleTimeline)
+    );
+    // let the "you join" sound finish first
+    const startDelay = window.setTimeout(() => {
+      if (active) startRingback();
+    }, RINGBACK_START_DELAY_MS);
+    cleanups.push(() => window.clearTimeout(startDelay));
+    return finish;
+  }, [mx, embed]);
+
+  return null;
+}
+
+/**
+ * "Connection lost" while you are in a call: the browser went offline, Matrix sync fails, or a
+ * media connection of the call (LiveKit's WebRTC peer connections in the call view) failed or
+ * dropped. Element Call reports none of this to the app, so these are watched directly.
+ */
+function CallConnectionSounds({ embed }: { embed: CallEmbed }) {
+  const mx = useMatrixClient();
+
+  useEffect(() => {
+    const detector = new ConnectionLossDetector(() => playCallSound('connectionLost'));
+    const win = embed.iframe.contentWindow;
+    const watched = new Set<RTCPeerConnection>();
+
+    const checkMedia = () => {
+      const broken = getTrackedPeerConnections(win).some(
+        (pc) =>
+          pc.signalingState !== 'closed' &&
+          (pc.connectionState === 'failed' || pc.connectionState === 'disconnected')
+      );
+      detector.set('media', !broken);
+    };
+    const watch = (pc: RTCPeerConnection) => {
+      if (watched.has(pc)) return;
+      watched.add(pc);
+      pc.addEventListener('connectionstatechange', checkMedia);
+    };
+    getTrackedPeerConnections(win).forEach(watch);
+    const stopWatchingNew = onPeerConnectionCreated(watch);
+
+    const handleSync = (state: SyncState) => {
+      detector.set('sync', state !== SyncState.Error && state !== SyncState.Reconnecting);
+    };
+    const handleOnline = () => detector.set('network', true);
+    const handleOffline = () => detector.set('network', false);
+    mx.on(ClientEvent.Sync, handleSync);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    if (!navigator.onLine) handleOffline();
+    checkMedia();
+
+    return () => {
+      detector.stop();
+      stopWatchingNew();
+      watched.forEach((pc) => pc.removeEventListener('connectionstatechange', checkMedia));
+      mx.off(ClientEvent.Sync, handleSync);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [mx, embed]);
+
   return null;
 }
 
@@ -430,6 +582,8 @@ export function CallEmbedProvider({ children }: CallEmbedProviderProps) {
     <CallEmbedContextProvider value={callEmbed}>
       {callEmbed && <CallUtils embed={callEmbed} />}
       {callEmbed && joined && <CallParticipantSounds embed={callEmbed} />}
+      {callEmbed && joined && <CallRingback embed={callEmbed} />}
+      {callEmbed && joined && <CallConnectionSounds embed={callEmbed} />}
       {callEmbed && joined && <CallSpeakingSync embed={callEmbed} />}
       <AgentVoiceSync />
       <CallEmbedRefContextProvider value={callEmbedRef}>
