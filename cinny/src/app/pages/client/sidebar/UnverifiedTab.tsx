@@ -15,7 +15,7 @@ import {
   VerificationStatus,
 } from '../../../hooks/useDeviceVerificationStatus';
 import { useCrossSigningActive } from '../../../hooks/useCrossSigning';
-import { Modal500 } from '../../../components/Modal500';
+import { SettingsSheet } from '../../../components/SettingsSheet';
 import { Settings, SettingsPages } from '../../../features/settings';
 
 function UnverifiedIndicator() {
@@ -77,9 +77,9 @@ function UnverifiedIndicator() {
         </SidebarItem>
       )}
       {settings && (
-        <Modal500 requestClose={closeSettings}>
+        <SettingsSheet requestClose={closeSettings}>
           <Settings initialPage={SettingsPages.DevicesPage} requestClose={closeSettings} />
-        </Modal500>
+        </SettingsSheet>
       )}
     </>
   );
