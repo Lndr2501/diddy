@@ -42,6 +42,9 @@ export type ActivityKind = 'music' | 'game' | 'working' | 'learning' | 'custom';
 export const ACTIVITY_KINDS: ActivityKind[] = ['music', 'game', 'working', 'learning', 'custom'];
 export type ProfileActivity = { kind: ActivityKind; text: string; detail?: string };
 
+export type CardTheme = 'auto' | 'light' | 'dark';
+export const CARD_THEMES: CardTheme[] = ['auto', 'light', 'dark'];
+
 /** Card layout and module visibility the owner chose for their own card. */
 export type CardLayoutSettings = {
   layout?: CardLayout;
@@ -49,6 +52,12 @@ export type CardLayoutSettings = {
   hidden?: CardModule[];
   /** order of the modules (modules not listed keep their default position behind them) */
   order?: CardModule[];
+  /** colors of the card regardless of the viewer's theme */
+  theme?: CardTheme;
+  /** translucent card with blur */
+  glass?: boolean;
+  /** no hover/transition animations on the card */
+  calm?: boolean;
 };
 
 export const MAX_INTERESTS = 12;
@@ -173,6 +182,10 @@ export const sanitizeCardLayout = (raw: unknown): CardLayoutSettings | undefined
   if (hidden && hidden.length > 0) out.hidden = hidden;
   const order = moduleList(raw.order);
   if (order && order.length > 0) out.order = order;
+  const theme = CARD_THEMES.find((t) => t === raw.theme);
+  if (theme && theme !== 'auto') out.theme = theme;
+  if (raw.glass === true) out.glass = true;
+  if (raw.calm === true) out.calm = true;
   return Object.keys(out).length > 0 ? out : undefined;
 };
 

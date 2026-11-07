@@ -1,5 +1,6 @@
 import { Box, Button, config, Icon, Icons, Text } from 'folds';
 import React from 'react';
+import classNames from 'classnames';
 import { useNavigate } from 'react-router-dom';
 import { UserHero, UserHeroName } from './UserHero';
 import { safeColor } from '../../plugins/diddy/sanitize';
@@ -27,12 +28,17 @@ import { CreatorChip } from './CreatorChip';
 import { getDirectCreatePath, withSearchParam } from '../../pages/pathUtils';
 import { DirectCreateSearchParams } from '../../pages/paths';
 import { ProfileModules } from './ProfileModules';
+import { DarkTheme, LightTheme } from '../../hooks/useTheme';
 import { visibleModules } from '../../plugins/diddy/profileExtras';
 
 /** Black or white, whichever is readable on the given hex background. */
 const readableTextOn = (hex: string): string => {
   let h = hex.replace('#', '');
-  if (h.length === 3 || h.length === 4) h = h.split('').map((c) => c + c).join('');
+  if (h.length === 3 || h.length === 4)
+    h = h
+      .split('')
+      .map((c) => c + c)
+      .join('');
   const r = parseInt(h.slice(0, 2), 16);
   const g = parseInt(h.slice(2, 4), 16);
   const b = parseInt(h.slice(4, 6), 16);
@@ -80,6 +86,7 @@ export function UserRoomProfile({ userId }: UserRoomProfileProps) {
   const accentText = accent ? readableTextOn(accent) : undefined;
   const layout = profile?.cardLayout?.layout ?? 'standard';
   const compact = layout === 'compact';
+  const cardTheme = profile?.cardLayout?.theme;
   const modules = visibleModules(profile?.cardLayout);
 
   const handleMessage = () => {
@@ -91,11 +98,22 @@ export function UserRoomProfile({ userId }: UserRoomProfileProps) {
   };
 
   return (
-    <Box direction="Column" className={css.CardRoot}>
+    <Box
+      direction="Column"
+      className={classNames(
+        css.CardRoot,
+        cardTheme === 'light' && LightTheme.classNames,
+        cardTheme === 'dark' && DarkTheme.classNames,
+        profile?.cardLayout?.glass && css.CardGlass,
+        profile?.cardLayout?.calm && css.CardCalm
+      )}
+    >
       {accent && (
         <div
           className={css.CardRing}
-          style={{ boxShadow: `inset 0 0 0 2px ${accent}, inset 0 0 16px color-mix(in srgb, ${accent} 33%, transparent)` }}
+          style={{
+            boxShadow: `inset 0 0 0 2px ${accent}, inset 0 0 16px color-mix(in srgb, ${accent} 33%, transparent)`,
+          }}
         />
       )}
       <UserHero
@@ -124,7 +142,9 @@ export function UserRoomProfile({ userId }: UserRoomProfileProps) {
                   before={<Icon size="50" src={Icons.Message} filled />}
                   onClick={handleMessage}
                   style={
-                    accent ? { backgroundColor: accent, color: accentText, borderColor: accent } : undefined
+                    accent
+                      ? { backgroundColor: accent, color: accentText, borderColor: accent }
+                      : undefined
                   }
                 >
                   <Text size="B300">Message</Text>
@@ -146,7 +166,9 @@ export function UserRoomProfile({ userId }: UserRoomProfileProps) {
             profile={profile}
             accent={accent}
             sharedRooms={
-              layout === 'tabs' && userId !== myUserId ? <MutualRoomsChip userId={userId} /> : undefined
+              layout === 'tabs' && userId !== myUserId ? (
+                <MutualRoomsChip userId={userId} />
+              ) : undefined
             }
           />
         </Box>

@@ -42,6 +42,7 @@ import {
   NameplateStyle,
 } from '../../../plugins/diddy/types';
 import { BadgeEditor } from './BadgeEditor';
+import { DarkTheme, LightTheme } from '../../../hooks/useTheme';
 import {
   AboutEditor,
   ActivityEditor,
@@ -901,6 +902,45 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
               Profile
             </Text>
           </Box>
+          {hasOptionsRoom && (
+            <Box shrink="No" alignItems="Center" gap="200">
+              <Button
+                size="300"
+                variant="Secondary"
+                fill="None"
+                radii="300"
+                disabled={saving || stableKey(draft) === stableKey({})}
+                onClick={() => {
+                  setDraft({});
+                  setSaveError(undefined);
+                }}
+              >
+                <Text size="B300">Reset to default</Text>
+              </Button>
+              <Button
+                size="300"
+                variant="Secondary"
+                fill="Soft"
+                radii="300"
+                disabled={saving || !dirty}
+                onClick={() => {
+                  setDraft(base);
+                  setSaveError(undefined);
+                }}
+              >
+                <Text size="B300">Cancel</Text>
+              </Button>
+              <Button
+                size="300"
+                variant="Primary"
+                radii="300"
+                disabled={saving || !dirty || busyKey !== undefined}
+                onClick={handleSave}
+              >
+                <Text size="B300">{saving ? 'Saving...' : 'Save changes'}</Text>
+              </Button>
+            </Box>
+          )}
           <Box shrink="No">
             <IconButton onClick={requestClose} variant="Surface">
               <Icon src={Icons.Cross} />
@@ -1468,12 +1508,22 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
                 </div>
 
                 <div className={css.PreviewColumn}>
-                  <ProfilePreview
-                    userId={myId}
-                    displayName={displayName}
-                    avatarUrl={avatarUrl}
-                    draft={draft}
-                  />
+                  <div
+                    className={
+                      draft.cardLayout?.theme === 'light'
+                        ? LightTheme.classNames.join(' ')
+                        : draft.cardLayout?.theme === 'dark'
+                        ? DarkTheme.classNames.join(' ')
+                        : undefined
+                    }
+                  >
+                    <ProfilePreview
+                      userId={myId}
+                      displayName={displayName}
+                      avatarUrl={avatarUrl}
+                      draft={draft}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -1486,30 +1536,6 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
                       'You have unsaved changes.'
                     )}
                   </Text>
-                  <Box gap="200">
-                    <Button
-                      size="300"
-                      variant="Secondary"
-                      fill="None"
-                      radii="300"
-                      disabled={saving}
-                      onClick={() => {
-                        setDraft(base);
-                        setSaveError(undefined);
-                      }}
-                    >
-                      <Text size="B300">Reset</Text>
-                    </Button>
-                    <Button
-                      size="300"
-                      variant="Primary"
-                      radii="300"
-                      disabled={saving || busyKey !== undefined}
-                      onClick={handleSave}
-                    >
-                      <Text size="B300">{saving ? 'Saving...' : 'Save changes'}</Text>
-                    </Button>
-                  </Box>
                 </div>
               )}
             </div>

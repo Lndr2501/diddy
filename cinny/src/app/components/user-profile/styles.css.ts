@@ -1,4 +1,4 @@
-import { style } from '@vanilla-extract/css';
+import { globalStyle, style } from '@vanilla-extract/css';
 import { color, config, toRem } from 'folds';
 
 export const UserHeader = style({
@@ -93,3 +93,12 @@ export const AboutLabel = style({
 export const AboutText = style({
   whiteSpace: 'pre-wrap',
 });
+
+/** Translucent card with blur (the owner's choice, #29). */
+export const CardGlass = style({
+  backgroundColor: `color-mix(in srgb, ${color.Surface.Container} 70%, transparent)`,
+  backdropFilter: 'blur(18px) saturate(1.2)',
+});
+/** No hover/transition animations inside the card. */
+export const CardCalm = style({ transition: 'none', animation: 'none' });
+globalStyle(`${CardCalm} *`, { transition: 'none !important', animation: 'none !important' });

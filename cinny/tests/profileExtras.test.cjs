@@ -88,3 +88,13 @@ test('visible modules follow the layout, the hidden list and the owner order', (
   // a module the layout does not offer cannot be forced on through the order
   assert.deepEqual(plain(mod.visibleModules({ layout: 'compact', order: ['links'] })), ['bio']);
 });
+
+test('card look: theme, glass and calm are validated', () => {
+  assert.deepEqual(plain(mod.sanitizeCardLayout({ theme: 'light', glass: true, calm: true })), {
+    theme: 'light',
+    glass: true,
+    calm: true,
+  });
+  assert.equal(mod.sanitizeCardLayout({ theme: 'auto', glass: 'yes', calm: 1 }), undefined);
+  assert.equal(mod.sanitizeCardLayout({ theme: 'neon' }), undefined);
+});

@@ -7,6 +7,8 @@ import {
   ACTIVITY_KINDS,
   ActivityKind,
   CARD_LAYOUTS,
+  CARD_THEMES,
+  CardTheme,
   CardLayout,
   CardLayoutSettings,
   CardModule,
@@ -285,7 +287,14 @@ function Wire({ layout }: { layout: CardLayout }) {
   );
 }
 
+const THEME_LABEL: Record<CardTheme, string> = {
+  auto: 'Match app',
+  light: 'Light',
+  dark: 'Dark',
+};
+
 export function LayoutEditor({ draft, patch }: { draft: Draft; patch: PatchDraft }) {
+  const [dragging, setDragging] = useState<CardModule>();
   const settings: CardLayoutSettings = draft.cardLayout ?? {};
   const layout: CardLayout = settings.layout ?? 'standard';
   const hidden = settings.hidden ?? [];
@@ -295,6 +304,13 @@ export function LayoutEditor({ draft, patch }: { draft: Draft; patch: PatchDraft
     ...allowed.filter((m) => !(settings.order ?? []).includes(m)),
   ];
   const setSettings = (next: CardLayoutSettings) => patch((d) => ({ ...d, cardLayout: next }));
+  const dropOn = (target: CardModule) => {
+    if (!dragging || dragging === target) return;
+    const next = order.filter((m) => m !== dragging);
+    next.splice(next.indexOf(target), 0, dragging);
+    setSettings({ ...settings, order: next });
+    setDragging(undefined);
+  };
   const move = (index: number, by: -1 | 1) => {
     const next = [...order];
     const target = index + by;
@@ -336,9 +352,56 @@ export function LayoutEditor({ draft, patch }: { draft: Draft; patch: PatchDraft
           ))}
         </div>
       </Card>
+      <Card title="Look" description="Colors and motion of your card.">
+        <Field label="Card theme">
+          <div className={css.Segment}>
+            {CARD_THEMES.map((t) => (
+              <button
+                key={t}
+                type="button"
+                className={css.SegmentButton}
+                aria-pressed={(settings.theme ?? 'auto') === t}
+                onClick={() => setSettings({ ...settings, theme: t === 'auto' ? undefined : t })}
+              >
+                <Text size="T300">{THEME_LABEL[t]}</Text>
+              </button>
+            ))}
+          </div>
+        </Field>
+        <Field label="Glass effect">
+          <Switch
+            variant="Primary"
+            value={!!settings.glass}
+            onChange={(on) => setSettings({ ...settings, glass: on || undefined })}
+          />
+          <Text size="T200" priority="300">
+            Translucent card with blur
+          </Text>
+        </Field>
+        <Field label="Calm card">
+          <Switch
+            variant="Primary"
+            value={!!settings.calm}
+            onChange={(on) => setSettings({ ...settings, calm: on || undefined })}
+          />
+          <Text size="T200" priority="300">
+            No hover animations
+          </Text>
+        </Field>
+      </Card>
       <Card title="Modules" description="Show, hide and reorder the parts of your card.">
         {order.map((m, i) => (
-          <Box key={m} alignItems="Center" gap="300">
+          <Box
+            key={m}
+            alignItems="Center"
+            gap="300"
+            draggable
+            onDragStart={() => setDragging(m)}
+            onDragEnd={() => setDragging(undefined)}
+            onDragOver={(e: React.DragEvent) => e.preventDefault()}
+            onDrop={() => dropOn(m)}
+            style={{ cursor: 'grab', opacity: dragging === m ? 0.5 : 1 }}
+          >
             <Switch
               variant="Primary"
               value={!hidden.includes(m)}
@@ -372,6 +435,9 @@ export function LayoutEditor({ draft, patch }: { draft: Draft; patch: PatchDraft
             </IconButton>
           </Box>
         ))}
+        <Text size="T200" priority="300">
+          Drag a row or use the arrows to reorder.
+        </Text>
         {layout === 'tabs' && (
           <Text size="T200" priority="300">
             In the tab layout the modules are grouped into tabs; the order applies inside a tab.
