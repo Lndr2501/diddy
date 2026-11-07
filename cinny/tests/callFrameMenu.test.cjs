@@ -149,3 +149,125 @@ test('finds the tile of a given user in the call document', () => {
   assert.equal(mod.findCallTile(doc, '@c:x.org'), undefined);
   assert.equal(mod.findCallTile(null, '@a:x.org'), undefined);
 });
+
+// Right-click on a tile: only the Diddy person menu, not also Element Call's own one.
+function install({ hidden = false } = {}) {
+  const mod = load();
+  const listeners = [];
+  const opened = [];
+  const doc = {
+    body: {},
+    addEventListener: (type, fn, capture) => listeners.push({ type, fn, capture: !!capture }),
+  };
+  const iframe = { getBoundingClientRect: () => ({ left: 100, top: 50 }), hidden };
+  // the same module instance, with the globals the handlers use
+  const sandbox = {
+    getComputedStyle: (el) => (el.hidden ? { visibility: 'hidden' } : { visibility: 'visible' }),
+    window: { dispatchEvent: (e) => opened.push({ ...e.detail }) },
+    CustomEvent: class {
+      constructor(type, init) {
+        this.type = type;
+        this.detail = init.detail;
+      }
+    },
+  };
+  const mod2 = {};
+  vm.runInNewContext(compiled, {
+    exports: mod2,
+    require: () => ({ describeElement: () => 'el' }),
+    ...sandbox,
+  });
+  mod2.installCallFrameMenu(doc, iframe);
+  return { mod, mod2, listeners, opened };
+}
+
+const rightClick = (userId, extra = {}) => {
+  const calls = [];
+  return {
+    calls,
+    clientX: 10,
+    clientY: 20,
+    altKey: false,
+    defaultPrevented: false,
+    target: { closest: () => (userId ? tile(userId) : null) },
+    preventDefault() {
+      calls.push('preventDefault');
+      this.defaultPrevented = true;
+    },
+    stopPropagation: () => calls.push('stopPropagation'),
+    ...extra,
+  };
+};
+
+test('a right-click on a tile is taken in the capture phase, before Element Call sees it', () => {
+  const { listeners, opened } = install();
+  const capture = listeners.find((l) => l.type === 'contextmenu' && l.capture);
+  assert.ok(capture);
+  const evt = rightClick('@a:x.org');
+  capture.fn(evt);
+  assert.deepEqual(evt.calls, ['preventDefault', 'stopPropagation']);
+  assert.deepEqual(opened, [{ x: 110, y: 70, userId: '@a:x.org' }]);
+});
+
+test('the capture handler leaves everything else alone', () => {
+  const { listeners, opened } = install();
+  const capture = listeners.find((l) => l.type === 'contextmenu' && l.capture);
+  const other = rightClick(undefined);
+  capture.fn(other);
+  const dev = rightClick('@a:x.org', { altKey: true });
+  capture.fn(dev);
+  assert.deepEqual(other.calls, []);
+  assert.deepEqual(dev.calls, []);
+  assert.deepEqual(opened, []);
+  // another room's hidden call view is handled by the other listener
+  const hidden = install({ hidden: true });
+  const h = hidden.listeners.find((l) => l.type === 'contextmenu' && l.capture);
+  const evt = rightClick('@a:x.org');
+  h.fn(evt);
+  assert.deepEqual(evt.calls, []);
+  assert.deepEqual(hidden.opened, []);
+});
+
+test("Element Call's tile menu is opened with a right-click at the given point, and passes the capture handler", () => {
+  const { mod2, listeners, opened } = install();
+  const capture = listeners.find((l) => l.type === 'contextmenu' && l.capture);
+  const seen = [];
+  class FakeMouseEvent {
+    constructor(type, init) {
+      this.type = type;
+      Object.assign(this, init);
+    }
+  }
+  const el = {
+    ownerDocument: { defaultView: { MouseEvent: FakeMouseEvent } },
+    getBoundingClientRect: () => ({ left: 0, top: 0, width: 200, height: 100 }),
+    dispatchEvent(evt) {
+      // what the capture handler does with the dispatched event
+      capture.fn({
+        ...evt,
+        target: { closest: () => tile('@a:x.org') },
+        preventDefault: () => seen.push('pd'),
+        stopPropagation: () => seen.push('sp'),
+      });
+      seen.push(evt);
+      return true;
+    },
+  };
+  mod2.openCallTileMenu(el, { x: 33, y: 44 });
+  const evt = seen.find((e) => typeof e === 'object');
+  assert.equal(evt.type, 'contextmenu');
+  assert.equal(evt.clientX, 33);
+  assert.equal(evt.clientY, 44);
+  assert.equal(evt.button, 2);
+  assert.equal(evt.bubbles, true);
+  assert.deepEqual(
+    seen.filter((e) => typeof e === 'string'),
+    []
+  );
+  assert.deepEqual(opened, []);
+  // without a point: the middle of the tile
+  mod2.openCallTileMenu(el);
+  const last = seen.filter((e) => typeof e === 'object').pop();
+  assert.equal(last.clientX, 100);
+  assert.equal(last.clientY, 50);
+});

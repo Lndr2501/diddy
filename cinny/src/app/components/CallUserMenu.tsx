@@ -67,7 +67,12 @@ export function CallUserMenu() {
   };
   const handleVolume = () => {
     close();
-    if (tile) window.setTimeout(() => openCallTileMenu(tile), 50);
+    if (!tile) return;
+    // the menu of Element Call opens where this one was, in the coordinates of the call view
+    const box = callEmbed?.iframe.getBoundingClientRect();
+    const point =
+      box && menu ? { x: menu.anchor.x - box.left, y: menu.anchor.y - box.top } : undefined;
+    window.setTimeout(() => openCallTileMenu(tile, point), 50);
   };
   const handleCopy = (text?: string) => {
     if (text) copyToClipboard(text);
