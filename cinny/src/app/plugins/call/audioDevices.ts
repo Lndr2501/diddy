@@ -10,6 +10,7 @@ import { getCallPrefs } from '../../state/callPrefs';
 import { diag } from '../diagnostics';
 import { playCallSound } from './callSounds';
 import { applyAudioProcessingPolicy } from './audioConstraints';
+import { setSharedAudioSink } from './sharedAudio';
 import { listNativeInputs, nativeMicAvailable, NATIVE_DEVICE_PREFIX } from './nativeMic';
 
 const INPUT_KEY = 'diddyAudioInput';
@@ -67,6 +68,9 @@ let current: AudioPrefs = {
 };
 const listeners = new Set<() => void>();
 
+// Local sounds (soundboard, call sounds) follow the chosen output device too.
+setSharedAudioSink(current.output);
+
 const emit = () => listeners.forEach((l) => l());
 
 /** Sink ids that setSinkId() refused: never tried again (until the user picks them again). */
@@ -93,6 +97,7 @@ export const setAudioOutput = (deviceId: string) => {
   failedSinks.delete(deviceId);
   current = { ...current, output: deviceId };
   write(OUTPUT_KEY, deviceId);
+  setSharedAudioSink(deviceId);
   emit();
 };
 
