@@ -117,7 +117,7 @@ final class CallSession: NSObject, ObservableObject {
         let sfu = try await requestSFUConfig(serviceUrl: transport.serviceUrl)
 
         if encrypted {
-            ownKey = Self.randomKey()
+            ownKey = try Self.randomKey()
             toDeviceHandle = account.client.subscribeToCustomToDeviceMessages(
                 eventTypes: [Self.keysEventType],
                 listener: ToDeviceListener { [weak self] message in
@@ -324,9 +324,13 @@ final class CallSession: NSObject, ObservableObject {
 
     // MARK: Media keys
 
-    private static func randomKey() -> Data {
+    /// Fails instead of returning a predictable (all-zero) key when the system RNG reports an error.
+    private static func randomKey() throws -> Data {
         var bytes = [UInt8](repeating: 0, count: 16)
-        _ = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)
+        let status = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)
+        guard status == errSecSuccess else {
+            throw DiddyError("Could not create the call encryption key (OSStatus \(status)).")
+        }
         return Data(bytes)
     }
 

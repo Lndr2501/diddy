@@ -28,9 +28,9 @@ on:
         default: ""
   push:
     tags:
-      - "v*"
       # iOS-only releases: builds the IPA and publishes it as a GitHub release (pre-release while
-      # the tag contains "beta"/"alpha"/"rc"). Desktop builds (build.yml) only react to v*.
+      # the tag contains "beta"/"alpha"/"rc"). Desktop v* tags are left to build.yml, and an iOS
+      # release is never marked "Latest", so releases/latest keeps pointing at the desktop builds.
       - "ios-v*"
   pull_request:
     paths:
@@ -41,8 +41,13 @@ jobs:
   ios:
     runs-on: macos-latest
     timeout-minutes: 60
+    # The build only reads the repository; publishing happens in the separate `release` job.
     permissions:
-      contents: write
+      contents: read
+    outputs:
+      signed: ${{ steps.toolchain.outputs.signed }}
+      xcode: ${{ steps.toolchain.outputs.xcode }}
+      sdk: ${{ steps.toolchain.outputs.sdk }}
     env:
       SIGNED: ${{ secrets.APPLE_TEAM_ID != '' && secrets.ASC_KEY_ID != '' && secrets.ASC_ISSUER_ID != '' && secrets.ASC_KEY_P8 != '' }}
     defaults:
@@ -51,8 +56,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Select newest Xcode
+        id: toolchain
         # Whole-screen sharing without an extension (ScreenCaptureKit on iOS) is only compiled into
         # LiveKit with the iOS 27 SDK, so use the newest Xcode the runner has.
         run: |
@@ -61,6 +69,9 @@ jobs:
           xcodebuild -version && swift --version
           sdk=$(xcrun --sdk iphoneos --show-sdk-version)
           echo "iOS SDK $sdk"
+          echo "xcode=$(xcodebuild -version | head -n 1)" >> "$GITHUB_OUTPUT"
+          echo "sdk=$sdk" >> "$GITHUB_OUTPUT"
+          echo "signed=$SIGNED" >> "$GITHUB_OUTPUT"
           if [ "${sdk%%.*}" -lt 27 ]; then
             echo "::warning::iOS SDK $sdk: screen sharing will only cover the Diddy app itself, even on iOS 27 devices. Needs Xcode 27."
           fi
@@ -155,13 +166,40 @@ jobs:
           path: ios/dist/*.ipa
           if-no-files-found: error
 
+      - name: Upload build log
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: xcodebuild-log
+          path: ios/build/xcodebuild.log
+          if-no-files-found: ignore
+
+  release:
+    # Only for ios-v* tags or a manual run with release_tag. Gets the IPA from the build job's
+    # artifact, so the job that runs third-party build code never holds a write token.
+    needs: ios
+    if: startsWith(github.ref, 'refs/tags/ios-v') || inputs.release_tag != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Download IPA
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: diddy-ios
+          path: dist
+
       - name: Publish GitHub release
-        if: startsWith(github.ref, 'refs/tags/ios-v') || inputs.release_tag != ''
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ inputs.release_tag || github.ref_name }}
+          SIGNED: ${{ needs.ios.outputs.signed }}
+          XCODE_VERSION: ${{ needs.ios.outputs.xcode }}
+          SDK_VERSION: ${{ needs.ios.outputs.sdk }}
         run: |
           case "$TAG" in ios-v*) ;; *) echo "::error::Release tags must start with ios-v"; exit 1 ;; esac
+          ls -la dist
           flags=()
           case "$TAG" in *alpha*|*beta*|*rc*) flags+=(--prerelease) ;; esac
           if [ "$SIGNED" = "true" ]; then
@@ -170,22 +208,16 @@ jobs:
             install="Unsigned IPA: install it with AltStore, SideStore or Sideloadly, which sign it with your Apple ID. A free Apple ID works; the app has no extensions and uses a single App ID."
           fi
           cat > "$RUNNER_TEMP/notes.md" <<NOTES
-          Native iPhone/iPad app (SwiftUI, matrix-rust-sdk, LiveKit), built from $(git rev-parse --short HEAD).
+          Native iPhone/iPad app (SwiftUI, matrix-rust-sdk, LiveKit), built from ${GITHUB_SHA:0:7}.
 
           $install
 
           Needs iOS 16 or newer. Your homeserver needs Simplified Sliding Sync (MSC4186); voice channels need a MatrixRTC/LiveKit backend, the same one desktop calls use. See ios/README.md.
 
-          Built with $(xcodebuild -version | head -n 1), iOS SDK $(xcrun --sdk iphoneos --show-sdk-version).
+          Built with $XCODE_VERSION, iOS SDK $SDK_VERSION.
           NOTES
           # --target creates the tag on the built commit when it does not exist yet (manual runs).
+          # --latest=false: the repository's "Latest release" (releases/latest, the desktop download
+          # link) must stay on the desktop builds.
           gh release create "$TAG" dist/*.ipa --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
-            --title "Diddy iOS ${TAG#ios-v}" --notes-file "$RUNNER_TEMP/notes.md" "${flags[@]}"
-
-      - name: Upload build log
-        if: failure()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: xcodebuild-log
-          path: ios/build/xcodebuild.log
-          if-no-files-found: ignore
+            --title "Diddy iOS ${TAG#ios-v}" --notes-file "$RUNNER_TEMP/notes.md" --latest=false "${flags[@]}"

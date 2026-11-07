@@ -29,7 +29,7 @@ Diddy basiert auf [Cinny](https://github.com/cinnyapp/cinny) und ergänzt alles,
 | davon mit System-Ton | ✅ (macOS 14.2+) | ❌ | 🧪 App-Ton |
 | Mehrere Verbindungsprofile | ✅ (ab macOS 14) | 🧪 ungetestet | 🧪 mehrere Konten |
 | Sprachnachrichten | ✅ | 🧪 | ❌ |
-| App-Icon wechseln | ✅ | ✅ | 🧪 |
+| App-Icon wechseln | ✅ | 🧪 | 🧪 |
 
 ✅ läuft und wird getestet · 🧪 gebaut, aber noch nicht im Alltag geprüft · ❌ funktioniert (noch) nicht
 
@@ -97,6 +97,8 @@ Kein Linux-Rechner? Linux und NixOS lassen sich auf dem Mac in UTM testen: [VM-A
 <summary><b>iPhone / iPad</b></summary>
 
 Eigene native App im Discord-Stil (SwiftUI, matrix-rust-sdk, LiveKit), keine Web-Ansicht. Die IPA baut der Workflow *Build iOS*. Ohne bezahltes Apple-Konto wird sie mit AltStore, SideStore oder Sideloadly installiert. Details, Server-Voraussetzungen und Bau: [ios/README.md](ios/README.md).
+
+Die iOS-App ist Beta. Sprachkanäle in verschlüsselten Räumen sind Ende-zu-Ende verschlüsselt wie bei Element Call, aber noch ohne Schlüsselrotation beim Verlassen, und den Medienschlüssel bekommen die Geräte aus der LiveKit-Teilnehmerliste. Die Härtung ist geplant ([ios/SECURITY-TODO.md](ios/SECURITY-TODO.md)).
 
 </details>
 

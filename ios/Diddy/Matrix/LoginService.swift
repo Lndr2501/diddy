@@ -50,6 +50,7 @@ final class LoginService: ObservableObject {
         defer { busy = false }
         let input = homeserver.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !input.isEmpty else { error = "Enter a homeserver."; return }
+        if let problem = Self.insecureServerProblem(input) { error = problem; return }
         record?.removeDirectories()
         let fresh = AccountRecord(id: UUID().uuidString.lowercased(), userId: "", homeserver: input, displayName: nil)
         do {
@@ -57,6 +58,12 @@ final class LoginService: ObservableObject {
                 .serverNameOrHomeserverUrl(serverNameOrUrl: input)
                 .build()
             let details = await client.homeserverLoginDetails()
+            // .well-known may point somewhere else; that address has to be HTTPS as well.
+            if let problem = Self.insecureServerProblem(details.url()) {
+                fresh.removeDirectories()
+                error = problem
+                return
+            }
             self.record = fresh
             self.client = client
             self.resolvedServer = details.url()
@@ -130,7 +137,7 @@ final class LoginService: ObservableObject {
         let session = try client.session()
         record.userId = session.userId
         record.homeserver = session.homeserverUrl
-        SessionStore.save(session, accountId: record.id)
+        try SessionStore.save(session, accountId: record.id)
         let result = (record, client)
         self.record = nil
         self.client = nil
@@ -158,6 +165,27 @@ final class LoginService: ObservableObject {
 
     private static var deviceName: String {
         "Diddy \(UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone")"
+    }
+
+    /// Access tokens and passwords only go over HTTPS. A bare server name ("matrix.org") is fine:
+    /// the SDK resolves it to https://. Any other scheme is refused with a message for the login
+    /// screen. Debug builds (Xcode, Simulator) also accept http://localhost, http://127.0.0.1 and
+    /// http://[::1] for a homeserver on the developer's machine; Release builds, including every
+    /// CI/IPA build, never do.
+    static func insecureServerProblem(_ input: String) -> String? {
+        let lowered = input.lowercased()
+        guard lowered.contains("://") else { return nil }
+        if lowered.hasPrefix("https://") { return nil }
+        #if DEBUG
+        if lowered.hasPrefix("http://"), let host = URL(string: input)?.host?.lowercased(),
+           ["localhost", "127.0.0.1", "::1", "[::1]"].contains(host) {
+            return nil
+        }
+        #endif
+        if lowered.hasPrefix("http://") {
+            return "Diddy only connects over HTTPS. Enter the server name (like matrix.org) or an https:// address."
+        }
+        return "Enter the server name (like matrix.org) or an https:// address."
     }
 
     private static func describe(_ error: Error, server: String) -> String {

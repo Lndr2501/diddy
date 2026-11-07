@@ -84,7 +84,7 @@ struct ServerRail: View {
                 Capsule().fill(Theme.elevated).frame(width: 32, height: 2).padding(.vertical, 2)
                 ForEach(account.spaces) { space in
                     railButton(id: space.roomId, unread: account.unreadCount(inSpace: space.roomId)) {
-                        AvatarView(url: space.avatarUrl, name: space.displayName, size: 48, cornerRadius: 0)
+                        AvatarView(url: space.avatarUrl, name: space.displayName, size: 48, cornerRadius: 0, account: account)
                     }
                     .accessibilityLabel(space.displayName)
                 }
@@ -312,7 +312,7 @@ struct RoomRow: View {
             if let icon {
                 Image(systemName: icon).foregroundStyle(Theme.faint).frame(width: 20)
             } else {
-                AvatarView(url: room.avatarUrl, name: room.name, size: 32)
+                AvatarView(url: room.avatarUrl, name: room.name, size: 32, account: account)
             }
             Text(room.name)
                 .foregroundStyle(room.unread > 0 ? Theme.text : Theme.muted)
@@ -334,7 +334,7 @@ struct UserPanel: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            AvatarView(url: account.avatarUrl, name: account.title, size: 34)
+            AvatarView(url: account.avatarUrl, name: account.title, size: 34, account: account)
                 .overlay(alignment: .bottomTrailing) {
                     Circle().fill(account.syncState == .running ? Theme.online : Theme.faint)
                         .frame(width: 11, height: 11)

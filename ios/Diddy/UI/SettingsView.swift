@@ -113,7 +113,7 @@ private struct AccountRow: View {
     var body: some View {
         Button(action: select) {
             HStack(spacing: 12) {
-                AvatarView(url: account.avatarUrl, name: account.title, size: 38)
+                AvatarView(url: account.avatarUrl, name: account.title, size: 38, account: account)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(account.title).foregroundStyle(Theme.text)
                     Text(account.userId).font(.caption).foregroundStyle(Theme.faint)

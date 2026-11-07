@@ -24,7 +24,6 @@ settings:
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: ${DIDDY_DEVELOPMENT_TEAM}
     TARGETED_DEVICE_FAMILY: "1,2"
-    ENABLE_USER_SCRIPT_SANDBOXING: NO
 
 targets:
   Diddy:
@@ -61,14 +60,14 @@ targets:
           - UIInterfaceOrientationLandscapeRight
         UIStatusBarStyle: UIStatusBarStyleLightContent
         UIUserInterfaceStyle: Dark
-        # Voice channels keep running with the screen locked or another app in front.
+        # Voice channels keep running with the screen locked or another app in front. No `voip`:
+        # the app uses neither PushKit nor CallKit.
         UIBackgroundModes:
           - audio
-          - voip
         NSMicrophoneUsageDescription: Diddy needs the microphone for voice channels.
         NSCameraUsageDescription: Diddy needs the camera for video in voice channels.
-        NSPhotoLibraryUsageDescription: Diddy lets you send photos and videos from your library.
-        NSPhotoLibraryAddUsageDescription: Diddy saves images from chats to your photo library.
+        # No photo library keys: PhotosPicker runs out of process and hands over only the picked
+        # item, and nothing is saved to the library.
         NSLocalNetworkUsageDescription: Diddy connects to Matrix and voice servers on your network.
     settings:
       base:

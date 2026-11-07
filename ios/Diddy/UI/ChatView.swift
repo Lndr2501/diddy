@@ -97,7 +97,7 @@ private struct ChatContent: View {
                             .onAppear { Task { await controller.paginate() } }
                     }
                     ForEach(controller.rows) { row in
-                        MessageRowView(row: row, client: account.client)
+                        MessageRowView(row: row, account: account)
                             .id(row.id)
                             .contextMenu { menu(for: row) }
                     }
@@ -205,7 +205,8 @@ private struct ChannelIntro: View {
 
 struct MessageRowView: View {
     let row: MessageRow
-    let client: Client
+    /// The account this timeline belongs to; its client loads the avatars and images.
+    let account: MatrixAccount
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -244,7 +245,7 @@ struct MessageRowView: View {
             }
             HStack(alignment: .top, spacing: 12) {
                 if row.showsHeader {
-                    AvatarView(url: row.senderAvatar, name: row.senderName, size: 40)
+                    AvatarView(url: row.senderAvatar, name: row.senderName, size: 40, account: account)
                 } else {
                     Color.clear.frame(width: 40, height: 1)
                 }
@@ -274,7 +275,7 @@ struct MessageRowView: View {
                 .foregroundStyle(Theme.text)
                 .textSelection(.enabled)
         case .image(let source, _, let width, let height):
-            ChatImage(source: source, client: client, aspect: (width ?? 4) / max(height ?? 3, 1))
+            ChatImage(source: source, account: account, aspect: (width ?? 4) / max(height ?? 3, 1))
         case .file(let name):
             Label(name, systemImage: "doc").padding(10)
                 .background(RoundedRectangle(cornerRadius: 8).fill(Theme.elevated))
@@ -305,14 +306,32 @@ struct MessageRowView: View {
     }
 
     private static func markdown(_ text: String) -> AttributedString {
-        (try? AttributedString(markdown: text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)))
-            ?? AttributedString(text)
+        guard let parsed = try? AttributedString(markdown: text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))
+        else { return AttributedString(text) }
+        return withSafeLinks(parsed)
+    }
+
+    /// Link schemes a tap may open. Anything else in someone's message (tel:, sms:, file:, other
+    /// apps' URL schemes, ...) stays as plain text with the rest of the formatting intact.
+    private static let tappableSchemes: Set<String> = ["http", "https", "matrix"]
+
+    private static func withSafeLinks(_ parsed: AttributedString) -> AttributedString {
+        // Rebuilt run by run, so no index into `parsed` is used after a mutation.
+        var result = AttributedString()
+        for run in parsed.runs {
+            var piece = AttributedString(parsed[run.range])
+            if let link = run.link, !tappableSchemes.contains(link.scheme?.lowercased() ?? "") {
+                piece.link = nil
+            }
+            result.append(piece)
+        }
+        return result
     }
 }
 
 private struct ChatImage: View {
     let source: MediaSource
-    let client: Client
+    let account: MatrixAccount
     let aspect: CGFloat
     @State private var image: UIImage?
 
@@ -328,6 +347,6 @@ private struct ChatImage: View {
         .aspectRatio(aspect, contentMode: .fit)
         .frame(maxWidth: 280, maxHeight: 320, alignment: .leading)
         .clipShape(RoundedRectangle(cornerRadius: 8))
-        .task { image = await MediaLoader.shared.image(source: source, size: 800, client: client) }
+        .task { image = await MediaLoader.shared.image(source: source, size: 800, accountId: account.id, client: account.client) }
     }
 }

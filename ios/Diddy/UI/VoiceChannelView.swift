@@ -80,6 +80,10 @@ struct VoiceChannelView: View {
 private struct ConnectedVoiceView: View {
     @ObservedObject var session: CallSession
     @EnvironmentObject private var calls: CallManager
+    @EnvironmentObject private var app: AppModel
+
+    /// The login that joined this call: member avatars are that account's media.
+    private var callAccount: MatrixAccount? { app.accounts.first { $0.id == session.accountId } }
 
     private var columns: [GridItem] { [GridItem(.adaptive(minimum: 150), spacing: 10)] }
 
@@ -95,7 +99,7 @@ private struct ConnectedVoiceView: View {
                     }
                     LazyVGrid(columns: columns, spacing: 10) {
                         ForEach(session.members) { member in
-                            ParticipantTile(member: member)
+                            ParticipantTile(member: member, account: callAccount)
                         }
                     }
                 }
@@ -157,6 +161,7 @@ private struct ControlButton: View {
 
 private struct ParticipantTile: View {
     let member: CallMember
+    let account: MatrixAccount?
 
     var body: some View {
         ZStack {
@@ -165,7 +170,7 @@ private struct ParticipantTile: View {
                 SwiftUIVideoView(camera, layoutMode: .fill)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
             } else {
-                AvatarView(url: member.avatarUrl, name: member.name, size: 64)
+                AvatarView(url: member.avatarUrl, name: member.name, size: 64, account: account)
             }
         }
         .aspectRatio(16 / 10, contentMode: .fit)

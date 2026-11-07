@@ -2,19 +2,25 @@
 
 Eigene, native App (SwiftUI), keine Web-Ansicht: [matrix-rust-sdk](https://github.com/matrix-org/matrix-rust-sdk) (Swift-Paket `MatrixRustSDK` 26.10.27) für Chat und Verschlüsselung, [LiveKit](https://github.com/livekit/client-sdk-swift) 2.18 für Sprachkanäle und Bildschirmübertragung. Aufbau wie die Discord-App, Farben wie das Diddy-Theme.
 
+Die App ist Beta: Alles in der Tabelle ist gebaut und läuft bei den ersten Testern, ist aber noch nicht im Alltag geprüft.
+
 | | |
 |---|---|
-| Server (Spaces) links, Kanäle daneben, Unter-Spaces als Kategorien | ✅ |
-| Text- und Sprachkanäle, Direktnachrichten unter „Home“ | ✅ |
-| Antworten, Reaktionen, Bilder senden, Nachrichten löschen | ✅ |
-| Ende-zu-Ende-Verschlüsselung, Gerät mit Wiederherstellungsschlüssel bestätigen | ✅ |
-| Mehrere Konten auf verschiedenen Servern, jedes mit eigenem Speicher | ✅ |
-| Anmeldung mit Passwort oder über die Login-Seite des Servers (OAuth/MAS) | ✅ |
-| Sprachkanäle mit Desktop-Diddy und Element Call (gleiches MatrixRTC, gleiche Medien-Verschlüsselung) | ✅ |
-| Bildschirmübertragung | ✅ ab iOS 27 ganzer Bildschirm, davor nur Diddy selbst |
-| Stummschalten, Taubschalten, Kamera | ✅ |
-| App-Icon wechseln (Pink, Blau, Lila, Schwarz, Magenta) | ✅ |
+| Server (Spaces) links, Kanäle daneben, Unter-Spaces als Kategorien | 🧪 |
+| Text- und Sprachkanäle, Direktnachrichten unter „Home“ | 🧪 |
+| Antworten, Reaktionen, Bilder senden, Nachrichten löschen | 🧪 |
+| Ende-zu-Ende-Verschlüsselung, Gerät mit Wiederherstellungsschlüssel bestätigen | 🧪 |
+| Mehrere Konten auf verschiedenen Servern, jedes mit eigenem Speicher | 🧪 |
+| Anmeldung mit Passwort oder über die Login-Seite des Servers (OAuth/MAS), nur über HTTPS | 🧪 |
+| Sprachkanäle mit Desktop-Diddy und Element Call (gleiches MatrixRTC, gleiche Medien-Verschlüsselung) | 🧪 |
+| Bildschirmübertragung | 🧪 ab iOS 27 ganzer Bildschirm, davor nur Diddy selbst |
+| Stummschalten, Taubschalten, Kamera | 🧪 |
+| App-Icon wechseln (Pink, Blau, Lila, Schwarz, Magenta) | 🧪 |
 | Push-Benachrichtigungen | ❌ (braucht einen Push-Gateway und ein bezahltes Apple-Konto) |
+
+🧪 Beta: gebaut, läuft bei Testern, noch nicht im Alltag geprüft · ❌ fehlt noch
+
+**Verschlüsselung in Sprachkanälen:** In verschlüsselten Räumen sind die Medien Ende-zu-Ende verschlüsselt wie bei Element Call. Es fehlen aber noch die Schlüsselrotation beim Verlassen (wer den Kanal verlässt, kennt den Schlüssel bis zum Ende des Anrufs weiter), und den eigenen Schlüssel bekommen die Geräte aus der LiveKit-Teilnehmerliste statt nur die Geräte mit einer MatrixRTC-Mitgliedschaft im Raum. Die Härtung ist geplant, siehe [SECURITY-TODO.md](SECURITY-TODO.md).
 
 ## Voraussetzungen am Server
 
@@ -41,11 +47,11 @@ Im Sprachkanal auf das Bildschirm-Symbol tippen. Diddy nimmt ohne Erweiterung di
 - **ab iOS 27:** Der iOS-Dialog fragt, was geteilt wird. Das kann der ganze Bildschirm sein, auch andere Apps, und es läuft im Hintergrund weiter (ScreenCaptureKit).
 - **iOS 16 bis 26:** nur Diddy selbst. Apple erlaubt die Aufnahme anderer Apps dort nur aus einer Broadcast-Erweiterung, und die würde beim Sideloaden eine zweite App-ID kosten.
 
-Für den iOS-27-Weg muss die App mit dem iOS-27-SDK (Xcode 27) gebaut sein. Der Workflow nimmt das neueste Xcode des Runners und warnt, wenn es älter ist.
+Für den iOS-27-Weg muss die App mit dem iOS-27-SDK (Xcode 27) gebaut sein. Mit älterem Xcode läuft die App auch auf iOS 27, überträgt dann aber nur Diddy selbst. Der Workflow nimmt das neueste Xcode des Runners und warnt, wenn es älter ist.
 
 ## Selbst bauen
 
-Auf einem Mac mit Xcode 16.3 oder neuer:
+Auf einem Mac mit Xcode 16.3 oder neuer. Xcode 16.3 bis 26 reicht zum Bauen, die Bildschirmübertragung zeigt dann aber auf jedem iOS nur Diddy selbst. Für die ganze Bildschirmübertragung ab iOS 27 braucht es Xcode 27 (siehe oben).
 
 ```sh
 brew install xcodegen
@@ -54,7 +60,7 @@ DIDDY_DEVELOPMENT_TEAM=DEINTEAMID xcodegen generate   # Team-ID optional, sonst 
 open Diddy.xcodeproj
 ```
 
-Das Xcode-Projekt, `Info.plist` und die Entitlements entstehen aus `project.yml` und sind nicht eingecheckt.
+Das Xcode-Projekt und die `Info.plist` entstehen aus `project.yml` und sind nicht eingecheckt. Entitlements hat die App keine.
 
 Die App-Icons kommen aus `src-tauri/app-icons`. Neu erzeugen: `python3 ios/Tools/make_icons.py` (braucht Pillow und NumPy).
 

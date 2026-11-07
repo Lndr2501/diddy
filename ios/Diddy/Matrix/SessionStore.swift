@@ -70,7 +70,9 @@ enum SessionStore {
         var nativeSlidingSync: Bool
     }
 
-    static func save(_ session: Session, accountId: String) {
+    /// Writes the session in place: an existing item is updated, a missing one added. Unlike
+    /// delete-then-add, a failed write never leaves the account without its saved session.
+    static func save(_ session: Session, accountId: String) throws {
         let stored = Stored(
             accessToken: session.accessToken,
             refreshToken: session.refreshToken,
@@ -80,17 +82,28 @@ enum SessionStore {
             oauthData: session.oauthData,
             nativeSlidingSync: session.slidingSyncVersion == .native
         )
-        guard let data = try? JSONEncoder().encode(stored) else { return }
+        let data: Data
+        do {
+            data = try JSONEncoder().encode(stored)
+        } catch {
+            throw DiddyError("The login could not be saved: \(error.localizedDescription)")
+        }
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: accountId,
         ]
-        SecItemDelete(query as CFDictionary)
-        var item = query
-        item[kSecValueData as String] = data
-        item[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-        SecItemAdd(item as CFDictionary, nil)
+        let attributes: [String: Any] = [
+            kSecValueData as String: data,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+        ]
+        var status = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
+        if status == errSecItemNotFound {
+            var item = query
+            item.merge(attributes) { _, new in new }
+            status = SecItemAdd(item as CFDictionary, nil)
+        }
+        guard status == errSecSuccess else { throw KeychainError(status: status) }
     }
 
     static func load(accountId: String) -> Session? {
@@ -140,7 +153,9 @@ final class AccountSessionDelegate: ClientSessionDelegate, @unchecked Sendable {
     }
 
     func saveSessionInKeychain(session: Session) {
-        SessionStore.save(session, accountId: accountId)
+        // The SDK gives this callback no way to fail. If the write fails, the previously saved
+        // session stays in the Keychain (save never deletes first).
+        try? SessionStore.save(session, accountId: accountId)
     }
 }
 
@@ -148,6 +163,15 @@ struct DiddyError: LocalizedError {
     let message: String
     init(_ message: String) { self.message = message }
     var errorDescription: String? { message }
+}
+
+/// A Keychain call that did not return errSecSuccess.
+struct KeychainError: LocalizedError {
+    let status: OSStatus
+    var errorDescription: String? {
+        let reason = SecCopyErrorMessageString(status, nil).map { $0 as String } ?? "OSStatus \(status)"
+        return "The login could not be saved in the Keychain: \(reason)"
+    }
 }
 
 enum ClientFactory {
