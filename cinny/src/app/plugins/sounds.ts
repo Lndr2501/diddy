@@ -20,7 +20,6 @@ import streamEnded from '../../../public/sound/diddy/stream_ended.mp3';
 import message from '../../../public/sound/diddy/message1.mp3';
 import ringing from '../../../public/sound/diddy/call_ringing.mp3';
 import ringback from '../../../public/sound/diddy/call_calling.mp3';
-import mention from '../../../public/sound/diddy/mention3.mp3';
 import invite from '../../../public/sound/invite.ogg';
 
 export type SoundId =
@@ -61,7 +60,7 @@ export const SOUND_GROUPS: { title: string; sounds: SoundInfo[] }[] = [
         id: 'mention',
         title: 'Mention',
         description: 'A message that mentions you.',
-        url: mention,
+        url: message,
       },
       { id: 'invite', title: 'Invitation', description: 'You are invited to a room.', url: invite },
     ],
@@ -162,6 +161,7 @@ const DEFAULT_URLS = Object.fromEntries(
 /** Custom files are stored as data URLs; keep them small so localStorage stays healthy. */
 export const MAX_CUSTOM_SOUND_BYTES = 800 * 1024;
 
+const DEFAULT_OFF: SoundId[] = ['invite'];
 const ENABLED_KEY = 'diddySoundEnabled';
 const CUSTOM_KEY = (id: SoundId) => `diddySoundCustom:${id}`;
 
@@ -180,9 +180,11 @@ const safeGet = (key: string): string | null => {
 };
 
 const readState = (): State => {
-  let disabled = new Set<SoundId>();
+  // Sounds that are off until the user turns them on.
+  let disabled = new Set<SoundId>(DEFAULT_OFF);
   try {
-    disabled = new Set(JSON.parse(safeGet(ENABLED_KEY) ?? '[]') as SoundId[]);
+    const stored = safeGet(ENABLED_KEY);
+    if (stored !== null) disabled = new Set(JSON.parse(stored) as SoundId[]);
   } catch {
     // damaged value: everything on
   }
