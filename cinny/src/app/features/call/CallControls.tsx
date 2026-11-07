@@ -64,6 +64,12 @@ export function CallControls({ callEmbed }: CallControlsProps) {
       justifyContent="Center"
       alignItems="Center"
     >
+      {screenshare && streamAudio.error && (
+        <Text size="T200" role="status">Bildschirm wird ohne Ton geteilt: {streamAudio.error}</Text>
+      )}
+      {screenshare && streamAudio.active && streamAudio.enabled && (
+        <Text size="T200">Systemton wird geteilt; Diddys eigener Ton ist ausgenommen.</Text>
+      )}
       <Box
         className={css.ControlCard}
         gap="200"
@@ -85,7 +91,7 @@ export function CallControls({ callEmbed }: CallControlsProps) {
             enabled={screenshare}
             onToggle={() => callEmbed.control.toggleScreenshare()}
           />
-          {screenshare && streamAudio.available && streamAudio.active && (
+          {streamAudio.available && (
             <ScreenShareAudioButton enabled={streamAudio.enabled} onToggle={streamAudio.toggle} />
           )}
         </div>

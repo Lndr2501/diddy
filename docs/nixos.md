@@ -4,8 +4,7 @@ Diddy lässt sich als natives Nix-Paket bauen und starten. Unterstützte Ziele:
 `x86_64-linux` und `aarch64-linux` (jeweils nativ bauen, kein Cross-Compile).
 Die Flake enthält den aktuellen lokalen Quellstand, nicht das alte Release-Paket.
 
-Unter Linux läuft Diddy in **Electron (Chromium)**, auf macOS weiter in Tauri. Oberfläche
-und Funktionen sind dieselben, nur die Web-Engine unterscheidet sich. Warum, steht unter
+Unter Linux läuft Diddy in **Electron (Chromium)**, auf macOS weiter in Tauri. Das Frontend ist gemeinsam; die native Medienintegration ist plattformspezifisch. Warum, steht unter
 [Warum Electron unter Linux](#warum-electron-unter-linux).
 
 ## Lokal bauen und starten
@@ -26,8 +25,8 @@ nix build .#diddy
 nix run .#diddy
 ```
 
-Gebaut wird nur das Frontend (wenige Minuten). Electron kommt fertig aus
-`cache.nixos.org`, Rust und WebKitGTK werden für Linux nicht mehr gebraucht.
+Gebaut werden das Frontend und ein kleiner C-Helfer für Systemaudio. Electron kommt
+fertig aus `cache.nixos.org`; Rust und WebKitGTK werden für Linux nicht gebraucht.
 
 Bei einer Git-Flake müssen neue Flake-/Nix-Dateien von Git erfasst sein, bevor
 Nix sie sieht. Nicht `git add .` verwenden: Lokale Übergaben können private Daten
@@ -102,7 +101,8 @@ verwenden.
 ```sh
 nix develop
 (cd cinny && npm ci && npm run build)
-DIDDY_FRONTEND_DIR=cinny/dist electron electron
+(cd electron && npm run build:audio)
+DIDDY_AUDIO_HELPER="$PWD/electron/native/bin/diddy-system-audio" DIDDY_FRONTEND_DIR="$PWD/cinny/dist" electron electron
 ```
 
 Mit Hot Reload: in einem Terminal `cd cinny && npm start` (Vite auf Port 8080), im
@@ -132,7 +132,21 @@ Paket/Quellcode. Die Action `Test` führt zusätzlich die Shell-Tests aus.
 - Bildschirmfreigabe läuft unter Wayland über das Desktop-Portal (PipeWire):
   `services.pipewire.enable = true;` und `xdg.portal.enable = true;` mit dem passenden
   Portal-Backend (GNOME: `xdg-desktop-portal-gnome`, KDE: `xdg-desktop-portal-kde`,
-  wlroots: `xdg-desktop-portal-wlr`). Unter X11 wird der erste Bildschirm geteilt.
+  wlroots: `xdg-desktop-portal-wlr`). Unter X11 zeigt Diddy eine eigene Bildschirm-/Fensterauswahl.
+- **Systemton:** `services.pipewire.pulse.enable = true;` zusätzlich zu PipeWire aktivieren;
+  alternativ funktioniert PulseAudio. Der mitgelieferte `diddy-system-audio`-Helfer erfasst
+  einzelne Wiedergabestreams über libpulse, nimmt den gesamten Diddy-Prozessbaum aus und
+  mischt 48-kHz-Stereo. Er benötigt weder Root noch virtuelle Geräte oder Änderungen an
+  bestehenden Audio-Routen. Auch neu gestartete Apps und verschobene Wiedergabestreams
+  werden berücksichtigt. Native PipeWire-Streams müssen über die Pulse-Schnittstelle
+  sichtbar sein; Streams ohne erkennbare Prozess-ID werden vorsichtshalber ausgelassen.
+- **Umfang:** „Systemton teilen“ betrifft alle anderen erkennbaren Apps, auch wenn nur ein
+  Fenster geteilt wird. Der Schalter ist vor und während der Freigabe sichtbar. Mikrofon
+  und Screenshare-Audio sind getrennte Tracks. Bei Audiofehlern bleibt das Bild aktiv,
+  und die Call-Leiste zeigt den Fehler. Der Helfer endet bei Stopp, Fensterende oder Crash.
+- Komplexe Audio-Routen wie EasyEffects, virtuelle Sinks oder Remote-Audioserver brauchen
+  eine gesonderte Abnahme; weitergeleitete Streams können ihre ursprüngliche Prozess-ID
+  verlieren. Ein ungefilterter Gesamtmonitor wird nicht als Ausweichweg verwendet.
 - **EasyEffects:** Ist dort „Alle Eingabe-Streams verarbeiten“ aktiv, landet jede
   Aufnahme auf „Easy Effects Source“. Wählt man in Diddy das echte Mikrofon, kommt dann
   nur Stille an; in Diddy „Easy Effects Source“ als Mikrofon wählen.
@@ -173,3 +187,37 @@ Safari, die Calls verhalten sich dort wie in Chrome und Element Desktop.
   ca. 0,3 s, Ton in beide Richtungen.**
 - Nicht geprüft: Bildschirmfreigabe über das Portal, Kamera, getrennte Verbindungsprofile
   (eigene Fenster), ARM64-Laufzeit.
+
+## Linux-Pakete und Abnahme
+
+Der Workflow `Linux` baut Electron-AppImage und DEB samt nativem Audiohelfer und
+`SHA256SUMS`; die Nix-Flake verwendet denselben Helfer und dasselbe Frontend.
+Der ältere WebKitGTK-Paketbau für Linux ist entfernt. macOS bleibt bei Tauri.
+
+Automatisierbare Medienprüfung in einer isolierten Umgebung (Compiler/libpulse,
+PulseAudio/PipeWire/WirePlumber und `pactl`/`pacat` erforderlich):
+
+```sh
+(cd electron && npm run build:audio && npm test)
+python3 electron/tests/native-audio.py pulse
+dbus-run-session -- python3 electron/tests/native-audio.py pipewire
+```
+
+Die Prüfung startet eigene temporäre Soundserver und synthetische Player: eigener
+Prozessbaum bleibt stumm, fremde und später gestartete Apps werden gemischt,
+Wiedergabe kann den Sink wechseln. Keine Benutzer-Audioaufnahme.
+
+Vor stabiler Freigabe auf KDE/Wayland, GNOME/Wayland und X11 mit zwei Geräten prüfen:
+
+1. Verschlüsselten Call öffnen, Fenster/Bildschirm auswählen und Bild am Empfänger prüfen.
+2. Musik aus einer fremden App teilen; Empfänger hört Musik und seine eigene Stimme nicht zurück.
+3. Mikrofon und Systemton unabhängig schalten, Quellenwechsel und Abbruch prüfen.
+4. Freigabe wiederholt starten/stoppen, Audiogerät wechseln und Fenster schließen.
+5. CPU/Verzögerung, EasyEffects und native PipeWire-Player gesondert prüfen.
+
+Zusätzlich prüft der Workflow die gepackte App unter Xvfb: Login-Seite, X11-Quellenauswahl,
+Audio-IPC, AudioWorklet und einen tatsächlich empfangenen WebRTC-Audiotrack. Ein Testton
+aus Electron selbst muss dabei ausgeschlossen bleiben. Das ist ein lokaler Medienpfadtest
+mit synthetischen Quellen, kein echter Matrix-Call zwischen Endgeräten.
+
+Diese automatischen Prüfungen ersetzen weder die Portal- noch die Endgeräteabnahme.

@@ -8,6 +8,77 @@
   "main": "main.cjs",
   "license": "AGPL-3.0-only",
   "scripts": {
-    "test": "node --test tests/*.test.cjs"
-  }
+    "test": "node --test tests/*.test.cjs",
+    "build:audio": "mkdir -p native/bin && cc -std=c11 -O2 -Wall -Wextra -Werror native/system-audio.c -o native/bin/diddy-system-audio $(pkg-config --cflags --libs libpulse) -lm",
+    "dist:linux": "npm run build:audio && electron-builder --linux AppImage deb --publish never"
+  },
+  "devDependencies": {
+    "electron": "45.2.3",
+    "electron-builder": "26.18.0"
+  },
+  "build": {
+    "appId": "app.diddy.desktop",
+    "productName": "Diddy",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "pickerPreload.cjs",
+      "picker.html",
+      "lib/**",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../cinny/dist",
+        "to": "frontend"
+      },
+      {
+        "from": "../src-tauri/app-icons",
+        "to": "app-icons"
+      },
+      {
+        "from": "native/bin/diddy-system-audio",
+        "to": "diddy-system-audio"
+      }
+    ],
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Network",
+      "icon": "../src-tauri/icons/128x128.png",
+      "executableName": "diddy",
+      "artifactName": "Diddy_${version}_${arch}.${ext}",
+      "desktop": {
+        "entry": {
+          "StartupWMClass": "Diddy"
+        }
+      }
+    },
+    "deb": {
+      "depends": [
+        "libgtk-3-0",
+        "libnotify4",
+        "libnss3",
+        "libxss1",
+        "libxtst6",
+        "xdg-utils",
+        "libatspi2.0-0",
+        "libuuid1",
+        "libsecret-1-0",
+        "libasound2",
+        "libgbm1",
+        "libpulse0"
+      ]
+    }
+  },
+  "author": {
+    "name": "Diddy contributors",
+    "email": "Lndr2501@users.noreply.github.com"
+  },
+  "homepage": "https://github.com/Lndr2501/diddy"
 }

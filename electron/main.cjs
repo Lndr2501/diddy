@@ -27,6 +27,8 @@ const connections = require('./lib/connections.cjs');
 const myinstants = require('./lib/myinstants.cjs');
 const { fitIntoArea, parseWindowState } = require('./lib/windowFit.cjs');
 const { startStaticServer } = require('./lib/staticServer.cjs');
+const { createSystemAudio } = require('./lib/systemAudio.cjs');
+const { createScreenPicker } = require('./lib/screenPicker.cjs');
 const { parseAgentVoiceLaunch, createAgentVoiceTrigger } = require('./lib/agentVoice.cjs');
 
 const APP_PORT = 44548;
@@ -50,11 +52,13 @@ const MEDIA_PERMISSIONS = new Set([
 const firstExisting = (candidates) => candidates.find((dir) => dir && fs.existsSync(dir));
 const frontendDir = firstExisting([
   process.env.DIDDY_FRONTEND_DIR,
+  path.join(process.resourcesPath, 'frontend'),
   path.join(__dirname, '..', 'frontend'),
   path.join(__dirname, '..', 'cinny', 'dist'),
 ]);
 const iconsDir = firstExisting([
   process.env.DIDDY_ICONS_DIR,
+  path.join(process.resourcesPath, 'app-icons'),
   path.join(__dirname, '..', 'app-icons'),
   path.join(__dirname, '..', 'src-tauri', 'app-icons'),
 ]);
@@ -67,7 +71,8 @@ app.setPath('userData', browserDataDir());
 // Same as the Tauri build on Linux: call sounds and remote audio may play without a click.
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 // Screen sharing on Wayland goes through the desktop portal (PipeWire).
-app.commandLine.appendSwitch('enable-features', 'WebRTCPipeWireCapturer');
+const isWayland = process.env.XDG_SESSION_TYPE === 'wayland' || !!process.env.WAYLAND_DISPLAY;
+app.commandLine.appendSwitch(isWayland ? 'enable-features' : 'disable-features', 'WebRTCPipeWireCapturer');
 
 /** label ("main" or "connection-<id>") -> BrowserWindow */
 const windows = new Map();
@@ -146,6 +151,8 @@ const setAppIcon = (id, persist) => {
 
 // ---- sessions: permissions and screen sharing -----------------------------------------------
 
+const pickScreen = createScreenPicker({ BrowserWindow, ipcMain });
+let picking = false;
 const configureSession = (ses) => {
   if (configuredSessions.has(ses)) return;
   configuredSessions.add(ses);
@@ -158,24 +165,24 @@ const configureSession = (ses) => {
     (_contents, permission, requestingOrigin) =>
       MEDIA_PERMISSIONS.has(permission) && originOf(requestingOrigin) === appOrigin
   );
-  // getDisplayMedia(): on Wayland the desktop portal lets the user pick a screen or window and
-  // returns exactly that source; elsewhere the first screen is shared.
-  ses.setDisplayMediaRequestHandler(
-    (request, callback) => {
-      if (originOf(request.securityOrigin ?? request.frame?.url ?? '') !== appOrigin) {
-        callback({});
-        return;
-      }
-      desktopCapturer
-        .getSources({ types: ['screen', 'window'] })
-        .then((sources) => callback(sources.length > 0 ? { video: sources[0] } : {}))
-        .catch((error) => {
-          diag.writeLine(`screenshare: no source (${error.message})`);
-          callback({});
-        });
-    },
-    { useSystemPicker: true }
-  );
+  // PipeWire owns the chooser on Wayland. X11 needs our explicit source picker.
+  ses.setDisplayMediaRequestHandler(async (request, callback) => {
+    if (picking || originOf(request.securityOrigin ?? request.frame?.url ?? '') !== appOrigin) {
+      callback(null);
+      return;
+    }
+    picking = true;
+    let source;
+    try {
+      const owner = BrowserWindow.getAllWindows().find((win) => win.webContents.mainFrame === request.frame?.top);
+      const sources = await desktopCapturer.getSources({ types: ['screen', 'window'], thumbnailSize: { width: 320, height: 180 } });
+      diag.writeLine(`screenshare: ${sources.length} sources (${isWayland ? 'Wayland' : 'X11'})`);
+      if (owner && !owner.isDestroyed() && sources.length) source = isWayland ? sources[0] : await pickScreen(sources, owner);
+    } catch (error) {
+      diag.writeLine(`screenshare: source selection failed: ${error.message}`);
+    } finally { picking = false; }
+    callback(source ? { video: source } : null);
+  });
 };
 
 // ---- windows --------------------------------------------------------------------------------
@@ -371,6 +378,31 @@ const commands = {
   set_app_icon: ({ id }) => setAppIcon(String(id), true),
   agent_voice_state: () => agentVoice.state(),
 };
+
+const audioCaptures = new Map();
+const trusted = (event) => event.senderFrame && event.senderFrame === event.sender.mainFrame && originOf(event.senderFrame.url) === appOrigin;
+const audioFor = (contents) => {
+  if (!audioCaptures.has(contents.id)) {
+    const helper = process.env.DIDDY_AUDIO_HELPER || path.join(process.resourcesPath, 'diddy-system-audio');
+    const audio = createSystemAudio({ helper, send: (message) => { if (!contents.isDestroyed()) contents.send('diddy:audio-data', message); } });
+    audioCaptures.set(contents.id, audio);
+    contents.on('did-start-navigation', (_event, _url, _inPlace, isMainFrame) => { if (isMainFrame) audio.close(); });
+    contents.on('render-process-gone', () => audio.close());
+    contents.once('destroyed', () => { audio.close(); audioCaptures.delete(contents.id); });
+  }
+  return audioCaptures.get(contents.id);
+};
+ipcMain.handle('diddy:audio-start', (event) => {
+  if (!trusted(event)) throw new Error('not allowed');
+  return audioFor(event.sender).start();
+});
+ipcMain.handle('diddy:audio-stop', (event, id) => {
+  if (trusted(event)) audioCaptures.get(event.sender.id)?.stop(id);
+});
+ipcMain.on('diddy:audio-ack', (event, id) => {
+  if (trusted(event)) audioCaptures.get(event.sender.id)?.ack(id);
+});
+app.on('before-quit', () => audioCaptures.forEach((audio) => audio.close()));
 
 ipcMain.handle('diddy:invoke', async (event, cmd, args) => {
   // Only Diddy's own top-level page may call these (not Element Call's frame, not other sites).

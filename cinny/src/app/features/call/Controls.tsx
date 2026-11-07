@@ -166,7 +166,7 @@ export function ScreenShareAudioButton({ enabled, onToggle }: ScreenShareAudioBu
       delay={500}
       tooltip={
         <Tooltip>
-          <Text size="T200">{enabled ? 'Mute Stream Sound' : 'Share Stream Sound'}</Text>
+          <Text size="T200">{enabled ? 'Systemton teilen: an (ohne Diddy)' : 'Systemton teilen: aus'}</Text>
         </Tooltip>
       }
     >
@@ -178,6 +178,8 @@ export function ScreenShareAudioButton({ enabled, onToggle }: ScreenShareAudioBu
           radii="Pill"
           size="400"
           className={css.ControlButton}
+          aria-label="Systemton teilen (alle anderen Apps)"
+          aria-pressed={enabled}
           onClick={() => onToggle()}
         >
           <Icon size="400" src={enabled ? Icons.VolumeHigh : Icons.VolumeMute} filled={!enabled} />

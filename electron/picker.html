@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="de"><meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'">
+<title>Bildschirm oder Fenster teilen</title>
+<style>
+:root { color-scheme: light dark; font: 16px system-ui; } body { margin: 24px; }
+h1 { font-size: 22px; } #sources { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:16px; }
+button { font:inherit; cursor:pointer; padding:12px; border:1px solid #888; border-radius:10px; }
+button:focus-visible { outline:3px solid #e6007e; } img { width:100%; height:110px; object-fit:contain; }
+span { display:block; overflow-wrap:anywhere; } footer { margin-top:24px; text-align:right; }
+</style>
+<h1>Was möchtest du teilen?</h1><p>Wähle einen Bildschirm oder ein Fenster.</p>
+<div id="sources" aria-label="Verfügbare Bildschirme und Fenster"></div>
+<footer><button id="cancel">Abbrechen</button></footer></html>

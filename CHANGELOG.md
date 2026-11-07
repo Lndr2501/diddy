@@ -15,6 +15,12 @@
 
 - Die iOS-App spielt jetzt die Sounds aus Diddys Soundpack (dieselben MP3s wie am Desktop). Wo das Pack nichts hat (Freizeichen, Erwähnung, Einladung, ...), bleiben die bisherigen Töne.
 
+### Linux: Bildschirmfreigabe mit Anwendungston und einheitliche Pakete
+
+- Linux kann fremde Wiedergabe-Apps als separaten Screenshare-Audiotrack teilen. Der native Helfer nutzt PulseAudio oder PipeWires Pulse-Schnittstelle und schließt Diddys eigenen Prozessbaum aus. Der Systemton-Schalter ist vor und während der Freigabe sichtbar; Audiofehler werden angezeigt, während das Bild weiterläuft.
+- Unter X11 gibt es eine Bildschirm-/Fensterauswahl mit Abbruch. Wayland verwendet weiterhin das Desktop-Portal. Erfasst wird der Ton aller erkennbaren anderen Apps, unabhängig vom gewählten Fenster.
+- AppImage und DEB verwenden jetzt wie NixOS Electron. CI baut die Pakete mit Audiohelfer und prüft synthetische PulseAudio-/PipeWire-Streams sowie den tatsächlichen Audioempfang über WebRTC in der gepackten X11-App. Eine reale Wayland-/Endgeräteabnahme steht aus; beim Umstieg von Tauri ist eine neue Anmeldung und Geräteverifikation nötig.
+
 ### Teilnehmerliste: online und offline getrennt
 
 - Die Teilnehmerliste rechts sortiert wie bei Discord: wer online oder abwesend ist, steht oben, weiter nach Rang gruppiert. Alle, die offline sind, stehen gesammelt in einer eigenen Gruppe „Offline“ darunter, auch Admins. Vorher konnte ein Offline-Mitglied direkt zwischen Online-Mitgliedern stehen.

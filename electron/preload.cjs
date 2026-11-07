@@ -16,3 +16,16 @@ const connection = ipcRenderer.sendSync('diddy:connection');
 if (connection) {
   contextBridge.exposeInMainWorld('__DIDDY_CONNECTION__', Object.freeze(connection));
 }
+
+// Only the trusted top frame gets the audio transport; the call iframe uses its parent's wrapper.
+contextBridge.exposeInMainWorld('__DIDDY_SYS_AUDIO__', {
+  start: () => ipcRenderer.invoke('diddy:audio-start'),
+  stop: (id) => ipcRenderer.invoke('diddy:audio-stop', id),
+  subscribe: (listener) => {
+    const receive = (_event, message) => {
+      try { listener(message); } finally { if (message.pcm) ipcRenderer.send('diddy:audio-ack', message.id); }
+    };
+    ipcRenderer.on('diddy:audio-data', receive);
+    return () => ipcRenderer.removeListener('diddy:audio-data', receive);
+  },
+});

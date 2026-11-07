@@ -32,12 +32,13 @@ class Stream {
   addTrack(track) { this.audio.push(track); }
 }
 
-function setup({ bridge = true, worklet } = {}) {
+function setup({ bridge = true, worklet, native } = {}) {
   const calls = [], contexts = [], sockets = [], diagnostics = [], timers = new Map();
   const acquisitions = [];
   let timerId = 0, statsStopped = 0, nodes = 0;
   const window = {
-    ...(bridge ? { __CINNY_SYS_AUDIO__: { port: 1, token: 'mock-fixture' } } : {}),
+    ...(native ? { __DIDDY_SYS_AUDIO__: native } : {}),
+    ...(!native && bridge ? { __CINNY_SYS_AUDIO__: { port: 1, token: 'mock-fixture' } } : {}),
     setTimeout: (callback) => { const id = ++timerId; timers.set(id, callback); return id; },
     clearTimeout: (id) => timers.delete(id),
   };
@@ -267,4 +268,41 @@ test('without the desktop bridge, screen capture remains video-only and uses no 
   assert.equal(env.contexts.length, 0);
   assert.equal(stream.audio.length, 0);
   stream.video.stop();
+});
+
+function nativeBridge() {
+  const listeners = new Set(), stopped = [], starts = [];
+  return {
+    starts, stopped, listeners,
+    start() { const d = deferred(); starts.push(d); return d.promise; },
+    stop(id) { stopped.push(id); return Promise.resolve(); },
+    subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener); },
+    emit(message) { listeners.forEach((listener) => listener(message)); },
+  };
+}
+test('Linux transport attaches a separate audio track and tears down only its own capture', async () => {
+  const native = nativeBridge(), env = setup({ native });
+  const capture = env.capture(); env.acquisitions[0].resolve(new Stream()); await flush();
+  native.starts[0].resolve('linux-1'); const stream = await capture;
+  assert.equal(stream.audio.length, 1); assert.equal(env.sockets.length, 0);
+  assert.equal(env.screenShareAudio.getSnapshot().active, true);
+  stream.video.stop();
+  assert.deepEqual(native.stopped, ['linux-1']); assert.equal(native.listeners.size, 0);
+});
+test('Linux audio error is visible while screen video remains live', async () => {
+  const native = nativeBridge(), env = setup({ native });
+  const capture = env.capture(); env.acquisitions[0].resolve(new Stream()); await flush();
+  native.starts[0].resolve('linux-1'); const stream = await capture;
+  native.emit({ id: 'linux-1', error: 'Audio server disconnected' });
+  assert.equal(env.screenShareAudio.getSnapshot().error, 'Audio server disconnected');
+  assert.equal(env.screenShareAudio.getSnapshot().active, false);
+  assert.equal(stream.video.readyState, 'live'); stream.video.stop();
+});
+test('Linux late native start is stopped after video cancellation', async () => {
+  const native = nativeBridge(), env = setup({ native });
+  const capture = env.capture(), stream = new Stream();
+  env.acquisitions[0].resolve(stream); await flush();
+  stream.video.stop(); native.starts[0].resolve('late');
+  await assert.rejects(capture, { name: 'AbortError' });
+  assert.ok(native.stopped.includes('late')); assert.equal(native.listeners.size, 0);
 });

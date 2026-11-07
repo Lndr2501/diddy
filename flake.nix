@@ -53,6 +53,8 @@
             packages = with pkgs; [
               nodejs_24
               electron
+              pkg-config
+              libpulseaudio
             ];
             HUSKY = "0";
             shellHook = ''

@@ -83,31 +83,31 @@ Wie bei NixOS ([A.2](#2-vm-anlegen-5-min) und [A.3](#3-vm-einstellungen-nachzieh
 3. Gast-Werkzeuge: `sudo apt install -y spice-vdagent spice-webdavd` (Zwischenablage, Fenstergröße, Ordnerfreigabe), neu starten.
 
 ### 4. Diddy in Ubuntu
-Die [Releases](https://github.com/Lndr2501/diddy/releases) enthalten **nur `amd64`-Pakete** (`.deb`, `.AppImage`) – die laufen in der ARM-VM nicht. Diddy muss in der VM selbst gebaut werden (ca. **30–45 min**, einmalig):
+Der Linux-Workflow baut derzeit x86_64-Pakete; für die ARM-VM Diddy aus dem
+aktuellen Checkout mit Electron bauen. ARM64-Laufzeit und VM-Audio sind separat abzunehmen.
 
 ```sh
-# 1. Abhängigkeiten (Tauri + WebRTC/GStreamer)
-sudo apt install -y build-essential curl wget file git libssl-dev libxdo-dev \
-  libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf \
-  gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad \
-  gstreamer1.0-libav gstreamer1.0-nice gstreamer1.0-pipewire
+# 1. Compiler und native Audio-Abhängigkeiten
+sudo apt install -y build-essential pkg-config libpulse-dev libasound2-plugins git curl
 
-# 2. Rust und Node 24
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-. "$HOME/.cargo/env"
+# 2. Node 24 (bei bereits vorhandenem nvm nur nvm install ausführen)
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
 . "$HOME/.nvm/nvm.sh" && nvm install 24
 
-# 3. Bauen (im Diddy-Checkout)
+# 3. Frontend und Electron-Pakete bauen
 cd ~/diddy
-(cd cinny && npm ci) && npm ci
-NODE_OPTIONS=--max_old_space_size=4096 npm run tauri -- build --bundles deb
+cp config.json cinny/config.json
+(cd cinny && npm ci && npm run build)
+(cd electron && npm ci && npm run dist:linux)
 
 # 4. Installieren
-sudo apt install ./src-tauri/target/release/bundle/deb/Diddy_*_arm64.deb
+sudo apt install ./electron/dist/Diddy_*_arm64.deb
 ```
 
-Ob Ubuntus WebKitGTK mit WebRTC gebaut ist, ist nicht bestätigt. Prüfen: In Diddy die Entwicklerwerkzeuge öffnen und `typeof RTCPeerConnection` eingeben. `"undefined"` heißt: Calls gehen mit diesem WebKitGTK nicht.
+Rust, WebKitGTK und GStreamer werden für diesen Linux-Build nicht benötigt. Für
+Bildschirmfreigabe unter Wayland müssen Desktop-Portal und passendes Backend laufen;
+Systemton benötigt PipeWire mit `pipewire-pulse` oder PulseAudio. Details und Grenzen:
+[Linux-Audio und Bildschirmfreigabe](nixos.md#calls-audio-und-bildschirmfreigabe).
 
 ---
 

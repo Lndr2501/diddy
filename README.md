@@ -25,8 +25,8 @@ Diddy basiert auf [Cinny](https://github.com/cinnyapp/cinny) und ergänzt alles,
 |---|:---:|:---:|:---:|
 | Chat, Räume, Verschlüsselung | ✅ | ✅ NixOS (Electron) | 🧪 native App, neu |
 | Sprachchat | ✅ | ✅ NixOS, auch verschlüsselt | 🧪 |
-| Bildschirmübertragung | ✅ | 🧪 NixOS, über das Desktop-Portal | 🧪 ab iOS 27 ganzer Bildschirm, davor nur Diddy |
-| davon mit System-Ton | ✅ (macOS 14.2+) | ❌ | 🧪 App-Ton |
+| Bildschirmübertragung | ✅ | 🧪 Electron: Wayland-Portal / X11-Auswahl | 🧪 ab iOS 27 ganzer Bildschirm, davor nur Diddy |
+| davon mit System-Ton | ✅ (macOS 14.2+) | 🧪 andere Apps, ohne Diddys eigenen Ton | 🧪 App-Ton |
 | Mehrere Verbindungsprofile | ✅ (ab macOS 14) | 🧪 ungetestet | 🧪 mehrere Konten |
 | Sprachnachrichten | ✅ | 🧪 | ❌ |
 | App-Icon wechseln | ✅ | 🧪 | 🧪 |
@@ -43,7 +43,7 @@ Diddy basiert auf [Cinny](https://github.com/cinnyapp/cinny) und ergänzt alles,
 
 ### 🖥️ Bildschirmübertragung
 - **Bleibt scharf**, auch wenn Diddy im Hintergrund ist.
-- **Mit System-Ton** (macOS 14.2+): An/Aus-Knopf in der Call-Leiste. Diddys eigener Call-Ton ist ausgenommen, es gibt kein Echo.
+- **Mit System-Ton** (macOS 14.2+ und Linux): An/Aus-Knopf in der Call-Leiste, auch vor dem Start. Diddys eigener Call-Ton ist ausgenommen. Unter Linux werden alle anderen erkennbaren Wiedergabe-Apps erfasst, unabhängig vom ausgewählten Fenster; PipeWire mit `pipewire-pulse` oder PulseAudio erforderlich. Linux-Endgeräteabnahme steht noch aus.
 
 ### 💬 Chat
 - **Sprachnachrichten** aufnehmen und abspielen. Element und andere Clients zeigen sie als Sprachnachricht.
@@ -87,7 +87,7 @@ Alle Downloads liegen unter [Releases](../../releases/latest).
 | NixOS | `nix run .#diddy` im Checkout, siehe [NixOS-Anleitung](docs/nixos.md) |
 
 > [!NOTE]
-> Unter NixOS läuft Diddy in Electron (Chromium) und kann Sprach- und Videochat inklusive Ende-zu-Ende-Verschlüsselung. AppImage und .deb nutzen noch Tauri mit dem WebKitGTK der Distribution und können keine Calls: WebKitGTK hat dort kein WebRTC, und selbst mit WebRTC fehlt die Frame-Verschlüsselung, die Element Call braucht. Details: [Warum Electron unter Linux](docs/nixos.md#warum-electron-unter-linux).
+> Alle aktuellen Linux-Pakete nutzen Electron (Chromium): NixOS, AppImage und DEB. Für Systemton wird ein mitgelieferter Helfer über PipeWires PulseAudio-Schnittstelle oder PulseAudio verwendet. Alte Tauri-AppImages/DEBs erhalten diese Funktionen erst mit der neuen Electron-Version. Beim Umstieg von Tauri einmal neu anmelden und das neue Gerät verifizieren; alte Schlüssel bleiben im bisherigen Speicher erhalten. Details: [Linux-Anleitung](docs/nixos.md).
 
 Kein Linux-Rechner? Linux und NixOS lassen sich auf dem Mac in UTM testen: [VM-Anleitung](docs/vm-macos.md).
 
@@ -114,7 +114,7 @@ macOS: Node 24, Rust und die [Tauri-Abhängigkeiten](https://v2.tauri.app/start/
 (cd cinny && npm ci) && npm ci && npm run tauri -- build
 ```
 
-Linux (NixOS): `nix build .#diddy`, Entwicklung mit Electron siehe [NixOS-Anleitung](docs/nixos.md#entwicklung-und-prüfung).
+Linux: `(cd cinny && npm ci && npm run build)`, dann `(cd electron && npm ci && npm run dist:linux)` (C-Compiler, pkg-config und libpulse-Entwicklungsdateien erforderlich). NixOS: `nix build .#diddy`. Entwicklung mit Electron siehe [NixOS-Anleitung](docs/nixos.md#entwicklung-und-prüfung).
 
 Tests ohne Hardware:
 

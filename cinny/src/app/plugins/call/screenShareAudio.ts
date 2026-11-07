@@ -1,8 +1,8 @@
 /**
  * Screen-share audio for the desktop app.
  *
- * WebKit's getDisplayMedia() returns video only. The Tauri shell (src-tauri/src/system_audio.rs)
- * captures system audio natively and streams it over a loopback WebSocket; this module turns that
+ * The shells capture system audio natively: macOS over a loopback WebSocket, Linux over
+ * bounded Electron IPC from the application-audio helper. This module turns that
  * stream into a MediaStreamTrack and adds it to the stream Element Call receives from
  * getDisplayMedia(), so LiveKit publishes it as the screen-share audio track.
  *
@@ -12,7 +12,13 @@ import { useSyncExternalStore } from 'react';
 import { diag } from '../diagnostics';
 import { startStatsLogging, trackPeerConnections } from './streamStats';
 
-type Bridge = { port: number; token: string };
+type NativeMessage = { id: string; pcm?: Uint8Array; error?: string };
+type NativeBridge = {
+  start: () => Promise<string>;
+  stop: (id: string) => Promise<void>;
+  subscribe: (listener: (message: NativeMessage) => void) => () => void;
+};
+type Bridge = { port: number; token: string } | NativeBridge;
 
 const STORAGE_KEY = 'callScreenShareAudio';
 const CONNECT_TIMEOUT_MS = 15000;
@@ -74,7 +80,8 @@ registerProcessor('${WORKLET_NAME}', SystemAudioProcessor);
 `;
 
 const getBridge = (): Bridge | undefined =>
-  (window as unknown as { __CINNY_SYS_AUDIO__?: Bridge }).__CINNY_SYS_AUDIO__;
+  (window as unknown as { __CINNY_SYS_AUDIO__?: Bridge }).__CINNY_SYS_AUDIO__ ??
+  (window as unknown as { __DIDDY_SYS_AUDIO__?: NativeBridge }).__DIDDY_SYS_AUDIO__;
 
 type Session = {
   ctx: AudioContext;
@@ -84,6 +91,7 @@ type Session = {
   track?: MediaStreamTrack;
   stopTrack?: () => void;
   cancelConnect?: () => void;
+  stopNative?: () => void;
 };
 
 export type ScreenShareAudioSnapshot = {
@@ -216,6 +224,38 @@ class ScreenShareAudio {
       session.node = node;
       session.gain = gain;
 
+      if (!('port' in bridge)) {
+        let id: string | undefined;
+        const unsubscribe = bridge.subscribe((message) => {
+          if (!id || message.id !== id || this.session !== session) return;
+          if (message.error) {
+            this.lastError = message.error;
+            this.stop();
+          } else if (message.pcm) {
+            const bytes = new Uint8Array(message.pcm);
+            node.port.postMessage(bytes.buffer, [bytes.buffer]);
+          }
+        });
+        session.stopNative = () => {
+          unsubscribe();
+          if (id) bridge.stop(id).catch(() => {});
+        };
+        // Always dispose a late native start, even if the share ended during the handshake.
+        const starting = bridge.start().then((startedId) => {
+          id = startedId;
+          if (this.session !== session) bridge.stop(id).catch(() => {});
+        });
+        await waitFor(starting);
+        ensureCurrent();
+        track.stop = () => {
+          nativeStop();
+          if (this.session === session) this.stop();
+        };
+        session.track = track;
+        this.emit();
+        return track;
+      }
+
       const ws = new WebSocket(`ws://127.0.0.1:${bridge.port}/?token=${bridge.token}`);
       ws.binaryType = 'arraybuffer';
       session.ws = ws;
@@ -273,6 +313,7 @@ class ScreenShareAudio {
     session.cancelConnect?.();
 
     try {
+      session.stopNative?.();
       if (session.ws) {
         session.ws.onclose = null;
         session.ws.onmessage = null;

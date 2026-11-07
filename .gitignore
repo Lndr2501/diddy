@@ -4,3 +4,6 @@ target
 .DS_Store
 result
 result-*
+
+/electron/native/bin/
+/electron/dist/

@@ -1,6 +1,8 @@
 {
   lib,
-  stdenvNoCC,
+  stdenv,
+  pkg-config,
+  libpulseaudio,
   buildNpmPackage,
   importNpmLock,
   nodejs_24,
@@ -87,7 +89,7 @@ let
     '';
   };
 in
-stdenvNoCC.mkDerivation {
+stdenv.mkDerivation {
   pname = "diddy";
   inherit version;
   src = shellSrc;
@@ -97,9 +99,16 @@ stdenvNoCC.mkDerivation {
     copyDesktopItems
     jq
     nodejs_24
+    pkg-config
   ];
+  buildInputs = [ libpulseaudio ];
 
-  dontBuild = true;
+  buildPhase = ''
+    runHook preBuild
+    $CC -std=c11 -O2 -Wall -Wextra -Werror electron/native/system-audio.c \
+      -o diddy-system-audio $(pkg-config --cflags --libs libpulse) -lm
+    runHook postBuild
+  '';
 
   # Tests of the Electron shell (log, connections, MyInstants, local server); no Electron needed.
   doCheck = true;
@@ -126,7 +135,8 @@ stdenvNoCC.mkDerivation {
 
     share=$out/share/diddy
     mkdir -p $share/electron $share/app-icons
-    cp -r electron/lib electron/main.cjs electron/preload.cjs $share/electron/
+    cp -r electron/lib electron/main.cjs electron/preload.cjs electron/pickerPreload.cjs electron/picker.html $share/electron/
+    install -Dm755 diddy-system-audio $out/libexec/diddy-system-audio
     jq --arg version "${version}" '.version = $version | del(.scripts)' electron/package.json \
       > $share/electron/package.json
     ln -s ${frontend} $share/frontend
@@ -141,6 +151,7 @@ stdenvNoCC.mkDerivation {
     # needs a newer glibc than this Electron; ours goes first so audio keeps working.
     makeWrapper ${lib.getExe electron} $out/bin/diddy \
       --add-flags $share/electron \
+      --set DIDDY_AUDIO_HELPER $out/libexec/diddy-system-audio \
       --prefix LD_LIBRARY_PATH : ${lib.makeLibraryPath [ alsa-lib ]}
 
     runHook postInstall

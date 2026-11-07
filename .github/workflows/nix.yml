@@ -8,6 +8,7 @@ on:
       - "flake.nix"
       - "flake.lock"
       - "nix/**"
+      - "electron/**"
       - "cinny/package-lock.json"
       - ".github/workflows/nix.yml"
   pull_request:
@@ -63,6 +64,7 @@ jobs:
       - name: Check installed desktop integration
         run: |
           test -x result/bin/diddy
+          test -x result/libexec/diddy-system-audio
           test -s result/share/applications/Diddy.desktop
           test -d result/share/icons/hicolor
           test -s result/share/diddy/electron/main.cjs
