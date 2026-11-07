@@ -38,6 +38,13 @@ export const SpeakerAvatarOutline = style({
   transition: t.transition('box-shadow'),
 });
 
+// Somebody talks to an agent (dictation) instead of to the call (#57)
+export const AgentAvatarOutline = style({
+  boxShadow: `0 0 0 ${config.borderWidth.B600} ${color.Secondary.Main}`,
+  opacity: 0.75,
+  transition: t.transition('box-shadow'),
+});
+
 export const MemberMenu = style({
   selectors: {
     '&[class]': {

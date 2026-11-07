@@ -29,6 +29,7 @@ import { setMyStatus, useMyStatus } from '../../plugins/diddy/status';
 import { DiddyStatus } from '../../plugins/diddy/types';
 import { getMxIdLocalPart, mxcUrlToHttp } from '../../utils/matrix';
 import { nameInitials } from '../../utils/common';
+import { useOwnAgentTalking } from '../../state/agentVoice';
 
 type ActiveCallButtonsProps = {
   callEmbed: CallEmbed;
@@ -176,7 +177,9 @@ export function UserPanel() {
   const [pickedStatus, setPickedStatus] = useState<DiddyStatus>();
   useEffect(() => setPickedStatus(undefined), [storedStatus]);
   const status = pickedStatus ?? storedStatus;
-  const { label: statusLabel, color: statusColor } = statusInfo(status);
+  const { label: chosenLabel, color: statusColor } = statusInfo(status);
+  const agentTalking = useOwnAgentTalking();
+  const statusLabel = agentTalking ? 'Talking to agent' : chosenLabel;
 
   const statusMenuRef = useRef<HTMLDivElement>(null);
   const statusButtonRef = useRef<HTMLButtonElement>(null);
@@ -248,6 +251,7 @@ export function UserPanel() {
                 renderFallback={() => <Text size="H6">{nameInitials(displayName)}</Text>}
               />
             </Avatar>
+            {agentTalking && <span className={css.UserPanelAgentRing} aria-hidden />}
             <span
               className={css.UserPanelOnlineDot}
               style={{ backgroundColor: statusColor }}

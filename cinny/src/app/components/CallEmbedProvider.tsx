@@ -59,6 +59,7 @@ import { getRoomPermissionsAPI } from '../hooks/useRoomPermissions';
 import { useLivekitSupport } from '../hooks/useLivekitSupport';
 import { CallAvatarAnimation } from '../styles/Animations.css';
 import { webRTCSupported } from '../utils/rtc';
+import { AgentVoiceSync } from './AgentVoiceSync';
 
 type IncomingCallInfo = {
   room: Room;
@@ -430,6 +431,7 @@ export function CallEmbedProvider({ children }: CallEmbedProviderProps) {
       {callEmbed && <CallUtils embed={callEmbed} />}
       {callEmbed && joined && <CallParticipantSounds embed={callEmbed} />}
       {callEmbed && joined && <CallSpeakingSync embed={callEmbed} />}
+      <AgentVoiceSync />
       <CallEmbedRefContextProvider value={callEmbedRef}>
         <IncomingCallListener callEmbed={callEmbed} joined={joined} />
         {children}

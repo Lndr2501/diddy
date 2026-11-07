@@ -2,6 +2,11 @@
 
 ## Unveröffentlicht
 
+### Redet mit Agent (#57)
+
+- **Neue Einstellung unter Allgemein → „Talking to an agent“ (standardmäßig aus).** Dieselbe Taste wie im Diktier-Tool (OpenWhispr, Wispr Flow, ...) eintragen: solange sie gedrückt ist (oder bis zum zweiten Druck), zeigt Diddy „Talking to agent“ an deinem Bild unten links, schaltet auf Wunsch das Mikro im Call stumm und danach wieder an, und die anderen im Call sehen „redet mit Agent“ an deinem Namen (kurzlebige To-Device-Nachricht nur an die Call-Teilnehmer, abschaltbar).
+- Im Diddy-Fenster funktioniert jede Taste. Im Hintergrund liest die macOS-App Fn/Globe, die Modifier-Tasten und F13–F20 direkt vom System. Für alles andere (Linux, eigene Tastenkürzel): `diddy --agent-voice start|stop|toggle`, z. B. aus Karabiner, Hammerspoon, skhd oder sxhkd; Diddy bekommt dabei nicht den Fokus.
+
 ### Linux: Diddy läuft jetzt in Electron, Calls funktionieren
 
 - **Sprach- und Videoanrufe unter Linux, auch verschlüsselt.** Vorher endete jeder Beitritt mit „Something went wrong“ (`UNKNOWN_ERROR`). Die Ursache ist WebKitGTKs WebRTC (GStreamer): fehlende BUNDLE-Gruppe, ein Deadlock beim Beitritt, kaputte Empfangs-Transceiver und vor allem keine Frame-Verschlüsselung. Damit sind verschlüsselte Calls unmöglich. Unter Linux läuft dasselbe Frontend deshalb in Electron (Chromium, libwebrtc wie Safari auf macOS). macOS bleibt Tauri.

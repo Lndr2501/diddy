@@ -82,6 +82,18 @@ export const UserPanelOnlineDot = style([
   },
 ]);
 
+// Ring around your picture while you talk to an agent (#57)
+export const UserPanelAgentRing = style([
+  DefaultReset,
+  {
+    position: 'absolute',
+    inset: toRem(-3),
+    borderRadius: '50%',
+    border: `${toRem(2)} dashed ${color.Secondary.Main}`,
+    pointerEvents: 'none',
+  },
+]);
+
 // Small status dot used in the status menu
 export const StatusMenuDot = style([
   DefaultReset,

@@ -27,6 +27,7 @@ const connections = require('./lib/connections.cjs');
 const myinstants = require('./lib/myinstants.cjs');
 const { fitIntoArea, parseWindowState } = require('./lib/windowFit.cjs');
 const { startStaticServer } = require('./lib/staticServer.cjs');
+const { parseAgentVoiceLaunch, createAgentVoiceTrigger } = require('./lib/agentVoice.cjs');
 
 const APP_PORT = 44548;
 const VERSION = (() => {
@@ -323,6 +324,17 @@ const removeConnectionProfile = async ({ id }) => {
   }
 };
 
+const agentVoice = createAgentVoiceTrigger();
+
+/** `diddy --agent-voice start|stop|toggle` (#57). True when the launch was one of these. */
+const handleAgentVoiceLaunch = (argv) => {
+  const parsed = parseAgentVoiceLaunch(argv);
+  if (!parsed) return false;
+  if (parsed.error) diag.writeLine(`agent voice: ${parsed.error}`);
+  else agentVoice.apply(parsed.command);
+  return true;
+};
+
 const handleLaunch = (argv) => {
   let request;
   try {
@@ -357,6 +369,7 @@ const commands = {
   open_connection_profile: (args) => openConnectionProfile(args),
   remove_connection_profile: (args) => removeConnectionProfile(args),
   set_app_icon: ({ id }) => setAppIcon(String(id), true),
+  agent_voice_state: () => agentVoice.state(),
 };
 
 ipcMain.handle('diddy:invoke', async (event, cmd, args) => {
@@ -386,6 +399,8 @@ if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
   app.on('second-instance', (_event, argv) => {
+    // Agent-voice triggers come in while the user dictates elsewhere: never focus Diddy.
+    if (handleAgentVoiceLaunch(argv)) return;
     if (!handleLaunch(argv)) focusOrReopenMain();
   });
 
