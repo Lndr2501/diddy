@@ -23,9 +23,9 @@ Diddy basiert auf [Cinny](https://github.com/cinnyapp/cinny) und ergänzt alles,
 
 | | macOS | Linux | iPhone / iPad |
 |---|:---:|:---:|:---:|
-| Chat, Räume, Verschlüsselung | ✅ | 🧪 gebaut, aber ungetestet | 🧪 native App, neu |
-| Sprachchat | ✅ | 🧪 nur NixOS-Paket `diddy-webrtc` | 🧪 |
-| Bildschirmübertragung | ✅ | ❌ | 🧪 ab iOS 27 ganzer Bildschirm, davor nur Diddy |
+| Chat, Räume, Verschlüsselung | ✅ | ✅ NixOS (Electron) | 🧪 native App, neu |
+| Sprachchat | ✅ | ✅ NixOS, auch verschlüsselt | 🧪 |
+| Bildschirmübertragung | ✅ | 🧪 NixOS, über das Desktop-Portal | 🧪 ab iOS 27 ganzer Bildschirm, davor nur Diddy |
 | davon mit System-Ton | ✅ (macOS 14.2+) | ❌ | 🧪 App-Ton |
 | Mehrere Verbindungsprofile | ✅ (ab macOS 14) | 🧪 ungetestet | 🧪 mehrere Konten |
 | Sprachnachrichten | ✅ | 🧪 | ❌ |
@@ -87,7 +87,7 @@ Alle Downloads liegen unter [Releases](../../releases/latest).
 | NixOS | `nix run .#diddy` im Checkout, siehe [NixOS-Anleitung](docs/nixos.md) |
 
 > [!NOTE]
-> Sprach- und Videochat gehen mit AppImage und .deb nicht: Das WebKitGTK von Ubuntu, Debian und Fedora ist ohne WebRTC gebaut. Unter NixOS gibt es dafür das Paket `diddy-webrtc` (WebKitGTK mit WebRTC aus dem NixOS-Cache), siehe [NixOS-Anleitung](docs/nixos.md#sprach--und-videoanrufe).
+> Unter NixOS läuft Diddy in Electron (Chromium) und kann Sprach- und Videochat inklusive Ende-zu-Ende-Verschlüsselung. AppImage und .deb nutzen noch Tauri mit dem WebKitGTK der Distribution und können keine Calls: WebKitGTK hat dort kein WebRTC, und selbst mit WebRTC fehlt die Frame-Verschlüsselung, die Element Call braucht. Details: [Warum Electron unter Linux](docs/nixos.md#warum-electron-unter-linux).
 
 Kein Linux-Rechner? Linux und NixOS lassen sich auf dem Mac in UTM testen: [VM-Anleitung](docs/vm-macos.md).
 
@@ -108,16 +108,19 @@ Hilft am meisten: die Logdatei anhängen. Sie liegt unter macOS in `~/Library/Lo
 
 ## Selbst bauen
 
-Voraussetzungen: Node 24, Rust und die [Tauri-Abhängigkeiten](https://v2.tauri.app/start/prerequisites/).
+macOS: Node 24, Rust und die [Tauri-Abhängigkeiten](https://v2.tauri.app/start/prerequisites/).
 
 ```sh
 (cd cinny && npm ci) && npm ci && npm run tauri -- build
 ```
 
+Linux (NixOS): `nix build .#diddy`, Entwicklung mit Electron siehe [NixOS-Anleitung](docs/nixos.md#entwicklung-und-prüfung).
+
 Tests ohne Hardware:
 
 ```sh
 cd cinny && npm test                                  # JavaScript
+cd electron && npm test                               # Linux-Shell (Electron)
 cd src-tauri && cargo test --lib -- --test-threads=1  # nativ
 cd cinny && npm run build && npm run test:e2e         # Browser-Smoke (Playwright, Chromium)
 ```

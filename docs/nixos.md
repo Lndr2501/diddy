@@ -3,8 +3,10 @@
 Diddy lässt sich als natives Nix-Paket bauen und starten. Unterstützte Ziele:
 `x86_64-linux` und `aarch64-linux` (jeweils nativ bauen, kein Cross-Compile).
 Die Flake enthält den aktuellen lokalen Quellstand, nicht das alte Release-Paket.
-Node 24, Rust, GTK/WebKitGTK, TLS und GStreamer werden durch Nix bereitgestellt.
-Es sind weder `nix-ld` noch `appimage-run` oder eine globale Bibliotheksinstallation nötig.
+
+Unter Linux läuft Diddy in **Electron (Chromium)**, auf macOS weiter in Tauri. Oberfläche
+und Funktionen sind dieselben, nur die Web-Engine unterscheidet sich. Warum, steht unter
+[Warum Electron unter Linux](#warum-electron-unter-linux).
 
 ## Lokal bauen und starten
 
@@ -18,11 +20,14 @@ nix.settings.experimental-features = [ "nix-command" "flakes" ];
 Im Diddy-Checkout:
 
 ```sh
-nix build .#diddy --max-jobs 1 --cores 2
+nix build .#diddy
 ./result/bin/diddy
 # Alternativ, ohne result-Link:
 nix run .#diddy
 ```
+
+Gebaut wird nur das Frontend (wenige Minuten). Electron kommt fertig aus
+`cache.nixos.org`, Rust und WebKitGTK werden für Linux nicht mehr gebraucht.
 
 Bei einer Git-Flake müssen neue Flake-/Nix-Dateien von Git erfasst sein, bevor
 Nix sie sieht. Nicht `git add .` verwenden: Lokale Übergaben können private Daten
@@ -34,13 +39,19 @@ Für eine dauerhafte Installation im Benutzerprofil:
 nix profile install .#diddy
 ```
 
-Das Paket enthält einen Menüeintrag und Icons. Die GTK-Wrapper liefern die
-benötigten TLS-/GIO-Module, GStreamer-Plugins und `xdg-open` mit. Vorhandene
-Diddy-Konten und Einstellungen werden nicht migriert oder gelöscht; die
-Anwendungskennung bleibt `app.diddy.desktop`. Im Nix-Store wird nichts verändert.
+Das Paket enthält einen Menüeintrag und Icons. Diddy belegt den lokalen Port `44548`
+(nur `127.0.0.1`, keine Firewall-Freigabe nötig).
 
-Der erste Build kann lange dauern und mehrere GB RAM/Plattenplatz benötigen.
-Nicht auf einem kleinen Server oder während eines wichtigen Calls bauen.
+### Umstieg von der WebKitGTK-Version
+
+- **Einmal neu anmelden:** Logins und Schlüssel der früheren WebKitGTK-Version liegen in
+  deren eigenem Speicher, den Chromium nicht lesen kann. Diddy startet deshalb mit der
+  Anmeldeseite. Danach das neue Gerät verifizieren (z. B. mit einem anderen Gerät oder dem
+  Wiederherstellungsschlüssel), damit der alte Verlauf lesbar wird.
+- Gespeicherte Verbindungen (`~/.config/app.diddy.desktop/connections.json`), das gewählte
+  App-Icon und das Log (`~/.local/state/diddy/app.log`) bleiben an ihrem Ort.
+- Browserdaten liegen jetzt in `~/.local/share/app.diddy.desktop/electron`.
+- Die alte Variante `diddy-webrtc` gibt es nicht mehr. `diddy` kann alles.
 
 ## In die NixOS-System-Flake einbinden
 
@@ -90,99 +101,75 @@ verwenden.
 
 ```sh
 nix develop
-(cd cinny && npm ci)
-npm ci
-npm run tauri -- dev
+(cd cinny && npm ci && npm run build)
+DIDDY_FRONTEND_DIR=cinny/dist electron electron
 ```
 
-Die Entwicklungsumgebung enthält Node 24, Cargo/Rust, Tauri und native
-Abhängigkeiten. `npm ci` benötigt Netzwerk; der eigentliche Nix-Paketbuild
-verwendet dagegen die Integritätswerte aus `cinny/package-lock.json` und die
-Prüfsummen aus `src-tauri/Cargo.lock`.
+Mit Hot Reload: in einem Terminal `cd cinny && npm start` (Vite auf Port 8080), im
+zweiten `DIDDY_DEV_URL=http://localhost:8080 electron electron`.
+
+Die Shell besteht aus `electron/main.cjs` (Fenster, lokaler Server, Befehle der Seite),
+`electron/preload.cjs` (dieselbe kleine API wie bei Tauri: `__TAURI_INTERNALS__.invoke`)
+und Hilfsmodulen in `electron/lib/`, die ohne Electron getestet werden:
 
 ```sh
+(cd electron && npm test)   # Log, Verbindungen, MyInstants, lokaler Server, Fenster
+(cd cinny && npm test)
 nix flake check --no-build  # Flake/Paketdefinitionen auswerten
-nix flake check --max-jobs 1 --cores 2  # Paket bauen, JS- und Rust-Tests
+nix build .#diddy           # Paket bauen, Frontend- und Shell-Tests laufen mit
 nix fmt
 ```
 
-Die separate GitHub-Action `Nix` führt den Build samt Tests auf Linux aus,
-bei Pull Requests mit Änderungen am Paket/Quellcode sowie manuell. Ein grafischer
-NixOS-Laufzeittest ist damit nicht ersetzt. ARM wird als Paket angeboten, aber
-nicht durch den x86_64-CI-Job laufzeitgetestet.
+Die GitHub-Action `Nix` baut das Paket samt Tests bei Pull Requests mit Änderungen am
+Paket/Quellcode. Die Action `Test` führt zusätzlich die Shell-Tests aus.
 
-## Wayland, Audio und bekannte Grenzen
+## Calls, Audio und Bildschirmfreigabe
 
-- Das native GTK/WebKit-Fenster kann je nach Desktop unter Wayland oder X11 laufen.
-  Das Paket erzwingt keinen Backend-Wechsel. Zum Eingrenzen eines Darstellungsfehlers
-  kann einmalig `GDK_BACKEND=x11 nix run .#diddy` probiert werden (benötigt XWayland).
-- Für Dateiauswahl und Desktop-Integration sollte auf NixOS
-  `xdg.portal.enable = true;` mit dem zum Desktop passenden Portal-Backend aktiviert
-  sein. Das ist eine System-/Desktop-Einstellung und wird vom Paket nicht überschrieben.
-- Normale Medienwiedergabe nutzt die mitgelieferten GStreamer-Plugins. Audio setzt
-  zusätzlich einen funktionierenden Audio-Server in der Desktop-Sitzung voraus.
-- **Sprach-/Videoanrufe brauchen das Paket `diddy-webrtc`** (siehe unten). Das
-  normale Paket `diddy` startet, chattet und spielt Medien ab, kann aber keinen Call
-  aufbauen.
-- Der lokale Frontend-Port bleibt `44548`. Dafür ist keine Firewall-Freigabe
-  nach außen erforderlich.
-
-## Sprach- und Videoanrufe
-
-Element Call (die Calls in Diddy) braucht WebRTC (`RTCPeerConnection`) in der WebView.
-nixpkgs baut WebKitGTK ohne WebRTC: Es gehört dort zu den experimentellen Funktionen
-(`enableExperimental`). Im normalen Paket fehlt `RTCPeerConnection` deshalb, und ein
-Call kann nicht verbinden. Diddy selbst schaltet unter Linux Mikrofon, Kamera,
-Bildschirmfreigabe und WebRTC in der WebView ein und erlaubt die Geräte-Anfragen.
-
-Für Calls gibt es die Paketvariante `diddy-webrtc`. Sie nutzt WebKitGTK mit dessen
-experimentellen Funktionen, darunter WebRTC über GStreamer:
-
-```sh
-nix run .#diddy-webrtc
-```
-
-- Dieses WebKitGTK liegt derzeit fertig im offiziellen Binär-Cache (`cache.nixos.org`,
-  x86_64 und ARM64), es wird nur heruntergeladen. Fehlt es nach einem nixpkgs-Update
-  einmal im Cache, baut Nix es selbst: das dauert Stunden und braucht viel RAM.
-  Vorher prüfen: `nix build .#diddy-webrtc --dry-run` zeigt, ob `webkitgtk` gebaut
-  oder geladen würde.
-- In einer System-Flake entsprechend `diddy.packages.${system}.diddy-webrtc` verwenden.
-- Bildschirmfreigabe läuft über PipeWire und das Desktop-Portal:
+- Sprach- und Videoanrufe laufen über Element Call in Chromiums libwebrtc, inklusive
+  **Ende-zu-Ende-Verschlüsselung** (DMs und verschlüsselte Räume).
+- Mikrofon, Kamera, Bildschirmfreigabe und Benachrichtigungen erlaubt Diddy nur seinen
+  eigenen Seiten (`http://localhost:44548`, auch Element Call); alles andere wird abgelehnt.
+- Bildschirmfreigabe läuft unter Wayland über das Desktop-Portal (PipeWire):
   `services.pipewire.enable = true;` und `xdg.portal.enable = true;` mit dem passenden
   Portal-Backend (GNOME: `xdg-desktop-portal-gnome`, KDE: `xdg-desktop-portal-kde`,
-  wlroots: `xdg-desktop-portal-wlr`).
-- Die WebRTC-Unterstützung von WebKitGTK (GStreamer) ist neuer als die von Chromium.
-  Ob ein Call mit Element Call zuverlässig klappt, ist erst nach einem echten Test belegt.
+  wlroots: `xdg-desktop-portal-wlr`). Unter X11 wird der erste Bildschirm geteilt.
+- **EasyEffects:** Ist dort „Alle Eingabe-Streams verarbeiten“ aktiv, landet jede
+  Aufnahme auf „Easy Effects Source“. Wählt man in Diddy das echte Mikrofon, kommt dann
+  nur Stille an; in Diddy „Easy Effects Source“ als Mikrofon wählen.
+- Ein global gesetztes `LD_LIBRARY_PATH` mit einer `alsa-lib` aus einem neueren nixpkgs
+  (z. B. für JACK) bricht Programme aus älteren nixpkgs (`GLIBC_2.43 not found`). Der
+  Diddy-Wrapper stellt deshalb seine eigene `alsa-lib` voran.
 
-## Verifikationsstand Calls (2026-11-07, ARM64-Container auf dem Mac, Xvfb)
+## Warum Electron unter Linux
 
-- WebKitGTK ohne WebRTC: nixpkgs (2.52.6), Ubuntu 22.04 (2.50.4), Ubuntu 24.04
-  (2.52.6), Debian 13 (2.54.0): `typeof RTCPeerConnection === "undefined"` im
-  MiniBrowser, auch mit `--enable-webrtc=true`. Fedora 43 (2.54.2) linkt ebenfalls
-  nicht gegen GStreamer-WebRTC. AppImage und .deb können deshalb keine Calls.
-- `diddy-webrtc` gebaut (WebKitGTK aus dem Cache, Diddy selbst ~10 min) und mit
-  `DIDDY_MEDIA_SELFTEST=1` in der echten Diddy-Seite geprüft: `RTCPeerConnection`
-  vorhanden, `getUserMedia({audio, video})` ohne Rückfrage erlaubt (Mock-Geräte),
-  Gerätenamen sichtbar, WebRTC-Verbindung zweier Peers mit Datenkanal erfolgreich.
-  Gegenprobe mit dem normalen `diddy`: Freigabe und Geräte ebenso, aber
-  `RTCPeerConnection` fehlt.
-- Nicht geprüft: ein echter Call über Element Call/LiveKit, echte Mikrofone/Kameras,
-  Bildschirmfreigabe über Portal/PipeWire, Wayland, x86_64-Laufzeit.
+Tauri nutzt die Web-Engine des Systems: auf macOS WKWebView (Safari) mit **libwebrtc**,
+unter Linux WebKitGTK mit **GStreamer `webrtcbin`**. Die JavaScript-APIs sind gleich,
+der WebRTC-Unterbau nicht. Mit WebKitGTK 2.52.6 (nixpkgs, mit `enableExperimental`)
+scheiterte Element Call an mehreren Stellen:
 
-`DIDDY_MEDIA_SELFTEST=1` ist ein Testschalter für Rechner ohne Kamera/Mikrofon: Er
-aktiviert Mock-Geräte und schreibt das Ergebnis als `linux-selftest …` in das
-Diddy-Log. Im normalen Betrieb nicht setzen.
+1. Offers ohne `a=group:BUNDLE` (`webrtcbin` behandelt `balanced` wie `none`); der
+   LiveKit-SFU (pion) lehnt dann alle Medien-Abschnitte ab → „Something went wrong“
+   (`UNKNOWN_ERROR`, `could not establish pc connection`).
+2. Deadlock beim Beitritt zwischen dem ICE-Agenten im Network-Process (librice) und
+   dem Main-Thread (`addTransceiver`) → Diddy friert ein.
+3. Mit einer PeerConnection kopiert WebKitGTK beim Hinzufügen eines
+   Empfangs-Transceivers dessen `mid` → „Cannot re-use mid 'audio0'“, kein Ton.
+4. `RTCRtpScriptTransform` ist vorhanden, das GStreamer-Backend dahinter aber ein Stub
+   (`notImplemented()`, auch im neuesten Release 2.54.2): Kein Frame erreicht die
+   Verschlüsselung. **Verschlüsselte Calls sind mit WebKitGTK unmöglich**; Diddy würde
+   unverschlüsselt senden und die Frames der anderen als Knistern abspielen.
 
-## Verifikationsstand Paket
+1 bis 3 ließen sich per JavaScript umgehen, 4 nicht. Chromium bringt libwebrtc mit wie
+Safari, die Calls verhalten sich dort wie in Chrome und Element Desktop.
 
-Bei dieser Änderung geprüft (Nix 2.26.3):
+## Verifikationsstand (2026-11-07, NixOS x86_64, KDE Wayland, LiveKit 1.13.11)
 
-- `nix flake check --all-systems --no-build --no-update-lock-file` erfolgreich:
-  Paket, Frontend, Apps, Overlay, Entwicklungsshell und Formatter für beide Architekturen.
-- Gepinnte nixpkgs-Quelle heruntergeladen und deren Lock-Prüfsumme durch Nix bestätigt.
-- Paket-Quellfilter sowie Prüfsummenabdeckung der npm-/Cargo-Lockdateien geprüft.
-
-Noch offen: vollständiger Build samt JS-/Rust-Tests und Start in einer echten
-NixOS-Desktop-Sitzung. Eine erfolgreiche Auswertung allein beweist weder
-Kompilierung noch Login, Profilisolation, Medienwiedergabe oder Anrufe.
+- Paket gebaut (`nix build .#diddy`): Frontend-Tests 119/119, Shell-Tests 13/13.
+- Start, Login, Sync, Service Worker und Befehle der Seite (`log_path`,
+  `connection_profiles`, Fehlertexte wie bei Tauri) in der echten Sitzung geprüft.
+- Frame-Transforms lokal: Chromium 150 mit `createEncodedStreams` 200/200 Frames
+  verschlüsselt und wieder entschlüsselt; WebKitGTK 2.52.6 0 Frames.
+- **Verschlüsselter DM-Call mit einem macOS-Client: verbunden, Schlüsselaustausch nach
+  ca. 0,3 s, Ton in beide Richtungen.**
+- Nicht geprüft: Bildschirmfreigabe über das Portal, Kamera, getrennte Verbindungsprofile
+  (eigene Fenster), ARM64-Laufzeit.

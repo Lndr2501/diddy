@@ -8,6 +8,7 @@ on:
       - "flake.lock"
       - "nix/**"
       - "cinny/**"
+      - "electron/**"
       - "src-tauri/**"
       - "config.json"
       - ".github/workflows/nix.yml"
@@ -34,7 +35,7 @@ jobs:
       - name: Evaluate flake without updating inputs
         run: nix flake check --no-build --no-update-lock-file
 
-      - name: Build native package and run tests
+      - name: Build Linux package (frontend + Electron shell) and run tests
         run: nix build .#checks.x86_64-linux.package --no-update-lock-file --print-build-logs
 
       - name: Check installed desktop integration
@@ -42,3 +43,5 @@ jobs:
           test -x result/bin/diddy
           test -s result/share/applications/Diddy.desktop
           test -d result/share/icons/hicolor
+          test -s result/share/diddy/electron/main.cjs
+          test -s result/share/diddy/frontend/index.html

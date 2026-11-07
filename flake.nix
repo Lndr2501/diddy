@@ -17,8 +17,6 @@
         {
           inherit diddy;
           default = diddy;
-          # With a WebRTC-enabled WebKitGTK (built from source, takes hours): needed for calls.
-          diddy-webrtc = diddy.override { withWebRTC = true; };
         });
 
       apps = forAllSystems (system:
@@ -49,23 +47,16 @@
           diddy = self.packages.${system}.diddy;
         in
         {
+          # Linux development with the Electron shell (see docs/nixos.md).
           default = pkgs.mkShell {
-            inputsFrom = [ diddy diddy.frontend ];
+            inputsFrom = [ diddy.frontend ];
             packages = with pkgs; [
               nodejs_24
-              cargo
-              rustc
-              rustfmt
-              clippy
-              cargo-tauri
-              xdg-utils
+              electron
             ];
             HUSKY = "0";
-            GIO_EXTRA_MODULES = "${pkgs.glib-networking}/lib/gio/modules";
             shellHook = ''
-              export XDG_DATA_DIRS="${pkgs.gtk3}/share/gsettings-schemas/${pkgs.gtk3.name}:${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}:''${XDG_DATA_DIRS:-}"
-              export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath [ pkgs.webkitgtk_4_1 pkgs.gtk3 pkgs.openssl ]}:''${LD_LIBRARY_PATH:-}"
-              export GST_PLUGIN_SYSTEM_PATH_1_0="${pkgs.lib.makeSearchPath "lib/gstreamer-1.0" [ pkgs.gst_all_1.gst-plugins-base pkgs.gst_all_1.gst-plugins-good pkgs.gst_all_1.gst-plugins-bad pkgs.gst_all_1.gst-libav pkgs.libnice pkgs.pipewire ]}:''${GST_PLUGIN_SYSTEM_PATH_1_0:-}"
+              export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath [ pkgs.alsa-lib ]}''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
             '';
           };
         });
