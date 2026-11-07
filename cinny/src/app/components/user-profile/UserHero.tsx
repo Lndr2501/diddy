@@ -138,7 +138,9 @@ export function UserHero({
   actions,
 }: UserHeroProps) {
   const [viewAvatar, setViewAvatar] = useState<string>();
-  const bannerUrl = useMxcUrl(safeMxc(profile?.card?.bannerMxc), { w: 680, h: 208 });
+  // the original file, not a fixed-ratio thumbnail: a cropped thumbnail was stretched to the
+  // card's shape and looked blurry (#36)
+  const bannerUrl = useMxcUrl(safeMxc(profile?.card?.bannerMxc), undefined, { animated: true });
   const animatedAvatarUrl = useMxcUrl(safeMxc(profile?.animatedAvatarMxc));
   const shownAvatarUrl = animatedAvatarUrl || avatarUrl;
   const diddyStatus = profile?.status;

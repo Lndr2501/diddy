@@ -29,18 +29,42 @@ function InitialFallback({ className, userId, renderFallback }: FallbackProps) {
   );
 }
 
+function PlainUserAvatar(props: UserAvatarProps) {
+  const { className, src, alt } = props;
+  const [error, setError] = useState(false);
+
+  const handleLoad: ReactEventHandler<HTMLImageElement> = (evt) => {
+    evt.currentTarget.setAttribute('data-image-loaded', 'true');
+  };
+
+  if (!src || error) return <InitialFallback {...props} />;
+
+  return (
+    <AvatarImage
+      className={classNames(css.UserAvatar, className)}
+      src={src}
+      alt={alt}
+      onError={() => setError(true)}
+      onLoad={handleLoad}
+      draggable={false}
+    />
+  );
+}
+
 /**
- * A user without a Matrix profile picture who set one in their Diddy profile: show that one in
- * the small avatars too (#27). Its own component so the hooks run only in this case.
+ * A user who set an animated avatar in their Diddy profile: show it everywhere, also when they
+ * have a (static) Matrix picture (#27, #35, #37). Its own component so the hooks only run when a
+ * Matrix client exists. Without a Diddy avatar, or when it fails to load, the Matrix picture and
+ * then the initials are shown.
  */
-function DiddyAvatarFallback(props: FallbackProps & { alt?: string }) {
+function DiddyUserAvatar(props: UserAvatarProps) {
   const { className, userId, alt } = props;
   const mx = useMatrixClient();
   const profile = useDiddyProfile(mx, userId);
   const url = useMxcUrl(profile?.animatedAvatarMxc, undefined, { animated: true });
   const [error, setError] = useState(false);
 
-  if (!url || error) return <InitialFallback {...props} />;
+  if (!url || error) return <PlainUserAvatar {...props} />;
   return (
     <PositionedImg
       className={classNames(css.UserAvatar, className)}
@@ -53,26 +77,6 @@ function DiddyAvatarFallback(props: FallbackProps & { alt?: string }) {
 }
 
 export function UserAvatar(props: UserAvatarProps) {
-  const { className, src, alt } = props;
-  const [error, setError] = useState(false);
   const hasClient = !!useMatrixClientOptional();
-
-  const handleLoad: ReactEventHandler<HTMLImageElement> = (evt) => {
-    evt.currentTarget.setAttribute('data-image-loaded', 'true');
-  };
-
-  if (!src || error) {
-    return hasClient ? <DiddyAvatarFallback {...props} /> : <InitialFallback {...props} />;
-  }
-
-  return (
-    <AvatarImage
-      className={classNames(css.UserAvatar, className)}
-      src={src}
-      alt={alt}
-      onError={() => setError(true)}
-      onLoad={handleLoad}
-      draggable={false}
-    />
-  );
+  return hasClient ? <DiddyUserAvatar {...props} /> : <PlainUserAvatar {...props} />;
 }
