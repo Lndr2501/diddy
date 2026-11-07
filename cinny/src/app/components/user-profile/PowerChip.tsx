@@ -70,7 +70,7 @@ function SelfDemoteAlert({ power, onCancel, onChange }: SelfDemoteAlertProps) {
               <Box grow="Yes">
                 <Text size="H4">Self Demotion</Text>
               </Box>
-              <IconButton size="300" onClick={onCancel} radii="300">
+              <IconButton size="300" onClick={onCancel} radii="400">
                 <Icon src={Icons.Cross} />
               </IconButton>
             </Header>
@@ -120,7 +120,7 @@ function SharedPowerAlert({ power, onCancel, onChange }: SharedPowerAlertProps) 
               <Box grow="Yes">
                 <Text size="H4">Shared Power</Text>
               </Box>
-              <IconButton size="300" onClick={onCancel} radii="300">
+              <IconButton size="300" onClick={onCancel} radii="400">
                 <Icon src={Icons.Cross} />
               </IconButton>
             </Header>
@@ -265,7 +265,7 @@ export function PowerChip({ userId }: { userId: string }) {
                       variant={selected ? 'Primary' : 'Surface'}
                       fill="None"
                       size="300"
-                      radii="300"
+                      radii="400"
                       aria-disabled={changing || !canChangePowers || !canAssignPower}
                       aria-pressed={selected}
                       before={<PowerColorBadge color={powerTag.color} />}
@@ -291,7 +291,7 @@ export function PowerChip({ userId }: { userId: string }) {
                   variant="Surface"
                   fill="None"
                   size="300"
-                  radii="300"
+                  radii="400"
                   onClick={() => {
                     if (room.isSpaceRoom()) {
                       openSpaceSettings(

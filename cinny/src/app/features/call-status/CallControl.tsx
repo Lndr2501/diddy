@@ -14,7 +14,7 @@ type MicrophoneButtonProps = {
 function MicrophoneButton({ enabled, onToggle, disabled }: MicrophoneButtonProps) {
   const [micState, toggleMic] = useAsyncCallback(onToggle);
   const loading = micState.status === AsyncStatus.Loading;
-  
+
   return (
     <TooltipProvider
       position="Top"
@@ -98,7 +98,7 @@ function VideoButton({ enabled, onToggle, disabled }: VideoButtonProps) {
       {(anchorRef) => (
         <IconButton
           ref={anchorRef}
-          variant={enabled ? 'Success' : 'SurfaceVariant'}
+          variant={enabled ? 'Primary' : 'SurfaceVariant'}
           fill="Soft"
           radii="Pill"
           size="300"
@@ -134,7 +134,7 @@ function ScreenShareButton({ enabled, onToggle, disabled }: ScreenShareButtonPro
       {(anchorRef) => (
         <IconButton
           ref={anchorRef}
-          variant={enabled ? 'Success' : 'SurfaceVariant'}
+          variant={enabled ? 'Primary' : 'SurfaceVariant'}
           fill="Soft"
           radii="Pill"
           size="300"
@@ -160,7 +160,10 @@ export function CallControl({
   const { microphone, video, sound, screenshare } = useCallControlState(callEmbed.control);
   const setCallEmbed = useSetAtom(callEmbedAtom);
 
-  const handleMicrophoneToggle = useCallback(() => callEmbed.control.toggleMicrophone(), [callEmbed]);
+  const handleMicrophoneToggle = useCallback(
+    () => callEmbed.control.toggleMicrophone(),
+    [callEmbed]
+  );
   const handleVideoToggle = useCallback(() => callEmbed.control.toggleVideo(), [callEmbed]);
 
   const [hangupState, hangup] = useAsyncCallback(
@@ -191,11 +194,7 @@ export function CallControl({
           disabled={!callJoined}
         />
         {!compact && <StatusDivider />}
-        <VideoButton
-          enabled={video}
-          onToggle={handleVideoToggle}
-          disabled={!callJoined}
-        />
+        <VideoButton enabled={video} onToggle={handleVideoToggle} disabled={!callJoined} />
         {!compact && (
           <ScreenShareButton
             enabled={screenshare}
@@ -206,12 +205,12 @@ export function CallControl({
       </Box>
       <StatusDivider />
       <Chip
-        variant="Primary"
+        variant="Critical"
         radii="Pill"
         fill="Soft"
         before={
           exiting ? (
-            <Spinner variant="Primary" fill="Soft" size="50" />
+            <Spinner variant="Critical" fill="Soft" size="50" />
           ) : (
             <Icon size="50" src={Icons.PhoneDown} filled />
           )

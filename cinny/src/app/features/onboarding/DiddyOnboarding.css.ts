@@ -1,22 +1,31 @@
 import { style } from '@vanilla-extract/css';
 import { color, config, toRem } from 'folds';
+import * as t from '../../components/diddy/designTokens';
 
-/** The modal itself: rounded Diddy card. */
+const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
+
+/** The modal itself: sheet on a frosted material (#21). `&[class]` wins over the folds Modal. */
 export const Card = style({
   maxWidth: '94vw',
   maxHeight: '92vh',
   display: 'flex',
   flexDirection: 'column',
-  borderRadius: toRem(18),
   overflow: 'hidden',
-  border: `${config.borderWidth.B300} solid ${color.Surface.ContainerLine}`,
-  background: color.Surface.Container,
   color: color.Surface.OnContainer,
-  boxShadow: '0 18px 60px rgba(0, 0, 0, 0.45)',
+  selectors: {
+    '&[class]': {
+      borderRadius: t.radiusCard,
+      border: t.border,
+      backgroundColor: t.materialStrong,
+      WebkitBackdropFilter: t.blur,
+      backdropFilter: t.blur,
+      boxShadow: t.shadow3,
+    },
+  },
 });
 
 export const Body = style({
-  padding: `${config.space.S500} ${config.space.S500} ${config.space.S300}`,
+  padding: `${config.space.S600} ${config.space.S600} ${config.space.S400}`,
   display: 'flex',
   flexDirection: 'column',
   gap: config.space.S400,
@@ -29,8 +38,8 @@ export const Footer = style({
   alignItems: 'center',
   justifyContent: 'space-between',
   gap: config.space.S300,
-  padding: `${config.space.S300} ${config.space.S500} ${config.space.S400}`,
-  borderTop: `${config.borderWidth.B300} solid ${color.Surface.ContainerLine}`,
+  padding: `${config.space.S300} ${config.space.S600} ${config.space.S400}`,
+  borderTop: `1px solid ${t.separator}`,
 });
 
 export const Dots = style({
@@ -42,9 +51,12 @@ export const Dots = style({
 export const Dot = style({
   width: toRem(8),
   height: toRem(8),
-  borderRadius: toRem(4),
+  borderRadius: toRem(999),
   background: color.SurfaceVariant.ContainerLine,
-  transition: 'width 0.2s ease, background 0.2s ease',
+  transition: t.transition('width', 'background-color'),
+  '@media': {
+    [REDUCED_MOTION]: { transition: 'none' },
+  },
 });
 
 export const DotActive = style({
@@ -52,42 +64,52 @@ export const DotActive = style({
   background: color.Primary.Main,
 });
 
+/** one grouped list with hairlines between the rows, like macOS settings */
 export const Bullets = style({
   display: 'flex',
   flexDirection: 'column',
-  gap: config.space.S300,
   margin: 0,
   padding: 0,
   listStyle: 'none',
+  overflow: 'hidden',
+  borderRadius: t.radiusRow,
+  border: t.border,
+  background: `color-mix(in srgb, ${color.SurfaceVariant.Container} 70%, transparent)`,
 });
 
 export const Bullet = style({
   display: 'flex',
   gap: config.space.S300,
   alignItems: 'flex-start',
-  padding: config.space.S300,
-  borderRadius: toRem(12),
-  background: color.SurfaceVariant.Container,
-  border: `${config.borderWidth.B300} solid ${color.SurfaceVariant.ContainerLine}`,
+  padding: `${config.space.S300} ${config.space.S400}`,
+  selectors: {
+    '& + &': {
+      boxShadow: `inset 0 1px 0 ${t.separator}`,
+    },
+  },
 });
 
 export const BulletIcon = style({
   flexShrink: 0,
   width: toRem(28),
   height: toRem(28),
-  borderRadius: toRem(8),
+  borderRadius: '50%',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
   background: color.Primary.Container,
   color: color.Primary.OnContainer,
-  fontWeight: 700,
+  fontSize: toRem(13),
+  fontWeight: 600,
 });
 
 export const RoomList = style({
   display: 'flex',
   flexDirection: 'column',
-  gap: config.space.S200,
+  overflow: 'hidden',
+  borderRadius: t.radiusRow,
+  border: t.border,
+  background: `color-mix(in srgb, ${color.SurfaceVariant.Container} 70%, transparent)`,
 });
 
 export const RoomItem = style({
@@ -95,17 +117,20 @@ export const RoomItem = style({
   alignItems: 'center',
   justifyContent: 'space-between',
   gap: config.space.S300,
-  padding: `${config.space.S200} ${config.space.S300}`,
-  borderRadius: toRem(12),
-  background: color.SurfaceVariant.Container,
-  border: `${config.borderWidth.B300} solid ${color.SurfaceVariant.ContainerLine}`,
+  minHeight: toRem(44),
+  padding: `${config.space.S200} ${config.space.S400}`,
+  selectors: {
+    '& + &': {
+      boxShadow: `inset 0 1px 0 ${t.separator}`,
+    },
+  },
 });
 
 export const Notice = style({
-  padding: config.space.S300,
-  borderRadius: toRem(12),
-  border: `${config.borderWidth.B300} solid ${color.SurfaceVariant.ContainerLine}`,
-  background: color.SurfaceVariant.Container,
+  padding: `${config.space.S300} ${config.space.S400}`,
+  borderRadius: t.radiusRow,
+  border: t.border,
+  background: `color-mix(in srgb, ${color.SurfaceVariant.Container} 70%, transparent)`,
 });
 
 export const Field = style({
@@ -116,22 +141,31 @@ export const Field = style({
 
 export const Select = style({
   height: toRem(36),
-  padding: `0 ${config.space.S200}`,
-  borderRadius: toRem(10),
+  padding: `0 ${config.space.S300}`,
+  borderRadius: t.radiusCtl,
   background: color.SurfaceVariant.Container,
   color: color.SurfaceVariant.OnContainer,
-  border: `${config.borderWidth.B300} solid ${color.SurfaceVariant.ContainerLine}`,
+  border: t.border,
   font: 'inherit',
+  fontSize: toRem(13),
+  transition: t.transition('box-shadow'),
+  selectors: {
+    '&:focus-visible': t.focusOutline,
+  },
 });
 
 export const ColorInput = style({
   width: toRem(48),
   height: toRem(36),
   padding: 0,
-  borderRadius: toRem(10),
-  border: `${config.borderWidth.B300} solid ${color.SurfaceVariant.ContainerLine}`,
+  borderRadius: t.radiusCtl,
+  border: t.border,
   background: 'transparent',
   cursor: 'pointer',
+  overflow: 'hidden',
+  selectors: {
+    '&:focus-visible': t.focusOutline,
+  },
 });
 
 export const Row = style({

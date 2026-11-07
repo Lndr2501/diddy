@@ -56,7 +56,7 @@ export function CreatorChip() {
                 variant="Surface"
                 fill="None"
                 size="300"
-                radii="300"
+                radii="400"
                 onClick={() => {
                   if (room.isSpaceRoom()) {
                     openSpaceSettings(

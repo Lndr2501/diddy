@@ -72,28 +72,37 @@ export function MatrixIntro() {
               <Text size="L400" className={css.Kicker}>
                 Matrix für Discord-Umsteiger · {step + 1}/{INTRO_STEPS.length}
               </Text>
-              <IconButton size="300" variant="Surface" aria-label="Schließen" onClick={close}>
+              <IconButton
+                size="300"
+                variant="SurfaceVariant"
+                fill="None"
+                radii="Pill"
+                aria-label="Schließen"
+                onClick={close}
+              >
                 <Icon size="100" src={Icons.Cross} />
               </IconButton>
             </Box>
             <Box direction="Column" gap="200">
-              <Text size="H3">{current.title}</Text>
-              <Text size="T300" priority="300">
+              <Text as="h2" size="H4" className={css.Title}>
+                {current.title}
+              </Text>
+              <Text size="T300" priority="300" className={css.Lead}>
                 {current.lead}
               </Text>
             </Box>
-            <Box direction="Column" gap="200">
+            <div className={css.Points}>
               {current.points.map((p) => (
                 <div key={p.label} className={css.Point}>
                   <Text size="T300" className={css.PointLabel}>
                     {p.label}
                   </Text>
-                  <Text size="T300" priority="300">
+                  <Text size="T300" priority="300" className={css.PointText}>
                     {p.text}
                   </Text>
                 </div>
               ))}
-            </Box>
+            </div>
             <Box justifyContent="SpaceBetween" alignItems="Center">
               <Box gap="100" aria-hidden>
                 {INTRO_STEPS.map((s, i) => (
@@ -106,20 +115,29 @@ export function MatrixIntro() {
                     size="300"
                     variant="Secondary"
                     fill="Soft"
-                    radii="300"
+                    radii="400"
+                    className={css.Button}
                     onClick={() => setStep(step - 1)}
                   >
                     <Text size="B300">Zurück</Text>
                   </Button>
                 ) : (
-                  <Button size="300" variant="Secondary" fill="None" radii="300" onClick={close}>
+                  <Button
+                    size="300"
+                    variant="Secondary"
+                    fill="None"
+                    radii="400"
+                    className={css.Button}
+                    onClick={close}
+                  >
                     <Text size="B300">Überspringen</Text>
                   </Button>
                 )}
                 <Button
                   size="300"
                   variant="Primary"
-                  radii="300"
+                  radii="400"
+                  className={css.Button}
                   onClick={() => (last ? close() : setStep(step + 1))}
                 >
                   <Text size="B300">{last ? 'Fertig' : 'Weiter'}</Text>

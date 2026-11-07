@@ -1,5 +1,6 @@
 import { globalStyle, keyframes, style } from '@vanilla-extract/css';
 import { color, config, toRem } from 'folds';
+import * as t from '../diddy/designTokens';
 
 const FadeIn = keyframes({
   from: { opacity: 0, transform: `translateY(${toRem(4)})` },
@@ -63,7 +64,8 @@ export const CardBodyCompact = style({
 /** Translucent card with blur (the owner's choice, #29). */
 export const CardGlass = style({
   backgroundColor: `color-mix(in srgb, ${color.Surface.Container} 70%, transparent)`,
-  backdropFilter: 'blur(18px) saturate(1.2)',
+  WebkitBackdropFilter: t.blur,
+  backdropFilter: t.blur,
 });
 /** No hover/transition animations inside the card. */
 export const CardCalm = style({ transition: 'none', animation: 'none' });
@@ -139,8 +141,8 @@ export const AvatarBadge = style({
 });
 export const UserHeroAvatar = style({
   outline: `${toRem(5)} solid ${color.Surface.Container}`,
-  boxShadow: `0 ${toRem(4)} ${toRem(14)} rgba(0, 0, 0, 0.25)`,
-  transition: 'transform 160ms ease',
+  boxShadow: t.shadow2,
+  transition: t.transition('transform'),
   selectors: {
     'button&': {
       cursor: 'pointer',
@@ -149,9 +151,15 @@ export const UserHeroAvatar = style({
       transform: 'scale(1.03)',
     },
   },
+  '@media': {
+    '(prefers-reduced-motion: reduce)': {
+      transition: 'none',
+      selectors: { 'button&:hover': { transform: 'none' } },
+    },
+  },
 });
 export const UserHeroAvatarImg = style({
-  transition: 'filter 160ms ease',
+  transition: t.transition('filter'),
   selectors: {
     [`button${UserHeroAvatar}:hover &`]: {
       filter: 'brightness(0.8)',
@@ -200,9 +208,9 @@ export const NameBadges = style({
   alignItems: 'center',
   gap: toRem(4),
   padding: toRem(3),
-  borderRadius: config.radii.R300,
+  borderRadius: toRem(8),
   backgroundColor: color.SurfaceVariant.Container,
-  boxShadow: `inset 0 0 0 1px ${color.SurfaceVariant.ContainerLine}`,
+  boxShadow: `inset 0 0 0 1px ${t.separator}`,
 });
 
 /** the matrix id as a small button that copies it */
@@ -220,15 +228,15 @@ export const IdChip = style({
   color: color.Surface.OnContainer,
   opacity: 0.75,
   cursor: 'pointer',
-  transition: 'background-color 140ms ease, opacity 140ms ease',
+  transition: t.transition('background-color', 'opacity'),
   selectors: {
     '&:hover': {
       opacity: 1,
-      backgroundColor: color.SurfaceVariant.Container,
+      backgroundColor: t.hover,
     },
     '&:focus-visible': {
       opacity: 1,
-      outline: `2px solid ${color.Other.FocusRing}`,
+      ...t.focusOutline,
     },
   },
 });
@@ -239,7 +247,7 @@ export const IdChipCopied = style({
 export const IdChipIcon = style({
   flexShrink: 0,
   opacity: 0,
-  transition: 'opacity 140ms ease',
+  transition: t.transition('opacity'),
   selectors: {
     [`${IdChip}:hover &, ${IdChip}:focus-visible &, ${IdChipCopied} &`]: {
       opacity: 1,
@@ -259,7 +267,7 @@ export const Pill = style({
   borderRadius: config.radii.Pill,
   backgroundColor: color.SurfaceVariant.Container,
   color: color.SurfaceVariant.OnContainer,
-  boxShadow: `inset 0 0 0 1px ${color.SurfaceVariant.ContainerLine}`,
+  boxShadow: `inset 0 0 0 1px ${t.separator}`,
   textDecoration: 'none',
   lineHeight: 1.2,
 });
@@ -282,9 +290,9 @@ export const Panel = style({
   flexDirection: 'column',
   gap: config.space.S200,
   padding: config.space.S300,
-  borderRadius: config.radii.R400,
+  borderRadius: t.radiusRow,
   backgroundColor: `color-mix(in srgb, ${color.SurfaceVariant.Container} 70%, transparent)`,
-  boxShadow: `inset 0 0 0 1px ${color.SurfaceVariant.ContainerLine}`,
+  boxShadow: `inset 0 0 0 1px ${t.separator}`,
 });
 export const PanelFlat = style({
   padding: 0,
@@ -293,9 +301,16 @@ export const PanelFlat = style({
 });
 
 export const AboutLabel = style({
-  textTransform: 'uppercase',
-  letterSpacing: '0.06em',
-  opacity: 0.6,
+  // `&[class]` wins over the folds Text size class
+  selectors: {
+    '&[class]': {
+      textTransform: 'uppercase',
+      letterSpacing: '0.06em',
+      fontSize: toRem(11),
+      fontWeight: 600,
+      opacity: 0.6,
+    },
+  },
 });
 export const AboutText = style({
   whiteSpace: 'pre-wrap',
@@ -315,9 +330,9 @@ export const ActivityArt = style({
   width: toRem(52),
   height: toRem(52),
   flexShrink: 0,
-  borderRadius: config.radii.R400,
+  borderRadius: t.radiusRow,
   color: color.Primary.OnMain,
-  boxShadow: `0 ${toRem(4)} ${toRem(12)} rgba(0, 0, 0, 0.18)`,
+  boxShadow: t.shadow2,
 });
 export const ActivityLive = style({
   position: 'absolute',
@@ -328,7 +343,7 @@ export const ActivityLive = style({
   gap: toRem(1.5),
   height: toRem(16),
   padding: `${toRem(3)} ${toRem(4)}`,
-  borderRadius: config.radii.R300,
+  borderRadius: toRem(6),
   backgroundColor: color.Surface.Container,
   boxShadow: `0 0 0 2px ${color.Surface.Container}`,
 });
@@ -357,16 +372,19 @@ export const LinkTile = style({
   borderRadius: '50%',
   color: color.SurfaceVariant.OnContainer,
   backgroundColor: color.SurfaceVariant.Container,
-  boxShadow: `inset 0 0 0 1px ${color.SurfaceVariant.ContainerLine}`,
-  transition: 'transform 140ms ease, background-color 140ms ease',
+  boxShadow: `inset 0 0 0 1px ${t.separator}`,
+  transition: t.transition('transform', 'background-color'),
   selectors: {
     '&:hover': {
       transform: 'translateY(-1px)',
       backgroundColor: color.SurfaceVariant.ContainerHover,
     },
-    '&:focus-visible': {
-      outline: `2px solid ${color.Other.FocusRing}`,
-      outlineOffset: toRem(2),
+    '&:focus-visible': t.focusOutline,
+  },
+  '@media': {
+    '(prefers-reduced-motion: reduce)': {
+      transition: 'none',
+      selectors: { '&:hover': { transform: 'none' } },
     },
   },
 });
@@ -379,22 +397,23 @@ export const TabBar = style({
   gridAutoFlow: 'column',
   gridAutoColumns: '1fr',
   padding: toRem(3),
-  borderRadius: config.radii.R400,
+  borderRadius: t.radiusCtl,
   backgroundColor: color.SurfaceVariant.Container,
-  boxShadow: `inset 0 0 0 1px ${color.SurfaceVariant.ContainerLine}`,
+  boxShadow: `inset 0 0 0 1px ${t.separator}`,
 });
 export const TabIndicator = style({
   position: 'absolute',
   top: toRem(3),
   bottom: toRem(3),
   left: toRem(3),
-  borderRadius: config.radii.R300,
+  borderRadius: toRem(7),
   backgroundColor: color.Surface.Container,
-  boxShadow: `0 1px ${toRem(3)} rgba(0, 0, 0, 0.18), inset 0 0 0 1px ${
-    color.Surface.ContainerLine
-  }`,
-  transition: 'transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1)',
+  boxShadow: `0 1px ${toRem(3)} rgba(0, 0, 0, 0.18), inset 0 0 0 1px ${t.separator}`,
+  transition: t.transition('transform'),
   pointerEvents: 'none',
+  '@media': {
+    '(prefers-reduced-motion: reduce)': { transition: 'none' },
+  },
 });
 export const Tab = style({
   all: 'unset',
@@ -406,15 +425,15 @@ export const Tab = style({
   gap: toRem(4),
   minWidth: 0,
   padding: `${toRem(5)} ${toRem(4)}`,
-  borderRadius: config.radii.R300,
+  borderRadius: toRem(7),
   color: color.SurfaceVariant.OnContainer,
   opacity: 0.65,
   cursor: 'pointer',
-  transition: 'opacity 140ms ease, color 140ms ease',
+  transition: t.transition('opacity', 'color'),
   selectors: {
     '&:hover': { opacity: 0.9 },
     '&[aria-selected="true"]': { opacity: 1 },
-    '&:focus-visible': { outline: `2px solid ${color.Other.FocusRing}` },
+    '&:focus-visible': { outline: `2px solid ${t.focusRing}` },
   },
 });
 export const TabPanel = style({
@@ -438,12 +457,12 @@ export const MetaRow = style({
 export const Divider = style({
   height: 1,
   flexShrink: 0,
-  backgroundColor: color.Surface.ContainerLine,
+  backgroundColor: t.separator,
 });
 /** moderation and alerts; hidden while the moderation part renders nothing */
 export const ModerationBox = style({
   paddingTop: config.space.S300,
-  borderTop: `1px solid ${color.Surface.ContainerLine}`,
+  borderTop: `1px solid ${t.separator}`,
   selectors: {
     '&:empty': { display: 'none' },
   },
