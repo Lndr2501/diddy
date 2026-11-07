@@ -24,7 +24,11 @@ struct CallMember: Identifiable {
 @MainActor
 final class CallManager: ObservableObject {
     @Published private(set) var current: CallSession? {
-        didSet { Sounds.shared.inCall = current != nil }
+        didSet {
+            Sounds.shared.inCall = current != nil
+            // The call takes the audio session over and keeps the app running itself.
+            if current != nil { BackgroundKeepAlive.shared.stop(deactivate: false) }
+        }
     }
     @Published private(set) var incoming: IncomingCall?
     @Published var error: String?
@@ -77,6 +81,7 @@ final class CallManager: ObservableObject {
                 current = nil
                 showCallScreen = false
             }
+            BackgroundKeepAlive.shared.refresh()
         }
     }
 
@@ -85,6 +90,8 @@ final class CallManager: ObservableObject {
         current = nil
         showCallScreen = false
         await session.disconnect()
+        // The call released the audio session; in the background, keep running for notifications.
+        BackgroundKeepAlive.shared.refresh()
         if !silently { Sounds.shared.play(.callLeft) }
     }
 
@@ -118,7 +125,10 @@ final class CallManager: ObservableObject {
             self.endRinging()
         }
         incoming = call
-        Sounds.shared.startRinging()
+        // In the background a notification rings instead: it follows the silent switch.
+        if !LocalNotifications.shared.announceCall(account: account, roomId: roomId, name: call.name) {
+            Sounds.shared.startRinging()
+        }
         incomingWindow.show(call, manager: self)
         Task { await call.watchTimeline() }
         ringTimeout = Task { [weak self, weak call] in
@@ -131,6 +141,7 @@ final class CallManager: ObservableObject {
     private func endRinging() {
         ringTimeout?.cancel()
         Sounds.shared.stopLoop()
+        if let call = incoming { LocalNotifications.shared.removeCall(account: call.account, roomId: call.roomId) }
         incoming?.stopWatching()
         incoming = nil
         incomingWindow.hide()

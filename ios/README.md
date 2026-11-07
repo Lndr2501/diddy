@@ -23,7 +23,8 @@ Die App ist Beta: Alles in der Tabelle ist gebaut und läuft bei den ersten Test
 | Eigene Sounds für Anrufe, Bildschirmübertragung, Nachrichten, Erwähnungen und Einladungen, unter Einstellungen > Sounds abschaltbar und anhörbar | 🧪 |
 | Offline-Bildschirm: Sitzung bleibt erhalten, wenn der Server nicht erreichbar ist, und verbindet sich von selbst wieder | 🧪 |
 | App-Icon wechseln (Pink, Blau, Lila, Schwarz, Magenta) | 🧪 |
-| Push-Benachrichtigungen, Klingeln bei geschlossener App | ❌ (braucht einen Push-Gateway und ein bezahltes Apple-Konto) |
+| Benachrichtigungen im Hintergrund (Nachrichten, Erwähnungen, Einladungen, Anrufe) | 🧪 Einstellung, aus ab Werk: die App läuft dafür im Hintergrund weiter (stilles Audio, kostet Akku). Ohne bezahltes Apple-Konto gibt es keinen Push-Dienst; nach einem Neustart des iPhones oder wenn iOS die App beendet, kommt bis zum nächsten Öffnen nichts |
+| Echte Push-Benachrichtigungen bei geschlossener App | ❌ (braucht einen Push-Gateway und ein bezahltes Apple-Konto) |
 | Online-Status | ❌ (Sliding Sync liefert keine Presence) |
 
 🧪 Beta: gebaut, läuft bei Testern, noch nicht im Alltag geprüft · ❌ fehlt noch

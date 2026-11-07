@@ -4,6 +4,11 @@ import SwiftUI
 struct DiddyApp: App {
     @StateObject private var app = AppModel()
 
+    init() {
+        LocalNotifications.shared.setUp()
+        BackgroundKeepAlive.shared.setUp()
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView()

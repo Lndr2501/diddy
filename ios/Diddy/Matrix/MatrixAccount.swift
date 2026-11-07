@@ -311,6 +311,15 @@ final class MatrixAccount: ObservableObject, Identifiable {
 
     func summary(for roomId: String) -> RoomSummary? { roomsById[roomId] }
 
+    /// Sender and text of a room's newest message from someone else, for a notification.
+    func notificationPreview(roomId: String) async -> (sender: String, text: String)? {
+        guard let room = room(roomId),
+              case .remote(_, let sender, let isOwn, let profile, let content) = await room.latestEvent(),
+              !isOwn, let text = TimelineController.preview(of: content) else { return nil }
+        if case .ready(let displayName?, _, _, _, _) = profile { return (displayName, text) }
+        return (name(of: sender), text)
+    }
+
     func room(_ roomId: String) -> Room? { try? client.getRoom(roomId: roomId) }
 
     var invites: [RoomSummary] { rooms.filter(\.isInvite) }

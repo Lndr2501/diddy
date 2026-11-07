@@ -7,6 +7,10 @@
 - Neuer Schalter "Noise suppression" in den iOS-Einstellungen, standardmäßig an, wirkt sofort, auch im Call. Filtert Lüfter und Tippen aus dem Mikrofon, auf dem Gerät und ohne Server oder Konto, mit [RNNoise](https://github.com/xiph/rnnoise) (BSD-3) wie am Desktop. Krisp selbst braucht einen kommerziellen Vertrag, die fertigen LiveKit-Filter sind an LiveKit Cloud gebunden.
 - Hintergrund und Messungen: `docs/rauschunterdrueckung-und-benachrichtigungen.md`.
 
+### iOS: Benachrichtigungen im Hintergrund
+
+- Neuer Schalter "Notifications in the background" (aus ab Werk). Diddy läuft dann im Hintergrund weiter und zeigt neue Nachrichten, Erwähnungen, Einladungen und Anrufe als Mitteilung, auch ohne bezahltes Apple-Konto. Kostet Akku; nach einem Neustart des iPhones muss die App einmal geöffnet werden.
+
 ### Teilnehmerliste: online und offline getrennt
 
 - Die Teilnehmerliste rechts sortiert wie bei Discord: wer online oder abwesend ist, steht oben, weiter nach Rang gruppiert. Alle, die offline sind, stehen gesammelt in einer eigenen Gruppe „Offline“ darunter, auch Admins. Vorher konnte ein Offline-Mitglied direkt zwischen Online-Mitgliedern stehen.

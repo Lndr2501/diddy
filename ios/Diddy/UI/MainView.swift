@@ -80,9 +80,20 @@ struct MainView: View {
             if let server = navigator.server, !ids.contains(server) { navigator.server = nil }
             Task { await account.loadAllChannels() }
         }
+        .onAppear { openRequestedRoom() }
+        .onChange(of: app.openRequest) { _ in openRequestedRoom() }
         .onChange(of: scenePhase) { phase in
             if phase == .active { Task { await account.resume() } }
         }
+    }
+}
+
+extension MainView {
+    /// A tapped notification for this account.
+    private func openRequestedRoom() {
+        guard let request = app.openRequest, request.accountId == account.id else { return }
+        app.openRequest = nil
+        navigator.open(request.roomId, account: account)
     }
 }
 

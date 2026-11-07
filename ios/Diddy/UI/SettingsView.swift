@@ -11,6 +11,25 @@ struct SettingsView: View {
     @State private var confirmLogout: MatrixAccount?
     @State private var showRecovery = false
     @AppStorage(NoiseSuppression.settingKey) private var noiseSuppression = true
+    @AppStorage(LocalNotifications.settingKey) private var backgroundNotifications = false
+    @State private var notificationsDenied = false
+
+    private func setBackgroundNotifications(_ isOn: Bool) {
+        guard isOn else {
+            backgroundNotifications = false
+            BackgroundKeepAlive.shared.refresh()
+            LocalNotifications.shared.clearAll()
+            return
+        }
+        Task {
+            if await LocalNotifications.shared.requestPermission() {
+                backgroundNotifications = true
+                BackgroundKeepAlive.shared.refresh()
+            } else {
+                notificationsDenied = true
+            }
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -85,6 +104,23 @@ struct SettingsView: View {
                     ))
                 } footer: {
                     Text("Filters background noise such as fans and typing out of your microphone, on this device.")
+                }
+
+                Section {
+                    Toggle("Notifications in the background", isOn: Binding(
+                        get: { backgroundNotifications },
+                        set: { isOn in setBackgroundNotifications(isOn) }
+                    ))
+                } footer: {
+                    Text("Keeps Diddy running in the background so new messages, mentions and calls show up as notifications. Works without a paid Apple account, but uses more battery. If iOS ends Diddy, for example after a restart, open it once to start again.")
+                }
+                .alert("Notifications are off", isPresented: $notificationsDenied) {
+                    Button("Open Settings") {
+                        if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
+                    }
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    Text("Allow notifications for Diddy in the Settings app, then turn this on again.")
                 }
 
                 Section("Security") {

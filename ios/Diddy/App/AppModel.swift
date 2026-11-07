@@ -14,6 +14,13 @@ final class AppModel: ObservableObject {
     @Published private(set) var restoring = true
     @Published var addingAccount = false
     @Published var restoreErrors: [String] = []
+    /// A room to show, from a tapped notification. MainView of that account opens it.
+    @Published var openRequest: OpenRequest?
+
+    struct OpenRequest: Equatable {
+        let accountId: String
+        let roomId: String
+    }
 
     let calls = CallManager()
 
@@ -30,6 +37,9 @@ final class AppModel: ObservableObject {
         for record in AccountList.load() where await restoreAccount(record) == false { unreachable.append(record) }
         activeAccountId = AccountList.activeAccountId.flatMap { id in accounts.contains { $0.id == id } ? id : nil }
             ?? accounts.first?.id
+        LocalNotifications.shared.onOpen = { [weak self] accountId, roomId in
+            Task { await self?.open(roomId: roomId, accountId: accountId) }
+        }
         calls.onAnswer = { [weak self] account in
             guard let self, self.activeAccountId != account.id else { return }
             await self.switchTo(account)
@@ -75,6 +85,7 @@ final class AppModel: ObservableObject {
             guard let self, let account else { return }
             self.calls.roomsChanged(account: account, from: old, to: new)
             self.announceActivity(account: account, from: old, to: new)
+            LocalNotifications.shared.roomsChanged(account: account, from: old, to: new)
         }
         return account
     }
@@ -109,6 +120,12 @@ final class AppModel: ObservableObject {
         addingAccount = false
         activeAccountId = account.id
         await account.start()
+    }
+
+    private func open(roomId: String, accountId: String) async {
+        guard let account = accounts.first(where: { $0.id == accountId }) else { return }
+        if activeAccountId != account.id { await switchTo(account) }
+        openRequest = OpenRequest(accountId: accountId, roomId: roomId)
     }
 
     func switchTo(_ account: MatrixAccount) async {
