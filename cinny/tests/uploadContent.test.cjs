@@ -32,12 +32,13 @@ async function rejectedUpload(reason) {
 
 test('upload rejection preserves the Matrix code separately from the message', async () => {
   const { MatrixError } = require('matrix-js-sdk');
-  const received = await rejectedUpload(new MatrixError({
+  const original = new MatrixError({
     error: 'The attachment exceeds the upload limit',
     errcode: 'M_TOO_LARGE',
-  }));
+  });
+  const received = await rejectedUpload(original);
   assert.equal(received.errcode, 'M_TOO_LARGE');
-  assert.equal(received.data.error, 'The attachment exceeds the upload limit');
+  assert.equal(received.data.error, original.message);
 });
 
 test('a Matrix code is preserved even without a name', async () => {
