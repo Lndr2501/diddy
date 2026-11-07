@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import * as css from './TitleBar.css';
 import { useSetting } from '../../state/hooks/settings';
 import { settingsAtom } from '../../state/settings';
-import { ConnectionsButton } from '../connection-recovery/ConnectionRecovery';
 
 /** Follows document.title, which TitleUpdater keeps at "room – space – Diddy". */
 const useDocumentTitle = (enabled: boolean): string => {
@@ -60,7 +59,6 @@ export function TitleBar() {
       <div className={css.TitleBarSpacer} data-tauri-drag-region>
         {showTitle && title}
       </div>
-      <ConnectionsButton />
     </div>
   );
 }
