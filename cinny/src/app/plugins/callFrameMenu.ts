@@ -36,9 +36,16 @@ export const installCallFrameMenu = (
     // the guard already prevented the event unless the native menu is wanted (inputs, Option)
     if (!evt.defaultPrevented) return;
     const text = textToCopy(doc, evt.target);
-    log?.(`frame menu: copyable text ${text.length} chars${text ? '' : ' (nothing to copy, no menu)'}`);
-    if (!text) return;
     const box = iframe.getBoundingClientRect();
+    const holder = iframe.parentElement;
+    const holderStyle = holder ? getComputedStyle(holder) : undefined;
+    log?.(
+      `frame menu: copyable text ${text.length} chars${text ? '' : ' (nothing to copy, no menu)'} ` +
+        `iframe=${Math.round(box.left)},${Math.round(box.top)} ${Math.round(box.width)}x${Math.round(box.height)} ` +
+        `holder visibility=${holderStyle?.visibility} pointerEvents=${holderStyle?.pointerEvents} ` +
+        `iframePointerEvents=${getComputedStyle(iframe).pointerEvents} route=${window.location.pathname}${window.location.hash}`
+    );
+    if (!text) return;
     const detail: CallFrameMenuDetail = {
       x: box.left + evt.clientX,
       y: box.top + evt.clientY,
