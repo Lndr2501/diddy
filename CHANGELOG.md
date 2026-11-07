@@ -2,6 +2,10 @@
 
 ## Unveröffentlicht
 
+### Teilnehmerliste: Offline-Mitglieder dunkler ausgegraut
+
+- Wer in der Gruppe „Offline“ steht, ist jetzt deutlich abgedunkelt (halbe Deckkraft), damit man auf einen Blick sieht, wer da ist. Unter dem Mauszeiger, bei Tastaturfokus und bei geöffnetem Profil ist die Zeile wieder voll lesbar. In `features/room/MembersDrawer.tsx`.
+
 ### Raumliste: Mute-Anzeige bei Leuten im Call (#67)
 
 - In der Seitenleiste steht bei jedem im Call jetzt ein rotes durchgestrichenes Mikrofon, wenn die Person stummgeschaltet ist (auch wenn du sie für dich selbst stummgeschaltet hast). Der Mute-Status der anderen steht nicht in Matrix, deshalb kommt er aus dem Call, in dem du gerade bist; in Calls, in denen du nicht bist, gibt es keine Anzeige. In `features/room-nav/CallMemberList.tsx`.

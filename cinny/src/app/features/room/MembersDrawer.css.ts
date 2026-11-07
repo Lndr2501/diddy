@@ -112,6 +112,15 @@ export const MembersGroupLabel = style({
 });
 
 // Member row: 36 px, quiet hover/selection fill, row radius.
+// Members in the "Offline" group: darker, greyed out (hover and selection stay readable).
+export const MemberRowOffline = style({
+  selectors: {
+    '&&:not(:hover):not(:focus-visible):not([aria-pressed=true])': {
+      opacity: 0.5,
+    },
+  },
+});
+
 export const MemberRow = style({
   transition: 'background-color var(--diddy-dur, 160ms) var(--diddy-ease, ease-out)',
   selectors: {
