@@ -155,7 +155,26 @@ nix run .#diddy-webrtc
 - Die WebRTC-Unterstützung von WebKitGTK (GStreamer) ist neuer als die von Chromium.
   Ob ein Call mit Element Call zuverlässig klappt, ist erst nach einem echten Test belegt.
 
-## Verifikationsstand
+## Verifikationsstand Calls (2026-11-07, ARM64-Container auf dem Mac, Xvfb)
+
+- WebKitGTK ohne WebRTC: nixpkgs (2.52.6), Ubuntu 22.04 (2.50.4), Ubuntu 24.04
+  (2.52.6), Debian 13 (2.54.0): `typeof RTCPeerConnection === "undefined"` im
+  MiniBrowser, auch mit `--enable-webrtc=true`. Fedora 43 (2.54.2) linkt ebenfalls
+  nicht gegen GStreamer-WebRTC. AppImage und .deb können deshalb keine Calls.
+- `diddy-webrtc` gebaut (WebKitGTK aus dem Cache, Diddy selbst ~10 min) und mit
+  `DIDDY_MEDIA_SELFTEST=1` in der echten Diddy-Seite geprüft: `RTCPeerConnection`
+  vorhanden, `getUserMedia({audio, video})` ohne Rückfrage erlaubt (Mock-Geräte),
+  Gerätenamen sichtbar, WebRTC-Verbindung zweier Peers mit Datenkanal erfolgreich.
+  Gegenprobe mit dem normalen `diddy`: Freigabe und Geräte ebenso, aber
+  `RTCPeerConnection` fehlt.
+- Nicht geprüft: ein echter Call über Element Call/LiveKit, echte Mikrofone/Kameras,
+  Bildschirmfreigabe über Portal/PipeWire, Wayland, x86_64-Laufzeit.
+
+`DIDDY_MEDIA_SELFTEST=1` ist ein Testschalter für Rechner ohne Kamera/Mikrofon: Er
+aktiviert Mock-Geräte und schreibt das Ergebnis als `linux-selftest …` in das
+Diddy-Log. Im normalen Betrieb nicht setzen.
+
+## Verifikationsstand Paket
 
 Bei dieser Änderung geprüft (Nix 2.26.3):
 
