@@ -2,6 +2,7 @@ import AVFoundation
 import Foundation
 import LiveKit
 import MatrixRustSDK
+import Security
 import UIKit
 
 /// Someone in the voice channel, shaped for the UI.

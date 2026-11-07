@@ -4,12 +4,12 @@
 
 # Diddy
 
-**Matrix-Chat für macOS und Linux, mit Sprachchat, der wirklich funktioniert.**
+**Matrix-Chat für macOS, Linux und iPhone/iPad, mit Sprachchat, der wirklich funktioniert.**
 
 [![Release](https://img.shields.io/github/v/release/Lndr2501/diddy?label=Release&color=e6007e)](../../releases/latest)
 [![Tests](https://github.com/Lndr2501/diddy/actions/workflows/test.yml/badge.svg)](../../actions/workflows/test.yml)
 [![Lizenz](https://img.shields.io/badge/Lizenz-AGPL--3.0-blue)](LICENSE)
-![Plattformen](https://img.shields.io/badge/macOS%20%7C%20Linux-lightgrey)
+![Plattformen](https://img.shields.io/badge/macOS%20%7C%20Linux%20%7C%20iOS-lightgrey)
 
 [Download](../../releases/latest) · [Installation](#installation) · [Selbst bauen](#selbst-bauen) · [Änderungen](CHANGELOG.md)
 
@@ -21,14 +21,15 @@ Diddy basiert auf [Cinny](https://github.com/cinnyapp/cinny) und ergänzt alles,
 
 ## Auf einen Blick
 
-| | macOS | Linux |
-|---|:---:|:---:|
-| Chat, Räume, Verschlüsselung | ✅ | 🧪 gebaut, aber ungetestet |
-| Sprachchat | ✅ | 🧪 nur NixOS-Paket `diddy-webrtc` |
-| Bildschirmübertragung | ✅ | ❌ |
-| davon mit System-Ton | ✅ (macOS 14.2+) | ❌ |
-| Mehrere Verbindungsprofile | ✅ (ab macOS 14) | 🧪 ungetestet |
-| Sprachnachrichten | ✅ | 🧪 |
+| | macOS | Linux | iPhone / iPad |
+|---|:---:|:---:|:---:|
+| Chat, Räume, Verschlüsselung | ✅ | 🧪 gebaut, aber ungetestet | 🧪 native App, neu |
+| Sprachchat | ✅ | 🧪 nur NixOS-Paket `diddy-webrtc` | 🧪 |
+| Bildschirmübertragung | ✅ | ❌ | 🧪 ganzer Bildschirm |
+| davon mit System-Ton | ✅ (macOS 14.2+) | ❌ | 🧪 App-Ton |
+| Mehrere Verbindungsprofile | ✅ (ab macOS 14) | 🧪 ungetestet | 🧪 mehrere Konten |
+| Sprachnachrichten | ✅ | 🧪 | ❌ |
+| App-Icon wechseln | ✅ | ✅ | 🧪 |
 
 ✅ läuft und wird getestet · 🧪 gebaut, aber noch nicht im Alltag geprüft · ❌ funktioniert (noch) nicht
 
@@ -89,6 +90,13 @@ Alle Downloads liegen unter [Releases](../../releases/latest).
 > Sprach- und Videochat gehen mit AppImage und .deb nicht: Das WebKitGTK von Ubuntu, Debian und Fedora ist ohne WebRTC gebaut. Unter NixOS gibt es dafür das Paket `diddy-webrtc` (WebKitGTK mit WebRTC aus dem NixOS-Cache), siehe [NixOS-Anleitung](docs/nixos.md#sprach--und-videoanrufe).
 
 Kein Linux-Rechner? Linux und NixOS lassen sich auf dem Mac in UTM testen: [VM-Anleitung](docs/vm-macos.md).
+
+</details>
+
+<details>
+<summary><b>iPhone / iPad</b></summary>
+
+Eigene native App im Discord-Stil (SwiftUI, matrix-rust-sdk, LiveKit), keine Web-Ansicht. Die IPA baut der Workflow *Build iOS*. Ohne bezahltes Apple-Konto wird sie mit AltStore, SideStore oder Sideloadly installiert. Details, Server-Voraussetzungen und Bau: [ios/README.md](ios/README.md).
 
 </details>
 

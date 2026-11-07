@@ -178,13 +178,13 @@ final class TimelineController: ObservableObject {
         }()
         let body: MessageRow.Body
         var edited = false
-        var reply: (String, String)?
+        var reply: (sender: String, text: String)?
         switch event.content {
         case .msgLike(let content):
             if let details = content.inReplyTo, case .ready(let replied, let sender, let profile, _, _) = details.event() {
                 var replyName = sender
                 if case .ready(let displayName, _, _, _, _) = profile, let displayName { replyName = displayName }
-                reply = (replyName, Self.preview(of: replied))
+                reply = (sender: replyName, text: Self.preview(of: replied))
             }
             switch content.kind {
             case .message(let message):
