@@ -38,12 +38,17 @@ const copy = async (doc: Document, text: string): Promise<void> => {
   area.remove();
 };
 
-export const installCallFrameMenu = (doc: Document | null | undefined): void => {
+export const installCallFrameMenu = (
+  doc: Document | null | undefined,
+  log?: (message: string) => void
+): void => {
   if (!doc || !doc.body) return;
   const marked = doc as Document & { __diddyFrameMenu?: boolean };
   if (marked.__diddyFrameMenu) return;
   marked.__diddyFrameMenu = true;
 
+  // the right-click's own mouse events can arrive just after the contextmenu event
+  let openedAt = 0;
   const close = () => doc.querySelectorAll(`[${MENU_ATTR}]`).forEach((n) => n.remove());
 
   doc.addEventListener('contextmenu', (evt) => {
@@ -51,7 +56,11 @@ export const installCallFrameMenu = (doc: Document | null | undefined): void => 
     if (!evt.defaultPrevented) return;
     close();
     const text = textToCopy(doc, evt.target);
+    log?.(
+      `frame menu: copyable text ${text.length} chars${text ? '' : ' (nothing to copy, no menu)'}`
+    );
     if (!text) return;
+    openedAt = Date.now();
 
     const menu = doc.createElement('div');
     menu.setAttribute(MENU_ATTR, '');
@@ -105,11 +114,20 @@ export const installCallFrameMenu = (doc: Document | null | undefined): void => 
 
   doc.addEventListener('mousedown', (evt) => {
     const t = evt.target as HTMLElement | null;
+    if (Date.now() - openedAt < 400) return;
     if (!t?.closest?.(`[${MENU_ATTR}]`)) close();
   });
   doc.addEventListener('keydown', (evt) => {
     if (evt.key === 'Escape') close();
   });
-  doc.addEventListener('scroll', close, true);
-  doc.defaultView?.addEventListener('blur', close);
+  doc.addEventListener(
+    'scroll',
+    () => {
+      if (Date.now() - openedAt >= 400) close();
+    },
+    true
+  );
+  doc.defaultView?.addEventListener('blur', () => {
+    if (Date.now() - openedAt >= 400) close();
+  });
 };
