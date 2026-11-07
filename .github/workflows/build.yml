@@ -51,6 +51,9 @@ jobs:
       - name: Build
         env:
           NODE_OPTIONS: "--max_old_space_size=4096"
+          # Ad-hoc sign the macOS bundle so its resources are sealed; without it
+          # Gatekeeper reports the downloaded app as damaged.
+          APPLE_SIGNING_IDENTITY: "-"
         run: npm run tauri -- build --bundles ${{ matrix.bundles }}
 
       - name: Upload installers
