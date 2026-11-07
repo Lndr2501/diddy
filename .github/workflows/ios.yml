@@ -25,6 +25,9 @@ on:
   push:
     tags:
       - "v*"
+      # iOS-only releases: builds the IPA and publishes it as a GitHub release (pre-release while
+      # the tag contains "beta"/"alpha"/"rc"). Desktop builds (build.yml) only react to v*.
+      - "ios-v*"
   pull_request:
     paths:
       - "ios/**"
@@ -34,6 +37,8 @@ jobs:
   ios:
     runs-on: macos-latest
     timeout-minutes: 60
+    permissions:
+      contents: write
     env:
       SIGNED: ${{ secrets.APPLE_TEAM_ID != '' && secrets.ASC_KEY_ID != '' && secrets.ASC_ISSUER_ID != '' && secrets.ASC_KEY_P8 != '' }}
     defaults:
@@ -145,6 +150,31 @@ jobs:
           name: diddy-ios
           path: ios/dist/*.ipa
           if-no-files-found: error
+
+      - name: Publish GitHub release
+        if: startsWith(github.ref, 'refs/tags/ios-v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          flags=()
+          case "$TAG" in *alpha*|*beta*|*rc*) flags+=(--prerelease) ;; esac
+          if [ "$SIGNED" = "true" ]; then
+            install="Signed IPA: installs directly on the devices in the provisioning profile."
+          else
+            install="Unsigned IPA: install it with AltStore, SideStore or Sideloadly, which sign it with your Apple ID. A free Apple ID works; the app has no extensions and uses a single App ID."
+          fi
+          cat > "$RUNNER_TEMP/notes.md" <<NOTES
+          Native iPhone/iPad app (SwiftUI, matrix-rust-sdk, LiveKit), built from $(git rev-parse --short HEAD).
+
+          $install
+
+          Needs iOS 16 or newer. Your homeserver needs Simplified Sliding Sync (MSC4186); voice channels need a MatrixRTC/LiveKit backend, the same one desktop calls use. See ios/README.md.
+
+          Built with $(xcodebuild -version | head -n 1), iOS SDK $(xcrun --sdk iphoneos --show-sdk-version).
+          NOTES
+          gh release create "$TAG" dist/*.ipa --repo "$GITHUB_REPOSITORY" --title "Diddy iOS ${TAG#ios-v}" \
+            --notes-file "$RUNNER_TEMP/notes.md" "${flags[@]}"
 
       - name: Upload build log
         if: failure()
