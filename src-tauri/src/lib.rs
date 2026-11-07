@@ -220,6 +220,50 @@ fn show_startup_window(app: &tauri::AppHandle) {
         .build();
 }
 
+/// macOS: WebKit's GPU process asks Core Audio for the default device while it connects to a page.
+/// When coreaudiod does not answer (seen on macOS 27: even `AudioObjectGetPropertyData` for the
+/// default output device never returns, Music.app hangs the same way), the GPU process blocks, WebKit
+/// kills it as unresponsive and the window stays black and then shows only the background colour (#26).
+/// Diddy cannot repair that, so probe Core Audio on a side thread and tell the user what to do.
+#[cfg(target_os = "macos")]
+fn watch_core_audio(app: tauri::AppHandle) {
+    const TIMEOUT: std::time::Duration = std::time::Duration::from_secs(8);
+    let (tx, rx) = std::sync::mpsc::channel();
+    let started = std::time::Instant::now();
+    // The probe thread may block forever when coreaudiod hangs; it is detached on purpose.
+    let spawned = std::thread::Builder::new().name("coreaudio-probe".into()).spawn(move || {
+        let _ = tx.send(audio_tap::probe_default_output());
+    });
+    if spawned.is_err() {
+        return;
+    }
+    std::thread::spawn(move || match rx.recv_timeout(TIMEOUT) {
+        Ok(Ok(_)) => {}
+        Ok(Err(e)) => diag::diag_log(format!("coreaudio: probe failed: {e}")),
+        Err(_) => {
+            diag::diag_log(format!(
+                "coreaudio: no answer from coreaudiod after {} s; WebKit cannot draw the window (#26)",
+                TIMEOUT.as_secs()
+            ));
+            use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
+            app.dialog()
+                .message(
+                    "Das Audiosystem von macOS (coreaudiod) antwortet nicht. Deshalb kann das Diddy-Fenster \
+                     nicht gezeichnet werden und bleibt leer. Andere Apps (z. B. Musik) hängen dann ebenfalls.\n\n\
+                     Abhilfe: Im Terminal „sudo killall coreaudiod“ ausführen (oder den Mac neu starten) \
+                     und Diddy danach neu öffnen.",
+                )
+                .title("Diddy kann nicht starten")
+                .kind(MessageDialogKind::Warning)
+                .show(|_| {});
+            // Log when (if ever) Core Audio comes back, to tell a slow start from a hang.
+            if rx.recv().is_ok() {
+                diag::diag_log(format!("coreaudio: answered after {:.1} s", started.elapsed().as_secs_f64()));
+            }
+        }
+    });
+}
+
 /// Linux: WebKitGTK ships with media capture and WebRTC switched off and denies every permission
 /// request that nobody handles, so Element Call can neither open the microphone nor connect.
 /// Turn the media settings on and allow camera / microphone / screen and device-list requests.
@@ -327,7 +371,15 @@ pub fn run() {
         .manage(connections::ConnectionState::default())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_localhost::Builder::new(APP_PORT).build())
-        .plugin(tauri_plugin_window_state::Builder::default().build())
+        // Without VISIBLE: the plugin would show every restored window right away (on window ready),
+        // which defeats the hidden-until-loaded start (#25); reveal_window shows it instead.
+        // The startup window is temporary and has no state worth keeping.
+        .plugin(
+            tauri_plugin_window_state::Builder::default()
+                .with_state_flags(tauri_plugin_window_state::StateFlags::all() & !tauri_plugin_window_state::StateFlags::VISIBLE)
+                .with_denylist(&["startup"])
+                .build(),
+        )
         .plugin(tauri_plugin_opener::init())
         .setup(move |app| {
             #[cfg(feature = "updater")]
@@ -364,6 +416,8 @@ pub fn run() {
                 });
             }
 
+            #[cfg(target_os = "macos")]
+            watch_core_audio(app.handle().clone());
             build_client_window(app.handle(), "main", None)
                 .map_err(|message| std::io::Error::new(std::io::ErrorKind::Other, message))?;
             app_icon::apply_saved(app.handle());
