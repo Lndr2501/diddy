@@ -10,3 +10,8 @@ export function useMatrixClient(): MatrixClient {
   if (!mx) throw new Error('MatrixClient not initialized!');
   return mx;
 }
+
+/** The client when there is one (avatars also render in places without a logged-in client). */
+export function useMatrixClientOptional(): MatrixClient | null {
+  return useContext(MatrixClientContext);
+}
