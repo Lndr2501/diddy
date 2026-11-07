@@ -35,6 +35,7 @@ import { getLocalStatus, useDiddyStatusSync } from '../../plugins/diddy/status';
 import { DiddyOnboarding } from '../../features/onboarding/DiddyOnboarding';
 import { MatrixIntro } from '../../features/intro/MatrixIntro';
 import { CallFrameMenu } from '../../components/CallFrameMenu';
+import { CallUserMenu } from '../../components/CallUserMenu';
 import { UpdateNotice } from '../../components/update-notice/UpdateNotice';
 
 /**
@@ -379,6 +380,7 @@ export function ClientNonUIFeatures({ children }: ClientNonUIFeaturesProps) {
       <DiddyOnboarding />
       <MatrixIntro />
       <CallFrameMenu />
+      <CallUserMenu />
       <UpdateNotice />
       {children}
     </>

@@ -63,3 +63,36 @@ test('a genuinely closed context is recreated on the next use', () => {
   assert.notEqual(env.getSharedAudioContext(), old);
   assert.equal(env.created.length, 2);
 });
+
+test('local sounds follow the chosen output device (Chromium AudioContext.setSinkId)', () => {
+  const env = setup(), sinks = [];
+  env.setSharedAudioSink('speakers'); // before the context exists: applied on creation
+  const ctx = env.getSharedAudioContext();
+  ctx.constructor.prototype.setSinkId = function setSinkId(id) { sinks.push(id); return Promise.resolve(); };
+  env.getSharedAudioContext();
+  env.setSharedAudioSink('headset');
+  env.setSharedAudioSink('headset'); // unchanged: not applied twice
+  env.setSharedAudioSink('');
+  assert.deepEqual(sinks, ['speakers', 'headset', '']);
+});
+
+test('without an explicit choice the system default is left alone', () => {
+  const env = setup(), sinks = [];
+  env.setSharedAudioSink('');
+  const ctx = env.getSharedAudioContext();
+  ctx.constructor.prototype.setSinkId = function setSinkId(id) { sinks.push(id); return Promise.resolve(); };
+  env.getSharedAudioContext();
+  assert.deepEqual(sinks, []);
+});
+
+test('a refused output device falls back to the system default', async () => {
+  const env = setup(), sinks = [];
+  const ctx = env.getSharedAudioContext();
+  ctx.constructor.prototype.setSinkId = function setSinkId(id) {
+    sinks.push(id);
+    return id === 'gone' ? Promise.reject(new Error('NotFound')) : Promise.resolve();
+  };
+  env.setSharedAudioSink('gone');
+  await new Promise((resolve) => setTimeout(resolve, 5));
+  assert.deepEqual(sinks, ['gone', '']);
+});

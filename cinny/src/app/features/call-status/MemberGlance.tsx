@@ -12,6 +12,7 @@ import { useOpenUserRoomProfile } from '../../state/hooks/userRoomProfile';
 import { getMouseEventCords } from '../../utils/dom';
 import * as css from './styles.css';
 import { useAgentTalking } from '../../state/agentVoice';
+import { openCallUserMenu } from '../../plugins/callFrameMenu';
 
 type GlanceAvatarProps = {
   room: Room;
@@ -41,6 +42,10 @@ function GlanceAvatar({ room, userId, speaking }: GlanceAvatarProps) {
       variant="Background"
       size="200"
       radii="Pill"
+      onContextMenu={(evt: React.MouseEvent<HTMLButtonElement>) => {
+        evt.preventDefault();
+        openCallUserMenu(userId, evt.clientX, evt.clientY);
+      }}
       onClick={(evt: React.MouseEvent<HTMLButtonElement>) =>
         openUserProfile(room.roomId, undefined, userId, getMouseEventCords(evt.nativeEvent), 'Top')
       }

@@ -63,3 +63,54 @@ export const CategoryButtonText = style({
     },
   },
 });
+
+// Participants of a call, listed under the call room in the room list (like Discord's voice
+// channels): indented past the room icon, one person per row.
+export const CallMemberList = style({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: toRem(1),
+  paddingTop: toRem(2),
+  paddingBottom: toRem(4),
+  paddingLeft: toRem(28),
+  paddingRight: config.space.S100,
+});
+
+export const CallMemberRow = style({
+  all: 'unset',
+  boxSizing: 'border-box',
+  display: 'flex',
+  alignItems: 'center',
+  gap: config.space.S200,
+  minWidth: 0,
+  height: toRem(28),
+  padding: `0 ${config.space.S200}`,
+  borderRadius: RADIUS_CTL,
+  color: color.Surface.OnContainer,
+  cursor: 'pointer',
+  transition: transition('background-color'),
+  selectors: {
+    '&:hover': {
+      backgroundColor: HOVER,
+    },
+    '&:focus-visible': {
+      outline: `2px solid ${FOCUS_RING}`,
+      outlineOffset: '-2px',
+    },
+  },
+  '@media': {
+    [REDUCED_MOTION]: { transition: 'none' },
+  },
+});
+
+export const CallMemberRowAvatar = style({
+  flexShrink: 0,
+});
+
+export const CallMemberRowName = style({
+  minWidth: 0,
+  opacity: 0.85,
+  selectors: {
+    [`${CallMemberRow}:hover &`]: { opacity: 1 },
+  },
+});

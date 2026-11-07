@@ -2,6 +2,7 @@ import React, { useCallback, useRef, useState } from 'react';
 import {
   Box,
   Button,
+  Checkbox,
   color,
   config,
   Dialog,
@@ -217,7 +218,9 @@ export function MyInstantsImport({ onClose }: MyInstantsImportProps) {
                   outlined
                   placeholder="Search term or MyInstants link"
                   value={input}
-                  onChange={(evt: React.ChangeEvent<HTMLInputElement>) => setInput(evt.target.value)}
+                  onChange={(evt: React.ChangeEvent<HTMLInputElement>) =>
+                    setInput(evt.target.value)
+                  }
                   onKeyDown={(evt) => {
                     if (evt.key === 'Enter' && !busy) handleSearch();
                   }}
@@ -250,40 +253,65 @@ export function MyInstantsImport({ onClose }: MyInstantsImportProps) {
                     <Text size="B300">{allSelected ? 'Select none' : 'Select all'}</Text>
                   </Button>
                   <Text size="T200" priority="300">
-                    {selected.size} selected · {results.length} shown{nextPage ? ' · more available' : ''}
+                    {selected.size} selected · {results.length} shown
+                    {nextPage ? ' · more available' : ''}
                   </Text>
                 </Box>
 
                 <div style={{ maxHeight: toRem(300), overflowY: 'auto' }}>
                   <Box direction="Column" gap="100">
-                    {results.map((item) => (
-                      <Box key={item.path} alignItems="Center" gap="200">
-                        <label
-                          style={{ display: 'flex', alignItems: 'center', gap: 8, flexGrow: 1, minWidth: 0 }}
+                    {results.map((item, index) => {
+                      const isSelected = selected.has(item.path);
+                      const checkboxId = `myinstants-item-${index}`;
+                      return (
+                        <Box
+                          key={item.path}
+                          alignItems="Center"
+                          gap="200"
+                          style={{
+                            padding: `${config.space.S100} ${config.space.S200}`,
+                            borderRadius: config.radii.R300,
+                            backgroundColor: isSelected ? color.Primary.Container : 'transparent',
+                            color: isSelected ? color.Primary.OnContainer : undefined,
+                          }}
                         >
-                          <input
-                            type="checkbox"
-                            checked={selected.has(item.path)}
-                            onChange={() => toggle(item.path)}
+                          <label
+                            htmlFor={checkboxId}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 8,
+                              flexGrow: 1,
+                              minWidth: 0,
+                              cursor: busy ? 'default' : 'pointer',
+                            }}
+                          >
+                            <Checkbox
+                              id={checkboxId}
+                              size="50"
+                              variant="Primary"
+                              checked={isSelected}
+                              onClick={() => toggle(item.path)}
+                              disabled={busy}
+                            />
+                            <Text size="T300" truncate>
+                              {item.name}
+                            </Text>
+                          </label>
+                          <IconButton
+                            size="300"
+                            variant="Surface"
+                            fill="None"
+                            radii="300"
+                            aria-label={`Preview ${item.name}`}
                             disabled={busy}
-                          />
-                          <Text size="T300" truncate>
-                            {item.name}
-                          </Text>
-                        </label>
-                        <IconButton
-                          size="300"
-                          variant="Surface"
-                          fill="None"
-                          radii="300"
-                          aria-label={`Preview ${item.name}`}
-                          disabled={busy}
-                          onClick={() => handlePreview(item)}
-                        >
-                          <Icon size="100" src={Icons.Play} />
-                        </IconButton>
-                      </Box>
-                    ))}
+                            onClick={() => handlePreview(item)}
+                          >
+                            <Icon size="100" src={Icons.Play} />
+                          </IconButton>
+                        </Box>
+                      );
+                    })}
                   </Box>
                 </div>
 
@@ -296,11 +324,25 @@ export function MyInstantsImport({ onClose }: MyInstantsImportProps) {
                   >
                     <Text size="B300">Import selected ({selected.size})</Text>
                   </Button>
-                  <Button variant="Primary" fill="Soft" size="300" disabled={busy} onClick={handleImportAll}>
-                    <Text size="B300">Import all{nextPage ? ' results' : ` (${results.length})`}</Text>
+                  <Button
+                    variant="Primary"
+                    fill="Soft"
+                    size="300"
+                    disabled={busy}
+                    onClick={handleImportAll}
+                  >
+                    <Text size="B300">
+                      Import all{nextPage ? ' results' : ` (${results.length})`}
+                    </Text>
                   </Button>
                   {nextPage && (
-                    <Button variant="Secondary" fill="Soft" size="300" disabled={busy} onClick={loadMore}>
+                    <Button
+                      variant="Secondary"
+                      fill="Soft"
+                      size="300"
+                      disabled={busy}
+                      onClick={loadMore}
+                    >
                       <Text size="B300">Load more</Text>
                     </Button>
                   )}
