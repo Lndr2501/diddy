@@ -62,6 +62,7 @@ import { useAutoDiscoveryInfo } from '../../hooks/useAutoDiscoveryInfo';
 import { livekitSupport } from '../../hooks/useLivekitSupport';
 import { RoomTag, StateEvent } from '../../../types/matrix/room';
 import { webRTCSupported } from '../../utils/rtc';
+import { CallMemberAvatars } from './CallMemberAvatars';
 
 type RoomNavItemMenuProps = {
   room: Room;
@@ -400,6 +401,11 @@ export function RoomNavItem({
                 src={getRoomNotificationModeIcon(notificationMode)}
                 aria-label={notificationMode}
               />
+            )}
+            {callMembers.length > 0 && (
+              <Box shrink="No" alignItems="Center">
+                <CallMemberAvatars room={room} members={callMembers} />
+              </Box>
             )}
             {callMembers.length > 0 && (
               <Badge variant="Critical" fill="Solid" size="400">
