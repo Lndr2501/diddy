@@ -79,8 +79,10 @@ async function dismissOnboarding(page, wait = 2500) {
 }
 
 /** Opens the app in a fresh WebKit context as macOS + mocked Tauri, logs in and skips onboarding. */
-async function openApp(browser, user, viewport = { width: 1100, height: 750 }) {
-  const context = await browser.newContext({ viewport });
+async function openApp(browser, user, viewport = { width: 1100, height: 750 }, options = {}) {
+  // options.tauri = false: plain web layout without the macOS title bar (used for README images)
+  const { tauri = true, deviceScaleFactor = 1, settings } = options;
+  const context = await browser.newContext({ viewport, deviceScaleFactor });
   // The German intro ("Matrix für Discord-Umsteiger") pops up 4 s after load and would cover the
   // UI under test: mark it as seen unless a test wants it (options.intro = true).
   await context.addInitScript((id) => {
@@ -90,7 +92,17 @@ async function openApp(browser, user, viewport = { width: 1100, height: 750 }) {
       /* storage unavailable */
     }
   }, `@${user}:localhost`);
-  await context.addInitScript(() => {
+  // options.settings: app settings (e.g. { useSystemTheme: false, themeId }) set before the app starts
+  if (settings) {
+    await context.addInitScript((value) => {
+      try {
+        localStorage.setItem('settings', JSON.stringify(value));
+      } catch (e) {
+        /* storage unavailable */
+      }
+    }, settings);
+  }
+  if (tauri) await context.addInitScript(() => {
     Object.defineProperty(window.navigator, 'platform', { get: () => 'MacIntel' });
     window.__TAURI_INTERNALS__ = {
       invoke: async (cmd) => (cmd === 'connection_profiles' ? [] : null),
@@ -118,7 +130,10 @@ async function openApp(browser, user, viewport = { width: 1100, height: 750 }) {
   await page.getByRole('textbox').nth(1).fill(user);
   await page.locator('input[type=password]').fill(accounts[user]);
   await page.getByRole('button', { name: 'Login', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Back' })).toBeVisible({ timeout: 60000 });
+  // Logged in = the title bar (macOS/Tauri) or the user panel (plain web layout) is there.
+  await expect(
+    page.getByRole('button', { name: tauri ? 'Back' : 'User settings' })
+  ).toBeVisible({ timeout: 60000 });
   await dismissOnboarding(page);
   page.appErrors = () =>
     errors.filter((e) => !/fetch|network|net::|abort|load failed/i.test(e));

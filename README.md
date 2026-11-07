@@ -13,6 +13,10 @@
 
 [Download](../../releases/latest) · [Installation](#installation) · [Selbst bauen](#selbst-bauen) · [Änderungen](CHANGELOG.md)
 
+<br>
+
+<img src="docs/screenshots/chat-diddy.png" width="900" alt="Diddy im Theme „Diddy“: Raumliste, Chat und Teilnehmerliste">
+
 </div>
 
 ---
@@ -33,6 +37,25 @@ Diddy basiert auf [Cinny](https://github.com/cinnyapp/cinny) und ergänzt alles,
 
 ✅ läuft und wird getestet · 🧪 gebaut, aber noch nicht im Alltag geprüft · ❌ funktioniert (noch) nicht
 
+
+## Vorschau
+
+Neun eingebaute Themes, von hell bis dunkel (Einstellungen → Appearance):
+
+<img src="docs/screenshots/themes.png" alt="Alle neun Themes: Light, Silver, Dark, Butter, Diddy, Red, Green, Purple, Amber">
+
+<table>
+<tr>
+<td width="50%"><img src="docs/screenshots/settings-appearance.png" alt="Einstellungen: Themes"></td>
+<td width="50%"><img src="docs/screenshots/settings-profile.png" alt="Einstellungen: Profil und Profilkarte"></td>
+</tr>
+<tr>
+<td align="center">Theme wählen</td>
+<td align="center">Profil, Profilkarte und Namensstil</td>
+</tr>
+</table>
+
+Die Bilder entstehen automatisch aus der echten App, siehe [docs/screenshots](docs/screenshots/README.md).
 
 ## Was Diddy anders macht
 
