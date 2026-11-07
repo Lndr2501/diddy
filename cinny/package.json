@@ -20,7 +20,8 @@
     "prepare": "husky install",
     "commit": "git-cz",
     "bump": "node scripts/update-version.js",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:ui:mac": "playwright test -c playwright.mac.config.cjs"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": "eslint",
