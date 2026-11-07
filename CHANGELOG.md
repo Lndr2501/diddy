@@ -2,6 +2,16 @@
 
 ## Unveröffentlicht (nach 1.1.0)
 
+### Stand 2026-11-07
+
+- Systemschrift: SF auf macOS, Inter auf Linux (#21, erster Schritt)
+- Optionsraum: Profil und Badges werden nicht mehr bei jedem App-Start neu gesendet, nur bei Beitritten (sonst füllt sich der Raum und ältere Daten fallen aus dem Lesefenster)
+- README überarbeitet (#18), VM-Anleitung für Linux/NixOS auf dem Mac (`docs/vm-macos.md`)
+- CI: native Rust-Tests auf macOS und Web-Build (#16)
+- Linux: Mikrofon, Kamera und WebRTC im WebView eingeschaltet, NixOS-Paket `diddy-webrtc` (#12)
+
+> **Notiz Linux:** Linux-Releases sind vorerst zurückgestellt. Der Code für Linux-Calls ist drin, aber AppImage und .deb können keine Calls, weil das WebKitGTK von Ubuntu, Debian und Fedora ohne WebRTC gebaut ist. Unter NixOS geht es nur mit `diddy-webrtc` (experimentelle WebKit-Funktionen). Ein echter Call über Element Call ist unter Linux noch nicht getestet. Offene Entscheidungen: `diddy-webrtc` als Standard, eigenes WebKit für AppImage/.deb, Testschalter `DIDDY_MEDIA_SELFTEST` behalten.
+
 ### Neu
 
 - Favoriten-Bereich für Räume (Cinny #2977)
