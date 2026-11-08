@@ -64,7 +64,8 @@ import { ContainerColor } from '../../styles/ContainerColor.css';
 import { GetMemberPowerTag, useGetMemberPowerTag } from '../../hooks/useMemberPowerTag';
 import { MemberPowerTag } from '../../../types/matrix/room';
 import { useRoomCreators } from '../../hooks/useRoomCreators';
-import { Presence, useUserPresence } from '../../hooks/useUserPresence';
+import { usePresenceState } from '../../hooks/usePresenceState';
+import { isPresentState, resolvePresenceState } from '../../utils/presenceState';
 import { AvatarPresence, PresenceBadge } from '../../components/presence';
 import { InviteUserPrompt } from '../../components/invite-user-prompt';
 import { useRoomPermissions } from '../../hooks/useRoomPermissions';
@@ -153,7 +154,7 @@ function MemberItem({
   const avatarUrl = avatarMxcUrl
     ? mx.mxcUrlToHttp(avatarMxcUrl, 100, 100, 'crop', undefined, false, useAuthentication)
     : undefined;
-  const presence = useUserPresence(member.userId);
+  const presence = usePresenceState(member.userId);
   const diddyProfile = useDiddyProfile(mx, member.userId);
   const nameplateColor = safeColor(diddyProfile?.nameplate?.color);
   const nameplateImageUrl = useMxcUrl(safeMxc(diddyProfile?.nameplate?.imageMxc), {
@@ -186,8 +187,8 @@ function MemberItem({
         <AvatarPresence
           badge={
             presence &&
-            presence.presence !== Presence.Offline && (
-              <PresenceBadge presence={presence.presence} status={presence.status} size="200" />
+            isPresentState(presence.state) && (
+              <PresenceBadge state={presence.state} message={presence.message} size="200" />
             )
           }
         >
@@ -257,8 +258,13 @@ const OFFLINE_TAG: MemberPowerTag = { name: 'Offline' };
 type MemberGroupLabel = MemberPowerTag & { count: number };
 
 const isPresent = (mx: MatrixClient, userId: string): boolean => {
-  const presence = mx.getUser(userId)?.presence;
-  return presence === Presence.Online || presence === Presence.Unavailable;
+  const user = mx.getUser(userId);
+  // grouping only needs connected or not, which the Matrix presence alone decides
+  return isPresentState(
+    resolvePresenceState(
+      user ? { presence: user.presence, lastActiveTs: user.getLastActiveTs() } : undefined
+    )
+  );
 };
 
 /** Re-renders when anyone's presence changes, batched so busy rooms don't re-sort on every event. */

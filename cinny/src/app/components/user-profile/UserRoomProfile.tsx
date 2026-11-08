@@ -18,7 +18,7 @@ import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
 import { usePowerLevels } from '../../hooks/usePowerLevels';
 import { useRoom } from '../../hooks/useRoom';
-import { useUserPresence } from '../../hooks/useUserPresence';
+import { usePresenceState } from '../../hooks/usePresenceState';
 import { IgnoredUserAlert, MutualRoomsChip, OptionsChip, ServerChip, ShareChip } from './UserChips';
 import {
   useCloseUserRoomProfile,
@@ -82,8 +82,8 @@ export function UserRoomProfile({ userId, large }: UserRoomProfileProps) {
   const avatarMxc = getMemberAvatarMxc(room, userId);
   const avatarUrl = (avatarMxc && mxcUrlToHttp(mx, avatarMxc, useAuthentication)) ?? undefined;
 
-  const presence = useUserPresence(userId);
-  const shownPresence = presence && presence.lastActiveTs !== 0 ? presence : undefined;
+  // the same state the DM list, room header and member list show (#73)
+  const shownPresence = usePresenceState(userId);
 
   const profile = useDiddyProfile(mx, userId);
   const accent = safeColor(profile?.card?.accent);
@@ -259,7 +259,7 @@ export function UserRoomProfile({ userId, large }: UserRoomProfileProps) {
               showBio={false}
               compact={compact}
             />
-            <ProfileStatus presence={shownPresence} profile={profile} />
+            <ProfileStatus presence={shownPresence} />
           </Box>
           <ProfileModules
             profile={profile}
