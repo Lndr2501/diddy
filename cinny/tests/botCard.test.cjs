@@ -11,7 +11,7 @@ const compiled = ts.transpileModule(fs.readFileSync(filename, 'utf8'), {
 }).outputText;
 const mod = {};
 vm.runInNewContext(compiled, { exports: mod, URL });
-const { parseBotCard, formatCardTime, livePosition } = mod;
+const { parseBotCard, formatCardTime, livePosition, isCardActionMessage } = mod;
 const card = (c) => ({ msgtype: 'm.notice', body: 'x', 'dev.diddy.card': { v: 1, ...c } });
 
 test('a valid track card is read with all fields', () => {
@@ -80,7 +80,7 @@ test('buttons must look like bot commands and are capped', () => {
       ],
     })
   );
-  assert.equal(c.actions.length <= 6, true);
+  assert.equal(c.actions.length <= 10, true);
   assert.equal(
     c.actions.some((a) => a.send === 'rm -rf /'),
     false
@@ -122,6 +122,62 @@ test('queue, help and note cards', () => {
   assert.equal(n.icon, '⏸');
 });
 
+test('list and stats cards are cleaned', () => {
+  const l = parseBotCard(
+    card({ kind: 'list', title: 'Favoriten', items: [{ title: 'A', subtitle: 'x' }, { nope: 1 }] })
+  );
+  assert.equal(l.items.length, 1);
+  assert.equal(l.total, 1);
+  assert.equal(parseBotCard(card({ kind: 'list', items: [] })), undefined);
+  const s = parseBotCard(
+    card({
+      kind: 'stats',
+      title: 'Stats',
+      charts: [
+        {
+          title: 'Top',
+          unit: '×',
+          items: [{ label: 'A', value: 3 }, { label: 'B', value: -1 }, { label: 'C' }],
+        },
+        { title: 'leer', items: [] },
+      ],
+    })
+  );
+  assert.equal(s.charts.length, 1);
+  assert.equal(s.charts[0].items.length, 1);
+  assert.equal(s.charts[0].items[0].value, 3);
+  assert.equal(parseBotCard(card({ kind: 'stats', title: 'x', charts: [] })), undefined);
+});
+
+test('seek command and volume are read and cleaned', () => {
+  const c = parseBotCard(
+    card({ kind: 'track', state: 'playing', title: 't', seek: '!seek', volume: 70 })
+  );
+  assert.equal(c.seek, '!seek');
+  assert.equal(c.volume, 70);
+  const bad = parseBotCard(
+    card({ kind: 'track', state: 'playing', title: 't', seek: 'rm -rf /', volume: -3 })
+  );
+  assert.equal(bad.seek, undefined);
+  assert.equal(bad.volume, undefined);
+  const spaces = parseBotCard(
+    card({ kind: 'track', state: 'playing', title: 't', seek: '!seek now' })
+  );
+  assert.equal(spaces.seek, undefined, 'only a bare command, arguments are added by the client');
+});
+
+test('up to ten buttons are kept', () => {
+  const c = parseBotCard(
+    card({
+      kind: 'track',
+      state: 'playing',
+      title: 't',
+      actions: Array.from({ length: 14 }, (_, i) => ({ label: `b${i}`, send: `!b${i}` })),
+    })
+  );
+  assert.equal(c.actions.length, 10);
+});
+
 test('time formatting and the live position', () => {
   assert.equal(formatCardTime(197), '3:17');
   assert.equal(formatCardTime(62), '1:02');
@@ -132,4 +188,27 @@ test('time formatting and the live position', () => {
   assert.equal(livePosition(track, 60000), 20, 'clamped to the length');
   assert.equal(livePosition({ ...track, state: 'paused' }, 6000), 10);
   assert.equal(livePosition({ state: 'playing' }, 6000), undefined);
+});
+
+test('messages sent by card buttons are recognised, real messages are never hidden', () => {
+  const action = (body, extra = {}) => ({
+    msgtype: 'm.text',
+    body,
+    'dev.diddy.card_action': true,
+    ...extra,
+  });
+  assert.equal(isCardActionMessage(action('!pause')), true);
+  assert.equal(isCardActionMessage(action('!seek 1:23')), true);
+  assert.equal(isCardActionMessage(action('!volume -10')), true);
+  assert.equal(isCardActionMessage(action('/skip')), true);
+  // without the flag it is a normal message
+  assert.equal(isCardActionMessage({ msgtype: 'm.text', body: '!pause' }), false);
+  // the flag on a normal sentence or a long text does not hide it
+  assert.equal(isCardActionMessage(action('hello everybody, how are you today?')), false);
+  assert.equal(isCardActionMessage(action('!pause ' + 'x'.repeat(80))), false);
+  assert.equal(isCardActionMessage(action('!a b c d')), false, 'at most two arguments');
+  assert.equal(isCardActionMessage(action('!pause', { msgtype: 'm.image' })), false);
+  assert.equal(isCardActionMessage(action('!pause', { 'dev.diddy.card_action': 'true' })), false);
+  assert.equal(isCardActionMessage(null), false);
+  assert.equal(isCardActionMessage({ body: '!pause' }), false);
 });
