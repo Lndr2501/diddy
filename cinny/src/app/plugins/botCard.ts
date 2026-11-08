@@ -6,6 +6,8 @@
  * Protocol description: docs/bot-cards.md
  */
 export const CARD_KEY = 'dev.diddy.card';
+/** Set on the message a card button / the timeline sends, so Diddy does not show it in the chat. */
+export const CARD_ACTION_KEY = 'dev.diddy.card_action';
 
 export type CardTone = 'info' | 'success' | 'warning' | 'error';
 export type TrackState = 'searching' | 'downloading' | 'playing' | 'paused' | 'stopped' | 'error';
@@ -187,4 +189,21 @@ export const livePosition = (
       : 0;
   const pos = card.position + elapsed;
   return card.duration !== undefined ? Math.min(pos, card.duration) : pos;
+};
+
+/**
+ * A command that a card button sent for you ("!pause", "!seek 1:23", "!volume -10"): Diddy hides it
+ * in the timeline, the card itself changes instead. The flag alone is not enough: anybody could set it
+ * on any message, so only short bot-command-shaped texts count (a real message is never hidden).
+ */
+export const isCardActionMessage = (content: unknown): boolean => {
+  if (!isObject(content) || content[CARD_ACTION_KEY] !== true || content.msgtype !== 'm.text') {
+    return false;
+  }
+  const { body } = content;
+  return (
+    typeof body === 'string' &&
+    body.length <= 60 &&
+    /^[!/][^\s]{1,30}( [^\s]{1,20}){0,2}$/.test(body)
+  );
 };

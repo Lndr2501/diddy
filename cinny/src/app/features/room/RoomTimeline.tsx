@@ -16,6 +16,7 @@ import {
   EventTimeline,
   EventTimelineSet,
   EventTimelineSetHandlerMap,
+  EventType,
   IContent,
   MatrixClient,
   MatrixEvent,
@@ -84,6 +85,7 @@ import {
   isMembershipChanged,
   reactionOrEditEvent,
 } from '../../utils/room';
+import { isCardActionMessage } from '../../plugins/botCard';
 import { useSetting } from '../../state/hooks/settings';
 import { MessageLayout, settingsAtom } from '../../state/settings';
 import { useMatrixEventRenderer } from '../../hooks/useMatrixEventRenderer';
@@ -381,10 +383,19 @@ const useLiveEventArrive = (
       onArrive(mEvent);
       // An edit or reaction in an encrypted room arrives still encrypted: the redraw above cannot
       // see it yet and nothing redrew after decryption, so an edited message (a bot card that went
-      // from "playing" to "paused") stayed stale until the room was reopened. Redraw once it is
-      // decrypted. The relation type is readable before decryption (it is sent in the clear).
-      if (onRelationDecrypted && mEvent.isEncrypted() && reactionOrEditEvent(mEvent)) {
-        mEvent.once(MatrixEventEvent.Decrypted, () => onRelationDecrypted());
+      // from "playing" to "paused") stayed stale until the room was reopened. The same goes for the
+      // commands that card buttons send (hidden, see isCardActionMessage). Redraw once it is
+      // decrypted and turns out to be one of those.
+      if (
+        onRelationDecrypted &&
+        mEvent.isEncrypted() &&
+        mEvent.getType() === EventType.RoomMessageEncrypted
+      ) {
+        mEvent.once(MatrixEventEvent.Decrypted, (decrypted: MatrixEvent) => {
+          if (reactionOrEditEvent(decrypted) || isCardActionMessage(decrypted.getContent())) {
+            onRelationDecrypted();
+          }
+        });
       }
     };
     const handleRedaction: RoomEventHandlerMap[RoomEvent.Redaction] = (mEvent, eventRoom) => {
@@ -1800,7 +1811,8 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
       return null;
     }
 
-    const isVisible = !reactionOrEditEvent(mEvent);
+    // edits, reactions and the commands that bot-card buttons send for you are not shown as messages
+    const isVisible = !reactionOrEditEvent(mEvent) && !isCardActionMessage(mEvent.getContent());
 
     if (!newDivider && readUptoEventIdRef.current) {
       newDivider = prevEvent?.getId() === readUptoEventIdRef.current;

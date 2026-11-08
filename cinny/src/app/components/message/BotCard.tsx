@@ -5,6 +5,7 @@ import { useRoom } from '../../hooks/useRoom';
 import { mxcUrlToHttp } from '../../utils/matrix';
 import {
   BotCard,
+  CARD_ACTION_KEY,
   CardAction,
   QueueItem,
   TrackState,
@@ -31,7 +32,11 @@ function useBotCommand(): { send: (command: string) => void; busy: boolean } {
     (command: string) => {
       if (busy) return;
       setBusy(true);
-      mx.sendMessage(room.roomId, { msgtype: 'm.text', body: command } as never)
+      mx.sendMessage(room.roomId, {
+        msgtype: 'm.text',
+        body: command,
+        [CARD_ACTION_KEY]: true,
+      } as never)
         .catch(() => undefined)
         .finally(() => window.setTimeout(() => setBusy(false), 700));
     },

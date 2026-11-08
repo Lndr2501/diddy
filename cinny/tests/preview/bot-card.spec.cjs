@@ -55,6 +55,13 @@ for (const theme of THEMES) {
   });
 }
 
+test('card buttons mark their command so Diddy hides it in the chat', async ({ page }) => {
+  await page.goto('/preview/bot-card.html?theme=dark-theme');
+  await page.getByRole('button', { name: /Pause/ }).first().click();
+  const sent = await page.evaluate(() => window.__sentContent[0]);
+  expect(sent).toMatchObject({ msgtype: 'm.text', body: '!pause', 'dev.diddy.card_action': true });
+});
+
 test('a card button sends its bot command as a message', async ({ page }) => {
   await page.goto('/preview/bot-card.html?theme=dark-theme');
   await page.getByRole('button', { name: /Pause/ }).click();
