@@ -111,7 +111,16 @@ export const resolveNameplate = (
 
 export const NAMEPLATE_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
 export const NAMEPLATE_VIDEO_TYPES = ['video/webm', 'video/mp4'];
-export const NAMEPLATE_ACCEPT = [...NAMEPLATE_IMAGE_TYPES, ...NAMEPLATE_VIDEO_TYPES].join(',');
+/** a ZIP with a loop and optional colours is accepted as well and unpacked before upload */
+export const NAMEPLATE_ZIP_TYPES = ['application/zip', 'application/x-zip-compressed'];
+export const isNameplateZip = (file: { name: string; type: string }): boolean =>
+  NAMEPLATE_ZIP_TYPES.includes(file.type) || /\.zip$/i.test(file.name);
+export const NAMEPLATE_ACCEPT = [
+  ...NAMEPLATE_IMAGE_TYPES,
+  ...NAMEPLATE_VIDEO_TYPES,
+  ...NAMEPLATE_ZIP_TYPES,
+  '.zip',
+].join(',');
 /** a nameplate is a short loop: longer videos are refused before uploading */
 export const MAX_NAMEPLATE_VIDEO_SECONDS = 15;
 export const MAX_NAMEPLATE_BYTES = 8 * 1024 * 1024;
