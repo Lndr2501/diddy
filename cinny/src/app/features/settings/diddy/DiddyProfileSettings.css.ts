@@ -109,16 +109,19 @@ export const Panel = style({
 // --- tabs --------------------------------------------------------------------------------------
 
 export const Tabs = style({
-  display: 'flex',
+  // an even 3 x 2 grid: six tabs never leave a ragged or stretched last row, and nothing is
+  // cut off (a scrolling strip with a hidden scrollbar used to hide the last tabs)
+  display: 'grid',
+  gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
   gap: SPACE.xs,
   padding: SPACE.xs,
   borderRadius: RADIUS_ROW,
   background: color.SurfaceVariant.Container,
   border: LINE,
-  // Wrap instead of scrolling: with a hidden scrollbar the last tabs were cut off and unreachable.
-  flexWrap: 'wrap',
-  alignSelf: 'stretch',
   boxSizing: 'border-box',
+});
+globalStyle(`${Wrap}[data-compact=true] ${Tabs}`, {
+  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
 });
 
 export const Tab = style({
@@ -126,10 +129,10 @@ export const Tab = style({
   alignItems: 'center',
   justifyContent: 'center',
   gap: SPACE.sm,
-  // a wrapped strip fills every row evenly instead of leaving a ragged gap on the right
-  flex: '1 1 auto',
+  minWidth: 0,
+  overflow: 'hidden',
   height: toRem(32),
-  padding: `0 ${SPACE.md}`,
+  padding: `0 ${SPACE.sm}`,
   borderRadius: RADIUS_CTL,
   border: 'none',
   background: 'transparent',
@@ -150,6 +153,12 @@ export const Tab = style({
     },
     '&:focus-visible': { outline: `2px solid ${color.Primary.Main}`, outlineOffset: 1 },
   },
+});
+
+export const TabLabel = style({
+  minWidth: 0,
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
 });
 
 // --- the card ----------------------------------------------------------------------------------

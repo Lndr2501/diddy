@@ -619,7 +619,7 @@ export function EditorTabs({
           onClick={() => onChange(t.id)}
         >
           <Icon size="100" src={t.icon} filled={tab === t.id} />
-          {t.label}
+          <span className={css.TabLabel}>{t.label}</span>
         </button>
       ))}
     </div>
