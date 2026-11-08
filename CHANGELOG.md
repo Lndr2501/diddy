@@ -1,6 +1,12 @@
 # Changelog
 
-## 1.3.1 (2026-11-08)
+## 1.3.2 (2026-11-08)
+
+Erste veröffentlichte Version mit allen Neuerungen aus 1.3.1 (der Build von 1.3.1 schlug fehl und wurde nicht veröffentlicht).
+
+- **Systemton bei der Bildschirmfreigabe (Linux):** auf älteren PipeWire-Versionen lässt sich der Ton einer gerade gestarteten App oft erst nach ein paar Versuchen abgreifen. Diese Versuche zählen nicht mehr als Fehler, der Ton neuer Apps kommt wieder an. Der Audio-Test der CI gibt bei einem Fehlschlag die Meldungen des Helfers aus.
+
+## 1.3.1 (2026-11-08, nicht veröffentlicht)
 
 ### Highlights
 
