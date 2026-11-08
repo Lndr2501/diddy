@@ -4,9 +4,8 @@ import classNames from 'classnames';
 import { useAtomValue } from 'jotai';
 import * as css from './UserAvatar.css';
 import colorMXID from '../../../util/colorMXID';
-import { useMatrixClient, useMatrixClientOptional } from '../../hooks/useMatrixClient';
-import { useDiddyProfile } from '../../plugins/diddy/profiles';
-import { useMxcUrl } from '../../plugins/diddy/media';
+import { useMatrixClientOptional } from '../../hooks/useMatrixClient';
+import { animatedThumbnailUrl, isOriginalMedia } from '../../plugins/diddy/avatar';
 import { PositionedImg } from '../diddy/PositionedImg';
 import { AvatarSurface, useAvatarPrefs } from '../../state/avatarPrefs';
 import { speakingUsersAtom } from '../../state/speakingUsers';
@@ -34,8 +33,8 @@ function InitialFallback({ className, userId, renderFallback }: FallbackProps) {
   );
 }
 
-function PlainUserAvatar(props: UserAvatarProps) {
-  const { className, src, alt } = props;
+function PlainUserAvatar(props: UserAvatarProps & { onFail?: () => void }) {
+  const { className, src, alt, onFail } = props;
   const [error, setError] = useState(false);
 
   const handleLoad: ReactEventHandler<HTMLImageElement> = (evt) => {
@@ -49,7 +48,7 @@ function PlainUserAvatar(props: UserAvatarProps) {
       className={classNames(css.UserAvatar, className)}
       src={src}
       alt={alt}
-      onError={() => setError(true)}
+      onError={() => (onFail ? onFail() : setError(true))}
       onLoad={handleLoad}
       draggable={false}
     />
@@ -57,35 +56,45 @@ function PlainUserAvatar(props: UserAvatarProps) {
 }
 
 /**
- * A user who set an animated avatar in their Diddy profile: show it everywhere, also when they
- * have a (static) Matrix picture (#27, #35, #37). Its own component so the hooks only run when a
- * Matrix client exists. Without a Diddy avatar, or when it fails to load, the Matrix picture and
- * then the initials are shown.
+ * The Matrix avatar, animated (#35, #37, #93): a GIF / WebP / APNG profile picture is requested as
+ * an animated thumbnail, so it moves wherever the settings allow it for this place. Switched off,
+ * or paused because the owner is not speaking ("only while speaking"), the plain thumbnail is used,
+ * which servers render as a still picture. If the animated thumbnail fails, the plain one is tried.
+ * Its own component so the hooks only run when a Matrix client exists.
  */
-function DiddyUserAvatar(props: UserAvatarProps) {
-  const { className, userId, alt, surface = 'chat' } = props;
-  const mx = useMatrixClient();
-  const profile = useDiddyProfile(mx, userId);
+function AnimatedUserAvatar(props: UserAvatarProps) {
+  const { src, userId, className, alt, surface = 'chat' } = props;
   const prefs = useAvatarPrefs();
-  const animate = prefs[surface];
   const speaking = useAtomValue(speakingUsersAtom).has(userId);
-  const url = useMxcUrl(profile?.animatedAvatarMxc, undefined, { animated: true });
-  const [error, setError] = useState(false);
+  const [failedSrc, setFailedSrc] = useState<string>();
+  const animate = prefs[surface] && !(prefs.speakingOnly && !speaking);
+  const animatedSrc = src && animate ? animatedThumbnailUrl(src) : undefined;
 
-  if (!animate || !url || error) return <PlainUserAvatar {...props} />;
+  if (src && !animate && isOriginalMedia(src)) {
+    // the original file (e.g. the big profile picture) moves by itself: show its first frame
+    return (
+      <PositionedImg
+        className={classNames(css.UserAvatar, className)}
+        src={src}
+        alt={alt}
+        paused
+      />
+    );
+  }
+  if (!src || !animatedSrc || animatedSrc === src || failedSrc === animatedSrc) {
+    return <PlainUserAvatar {...props} />;
+  }
   return (
-    <PositionedImg
-      className={classNames(css.UserAvatar, className)}
-      src={url}
-      pos={profile?.avatarPos}
-      paused={prefs.speakingOnly && !speaking}
-      alt={alt}
-      onError={() => setError(true)}
+    <PlainUserAvatar
+      key={animatedSrc}
+      {...props}
+      src={animatedSrc}
+      onFail={() => setFailedSrc(animatedSrc)}
     />
   );
 }
 
 export function UserAvatar(props: UserAvatarProps) {
   const hasClient = !!useMatrixClientOptional();
-  return hasClient ? <DiddyUserAvatar {...props} /> : <PlainUserAvatar {...props} />;
+  return hasClient ? <AnimatedUserAvatar {...props} /> : <PlainUserAvatar {...props} />;
 }

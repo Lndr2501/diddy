@@ -10,6 +10,9 @@ import { stopPropagation } from '../utils/keyboard';
 import { SpaceProvider } from '../hooks/useSpace';
 import { RoomProvider } from '../hooks/useRoom';
 import * as sheetCss from './sheet/Sheet.css';
+import { useMatrixClient } from '../hooks/useMatrixClient';
+import { useDiddyProfile } from '../plugins/diddy/profiles';
+import { ProfileFrameBox } from './diddy/ProfileFrame';
 
 function UserRoomProfileContextMenu({ state }: { state: UserRoomProfileState }) {
   const { roomId, spaceId, userId, cords, position } = state;
@@ -19,6 +22,9 @@ function UserRoomProfileContextMenu({ state }: { state: UserRoomProfileState }) 
   const space = spaceId ? getRoom(spaceId) : undefined;
 
   const setUserRoomProfile = useSetAtom(userRoomProfileAtom);
+  // the frame (#87) sticks out over the card, so it goes around the clipping popover / dialog
+  const mx = useMatrixClient();
+  const frame = useDiddyProfile(mx, userId)?.frame;
   // Only close what is still open: switching from the small popover to the big profile unmounts
   // the popover, and its focus trap reports that as a close.
   const close = useCallback(
@@ -48,14 +54,16 @@ function UserRoomProfileContextMenu({ state }: { state: UserRoomProfileState }) 
               escapeDeactivates: stopPropagation,
             }}
           >
-            <Menu
-              className={sheetCss.PopoverCard}
-              style={{ width: `min(${toRem(600)}, calc(100vw - ${toRem(32)}))` }}
-              role="dialog"
-              aria-label="Profile"
-            >
-              {profile}
-            </Menu>
+            <ProfileFrameBox frame={frame} width={toRem(600)} available={`100vw - ${toRem(32)}`}>
+              <Menu
+                className={sheetCss.PopoverCard}
+                style={{ width: '100%' }}
+                role="dialog"
+                aria-label="Profile"
+              >
+                {profile}
+              </Menu>
+            </ProfileFrameBox>
           </FocusTrap>
         </OverlayCenter>
       </Overlay>
@@ -76,9 +84,11 @@ function UserRoomProfileContextMenu({ state }: { state: UserRoomProfileState }) 
             escapeDeactivates: stopPropagation,
           }}
         >
-          <Menu className={sheetCss.PopoverCard} style={{ width: toRem(340) }}>
-            {profile}
-          </Menu>
+          <ProfileFrameBox frame={frame} width={toRem(340)} available={`100vw - ${toRem(16)}`}>
+            <Menu className={sheetCss.PopoverCard} style={{ width: '100%' }}>
+              {profile}
+            </Menu>
+          </ProfileFrameBox>
         </FocusTrap>
       }
     />

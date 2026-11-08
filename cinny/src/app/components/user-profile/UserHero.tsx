@@ -1,7 +1,4 @@
 import React, { ReactNode, useState } from 'react';
-import { useAtomValue } from 'jotai';
-import { speakingUsersAtom } from '../../state/speakingUsers';
-import { useAvatarPrefs } from '../../state/avatarPrefs';
 import {
   Avatar,
   Box,
@@ -128,11 +125,8 @@ export function UserHero({
   // the original file, not a fixed-ratio thumbnail: a cropped thumbnail was stretched to the
   // card's shape and looked blurry (#36)
   const bannerUrl = useMxcUrl(safeMxc(profile?.card?.bannerMxc), undefined, { animated: true });
-  const animatedAvatarMxcUrl = useMxcUrl(safeMxc(profile?.animatedAvatarMxc));
-  const avatarPrefs = useAvatarPrefs();
-  const speaking = useAtomValue(speakingUsersAtom).has(userId);
-  const animatedAvatarUrl = avatarPrefs.profile ? animatedAvatarMxcUrl : undefined;
-  const shownAvatarUrl = animatedAvatarUrl || avatarUrl;
+  // the Matrix picture; a GIF moves where the settings allow it (#93)
+  const shownAvatarUrl = avatarUrl;
   let avatarSize = 88;
   if (large) avatarSize = large.avatar === 'large' ? 120 : 88;
   else if (compact) avatarSize = 60;
@@ -175,24 +169,14 @@ export function UserHero({
             size="500"
             style={{ width: toRem(avatarSize), height: toRem(avatarSize) }}
           >
-            {animatedAvatarUrl && profile?.avatarPos ? (
-              <PositionedImg
-                className={css.UserHeroAvatarImg}
-                src={animatedAvatarUrl}
-                pos={profile.avatarPos}
-                paused={avatarPrefs.speakingOnly && !speaking}
-                alt={userId}
-              />
-            ) : (
-              <UserAvatar
-                surface="profile"
-                className={css.UserHeroAvatarImg}
-                userId={userId}
-                src={shownAvatarUrl}
-                alt={userId}
-                renderFallback={() => <Icon size="500" src={Icons.User} filled />}
-              />
-            )}
+            <UserAvatar
+              surface="profile"
+              className={css.UserHeroAvatarImg}
+              userId={userId}
+              src={shownAvatarUrl}
+              alt={userId}
+              renderFallback={() => <Icon size="500" src={Icons.User} filled />}
+            />
           </Avatar>
           {badge && <span className={css.AvatarBadge}>{badge}</span>}
         </div>
