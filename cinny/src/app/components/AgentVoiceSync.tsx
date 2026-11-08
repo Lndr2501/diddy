@@ -1,6 +1,6 @@
 /**
  * Wires "talking to an agent" (#57) to the page, the desktop shell and the running call:
- * reads the hotkey, mutes / unmutes the call microphone and tells the other call members.
+ * reads the hotkey, mutes / deafens the running call and tells the other call members.
  * Logic lives in plugins/agentVoice/ (hotkey.ts, session.ts, remote.ts).
  */
 import { useEffect, useRef } from 'react';
@@ -47,6 +47,10 @@ const callMic = (embed: CallEmbed): AgentMic => {
         // silent: a mute tone would end up in the dictation
         if (embed.control.microphone !== live) embed.control.toggleMicrophone(true);
       },
+      isDeafened: () => !embed.control.sound,
+      setDeafened: (deafened) => {
+        if (embed.control.sound === deafened) embed.control.toggleSound(true);
+      },
     };
     micOf.set(embed, mic);
   }
@@ -92,7 +96,7 @@ export function AgentVoiceSync() {
         const embed = embedRef.current;
         return embed?.joined ? callMic(embed) : undefined;
       },
-      muteMic: () => getAgentVoicePrefs().muteMic,
+      muteMode: () => getAgentVoicePrefs().muteMode,
       onActiveChange: (active) => {
         setOwnAgentTalking(active);
         diag(`agentVoice: ${active ? 'started' : 'ended'}`);

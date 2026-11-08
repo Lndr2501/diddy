@@ -4,19 +4,20 @@
  */
 import { useSyncExternalStore } from 'react';
 import { AgentHotkey, AgentHotkeyMode, parseHotkey } from '../plugins/agentVoice/hotkey';
+import { AgentMuteMode, parseMuteMode } from '../plugins/agentVoice/session';
 
 export type AgentVoicePrefs = {
   enabled: boolean;
   hotkey?: AgentHotkey;
   mode: AgentHotkeyMode;
-  /** mute the call microphone while talking to the agent */
-  muteMic: boolean;
+  /** what happens to the call while talking to the agent */
+  muteMode: AgentMuteMode;
   /** tell the others in the call (they see "Talking to agent" on your picture) */
   share: boolean;
 };
 
 const KEY = 'diddyAgentVoice';
-const DEFAULTS: AgentVoicePrefs = { enabled: false, mode: 'hold', muteMic: true, share: true };
+const DEFAULTS: AgentVoicePrefs = { enabled: false, mode: 'hold', muteMode: 'mute', share: true };
 
 const read = (): AgentVoicePrefs => {
   try {
@@ -25,7 +26,7 @@ const read = (): AgentVoicePrefs => {
       enabled: typeof stored.enabled === 'boolean' ? stored.enabled : DEFAULTS.enabled,
       hotkey: parseHotkey(stored.hotkey),
       mode: stored.mode === 'toggle' ? 'toggle' : 'hold',
-      muteMic: typeof stored.muteMic === 'boolean' ? stored.muteMic : DEFAULTS.muteMic,
+      muteMode: parseMuteMode(stored.muteMode, stored.muteMic),
       share: typeof stored.share === 'boolean' ? stored.share : DEFAULTS.share,
     };
   } catch {

@@ -10,6 +10,7 @@ import {
   hotkeyFromEvent,
   isModifierCode,
 } from '../../../plugins/agentVoice/hotkey';
+import { AgentMuteMode } from '../../../plugins/agentVoice/session';
 import { isMacOS } from '../../../utils/user-agent';
 import { canInvoke } from '../../../plugins/tauri';
 
@@ -59,6 +60,18 @@ const MODES: { value: AgentHotkeyMode; label: string }[] = [
   { value: 'hold', label: 'Hold' },
   { value: 'toggle', label: 'Press to start / stop' },
 ];
+
+const MUTE_MODES: { value: AgentMuteMode; label: string }[] = [
+  { value: 'off', label: 'Off' },
+  { value: 'mute', label: 'Mute' },
+  { value: 'full', label: 'Full mute' },
+];
+
+const MUTE_MODE_HINTS: Record<AgentMuteMode, string> = {
+  off: 'The call stays as it is while you talk to the agent.',
+  mute: 'Mutes your microphone while you talk to the agent and unmutes you afterwards.',
+  full: 'Mutes your microphone and the sound of the call while you talk to the agent, and restores both afterwards.',
+};
 
 export function AgentVoiceSettings() {
   const prefs = useAgentVoicePrefs();
@@ -165,13 +178,14 @@ export function AgentVoiceSettings() {
               }
             />
             <InsetRow
-              title="Mute microphone meanwhile"
-              description="Mutes you in the call while you talk to the agent and unmutes you afterwards."
+              title="Mute in the call meanwhile"
+              description={MUTE_MODE_HINTS[prefs.muteMode]}
               after={
-                <Switch
-                  variant="Primary"
-                  value={prefs.muteMic}
-                  onChange={(muteMic) => updateAgentVoicePrefs({ muteMic })}
+                <SegmentedControl<AgentMuteMode>
+                  aria-label="Mute in the call meanwhile"
+                  options={MUTE_MODES}
+                  value={prefs.muteMode}
+                  onChange={(muteMode) => updateAgentVoicePrefs({ muteMode })}
                 />
               }
             />
