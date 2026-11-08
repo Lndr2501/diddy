@@ -11,6 +11,8 @@ file=cinny/src/app/appInfo.ts
 current=$(sed -n "s/^export const APP_VERSION = '\(.*\)';/\1/p" "$file")
 if [ "$current" != "$version" ]; then
   echo "::warning file=$file::APP_VERSION is '$current' in the repository; building with '$version' from the tag. Update $file in the repository."
-  sed -i "s/^export const APP_VERSION = '.*';/export const APP_VERSION = '$version';/" "$file"
+  # -i.bak: works with GNU sed (Linux) and BSD sed (macOS)
+  sed -i.bak "s/^export const APP_VERSION = '.*';/export const APP_VERSION = '$version';/" "$file"
+  rm -f "$file.bak"
 fi
 grep -n "APP_VERSION =" "$file"
