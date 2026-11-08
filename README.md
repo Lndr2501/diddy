@@ -4,6 +4,17 @@
 
 # Diddy
 
+> **🚧 WIP – noch nicht fertig:** Dieser Branch (`dev/effects-watch`) enthält den experimentellen
+> Dev-Stand mit **YouTube Watch Together**, **Profileffekten/Overlays** und den bereits integrierten
+> **Nameplates**. Er ist zum Testen gedacht, nicht als fertiges Release.
+>
+> Stand 08.11.2026: Typecheck und 286 Unit-Tests erfolgreich; ein separater macOS-ARM64-DMG
+> als **Diddy Dev** wurde gebaut, seine Ad-hoc-Signatur und die DMG-Prüfsumme wurden geprüft.
+> **Noch offen:** echte Mehrbenutzer-Tests der YouTube-Synchronisierung im Call sowie manuelle
+> Tests der Profileffekte, Importe und Animationen in der gepackten App. Ein erfolgreicher Build
+> bedeutet nicht, dass diese Funktionen vollständig oder im Alltag zuverlässig sind.
+> Die Dev-App hat eine eigene Bundle-ID und ersetzt die stabile Diddy-App nicht.
+
 **Matrix-Chat für macOS, Linux und iPhone/iPad, mit Sprachchat, der wirklich funktioniert.**
 
 [![Release](https://img.shields.io/github/v/release/Lndr2501/diddy?label=Release&color=e6007e)](../../releases/latest)
