@@ -32,6 +32,7 @@ import { installSoundboard } from './soundboard';
 import { installCallTheme } from './callTheme';
 import { installScreenShareGrid } from './screenShareGrid';
 import { trackPeerConnections } from './streamStats';
+import { installE2eeWatch } from './e2eeWatch';
 
 export class CallEmbed {
   private mx: MatrixClient;
@@ -198,6 +199,8 @@ export class CallEmbed {
     const installMediaPatches = () => {
       // the call's peer connections: stream diagnostics and the "connection lost" sound
       trackPeerConnections(iframe.contentWindow);
+      // E2EE worker of the call: logs decryption trouble and sets a missing decrypt flag (#74)
+      installE2eeWatch(iframe.contentWindow);
       installScreenShareAudio(iframe.contentWindow);
       // the call view is its own document: without this it showed the web view menu again
       installContextMenuGuard(iframe.contentWindow?.document);
