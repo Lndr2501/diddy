@@ -1800,6 +1800,8 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
       prevRenderedEvent !== undefined &&
       prevRenderedEvent.getSender() === eventSender &&
       prevRenderedEvent.getType() === mEvent.getType() &&
+      // a reply starts its own group: its connector line needs the avatar of its sender
+      !mEvent.replyEventId &&
       minuteDifference(prevRenderedEvent.getTs(), mEvent.getTs()) < 2;
 
     const eventJSX = isVisible
