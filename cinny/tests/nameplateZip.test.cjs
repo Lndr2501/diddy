@@ -67,7 +67,7 @@ const makeZip = (entries) => {
 
 const META = JSON.stringify({ archive_record: { gradient_colours: '[1513309,1183322]' } });
 
-test('takes the video before the picture and the first gradient colour', async () => {
+test('takes the animated picture before the video (WebM alpha is black in WebKit)', async () => {
   const zip = makeZip([
     ['pack/vorschau.png', Buffer.from('png')],
     ['pack/animation-bild.apng', Buffer.from('apng')],
@@ -75,10 +75,21 @@ test('takes the video before the picture and the first gradient colour', async (
     ['pack/metadaten.json', Buffer.from(META), 0],
   ]);
   const out = await readNameplateZip(zip);
-  assert.equal(out.name, 'animation-video.webm');
-  assert.equal(out.type, 'video/webm');
-  assert.equal(Buffer.from(out.data).toString(), 'webm-bytes');
+  assert.equal(out.name, 'animation-bild.apng');
+  assert.equal(out.type, 'image/png');
+  assert.equal(Buffer.from(out.data).toString(), 'apng');
   assert.equal(out.color, '#17175d');
+});
+
+test('uses the video when there is no animated picture; then the still', async () => {
+  const video = await readNameplateZip(
+    makeZip([
+      ['a/vorschau.png', Buffer.from('still')],
+      ['a/loop.webm', Buffer.from('v')],
+    ])
+  );
+  assert.equal(video.name, 'loop.webm');
+  assert.equal(video.type, 'video/webm');
 });
 
 test('falls back to the animated, then the still picture; apng is served as png', async () => {
