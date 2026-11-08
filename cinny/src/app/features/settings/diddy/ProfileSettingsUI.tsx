@@ -1,77 +1,126 @@
-import React, { DragEvent, ReactNode, useRef, useState } from 'react';
+import React, { DragEvent, ReactNode, useId, useRef, useState } from 'react';
 import classNames from 'classnames';
-import { Box, Button, Icon, IconSrc, Icons, Text } from 'folds';
+import { Button, Icon, IconSrc, Icons, Text } from 'folds';
 import * as css from './DiddyProfileSettings.css';
 import { RangeInput } from '../../../components/diddy/RangeInput';
 import { useMxcUrl } from '../../../plugins/diddy/media';
 
-/** Rounded settings card with icon tile, title and description (shared by all profile tabs). */
+/*
+ * The building blocks of Settings > Profile (#105). Every section is a SettingsCard, every
+ * labelled control a Field (label left) or StackField (label above), every hint goes into the
+ * field's `hint` or the card's `footer`. Spacing comes from the card and field styles only.
+ */
+
+type SettingsCardProps = {
+  icon: IconSrc;
+  title: string;
+  description?: ReactNode;
+  /** small control on the right of the header (counter, clear button, search) */
+  action?: ReactNode;
+  /** notes below a hairline at the bottom of the card */
+  footer?: ReactNode;
+  children?: ReactNode;
+};
+/** The one card every section of the profile editor uses: header, body, optional footer. */
 export function SettingsCard({
   icon,
   title,
   description,
   action,
-  wide,
+  footer,
   children,
-}: {
-  icon: IconSrc;
-  title: string;
-  description?: string;
-  /** small control on the right of the header */
-  action?: ReactNode;
-  /** span both columns of the tab grid */
-  wide?: boolean;
-  children?: ReactNode;
-}) {
+}: SettingsCardProps) {
+  const titleId = useId();
   return (
-    <section className={classNames(css.SectionCard, wide && css.Wide)}>
+    <section className={css.SectionCard} aria-labelledby={titleId}>
       <div className={css.SectionHeader}>
         <span className={css.IconTile} aria-hidden>
           <Icon size="200" src={icon} />
         </span>
         <div className={css.SectionTitle}>
-          <Text size="H5">{title}</Text>
+          <Text as="h2" size="H5" id={titleId}>
+            {title}
+          </Text>
           {description && (
             <Text size="T200" priority="300">
               {description}
             </Text>
           )}
         </div>
-        {action && <Box shrink="No">{action}</Box>}
+        {action && <div className={css.SectionAction}>{action}</div>}
       </div>
       {children && <div className={css.SectionBody}>{children}</div>}
+      {footer && <div className={css.SectionFooter}>{footer}</div>}
     </section>
   );
 }
 
-/** Label on the left, controls on the right. */
+/** A grey note (card footers, hints). */
+export function Hint({ children, tone }: { children: ReactNode; tone?: 'error' | 'success' }) {
+  return (
+    <Text
+      size="T200"
+      priority={tone ? undefined : '300'}
+      className={classNames(
+        tone === 'error' && css.ErrorText,
+        tone === 'success' && css.SuccessText
+      )}
+    >
+      {children}
+    </Text>
+  );
+}
+
+function FieldLabel({ label, hint }: { label: string; hint?: ReactNode }) {
+  return (
+    <div className={css.FieldLabel}>
+      <Text as="span" size="T300">
+        {label}
+      </Text>
+      {hint && (
+        <Text as="span" size="T200" priority="300">
+          {hint}
+        </Text>
+      )}
+    </div>
+  );
+}
+
+/** Label (and hint) on the left, controls on the right; stacked on a compact page. */
 export function Field({
   label,
+  hint,
   top,
   children,
 }: {
   label: string;
+  hint?: ReactNode;
+  /** align the label with the top of tall controls */
   top?: boolean;
   children: ReactNode;
 }) {
   return (
     <div className={classNames(css.Field, top && css.FieldTop)}>
-      <Text size="T300" priority="300" style={top ? { paddingTop: 8 } : undefined}>
-        {label}
-      </Text>
+      <FieldLabel label={label} hint={hint} />
       <div className={css.Controls}>{children}</div>
     </div>
   );
 }
 
-/** Label above the control. */
-export function StackField({ label, children }: { label: string; children: ReactNode }) {
+/** Label (and hint) above the control. */
+export function StackField({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: ReactNode;
+  children: ReactNode;
+}) {
   return (
     // eslint-disable-next-line jsx-a11y/label-has-associated-control
     <label className={css.StackField}>
-      <Text as="span" size="T200" priority="300">
-        {label}
-      </Text>
+      <FieldLabel label={label} hint={hint} />
       {children}
     </label>
   );
@@ -83,24 +132,33 @@ export function Segmented<T extends string>({
   options,
   onChange,
   label,
+  columns,
 }: {
   value: T;
-  options: { id: T; label: string; icon?: ReactNode }[];
+  options: { id: T; label: string; title?: string; icon?: ReactNode }[];
   onChange: (value: T) => void;
   label?: string;
+  /** lay the options out as an even grid with this many columns */
+  columns?: number;
 }) {
   return (
-    <div className={css.Segment} role="group" aria-label={label}>
+    <div
+      className={classNames(css.Segment, columns && css.SegmentGrid)}
+      style={columns ? { gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` } : undefined}
+      role="group"
+      aria-label={label}
+    >
       {options.map((o) => (
         <button
           key={o.id}
           type="button"
           className={css.SegmentButton}
           aria-pressed={value === o.id}
+          title={o.title}
           onClick={() => onChange(o.id)}
         >
           {o.icon}
-          <Text as="span" size="T300">
+          <Text as="span" size="T200">
             {o.label}
           </Text>
         </button>
@@ -139,6 +197,42 @@ export function ColorField({
   );
 }
 
+/** A slider with its value on the right. */
+export function SliderField({
+  value,
+  min,
+  max,
+  step,
+  label,
+  format,
+  onChange,
+}: {
+  value: number;
+  min: number;
+  max: number;
+  step?: number;
+  label: string;
+  format: (value: number) => string;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <div className={css.SliderRow}>
+      <RangeInput
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        aria-label={label}
+        onChange={(e) => onChange(Number(e.target.value))}
+        style={{ flexGrow: 1, minWidth: 80 }}
+      />
+      <Text size="T200" priority="300" className={css.SliderValue}>
+        {format(value)}
+      </Text>
+    </div>
+  );
+}
+
 export function AngleField({
   value,
   onChange,
@@ -147,19 +241,14 @@ export function AngleField({
   onChange: (value: number) => void;
 }) {
   return (
-    <Box alignItems="Center" gap="300" grow="Yes" style={{ maxWidth: 280 }}>
-      <RangeInput
-        min={0}
-        max={360}
-        value={value}
-        aria-label="Angle"
-        onChange={(e) => onChange(Number(e.target.value))}
-        style={{ flexGrow: 1, minWidth: 100 }}
-      />
-      <Text size="T200" priority="300" style={{ width: 40, textAlign: 'right' }}>
-        {value}°
-      </Text>
-    </Box>
+    <SliderField
+      value={value}
+      min={0}
+      max={360}
+      label="Angle"
+      format={(v) => `${v}°`}
+      onChange={onChange}
+    />
   );
 }
 
@@ -168,6 +257,15 @@ export function ClearButton({ onClick, label = 'Clear' }: { onClick: () => void;
     <Button size="300" variant="Secondary" fill="None" radii="300" onClick={onClick}>
       <Text size="B300">{label}</Text>
     </Button>
+  );
+}
+
+/** A small "n/max" counter for a card header. */
+export function Counter({ value, max }: { value: number; max: number }) {
+  return (
+    <Text size="T200" priority="300">
+      {value}/{max}
+    </Text>
   );
 }
 
@@ -229,12 +327,12 @@ export function UploadField({
           <Icon size="300" src={Icons.Photo} style={{ opacity: 0.5 }} />
         )}
       </div>
-      <Box direction="Column" gap="100" grow="Yes" style={{ minWidth: 0 }}>
+      <div className={css.DropText}>
         <Text size="T300">{title}</Text>
         <Text size="T200" priority="300">
           {busy ? 'Uploading...' : hint}
         </Text>
-      </Box>
+      </div>
       <input
         ref={inputRef}
         type="file"
@@ -246,7 +344,7 @@ export function UploadField({
           if (file) onFile(file);
         }}
       />
-      <Box gap="200" shrink="No" wrap="Wrap" justifyContent="End">
+      <div className={css.DropActions}>
         <Button
           size="300"
           variant="Secondary"
@@ -269,7 +367,7 @@ export function UploadField({
             <Text size="B300">Remove</Text>
           </Button>
         )}
-      </Box>
+      </div>
     </div>
   );
 }

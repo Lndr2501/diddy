@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Box, Button, Icons, Spinner, Text, color, config } from 'folds';
+import { Box, Button, Icons, Spinner, Text } from 'folds';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { useMxcUrl } from '../../../plugins/diddy/media';
 import { patchMyProfile } from '../../../plugins/diddy/profiles';
@@ -9,7 +9,7 @@ import {
   readAnsweredLegacyAvatars,
   shouldOfferLegacyAvatar,
 } from '../../../plugins/diddy/avatar';
-import { SettingsCard } from './ProfileSettingsUI';
+import { Hint, SettingsCard } from './ProfileSettingsUI';
 
 type LegacyAvatarNoticeProps = {
   /** the old Diddy avatar from the stored profile */
@@ -56,7 +56,6 @@ export function LegacyAvatarNotice({ legacyMxc, matrixMxc }: LegacyAvatarNoticeP
 
   return (
     <SettingsCard
-      wide
       icon={Icons.User}
       title="Your old Diddy picture"
       description="Diddy no longer has its own profile picture: everyone now sees your Matrix picture, which can be a GIF too."
@@ -98,11 +97,7 @@ export function LegacyAvatarNotice({ legacyMxc, matrixMxc }: LegacyAvatarNoticeP
               <Text size="B300">Dismiss</Text>
             </Button>
           </Box>
-          {error && (
-            <Text size="T200" style={{ color: color.Critical.Main, paddingTop: config.space.S100 }}>
-              {error}
-            </Text>
-          )}
+          {error && <Hint tone="error">{error}</Hint>}
         </Box>
       </Box>
     </SettingsCard>
