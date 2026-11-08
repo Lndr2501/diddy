@@ -4,6 +4,7 @@ import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { DiddyStatus } from './types';
 import { patchMyProfile, readProfile, useDiddyProfile } from './profiles';
 import { getPrimaryOptionsRoom } from './optionsRoom';
+import { DND_STATUS_MSG } from '../../utils/presenceState';
 
 const STATUS_KEY = 'diddyStatus';
 const STATUSES: DiddyStatus[] = ['online', 'idle', 'dnd', 'invisible'];
@@ -26,7 +27,8 @@ const applyPresence = async (mx: MatrixClient, status: DiddyStatus): Promise<voi
   let syncPresence = SetPresence.Online;
   let statusMsg: string | undefined;
   if (status === 'dnd') {
-    statusMsg = 'Do not disturb';
+    // other clients see DND as online plus this message, utils/presenceState reads it back
+    statusMsg = DND_STATUS_MSG;
   } else if (status === 'idle') {
     presence = 'unavailable';
     syncPresence = SetPresence.Unavailable;

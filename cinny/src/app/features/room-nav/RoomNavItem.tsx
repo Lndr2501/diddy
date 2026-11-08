@@ -64,6 +64,8 @@ import { livekitSupport } from '../../hooks/useLivekitSupport';
 import { RoomTag, StateEvent } from '../../../types/matrix/room';
 import { webRTCSupported } from '../../utils/rtc';
 import { CallMemberList } from './CallMemberList';
+import { usePresenceState } from '../../hooks/usePresenceState';
+import { AvatarPresence, PresenceBadge } from '../../components/presence';
 
 type RoomNavItemMenuProps = {
   room: Room;
@@ -289,6 +291,9 @@ export function RoomNavItem({
   );
 
   const roomName = useRoomName(room);
+  // a 1:1 DM shows the other user's presence on its avatar (#72); group DMs have none
+  const dmUserId = direct && showAvatar ? room.getAvatarFallbackMember()?.userId : undefined;
+  const dmPresence = usePresenceState(dmUserId);
 
   const handleContextMenu: MouseEventHandler<HTMLElement> = (evt) => {
     evt.preventDefault();
@@ -359,34 +364,48 @@ export function RoomNavItem({
         <NavLink to={linkPath} onClick={room.isCallRoom() ? handleStartCall : undefined}>
           <NavItemContent>
             <Box as="span" grow="Yes" alignItems="Center" gap="200">
-              <Avatar size="200" radii="400">
-                {showAvatar ? (
-                  <RoomAvatar
-                    roomId={room.roomId}
-                    src={
-                      direct
-                        ? getDirectRoomAvatarUrl(mx, room, 96, useAuthentication)
-                        : getRoomAvatarUrl(mx, room, 96, useAuthentication)
-                    }
-                    alt={roomName}
-                    renderFallback={() => (
-                      <Text as="span" size="H6">
-                        {nameInitials(roomName)}
-                      </Text>
-                    )}
-                  />
-                ) : (
-                  <RoomIcon
-                    style={{
-                      opacity: unread ? config.opacity.P500 : config.opacity.P300,
-                    }}
-                    filled={selected}
-                    size="100"
-                    joinRule={room.getJoinRule()}
-                    roomType={room.getType()}
-                  />
-                )}
-              </Avatar>
+              <AvatarPresence
+                as="span"
+                variant="Background"
+                badge={
+                  dmPresence && (
+                    <PresenceBadge
+                      state={dmPresence.state}
+                      message={dmPresence.message}
+                      size="200"
+                    />
+                  )
+                }
+              >
+                <Avatar size="200" radii="400">
+                  {showAvatar ? (
+                    <RoomAvatar
+                      roomId={room.roomId}
+                      src={
+                        direct
+                          ? getDirectRoomAvatarUrl(mx, room, 96, useAuthentication)
+                          : getRoomAvatarUrl(mx, room, 96, useAuthentication)
+                      }
+                      alt={roomName}
+                      renderFallback={() => (
+                        <Text as="span" size="H6">
+                          {nameInitials(roomName)}
+                        </Text>
+                      )}
+                    />
+                  ) : (
+                    <RoomIcon
+                      style={{
+                        opacity: unread ? config.opacity.P500 : config.opacity.P300,
+                      }}
+                      filled={selected}
+                      size="100"
+                      joinRule={room.getJoinRule()}
+                      roomType={room.getType()}
+                    />
+                  )}
+                </Avatar>
+              </AvatarPresence>
               <Box as="span" grow="Yes">
                 <Text priority={unread ? '500' : '300'} as="span" size="Inherit" truncate>
                   {roomName}

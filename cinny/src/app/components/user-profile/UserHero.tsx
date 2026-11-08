@@ -23,13 +23,18 @@ import { UserAvatar } from '../user-avatar';
 import colorMXID from '../../../util/colorMXID';
 import { getMxIdLocalPart } from '../../utils/matrix';
 import { BreakWord, LineClamp2, LineClamp3 } from '../../styles/Text.css';
-import { Presence, UserPresence, usePresenceLabel } from '../../hooks/useUserPresence';
+import type { ShownPresence } from '../../hooks/usePresenceState';
+import {
+  PRESENCE_STATE_COLOR,
+  PRESENCE_STATE_LABEL,
+  PresenceState,
+} from '../../utils/presenceState';
 import { ImageViewer } from '../image-viewer';
 import { stopPropagation } from '../../utils/keyboard';
 import { copyToClipboard } from '../../utils/dom';
 import { useTimeoutToggle } from '../../hooks/useTimeoutToggle';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
-import { CardStyle, DiddyProfile, DiddyStatus } from '../../plugins/diddy/types';
+import { CardStyle, DiddyProfile } from '../../plugins/diddy/types';
 import type { BigProfileAvatar, BigProfileBanner } from '../../plugins/diddy/profileExtras';
 import { useMxcUrl } from '../../plugins/diddy/media';
 import { useShownBadges } from '../../plugins/diddy/profiles';
@@ -41,46 +46,18 @@ import { PositionedImg } from '../diddy/PositionedImg';
 /** Kept for compatibility: the validation lives in plugins/diddy/sanitize. */
 export { safeColor };
 
-const STATUS_COLOR: Record<DiddyStatus, string> = {
-  online: color.Success.Main,
-  idle: color.Warning.Main,
-  dnd: color.Critical.Main,
-  invisible: color.Secondary.Main,
-};
-const STATUS_LABEL: Record<DiddyStatus, string> = {
-  online: 'Online',
-  idle: 'Idle',
-  dnd: 'Do not disturb',
-  invisible: 'Invisible',
-};
-const PRESENCE_COLOR: Record<Presence, string> = {
-  [Presence.Online]: color.Success.Main,
-  [Presence.Unavailable]: color.Warning.Main,
-  [Presence.Offline]: color.Secondary.Main,
-};
-
-function StatusDot({ status }: { status: DiddyStatus }) {
+/** The presence dot on the profile avatar, same state and color as everywhere else. */
+function StatusDot({ state }: { state: PresenceState }) {
   return (
     <span
       className={css.StatusDot}
-      style={{ backgroundColor: STATUS_COLOR[status] ?? STATUS_COLOR.invisible }}
-      title={STATUS_LABEL[status]}
+      style={{ backgroundColor: color[PRESENCE_STATE_COLOR[state]].Main }}
+      title={PRESENCE_STATE_LABEL[state]}
+      role="img"
+      aria-label={PRESENCE_STATE_LABEL[state]}
     >
-      {status === 'dnd' && <span className={css.StatusDotBar} />}
-      {status === 'invisible' && <span className={css.StatusDotHole} />}
-    </span>
-  );
-}
-
-function PresenceDot({ presence }: { presence: UserPresence }) {
-  const label = usePresenceLabel();
-  return (
-    <span
-      className={css.StatusDot}
-      style={{ backgroundColor: PRESENCE_COLOR[presence.presence] ?? color.Secondary.Main }}
-      title={label[presence.presence]}
-    >
-      {presence.presence === Presence.Offline && <span className={css.StatusDotHole} />}
+      {state === 'dnd' && <span className={css.StatusDotBar} />}
+      {state === 'offline' && <span className={css.StatusDotHole} />}
     </span>
   );
 }
@@ -126,7 +103,7 @@ const getBannerStyle = (userId: string, card?: CardStyle, bannerUrl?: string) =>
 type UserHeroProps = {
   userId: string;
   avatarUrl?: string;
-  presence?: UserPresence;
+  presence?: ShownPresence;
   profile?: DiddyProfile;
   /** the compact card layout uses a slimmer banner and a smaller avatar */
   compact?: boolean;
@@ -156,7 +133,6 @@ export function UserHero({
   const speaking = useAtomValue(speakingUsersAtom).has(userId);
   const animatedAvatarUrl = avatarPrefs.profile ? animatedAvatarMxcUrl : undefined;
   const shownAvatarUrl = animatedAvatarUrl || avatarUrl;
-  const diddyStatus = profile?.status;
   let avatarSize = 88;
   if (large) avatarSize = large.avatar === 'large' ? 120 : 88;
   else if (compact) avatarSize = 60;
@@ -164,9 +140,7 @@ export function UserHero({
   if (onAvatarClick) avatarClick = onAvatarClick;
   else if (shownAvatarUrl) avatarClick = () => setViewAvatar(shownAvatarUrl);
 
-  let badge: ReactNode = null;
-  if (diddyStatus) badge = <StatusDot status={diddyStatus} />;
-  else if (presence) badge = <PresenceDot presence={presence} />;
+  const badge: ReactNode = presence ? <StatusDot state={presence.state} /> : null;
 
   return (
     <Box direction="Column" className={css.UserHero}>
@@ -338,23 +312,14 @@ export function UserHeroName({
 }
 
 type ProfileStatusProps = {
-  presence?: UserPresence;
-  profile?: DiddyProfile;
+  presence?: ShownPresence;
 };
 /** Online state and the Matrix status message as small pills with icons. */
-export function ProfileStatus({ presence, profile }: ProfileStatusProps) {
-  const presenceLabel = usePresenceLabel();
-  const diddyStatus = profile?.status;
-  let dotColor: string | undefined;
-  let label: string | undefined;
-  if (diddyStatus) {
-    dotColor = STATUS_COLOR[diddyStatus];
-    label = STATUS_LABEL[diddyStatus];
-  } else if (presence) {
-    dotColor = PRESENCE_COLOR[presence.presence];
-    label = presenceLabel[presence.presence];
-  }
-  const message = presence?.status?.trim();
+export function ProfileStatus({ presence }: ProfileStatusProps) {
+  const state = presence?.state;
+  const dotColor = state ? color[PRESENCE_STATE_COLOR[state]].Main : undefined;
+  const label = state ? PRESENCE_STATE_LABEL[state] : undefined;
+  const message = presence?.message;
   if (!label && !message) return null;
 
   return (

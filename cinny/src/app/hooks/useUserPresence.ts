@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { User, UserEvent, UserEventHandlerMap } from 'matrix-js-sdk';
 import { useMatrixClient } from './useMatrixClient';
 
@@ -22,13 +22,15 @@ const getUserPresence = (user: User): UserPresence => ({
   lastActiveTs: user.getLastActiveTs(),
 });
 
-export const useUserPresence = (userId: string): UserPresence | undefined => {
+export const useUserPresence = (userId: string | undefined): UserPresence | undefined => {
   const mx = useMatrixClient();
-  const user = mx.getUser(userId);
+  const user = userId ? mx.getUser(userId) : null;
 
   const [presence, setPresence] = useState(() => (user ? getUserPresence(user) : undefined));
 
   useEffect(() => {
+    // the same component can be reused for another user (virtualized lists)
+    setPresence(user ? getUserPresence(user) : undefined);
     const updatePresence: UserEventHandlerMap[UserEvent.Presence] = (event, u) => {
       if (u.userId === user?.userId) {
         setPresence(getUserPresence(user));
@@ -46,13 +48,3 @@ export const useUserPresence = (userId: string): UserPresence | undefined => {
 
   return presence;
 };
-
-export const usePresenceLabel = (): Record<Presence, string> =>
-  useMemo(
-    () => ({
-      [Presence.Online]: 'Active',
-      [Presence.Unavailable]: 'Busy',
-      [Presence.Offline]: 'Away',
-    }),
-    []
-  );

@@ -75,6 +75,9 @@ import { useLivekitSupport } from '../../hooks/useLivekitSupport';
 import { webRTCSupported } from '../../utils/rtc';
 import { useCallMembers, useCallSession } from '../../hooks/useCall';
 import { millify } from '../../plugins/millify';
+import { usePresenceState } from '../../hooks/usePresenceState';
+import { AvatarPresence, PresenceBadge } from '../../components/presence';
+import { PRESENCE_STATE_LABEL } from '../../utils/presenceState';
 import { HeaderBellButton, HeaderSearchField } from '../../components/top-actions';
 
 type RoomMenuProps = {
@@ -426,6 +429,9 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
   const encryptionEvent = useStateEvent(room, StateEvent.RoomEncryption);
   const encryptedRoom = !!encryptionEvent;
   const avatarMxc = useRoomAvatar(room, direct);
+  // a 1:1 DM shows the other user's presence, the same state as the DM list and profile card
+  const dmUserId = direct ? room.getAvatarFallbackMember()?.userId : undefined;
+  const dmPresence = usePresenceState(dmUserId);
   const name = useRoomName(room);
   const topic = useRoomTopic(room);
   const avatarUrl = avatarMxc
@@ -447,6 +453,8 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
   } else if (!direct) {
     const joined = room.getJoinedMemberCount();
     countLabel = `${millify(joined)} ${joined === 1 ? 'member' : 'members'}`;
+  } else if (dmPresence) {
+    countLabel = PRESENCE_STATE_LABEL[dmPresence.state];
   }
 
   const handleSearchClick = () => {
@@ -497,33 +505,41 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
         )}
         <Box grow="Yes" alignItems="Center" gap="300">
           {screenSize !== ScreenSize.Mobile && (
-            <div className={css.RoomBadge}>
-              {avatarUrl ? (
-                <div className={css.RoomBadgeAvatar}>
-                  <RoomAvatar
-                    roomId={room.roomId}
-                    src={avatarUrl}
-                    alt={name}
-                    renderFallback={() => (
-                      <RoomIcon
-                        size="200"
-                        joinRule={room.getJoinRule()}
-                        roomType={room.getType()}
-                      />
-                    )}
-                  />
-                </div>
-              ) : (
-                (isCallRoom && <Icon size="200" src={Icons.Headphone} filled />) || (
-                  <RoomIcon
-                    size="200"
-                    filled
-                    joinRule={room.getJoinRule()}
-                    roomType={room.getType()}
-                  />
+            <AvatarPresence
+              badge={
+                dmPresence && (
+                  <PresenceBadge state={dmPresence.state} message={dmPresence.message} size="200" />
                 )
-              )}
-            </div>
+              }
+            >
+              <div className={css.RoomBadge}>
+                {avatarUrl ? (
+                  <div className={css.RoomBadgeAvatar}>
+                    <RoomAvatar
+                      roomId={room.roomId}
+                      src={avatarUrl}
+                      alt={name}
+                      renderFallback={() => (
+                        <RoomIcon
+                          size="200"
+                          joinRule={room.getJoinRule()}
+                          roomType={room.getType()}
+                        />
+                      )}
+                    />
+                  </div>
+                ) : (
+                  (isCallRoom && <Icon size="200" src={Icons.Headphone} filled />) || (
+                    <RoomIcon
+                      size="200"
+                      filled
+                      joinRule={room.getJoinRule()}
+                      roomType={room.getType()}
+                    />
+                  )
+                )}
+              </div>
+            </AvatarPresence>
           )}
           <Box className={css.HeaderTitle} direction="Column">
             <Box alignItems="Baseline" gap="200">
