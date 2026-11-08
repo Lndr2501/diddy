@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react';
 import { useSetAtom } from 'jotai';
-import { Menu, Overlay, OverlayBackdrop, OverlayCenter, PopOut, toRem } from 'folds';
+import { Overlay, OverlayBackdrop, OverlayCenter, PopOut } from 'folds';
 import FocusTrap from 'focus-trap-react';
 import { useUserRoomProfileState } from '../state/hooks/userRoomProfile';
 import { UserRoomProfile } from './user-profile';
@@ -12,7 +12,7 @@ import { RoomProvider } from '../hooks/useRoom';
 import * as sheetCss from './sheet/Sheet.css';
 import { useMatrixClient } from '../hooks/useMatrixClient';
 import { useDiddyProfile } from '../plugins/diddy/profiles';
-import { ProfileFrameBox } from './diddy/ProfileFrame';
+import { ProfileCardShell } from './user-profile/ProfileCardView';
 
 function UserRoomProfileContextMenu({ state }: { state: UserRoomProfileState }) {
   const { roomId, spaceId, userId, cords, position } = state;
@@ -54,16 +54,13 @@ function UserRoomProfileContextMenu({ state }: { state: UserRoomProfileState }) 
               escapeDeactivates: stopPropagation,
             }}
           >
-            <ProfileFrameBox frame={frame} width={toRem(600)} available={`100vw - ${toRem(32)}`}>
-              <Menu
-                className={sheetCss.PopoverCard}
-                style={{ width: '100%' }}
-                role="dialog"
-                aria-label="Profile"
-              >
-                {profile}
-              </Menu>
-            </ProfileFrameBox>
+            <ProfileCardShell
+              frame={frame}
+              large
+              menuProps={{ role: 'dialog', 'aria-label': 'Profile' }}
+            >
+              {profile}
+            </ProfileCardShell>
           </FocusTrap>
         </OverlayCenter>
       </Overlay>
@@ -84,11 +81,7 @@ function UserRoomProfileContextMenu({ state }: { state: UserRoomProfileState }) 
             escapeDeactivates: stopPropagation,
           }}
         >
-          <ProfileFrameBox frame={frame} width={toRem(340)} available={`100vw - ${toRem(16)}`}>
-            <Menu className={sheetCss.PopoverCard} style={{ width: '100%' }}>
-              {profile}
-            </Menu>
-          </ProfileFrameBox>
+          <ProfileCardShell frame={frame}>{profile}</ProfileCardShell>
         </FocusTrap>
       }
     />

@@ -7,6 +7,7 @@ import React, {
   useState,
 } from 'react';
 import { useAtomValue } from 'jotai';
+import { MatrixClient } from 'matrix-js-sdk';
 import {
   Avatar,
   Box,
@@ -214,6 +215,84 @@ function StatusOptions({ status, onSelect }: StatusOptionsProps) {
   );
 }
 
+/** Your picture in the user panel and the account menu. */
+export const userPanelAvatarUrl = (
+  mx: MatrixClient,
+  avatarMxc: string | undefined,
+  useAuthentication: boolean
+): string | undefined =>
+  avatarMxc
+    ? mxcUrlToHttp(mx, avatarMxc, useAuthentication, 96, 96, 'crop') ?? undefined
+    : undefined;
+
+type UserPanelFaceProps = {
+  userId: string;
+  displayName: string;
+  avatarUrl?: string;
+  status: DiddyStatus;
+  agentTalking?: boolean;
+};
+/**
+ * What the profile button of the user panel shows: picture with status dot, name, status. Also
+ * drawn by the profile editor's preview with the draft status (#105).
+ */
+export function UserPanelFace({
+  userId,
+  displayName,
+  avatarUrl,
+  status,
+  agentTalking,
+}: UserPanelFaceProps) {
+  const { label: chosenLabel, color: statusColor } = statusInfo(status);
+  const statusLabel = agentTalking ? 'Talking to agent' : chosenLabel;
+  return (
+    <>
+      <span className={css.UserPanelAvatarWrap}>
+        <Avatar size={agentTalking ? '400' : '300'} radii="Pill">
+          <UserAvatar
+            surface="account"
+            userId={userId}
+            src={avatarUrl}
+            renderFallback={() => <Text size="H6">{nameInitials(displayName)}</Text>}
+          />
+        </Avatar>
+        {agentTalking && <span className={css.UserPanelAgentRing} aria-hidden />}
+        <span
+          className={css.UserPanelOnlineDot}
+          style={{ backgroundColor: statusColor }}
+          aria-hidden
+        />
+      </span>
+      <div className={css.UserPanelText}>
+        <Text size="T300" priority="500" truncate>
+          <b>{displayName}</b>
+        </Text>
+        {agentTalking ? (
+          <span className={css.UserPanelAgentBadge} role="status" aria-label={statusLabel}>
+            <Icon size="50" src={Icons.Mic} filled />
+            Agent
+          </span>
+        ) : (
+          <Text size="T200" priority="300" truncate>
+            {statusLabel}
+          </Text>
+        )}
+      </div>
+    </>
+  );
+}
+
+/** The user panel's profile area without its buttons and menu (profile editor preview, #105). */
+export function UserPanelPreview(props: UserPanelFaceProps) {
+  return (
+    <div className={css.UserPanel}>
+      <div className={css.UserPanelProfileButton}>
+        <UserPanelFace {...props} />
+      </div>
+    </div>
+  );
+}
+
 export function UserPanel() {
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
@@ -229,9 +308,8 @@ export function UserPanel() {
   const [pickedStatus, setPickedStatus] = useState<DiddyStatus>();
   useEffect(() => setPickedStatus(undefined), [storedStatus]);
   const status = pickedStatus ?? storedStatus;
-  const { label: chosenLabel, color: statusColor } = statusInfo(status);
   const agentTalking = useOwnAgentTalking();
-  const statusLabel = agentTalking ? 'Talking to agent' : chosenLabel;
+  const statusLabel = agentTalking ? 'Talking to agent' : statusInfo(status).label;
 
   const statusMenuRef = useRef<HTMLDivElement>(null);
   const statusButtonRef = useRef<HTMLButtonElement>(null);
@@ -272,9 +350,7 @@ export function UserPanel() {
   };
 
   const displayName = profile.displayName ?? getMxIdLocalPart(userId) ?? userId;
-  const avatarUrl = profile.avatarUrl
-    ? mxcUrlToHttp(mx, profile.avatarUrl, useAuthentication, 96, 96, 'crop') ?? undefined
-    : undefined;
+  const avatarUrl = userPanelAvatarUrl(mx, profile.avatarUrl, useAuthentication);
   const connection = getConnectionProfile();
   const serverLabel = connection
     ? visibleHomeserver(connection.server).replace(/^https?:\/\//, '')
@@ -350,32 +426,13 @@ export function UserPanel() {
           title="Account and status"
           data-agent={agentTalking || undefined}
         >
-          <span className={css.UserPanelAvatarWrap}>
-            <Avatar size={agentTalking ? '400' : '300'} radii="Pill">
-              {avatar('H6')}
-            </Avatar>
-            {agentTalking && <span className={css.UserPanelAgentRing} aria-hidden />}
-            <span
-              className={css.UserPanelOnlineDot}
-              style={{ backgroundColor: statusColor }}
-              aria-hidden
-            />
-          </span>
-          <div className={css.UserPanelText}>
-            <Text size="T300" priority="500" truncate>
-              <b>{displayName}</b>
-            </Text>
-            {agentTalking ? (
-              <span className={css.UserPanelAgentBadge} role="status" aria-label={statusLabel}>
-                <Icon size="50" src={Icons.Mic} filled />
-                Agent
-              </span>
-            ) : (
-              <Text size="T200" priority="300" truncate>
-                {statusLabel}
-              </Text>
-            )}
-          </div>
+          <UserPanelFace
+            userId={userId}
+            displayName={displayName}
+            avatarUrl={avatarUrl}
+            status={status}
+            agentTalking={agentTalking}
+          />
         </button>
       </PopOut>
       <div className={css.UserPanelActions}>
