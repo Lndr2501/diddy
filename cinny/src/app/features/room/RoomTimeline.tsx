@@ -19,6 +19,7 @@ import {
   IContent,
   MatrixClient,
   MatrixEvent,
+  MatrixEventEvent,
   Room,
   RoomEvent,
   RoomEventHandlerMap,
@@ -363,7 +364,11 @@ const useTimelinePagination = (
   return handleTimelinePagination;
 };
 
-const useLiveEventArrive = (room: Room, onArrive: (mEvent: MatrixEvent) => void) => {
+const useLiveEventArrive = (
+  room: Room,
+  onArrive: (mEvent: MatrixEvent) => void,
+  onRelationDecrypted?: () => void
+) => {
   useEffect(() => {
     const handleTimelineEvent: EventTimelineSetHandlerMap[RoomEvent.Timeline] = (
       mEvent,
@@ -374,6 +379,13 @@ const useLiveEventArrive = (room: Room, onArrive: (mEvent: MatrixEvent) => void)
     ) => {
       if (eventRoom?.roomId !== room.roomId || !data.liveEvent) return;
       onArrive(mEvent);
+      // An edit or reaction in an encrypted room arrives still encrypted: the redraw above cannot
+      // see it yet and nothing redrew after decryption, so an edited message (a bot card that went
+      // from "playing" to "paused") stayed stale until the room was reopened. Redraw once it is
+      // decrypted. The relation type is readable before decryption (it is sent in the clear).
+      if (onRelationDecrypted && mEvent.isEncrypted() && reactionOrEditEvent(mEvent)) {
+        mEvent.once(MatrixEventEvent.Decrypted, () => onRelationDecrypted());
+      }
     };
     const handleRedaction: RoomEventHandlerMap[RoomEvent.Redaction] = (mEvent, eventRoom) => {
       if (eventRoom?.roomId !== room.roomId) return;
@@ -386,7 +398,7 @@ const useLiveEventArrive = (room: Room, onArrive: (mEvent: MatrixEvent) => void)
       room.removeListener(RoomEvent.Timeline, handleTimelineEvent);
       room.removeListener(RoomEvent.Redaction, handleRedaction);
     };
-  }, [room, onArrive]);
+  }, [room, onArrive, onRelationDecrypted]);
 };
 
 const useLiveTimelineRefresh = (room: Room, onRefresh: () => void) => {
@@ -748,7 +760,12 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
         }
       },
       [mx, room, unreadInfo, hideActivity]
-    )
+    ),
+    // after decryption of an edit / reaction: redraw so the edited content shows
+    useCallback(() => {
+      if (!alive()) return;
+      setTimeline((ct) => ({ ...ct }));
+    }, [alive])
   );
 
   const handleOpenEvent = useCallback(

@@ -126,11 +126,48 @@ export const Progress = style({
   gap: toRem(4),
 });
 
+// Larger click area around the thin bar; the tip shows the time under the pointer
+export const SeekArea = style({
+  position: 'relative',
+  height: toRem(16),
+  display: 'flex',
+  alignItems: 'center',
+  selectors: {
+    '&[data-seekable]': { cursor: 'pointer' },
+    '&:focus-visible': {
+      outline: `${toRem(2)} solid ${color.Primary.Main}`,
+      outlineOffset: toRem(2),
+      borderRadius: toRem(6),
+    },
+  },
+});
+
+export const SeekTip = style({
+  position: 'absolute',
+  bottom: toRem(18),
+  transform: 'translateX(-50%)',
+  padding: `${toRem(1)} ${toRem(6)}`,
+  borderRadius: toRem(6),
+  fontSize: toRem(11),
+  fontWeight: 600,
+  fontVariantNumeric: 'tabular-nums',
+  backgroundColor: color.Surface.OnContainer,
+  color: color.Surface.Container,
+  pointerEvents: 'none',
+  whiteSpace: 'nowrap',
+});
+
 export const Bar = style({
+  width: '100%',
+  transition: 'height 0.1s ease',
   height: toRem(5),
   borderRadius: toRem(999),
   backgroundColor: color.Surface.ContainerActive,
   overflow: 'hidden',
+  selectors: {
+    // the bar grows while the pointer is on a seekable timeline
+    [`${SeekArea}[data-seekable]:hover &`]: { height: toRem(7) },
+  },
 });
 
 export const BarFill = style({

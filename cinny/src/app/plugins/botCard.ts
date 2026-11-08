@@ -31,6 +31,10 @@ export type BotCard =
       url?: string;
       source?: string;
       note?: string;
+      /** bot command for the timeline: a click sends `<seek> <mm:ss>`, arrow keys `<seek> -10` / `+10` */
+      seek?: string;
+      /** current volume of the bot (shown next to the times) */
+      volume?: number;
       actions: CardAction[];
     }
   | { kind: 'queue'; now?: QueueItem; items: QueueItem[]; total: number; actions: CardAction[] }
@@ -76,7 +80,7 @@ const httpUrl = (v: unknown): string | undefined => {
 const actions = (v: unknown): CardAction[] => {
   if (!Array.isArray(v)) return [];
   const out: CardAction[] = [];
-  v.slice(0, 6).forEach((a) => {
+  v.slice(0, 10).forEach((a) => {
     if (!isObject(a)) return;
     const label = text(a.label, 24);
     const send = text(a.send, 120);
@@ -117,6 +121,9 @@ export const parseBotCard = (content: unknown): BotCard | undefined => {
       url: httpUrl(raw.url),
       source: text(raw.source, 30),
       note: text(raw.note, 200),
+      seek:
+        typeof raw.seek === 'string' && /^[!/][^\s]{1,30}$/.test(raw.seek) ? raw.seek : undefined,
+      volume: num(raw.volume, 1000),
       actions: actions(raw.actions),
     };
   }
