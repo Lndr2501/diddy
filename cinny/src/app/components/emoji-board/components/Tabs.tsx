@@ -6,39 +6,66 @@ const styles: CSSProperties = {
   cursor: 'pointer',
 };
 
-export function EmojiBoardTabs({
+function TabBadge({
   tab,
+  active,
+  label,
   onTabChange,
 }: {
   tab: EmojiBoardTab;
+  active: boolean;
+  label: string;
   onTabChange: (tab: EmojiBoardTab) => void;
 }) {
   return (
+    <Badge
+      style={styles}
+      as="button"
+      variant="Secondary"
+      fill={active ? 'Solid' : 'None'}
+      size="500"
+      aria-pressed={active}
+      onClick={() => onTabChange(tab)}
+    >
+      <Text as="span" size="L400">
+        {label}
+      </Text>
+    </Badge>
+  );
+}
+
+export function EmojiBoardTabs({
+  tab,
+  onTabChange,
+  gif,
+}: {
+  tab: EmojiBoardTab;
+  onTabChange: (tab: EmojiBoardTab) => void;
+  /** show the GIF tab */
+  gif?: boolean;
+}) {
+  return (
     <Box gap="100">
-      <Badge
-        style={styles}
-        as="button"
-        variant="Secondary"
-        fill={tab === EmojiBoardTab.Sticker ? 'Solid' : 'None'}
-        size="500"
-        onClick={() => onTabChange(EmojiBoardTab.Sticker)}
-      >
-        <Text as="span" size="L400">
-          Sticker
-        </Text>
-      </Badge>
-      <Badge
-        style={styles}
-        as="button"
-        variant="Secondary"
-        fill={tab === EmojiBoardTab.Emoji ? 'Solid' : 'None'}
-        size="500"
-        onClick={() => onTabChange(EmojiBoardTab.Emoji)}
-      >
-        <Text as="span" size="L400">
-          Emoji
-        </Text>
-      </Badge>
+      <TabBadge
+        tab={EmojiBoardTab.Sticker}
+        active={tab === EmojiBoardTab.Sticker}
+        label="Sticker"
+        onTabChange={onTabChange}
+      />
+      <TabBadge
+        tab={EmojiBoardTab.Emoji}
+        active={tab === EmojiBoardTab.Emoji}
+        label="Emoji"
+        onTabChange={onTabChange}
+      />
+      {gif && (
+        <TabBadge
+          tab={EmojiBoardTab.Gif}
+          active={tab === EmojiBoardTab.Gif}
+          label="GIF"
+          onTabChange={onTabChange}
+        />
+      )}
     </Box>
   );
 }
