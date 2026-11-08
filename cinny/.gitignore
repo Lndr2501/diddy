@@ -6,3 +6,4 @@ devAssets
 .DS_Store
 .ideatest-results
 playwright-report
+preview/local

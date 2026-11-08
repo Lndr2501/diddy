@@ -512,6 +512,36 @@ export const PresetSwatch = style({
   },
 });
 
+/** a built-in profile effect playing on a small dark tile (#86) */
+export const EffectSwatch = style({
+  position: 'relative',
+  overflow: 'hidden',
+  height: toRem(64),
+  background: 'linear-gradient(160deg, #23243a, #121320)',
+});
+
+export const EffectSwatchLabel = style({
+  position: 'relative',
+  zIndex: 4,
+});
+
+/** a built-in profile frame around a tiny card (#87) */
+export const FrameSwatch = style({
+  height: toRem(64),
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: toRem(2),
+  overflow: 'hidden',
+  background: 'linear-gradient(160deg, #23243a, #121320)',
+});
+
+export const FrameSwatchCard = style({
+  height: toRem(26),
+  borderRadius: toRem(6),
+  background: '#2c2e45',
+});
+
 export const PresetNone = style({
   color: color.SurfaceVariant.OnContainer,
   textShadow: 'none',

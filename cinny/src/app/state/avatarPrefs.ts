@@ -1,6 +1,6 @@
 /**
- * Where animated (GIF / WebP) Diddy profile pictures actually move. Local to this device, kept in
- * localStorage. Switched off, a place shows the user's normal Matrix picture (or initials).
+ * Where animated (GIF / WebP / APNG) Matrix profile pictures actually move. Local to this device, kept in
+ * localStorage. Switched off, a place shows a still picture of it.
  */
 import { useSyncExternalStore } from 'react';
 
@@ -11,6 +11,10 @@ export type AvatarPrefs = Record<AvatarSurface, boolean> & {
   speakingOnly: boolean;
   /** nameplates (GIF / video / flowing gradient) move; off shows a still frame (#78) */
   nameplates: boolean;
+  /** profile effects (#86) move over profile cards; off shows their still picture */
+  profileEffects: boolean;
+  /** profile frames (#87) are drawn around profile cards */
+  profileFrames: boolean;
 };
 
 const KEY = 'diddyAvatarAnimation';
@@ -22,6 +26,8 @@ const DEFAULTS: AvatarPrefs = {
   call: true,
   speakingOnly: true,
   nameplates: true,
+  profileEffects: true,
+  profileFrames: true,
 };
 
 const read = (): AvatarPrefs => {
