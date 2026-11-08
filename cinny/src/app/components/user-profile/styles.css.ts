@@ -25,7 +25,8 @@ export const UserHeader = style({
 export const CardRoot = style({
   position: 'relative',
   // the popover must never leave the window: the card scrolls inside instead
-  maxHeight: 'min(80vh, calc(100vh - 2rem))',
+  // a profile frame (#87) around the popover takes its room off the height
+  maxHeight: 'calc(min(80vh, 100vh - 2rem) - var(--diddy-frame-pad-y, 0px))',
   display: 'flex',
   flexDirection: 'column',
   borderRadius: 'inherit',

@@ -1,14 +1,15 @@
 // Import of a nameplate from a ZIP file (#78): the ZIP holds a loop (WebM/MP4 video or an
 // animated PNG/GIF/WebP), a still image and optionally a JSON file with the colours. Only the
 // browser's own deflate decoder is used, no extra library. Everything in the ZIP is untrusted:
-// sizes are capped before and while unpacking, names are never used as paths.
+// sizes are capped before and while unpacking, names are never used as paths. The ZIP helpers are
+// shared with the profile effect import (effectZip.ts).
 
 export const MAX_NAMEPLATE_ZIP_BYTES = 24 * 1024 * 1024;
 const MAX_ENTRIES = 200;
 const MAX_ENTRY_BYTES = 16 * 1024 * 1024;
 const MAX_JSON_BYTES = 256 * 1024;
 
-type ZipEntry = {
+export type ZipEntry = {
   name: string;
   method: number;
   compressedSize: number;
@@ -41,21 +42,21 @@ const MIME_BY_EXTENSION: Record<string, string> = {
  */
 const PREFERENCE = ['apng', 'gif', 'webp', 'webm', 'mp4', 'png', 'jpg', 'jpeg'];
 
-const extensionOf = (name: string): string => {
+export const extensionOf = (name: string): string => {
   const dot = name.lastIndexOf('.');
   return dot < 0 ? '' : name.slice(dot + 1).toLowerCase();
 };
 
-const baseName = (name: string): string => name.slice(name.lastIndexOf('/') + 1);
+export const baseName = (name: string): string => name.slice(name.lastIndexOf('/') + 1);
 
-const isUsableName = (name: string): boolean =>
+export const isUsableName = (name: string): boolean =>
   !!name &&
   !name.endsWith('/') &&
   !name.split('/').includes('..') &&
   !name.startsWith('__MACOSX/') &&
   !baseName(name).startsWith('.');
 
-const readEntries = (view: DataView): ZipEntry[] => {
+export const readEntries = (view: DataView): ZipEntry[] => {
   // the end-of-central-directory record is within the last 64 KB + 22 bytes
   const earliest = Math.max(0, view.byteLength - 22 - 0xffff);
   let eocd = -1;
@@ -121,7 +122,11 @@ const inflateRaw = async (data: Uint8Array, limit: number): Promise<Uint8Array> 
   return out;
 };
 
-const extract = async (view: DataView, entry: ZipEntry, limit: number): Promise<Uint8Array> => {
+export const extract = async (
+  view: DataView,
+  entry: ZipEntry,
+  limit: number
+): Promise<Uint8Array> => {
   if (entry.size > limit) throw new Error('A file in this ZIP is too large.');
   const { offset } = entry;
   if (offset + 30 > view.byteLength || view.getUint32(offset, true) !== 0x04034b50) {

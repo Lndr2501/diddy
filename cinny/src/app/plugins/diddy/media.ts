@@ -4,6 +4,11 @@ import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
 import { safeMxc } from './sanitize';
 import { checkNameplateFile, checkNameplateVideoDuration } from './nameplate';
+import type { ProfileEffect, ProfileFrame } from './types';
+import type { EffectFile, ImportedEffect } from './effectZip';
+import type { ImportedFrame } from './frameZip';
+import { MAX_FRAME_TOTAL_BYTES } from './profileFrame';
+import { EFFECT_REF_HEIGHT, EFFECT_REF_WIDTH, MAX_EFFECT_TOTAL_BYTES } from './profileEffect';
 
 export const MAX_DIDDY_MEDIA_BYTES = 8 * 1024 * 1024;
 
@@ -123,6 +128,122 @@ export const uploadNameplateMedia = async (
   const posterRes = await mx.uploadContent(poster, { type: 'image/png', name: 'nameplate.png' });
   const videoRes = await mx.uploadContent(file, { type: file.type });
   return { imageMxc: posterRes.content_uri, videoMxc: videoRes.content_uri };
+};
+
+const toBlob = (file: EffectFile): Blob => new Blob([file.data], { type: file.type });
+
+const decodeFirstFrame = async (
+  blob: Blob
+): Promise<CanvasImageSource & { width: number; height: number }> => {
+  if (typeof createImageBitmap === 'function') {
+    try {
+      return await createImageBitmap(blob);
+    } catch {
+      // older WebKit: fall back to an <img>
+    }
+  }
+  const url = URL.createObjectURL(blob);
+  try {
+    const image = new Image();
+    image.src = url;
+    await image.decode();
+    return image;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+};
+
+/**
+ * The still picture of an effect that came without one: the first frame of every layer, drawn
+ * into the reference box at its place, as PNG.
+ */
+const drawEffectStill = async (effect: ImportedEffect): Promise<Blob | undefined> => {
+  const canvas = document.createElement('canvas');
+  canvas.width = EFFECT_REF_WIDTH;
+  canvas.height = EFFECT_REF_HEIGHT;
+  const context = canvas.getContext('2d');
+  if (!context) return undefined;
+  const ordered = [...effect.layers].sort((a, b) => a.timing.z - b.timing.z);
+  // eslint-disable-next-line no-restricted-syntax
+  for (const layer of ordered) {
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      const frame = await decodeFirstFrame(toBlob(layer));
+      const { x, y, w, h } = layer.timing;
+      context.drawImage(frame, x, y, w, h);
+    } catch {
+      // a layer this browser cannot decode is left out of the still
+    }
+  }
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => resolve(blob ?? undefined), 'image/png');
+  });
+};
+
+/**
+ * Uploads an imported profile effect (#86): every layer, the still picture (drawn from the first
+ * frames when the import has none) and the preview. Sizes were checked while importing.
+ */
+export const uploadProfileEffect = async (
+  mx: MatrixClient,
+  effect: ImportedEffect
+): Promise<ProfileEffect> => {
+  const limit = await uploadLimit(mx);
+  const files = [...effect.layers, effect.still, effect.preview].filter(
+    (f): f is EffectFile => !!f
+  );
+  const total = files.reduce((sum, f) => sum + f.data.byteLength, 0);
+  if (total > MAX_EFFECT_TOTAL_BYTES || files.some((f) => f.data.byteLength > limit)) {
+    throw new Error('This effect is too large for this server.');
+  }
+  const send = async (blob: Blob, name: string, type: string) =>
+    (await mx.uploadContent(blob, { type, name })).content_uri;
+
+  const out: ProfileEffect = { layers: [] };
+  // eslint-disable-next-line no-restricted-syntax
+  for (const layer of effect.layers) {
+    // eslint-disable-next-line no-await-in-loop
+    const mxc = await send(toBlob(layer), layer.name, layer.type);
+    out.layers?.push({ mxc, ...layer.timing });
+  }
+  if (effect.still) {
+    out.stillMxc = await send(toBlob(effect.still), effect.still.name, effect.still.type);
+  } else {
+    const still = await drawEffectStill(effect).catch(() => undefined);
+    if (still) out.stillMxc = await send(still, 'effect-still.png', 'image/png');
+  }
+  if (effect.preview) {
+    out.previewMxc = await send(toBlob(effect.preview), effect.preview.name, effect.preview.type);
+  }
+  if (effect.name) out.name = effect.name;
+  return out;
+};
+
+/**
+ * Uploads an imported profile frame (#87): every layer picture, then the frame with its
+ * geometry. Sizes were checked while importing.
+ */
+export const uploadProfileFrame = async (
+  mx: MatrixClient,
+  frame: ImportedFrame
+): Promise<ProfileFrame> => {
+  const limit = await uploadLimit(mx);
+  const total = frame.layers.reduce((sum, l) => sum + l.data.byteLength, 0);
+  if (total > MAX_FRAME_TOTAL_BYTES || frame.layers.some((l) => l.data.byteLength > limit)) {
+    throw new Error('This frame is too large for this server.');
+  }
+  const out: ProfileFrame = { ...frame.geometry, layers: [] };
+  // eslint-disable-next-line no-restricted-syntax
+  for (const layer of frame.layers) {
+    // eslint-disable-next-line no-await-in-loop
+    const res = await mx.uploadContent(new Blob([layer.data], { type: layer.type }), {
+      type: layer.type,
+      name: layer.name,
+    });
+    out.layers?.push({ mxc: res.content_uri, order: layer.order, anchor: layer.anchor });
+  }
+  if (frame.name) out.name = frame.name;
+  return out;
 };
 
 /** Converts an mxc:// url to an http(s) url (authenticated media aware). */
