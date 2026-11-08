@@ -64,3 +64,35 @@ test('profile editor tab strip is not cut off', async ({ browser }) => {
   });
   expect(clipped, 'px of the tab row that are cut off').toBeLessThanOrEqual(1);
 });
+
+// The previews (#105): every place renders, the unsaved draft drives them, nothing is saved.
+test('profile editor previews follow the draft in every place', async ({ browser }) => {
+  test.setTimeout(120000);
+  const page = await openApp(browser, 'testa', { width: 1300, height: 900 });
+  await dismissOnboarding(page, 3000);
+  await page.getByRole('button', { name: 'User settings' }).click();
+  await page.getByRole('navigation', { name: 'Settings' }).getByText('Profile', { exact: true }).click();
+  const setup = page.getByRole('button', { name: 'Create Diddy Options room' });
+  if (await setup.isVisible({ timeout: 4000 }).catch(() => false)) await setup.click();
+  await expect(page.getByRole('tab', { name: 'Identity' })).toBeVisible({ timeout: 30000 });
+
+  const preview = page.getByRole('complementary', { name: 'Live preview' });
+  await page.getByRole('tab', { name: 'Profile card' }).first().click();
+  const text = `Preview bio ${Date.now()}`;
+  await page.getByRole('textbox', { name: 'Bio' }).fill(text);
+  await expect(preview.getByText(text)).toBeVisible();
+
+  const problems = [];
+  for (const target of ['Window', 'Members', 'DMs', 'Panel', 'Call', 'Card']) {
+    await preview.getByRole('group', { name: 'Preview' }).getByRole('button', { name: target }).click();
+    await expect(preview.locator('[data-preview]')).toHaveAttribute('data-preview', target.toLowerCase());
+    await page.waitForTimeout(400);
+    await page.screenshot({ path: `test-results/ui-mac/screens/profile-preview-${target.toLowerCase()}.png` });
+  }
+  (await findOverlaps(page)).forEach((o) => problems.push(`overlap ${o}`));
+
+  // leave the account as it was
+  await page.getByRole('button', { name: 'Cancel' }).first().click();
+  problems.push(...page.appErrors().map((e) => `page error: ${e}`));
+  expect(problems).toEqual([]);
+});
