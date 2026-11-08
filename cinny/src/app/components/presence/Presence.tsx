@@ -17,6 +17,13 @@ import {
   PresenceState,
 } from '../../utils/presenceState';
 
+const PRESENCE_BADGE_CLASS: Record<PresenceState, string | undefined> = {
+  online: css.OnlineBadge,
+  idle: undefined,
+  dnd: css.DndBadge,
+  offline: css.OfflineBadge,
+};
+
 type PresenceBadgeProps = {
   state: PresenceState;
   message?: string;
@@ -49,7 +56,7 @@ export function PresenceBadge({ state, message, size }: PresenceBadgeProps) {
           size={size}
           variant={PRESENCE_STATE_COLOR[state]}
           fill="Solid"
-          className={state === 'offline' ? css.OfflineBadge : undefined}
+          className={PRESENCE_BADGE_CLASS[state]}
           radii="Pill"
         />
       )}
