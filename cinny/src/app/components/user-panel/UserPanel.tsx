@@ -310,9 +310,9 @@ export function UserPanel() {
               <b>{displayName}</b>
             </Text>
             {agentTalking ? (
-              <span className={css.UserPanelAgentBadge} role="status">
+              <span className={css.UserPanelAgentBadge} role="status" aria-label={statusLabel}>
                 <Icon size="50" src={Icons.Mic} filled />
-                {statusLabel}
+                Agent
               </span>
             ) : (
               <Text size="T200" priority="300" truncate>

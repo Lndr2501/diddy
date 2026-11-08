@@ -22,7 +22,8 @@
     "bump": "node scripts/update-version.js",
     "test:e2e": "playwright test",
     "test:ui:mac": "playwright test -c playwright.mac.config.cjs",
-    "shots": "playwright test -c playwright.shots.config.cjs"
+    "shots": "playwright test -c playwright.shots.config.cjs",
+    "test:tiles": "playwright test -c playwright.preview.config.cjs"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": "eslint",

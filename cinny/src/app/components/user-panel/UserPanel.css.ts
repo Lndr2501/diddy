@@ -52,7 +52,6 @@ export const UserPanelProfileButton = style([
       // talking to an agent (#57): the whole profile card lights up, not just a small ring
       '&[data-agent]': {
         backgroundColor: color.Secondary.Container,
-        boxShadow: `inset 0 0 0 ${toRem(2)} ${color.Secondary.Main}`,
       },
     },
     '@media': {
@@ -87,21 +86,21 @@ export const UserPanelOnlineDot = style([
   },
 ]);
 
-// Ring around your picture while you talk to an agent (#57): solid, thick and pulsing
+// Ring around your picture while you talk to an agent (#57): solid, thick and softly pulsing
+// (opacity, not a growing shadow: that would be cut off at the edge of the card)
 const agentPulse = keyframes({
-  '0%': { boxShadow: `0 0 0 0 ${color.Secondary.Main}` },
-  '70%': { boxShadow: `0 0 0 ${toRem(9)} transparent` },
-  '100%': { boxShadow: `0 0 0 0 transparent` },
+  '0%, 100%': { opacity: 1 },
+  '50%': { opacity: 0.4 },
 });
 export const UserPanelAgentRing = style([
   DefaultReset,
   {
     position: 'absolute',
-    inset: toRem(-4),
+    inset: toRem(-3),
     borderRadius: '50%',
     border: `${toRem(3)} solid ${color.Secondary.Main}`,
     pointerEvents: 'none',
-    animation: `${agentPulse} 1.4s ease-out infinite`,
+    animation: `${agentPulse} 1.2s ease-in-out infinite`,
     '@media': {
       [REDUCED_MOTION]: {
         animation: 'none',
@@ -110,7 +109,7 @@ export const UserPanelAgentRing = style([
   },
 ]);
 
-// "Talking to agent" as a badge instead of grey small text under the name
+// "Agent" badge (full text "Talking to agent" is the aria-label) instead of grey small text
 export const UserPanelAgentBadge = style([
   DefaultReset,
   {

@@ -15,6 +15,7 @@ test('talking to an agent is clearly visible on the profile card', async ({ brow
     'testa',
     { width: 1100, height: 750 },
     {
+      deviceScaleFactor: 2,
       storage: { diddyAgentVoice: { enabled: true, hotkey: HOTKEY, mode: 'toggle', share: true } },
     }
   );
@@ -28,8 +29,13 @@ test('talking to an agent is clearly visible on the profile card', async ({ brow
   // toggle mode: one press starts "talking to agent", the next one ends it
   await page.keyboard.press('Backquote');
   const badge = card.getByRole('status');
-  await expect(badge).toHaveText(/Talking to agent/);
+  await expect(badge).toHaveText('Agent');
+  await expect(badge).toHaveAttribute('aria-label', 'Talking to agent');
   await expect(card).toHaveAttribute('data-agent', 'true');
+
+  // the whole badge text is visible (not cut off by the narrow card)
+  const clipped = await badge.evaluate((el) => el.scrollWidth - el.clientWidth);
+  expect(clipped).toBeLessThanOrEqual(1);
 
   // the picture is bigger than before, and the badge is a filled pill, not grey small text
   const talkingBox = await avatar.boundingBox();

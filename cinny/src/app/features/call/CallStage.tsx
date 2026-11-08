@@ -20,6 +20,7 @@ import { UserAvatar } from '../../components/user-avatar';
 import { openCallUserMenu } from '../../plugins/callFrameMenu';
 import { useLocalSpeaking } from '../../plugins/call/localSpeaking';
 import { initialsFromName } from './CallMemberCard';
+import { useAgentTalking } from '../../state/agentVoice';
 import * as css from './styles.css';
 
 /** Who is on the call, read from Element Call and kept up to date (cheap: only on change). */
@@ -121,7 +122,8 @@ function StageVideo({ stream, fit }: { stream: MediaStream; fit: 'cover' | 'cont
   return <div ref={hostRef} className={css.StageVideo} data-fit={fit} />;
 }
 
-const ICON_MIC = 'M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z M5 11a7 7 0 0 0 14 0 M12 18v3';
+const ICON_MIC =
+  'M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z M5 11a7 7 0 0 0 14 0 M12 18v3';
 const ICON_SCREEN = 'M3 5h18v11H3z M8 20h8 M12 16v4';
 
 function TagIcon({ d, muted }: { d: string; muted?: boolean }) {
@@ -143,8 +145,14 @@ type TileProps = {
   onSelect: () => void;
 };
 
-function PersonTile({ person, focused, small, onSelect }: TileProps & { person: StagePerson }) {
+export function PersonTile({
+  person,
+  focused,
+  small,
+  onSelect,
+}: TileProps & { person: StagePerson }) {
   const mx = useMatrixClient();
+  const agent = useAgentTalking(person.userId, mx.getUserId() ?? undefined);
   const room = useRoom();
   const useAuthentication = useMediaAuthentication();
   const avatarMxc = getMemberAvatarMxc(room, person.userId);
@@ -163,12 +171,19 @@ function PersonTile({ person, focused, small, onSelect }: TileProps & { person: 
       type="button"
       className={css.StageTile}
       data-speaking={person.speaking || undefined}
+      data-agent={agent || undefined}
       data-focused={focused || undefined}
       data-small={small || undefined}
       onClick={onSelect}
       onContextMenu={handleContextMenu}
-      aria-label={person.name}
+      aria-label={agent ? `${person.name}, redet mit Agent` : person.name}
     >
+      {agent && (
+        <span className={css.StageAgentBadge} role="status">
+          <TagIcon d={ICON_MIC} />
+          Redet mit Agent
+        </span>
+      )}
       {person.video ? (
         <StageVideo stream={person.video} fit="cover" />
       ) : (
@@ -199,8 +214,7 @@ function ShareTile({ share, focused, small, onSelect }: TileProps & { share: Sta
   const label = `${share.name}’s Stream`;
   // the shared screen's own shape: the large view takes exactly that, without black bars
   const settings = share.video?.getVideoTracks()[0]?.getSettings?.();
-  const ratio =
-    settings?.width && settings?.height ? settings.width / settings.height : 16 / 9;
+  const ratio = settings?.width && settings?.height ? settings.width / settings.height : 16 / 9;
   const handleContextMenu = (evt: MouseEvent) => {
     evt.preventDefault();
     openCallUserMenu(share.userId, evt.clientX, evt.clientY);
@@ -284,7 +298,11 @@ export function CallStage({ callEmbed }: { callEmbed: CallEmbed }) {
   useEffect(() => () => releaseVideos(new Set()), []);
 
   const items: StageItem[] = [
-    ...model.people.map((person) => ({ key: `p:${person.userId}`, kind: 'person' as const, person })),
+    ...model.people.map((person) => ({
+      key: `p:${person.userId}`,
+      kind: 'person' as const,
+      person,
+    })),
     ...model.shares.map((share) => ({ key: `s:${share.id}`, kind: 'share' as const, share })),
   ];
   const focused = items.find((item) => item.key === focusKey);
