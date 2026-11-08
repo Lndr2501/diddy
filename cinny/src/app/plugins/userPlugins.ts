@@ -25,6 +25,12 @@ export const PLUGINS_STORAGE_VERSION = 1;
 export const MAX_CUSTOM_CSS_LENGTH = 4000;
 /** Built-in plugins ship with the app and are stored as `diddy:builtin/<slug>`. */
 export const BUILTIN_URL_PREFIX = 'diddy:builtin/';
+/**
+ * Local plugins (#98) keep their HTML on this device (IndexedDB, keyed by plugin id) and are
+ * stored as `diddy:local/<id>`. They run in exactly the same sandbox as every other plugin.
+ */
+export const LOCAL_URL_PREFIX = 'diddy:local/';
+const PLUGIN_ID_PATTERN = /^[A-Za-z0-9-]{1,64}$/;
 export const MAX_STORAGE_KEYS = 50;
 export const MAX_STORAGE_VALUE_LENGTH = 20000;
 export const STORAGE_KEY_PATTERN = /^[a-z0-9_.-]{1,40}$/;
@@ -174,6 +180,16 @@ export const builtinSlug = (url: string): string | undefined => {
   return /^[a-z0-9-]{1,30}$/.test(slug) ? slug : undefined;
 };
 
+/** `diddy:local/<id>` -> `<id>`; anything else (or a malformed id) -> undefined. */
+export const localPluginId = (url: string): string | undefined => {
+  if (typeof url !== 'string' || !url.startsWith(LOCAL_URL_PREFIX)) return undefined;
+  const id = url.slice(LOCAL_URL_PREFIX.length);
+  return PLUGIN_ID_PATTERN.test(id) ? id : undefined;
+};
+
+/** The address a local plugin is stored under; it always points at the plugin's own HTML. */
+export const localPluginUrl = (id: string): string => `${LOCAL_URL_PREFIX}${id}`;
+
 /* ---------- registry ---------- */
 
 export type PluginInput = { name: string; url: string };
@@ -236,9 +252,15 @@ export const parseStoredPlugins = (raw: unknown, appOrigin?: string): UserPlugin
     if (typeof id !== 'string' || !id || id.length > 64) return;
     if (typeof name !== 'string' || typeof url !== 'string') return;
     const cleanName = normalizePluginName(name);
-    const cleanUrl: Result<string> = builtinSlug(url)
-      ? ok(url)
-      : normalizePluginUrl(url, appOrigin);
+    let cleanUrl: Result<string>;
+    if (url.startsWith(LOCAL_URL_PREFIX)) {
+      // a local entry may only point at its own stored HTML, never at another plugin's
+      cleanUrl = localPluginId(url) === id ? ok(url) : fail('Invalid local plugin.');
+    } else if (builtinSlug(url)) {
+      cleanUrl = ok(url);
+    } else {
+      cleanUrl = normalizePluginUrl(url, appOrigin);
+    }
     if (!cleanName.ok || !cleanUrl.ok) return;
     if (
       result.some(
@@ -394,6 +416,33 @@ export const addBuiltinPlugin = (
     return fail('A plugin with this name already exists.');
   }
   if (!id || plugins.some((plugin) => plugin.id === id)) return fail('Could not add the plugin.');
+  return ok([...plugins, { id, name: cleanName.value, url, enabled: true, addedAt: now }]);
+};
+
+export type AddLocalOptions = { id: string; now: number; name: string };
+
+/**
+ * Adds a local plugin whose HTML is kept on this device. The id must be a plain token because it
+ * becomes part of the stored address (`diddy:local/<id>`) and the key of the stored HTML.
+ */
+export const addLocalPlugin = (
+  plugins: UserPlugin[],
+  { id, now, name }: AddLocalOptions
+): Result<UserPlugin[]> => {
+  if (plugins.length >= MAX_PLUGINS) {
+    return fail(`You can add at most ${MAX_PLUGINS} plugins. Remove one first.`);
+  }
+  const cleanName = normalizePluginName(name);
+  if (!cleanName.ok) return cleanName;
+  const lower = cleanName.value.toLowerCase();
+  if (plugins.some((plugin) => plugin.name.toLowerCase() === lower)) {
+    return fail('A plugin with this name already exists.');
+  }
+  if (!PLUGIN_ID_PATTERN.test(id) || plugins.some((plugin) => plugin.id === id)) {
+    return fail('Could not add the plugin.');
+  }
+  const url = localPluginUrl(id);
+  if (plugins.some((plugin) => plugin.url === url)) return fail('Could not add the plugin.');
   return ok([...plugins, { id, name: cleanName.value, url, enabled: true, addedAt: now }]);
 };
 

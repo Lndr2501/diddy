@@ -358,3 +358,60 @@ test('plugin storage enforces the key, size and count limits', () => {
   P.applyStorageSet(before, 'b', '2');
   assert.deepEqual(plain(before), { a: '1' });
 });
+
+test('local plugins: diddy:local/<id> entries are added, parsed and serialized', () => {
+  assert.equal(P.localPluginId('diddy:local/abc-123'), 'abc-123');
+  for (const url of [
+    'diddy:local/',
+    'diddy:local/../x',
+    'diddy:local/a/b',
+    'diddy:local/a b',
+    'diddy:builtin/clock',
+    'https://x.example/',
+    `diddy:local/${'a'.repeat(65)}`,
+  ]) {
+    assert.equal(P.localPluginId(url), undefined, url);
+  }
+
+  const added = P.addLocalPlugin([], { id: 'l1', now: 7, name: ' Mine ' });
+  assert.equal(added.ok, true);
+  assert.deepEqual(plain(added.value), [
+    { id: 'l1', name: 'Mine', url: 'diddy:local/l1', enabled: true, addedAt: 7 },
+  ]);
+  const list = added.value;
+  assert.equal(P.addLocalPlugin(list, { id: 'l2', now: 8, name: 'mine' }).ok, false);
+  assert.equal(P.addLocalPlugin(list, { id: 'l1', now: 8, name: 'Other' }).ok, false);
+  assert.equal(P.addLocalPlugin(list, { id: 'bad/id', now: 8, name: 'Other' }).ok, false);
+  assert.equal(P.addLocalPlugin(list, { id: '', now: 8, name: 'Other' }).ok, false);
+  // the address form cannot be used to add a local plugin
+  assert.equal(P.addPlugin([], { name: 'X', url: 'diddy:local/l1' }, opts('x')).ok, false);
+
+  assert.deepEqual(
+    plain(P.parseStoredPlugins(JSON.parse(P.serializePlugins(list)), APP)),
+    plain(list)
+  );
+  const parsed = P.parseStoredPlugins(
+    {
+      version: 1,
+      plugins: [
+        { id: 'a', name: 'A', url: 'diddy:local/a' },
+        { id: 'b', name: 'B', url: 'diddy:local/a' }, // points at another plugin's HTML
+        { id: 'c', name: 'C', url: 'diddy:local/../c' },
+        { id: 'd/x', name: 'D', url: 'diddy:local/d/x' },
+        { id: 'e', name: 'a', url: 'diddy:local/e' }, // duplicate name
+        { id: 'f', name: 'F', url: 'diddy:local/f', enabled: false },
+      ],
+    },
+    APP
+  );
+  assert.deepEqual(plain(parsed.map((p) => p.id)), ['a', 'f']);
+  assert.equal(parsed[1].enabled, false);
+
+  let full = [];
+  for (let i = 0; i < P.MAX_PLUGINS; i += 1) {
+    full = P.addLocalPlugin(full, { id: `l${i}`, now: 1, name: `L${i}` }).value;
+  }
+  const over = P.addLocalPlugin(full, { id: 'more', now: 1, name: 'More' });
+  assert.equal(over.ok, false);
+  assert.match(over.error, /12/);
+});
