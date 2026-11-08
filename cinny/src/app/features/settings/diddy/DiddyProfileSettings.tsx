@@ -1,5 +1,6 @@
 import React, { PointerEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EventType } from 'matrix-js-sdk';
+import classNames from 'classnames';
 import { Box, Button, Icon, IconButton, Icons, Scroll, Switch, Text, color, config } from 'folds';
 import { Page } from '../../../components/page';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
@@ -21,7 +22,21 @@ import {
   removeLightOptionsRoom,
   useOptionsRooms,
 } from '../../../plugins/diddy/optionsRoom';
-import { uploadDiddyMedia, useMxcUrl } from '../../../plugins/diddy/media';
+import { uploadDiddyMedia, uploadNameplateMedia, useMxcUrl } from '../../../plugins/diddy/media';
+import { readNameplateZip } from '../../../plugins/diddy/nameplateZip';
+import {
+  MAX_NAMEPLATE_VIDEO_SECONDS,
+  isNameplateZip,
+  NAMEPLATE_ACCEPT,
+  NAMEPLATE_PRESETS,
+  presetGradient,
+} from '../../../plugins/diddy/nameplate';
+import {
+  NameplateBackdrop,
+  NameplateHost,
+  NameplateText,
+  useNameplateAnimation,
+} from '../../../components/diddy/Nameplate';
 import {
   CardStyle,
   DiddyProfile,
@@ -34,6 +49,8 @@ import {
   OPTIONS_ROOM_NAME,
 } from '../../../plugins/diddy/types';
 import { BadgeEditor } from './BadgeEditor';
+import { setShareVersion, useShareVersion } from '../../../state/versionShare';
+import { APP_VERSION } from '../../../appInfo';
 import { DarkTheme, LightTheme } from '../../../hooks/useTheme';
 import {
   AboutEditor,
@@ -51,6 +68,7 @@ import {
   Field,
   Segmented,
   SettingsCard,
+  StackField,
   UploadField,
 } from './ProfileSettingsUI';
 import { ProfileModules } from '../../../components/user-profile/ProfileModules';
@@ -436,32 +454,20 @@ function CardPreview({ userId, displayName, avatarUrl, draft }: PreviewProps) {
 }
 
 function NameplatePreview({ displayName, avatarUrl, draft }: Omit<PreviewProps, 'userId'>) {
-  const plateUrl = useMxcUrl(draft.nameplate?.imageMxc);
-  const plateColor = safeColor(draft.nameplate?.color);
+  const animate = useNameplateAnimation();
   return (
     <div
-      className={css.Card}
+      className={classNames(css.Card, NameplateHost)}
       style={{
-        position: 'relative',
         padding: `${config.space.S300} ${config.space.S400}`,
         boxShadow: 'none',
       }}
     >
-      {plateColor && (
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            background: `linear-gradient(90deg, color-mix(in srgb, ${plateColor} 40%, transparent), color-mix(in srgb, ${plateColor} 7%, transparent))`,
-          }}
-        />
-      )}
-      {plateUrl && (
-        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', opacity: 0.55 }}>
-          <PositionedImg src={plateUrl} pos={draft.nameplate?.imagePos} />
-        </div>
-      )}
-      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 12 }}>
+      <NameplateBackdrop plate={draft.nameplate} animate={animate} />
+      <div
+        className={NameplateText}
+        style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 12 }}
+      >
         <PreviewAvatar
           displayName={displayName}
           avatarUrl={avatarUrl}
@@ -582,6 +588,7 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
   const hasOptionsRoom = optionsRooms.length > 0;
   const lightRooms = optionsRooms.filter((room) => isLightOptionsRoom(room));
   const stored = useDiddyProfile(mx, myId);
+  const shareVersion = useShareVersion();
 
   const storedBase = useMemo(() => toDraft(stored), [stored]);
   const storedKey = stableKey(storedBase);
@@ -732,6 +739,26 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
     setUploadError(undefined);
     try {
       apply(await uploadDiddyMedia(mx, file));
+    } catch (e) {
+      setUploadError(e instanceof Error ? e.message : 'Upload failed.');
+    } finally {
+      setBusyKey(undefined);
+    }
+  };
+  // a picture, or a short video plus its first frame as the still picture (#78)
+  const uploadPlate = async (file: File) => {
+    setBusyKey('plate');
+    setUploadError(undefined);
+    try {
+      let upload = file;
+      let color: string | undefined;
+      if (isNameplateZip(file)) {
+        const zip = await readNameplateZip(await file.arrayBuffer());
+        upload = new File([zip.data], zip.name, { type: zip.type });
+        color = zip.color;
+      }
+      const { imageMxc, videoMxc } = await uploadNameplateMedia(mx, upload);
+      patchPlate({ imageMxc, videoMxc, imagePos: undefined, ...(color ? { color } : {}) });
     } catch (e) {
       setUploadError(e instanceof Error ? e.message : 'Upload failed.');
     } finally {
@@ -1212,30 +1239,80 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
       <SettingsCard
         icon={Icons.Bookmark}
         title="Nameplate"
-        description="The color wash and image behind your name in member lists and the user panel."
+        description="The background other Diddy users see behind your row in the member and DM lists."
       >
-        <Field label="Color">
-          <ColorField
-            label="Nameplate color"
-            value={draft.nameplate?.color}
-            fallback="#7aa2f7"
-            onChange={(c) => patchPlate({ color: c })}
+        <Field label="Style">
+          <Segmented
+            label="Nameplate style"
+            value={draft.nameplate?.fit ?? 'fade'}
+            options={[
+              { id: 'fade', label: 'Fade in' },
+              { id: 'full', label: 'Whole row' },
+            ]}
+            onChange={(fit) => patchPlate({ fit: fit === 'full' ? 'full' : undefined })}
           />
-          {draft.nameplate?.color && (
-            <ClearButton onClick={() => patchPlate({ color: undefined })} />
-          )}
         </Field>
+        <StackField label="Gradient">
+          <div className={css.PresetGrid} role="group" aria-label="Gradient presets">
+            <button
+              type="button"
+              className={classNames(css.PresetSwatch, css.PresetNone)}
+              aria-pressed={!draft.nameplate?.preset}
+              onClick={() => patchPlate({ preset: undefined, flow: undefined })}
+            >
+              None
+            </button>
+            {NAMEPLATE_PRESETS.map((preset) => (
+              <button
+                key={preset.id}
+                type="button"
+                className={css.PresetSwatch}
+                aria-pressed={draft.nameplate?.preset === preset.id}
+                style={{ backgroundImage: presetGradient(preset.id, 135) }}
+                onClick={() => patchPlate({ preset: preset.id })}
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
+        </StackField>
+        {draft.nameplate?.preset ? (
+          <Field label="Flowing">
+            <Switch
+              variant="Primary"
+              value={!!draft.nameplate.flow}
+              onChange={(on) => patchPlate({ flow: on || undefined })}
+            />
+          </Field>
+        ) : (
+          <Field label="Color">
+            <ColorField
+              label="Nameplate color"
+              value={draft.nameplate?.color}
+              fallback="#7aa2f7"
+              onChange={(c) => patchPlate({ color: c })}
+            />
+            {draft.nameplate?.color && (
+              <ClearButton onClick={() => patchPlate({ color: undefined })} />
+            )}
+          </Field>
+        )}
         <UploadField
-          title={draft.nameplate?.imageMxc ? 'Nameplate image' : 'Image (optional)'}
-          hint="Shown behind your name, can be a GIF"
-          accept="image/*"
+          title={
+            (draft.nameplate?.videoMxc && 'Nameplate video') ||
+            (draft.nameplate?.imageMxc && 'Nameplate image') ||
+            'Picture or video (optional)'
+          }
+          hint={`PNG, JPG, GIF, WebP, a short WebM / MP4 loop (max ${MAX_NAMEPLATE_VIDEO_SECONDS} s, muted) or a ZIP with one`}
+          accept={NAMEPLATE_ACCEPT}
+          acceptsFile={(file) => /^(image|video)\//.test(file.type) || isNameplateZip(file)}
           wide
           mxc={draft.nameplate?.imageMxc}
           busy={busyKey === 'plate'}
-          onFile={(file) =>
-            upload('plate', file, (mxc) => patchPlate({ imageMxc: mxc, imagePos: undefined }))
+          onFile={uploadPlate}
+          onRemove={() =>
+            patchPlate({ imageMxc: undefined, videoMxc: undefined, imagePos: undefined })
           }
-          onRemove={() => patchPlate({ imageMxc: undefined, imagePos: undefined })}
         />
         {draft.nameplate?.imageMxc && (
           <PositionEditor
@@ -1327,6 +1404,13 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
           Your profile card, badges and name style are shared with everyone in the data room who
           uses Diddy. Fields you leave empty are not shared. Links must be https addresses and are
           checked for each platform.
+        </Text>
+        <Field label={`Show my Diddy version (${APP_VERSION})`}>
+          <Switch variant="Primary" value={shareVersion} onChange={setShareVersion} />
+        </Field>
+        <Text size="T200" priority="300">
+          Other Diddy users see it small on your profile card. Switched off, it is removed from
+          your profile.
         </Text>
       </SettingsCard>
       <SettingsCard
@@ -1448,7 +1532,7 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
                 <SettingsCard
                   icon={Icons.Bookmark}
                   title="Nameplate preview"
-                  description="In member lists and the user panel."
+                  description="In the member and DM lists."
                 >
                   <NameplatePreview displayName={displayName} avatarUrl={avatarUrl} draft={draft} />
                 </SettingsCard>

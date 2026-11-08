@@ -348,9 +348,10 @@ export function UserPanel() {
           aria-expanded={statusCords !== undefined}
           aria-label={`Account and status (${statusLabel})`}
           title="Account and status"
+          data-agent={agentTalking || undefined}
         >
           <span className={css.UserPanelAvatarWrap}>
-            <Avatar size="300" radii="Pill">
+            <Avatar size={agentTalking ? '400' : '300'} radii="Pill">
               {avatar('H6')}
             </Avatar>
             {agentTalking && <span className={css.UserPanelAgentRing} aria-hidden />}
@@ -364,9 +365,16 @@ export function UserPanel() {
             <Text size="T300" priority="500" truncate>
               <b>{displayName}</b>
             </Text>
-            <Text size="T200" priority="300" truncate>
-              {statusLabel}
-            </Text>
+            {agentTalking ? (
+              <span className={css.UserPanelAgentBadge} role="status" aria-label={statusLabel}>
+                <Icon size="50" src={Icons.Mic} filled />
+                Agent
+              </span>
+            ) : (
+              <Text size="T200" priority="300" truncate>
+                {statusLabel}
+              </Text>
+            )}
           </div>
         </button>
       </PopOut>

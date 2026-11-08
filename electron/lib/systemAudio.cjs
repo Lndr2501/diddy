@@ -3,7 +3,7 @@ const { spawn } = require('node:child_process');
 const { randomUUID } = require('node:crypto');
 const BLOCK_BYTES = 480 * 2 * 4;
 
-function createSystemAudio({ helper, send, spawnProcess = spawn, rootPid = process.pid, timeoutMs = 10000 }) {
+function createSystemAudio({ helper, send, spawnProcess = spawn, rootPid = process.pid, timeoutMs = 10000, log = () => {} }) {
   let current;
   const stop = (id, reason = 'Audio capture canceled') => {
     const session = current;
@@ -35,16 +35,20 @@ function createSystemAudio({ helper, send, spawnProcess = spawn, rootPid = proce
     let status = '';
     child.stderr.on('data', (data) => {
       status += data.toString();
-      if (status.length > 4096) { fail('Invalid audio helper response'); return; }
       let newline;
       while ((newline = status.indexOf('\n')) >= 0) {
-        const line = status.slice(0, newline);
+        const line = status.slice(0, newline).replace(/\r$/, '');
         status = status.slice(newline + 1);
+        // Every helper line goes to the app log so the next failure explains itself.
+        if (line) log(`system audio: helper: ${line}`);
         if (line === 'READY' && !session.ready && current === session) {
           session.ready = true;
           session.resolve();
         } else if (line.startsWith('ERROR ')) fail(line.slice(6));
+        // INFO and WARN lines (for example one application's monitor failing) never end the capture.
       }
+      // Only an unterminated partial line is bounded; many complete lines in one chunk are fine.
+      if (status.length > 4096) { fail('Invalid audio helper response'); return; }
     });
     child.stdout.on('data', (data) => {
       if (current !== session || !session.ready) return;
@@ -60,7 +64,10 @@ function createSystemAudio({ helper, send, spawnProcess = spawn, rootPid = proce
       session.pending = Buffer.from(bytes.subarray(offset));
     });
     child.once('error', () => fail('Linux audio helper could not start'));
-    child.once('exit', () => fail('Linux audio capture stopped'));
+    child.once('exit', (code, signal) => {
+      log(`system audio: helper exited code=${code} signal=${signal}`);
+      fail('Linux audio capture stopped');
+    });
     return ready;
   };
   return {

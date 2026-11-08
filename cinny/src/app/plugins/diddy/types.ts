@@ -4,6 +4,7 @@ import type {
   ProfileActivity,
   ProfileLink,
 } from './profileExtras';
+import type { NameplateFit, NameplatePresetId } from './nameplate';
 
 /**
  * Diddy profile system: data model.
@@ -35,13 +36,25 @@ export type NameEffect = 'none' | 'glow' | 'shadow' | 'outline';
 /** Fonts that exist on macOS and most Linux systems (no downloads needed). */
 export const NAME_FONTS: { id: string; label: string; css: string }[] = [
   { id: 'default', label: 'Default', css: 'inherit' },
-  { id: 'serif', label: 'Serif', css: 'Georgia, "Times New Roman", serif' },
-  { id: 'mono', label: 'Monospace', css: 'Menlo, "Courier New", monospace' },
-  { id: 'rounded', label: 'Rounded', css: '"Arial Rounded MT Bold", "Trebuchet MS", sans-serif' },
-  { id: 'impact', label: 'Impact', css: 'Impact, "Arial Black", sans-serif' },
-  { id: 'script', label: 'Script', css: '"Snell Roundhand", "Brush Script MT", cursive' },
-  { id: 'fantasy', label: 'Fantasy', css: 'Papyrus, fantasy' },
-  { id: 'marker', label: 'Marker', css: '"Marker Felt", "Comic Sans MS", cursive' },
+  { id: 'serif', label: 'Serif', css: 'Georgia, "Times New Roman", var(--font-emoji), serif' },
+  { id: 'mono', label: 'Monospace', css: 'Menlo, "Courier New", var(--font-emoji), monospace' },
+  {
+    id: 'rounded',
+    label: 'Rounded',
+    css: '"Arial Rounded MT Bold", "Trebuchet MS", var(--font-emoji), sans-serif',
+  },
+  { id: 'impact', label: 'Impact', css: 'Impact, "Arial Black", var(--font-emoji), sans-serif' },
+  {
+    id: 'script',
+    label: 'Script',
+    css: '"Snell Roundhand", "Brush Script MT", var(--font-emoji), cursive',
+  },
+  { id: 'fantasy', label: 'Fantasy', css: 'Papyrus, var(--font-emoji), fantasy' },
+  {
+    id: 'marker',
+    label: 'Marker',
+    css: '"Marker Felt", "Comic Sans MS", var(--font-emoji), cursive',
+  },
 ];
 
 export type NameStyle = {
@@ -72,13 +85,22 @@ export type CardStyle = {
   bannerPos?: ImagePos;
 };
 
+/** Background of the user's row in member / DM lists (#78), see nameplate.ts. */
 export type NameplateStyle = {
   /** color wash behind the name in the member list / user panel */
   color?: string;
-  /** optional image (mxc://) shown behind the name, can be a GIF */
+  /** original gradient preset (wins over the color) */
+  preset?: NameplatePresetId;
+  /** the preset gradient slowly moves (only where the viewer allows animation) */
+  flow?: boolean;
+  /** optional image (mxc://) shown behind the name, can be a GIF; with a video it is its poster */
   imageMxc?: string;
-  /** visible part of the nameplate image */
+  /** optional short looping video (mxc://, WebM / MP4), muted */
+  videoMxc?: string;
+  /** visible part of the nameplate image / video */
   imagePos?: ImagePos;
+  /** fade in from the right (default) or cover the whole row */
+  fit?: NameplateFit;
 };
 
 export type DiddyStatus = 'online' | 'idle' | 'dnd' | 'invisible';
@@ -105,6 +127,8 @@ export type DiddyProfile = {
   activity?: ProfileActivity;
   /** card layout and module visibility chosen by the owner */
   cardLayout?: CardLayoutSettings;
+  /** Diddy version the owner runs (#75), written by their client unless they switched it off */
+  clientVersion?: string;
 };
 
 export const MAX_SHOWN_BADGES = 4;
@@ -174,7 +198,9 @@ export const GLOBAL_BADGES: BadgeDef[] = [
 ];
 
 export const awardStateKey = (badgeId: string, userId: string) => `${badgeId}|${userId}`;
-export const parseAwardStateKey = (key: string): { badgeId: string; userId: string } | undefined => {
+export const parseAwardStateKey = (
+  key: string
+): { badgeId: string; userId: string } | undefined => {
   const i = key.indexOf('|');
   if (i <= 0) return undefined;
   return { badgeId: key.slice(0, i), userId: key.slice(i + 1) };

@@ -17,6 +17,14 @@
         {
           inherit diddy;
           default = diddy;
+          # Opt-in and unfree (Apple's artwork), never part of the default package. Only this one
+          # package is allowed to evaluate as unfree, so `nix flake check` stays happy.
+          # See README: fonts.packages = [ <this package> ];
+          apple-color-emoji =
+            (import nixpkgs {
+              inherit system;
+              config.allowUnfreePredicate = pkg: (nixpkgs.lib.getName pkg) == "apple-color-emoji";
+            }).callPackage ./nix/apple-color-emoji.nix { };
         });
 
       apps = forAllSystems (system:

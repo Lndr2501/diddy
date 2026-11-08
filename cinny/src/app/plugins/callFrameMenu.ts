@@ -198,6 +198,8 @@ export const installCallFrameMenu = (
   );
 
   doc.addEventListener('contextmenu', (evt) => {
+    // the right-click of `openCallTileMenu` only opens Element Call's tile menu: no Copy menu
+    if (openingTileMenu) return;
     const box = iframe.getBoundingClientRect();
     // visibility and pointer-events are inherited from the hidden holder
     if (isCallFrameHidden(getComputedStyle(iframe))) {

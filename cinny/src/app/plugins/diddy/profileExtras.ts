@@ -46,6 +46,23 @@ export type CardTheme = 'auto' | 'light' | 'dark';
 export const CARD_THEMES: CardTheme[] = ['auto', 'light', 'dark'];
 
 /** Card layout and module visibility the owner chose for their own card. */
+/** Layout of the big profile window (opened from a profile picture or a call participant). */
+export type BigProfileLayout = 'expanded' | 'tabs';
+export const BIG_PROFILE_LAYOUTS: BigProfileLayout[] = ['expanded', 'tabs'];
+/** Banner height in the big profile window. */
+export type BigProfileBanner = 'normal' | 'tall' | 'hero';
+export const BIG_PROFILE_BANNERS: BigProfileBanner[] = ['normal', 'tall', 'hero'];
+/** Size of the profile picture in the big profile window. */
+export type BigProfileAvatar = 'normal' | 'large';
+export const BIG_PROFILE_AVATARS: BigProfileAvatar[] = ['normal', 'large'];
+
+/** How the owner's big profile window looks; unset fields use the defaults (expanded, tall, large). */
+export type BigProfileSettings = {
+  layout?: BigProfileLayout;
+  banner?: BigProfileBanner;
+  avatar?: BigProfileAvatar;
+};
+
 export type CardLayoutSettings = {
   layout?: CardLayout;
   /** modules the owner switched off */
@@ -58,6 +75,8 @@ export type CardLayoutSettings = {
   glass?: boolean;
   /** no hover/transition animations on the card */
   calm?: boolean;
+  /** the big profile window */
+  big?: BigProfileSettings;
 };
 
 export const MAX_INTERESTS = 12;
@@ -186,6 +205,17 @@ export const sanitizeCardLayout = (raw: unknown): CardLayoutSettings | undefined
   if (theme && theme !== 'auto') out.theme = theme;
   if (raw.glass === true) out.glass = true;
   if (raw.calm === true) out.calm = true;
+  const rawBig = raw.big;
+  if (isRecord(rawBig)) {
+    const big: BigProfileSettings = {};
+    const bigLayout = BIG_PROFILE_LAYOUTS.find((l) => l === rawBig.layout);
+    if (bigLayout) big.layout = bigLayout;
+    const banner = BIG_PROFILE_BANNERS.find((b) => b === rawBig.banner);
+    if (banner) big.banner = banner;
+    const avatar = BIG_PROFILE_AVATARS.find((a) => a === rawBig.avatar);
+    if (avatar) big.avatar = avatar;
+    if (Object.keys(big).length > 0) out.big = big;
+  }
   return Object.keys(out).length > 0 ? out : undefined;
 };
 

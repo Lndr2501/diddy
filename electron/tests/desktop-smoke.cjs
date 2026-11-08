@@ -59,7 +59,12 @@ const ts = require('../../cinny/node_modules/typescript');
     try { picker = await picking; } catch (error) { console.error('capture:', await page.evaluate(() => window.captureError)); console.error(fs.readFileSync(path.join(dir,'state/diddy/app.log'),'utf8')); throw error; }
     picker.on('console', (message) => { if (message.type() === 'error') console.error('picker:', message.text()); });
     await picker.waitForLoadState('domcontentloaded');
-    await picker.locator('#sources button').first().click();
+    // Choosing a source closes the picker window. Playwright's click can still be busy with the page
+    // when it goes away and then reports "Target page ... has been closed" although the click
+    // worked; that is the expected outcome here, any other error is not.
+    await picker.locator('#sources button').first().click().catch((error) => {
+      if (!picker.isClosed() && !/has been closed/.test(String(error))) throw error;
+    });
     await page.evaluate(() => window.capturePromise);
 
     assert.deepEqual(await page.evaluate(() => window.captured.getTracks().map((t) => t.kind).sort()), ['audio', 'video']);

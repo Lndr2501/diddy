@@ -14,6 +14,11 @@ name: Build
 #     APPLE_TEAM_ID. The workflow then signs and notarizes by itself.
 on:
   workflow_dispatch:
+    inputs:
+      dev:
+        description: "Dev build: installs next to the stable app (own name, id and data), never publishes"
+        type: boolean
+        default: false
   workflow_call:
   push:
     # Seed release dependency caches on the default branch; application-only edits
@@ -51,6 +56,20 @@ jobs:
 
       - name: Show the tag version in the app
         run: .github/scripts/stamp-version.sh
+
+      - name: Dev variant (own app name, identifier and data, so the stable app is not replaced)
+        if: ${{ inputs.dev }}
+        run: |
+          cat > "$RUNNER_TEMP/dev.conf.json" <<'JSON'
+          {"productName": "Diddy Dev", "mainBinaryName": "diddy-dev", "identifier": "app.diddy.desktop.dev"}
+          JSON
+          sed -i.bak "s/^export const APP_VERSION = '\(.*\)';/export const APP_VERSION = '\1-dev';/" cinny/src/app/appInfo.ts
+          rm -f cinny/src/app/appInfo.ts.bak
+          label="${GITHUB_REF_NAME} · $(git rev-parse --short=7 HEAD) · $(date -u '+%Y-%m-%d %H:%M')Z"
+          sed -i.bak "s|^export const DEV_BUILD_LABEL = '';|export const DEV_BUILD_LABEL = '${label//|/-}';|" cinny/src/app/appInfo.ts
+          rm -f cinny/src/app/appInfo.ts.bak
+          grep -n "DEV_BUILD_LABEL =" cinny/src/app/appInfo.ts
+          echo "DEV_CONFIG=$RUNNER_TEMP/dev.conf.json" >> "$GITHUB_ENV"
 
       - name: Setup node
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -100,7 +119,7 @@ jobs:
             fi
           fi
           set -o pipefail
-          npm run tauri -- build --verbose --bundles ${{ matrix.bundles }} -- --locked --timings 2>&1 \
+          npm run tauri -- build --verbose ${DEV_CONFIG:+--config "$DEV_CONFIG"} --bundles ${{ matrix.bundles }} -- --locked --timings 2>&1 \
             | python3 -u .github/scripts/timestamp-log.py \
             | tee "$RUNNER_TEMP/build-${{ matrix.name }}.log"
 

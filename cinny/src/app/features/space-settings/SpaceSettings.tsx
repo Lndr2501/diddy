@@ -27,31 +27,26 @@ const useSpaceSettingsMenuItems = (): SpaceSettingsMenuItem[] =>
         page: SpaceSettingsPage.GeneralPage,
         name: 'General',
         icon: Icons.Setting,
-        tone: 'Gray',
       },
       {
         page: SpaceSettingsPage.MembersPage,
         name: 'Members',
         icon: Icons.User,
-        tone: 'Green',
       },
       {
         page: SpaceSettingsPage.PermissionsPage,
         name: 'Permissions',
         icon: Icons.Lock,
-        tone: 'SoftBlue',
       },
       {
         page: SpaceSettingsPage.EmojisStickersPage,
         name: 'Emojis & Stickers',
         icon: Icons.Smile,
-        tone: 'Orange',
       },
       {
         page: SpaceSettingsPage.DeveloperToolsPage,
         name: 'Developer Tools',
         icon: Icons.Terminal,
-        tone: 'Dark',
       },
     ],
     []

@@ -2,20 +2,18 @@ import React, { ReactNode } from 'react';
 import classNames from 'classnames';
 import { Icon, IconButton, Icons, IconSrc, Scroll, Text } from 'folds';
 import * as settingsCss from '../settings/styles.css';
+import { SettingsBreadcrumb } from '../settings/inset-list';
 
 /*
- * Room and space settings in the same frame as the app settings (macOS System Settings, #21):
- * a sidebar with coloured icon tiles on the left, the selected page with a large title on the
- * right. Only the layout lives here, the pages stay the same.
+ * Room and space settings in the same frame as the app settings: a sidebar with plain rows and
+ * outline icons on the left, the selected page with its breadcrumb header on the right. Only
+ * the layout lives here, the pages stay the same.
  */
-
-export type SettingsNavTone = NonNullable<settingsCss.IconTileVariants>['tone'];
 
 export type SettingsNavItem<T> = {
   page: T;
   name: string;
   icon: IconSrc;
-  tone: SettingsNavTone;
 };
 
 type SettingsLayoutProps<T> = {
@@ -71,30 +69,20 @@ export function SettingsLayout<T>({
             >
               <div className={settingsCss.SidebarList}>
                 <div className={settingsCss.SidebarGroup}>
-                  {items.map((item) => {
-                    const active = activePage === item.page;
-                    return (
-                      <button
-                        key={item.name}
-                        type="button"
-                        className={settingsCss.NavRow}
-                        aria-current={active ? 'page' : undefined}
-                        onClick={() => onSelect(item.page)}
-                      >
-                        <span className={settingsCss.IconTile({ tone: item.tone })} aria-hidden>
-                          <Icon src={item.icon} size="50" filled />
-                        </span>
-                        <Text
-                          as="span"
-                          size="T300"
-                          style={{ fontWeight: active ? 600 : 500 }}
-                          truncate
-                        >
-                          {item.name}
-                        </Text>
-                      </button>
-                    );
-                  })}
+                  {items.map((item) => (
+                    <button
+                      key={item.name}
+                      type="button"
+                      className={settingsCss.NavRow}
+                      aria-current={activePage === item.page ? 'page' : undefined}
+                      onClick={() => onSelect(item.page)}
+                    >
+                      <Icon className={settingsCss.NavIcon} src={item.icon} size="100" />
+                      <Text as="span" size="T300" truncate>
+                        {item.name}
+                      </Text>
+                    </button>
+                  ))}
                 </div>
               </div>
             </Scroll>
@@ -102,9 +90,11 @@ export function SettingsLayout<T>({
         </nav>
       )}
       {showContent && (
-        <div className={classNames(settingsCss.Content, compact && settingsCss.ContentCompact)}>
-          {children}
-        </div>
+        <SettingsBreadcrumb.Provider value={label}>
+          <div className={classNames(settingsCss.Content, compact && settingsCss.ContentCompact)}>
+            {children}
+          </div>
+        </SettingsBreadcrumb.Provider>
       )}
     </div>
   );

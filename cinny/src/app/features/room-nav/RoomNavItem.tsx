@@ -56,6 +56,7 @@ import { InviteUserPrompt } from '../../components/invite-user-prompt';
 import { useRoomName } from '../../hooks/useRoomMeta';
 import { useCallMembers, useCallSession } from '../../hooks/useCall';
 import { useCallEmbed, useCallStart } from '../../hooks/useCallEmbed';
+import { useSwitchCall } from '../../components/call-switch/useSwitchCall';
 import { callChatAtom } from '../../state/callEmbed';
 import { useCallPreferencesAtom } from '../../state/hooks/callPreferences';
 import { useAutoDiscoveryInfo } from '../../hooks/useAutoDiscoveryInfo';
@@ -63,6 +64,18 @@ import { livekitSupport } from '../../hooks/useLivekitSupport';
 import { RoomTag, StateEvent } from '../../../types/matrix/room';
 import { webRTCSupported } from '../../utils/rtc';
 import { CallMemberList } from './CallMemberList';
+import { usePresenceState } from '../../hooks/usePresenceState';
+import { AvatarPresence, PresenceBadge } from '../../components/presence';
+import { useDiddyProfile } from '../../plugins/diddy/profiles';
+import {
+  NameplateBackdrop,
+  NameplateHost,
+  NameplateText,
+  hasNameplate,
+  nameplateSurfaceStyle,
+  useNameplateAnimation,
+} from '../../components/diddy/Nameplate';
+import { SIDE_TONE } from '../../components/sidebar/diddyTokens';
 
 type RoomNavItemMenuProps = {
   room: Room;
@@ -288,6 +301,13 @@ export function RoomNavItem({
   );
 
   const roomName = useRoomName(room);
+  // a 1:1 DM shows the other user's presence on its avatar (#72); group DMs have none
+  const dmUserId = direct && showAvatar ? room.getAvatarFallbackMember()?.userId : undefined;
+  const dmPresence = usePresenceState(dmUserId);
+  // ...and the other user's Diddy nameplate behind the row (#78)
+  const dmNameplate = useDiddyProfile(mx, dmUserId)?.nameplate;
+  const withNameplate = !!dmUserId && hasNameplate(dmNameplate);
+  const animateNameplate = useNameplateAnimation();
 
   const handleContextMenu: MouseEventHandler<HTMLElement> = (evt) => {
     evt.preventDefault();
@@ -307,6 +327,7 @@ export function RoomNavItem({
   const callSession = useCallSession(room);
   const callMembers = useCallMembers(callSession);
   const startCall = useCallStart(direct);
+  const { requestSwitch, prompt: switchPrompt } = useSwitchCall();
   const callEmbed = useCallEmbed();
   const callPref = useAtomValue(useCallPreferencesAtom());
   const autoDiscoveryInfo = useAutoDiscoveryInfo();
@@ -327,14 +348,18 @@ export function RoomNavItem({
       return;
     }
 
-    // Do not join if already in call
-    if (callEmbed) {
+    // Already in this room's call: nothing to start
+    if (callEmbed?.roomId === room.roomId) {
       return;
     }
-    // Start call in second click
+    // Start call in second click; in another call this asks to leave it first
     if (selected) {
       evt.preventDefault();
-      startCall(room, callPref);
+      requestSwitch({
+        action: direct ? 'call' : 'join',
+        targetName: roomName,
+        start: () => startCall(room, callPref),
+      });
     }
   };
 
@@ -347,41 +372,58 @@ export function RoomNavItem({
         aria-selected={selected}
         data-hover={!!menuAnchor}
         onContextMenu={handleContextMenu}
+        className={withNameplate ? NameplateHost : undefined}
+        style={withNameplate ? nameplateSurfaceStyle(SIDE_TONE) : undefined}
         {...hoverProps}
         {...focusWithinProps}
       >
+        {withNameplate && <NameplateBackdrop plate={dmNameplate} animate={animateNameplate} />}
         <NavLink to={linkPath} onClick={room.isCallRoom() ? handleStartCall : undefined}>
           <NavItemContent>
             <Box as="span" grow="Yes" alignItems="Center" gap="200">
-              <Avatar size="200" radii="400">
-                {showAvatar ? (
-                  <RoomAvatar
-                    roomId={room.roomId}
-                    src={
-                      direct
-                        ? getDirectRoomAvatarUrl(mx, room, 96, useAuthentication)
-                        : getRoomAvatarUrl(mx, room, 96, useAuthentication)
-                    }
-                    alt={roomName}
-                    renderFallback={() => (
-                      <Text as="span" size="H6">
-                        {nameInitials(roomName)}
-                      </Text>
-                    )}
-                  />
-                ) : (
-                  <RoomIcon
-                    style={{
-                      opacity: unread ? config.opacity.P500 : config.opacity.P300,
-                    }}
-                    filled={selected}
-                    size="100"
-                    joinRule={room.getJoinRule()}
-                    roomType={room.getType()}
-                  />
-                )}
-              </Avatar>
-              <Box as="span" grow="Yes">
+              <AvatarPresence
+                as="span"
+                ringColor={SIDE_TONE}
+                badge={
+                  dmPresence && (
+                    <PresenceBadge
+                      state={dmPresence.state}
+                      message={dmPresence.message}
+                      size="200"
+                    />
+                  )
+                }
+              >
+                <Avatar size="200" radii="400">
+                  {showAvatar ? (
+                    <RoomAvatar
+                      roomId={room.roomId}
+                      src={
+                        direct
+                          ? getDirectRoomAvatarUrl(mx, room, 96, useAuthentication)
+                          : getRoomAvatarUrl(mx, room, 96, useAuthentication)
+                      }
+                      alt={roomName}
+                      renderFallback={() => (
+                        <Text as="span" size="H6">
+                          {nameInitials(roomName)}
+                        </Text>
+                      )}
+                    />
+                  ) : (
+                    <RoomIcon
+                      style={{
+                        opacity: unread ? config.opacity.P500 : config.opacity.P300,
+                      }}
+                      filled={selected}
+                      size="100"
+                      joinRule={room.getJoinRule()}
+                      roomType={room.getType()}
+                    />
+                  )}
+                </Avatar>
+              </AvatarPresence>
+              <Box as="span" grow="Yes" className={withNameplate ? NameplateText : undefined}>
                 <Text priority={unread ? '500' : '300'} as="span" size="Inherit" truncate>
                   {roomName}
                 </Text>
@@ -463,6 +505,7 @@ export function RoomNavItem({
         )}
       </NavItem>
       <CallMemberList room={room} members={callMembers} />
+      {switchPrompt}
     </>
   );
 }

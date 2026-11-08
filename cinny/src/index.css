@@ -18,7 +18,12 @@
   --mx-uc-7: hsl(242, 100%, 45%);
   --mx-uc-8: hsl(94, 100%, 35%);
 
-  --font-emoji: 'Twemoji_DISABLED';
+  /*
+   * Apple's emoji artwork is proprietary and not bundled. "Apple Color Emoji" is used whenever the
+   * system has it (always on macOS, on Linux if the user installed it, see README); otherwise the
+   * platform emoji font is used. Names/inline styles/the call iframe must append var(--font-emoji).
+   */
+  --font-emoji: 'Apple Color Emoji', 'Noto Color Emoji', 'Segoe UI Emoji';
   --font-secondary: -apple-system, BlinkMacSystemFont, 'InterVariable', var(--font-emoji),
     sans-serif;
 
@@ -69,7 +74,8 @@
 
 .dark-theme,
 .butter-theme,
-.diddy-theme {
+.diddy-theme,
+.daaark-theme {
   --tc-link: hsl(213deg 100% 80%);
 
   --mx-uc-1: hsl(208, 100%, 75%);

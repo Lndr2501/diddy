@@ -1,4 +1,4 @@
-import { style } from '@vanilla-extract/css';
+import { keyframes, style } from '@vanilla-extract/css';
 import { DefaultReset, color, config, toRem } from 'folds';
 import { FOCUS_RING, HOVER, RADIUS_CTL, REDUCED_MOTION, transition } from '../sidebar/diddyTokens';
 
@@ -49,6 +49,10 @@ export const UserPanelProfileButton = style([
         outline: `2px solid ${FOCUS_RING}`,
         outlineOffset: '0px',
       },
+      // talking to an agent (#57): the whole profile card lights up, not just a small ring
+      '&[data-agent]': {
+        backgroundColor: color.Secondary.Container,
+      },
     },
     '@media': {
       [REDUCED_MOTION]: {
@@ -82,15 +86,46 @@ export const UserPanelOnlineDot = style([
   },
 ]);
 
-// Ring around your picture while you talk to an agent (#57)
+// Ring around your picture while you talk to an agent (#57): solid, thick and softly pulsing
+// (opacity, not a growing shadow: that would be cut off at the edge of the card)
+const agentPulse = keyframes({
+  '0%, 100%': { opacity: 1 },
+  '50%': { opacity: 0.4 },
+});
 export const UserPanelAgentRing = style([
   DefaultReset,
   {
     position: 'absolute',
     inset: toRem(-3),
     borderRadius: '50%',
-    border: `${toRem(2)} dashed ${color.Secondary.Main}`,
+    border: `${toRem(3)} solid ${color.Secondary.Main}`,
     pointerEvents: 'none',
+    animation: `${agentPulse} 1.2s ease-in-out infinite`,
+    '@media': {
+      [REDUCED_MOTION]: {
+        animation: 'none',
+      },
+    },
+  },
+]);
+
+// "Agent" badge (full text "Talking to agent" is the aria-label) instead of grey small text
+export const UserPanelAgentBadge = style([
+  DefaultReset,
+  {
+    alignSelf: 'flex-start',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: toRem(4),
+    maxWidth: '100%',
+    padding: `${toRem(1)} ${toRem(8)} ${toRem(1)} ${toRem(5)}`,
+    borderRadius: toRem(999),
+    backgroundColor: color.Secondary.Main,
+    color: color.Secondary.OnMain,
+    fontSize: toRem(12),
+    fontWeight: 700,
+    lineHeight: toRem(18),
+    whiteSpace: 'nowrap',
   },
 ]);
 

@@ -98,3 +98,16 @@ test('card look: theme, glass and calm are validated', () => {
   assert.equal(mod.sanitizeCardLayout({ theme: 'auto', glass: 'yes', calm: 1 }), undefined);
   assert.equal(mod.sanitizeCardLayout({ theme: 'neon' }), undefined);
 });
+
+test('big profile settings keep only known values', () => {
+  assert.deepEqual(
+    plain(mod.sanitizeCardLayout({ big: { layout: 'tabs', banner: 'hero', avatar: 'normal' } })),
+    { big: { layout: 'tabs', banner: 'hero', avatar: 'normal' } }
+  );
+  // the small-card-only layouts are not offered for the big window
+  assert.deepEqual(plain(mod.sanitizeCardLayout({ big: { layout: 'compact', banner: 'tall' } })), {
+    big: { banner: 'tall' },
+  });
+  assert.equal(mod.sanitizeCardLayout({ big: { layout: 'huge', banner: 9 } }), undefined);
+  assert.equal(mod.sanitizeCardLayout({ big: 'tall' }), undefined);
+});

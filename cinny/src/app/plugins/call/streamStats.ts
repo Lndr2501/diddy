@@ -77,7 +77,9 @@ export const resolutionDiagnosis = (
   const reason = sent.qualityLimitationReason;
   let cause: string;
   if (reason === 'bandwidth') {
-    cause = `Ursache wahrscheinlich Bandbreite (Ziel ${sent.targetBitrateKbps ?? 0} kbps zu niedrig für ${capture.width}x${capture.height})`;
+    cause = `Ursache wahrscheinlich Bandbreite (Ziel ${
+      sent.targetBitrateKbps ?? 0
+    } kbps zu niedrig für ${capture.width}x${capture.height})`;
   } else if (reason === 'CPU') {
     cause = 'Ursache wahrscheinlich Encoder-CPU (Qualitätslimit vom Encoder gemeldet)';
   } else if (reason === 'none') {
@@ -134,8 +136,8 @@ export const receiveDiagnosis = (v: ReceivedVideo): { key: string; text: string 
   };
 };
 
-const RECEIVE_POLL_MS = 5000;
-const receiveWatches = new WeakMap<Window, () => void>();
+const VIDEO_RECEIVE_POLL_MS = 5000;
+const videoReceiveWatches = new WeakMap<Window, () => void>();
 const noop = () => undefined;
 
 /**
@@ -143,9 +145,9 @@ const noop = () => undefined;
  * shown in (see receiveDiagnosis). Runs for viewers too, who never call getDisplayMedia, so a log
  * from the receiving side settles what a viewer really got. Idempotent per window.
  */
-export const startReceiveWatch = (win: Window | null | undefined): (() => void) => {
+export const startVideoReceiveWatch = (win: Window | null | undefined): (() => void) => {
   if (!win) return noop;
-  const running = receiveWatches.get(win);
+  const running = videoReceiveWatches.get(win);
   if (running) return running;
   const last = new Map<string, string>();
 
@@ -200,12 +202,12 @@ export const startReceiveWatch = (win: Window | null | undefined): (() => void) 
 
   const timer = window.setInterval(() => {
     poll().catch(() => undefined);
-  }, RECEIVE_POLL_MS);
+  }, VIDEO_RECEIVE_POLL_MS);
   const stop = () => {
     window.clearInterval(timer);
-    receiveWatches.delete(win);
+    videoReceiveWatches.delete(win);
   };
-  receiveWatches.set(win, stop);
+  videoReceiveWatches.set(win, stop);
   return stop;
 };
 
@@ -249,13 +251,13 @@ export const startStatsLogging = (
                   : 0;
               lastBytes.set(key, { bytes: r.bytesSent ?? 0, at: r.timestamp });
               lines.push(
-                `out rid=${r.rid ?? '-'} ${r.frameWidth ?? '?'}x${r.frameHeight ?? '?'}@${Math.round(
-                  r.framesPerSecond ?? 0
-                )}fps ${kbps}kbps target=${Math.round((r.targetBitrate ?? 0) / 1000)}kbps limit=${
-                  r.qualityLimitationReason ?? '-'
-                } enc=${r.encoderImplementation ?? '-'} codec=${codecs.get(r.codecId) ?? '-'} active=${
-                  r.active ?? '-'
-                }`
+                `out rid=${r.rid ?? '-'} ${r.frameWidth ?? '?'}x${
+                  r.frameHeight ?? '?'
+                }@${Math.round(r.framesPerSecond ?? 0)}fps ${kbps}kbps target=${Math.round(
+                  (r.targetBitrate ?? 0) / 1000
+                )}kbps limit=${r.qualityLimitationReason ?? '-'} enc=${
+                  r.encoderImplementation ?? '-'
+                } codec=${codecs.get(r.codecId) ?? '-'} active=${r.active ?? '-'}`
               );
             } else if (r.type === 'inbound-rtp') {
               lines.push(
@@ -269,7 +271,12 @@ export const startStatsLogging = (
           if (videoTrack && videoTrack.readyState === 'live') {
             try {
               const settings = videoTrack.getSettings();
-              let best: { width?: number; height?: number; qualityLimitationReason?: string; targetBitrateKbps?: number } = {};
+              let best: {
+                width?: number;
+                height?: number;
+                qualityLimitationReason?: string;
+                targetBitrateKbps?: number;
+              } = {};
               report.forEach((r: Record<string, any>) => {
                 if (r.type !== 'outbound-rtp') return;
                 if (!(r.kind === 'video' || r.mediaType === 'video')) return;
@@ -305,6 +312,93 @@ export const startStatsLogging = (
 
   const timer = window.setInterval(poll, POLL_MS);
   return () => window.clearInterval(timer);
+};
+
+export type AudioEnergySample = { energy: number; duration: number };
+
+/** Received audio this loud (RMS of the level, 0..1) for a whole poll interval is suspicious. */
+export const LOUD_RECEIVE_RMS = 0.5;
+
+/**
+ * RMS audio level (0..1) of a received stream between two inbound-rtp samples, from
+ * totalAudioEnergy (sum of level^2 * seconds) and totalSamplesDuration. Undefined when the
+ * interval is shorter than a second or the counters went backwards (stream restarted).
+ */
+export const intervalRms = (
+  prev: AudioEnergySample,
+  cur: AudioEnergySample
+): number | undefined => {
+  const duration = cur.duration - prev.duration;
+  const energy = cur.energy - prev.energy;
+  if (!(duration >= 1) || !(energy >= 0)) return undefined;
+  return Math.sqrt(energy / duration);
+};
+
+const RECEIVE_POLL_MS = 5000;
+const LOUD_REPEAT_MS = 30000;
+const receiveWatches = new WeakMap<Window, () => void>();
+
+/**
+ * Issue #74: logs when a received audio stream stays near full scale for a whole poll interval.
+ * Speech sits far below that; undecrypted frames decoded as Opus come out as loud noise. Runs for
+ * the whole call (not only while sharing); idempotent per window. Returns the stop function.
+ */
+export const startReceiveWatch = (win: Window | null | undefined): (() => void) => {
+  const list = win ? registries.get(win) : undefined;
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  if (!win || !list) return () => {};
+  const running = receiveWatches.get(win);
+  if (running) return running;
+
+  const last = new Map<string, AudioEnergySample>();
+  const warned = new Map<string, number>();
+  let busy = false;
+  const poll = async () => {
+    if (busy) return;
+    busy = true;
+    try {
+      const pcs = list.filter((pc) => pc.connectionState !== 'closed');
+      for (let i = 0; i < pcs.length; i += 1) {
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          const report = await pcs[i].getStats();
+          report.forEach((r: Record<string, any>) => {
+            if (r.type !== 'inbound-rtp' || (r.kind ?? r.mediaType) !== 'audio') return;
+            if (typeof r.totalAudioEnergy !== 'number') return;
+            if (typeof r.totalSamplesDuration !== 'number') return;
+            const key = `${r.trackIdentifier ?? '-'}:${r.ssrc}`;
+            const cur = { energy: r.totalAudioEnergy, duration: r.totalSamplesDuration };
+            const prev = last.get(key);
+            last.set(key, cur);
+            if (!prev) return;
+            const rms = intervalRms(prev, cur);
+            if (rms === undefined || rms < LOUD_RECEIVE_RMS) return;
+            const now = Date.now();
+            if (now - (warned.get(key) ?? -Infinity) < LOUD_REPEAT_MS) return;
+            warned.set(key, now);
+            diag(
+              `receive audio ssrc=${r.ssrc} very loud for ${(cur.duration - prev.duration).toFixed(
+                1
+              )}s (rms ${rms.toFixed(2)}, concealed=${
+                r.concealedSamples ?? '-'
+              }): harsh noise? (#74)`
+            );
+          });
+        } catch {
+          // closed while reading: ignore this connection
+        }
+      }
+    } finally {
+      busy = false;
+    }
+  };
+  const timer = window.setInterval(poll, RECEIVE_POLL_MS);
+  const stop = () => {
+    window.clearInterval(timer);
+    receiveWatches.delete(win);
+  };
+  receiveWatches.set(win, stop);
+  return stop;
 };
 
 /**

@@ -261,11 +261,18 @@ type ProfileModulesProps = {
   accent?: string;
   /** the shared rooms chip lives with the other chips of the card; this renders it in its place */
   sharedRooms?: React.ReactNode;
+  /** layout to use instead of the card's own (the big profile window has its own) */
+  layout?: CardLayout;
 };
 /** The modules of a card in the order and layout the owner chose (#29). */
-export function ProfileModules({ profile, accent, sharedRooms }: ProfileModulesProps) {
-  const settings = profile?.cardLayout;
-  const layout: CardLayout = settings?.layout ?? 'standard';
+export function ProfileModules({
+  profile,
+  accent,
+  sharedRooms,
+  layout: layoutOverride,
+}: ProfileModulesProps) {
+  const layout: CardLayout = layoutOverride ?? profile?.cardLayout?.layout ?? 'standard';
+  const settings = { ...profile?.cardLayout, layout };
   const modules = visibleModules(settings);
   const [tab, setTab] = useState('info');
   const baseId = useId();

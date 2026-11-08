@@ -4,6 +4,7 @@ import { onDarkFontWeight, onLightFontWeight } from '../../config.css';
 import {
   amberTheme,
   butterTheme,
+  daaarkTheme,
   darkTheme,
   diddyTheme,
   greenTheme,
@@ -72,6 +73,13 @@ export const AmberTheme: Theme = {
   kind: ThemeKind.Dark,
   classNames: ['amber-theme', amberTheme, onDarkFontWeight, 'prism-dark'],
 };
+/** T3 Code's dark theme: pure black, #111 side columns, blue accent (colors.css.ts). */
+export const DaaarkTheme: Theme = {
+  id: 'daaark-theme',
+  kind: ThemeKind.Dark,
+  classNames: ['daaark-theme', daaarkTheme, onDarkFontWeight, 'prism-dark'],
+};
+
 /** Colors, gradient and background media come from the user's settings, see CustomThemeEffects. */
 export const CUSTOM_THEME_ID = 'custom-theme';
 export const CustomTheme: Theme = {
@@ -92,6 +100,7 @@ export const useThemes = (): Theme[] => {
       GreenTheme,
       PurpleTheme,
       AmberTheme,
+      DaaarkTheme,
       CustomTheme,
     ],
     []
@@ -112,6 +121,7 @@ export const useThemeNames = (): Record<string, string> =>
       [GreenTheme.id]: 'Green & Black',
       [PurpleTheme.id]: 'Purple & Black',
       [AmberTheme.id]: 'Amber & Black',
+      [DaaarkTheme.id]: 'DAAARK',
       [CustomTheme.id]: 'Custom',
     }),
     []

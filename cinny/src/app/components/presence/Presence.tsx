@@ -4,7 +4,6 @@ import {
   Box,
   color,
   ContainerColor,
-  MainColor,
   Text,
   Tooltip,
   TooltipProvider,
@@ -12,28 +11,20 @@ import {
 } from 'folds';
 import React, { ReactNode, useId } from 'react';
 import * as css from './styles.css';
-import { Presence, usePresenceLabel } from '../../hooks/useUserPresence';
-import { DND_STATUS_MSG } from '../../plugins/diddy/dnd';
-
-const PresenceToColor: Record<Presence, MainColor> = {
-  [Presence.Online]: 'Success',
-  [Presence.Unavailable]: 'Warning',
-  [Presence.Offline]: 'Secondary',
-};
+import {
+  PRESENCE_STATE_COLOR,
+  PRESENCE_STATE_LABEL,
+  PresenceState,
+} from '../../utils/presenceState';
 
 type PresenceBadgeProps = {
-  presence: Presence;
-  status?: string;
+  state: PresenceState;
+  message?: string;
   size?: '200' | '300' | '400' | '500';
-  /** Shown as Do not disturb (red) instead of the plain presence color. */
-  dnd?: boolean;
 };
-export function PresenceBadge({ presence, status, size, dnd }: PresenceBadgeProps) {
-  const label = usePresenceLabel();
+/** Small presence dot with a tooltip; state and colors come from utils/presenceState. */
+export function PresenceBadge({ state, message, size }: PresenceBadgeProps) {
   const badgeLabelId = useId();
-  const shownDnd = dnd && presence !== Presence.Offline;
-  // the DND status message would only repeat the label
-  const shownStatus = shownDnd && status?.trim() === DND_STATUS_MSG ? undefined : status;
 
   return (
     <TooltipProvider
@@ -44,20 +35,21 @@ export function PresenceBadge({ presence, status, size, dnd }: PresenceBadgeProp
       tooltip={
         <Tooltip id={badgeLabelId}>
           <Box style={{ maxWidth: toRem(250) }} alignItems="Baseline" gap="100">
-            <Text size="L400">{shownDnd ? DND_STATUS_MSG : label[presence]}</Text>
-            {shownStatus && <Text size="T200">•</Text>}
-            {shownStatus && <Text size="T200">{shownStatus}</Text>}
+            <Text size="L400">{PRESENCE_STATE_LABEL[state]}</Text>
+            {message && <Text size="T200">•</Text>}
+            {message && <Text size="T200">{message}</Text>}
           </Box>
         </Tooltip>
       }
     >
       {(triggerRef) => (
         <Badge
-          aria-labelledby={badgeLabelId}
+          aria-label={PRESENCE_STATE_LABEL[state]}
           ref={triggerRef}
           size={size}
-          variant={shownDnd ? 'Critical' : PresenceToColor[presence]}
-          fill={presence === Presence.Offline ? 'Soft' : 'Solid'}
+          variant={PRESENCE_STATE_COLOR[state]}
+          fill="Solid"
+          className={state === 'offline' ? css.OfflineBadge : undefined}
           radii="Pill"
         />
       )}
@@ -68,14 +60,16 @@ export function PresenceBadge({ presence, status, size, dnd }: PresenceBadgeProp
 type AvatarPresenceProps = {
   badge: ReactNode;
   variant?: ContainerColor;
+  /** Overrides the ring color around the dot when the row is not painted in a folds container color. */
+  ringColor?: string;
 };
 export const AvatarPresence = as<'div', AvatarPresenceProps>(
-  ({ as: AsAvatarPresence, badge, variant = 'Surface', children, ...props }, ref) => (
+  ({ as: AsAvatarPresence, badge, variant = 'Surface', ringColor, children, ...props }, ref) => (
     <Box as={AsAvatarPresence} className={css.AvatarPresence} {...props} ref={ref}>
       {badge && (
         <div
           className={css.AvatarPresenceBadge}
-          style={{ backgroundColor: color[variant].Container }}
+          style={{ backgroundColor: ringColor ?? color[variant].Container }}
         >
           {badge}
         </div>

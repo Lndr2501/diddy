@@ -4,15 +4,14 @@ import * as css from './styles.css';
 import { SoundboardButton } from './Soundboard';
 import { DeviceChevron } from './DevicePicker';
 import {
-  CallSettingsButton,
   ChatButton,
   ControlDivider,
   MicrophoneButton,
+  MoreButton,
   ReactionsButton,
-  ScreenShareAudioButton,
   ScreenShareButton,
+  ShareOptionsButton,
   SoundButton,
-  SpotlightButton,
   VideoButton,
 } from './Controls';
 import { CallEmbed, useCallControlState, useScreenShareAudio } from '../../plugins/call';
@@ -57,59 +56,73 @@ export function CallControls({ callEmbed }: CallControlsProps) {
   const exiting =
     hangupState.status === AsyncStatus.Loading || hangupState.status === AsyncStatus.Success;
 
+  const toggleScreenshare = useCallback(() => callEmbed.control.toggleScreenshare(), [callEmbed]);
+
+  // one short line above the bar instead of loose text next to it
+  let status: { kind: 'warning' | 'info'; text: string } | undefined;
+  if (screenshare && streamAudio.error) {
+    status = { kind: 'warning', text: `Sharing without sound: ${streamAudio.error}` };
+  } else if (screenshare && streamAudio.active && streamAudio.enabled) {
+    status = { kind: 'info', text: 'Sharing your system sound (without Diddy itself)' };
+  }
+
   return (
     <Box
       ref={controlRef}
       className={css.CallControlContainer}
-      justifyContent="Center"
+      direction="Column"
       alignItems="Center"
+      gap="200"
     >
-      {screenshare && streamAudio.error && (
-        <Text size="T200" role="status">Bildschirm wird ohne Ton geteilt: {streamAudio.error}</Text>
+      {status && (
+        <div className={css.ControlToast} data-kind={status.kind} role="status">
+          <Icon size="100" src={status.kind === 'warning' ? Icons.Warning : Icons.Info} />
+          <Text size="T200" truncate>
+            {status.text}
+          </Text>
+        </div>
       )}
-      {screenshare && streamAudio.active && streamAudio.enabled && (
-        <Text size="T200">Systemton wird geteilt; Diddys eigener Ton ist ausgenommen.</Text>
-      )}
-      <Box
-        className={css.ControlCard}
-        gap="200"
-        alignItems="Center"
-        justifyContent="Center"
-        wrap="Wrap"
-      >
-        <div className={css.ControlGroup} style={{ flexWrap: 'nowrap' }}>
+      <div className={css.ControlCard} data-compact={compact || undefined}>
+        <div className={css.ControlSplit}>
           <MicrophoneButton enabled={microphone} onToggle={handleMicrophoneToggle} />
-          <DeviceChevron kind="input" size="bar" />
+          <DeviceChevron kind="input" size="bar" className={css.ControlChevron} />
         </div>
-        <div className={css.ControlGroup} style={{ flexWrap: 'nowrap' }}>
+        <div className={css.ControlSplit}>
           <SoundButton enabled={sound} onToggle={() => callEmbed.control.toggleSound()} />
-          <DeviceChevron kind="output" size="bar" />
+          <DeviceChevron kind="output" size="bar" className={css.ControlChevron} />
         </div>
-        <div className={css.ControlGroup}>
-          <VideoButton enabled={video} onToggle={handleVideoToggle} />
-          <ScreenShareButton
-            enabled={screenshare}
-            onToggle={() => callEmbed.control.toggleScreenshare()}
-          />
-          {streamAudio.available && (
-            <ScreenShareAudioButton enabled={streamAudio.enabled} onToggle={streamAudio.toggle} />
-          )}
-        </div>
+        <VideoButton enabled={video} onToggle={handleVideoToggle} />
+        {screenshare ? (
+          <div className={css.ControlSplit} data-active>
+            <ScreenShareButton enabled onToggle={toggleScreenshare} />
+            <ShareOptionsButton
+              audio={
+                streamAudio.available
+                  ? { enabled: streamAudio.enabled, onToggle: streamAudio.toggle }
+                  : null
+              }
+              onStop={toggleScreenshare}
+            />
+          </div>
+        ) : (
+          <ScreenShareButton enabled={false} onToggle={toggleScreenshare} />
+        )}
         {!compact && <ControlDivider />}
-        <div className={css.ControlGroup}>
-          <ChatButton />
-          <SoundboardButton />
-          <SpotlightButton active={spotlight} onToggle={handleSpotlightToggle} />
-          <ReactionsButton onClick={handleReactionsClick} />
-          <CallSettingsButton onClick={handleSettingsClick} />
-        </div>
+        <ReactionsButton onClick={handleReactionsClick} />
+        <SoundboardButton />
+        <ChatButton />
+        <MoreButton
+          spotlight={spotlight}
+          onToggleSpotlight={handleSpotlightToggle}
+          onSettings={handleSettingsClick}
+        />
         {!compact && <ControlDivider />}
         <Button
-          className={css.ControlPrimaryButton}
-          style={compact ? { flexGrow: 1 } : undefined}
+          className={css.ControlLeaveButton}
           variant="Critical"
           fill="Solid"
           onClick={hangup}
+          aria-label="Leave call"
           before={
             exiting ? (
               <Spinner variant="Critical" fill="Solid" size="200" />
@@ -119,9 +132,9 @@ export function CallControls({ callEmbed }: CallControlsProps) {
           }
           disabled={exiting}
         >
-          <Text size="B400">End</Text>
+          {!compact && <Text size="B400">Leave</Text>}
         </Button>
-      </Box>
+      </div>
     </Box>
   );
 }

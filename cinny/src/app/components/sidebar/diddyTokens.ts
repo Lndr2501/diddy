@@ -16,11 +16,12 @@ export const MATERIAL_STRONG = `var(--diddy-material-strong, color-mix(in srgb, 
 export const BLUR = 'var(--diddy-blur, saturate(180%) blur(24px))';
 
 /**
- * Tone of the side columns (rooms list, members drawer) next to the chat in the main card. The
- * content surface moved 5 % towards its text colour: a bit lighter in dark themes, a bit darker
- * in light ones, so the columns separate by tone alone with the same contrast in every theme.
+ * Tone of the side columns (rooms list, members drawer) next to the chat in the main card:
+ * halfway between the window background and the content surface. The chat stays the brightest
+ * (raised) surface, the side columns sit back towards the window, with a similar small step in
+ * every theme (the Diddy theme's plum Background is its intended nav tone).
  */
-export const SIDE_TONE = `color-mix(in srgb, ${color.Surface.OnContainer} 5%, ${color.Surface.Container})`;
+export const SIDE_TONE = `color-mix(in srgb, ${color.Background.Container} 55%, ${color.Surface.Container})`;
 
 export const SHADOW_1 = 'var(--diddy-shadow-1, 0 1px 2px rgba(0, 0, 0, 0.12))';
 export const SHADOW_2 =

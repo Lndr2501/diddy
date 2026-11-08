@@ -41,6 +41,13 @@ body {
   /* overwritten inline with the app's accent colour (syncAccent), this is only the fallback */
   --diddy-speaking: #e5517c;
   --diddy-muted: #ff6b81;
+  /* menus; overwritten inline with the app's menu material (syncAccent) */
+  --diddy-menu-bg: rgba(51, 51, 51, 0.82);
+  --diddy-menu-fg: #f2f2f2;
+  --diddy-menu-line: rgba(255, 255, 255, 0.08);
+  --diddy-menu-hover: rgba(255, 255, 255, 0.06);
+  --diddy-menu-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.45), 0 4px 12px rgba(0, 0, 0, 0.28),
+    0 12px 32px rgba(0, 0, 0, 0.36);
 }
 body[class*="cpd-theme-light"] {
   --diddy-tile-bg: rgba(255, 255, 255, 0.7);
@@ -61,6 +68,14 @@ html, html body, html body #root {
 /* the (programmatically driven) footer must never paint an opaque gradient */
 html body [data-testid="footer-container"] {
   background: none !important;
+}
+
+/* --- emoji: Apple Color Emoji when installed (never bundled), else the platform emoji font ---
+   Element Call's own font stack (Inter) has no emoji, so reactions/names would use whatever the
+   system picks. Same list as --font-emoji in the app's index.css; the iframe cannot see that var. */
+html body, html body *:not(code):not(pre):not(kbd):not(samp) {
+  font-family: var(--cpd-font-family-sans, Inter), 'Apple Color Emoji', 'Noto Color Emoji',
+    'Segoe UI Emoji', sans-serif;
 }
 
 /* --- tile --- */
@@ -165,6 +180,85 @@ ${TILE} > div:nth-child(2) > button:first-of-type > svg {
   color: var(--diddy-tag-fg);
 }
 
+/* --- Element Call's own menus (a tile's "mute for me" / volume menu): the same material,
+   radius, header and rows as Diddy's menus in the app window (CallUserMenu). The colours come
+   from the app theme (syncAccent); the --cpd-* tokens retint the switch and the slider. --- */
+html body [role="menu"][class*="_menu_"] {
+  --cpd-separator-inset: 0;
+  --cpd-color-bg-canvas-default: transparent;
+  --cpd-color-bg-accent-rest: var(--diddy-speaking);
+  --cpd-color-bg-accent-hovered: var(--diddy-speaking);
+  --cpd-color-bg-action-primary-rest: var(--diddy-speaking);
+  --cpd-color-bg-action-primary-hovered: var(--diddy-speaking);
+  --cpd-color-bg-subtle-primary: var(--diddy-menu-hover);
+  --cpd-color-border-interactive-primary: var(--diddy-menu-line);
+  --cpd-color-border-interactive-secondary: var(--diddy-menu-line);
+  --cpd-color-text-primary: var(--diddy-menu-fg);
+  --cpd-color-text-secondary: var(--diddy-menu-fg);
+  --cpd-color-icon-primary: var(--diddy-menu-fg);
+  --cpd-color-icon-secondary: var(--diddy-menu-fg);
+  --cpd-color-separator-primary: var(--diddy-menu-line);
+  --cpd-color-separator-secondary: var(--diddy-menu-line);
+  min-inline-size: 220px;
+  padding: 4px !important;
+  gap: 2px;
+  border-radius: 12px;
+  border: 1px solid var(--diddy-menu-line);
+  outline: 0 !important;
+  background: var(--diddy-menu-bg) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  backdrop-filter: blur(24px) saturate(1.6);
+  box-shadow: var(--diddy-menu-shadow) !important;
+  color: var(--diddy-menu-fg);
+}
+/* header: the person's name, bold, a hairline below (like the app menu) */
+html body [role="menu"][class*="_menu_"] > h3,
+html body [role="menu"][class*="_menu_"] > [class*="_title_"] {
+  margin: 0 !important;
+  padding: 4px 8px 8px !important;
+  border-bottom: 1px solid var(--diddy-menu-line);
+  margin-bottom: 2px !important;
+  font-size: 12px !important;
+  line-height: 16px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0 !important;
+  color: var(--diddy-menu-fg) !important;
+}
+html body [role="menu"][class*="_menu_"] [class*="_item_"] {
+  min-inline-size: 0;
+  min-block-size: 32px;
+  padding-block: 6px;
+  padding-inline: 8px;
+  border-radius: 8px;
+  background: transparent !important;
+  color: var(--diddy-menu-fg);
+  transition: background-color 120ms ease, color 120ms ease;
+}
+html body [role="menu"][class*="_menu_"] [class*="_item_"] [class*="_label_"] {
+  font-size: 14px !important;
+  font-weight: 400 !important;
+  letter-spacing: 0 !important;
+  color: inherit !important;
+}
+html body [role="menu"][class*="_menu_"] [class*="_item_"] svg {
+  inline-size: 18px;
+  block-size: 18px;
+  color: inherit;
+  opacity: 0.85;
+}
+/* hover: a quiet fill. These rows hold a switch, which would vanish in an accent fill; the volume
+   row only holds a slider, so no fill there */
+html body [role="menu"][class*="_menu_"] [class*="_item_"]:not([class*="_volumeMenuItem_"]):hover,
+html body [role="menu"][class*="_menu_"] [class*="_item_"]:not([class*="_volumeMenuItem_"]):focus-visible {
+  background: var(--diddy-menu-hover) !important;
+}
+html body [role="menu"][class*="_menu_"] [class*="_separator_"] {
+  margin-block: 2px;
+}
+html body [role="menu"][class*="_menu_"] [class*="_handle_"] {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
 @media (prefers-reduced-motion: reduce) {
   ${TILE_ROUNDED}, ${TILE} > div:nth-child(2) > button:first-of-type {
     transition: none;
@@ -190,17 +284,36 @@ const syncColorScheme = (win: Window, doc: Document) => {
 };
 
 /** Name of the CSS variable behind a folds colour token (`var(--abc)` -> `--abc`). */
-const ACCENT_VAR = /var\((--[^,)\s]+)/.exec(color.Primary.Main)?.[1];
+const varName = (token: string): string | undefined => /var\((--[^,)\s]+)/.exec(token)?.[1];
 
 /**
- * The speaking ring uses the Diddy accent of the current app theme. The iframe cannot see the
- * app's CSS variables, so the resolved value is copied onto its body (re-run on theme changes).
+ * App variables copied into the call page, as `[app variable, call page variable]`. Custom
+ * properties resolve their var() references when computed, so `--diddy-material` arrives as a
+ * plain colour-mix of the active theme.
+ */
+const SYNCED_VARS: [string | undefined, string][] = [
+  [varName(color.Primary.Main), '--diddy-speaking'],
+  [varName(color.Surface.OnContainer), '--diddy-menu-fg'],
+  ['--diddy-material', '--diddy-menu-bg'],
+  ['--diddy-rim', '--diddy-menu-line'],
+  ['--diddy-hover', '--diddy-menu-hover'],
+  ['--diddy-shadow-2', '--diddy-menu-shadow'],
+];
+
+/**
+ * The speaking ring and Element Call's menus use the colours of the current app theme. The
+ * iframe cannot see the app's CSS variables, so the resolved values are copied onto its body
+ * (re-run on theme changes).
  */
 const syncAccent = (win: Window, doc: Document) => {
   const appBody = (win.frameElement as HTMLElement | null)?.ownerDocument?.body;
-  if (!ACCENT_VAR || !appBody || !doc.body) return;
-  const accent = getComputedStyle(appBody).getPropertyValue(ACCENT_VAR).trim();
-  if (accent) doc.body.style.setProperty('--diddy-speaking', accent);
+  if (!appBody || !doc.body) return;
+  const computed = getComputedStyle(appBody);
+  SYNCED_VARS.forEach(([from, to]) => {
+    if (!from) return;
+    const value = computed.getPropertyValue(from).trim();
+    if (value) doc.body.style.setProperty(to, value);
+  });
 };
 
 /**

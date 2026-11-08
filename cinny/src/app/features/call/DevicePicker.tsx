@@ -247,11 +247,8 @@ export function DeviceChevron({ kind, size = 'panel', className }: DeviceChevron
         aria-pressed={open}
         aria-label={label}
         title={label}
-        style={
-          bar
-            ? { width: toRem(20), height: toRem(36), minWidth: 0, marginLeft: toRem(-6) }
-            : { width: toRem(16), height: toRem(28), minWidth: 0, marginLeft: toRem(-4) }
-        }
+        // in the call bar the chevron is sized by the bar's split-button styles
+        style={bar ? undefined : { width: toRem(16), height: toRem(28), minWidth: 0, marginLeft: toRem(-4) }}
       >
         <Icon size="50" src={Icons.ChevronBottom} />
       </IconButton>

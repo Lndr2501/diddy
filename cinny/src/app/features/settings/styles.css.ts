@@ -1,15 +1,22 @@
 import { globalStyle, style } from '@vanilla-extract/css';
-import { recipe, RecipeVariants } from '@vanilla-extract/recipes';
 import { DefaultReset, color, config, toRem } from 'folds';
 import { PageContent } from '../../components/page/style.css';
+import {
+  FOCUS_RING,
+  HOVER,
+  SELECTED,
+  SEPARATOR,
+} from '../../components/sidebar/diddyTokens';
+
+const PRESSED = 'var(--diddy-pressed, rgba(128, 128, 128, 0.16))';
 
 export const SequenceCardStyle = style({
   padding: config.space.S400,
 });
 
 /*
- * Settings window in the style of macOS System Settings: a sidebar with grouped rows and
- * coloured icon tiles on the left, the selected page on the right with a large title and a
+ * Settings window: a sidebar with a search field and plain rows with outline icons under small
+ * group headings on the left, the selected page on the right with a slim breadcrumb header and a
  * centred content column.
  */
 
@@ -82,7 +89,7 @@ export const SidebarScroll = style({
 export const SidebarList = style({
   display: 'flex',
   flexDirection: 'column',
-  gap: config.space.S400,
+  gap: config.space.S300,
   padding: `${config.space.S100} ${config.space.S300} ${config.space.S400}`,
 });
 
@@ -90,6 +97,69 @@ export const SidebarGroup = style({
   display: 'flex',
   flexDirection: 'column',
   gap: toRem(2),
+});
+
+export const SidebarGroupLabel = style({
+  padding: `${config.space.S200} ${toRem(10)} ${config.space.S100}`,
+  fontWeight: config.fontWeight.W500,
+  opacity: 0.6,
+});
+
+/** Search field at the top of the sidebar, with a "/" keycap as the shortcut hint. */
+export const SearchField = style({
+  display: 'flex',
+  alignItems: 'center',
+  gap: config.space.S200,
+  height: toRem(34),
+  padding: `0 ${toRem(6)} 0 ${toRem(10)}`,
+  borderRadius: toRem(8),
+  backgroundColor: HOVER,
+  boxShadow: `inset 0 0 0 1px ${SEPARATOR}`,
+  cursor: 'text',
+  selectors: {
+    '&:focus-within': {
+      boxShadow: `0 0 0 2px ${FOCUS_RING}`,
+    },
+  },
+});
+
+export const SearchInput = style({
+  flexGrow: 1,
+  minWidth: 0,
+  height: '100%',
+  padding: 0,
+  border: 'none',
+  outline: 'none',
+  background: 'transparent',
+  color: 'inherit',
+  font: 'inherit',
+  fontSize: toRem(14),
+  selectors: {
+    '&::placeholder': {
+      color: 'inherit',
+      opacity: 0.55,
+    },
+    '&::-webkit-search-cancel-button': {
+      display: 'none',
+    },
+  },
+});
+
+export const SearchKey = style({
+  flexShrink: 0,
+  minWidth: toRem(20),
+  height: toRem(20),
+  padding: `0 ${toRem(6)}`,
+  boxSizing: 'border-box',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  borderRadius: toRem(5),
+  backgroundColor: HOVER,
+  fontFamily: 'inherit',
+  fontSize: toRem(12),
+  fontWeight: config.fontWeight.W500,
+  opacity: 0.75,
 });
 
 export const SidebarEmpty = style({
@@ -106,19 +176,18 @@ export const SidebarFooter = style({
 const rowInteraction = {
   'button&': { cursor: 'pointer' },
   '&:hover:not([aria-current=page])': {
-    backgroundColor: color.Background.ContainerHover,
+    backgroundColor: HOVER,
   },
   '&:active:not([aria-current=page])': {
-    backgroundColor: color.Background.ContainerActive,
+    backgroundColor: PRESSED,
   },
   '&:focus-visible': {
     outline: `${toRem(2)} solid ${color.Other.FocusRing}`,
     outlineOffset: toRem(-2),
   },
-  // selected row: accent colour like the macOS sidebar selection
+  // selected row: a quiet accent tint, the text keeps its colour
   '&[aria-current=page]': {
-    backgroundColor: color.Primary.Main,
-    color: color.Primary.OnMain,
+    backgroundColor: SELECTED,
   },
 } as const;
 
@@ -133,32 +202,6 @@ const buttonReset = {
   width: '100%',
 } as const;
 
-/** Profile header at the top of the sidebar: avatar, name and Matrix ID; opens the profile. */
-export const ProfileCard = style([
-  DefaultReset,
-  buttonReset,
-  {
-    display: 'flex',
-    alignItems: 'center',
-    gap: config.space.S300,
-    padding: config.space.S200,
-    borderRadius: toRem(10),
-    minWidth: 0,
-    selectors: rowInteraction,
-  },
-]);
-
-export const ProfileText = style({
-  display: 'flex',
-  flexDirection: 'column',
-  gap: toRem(2),
-  minWidth: 0,
-});
-
-export const ProfileSub = style({
-  opacity: 0.7,
-});
-
 export const NavRow = style([
   DefaultReset,
   buttonReset,
@@ -166,8 +209,8 @@ export const NavRow = style([
     display: 'flex',
     alignItems: 'center',
     gap: toRem(10),
-    height: toRem(36),
-    padding: `0 ${config.space.S200}`,
+    height: toRem(34),
+    padding: `0 ${toRem(10)}`,
     borderRadius: toRem(8),
     minWidth: 0,
     flexShrink: 0,
@@ -179,64 +222,16 @@ export const NavRowCritical = style({
   color: color.Critical.Main,
 });
 
-/** Rounded, coloured square behind a row icon, like the icons in macOS System Settings. */
-export const IconTile = recipe({
-  base: {
-    width: toRem(24),
-    height: toRem(24),
-    flexShrink: 0,
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: toRem(6),
-    selectors: {
-      // keeps the tile visible on the accent coloured selection
-      [`${NavRow}[aria-current=page] &, ${ProfileCard}[aria-current=page] &`]: {
-        boxShadow: `0 0 0 ${toRem(1)} color-mix(in srgb, ${color.Primary.OnMain} 45%, transparent)`,
-      },
+/** Outline icon in front of a sidebar row; a bit quieter than the label until selected. */
+export const NavIcon = style({
+  flexShrink: 0,
+  opacity: 0.75,
+  selectors: {
+    [`${NavRow}[aria-current=page] &`]: {
+      opacity: 1,
     },
-  },
-  variants: {
-    tone: {
-      Gray: {
-        backgroundColor: color.Secondary.Container,
-        color: color.Secondary.OnContainer,
-      },
-      Dark: {
-        backgroundColor: color.Secondary.Main,
-        color: color.Secondary.OnMain,
-      },
-      Blue: {
-        backgroundColor: color.Primary.Main,
-        color: color.Primary.OnMain,
-      },
-      SoftBlue: {
-        backgroundColor: color.Primary.Container,
-        color: color.Primary.OnContainer,
-      },
-      Green: {
-        backgroundColor: color.Success.Main,
-        color: color.Success.OnMain,
-      },
-      Orange: {
-        backgroundColor: color.Warning.Main,
-        color: color.Warning.OnMain,
-      },
-      Red: {
-        backgroundColor: color.Critical.Main,
-        color: color.Critical.OnMain,
-      },
-      SoftRed: {
-        backgroundColor: color.Critical.Container,
-        color: color.Critical.OnContainer,
-      },
-    },
-  },
-  defaultVariants: {
-    tone: 'Gray',
   },
 });
-export type IconTileVariants = RecipeVariants<typeof IconTile>;
 
 /** Holds the active page. The rules below give every settings page the same frame. */
 export const Content = style([
@@ -254,32 +249,6 @@ export const Content = style([
 /** Phones: tighter frame. */
 export const ContentCompact = style({});
 
-// page header (`PageHeader` directly in the page): large title, aligned with the content column
-globalStyle(`${Content} > div > header`, {
-  height: 'auto',
-  minHeight: toRem(80),
-  padding: `${config.space.S500} 0 ${config.space.S200}`,
-  backgroundColor: 'transparent',
-  borderBottom: 'none',
-});
-// same box as the content column below, so the title lines up with the page body
-globalStyle(`${Content} > div > header > *`, {
-  boxSizing: 'border-box',
-  width: '100%',
-  maxWidth: PAGE_MAX_WIDTH,
-  marginLeft: 'auto',
-  marginRight: 'auto',
-  padding: `0 ${config.space.S700}`,
-  alignItems: 'center',
-});
-// the title is the first text of the first box in the header
-globalStyle(`${Content} > div > header > div > div:first-child > p:first-child`, {
-  fontSize: toRem(26),
-  lineHeight: toRem(34),
-  fontWeight: config.fontWeight.W700,
-  letterSpacing: '-0.015em',
-});
-
 // page body: centred column with generous spacing
 globalStyle(`${Content} ${PageContent}`, {
   boxSizing: 'border-box',
@@ -287,20 +256,9 @@ globalStyle(`${Content} ${PageContent}`, {
   maxWidth: PAGE_MAX_WIDTH,
   marginLeft: 'auto',
   marginRight: 'auto',
-  padding: `${config.space.S400} ${config.space.S700} ${toRem(96)}`,
+  padding: `${toRem(28)} ${config.space.S700} ${toRem(96)}`,
 });
 
-globalStyle(`${ContentCompact} > div > header`, {
-  minHeight: toRem(64),
-  padding: `${config.space.S300} 0 ${config.space.S100}`,
-});
-globalStyle(`${ContentCompact} > div > header > *`, {
-  padding: `0 ${config.space.S400}`,
-});
-globalStyle(`${ContentCompact} > div > header > div > div:first-child > p:first-child`, {
-  fontSize: toRem(22),
-  lineHeight: toRem(28),
-});
 globalStyle(`${ContentCompact} ${PageContent}`, {
   padding: `${config.space.S300} ${config.space.S400} ${toRem(80)}`,
 });

@@ -272,6 +272,29 @@ test("Element Call's tile menu is opened with a right-click at the given point, 
   assert.equal(last.clientY, 50);
 });
 
+test("opening Element Call's tile menu shows no Copy menu for the text under the pointer", () => {
+  const { mod2, listeners, opened } = install();
+  const bubble = listeners.find((l) => l.type === 'contextmenu' && !l.capture);
+  assert.ok(bubble);
+  const el = {
+    ownerDocument: { defaultView: { MouseEvent: class {} } },
+    getBoundingClientRect: () => ({ left: 0, top: 0, width: 200, height: 100 }),
+    dispatchEvent() {
+      // Element Call prevents the event to open its own menu; it then bubbles to the document
+      // (the target is the name on the tile, text that would otherwise be offered to copy)
+      bubble.fn(
+        rightClick('@a:x.org', {
+          defaultPrevented: true,
+          target: { innerText: 'music', childElementCount: 0, parentElement: null },
+        })
+      );
+      return true;
+    },
+  };
+  mod2.openCallTileMenu(el);
+  assert.deepEqual(opened, []);
+});
+
 test('muted people are read from the mute icon in the call tiles', () => {
   const mod = load();
   const tile = (userId, muted) => ({

@@ -179,6 +179,8 @@ type UploadFieldProps = {
   busy: boolean;
   round?: boolean;
   wide?: boolean;
+  /** which dropped files are taken (default: images) */
+  acceptsFile?: (file: File) => boolean;
   onFile: (file: File) => void;
   onRemove: () => void;
 };
@@ -191,6 +193,7 @@ export function UploadField({
   busy,
   round,
   wide,
+  acceptsFile = (file) => file.type.startsWith('image/'),
   onFile,
   onRemove,
 }: UploadFieldProps) {
@@ -201,7 +204,7 @@ export function UploadField({
     e.preventDefault();
     setOver(false);
     const file = e.dataTransfer.files?.[0];
-    if (file && !busy && file.type.startsWith('image/')) onFile(file);
+    if (file && !busy && acceptsFile(file)) onFile(file);
   };
   return (
     <div

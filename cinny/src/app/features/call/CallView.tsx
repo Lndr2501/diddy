@@ -13,6 +13,7 @@ import { StateEvent } from '../../../types/matrix/room';
 import { useCallMembers, useCallSession } from '../../hooks/useCall';
 import { CallMemberRenderer, CallRoster } from './CallMemberCard';
 import * as css from './styles.css';
+import { CallStage } from './CallStage';
 import { CallControls } from './CallControls';
 import { useLivekitSupport } from '../../hooks/useLivekitSupport';
 import { webRTCSupported } from '../../utils/rtc';
@@ -70,7 +71,7 @@ function NoPermissionMessage() {
 function AlreadyInCallMessage() {
   return (
     <Text style={{ margin: 'auto', color: color.Warning.Main }} size="T300" align="Center">
-      Already in another call — End the current call to join!
+      You&apos;re in another call — Joining will end it for you.
     </Text>
   );
 }
@@ -148,7 +149,9 @@ function CallJoined({ joined, containerRef, members }: CallJoinedProps) {
   return (
     <Box grow="Yes" direction="Column">
       {joined && <CallRoster members={members} />}
-      <Box grow="Yes" ref={containerRef} />
+      <Box grow="Yes" ref={containerRef} className={css.StagePlaceholder}>
+        {callEmbed && joined && <CallStage callEmbed={callEmbed} />}
+      </Box>
       {callEmbed && joined && <CallControls callEmbed={callEmbed} />}
     </Box>
   );

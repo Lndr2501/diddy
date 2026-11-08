@@ -33,6 +33,7 @@ import { useSpaceAutoJoinWorker } from '../../hooks/useSpaceAutoJoin';
 import { applyStoredAppIcon } from '../../plugins/appIcon';
 import { useDiddyOptionsAutoJoin } from '../../plugins/diddy/autoJoin';
 import { isDoNotDisturb, useDiddyStatusSync } from '../../plugins/diddy/status';
+import { useClientVersionSync } from '../../plugins/diddy/versionSync';
 import { DiddyOnboarding } from '../../features/onboarding/DiddyOnboarding';
 import { MatrixIntro } from '../../features/intro/MatrixIntro';
 import { CallFrameMenu } from '../../components/CallFrameMenu';
@@ -88,12 +89,6 @@ const playNotificationSound = (audio: HTMLAudioElement | null, id: SoundId) => {
   }
   playViaWebAudio(url).catch(fallback);
 };
-
-/** Diddy always shows the system emoji (Apple Color Emoji on macOS) instead of Twemoji. */
-function SystemEmojiFeature() {
-  document.documentElement.style.setProperty('--font-emoji', "'Apple Color Emoji'");
-  return null;
-}
 
 function PageZoomFeature() {
   const [pageZoom] = useSetting(settingsAtom, 'pageZoom');
@@ -362,6 +357,7 @@ function DiddyOptionsAutoJoinFeature() {
 
 function DiddyStatusFeature() {
   useDiddyStatusSync();
+  useClientVersionSync();
   return null;
 }
 
@@ -381,7 +377,6 @@ export function ClientNonUIFeatures({ children }: ClientNonUIFeaturesProps) {
 
   return (
     <>
-      <SystemEmojiFeature />
       <PageZoomFeature />
       <FaviconUpdater />
       <ImageViewerHost />

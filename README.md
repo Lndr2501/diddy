@@ -126,6 +126,30 @@ Die iOS-App ist Beta. Sprachkanäle in verschlüsselten Räumen sind Ende-zu-End
 
 </details>
 
+## Apple-Emoji unter Linux
+
+Auf dem Mac zeigt Diddy die Apple-Emoji. Unter Linux nimmt Diddy die Schrift „Apple Color Emoji“ automatisch, sobald sie installiert ist, sonst die Emoji deines Systems (Noto). In den Einstellungen unter *Appearance → Emoji* steht, ob sie gefunden wurde.
+
+> [!IMPORTANT]
+> Die Apple-Emoji sind Apples Grafik, nicht frei lizenziert und nicht weitergebbar. Diddy liefert sie deshalb **nicht** mit, in keinem Paket. Installiere sie nur für dich selbst und auf eigene Verantwortung.
+
+Mit dem Community-Build [samuelngs/apple-emoji-ttf](https://github.com/samuelngs/apple-emoji-ttf) (früher `apple-emoji-linux`, die alte Adresse leitet weiter):
+
+```sh
+mkdir -p ~/.local/share/fonts
+curl -L -o ~/.local/share/fonts/AppleColorEmoji.ttf \
+  https://github.com/samuelngs/apple-emoji-ttf/releases/latest/download/AppleColorEmoji-Linux.ttf
+fc-cache -f
+```
+
+Danach Diddy neu starten. Die Datei ist über 100 MB groß. Fertige `.deb`/`.rpm`/Arch-Pakete gibt es auf derselben Release-Seite.
+
+**NixOS** (optional, nicht im Standardpaket `diddy` enthalten, Lizenz `unfree`):
+
+```nix
+fonts.packages = [ inputs.diddy.packages.${pkgs.system}.apple-color-emoji ];
+```
+
 ## Fehler melden
 
 Hilft am meisten: die Logdatei anhängen. Sie liegt unter macOS in `~/Library/Logs/Diddy/app.log`, unter Linux in `~/.local/state/diddy/app.log` und unter Windows in `%LOCALAPPDATA%\Diddy\Logs\app.log`; in der App öffnet *Einstellungen → About → Diagnostics → Open Folder* den Ordner. Die Datei enthält technische Ereignisse und Fehler, keine Nachrichtentexte.

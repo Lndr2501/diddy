@@ -1,4 +1,4 @@
-import { Box, Button, color, Icon, Icons, Text } from 'folds';
+import { Box, Button, color, Icon, Icons, Spinner, Text } from 'folds';
 import React, { useCallback, useState } from 'react';
 import { ICreateRoomStateEvent, Preset, Visibility } from 'matrix-js-sdk';
 import classNames from 'classnames';
@@ -18,9 +18,12 @@ import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
 import { usePowerLevels } from '../../hooks/usePowerLevels';
 import { useRoom } from '../../hooks/useRoom';
-import { useUserPresence } from '../../hooks/useUserPresence';
+import { usePresenceState } from '../../hooks/usePresenceState';
 import { IgnoredUserAlert, MutualRoomsChip, OptionsChip, ServerChip, ShareChip } from './UserChips';
-import { useCloseUserRoomProfile } from '../../state/hooks/userRoomProfile';
+import {
+  useCloseUserRoomProfile,
+  useOpenLargeUserProfile,
+} from '../../state/hooks/userRoomProfile';
 import { PowerChip } from './PowerChip';
 import { UserInviteAlert, UserBanAlert, UserKickAlert } from './UserModeration';
 import { useIgnoredUsers } from '../../hooks/useIgnoredUsers';
@@ -38,14 +41,17 @@ import { visibleModules } from '../../plugins/diddy/profileExtras';
 import { findDirectRoomId, PROFILE_CALL_PREFERENCES } from '../../plugins/directCall';
 import { createRoomEncryptionState } from '../create-room';
 import { useCallEmbed, useCallStart } from '../../hooks/useCallEmbed';
+import { useSwitchCall } from '../call-switch/useSwitchCall';
 import { useLivekitSupport } from '../../hooks/useLivekitSupport';
 import { webRTCSupported } from '../../utils/rtc';
 import { AccountDataEvent } from '../../../types/matrix/accountData';
 
 type UserRoomProfileProps = {
   userId: string;
+  /** the big profile window: large banner and avatar, always the roomy layout */
+  large?: boolean;
 };
-export function UserRoomProfile({ userId }: UserRoomProfileProps) {
+export function UserRoomProfile({ userId, large }: UserRoomProfileProps) {
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
   const navigate = useNavigate();
@@ -76,16 +82,19 @@ export function UserRoomProfile({ userId }: UserRoomProfileProps) {
   const avatarMxc = getMemberAvatarMxc(room, userId);
   const avatarUrl = (avatarMxc && mxcUrlToHttp(mx, avatarMxc, useAuthentication)) ?? undefined;
 
-  const presence = useUserPresence(userId);
-  const shownPresence = presence && presence.lastActiveTs !== 0 ? presence : undefined;
+  // the same state the DM list, room header and member list show (#73)
+  const shownPresence = usePresenceState(userId);
 
   const profile = useDiddyProfile(mx, userId);
   const accent = safeColor(profile?.card?.accent);
   const accentText = accent ? readableTextOn(accent) : undefined;
-  const layout = profile?.cardLayout?.layout ?? 'standard';
+  const big = profile?.cardLayout?.big;
+  // the big window has its own layout (expanded unless the owner chose tabs for it)
+  const layout = large ? big?.layout ?? 'expanded' : profile?.cardLayout?.layout ?? 'standard';
   const compact = layout === 'compact';
   const cardTheme = profile?.cardLayout?.theme;
-  const modules = visibleModules(profile?.cardLayout);
+  const modules = visibleModules({ ...profile?.cardLayout, layout });
+  const openLargeProfile = useOpenLargeUserProfile();
 
   const handleMessage = () => {
     closeUserRoomProfile();
@@ -134,19 +143,43 @@ export function UserRoomProfile({ userId }: UserRoomProfileProps) {
     throw new Error('The chat was created but has not arrived yet. Try again in a moment.');
   }, [mx, userId]);
 
+  const { requestSwitch, prompt: switchPrompt } = useSwitchCall();
+
   const handleCall = () => {
-    setCalling(true);
     setCallError(undefined);
-    getOrCreateDirectRoom()
-      .then((directRoom) => {
+    // already in the call with this very user: just go there
+    const currentRoomId = callEmbed?.roomId;
+    if (
+      currentRoomId &&
+      currentRoomId ===
+        findDirectRoomId(
+          mx.getAccountData(AccountDataEvent.Direct as never)?.getContent(),
+          userId,
+          (id) => mx.getRoom(id)?.getMyMembership() === 'join'
+        )
+    ) {
+      closeUserRoomProfile();
+      navigate(getDirectRoomPath(currentRoomId));
+      return;
+    }
+
+    // the spinner shows from the click, or in a call from the confirmation
+    if (!callEmbed) setCalling(true);
+    requestSwitch({
+      action: 'call',
+      targetName: displayName ?? getMxIdLocalPart(userId) ?? userId,
+      onConfirmed: () => setCalling(true),
+      start: async () => {
+        // when in a call this runs only after the old call is gone
+        const directRoom = await getOrCreateDirectRoom();
         startDirectCall(directRoom, { ...PROFILE_CALL_PREFERENCES });
         closeUserRoomProfile();
         navigate(getDirectRoomPath(directRoom.roomId));
-      })
-      .catch((error: Error) => {
-        setCallError(error?.message || 'Could not start the call.');
-        setCalling(false);
-      });
+      },
+      onError: (error) => setCallError(error?.message || 'Could not start the call.'),
+    }).then((started) => {
+      if (!started) setCalling(false);
+    });
   };
 
   const notMe = userId !== myUserId;
@@ -158,10 +191,16 @@ export function UserRoomProfile({ userId }: UserRoomProfileProps) {
           variant="Secondary"
           fill="Soft"
           radii="Pill"
-          before={<Icon size="50" src={Icons.Phone} filled />}
           onClick={handleCall}
-          disabled={!!callEmbed || calling}
-          title={callEmbed ? 'Already in a call. End it first.' : 'Call privately'}
+          disabled={calling}
+          before={
+            calling ? (
+              <Spinner size="100" variant="Secondary" />
+            ) : (
+              <Icon size="50" src={Icons.Phone} filled />
+            )
+          }
+          title={callEmbed ? 'Leaves your current call' : 'Call privately'}
         >
           <Text size="B300">Call</Text>
         </Button>
@@ -207,6 +246,8 @@ export function UserRoomProfile({ userId }: UserRoomProfileProps) {
           presence={shownPresence}
           profile={profile}
           compact={compact}
+          large={large ? { banner: big?.banner ?? 'tall', avatar: big?.avatar ?? 'large' } : undefined}
+          onAvatarClick={large ? undefined : () => openLargeProfile(room.roomId, userId)}
           actions={actions}
         />
         <div className={classNames(css.CardBody, compact && css.CardBodyCompact)}>
@@ -218,11 +259,12 @@ export function UserRoomProfile({ userId }: UserRoomProfileProps) {
               showBio={false}
               compact={compact}
             />
-            <ProfileStatus presence={shownPresence} profile={profile} />
+            <ProfileStatus presence={shownPresence} />
           </Box>
           <ProfileModules
             profile={profile}
             accent={accent}
+            layout={layout}
             sharedRooms={
               layout === 'tabs' && notMe ? <MutualRoomsChip userId={userId} /> : undefined
             }
@@ -245,7 +287,19 @@ export function UserRoomProfile({ userId }: UserRoomProfileProps) {
                 }}
               />
             )}
+            {profile?.clientVersion && (
+              <Text
+                as="span"
+                size="T200"
+                priority="300"
+                className={css.ClientVersion}
+                title={`Uses Diddy ${profile.clientVersion}`}
+              >
+                Diddy {profile.clientVersion}
+              </Text>
+            )}
           </div>
+          {switchPrompt}
           {callError && (
             <Text size="T200" style={{ color: color.Critical.Main }}>
               {callError}

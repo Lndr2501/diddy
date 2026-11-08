@@ -22,6 +22,8 @@ import {
   sanitizeInterests,
   sanitizeLinks,
 } from './profileExtras';
+import { NAMEPLATE_PRESET_IDS } from './nameplate';
+import { safeVersion } from './clientVersion';
 
 const HEX_COLOR = /^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/;
 const MXC_URI = /^mxc:\/\/[A-Za-z0-9.\-:[\]]+\/[A-Za-z0-9_-]+$/;
@@ -126,16 +128,24 @@ const sanitizeCard = (raw: unknown): CardStyle | undefined => {
   return Object.keys(out).length > 0 ? out : undefined;
 };
 
-const sanitizeNameplate = (raw: unknown): NameplateStyle | undefined => {
+/** Validates an untrusted nameplate (#78); only known presets and mxc media survive. */
+export const sanitizeNameplate = (raw: unknown): NameplateStyle | undefined => {
   if (!isRecord(raw)) return undefined;
   const out: NameplateStyle = {};
   const color = safeColor(raw.color);
   const imageMxc = safeMxc(raw.imageMxc);
+  const videoMxc = safeMxc(raw.videoMxc);
+  const preset = NAMEPLATE_PRESET_IDS.find((id) => id === raw.preset);
   if (color) out.color = color;
+  if (preset) out.preset = preset;
+  if (preset && raw.flow === true) out.flow = true;
   if (imageMxc) out.imageMxc = imageMxc;
+  if (videoMxc) out.videoMxc = videoMxc;
   const imagePos = sanitizeImagePos(raw.imagePos);
-  if (imageMxc && imagePos) out.imagePos = imagePos;
-  return Object.keys(out).length > 0 ? out : undefined;
+  if ((imageMxc || videoMxc) && imagePos) out.imagePos = imagePos;
+  // 'fade' is the default and not stored
+  if (raw.fit === 'full') out.fit = 'full';
+  return out.color || out.preset || out.imageMxc || out.videoMxc ? out : undefined;
 };
 
 /** Validates an untrusted profile event content; undefined when it is not a v1 profile. */
@@ -173,6 +183,8 @@ export const sanitizeProfile = (raw: unknown): DiddyProfile | undefined => {
   if (activity) out.activity = activity;
   const cardLayout = sanitizeCardLayout(raw.cardLayout);
   if (cardLayout) out.cardLayout = cardLayout;
+  const clientVersion = safeVersion(raw.clientVersion);
+  if (clientVersion) out.clientVersion = clientVersion;
   return out;
 };
 

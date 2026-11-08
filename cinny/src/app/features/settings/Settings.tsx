@@ -1,11 +1,16 @@
-import React, { ChangeEventHandler, KeyboardEventHandler, useMemo, useState } from 'react';
+import React, {
+  ChangeEventHandler,
+  KeyboardEventHandler,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
-  Avatar,
   Icon,
   IconButton,
   Icons,
   IconSrc,
-  Input,
   Overlay,
   OverlayBackdrop,
   OverlayCenter,
@@ -18,12 +23,6 @@ import { isKeyHotkey } from 'is-hotkey';
 import { AppearanceSettings, General } from './general';
 import { ScreenSize, useScreenSizeContext } from '../../hooks/useScreenSize';
 import { Account } from './account';
-import { useUserProfile } from '../../hooks/useUserProfile';
-import { useMatrixClient } from '../../hooks/useMatrixClient';
-import { getMxIdLocalPart, mxcUrlToHttp } from '../../utils/matrix';
-import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
-import { UserAvatar } from '../../components/user-avatar';
-import { nameInitials } from '../../utils/common';
 import { Notifications } from './notifications';
 import { Devices } from './devices';
 import { EmojisStickers } from './emojis-stickers';
@@ -34,6 +33,7 @@ import { Plugins } from './plugins';
 import { stopPropagation } from '../../utils/keyboard';
 import { LogoutDialog } from '../../components/LogoutDialog';
 import * as css from './styles.css';
+import { SettingsBreadcrumb } from './inset-list';
 
 export enum SettingsPages {
   GeneralPage,
@@ -52,91 +52,96 @@ type SettingsMenuItem = {
   page: SettingsPages;
   name: string;
   icon: IconSrc;
-  tone: NonNullable<css.IconTileVariants>['tone'];
   /** extra words the sidebar search matches */
   keywords: string;
 };
 
-// Groups of the sidebar, separated by a gap like in macOS System Settings.
-const SETTINGS_MENU: SettingsMenuItem[][] = [
-  [
-    {
-      page: SettingsPages.GeneralPage,
-      name: 'General',
-      icon: Icons.Setting,
-      tone: 'Gray',
-      keywords: 'language editor messages media links privacy',
-    },
-    {
-      page: SettingsPages.AppearancePage,
-      name: 'Appearance',
-      icon: Icons.Sun,
-      tone: 'Blue',
-      keywords: 'theme dark light colour color font app icon',
-    },
-  ],
-  [
-    {
-      page: SettingsPages.ProfilePage,
-      name: 'Profile',
-      icon: Icons.User,
-      tone: 'Green',
-      keywords: 'avatar name banner badge card status',
-    },
-    {
-      page: SettingsPages.AccountPage,
-      name: 'Account',
-      icon: Icons.ShieldUser,
-      tone: 'SoftBlue',
-      keywords: 'matrix id email password contact ignored users',
-    },
-    {
-      page: SettingsPages.NotificationPage,
-      name: 'Notifications',
-      icon: Icons.Bell,
-      tone: 'Red',
-      keywords: 'sound mention keyword push alert',
-    },
-    {
-      page: SettingsPages.DevicesPage,
-      name: 'Devices',
-      icon: Icons.Monitor,
-      tone: 'Gray',
-      keywords: 'sessions verification encryption backup keys security',
-    },
-    {
-      page: SettingsPages.EmojisStickersPage,
-      name: 'Emojis & Stickers',
-      icon: Icons.Smile,
-      tone: 'Orange',
-      keywords: 'emoji sticker pack image',
-    },
-  ],
-  [
-    {
-      page: SettingsPages.PluginsPage,
-      name: 'Plugins',
-      icon: Icons.Category,
-      tone: 'Green',
-      keywords: 'plugin widget extension add-on addon weather web page',
-    },
-  ],
-  [
-    {
-      page: SettingsPages.DeveloperToolsPage,
-      name: 'Developer Tools',
-      icon: Icons.Terminal,
-      tone: 'Dark',
-      keywords: 'debug account data developer',
-    },
-    {
-      page: SettingsPages.AboutPage,
-      name: 'About',
-      icon: Icons.Info,
-      tone: 'Blue',
-      keywords: 'version cache reload credits source',
-    },
-  ],
+type SettingsMenuGroup = {
+  /** small grey heading above the group; none for the first and the last group */
+  label?: string;
+  items: SettingsMenuItem[];
+};
+
+// Groups of the sidebar: plain rows with outline icons under small headings.
+const SETTINGS_MENU: SettingsMenuGroup[] = [
+  {
+    items: [
+      {
+        page: SettingsPages.GeneralPage,
+        name: 'General',
+        icon: Icons.Setting,
+        keywords: 'language editor messages media links privacy sound voice call',
+      },
+      {
+        page: SettingsPages.AppearancePage,
+        name: 'Appearance',
+        icon: Icons.Sun,
+        keywords: 'theme dark light colour color font app icon',
+      },
+      {
+        page: SettingsPages.NotificationPage,
+        name: 'Notifications',
+        icon: Icons.Bell,
+        keywords: 'sound mention keyword push alert',
+      },
+    ],
+  },
+  {
+    label: 'Account',
+    items: [
+      {
+        page: SettingsPages.ProfilePage,
+        name: 'Profile',
+        icon: Icons.User,
+        keywords: 'avatar name banner badge card status',
+      },
+      {
+        page: SettingsPages.AccountPage,
+        name: 'Account',
+        icon: Icons.ShieldUser,
+        keywords: 'matrix id email password contact ignored users',
+      },
+      {
+        page: SettingsPages.DevicesPage,
+        name: 'Devices',
+        icon: Icons.Monitor,
+        keywords: 'sessions verification encryption backup keys security',
+      },
+    ],
+  },
+  {
+    label: 'Extras',
+    items: [
+      {
+        page: SettingsPages.EmojisStickersPage,
+        name: 'Emojis & Stickers',
+        icon: Icons.Smile,
+        keywords: 'emoji sticker pack image',
+      },
+      {
+        page: SettingsPages.PluginsPage,
+        name: 'Plugins',
+        icon: Icons.Category,
+        keywords: 'plugin widget extension add-on addon weather web page',
+      },
+    ],
+  },
+  {
+    items: [
+      {
+        page: SettingsPages.DeveloperToolsPage,
+        name: 'Developer Tools',
+        icon: Icons.Terminal,
+        keywords: 'debug account data developer',
+      },
+      {
+        page: SettingsPages.AboutPage,
+        name: 'About',
+        icon: Icons.Info,
+        keywords: 'version cache reload credits source',
+      },
+    ],
+  },
 ];
 
 const matchesQuery = (item: SettingsMenuItem, query: string): boolean => {
@@ -144,19 +149,6 @@ const matchesQuery = (item: SettingsMenuItem, query: string): boolean => {
   if (!q) return true;
   return `${item.name} ${item.keywords}`.toLowerCase().includes(q);
 };
-
-type IconTileProps = {
-  icon: IconSrc;
-  tone: SettingsMenuItem['tone'];
-  filled?: boolean;
-};
-function IconTile({ icon, tone, filled }: IconTileProps) {
-  return (
-    <span className={css.IconTile({ tone })} aria-hidden>
-      <Icon src={icon} size="50" filled={filled} />
-    </span>
-  );
-}
 
 function LogoutRow() {
   const [logout, setLogout] = useState(false);
@@ -168,7 +160,7 @@ function LogoutRow() {
         className={classNames(css.NavRow, css.NavRowCritical)}
         onClick={() => setLogout(true)}
       >
-        <IconTile icon={Icons.Power} tone="SoftRed" />
+        <Icon className={css.NavIcon} size="100" src={Icons.Power} />
         <Text as="span" size="T300" truncate>
           Logout
         </Text>
@@ -197,15 +189,6 @@ type SettingsProps = {
   requestClose: () => void;
 };
 export function Settings({ initialPage, requestClose }: SettingsProps) {
-  const mx = useMatrixClient();
-  const useAuthentication = useMediaAuthentication();
-  const userId = mx.getUserId()!;
-  const profile = useUserProfile(userId);
-  const displayName = profile.displayName ?? getMxIdLocalPart(userId) ?? userId;
-  const avatarUrl = profile.avatarUrl
-    ? mxcUrlToHttp(mx, profile.avatarUrl, useAuthentication, 96, 96, 'crop') ?? undefined
-    : undefined;
-
   const screenSize = useScreenSizeContext();
   const isMobile = screenSize === ScreenSize.Mobile;
   const [activePage, setActivePage] = useState<SettingsPages | undefined>(() => {
@@ -216,11 +199,27 @@ export function Settings({ initialPage, requestClose }: SettingsProps) {
 
   const groups = useMemo(
     () =>
-      SETTINGS_MENU.map((group) => group.filter((item) => matchesQuery(item, query))).filter(
-        (group) => group.length > 0
-      ),
+      SETTINGS_MENU.map((group) => ({
+        ...group,
+        items: group.items.filter((item) => matchesQuery(item, query)),
+      })).filter((group) => group.items.length > 0),
     [query]
   );
+
+  // "/" jumps to the search field, like in T3 Code and many web apps
+  const searchRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const onKeyDown = (evt: KeyboardEvent) => {
+      if (evt.key !== '/' || evt.ctrlKey || evt.metaKey || evt.altKey) return;
+      const target = evt.target as HTMLElement | null;
+      if (target?.closest('input, textarea, select, [contenteditable="true"]')) return;
+      if (!searchRef.current) return;
+      evt.preventDefault();
+      searchRef.current.focus();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
 
   const handlePageRequestClose = () => {
     if (isMobile) {
@@ -236,7 +235,7 @@ export function Settings({ initialPage, requestClose }: SettingsProps) {
 
   const handleSearchKeyDown: KeyboardEventHandler<HTMLInputElement> = (evt) => {
     if (isKeyHotkey('enter', evt)) {
-      const first = groups[0]?.[0];
+      const first = groups[0]?.items[0];
       if (first) setActivePage(first.page);
       return;
     }
@@ -275,52 +274,33 @@ export function Settings({ initialPage, requestClose }: SettingsProps) {
                 </IconButton>
               </div>
             )}
-            <button
-              type="button"
-              className={css.ProfileCard}
-              onClick={() => setActivePage(SettingsPages.ProfilePage)}
-              title="Edit profile"
-            >
-              <Avatar size="400" radii="Pill">
-                <UserAvatar surface="account"
-                  userId={userId}
-                  src={avatarUrl}
-                  renderFallback={() => <Text size="H5">{nameInitials(displayName)}</Text>}
-                />
-              </Avatar>
-              <span className={css.ProfileText}>
-                <Text as="span" size="T400" style={{ fontWeight: 600 }} truncate>
-                  {displayName}
-                </Text>
-                <Text as="span" size="T200" className={css.ProfileSub} truncate>
-                  {userId}
-                </Text>
-              </span>
-            </button>
-            <Input
-              value={query}
-              onChange={handleSearchChange}
-              onKeyDown={handleSearchKeyDown}
-              before={<Icon size="50" src={Icons.Search} />}
-              after={
-                query ? (
-                  <IconButton
-                    size="300"
-                    radii="Pill"
-                    variant="Surface"
-                    aria-label="Clear search"
-                    onClick={() => setQuery('')}
-                  >
-                    <Icon size="50" src={Icons.Cross} />
-                  </IconButton>
-                ) : undefined
-              }
-              placeholder="Search"
-              aria-label="Search settings"
-              size="300"
-              radii="300"
-              variant="Surface"
-            />
+            <div className={css.SearchField}>
+              <Icon size="100" src={Icons.Search} className={css.NavIcon} />
+              <input
+                ref={searchRef}
+                className={css.SearchInput}
+                value={query}
+                onChange={handleSearchChange}
+                onKeyDown={handleSearchKeyDown}
+                placeholder="Search"
+                aria-label="Search settings"
+                aria-keyshortcuts="/"
+              />
+              {query ? (
+                <IconButton
+                  size="300"
+                  radii="300"
+                  variant="Background"
+                  fill="None"
+                  aria-label="Clear search"
+                  onClick={() => setQuery('')}
+                >
+                  <Icon size="50" src={Icons.Cross} />
+                </IconButton>
+              ) : (
+                <kbd className={css.SearchKey}>/</kbd>
+              )}
+            </div>
           </div>
           <div className={css.SidebarScroll}>
             <Scroll variant="Background" direction="Vertical" size="300" hideTrack visibility="Hover">
@@ -331,29 +311,26 @@ export function Settings({ initialPage, requestClose }: SettingsProps) {
                   </Text>
                 )}
                 {groups.map((group) => (
-                  <div key={group[0].name} className={css.SidebarGroup}>
-                    {group.map((item) => {
-                      const active = activePage === item.page;
-                      return (
-                        <button
-                          key={item.name}
-                          type="button"
-                          className={css.NavRow}
-                          aria-current={active ? 'page' : undefined}
-                          onClick={() => setActivePage(item.page)}
-                        >
-                          <IconTile icon={item.icon} tone={item.tone} filled />
-                          <Text
-                            as="span"
-                            size="T300"
-                            style={{ fontWeight: active ? 600 : 500 }}
-                            truncate
-                          >
-                            {item.name}
-                          </Text>
-                        </button>
-                      );
-                    })}
+                  <div key={group.items[0].name} className={css.SidebarGroup}>
+                    {group.label && (
+                      <Text as="span" size="T200" className={css.SidebarGroupLabel}>
+                        {group.label}
+                      </Text>
+                    )}
+                    {group.items.map((item) => (
+                      <button
+                        key={item.name}
+                        type="button"
+                        className={css.NavRow}
+                        aria-current={activePage === item.page ? 'page' : undefined}
+                        onClick={() => setActivePage(item.page)}
+                      >
+                        <Icon className={css.NavIcon} size="100" src={item.icon} />
+                        <Text as="span" size="T300" truncate>
+                          {item.name}
+                        </Text>
+                      </button>
+                    ))}
                   </div>
                 ))}
               </div>
@@ -365,6 +342,7 @@ export function Settings({ initialPage, requestClose }: SettingsProps) {
         </nav>
       )}
       {showContent && (
+        <SettingsBreadcrumb.Provider value="Settings">
         <div className={classNames(css.Content, isMobile && css.ContentCompact)}>
           {activePage === SettingsPages.GeneralPage && (
             <General requestClose={handlePageRequestClose} />
@@ -397,6 +375,7 @@ export function Settings({ initialPage, requestClose }: SettingsProps) {
             <About requestClose={handlePageRequestClose} />
           )}
         </div>
+        </SettingsBreadcrumb.Provider>
       )}
     </div>
   );

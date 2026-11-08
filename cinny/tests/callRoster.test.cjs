@@ -32,7 +32,10 @@ const imports = {
   '../../hooks/useMatrixClient': { useMatrixClient: () => ({ getUserId: () => '@me:x.de' }) },
   '../../hooks/useMediaAuthentication': { useMediaAuthentication: () => false },
   '../../hooks/useRoom': { useRoom: () => ({ roomId: '!r:x.de' }) },
-  '../../state/hooks/userRoomProfile': { useOpenUserRoomProfile: () => () => {} },
+  '../../state/hooks/userRoomProfile': {
+    useOpenUserRoomProfile: () => () => {},
+    useOpenLargeUserProfile: () => () => {},
+  },
   '../../components/sequence-card': {
     SequenceCard: ({ children }) => React.createElement('button', null, children),
   },

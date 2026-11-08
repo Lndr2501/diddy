@@ -1,5 +1,30 @@
 # Changelog
 
+## 1.3.2 (2026-11-08)
+
+Erste veröffentlichte Version mit allen Neuerungen aus 1.3.1 (der Build von 1.3.1 schlug fehl und wurde nicht veröffentlicht).
+
+- **Systemton bei der Bildschirmfreigabe (Linux):** auf älteren PipeWire-Versionen lässt sich der Ton einer gerade gestarteten App oft erst nach ein paar Versuchen abgreifen. Diese Versuche zählen nicht mehr als Fehler, der Ton neuer Apps kommt wieder an. Der Audio-Test der CI gibt bei einem Fehlschlag die Meldungen des Helfers aus.
+
+## 1.3.1 (2026-11-08, nicht veröffentlicht)
+
+### Highlights
+
+- **Calls wie bei Discord:** Diddy zeichnet den Call selbst. Jede Person und jede Bildschirmübertragung ist eine eigene Kachel ("Luis' Stream" mit LIVE-Abzeichen). Ein Klick holt eine Kachel groß nach vorn, die anderen rücken in eine Leiste darunter; Escape führt zurück zum Raster. Übertragungen erscheinen groß in ihrem eigenen Seitenverhältnis, ohne schwarze Balken.
+- **Neue Call-Leiste:** Mikrofon und Ausgabe mit Geräteauswahl als ein Knopf, Freigabe-Menü mit Systemton an/aus und "Stop sharing", "Mehr"-Menü für Ansicht und Call-Einstellungen, Statuszeile über der Leiste statt loser Text daneben.
+- **Anrufen während eines Calls:** der Anruf-Knopf im Profil, "Join" in anderen Räumen und die Call-Knöpfe im Raumkopf sind nicht mehr ausgegraut. Diddy fragt "Leave your current call?" und wechselt nach Bestätigung.
+- **Einstellungen im Stil von T3 Code:** schlanker Kopf mit Breadcrumb, Suche mit `/`, schlichte Symbole, beschriftete Gruppen, Abschnittsüberschriften; auch für Raum- und Space-Einstellungen.
+- **Großes Profil:** ein Klick auf das Profilbild (oder auf einen Namen in "Im Gespräch") öffnet ein großes Profilfenster. Im Profil-Editor lassen sich Layout, Banner-Höhe und Bildgröße dafür einstellen.
+- **Neues Theme "DAAARK"** mit den Farben des Dark-Themes von T3 Code: reines Schwarz, #111-Spalten, blauer Akzent.
+- **Apple-Emoji unter Linux,** wenn die Schrift "Apple Color Emoji" installiert ist (Anleitung im README, optionales Nix-Paket `apple-color-emoji`; die Schrift selbst liegt aus Lizenzgründen nicht im Paket).
+
+### Weitere Änderungen
+
+- **Systemton bei der Bildschirmfreigabe (Linux):** fällt die Aufnahme einer einzelnen App aus, läuft der Ton der übrigen weiter, statt die Freigabe mit "Application audio monitor failed" zu beenden. Der genaue Grund steht jetzt im App-Log.
+- Das Menü von Element Call (Lautstärke, "Mute for me") sieht aus wie Diddys eigene Menüs; das überflüssige "Copy"-Menü beim Öffnen erscheint nicht mehr.
+- Die Seitenspalten liegen tonal zwischen Fensterhintergrund und Chat (keine helle graue Fläche mehr).
+- App-Version in der Oberfläche korrigiert (1.3.0 zeigte noch 1.2.0 an).
+
 ## 1.3.0 (2026-11-08)
 
 ### Highlights

@@ -384,7 +384,7 @@ const trusted = (event) => event.senderFrame && event.senderFrame === event.send
 const audioFor = (contents) => {
   if (!audioCaptures.has(contents.id)) {
     const helper = process.env.DIDDY_AUDIO_HELPER || path.join(process.resourcesPath, 'diddy-system-audio');
-    const audio = createSystemAudio({ helper, send: (message) => { if (!contents.isDestroyed()) contents.send('diddy:audio-data', message); } });
+    const audio = createSystemAudio({ helper, log: (line) => diag.writeLine(line), send: (message) => { if (!contents.isDestroyed()) contents.send('diddy:audio-data', message); } });
     audioCaptures.set(contents.id, audio);
     contents.on('did-start-navigation', (_event, _url, _inPlace, isMainFrame) => { if (isMainFrame) audio.close(); });
     contents.on('render-process-gone', () => audio.close());
