@@ -22,8 +22,19 @@ import {
   removeLightOptionsRoom,
   useOptionsRooms,
 } from '../../../plugins/diddy/optionsRoom';
-import { uploadDiddyMedia, uploadNameplateMedia, useMxcUrl } from '../../../plugins/diddy/media';
+import {
+  uploadDiddyMedia,
+  uploadNameplateMedia,
+  uploadProfileEffect,
+  useMxcUrl,
+} from '../../../plugins/diddy/media';
 import { readNameplateZip } from '../../../plugins/diddy/nameplateZip';
+import { readProfileEffectImage, readProfileEffectZip } from '../../../plugins/diddy/effectZip';
+import { MAX_EFFECT_LAYERS, PROFILE_EFFECT_PRESETS } from '../../../plugins/diddy/profileEffect';
+import {
+  ProfileEffectOverlay,
+  useProfileEffectAnimation,
+} from '../../../components/diddy/ProfileEffect';
 import {
   MAX_NAMEPLATE_VIDEO_SECONDS,
   isNameplateZip,
@@ -373,10 +384,13 @@ function CardPreview({ userId, displayName, avatarUrl, draft }: PreviewProps) {
     headerBg = headerFrom ?? headerTo ?? headerBg;
   }
 
+  const animateEffect = useProfileEffectAnimation();
+
   return (
     <div
       className={css.Card}
       style={{
+        position: 'relative',
         ...(accent
           ? {
               borderColor: accent,
@@ -449,6 +463,7 @@ function CardPreview({ userId, displayName, avatarUrl, draft }: PreviewProps) {
           </div>
         )}
       </div>
+      <ProfileEffectOverlay effect={draft.effect} animate={animateEffect} />
     </div>
   );
 }
@@ -617,6 +632,7 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
     setDraft((d) => ({ ...d, card: { ...d.card, ...p } }));
   const patchPlate = (p: Partial<NameplateStyle>) =>
     setDraft((d) => ({ ...d, nameplate: { ...d.nameplate, ...p } }));
+  const animateEffects = useProfileEffectAnimation();
 
   // setup
   const spaces = mx
@@ -766,6 +782,24 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
     }
   };
 
+  // a profile effect (#86): a ZIP in the collection layout or one animated picture
+  const uploadEffect = async (file: File) => {
+    setBusyKey('effect');
+    setUploadError(undefined);
+    try {
+      const data = new Uint8Array(await file.arrayBuffer());
+      const imported = isNameplateZip(file)
+        ? await readProfileEffectZip(data.buffer)
+        : readProfileEffectImage(file.name, data);
+      const effect = await uploadProfileEffect(mx, imported);
+      setDraft((d) => ({ ...d, effect }));
+    } catch (e) {
+      setUploadError(e instanceof Error ? e.message : 'Upload failed.');
+    } finally {
+      setBusyKey(undefined);
+    }
+  };
+
   // save
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string>();
@@ -779,6 +813,7 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
         nameStyle,
         card,
         nameplate,
+        effect,
         animatedAvatarMxc,
         avatarPos,
         status,
@@ -1324,6 +1359,55 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
           />
         )}
       </SettingsCard>
+      <SettingsCard
+        icon={Icons.Star}
+        title="Profile effect"
+        description="An animated overlay other Diddy users see over your profile card."
+      >
+        <StackField label="Built-in">
+          <div className={css.PresetGrid} role="group" aria-label="Profile effect presets">
+            <button
+              type="button"
+              className={classNames(css.PresetSwatch, css.PresetNone)}
+              aria-pressed={!draft.effect}
+              onClick={() => setDraft((d) => ({ ...d, effect: undefined }))}
+            >
+              None
+            </button>
+            {PROFILE_EFFECT_PRESETS.map((preset) => (
+              <button
+                key={preset.id}
+                type="button"
+                className={classNames(css.PresetSwatch, css.EffectSwatch)}
+                aria-pressed={!draft.effect?.layers && draft.effect?.preset === preset.id}
+                onClick={() => setDraft((d) => ({ ...d, effect: { preset: preset.id } }))}
+              >
+                <ProfileEffectOverlay effect={{ preset: preset.id }} animate={animateEffects} />
+                <span className={css.EffectSwatchLabel}>{preset.label}</span>
+              </button>
+            ))}
+          </div>
+        </StackField>
+        <UploadField
+          title={
+            draft.effect?.layers
+              ? `${draft.effect.name ?? 'Your effect'} (${draft.effect.layers.length} ${
+                  draft.effect.layers.length === 1 ? 'layer' : 'layers'
+                })`
+              : 'Your own effect (optional)'
+          }
+          hint={`A ZIP with konfiguration.json and its layers (Phasen/ or Ebenen/), or one animated PNG, WebP or GIF with a transparent background. Up to ${MAX_EFFECT_LAYERS} layers, 3 MB each, 8 MB in total.`}
+          accept=".zip,application/zip,image/png,image/webp,image/gif"
+          acceptsFile={(file) =>
+            ['image/png', 'image/webp', 'image/gif'].includes(file.type) || isNameplateZip(file)
+          }
+          wide
+          mxc={draft.effect?.previewMxc ?? draft.effect?.stillMxc ?? draft.effect?.layers?.[0]?.mxc}
+          busy={busyKey === 'effect'}
+          onFile={uploadEffect}
+          onRemove={() => setDraft((d) => ({ ...d, effect: undefined }))}
+        />
+      </SettingsCard>
     </>
   );
 
@@ -1409,8 +1493,8 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
           <Switch variant="Primary" value={shareVersion} onChange={setShareVersion} />
         </Field>
         <Text size="T200" priority="300">
-          Other Diddy users see it small on your profile card. Switched off, it is removed from
-          your profile.
+          Other Diddy users see it small on your profile card. Switched off, it is removed from your
+          profile.
         </Text>
       </SettingsCard>
       <SettingsCard
@@ -1518,7 +1602,7 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
                 <SettingsCard
                   icon={Icons.Eye}
                   title="Live preview"
-                  description="See how your profile card and nameplate look to others."
+                  description="See how your profile card, profile effect and nameplate look to others."
                 >
                   <div className={themeClass(draft.cardLayout?.theme)}>
                     <CardPreview

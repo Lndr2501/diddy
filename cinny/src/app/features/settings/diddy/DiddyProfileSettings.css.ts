@@ -512,6 +512,19 @@ export const PresetSwatch = style({
   },
 });
 
+/** a built-in profile effect playing on a small dark tile (#86) */
+export const EffectSwatch = style({
+  position: 'relative',
+  overflow: 'hidden',
+  height: toRem(64),
+  background: 'linear-gradient(160deg, #23243a, #121320)',
+});
+
+export const EffectSwatchLabel = style({
+  position: 'relative',
+  zIndex: 4,
+});
+
 export const PresetNone = style({
   color: color.SurfaceVariant.OnContainer,
   textShadow: 'none',
