@@ -14,6 +14,8 @@ import {
   NameEffect,
   NameplateStyle,
   NameStyle,
+  ProfileEffect,
+  ProfileEffectLayer,
 } from './types';
 import {
   sanitizeAbout,
@@ -24,6 +26,7 @@ import {
 } from './profileExtras';
 import { NAMEPLATE_PRESET_IDS } from './nameplate';
 import { safeVersion } from './clientVersion';
+import { clampLayerTiming, MAX_EFFECT_LAYERS, PROFILE_EFFECT_PRESET_IDS } from './profileEffect';
 
 const HEX_COLOR = /^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/;
 const MXC_URI = /^mxc:\/\/[A-Za-z0-9.\-:[\]]+\/[A-Za-z0-9_-]+$/;
@@ -148,6 +151,35 @@ export const sanitizeNameplate = (raw: unknown): NameplateStyle | undefined => {
   return out.color || out.preset || out.imageMxc || out.videoMxc ? out : undefined;
 };
 
+/**
+ * Validates an untrusted profile effect (#86): a known preset id, or at most MAX_EFFECT_LAYERS
+ * mxc layers with clamped timing and box, plus still / preview pictures.
+ */
+export const sanitizeProfileEffect = (raw: unknown): ProfileEffect | undefined => {
+  if (!isRecord(raw)) return undefined;
+  const out: ProfileEffect = {};
+  if (Array.isArray(raw.layers)) {
+    const layers: ProfileEffectLayer[] = [];
+    raw.layers.slice(0, 16).forEach((layer) => {
+      if (layers.length >= MAX_EFFECT_LAYERS || !isRecord(layer)) return;
+      const mxc = safeMxc(layer.mxc);
+      if (mxc) layers.push({ mxc, ...clampLayerTiming(layer) });
+    });
+    if (layers.length > 0) out.layers = layers;
+  }
+  if (out.layers) {
+    const stillMxc = safeMxc(raw.stillMxc);
+    const previewMxc = safeMxc(raw.previewMxc);
+    if (stillMxc) out.stillMxc = stillMxc;
+    if (previewMxc) out.previewMxc = previewMxc;
+    const name = safeText(raw.name, 48);
+    if (name) out.name = name;
+    return out;
+  }
+  const preset = PROFILE_EFFECT_PRESET_IDS.find((id) => id === raw.preset);
+  return preset ? { preset } : undefined;
+};
+
 /** Validates an untrusted profile event content; undefined when it is not a v1 profile. */
 export const sanitizeProfile = (raw: unknown): DiddyProfile | undefined => {
   if (!isRecord(raw) || raw.v !== 1) return undefined;
@@ -158,6 +190,8 @@ export const sanitizeProfile = (raw: unknown): DiddyProfile | undefined => {
   if (card) out.card = card;
   const nameplate = sanitizeNameplate(raw.nameplate);
   if (nameplate) out.nameplate = nameplate;
+  const effect = sanitizeProfileEffect(raw.effect);
+  if (effect) out.effect = effect;
   const animatedAvatarMxc = safeMxc(raw.animatedAvatarMxc);
   if (animatedAvatarMxc) out.animatedAvatarMxc = animatedAvatarMxc;
   const avatarPos = sanitizeImagePos(raw.avatarPos);
