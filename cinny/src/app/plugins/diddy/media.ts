@@ -4,8 +4,10 @@ import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
 import { safeMxc } from './sanitize';
 import { checkNameplateFile, checkNameplateVideoDuration } from './nameplate';
-import type { ProfileEffect } from './types';
+import type { ProfileEffect, ProfileFrame } from './types';
 import type { EffectFile, ImportedEffect } from './effectZip';
+import type { ImportedFrame } from './frameZip';
+import { MAX_FRAME_TOTAL_BYTES } from './profileFrame';
 import { EFFECT_REF_HEIGHT, EFFECT_REF_WIDTH, MAX_EFFECT_TOTAL_BYTES } from './profileEffect';
 
 export const MAX_DIDDY_MEDIA_BYTES = 8 * 1024 * 1024;
@@ -204,6 +206,33 @@ export const uploadProfileEffect = async (
     out.previewMxc = await send(toBlob(effect.preview), effect.preview.name, effect.preview.type);
   }
   if (effect.name) out.name = effect.name;
+  return out;
+};
+
+/**
+ * Uploads an imported profile frame (#87): every layer picture, then the frame with its
+ * geometry. Sizes were checked while importing.
+ */
+export const uploadProfileFrame = async (
+  mx: MatrixClient,
+  frame: ImportedFrame
+): Promise<ProfileFrame> => {
+  const limit = await uploadLimit(mx);
+  const total = frame.layers.reduce((sum, l) => sum + l.data.byteLength, 0);
+  if (total > MAX_FRAME_TOTAL_BYTES || frame.layers.some((l) => l.data.byteLength > limit)) {
+    throw new Error('This frame is too large for this server.');
+  }
+  const out: ProfileFrame = { ...frame.geometry, layers: [] };
+  // eslint-disable-next-line no-restricted-syntax
+  for (const layer of frame.layers) {
+    // eslint-disable-next-line no-await-in-loop
+    const res = await mx.uploadContent(new Blob([layer.data], { type: layer.type }), {
+      type: layer.type,
+      name: layer.name,
+    });
+    out.layers?.push({ mxc: res.content_uri, order: layer.order, anchor: layer.anchor });
+  }
+  if (frame.name) out.name = frame.name;
   return out;
 };
 
