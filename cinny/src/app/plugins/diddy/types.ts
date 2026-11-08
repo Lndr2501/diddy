@@ -5,6 +5,7 @@ import type {
   ProfileLink,
 } from './profileExtras';
 import type { NameplateFit, NameplatePresetId } from './nameplate';
+import type { ProfileEffectPresetId } from './profileEffect';
 
 /**
  * Diddy profile system: data model.
@@ -103,6 +104,42 @@ export type NameplateStyle = {
   fit?: NameplateFit;
 };
 
+/**
+ * One uploaded layer of a profile effect (#86): a transparent animated picture placed in the
+ * 450 x 880 reference box over the card, see profileEffect.ts.
+ */
+export type ProfileEffectLayer = {
+  /** APNG / WebP / GIF (mxc://) */
+  mxc: string;
+  /** ms after the card opened until the layer first shows */
+  start: number;
+  /** ms one play lasts; 0 = the picture loops by itself and is never restarted */
+  duration: number;
+  /** plays again (from its first frame) after `loopDelay` */
+  loop: boolean;
+  loopDelay: number;
+  /** box in the reference: left, top, width, height */
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  /** stacking order between the layers */
+  z: number;
+};
+
+/** Animated overlay over the profile card (#86): a built-in preset or uploaded layers. */
+export type ProfileEffect = {
+  /** original Diddy preset drawn with CSS (ignored when there are layers) */
+  preset?: ProfileEffectPresetId;
+  layers?: ProfileEffectLayer[];
+  /** still picture shown where nothing may move (reduced motion / effects switched off) */
+  stillMxc?: string;
+  /** still preview of the effect (editor) */
+  previewMxc?: string;
+  /** name of the imported effect */
+  name?: string;
+};
+
 export type DiddyStatus = 'online' | 'idle' | 'dnd' | 'invisible';
 
 export type DiddyProfile = {
@@ -110,6 +147,8 @@ export type DiddyProfile = {
   nameStyle?: NameStyle;
   card?: CardStyle;
   nameplate?: NameplateStyle;
+  /** animated overlay over the profile card (#86); older clients ignore it */
+  effect?: ProfileEffect;
   /** animated avatar (mxc://, GIF/WebP) shown by other Diddy clients instead of the normal avatar */
   animatedAvatarMxc?: string;
   /** visible part of the animated avatar */
