@@ -17,7 +17,13 @@ export type CallFrameMenuDetail = { x: number; y: number; text: string };
 
 /** Right-click on a person (a tile in the call, or their avatar elsewhere): the Discord-style menu. */
 export const CALL_USER_MENU_EVENT = 'diddy-call-user-menu';
-export type CallUserMenuDetail = { x: number; y: number; userId: string };
+export type CallUserMenuDetail = {
+  x: number;
+  y: number;
+  userId: string;
+  /** opened on a screen share: Element Call's id of that share (its volume is in the menu) */
+  shareId?: string;
+};
 
 /** A participant tile of the embedded call (Element Call's `MediaView`). */
 export const CALL_TILE_SELECTOR = '[data-testid="videoTile"]';
@@ -75,10 +81,12 @@ export const mutedCallUsers = (
   return muted;
 };
 
-/** Ask the main window to show the person menu at (x, y) for `userId`. */
-export const openCallUserMenu = (userId: string, x: number, y: number): void => {
+/** Ask the main window to show the person menu at (x, y) for `userId` (or their `shareId`). */
+export const openCallUserMenu = (userId: string, x: number, y: number, shareId?: string): void => {
   window.dispatchEvent(
-    new CustomEvent<CallUserMenuDetail>(CALL_USER_MENU_EVENT, { detail: { x, y, userId } })
+    new CustomEvent<CallUserMenuDetail>(CALL_USER_MENU_EVENT, {
+      detail: shareId ? { x, y, userId, shareId } : { x, y, userId },
+    })
   );
 };
 
