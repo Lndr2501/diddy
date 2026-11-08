@@ -104,3 +104,130 @@ export const watchShareVolume = (vm: ShareVolumeVm, onChange: () => void): (() =
   const subs = [vm.playbackVolume$.subscribe(onChange), vm.audioEnabled$.subscribe(onChange)];
   return () => subs.forEach((sub) => sub.unsubscribe());
 };
+
+/*
+ * Remembered per person: the volume you gave somebody's screen share comes back the next time
+ * they share (Element Call starts every share at 100 %). Kept in localStorage under
+ * `diddyStreamVolumes` as { "@user:server": { volume, muted } }; 100 % and not muted is the
+ * default and is not stored.
+ */
+
+export type RememberedVolume = {
+  /** the level the slider stands at, also while muted (unmute returns to it); 0 < volume <= 1 */
+  volume: number;
+  muted: boolean;
+};
+
+type KeyValueStore = {
+  getItem: (key: string) => string | null;
+  setItem: (key: string, value: string) => void;
+};
+
+export const STREAM_VOLUMES_KEY = 'diddyStreamVolumes';
+
+const validLevel = (value: unknown): number | undefined => {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? Math.min(1, n) : undefined;
+};
+
+/** Everything remembered; broken or foreign entries are left out. */
+export const readStreamVolumes = (
+  storage: KeyValueStore | undefined
+): Record<string, RememberedVolume> => {
+  try {
+    const raw = JSON.parse(storage?.getItem(STREAM_VOLUMES_KEY) ?? '{}');
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+    const result: Record<string, RememberedVolume> = {};
+    Object.entries(raw as Record<string, Partial<RememberedVolume>>).forEach(([userId, entry]) => {
+      const volume = validLevel(entry?.volume);
+      if (userId.startsWith('@') && volume !== undefined) {
+        result[userId] = { volume, muted: entry?.muted === true };
+      }
+    });
+    return result;
+  } catch {
+    return {};
+  }
+};
+
+/** The remembered volume of `userId`'s screen shares, if any. */
+export const rememberedStreamVolume = (
+  storage: KeyValueStore | undefined,
+  userId: string
+): RememberedVolume | undefined => readStreamVolumes(storage)[userId];
+
+/** Remember `entry` for `userId` (the default, 100 % and not muted, removes the entry). */
+export const rememberStreamVolume = (
+  storage: KeyValueStore | undefined,
+  userId: string,
+  entry: RememberedVolume
+): void => {
+  if (!storage || !userId) return;
+  const all = readStreamVolumes(storage);
+  const volume = validLevel(entry.volume) ?? 1;
+  if (volume === 1 && !entry.muted) delete all[userId];
+  else all[userId] = { volume, muted: entry.muted };
+  try {
+    storage.setItem(STREAM_VOLUMES_KEY, JSON.stringify(all));
+  } catch {
+    // storage full or blocked: the volume still applies to this share
+  }
+};
+
+/** Share models whose remembered volume was already applied (once per share, never again). */
+const restored = new WeakSet<object>();
+
+/**
+ * Give a share that just started the volume remembered for its owner. Only once per share, so
+ * it never overrides what you change while the share runs.
+ */
+export const restoreStreamVolume = (
+  vm: ShareVolumeVm,
+  userId: string,
+  storage: KeyValueStore | undefined
+): void => {
+  if (restored.has(vm)) return;
+  restored.add(vm);
+  const entry = rememberedStreamVolume(storage, userId);
+  if (!entry) return;
+  vm.adjustPlaybackVolume(entry.volume);
+  vm.commitPlaybackVolume();
+  // muted: Element Call keeps the level above, so unmute returns to it
+  if (entry.muted) vm.togglePlaybackMuted();
+};
+
+/** End of a drag: Element Call takes the level, and it is remembered for `userId`. */
+export const commitAndRemember = (
+  vm: ShareVolumeVm,
+  userId: string,
+  storage: KeyValueStore | undefined
+): void => {
+  vm.commitPlaybackVolume();
+  const { volume } = readShareVolume(vm);
+  if (volume > 0) {
+    rememberStreamVolume(storage, userId, { volume, muted: false });
+    return;
+  }
+  // dragged down to nothing: muted, at the level known before
+  const before = rememberedStreamVolume(storage, userId)?.volume ?? 1;
+  rememberStreamVolume(storage, userId, { volume: before, muted: true });
+};
+
+/** The mute button: Element Call mutes or returns to the level, and that is remembered. */
+export const toggleAndRemember = (
+  vm: ShareVolumeVm,
+  userId: string,
+  storage: KeyValueStore | undefined
+): void => {
+  const before = readShareVolume(vm).volume;
+  vm.togglePlaybackMuted();
+  const after = readShareVolume(vm).volume;
+  if (after === 0) {
+    rememberStreamVolume(storage, userId, {
+      volume: before > 0 ? before : rememberedStreamVolume(storage, userId)?.volume ?? 1,
+      muted: true,
+    });
+  } else {
+    rememberStreamVolume(storage, userId, { volume: after, muted: false });
+  }
+};
