@@ -51,6 +51,9 @@ export class WatchController {
 
   private lastPlayCommand = -Infinity;
 
+  /** the player matched the shared state at the last quiet tick (only then a jump is the user) */
+  private synced = false;
+
   private readonly driftLimit: number;
 
   private readonly suppressMs: number;
@@ -69,6 +72,7 @@ export class WatchController {
     if (shared?.session !== this.shared?.session) {
       this.skipped.clear();
       this.lastSample = undefined;
+      this.synced = false;
     }
     this.shared = shared;
   }
@@ -80,6 +84,7 @@ export class WatchController {
   private commanded(now: number) {
     this.suppressUntil = now + this.suppressMs;
     this.lastSample = undefined;
+    this.synced = false;
   }
 
   /**
@@ -122,8 +127,9 @@ export class WatchController {
     this.lastSample = sample;
     const loaded = sample.state !== PlayerState.Unstarted && sample.state !== PlayerState.Cued;
 
-    // 1. a jump in the player's own timeline that we did not cause: the user seeked
-    if (!suppressed && last && loaded) {
+    // 1. a jump in the player's own timeline that we did not cause: the user seeked (only once
+    //    the player was in sync, so jumps while it starts up or loads are not taken for seeks)
+    if (!suppressed && this.synced && last && loaded) {
       const elapsed = Math.max(0, sample.at - last.at) / 1000;
       const moved = sample.position - last.position;
       const allowed = isRunning(last.state) ? elapsed * Math.max(last.rate, shared.rate) : 0;
@@ -172,6 +178,7 @@ export class WatchController {
       commands.push({ kind: 'rate', rate: shared.rate });
     }
     if (commands.length > 0) this.commanded(now);
+    else if (!suppressed && loaded) this.synced = true;
     return { commands };
   }
 }

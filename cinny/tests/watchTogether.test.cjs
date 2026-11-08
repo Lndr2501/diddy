@@ -309,6 +309,20 @@ test('a jump in the player that we did not cause is a seek for everybody', () =>
   assert.deepEqual(plain(p.tick(sample(20, P.Paused, 20_500), 20_500).change), { position: 20 });
 });
 
+test('jumps while the player starts up are not taken for user seeks', () => {
+  const c = new WatchController();
+  c.setShared(shared({ ts: 20_000, position: 45 }));
+  // the frame reports 0 first, then jumps to its start parameter (30)
+  assert.deepEqual(plain(c.tick(sample(0, P.Buffering, 20_000), 20_000).commands), [
+    { kind: 'seek', to: 45 },
+  ]);
+  c.tick(sample(0, P.Buffering, 20_500), 20_500);
+  c.tick(sample(0, P.Buffering, 21_000), 21_000);
+  const r = c.tick(sample(30, P.Playing, 21_500), 21_500);
+  assert.equal(r.change, undefined);
+  assert.deepEqual(plain(r.commands), [{ kind: 'seek', to: 46.5 }]);
+});
+
 test('our own seeks are not echoed back as user seeks', () => {
   const c = new WatchController();
   c.setShared(shared({ ts: 20_000, position: 110 }));
