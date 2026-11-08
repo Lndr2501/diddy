@@ -71,7 +71,7 @@ function NoPermissionMessage() {
 function AlreadyInCallMessage() {
   return (
     <Text style={{ margin: 'auto', color: color.Warning.Main }} size="T300" align="Center">
-      Already in another call — End the current call to join!
+      You&apos;re in another call — Joining will end it for you.
     </Text>
   );
 }

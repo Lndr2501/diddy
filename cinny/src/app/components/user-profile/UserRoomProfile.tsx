@@ -1,4 +1,4 @@
-import { Box, Button, color, Icon, Icons, Text } from 'folds';
+import { Box, Button, color, Icon, Icons, Spinner, Text } from 'folds';
 import React, { useCallback, useState } from 'react';
 import { ICreateRoomStateEvent, Preset, Visibility } from 'matrix-js-sdk';
 import classNames from 'classnames';
@@ -41,6 +41,7 @@ import { visibleModules } from '../../plugins/diddy/profileExtras';
 import { findDirectRoomId, PROFILE_CALL_PREFERENCES } from '../../plugins/directCall';
 import { createRoomEncryptionState } from '../create-room';
 import { useCallEmbed, useCallStart } from '../../hooks/useCallEmbed';
+import { useSwitchCall } from '../call-switch/useSwitchCall';
 import { useLivekitSupport } from '../../hooks/useLivekitSupport';
 import { webRTCSupported } from '../../utils/rtc';
 import { AccountDataEvent } from '../../../types/matrix/accountData';
@@ -142,19 +143,43 @@ export function UserRoomProfile({ userId, large }: UserRoomProfileProps) {
     throw new Error('The chat was created but has not arrived yet. Try again in a moment.');
   }, [mx, userId]);
 
+  const { requestSwitch, prompt: switchPrompt } = useSwitchCall();
+
   const handleCall = () => {
-    setCalling(true);
     setCallError(undefined);
-    getOrCreateDirectRoom()
-      .then((directRoom) => {
+    // already in the call with this very user: just go there
+    const currentRoomId = callEmbed?.roomId;
+    if (
+      currentRoomId &&
+      currentRoomId ===
+        findDirectRoomId(
+          mx.getAccountData(AccountDataEvent.Direct as never)?.getContent(),
+          userId,
+          (id) => mx.getRoom(id)?.getMyMembership() === 'join'
+        )
+    ) {
+      closeUserRoomProfile();
+      navigate(getDirectRoomPath(currentRoomId));
+      return;
+    }
+
+    // the spinner shows from the click, or in a call from the confirmation
+    if (!callEmbed) setCalling(true);
+    requestSwitch({
+      action: 'call',
+      targetName: displayName ?? getMxIdLocalPart(userId) ?? userId,
+      onConfirmed: () => setCalling(true),
+      start: async () => {
+        // when in a call this runs only after the old call is gone
+        const directRoom = await getOrCreateDirectRoom();
         startDirectCall(directRoom, { ...PROFILE_CALL_PREFERENCES });
         closeUserRoomProfile();
         navigate(getDirectRoomPath(directRoom.roomId));
-      })
-      .catch((error: Error) => {
-        setCallError(error?.message || 'Could not start the call.');
-        setCalling(false);
-      });
+      },
+      onError: (error) => setCallError(error?.message || 'Could not start the call.'),
+    }).then((started) => {
+      if (!started) setCalling(false);
+    });
   };
 
   const notMe = userId !== myUserId;
@@ -166,10 +191,16 @@ export function UserRoomProfile({ userId, large }: UserRoomProfileProps) {
           variant="Secondary"
           fill="Soft"
           radii="Pill"
-          before={<Icon size="50" src={Icons.Phone} filled />}
           onClick={handleCall}
-          disabled={!!callEmbed || calling}
-          title={callEmbed ? 'Already in a call. End it first.' : 'Call privately'}
+          disabled={calling}
+          before={
+            calling ? (
+              <Spinner size="100" variant="Secondary" />
+            ) : (
+              <Icon size="50" src={Icons.Phone} filled />
+            )
+          }
+          title={callEmbed ? 'Leaves your current call' : 'Call privately'}
         >
           <Text size="B300">Call</Text>
         </Button>
@@ -257,6 +288,7 @@ export function UserRoomProfile({ userId, large }: UserRoomProfileProps) {
               />
             )}
           </div>
+          {switchPrompt}
           {callError && (
             <Text size="T200" style={{ color: color.Critical.Main }}>
               {callError}

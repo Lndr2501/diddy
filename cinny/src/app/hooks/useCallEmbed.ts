@@ -88,10 +88,9 @@ export const useCallJoined = (embed?: CallEmbed): boolean => {
     }, [])
   );
 
+  // a different embed (or none) never inherits the joined state of the previous call
   useEffect(() => {
-    if (!embed) {
-      setJoined(false);
-    }
+    setJoined(embed?.joined ?? false);
   }, [embed]);
 
   return joined;

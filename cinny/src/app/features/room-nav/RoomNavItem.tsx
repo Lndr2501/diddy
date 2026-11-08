@@ -56,6 +56,7 @@ import { InviteUserPrompt } from '../../components/invite-user-prompt';
 import { useRoomName } from '../../hooks/useRoomMeta';
 import { useCallMembers, useCallSession } from '../../hooks/useCall';
 import { useCallEmbed, useCallStart } from '../../hooks/useCallEmbed';
+import { useSwitchCall } from '../../components/call-switch/useSwitchCall';
 import { callChatAtom } from '../../state/callEmbed';
 import { useCallPreferencesAtom } from '../../state/hooks/callPreferences';
 import { useAutoDiscoveryInfo } from '../../hooks/useAutoDiscoveryInfo';
@@ -307,6 +308,7 @@ export function RoomNavItem({
   const callSession = useCallSession(room);
   const callMembers = useCallMembers(callSession);
   const startCall = useCallStart(direct);
+  const { requestSwitch, prompt: switchPrompt } = useSwitchCall();
   const callEmbed = useCallEmbed();
   const callPref = useAtomValue(useCallPreferencesAtom());
   const autoDiscoveryInfo = useAutoDiscoveryInfo();
@@ -327,14 +329,18 @@ export function RoomNavItem({
       return;
     }
 
-    // Do not join if already in call
-    if (callEmbed) {
+    // Already in this room's call: nothing to start
+    if (callEmbed?.roomId === room.roomId) {
       return;
     }
-    // Start call in second click
+    // Start call in second click; in another call this asks to leave it first
     if (selected) {
       evt.preventDefault();
-      startCall(room, callPref);
+      requestSwitch({
+        action: direct ? 'call' : 'join',
+        targetName: roomName,
+        start: () => startCall(room, callPref),
+      });
     }
   };
 
@@ -463,6 +469,7 @@ export function RoomNavItem({
         )}
       </NavItem>
       <CallMemberList room={room} members={callMembers} />
+      {switchPrompt}
     </>
   );
 }
