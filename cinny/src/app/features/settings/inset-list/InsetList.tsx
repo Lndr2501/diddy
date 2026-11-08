@@ -43,13 +43,14 @@ export function SettingsPage({ title, requestClose, children }: SettingsPageProp
         <div className={css.HeaderActions}>
           <IconButton
             onClick={requestClose}
-            variant="Surface"
-            fill="None"
-            size="300"
-            radii="300"
-            aria-label="Close"
+            variant="SurfaceVariant"
+            fill="Soft"
+            size="400"
+            radii="Pill"
+            aria-label="Close settings"
+            title="Close (Esc)"
           >
-            <Icon size="100" src={Icons.Cross} />
+            <Icon size="200" src={Icons.Cross} />
           </IconButton>
         </div>
       </PageHeader>
