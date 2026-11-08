@@ -281,9 +281,9 @@ final class TimelineController: ObservableObject {
 
     private static func body(of message: MessageContent) -> MessageRow.Body {
         switch message.msgType {
-        case .text(let text): return .text(text.body)
-        case .emote(let emote): return .text("_\(emote.body)_")
-        case .notice(let notice): return .text(notice.body)
+        case .text(let text): return .text(Self.text(text.body, formatted: text.formatted))
+        case .emote(let emote): return .text("_\(Self.text(emote.body, formatted: emote.formatted))_")
+        case .notice(let notice): return .text(Self.text(notice.body, formatted: notice.formatted))
         case .image(let image):
             return .image(image.source, filename: image.filename,
                           width: image.info?.width.map { CGFloat($0) }, height: image.info?.height.map { CGFloat($0) })
@@ -292,6 +292,12 @@ final class TimelineController: ObservableObject {
         case .file(let file): return .file("📎 \(file.filename)", source: file.source, mimeType: file.info?.mimetype)
         default: return .text(message.body)
         }
+    }
+
+    /// The plain body, unless the HTML body has mentions the plain body may only name in passing.
+    private static func text(_ body: String, formatted: FormattedBody?) -> String {
+        guard let formatted, case .html = formatted.format, let markdown = MentionText.markdown(fromHTML: formatted.body) else { return body }
+        return markdown
     }
 
     /// One line for reply previews and the direct message list.
