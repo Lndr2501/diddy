@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<!--
+  Diddy plugin (apiVersion 1): open issues in a public GitHub repository.
+  Self-contained, no dependencies, token or cookies. See ../plugins.md.
+  Serve over HTTPS or locally: python3 -m http.server 8000 --bind 127.0.0.1
+  Add http://localhost:8000/github-issues.html?repo=Lndr2501/diddy in Diddy.
+-->
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="referrer" content="no-referrer" />
+    <title>GitHub Issues · Diddy</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --fg: #202124;
+        --muted: #606975;
+        --line: #dce1e7;
+        --surface: #f5f7fa;
+        --accent: #0969da;
+        --green: #18773a;
+        --error: #b42318;
+      }
+      :root[data-theme="dark"] {
+        color-scheme: dark;
+        --fg: #e6edf3;
+        --muted: #9ba7b4;
+        --line: #303943;
+        --surface: #1b222c;
+        --accent: #79b8ff;
+        --green: #56d384;
+        --error: #ff938a;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: transparent;
+        color: var(--fg);
+        font: 14px/1.45 system-ui, sans-serif;
+      }
+      main {
+        padding: 16px;
+        display: grid;
+        gap: 12px;
+      }
+      header,
+      .controls,
+      footer,
+      .pages {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      header {
+        justify-content: space-between;
+      }
+      .heading {
+        min-width: 0;
+      }
+      h1 {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 650;
+      }
+      a {
+        color: var(--accent);
+        text-decoration: none;
+        overflow-wrap: anywhere;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+      #repository-link {
+        display: block;
+        font-size: 12px;
+      }
+      #count {
+        flex-shrink: 0;
+        color: var(--green);
+        background: var(--surface);
+        padding: 5px 10px;
+        border-radius: 20px;
+        font-weight: 650;
+      }
+      input,
+      button {
+        font: inherit;
+        color: inherit;
+        border: 1px solid var(--line);
+        background: var(--surface);
+        border-radius: 8px;
+        padding: 7px 10px;
+      }
+      input {
+        flex: 1;
+        width: 100%;
+        min-width: 0;
+      }
+      button {
+        cursor: pointer;
+        flex-shrink: 0;
+      }
+      button:hover:not(:disabled) {
+        border-color: var(--accent);
+      }
+      button:disabled {
+        cursor: default;
+        opacity: 0.5;
+      }
+      :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 3px;
+      }
+      .muted {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      p {
+        margin: 0;
+      }
+      #error {
+        color: var(--error);
+        font-size: 12px;
+        overflow-wrap: anywhere;
+      }
+      #issues {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        max-height: 330px;
+        overflow-y: auto;
+        scrollbar-width: thin;
+      }
+      #issues li {
+        padding: 11px 0;
+        border-top: 1px solid var(--line);
+      }
+      .issue-title {
+        font-weight: 550;
+        color: var(--fg);
+      }
+      .meta {
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 12px;
+        overflow-wrap: anywhere;
+      }
+      .labels {
+        display: inline;
+      }
+      .label {
+        display: inline-block;
+        margin: 4px 4px 0 0;
+        padding: 1px 6px;
+        border-radius: 20px;
+        background: var(--surface);
+        color: var(--muted);
+        font-size: 11px;
+        overflow-wrap: anywhere;
+        max-width: 100%;
+      }
+      footer {
+        flex-wrap: wrap;
+        justify-content: space-between;
+      }
+      .pages {
+        font-size: 12px;
+      }
+      .pages button {
+        padding: 4px 8px;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      :root[data-layout="compact"] main {
+        padding: 6px 8px;
+        gap: 3px;
+      }
+      :root[data-layout="compact"] h1 {
+        font-size: 12px;
+      }
+      :root[data-layout="compact"] #count {
+        padding: 2px 7px;
+      }
+      :root[data-layout="compact"] .controls,
+      :root[data-layout="compact"] #issues,
+      :root[data-layout="compact"] footer,
+      :root[data-layout="compact"] #notice {
+        display: none;
+      }
+      @media (max-width: 310px) {
+        .controls {
+          flex-wrap: wrap;
+        }
+        .controls input {
+          flex-basis: 100%;
+        }
+      }
+    </style>
+    <style id="diddy-custom-css"></style>
+  </head>
+  <body>
+    <main id="app">
+      <header>
+        <div class="heading">
+          <h1>Offene GitHub Issues</h1>
+          <a
+            id="repository-link"
+            href="https://github.com/Lndr2501/diddy/issues"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Lndr2501/diddy ↗</a
+          >
+        </div>
+        <span id="count" aria-label="Anzahl offener Issues">—</span>
+      </header>
+      <!-- No form submission or popup: both are blocked by Diddy's sandbox. -->
+      <div class="controls">
+        <input
+          id="repository"
+          aria-label="GitHub Repository (Besitzer/Repository)"
+          placeholder="Besitzer/Repository"
+          autocomplete="off"
+          spellcheck="false"
+          maxlength="200"
+        />
+        <button id="apply" type="button" disabled>Anzeigen</button>
+        <button
+          id="refresh"
+          type="button"
+          aria-label="Issues aktualisieren"
+          disabled
+        >
+          ↻
+        </button>
+      </div>
+      <p id="status" class="muted" role="status" aria-live="polite">
+        Wird geladen …
+      </p>
+      <p id="error" role="alert" hidden></p>
+      <ul id="issues" aria-label="Offene Issues"></ul>
+      <footer>
+        <a
+          id="all-link"
+          href="https://github.com/Lndr2501/diddy/issues?q=is%3Aissue+is%3Aopen"
+          target="_blank"
+          rel="noopener noreferrer"
+          >Alle auf GitHub ↗</a
+        >
+        <div class="pages" id="pages" hidden>
+          <button id="previous" type="button" aria-label="Vorherige Seite">
+            ←
+          </button>
+          <span id="page"></span>
+          <button id="next" type="button" aria-label="Nächste Seite">→</button>
+        </div>
+      </footer>
+      <p id="notice" class="muted">
+        Nur öffentliche Repositories · ohne Pull Requests · alle 5 Minuten
+        aktualisiert
+      </p>
+    </main>
+    <script>
+      (() => {
+        "use strict";
+        const host = window.parent;
+        const embedded = host !== window;
+        const $ = (id) => document.getElementById(id);
+        const send = (message) => {
+          if (embedded) host.postMessage(message, "*");
+        };
+        const PER_PAGE = 20;
+        const REFRESH_MS = 5 * 60 * 1000;
+        const DEFAULT_REPO = "Lndr2501/diddy";
+        let locale = "de-DE";
+        let repository = DEFAULT_REPO;
+        let page = 1;
+        let state = null;
+        let busy = false;
+        let sequence = 0;
+        let controller;
+        let refreshTimer;
+        let unblockTimer;
+        let retryAt = 0;
+        let storageWait;
+        let lastHeight = 0;
+
+        function normalizeRepository(value) {
+          if (typeof value !== "string") return null;
+          let text = value.trim();
+          if (text.startsWith("https://")) {
+            try {
+              const url = new URL(text);
+              if (
+                url.hostname !== "github.com" ||
+                url.port ||
+                url.username ||
+                url.password ||
+                url.search ||
+                url.hash
+              )
+                return null;
+              text = url.pathname
+                .replace(/^\//, "")
+                .replace(/\/$/, "")
+                .replace(/\/issues$/, "");
+            } catch {
+              return null;
+            }
+          }
+          text = text.replace(/\.git$/, "");
+          if (!/^[a-z0-9](?:[a-z0-9-]{0,38})\/[a-z0-9_.-]{1,100}$/i.test(text))
+            return null;
+          if ([".", ".."].includes(text.split("/")[1])) return null;
+          return text;
+        }
+
+        function dateText(value, timeOnly = false) {
+          const date = new Date(value);
+          if (!Number.isFinite(date.getTime())) return "";
+          return new Intl.DateTimeFormat(
+            locale,
+            timeOnly
+              ? { hour: "2-digit", minute: "2-digit" }
+              : { day: "2-digit", month: "short", year: "numeric" }
+          ).format(date);
+        }
+
+        function showError(message) {
+          $("error").textContent = message;
+          $("error").hidden = !message;
+        }
+
+        function controls() {
+          $("refresh").disabled = busy || Date.now() < retryAt;
+          $("previous").disabled = busy || page <= 1;
+          $("next").disabled =
+            busy || !state || page * PER_PAGE >= Math.min(state.total, 1000);
+          $("issues").setAttribute("aria-busy", String(busy));
+        }
+
+        function wireLink(link, url) {
+          link.href = url;
+          link.addEventListener("click", (event) => {
+            if (!embedded) return; // Normal, safe HTTPS link in a standalone browser.
+            event.preventDefault();
+            send({ type: "diddy:open", url });
+          });
+        }
+
+        function render() {
+          const base = `https://github.com/${repository}`;
+          $("repository-link").textContent = `${repository} ↗`;
+          $("repository-link").href = `${base}/issues`;
+          $("all-link").href = `${base}/issues?q=is%3Aissue+is%3Aopen`;
+          $("count").textContent = state
+            ? new Intl.NumberFormat(locale).format(state.total)
+            : "—";
+          $("issues").replaceChildren();
+          $("pages").hidden = !state || state.total <= PER_PAGE;
+          if (state) {
+            for (const issue of state.items) {
+              const li = document.createElement("li");
+              const link = document.createElement("a");
+              link.className = "issue-title";
+              link.textContent = issue.title;
+              link.target = "_blank";
+              link.rel = "noopener noreferrer";
+              wireLink(link, `${base}/issues/${issue.number}`);
+              const meta = document.createElement("div");
+              meta.className = "meta";
+              meta.textContent = [
+                `#${issue.number}`,
+                issue.user?.login,
+                dateText(issue.updated_at) &&
+                  `aktualisiert ${dateText(issue.updated_at)}`,
+                Number.isSafeInteger(issue.comments) && issue.comments > 0
+                  ? `${issue.comments} Kommentare`
+                  : "",
+              ]
+                .filter(Boolean)
+                .join(" · ");
+              li.append(link, meta);
+              const labels = document.createElement("div");
+              labels.className = "labels";
+              for (const label of (Array.isArray(issue.labels)
+                ? issue.labels
+                : []
+              ).slice(0, 8)) {
+                if (!label || typeof label.name !== "string") continue;
+                const badge = document.createElement("span");
+                badge.className = "label";
+                badge.textContent = label.name;
+                labels.appendChild(badge);
+              }
+              li.appendChild(labels);
+              $("issues").appendChild(li);
+            }
+            $("page").textContent = `${page} / ${Math.max(
+              1,
+              Math.ceil(Math.min(state.total, 1000) / PER_PAGE)
+            )}`;
+          }
+          $("status").textContent = busy
+            ? "Issues werden geladen …"
+            : state
+            ? `${
+                state.total === 0 ? "Keine offenen Issues. · " : ""
+              }Stand ${dateText(state.updated, true)}` +
+              (state.incomplete
+                ? " · GitHub meldet unvollständige Suchergebnisse."
+                : "") +
+              (state.total > 1000
+                ? " · Die ersten 1.000 Treffer sind hier sichtbar."
+                : "")
+            : "Noch keine Daten geladen.";
+          controls();
+        }
+
+        function rateLimitDelay(response) {
+          const retry = response.headers.get("retry-after");
+          const reset =
+            Number(response.headers.get("x-ratelimit-reset")) * 1000;
+          const retryMs =
+            retry && /^\d+$/.test(retry)
+              ? Number(retry) * 1000
+              : Date.parse(retry || "") - Date.now();
+          return Math.max(
+            60000,
+            Number.isFinite(retryMs) ? retryMs : 0,
+            Number.isFinite(reset) ? reset - Date.now() : 0
+          );
+        }
+
+        async function load(repo = repository, requestedPage = page) {
+          if (Date.now() < retryAt) {
+            showError(
+              `GitHub-Anfragelimit erreicht. Erneuter Versuch ab ${dateText(
+                retryAt,
+                true
+              )}.`
+            );
+            return;
+          }
+          const run = ++sequence;
+          controller?.abort();
+          controller = new AbortController();
+          const signal = controller.signal;
+          clearTimeout(refreshTimer);
+          const timeout = setTimeout(
+            () => controller?.signal === signal && controller.abort(),
+            20000
+          );
+          if (repo !== repository || requestedPage !== page) state = null;
+          repository = repo;
+          page = requestedPage;
+          busy = true;
+          showError("");
+          render();
+          try {
+            // Search gives an issue-only count; /repos/.../issues also includes pull requests.
+            const query = new URLSearchParams({
+              q: `repo:${repo} is:issue is:open`,
+              sort: "updated",
+              order: "desc",
+              per_page: String(PER_PAGE),
+              page: String(page),
+            });
+            const response = await fetch(
+              `https://api.github.com/search/issues?${query}`,
+              {
+                signal,
+                credentials: "omit",
+                referrerPolicy: "no-referrer",
+              }
+            );
+            if (run !== sequence) return;
+            if (response.status === 403 || response.status === 429) {
+              retryAt = Date.now() + rateLimitDelay(response);
+              clearTimeout(unblockTimer);
+              unblockTimer = setTimeout(
+                controls,
+                Math.min(retryAt - Date.now() + 100, 2147483647)
+              );
+              throw new Error(
+                `GitHub-Anfragelimit oder Zugriffsbeschränkung. Erneuter Versuch ab ${dateText(
+                  retryAt,
+                  true
+                )}.`
+              );
+            }
+            if (response.status === 404 || response.status === 422)
+              throw new Error(
+                "Repository nicht gefunden oder nicht öffentlich. Bitte Besitzer/Repository prüfen."
+              );
+            if (!response.ok)
+              throw new Error(
+                `GitHub ist momentan nicht erreichbar (HTTP ${response.status}).`
+              );
+            const data = await response.json();
+            if (run !== sequence) return;
+            if (
+              !Array.isArray(data.items) ||
+              !Number.isSafeInteger(data.total_count) ||
+              data.total_count < 0
+            )
+              throw new Error("GitHub hat unerwartete Daten geliefert.");
+            const lastPage = Math.max(
+              1,
+              Math.ceil(Math.min(data.total_count, 1000) / PER_PAGE)
+            );
+            if (page > lastPage) {
+              load(repo, lastPage);
+              return;
+            }
+            state = {
+              total: data.total_count,
+              incomplete: data.incomplete_results === true,
+              updated: Date.now(),
+              items: data.items.filter(
+                (item) =>
+                  item &&
+                  !item.pull_request &&
+                  item.state === "open" &&
+                  Number.isSafeInteger(item.number) &&
+                  item.number > 0 &&
+                  typeof item.title === "string"
+              ),
+            };
+          } catch (error) {
+            if (run !== sequence) return;
+            const message =
+              error.name === "AbortError"
+                ? "Zeitüberschreitung beim Laden von GitHub."
+                : error instanceof TypeError
+                ? "Keine Verbindung zu GitHub. Bitte Netzwerk prüfen."
+                : error.message;
+            showError(
+              message +
+                (state
+                  ? " Die angezeigten Daten sind möglicherweise veraltet."
+                  : "")
+            );
+          } finally {
+            clearTimeout(timeout);
+            if (run === sequence) {
+              busy = false;
+              render();
+              refreshTimer = setTimeout(
+                () => load(),
+                Math.min(
+                  Math.max(REFRESH_MS, retryAt - Date.now() + 100),
+                  2147483647
+                )
+              );
+            }
+          }
+        }
+
+        const apply = () => {
+          const repo = normalizeRepository($("repository").value);
+          if (!repo) {
+            showError(
+              "Bitte Besitzer/Repository oder eine https://github.com/…-Adresse eingeben."
+            );
+            return;
+          }
+          $("repository").value = repo;
+          send({ type: "diddy:storage:set", key: "repository", value: repo });
+          load(repo, 1);
+        };
+        $("apply").addEventListener("click", apply);
+        $("repository").addEventListener("keydown", (event) => {
+          if (event.key === "Enter" && !$("apply").disabled) apply();
+        });
+        $("refresh").addEventListener("click", () => load());
+        $("previous").addEventListener("click", () =>
+          load(repository, page - 1)
+        );
+        $("next").addEventListener("click", () => load(repository, page + 1));
+        for (const id of ["repository-link", "all-link"]) {
+          $(id).addEventListener("click", (event) => {
+            if (!embedded) return;
+            event.preventDefault();
+            send({ type: "diddy:open", url: $(id).href });
+          });
+        }
+
+        document.documentElement.dataset.theme = window.matchMedia(
+          "(prefers-color-scheme: dark)"
+        ).matches
+          ? "dark"
+          : "light";
+        window.addEventListener("message", (event) => {
+          if (event.source !== host) return;
+          const data = event.data;
+          if (!data || typeof data !== "object" || Array.isArray(data)) return;
+          if (
+            data.type === "diddy:storage:value" &&
+            data.id === "github-repository" &&
+            data.key === "repository" &&
+            (data.value === null || typeof data.value === "string")
+          ) {
+            storageWait?.(data.value);
+            return;
+          }
+          if (data.type !== "diddy:init" || data.apiVersion !== 1) return;
+          if (data.theme === "light" || data.theme === "dark")
+            document.documentElement.dataset.theme = data.theme;
+          document.documentElement.dataset.layout =
+            data.layout === "compact" ? "compact" : "full";
+          $("diddy-custom-css").textContent =
+            typeof data.customCss === "string" ? data.customCss : "";
+          if (typeof data.locale === "string") {
+            try {
+              new Intl.DateTimeFormat(data.locale);
+              locale = data.locale;
+            } catch {
+              /* Keep a valid locale. */
+            }
+          }
+          render();
+        });
+        new ResizeObserver(() => {
+          const height = Math.ceil($("app").getBoundingClientRect().height);
+          if (height !== lastHeight) {
+            lastHeight = height;
+            send({ type: "diddy:resize", height });
+          }
+        }).observe($("app"));
+
+        send({
+          type: "diddy:ready",
+          apiVersion: 1,
+          manifest: {
+            name: "GitHub Issues",
+            description: "Offene Issues öffentlicher GitHub-Repositories",
+            height: 420,
+          },
+        });
+        (async () => {
+          const param = new URLSearchParams(location.search).get("repo");
+          let saved = null;
+          if (embedded && param === null) {
+            saved = await new Promise((resolve) => {
+              const timer = setTimeout(() => {
+                storageWait = null;
+                resolve(null);
+              }, 2000);
+              storageWait = (value) => {
+                clearTimeout(timer);
+                storageWait = null;
+                resolve(value);
+              };
+              send({
+                type: "diddy:storage:get",
+                id: "github-repository",
+                key: "repository",
+              });
+            });
+          }
+          const repo = normalizeRepository(param ?? saved) || DEFAULT_REPO;
+          $("repository").value = repo;
+          $("apply").disabled = false;
+          load(repo, 1);
+          if (param !== null && !normalizeRepository(param))
+            showError(
+              "Ungültiger repo-Parameter. Zeige stattdessen Lndr2501/diddy."
+            );
+        })();
+      })();
+    </script>
+  </body>
+</html>
