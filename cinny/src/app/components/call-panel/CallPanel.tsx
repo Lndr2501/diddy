@@ -142,6 +142,24 @@ const useDismiss = (open: boolean, close: () => void, ...refs: React.RefObject<H
   }, [open, close]);
 };
 
+/** Points our own ref and the tooltip anchor at the same button. */
+const bindRefs =
+  (
+    own: MutableRefObject<HTMLButtonElement | null>,
+    anchorRef: RefCallback<HTMLElement | SVGElement>
+  ) =>
+  (el: HTMLButtonElement | null) => {
+    // eslint-disable-next-line no-param-reassign
+    own.current = el;
+    // Typed as a callback, but folds actually hands out a ref object.
+    const tooltipRef = anchorRef as unknown as
+      | RefCallback<HTMLElement>
+      | MutableRefObject<HTMLElement | null>;
+    if (typeof tooltipRef === 'function') tooltipRef(el);
+    // eslint-disable-next-line no-param-reassign
+    else tooltipRef.current = el;
+  };
+
 type ActiveCallPanelProps = {
   callEmbed: CallEmbed;
 };
@@ -156,7 +174,9 @@ function ActiveCallPanel({ callEmbed }: ActiveCallPanelProps) {
     () => new Set(callMembers.map((m) => m.userId)).size,
     [callMembers]
   );
-  const { microphone, video, sound, screenshare } = useCallControlState(callEmbed.control);
+  // Mute and deafen live in the user panel right below (issue #94), so this row only carries
+  // controls that have no other home: screen share, camera, soundboard, more, leave.
+  const { video, screenshare } = useCallControlState(callEmbed.control);
   const streamAudio = useScreenShareAudio();
   const { navigateRoom } = useRoomNavigate();
   const selectedRoom = useSelectedRoom();
@@ -169,9 +189,6 @@ function ActiveCallPanel({ callEmbed }: ActiveCallPanelProps) {
     return () => setPanelCount((c) => c - 1);
   }, [setPanelCount]);
 
-  const [micState, toggleMic] = useAsyncCallback(
-    useCallback(() => callEmbed.control.toggleMicrophone(), [callEmbed])
-  );
   const [videoState, toggleVideo] = useAsyncCallback(
     useCallback(() => callEmbed.control.toggleVideo(), [callEmbed])
   );
@@ -183,8 +200,8 @@ function ActiveCallPanel({ callEmbed }: ActiveCallPanelProps) {
 
   const openCallRoom = () => navigateRoom(room.roomId);
 
-  // "More" menu and the soundboard opened from it share the same anchor button.
   const moreButtonRef = useRef<HTMLButtonElement | null>(null);
+  const soundboardButtonRef = useRef<HTMLButtonElement | null>(null);
   const moreMenuRef = useRef<HTMLDivElement>(null);
   const soundboardRef = useRef<HTMLDivElement>(null);
   const [moreCords, setMoreCords] = useState<RectCords>();
@@ -193,31 +210,40 @@ function ActiveCallPanel({ callEmbed }: ActiveCallPanelProps) {
   const closeMore = useCallback(() => setMoreCords(undefined), []);
   const closeSoundboard = useCallback(() => setSoundboardCords(undefined), []);
   useDismiss(moreCords !== undefined, closeMore, moreMenuRef, moreButtonRef);
-  useDismiss(soundboardCords !== undefined, closeSoundboard, soundboardRef, moreButtonRef);
+  useDismiss(soundboardCords !== undefined, closeSoundboard, soundboardRef, soundboardButtonRef);
+
+  const showStreamAudio = screenshare && streamAudio.available && streamAudio.active;
+  // The menu only holds what has no button of its own; with nothing in it the button goes away.
+  const hasMore = showStreamAudio || !inCallRoom;
+  useEffect(() => {
+    if (!hasMore) setMoreCords(undefined);
+  }, [hasMore]);
 
   const handleMore = () => {
-    if (moreCords || soundboardCords) {
+    setSoundboardCords(undefined);
+    if (moreCords) {
       setMoreCords(undefined);
-      setSoundboardCords(undefined);
       return;
     }
     const rect = moreButtonRef.current?.getBoundingClientRect();
     if (rect) setMoreCords(rect);
   };
-
-  const handleScreenshare = () => {
+  const handleSoundboard = () => {
     setMoreCords(undefined);
-    // Synchronous on purpose: the call needs this click as the user gesture for capture.
-    callEmbed.control.toggleScreenshare();
-  };
-  const handleOpenSoundboard = () => {
-    setMoreCords(undefined);
-    const rect = moreButtonRef.current?.getBoundingClientRect();
+    if (soundboardCords) {
+      setSoundboardCords(undefined);
+      return;
+    }
+    const rect = soundboardButtonRef.current?.getBoundingClientRect();
     if (rect) setSoundboardCords(rect);
   };
 
-  const micLabel = microphone ? 'Mute microphone' : 'Unmute microphone';
-  const soundLabel = sound ? 'Deafen' : 'Undeafen';
+  const handleScreenshare = () => {
+    // Synchronous on purpose: the call needs this click as the user gesture for capture.
+    callEmbed.control.toggleScreenshare();
+  };
+
+  const screenshareLabel = screenshare ? 'Stop screen share' : 'Share screen';
   const videoLabel = video ? 'Stop camera' : 'Start camera';
   const peopleLabel = `${participantCount} ${
     participantCount === 1 ? 'participant' : 'participants'
@@ -227,20 +253,7 @@ function ActiveCallPanel({ callEmbed }: ActiveCallPanelProps) {
     <div ref={moreMenuRef}>
       <Menu style={{ minWidth: toRem(200) }}>
         <Box direction="Column" gap="100" style={{ padding: config.space.S100 }}>
-          <MenuItem
-            size="300"
-            radii="300"
-            variant={screenshare ? 'Success' : 'Surface'}
-            fill={screenshare ? 'Soft' : 'None'}
-            aria-pressed={screenshare}
-            before={<Icon size="100" src={Icons.ScreenShare} filled={screenshare} />}
-            onClick={handleScreenshare}
-          >
-            <Text size="B300" truncate>
-              {screenshare ? 'Stop screen share' : 'Share screen'}
-            </Text>
-          </MenuItem>
-          {screenshare && streamAudio.available && streamAudio.active && (
+          {showStreamAudio && (
             <MenuItem
               size="300"
               radii="300"
@@ -261,18 +274,6 @@ function ActiveCallPanel({ callEmbed }: ActiveCallPanelProps) {
               </Text>
             </MenuItem>
           )}
-          <MenuItem
-            size="300"
-            radii="300"
-            variant="Surface"
-            fill="None"
-            before={<Icon size="100" src={Icons.Play} />}
-            onClick={handleOpenSoundboard}
-          >
-            <Text size="B300" truncate>
-              Soundboard
-            </Text>
-          </MenuItem>
           {!inCallRoom && (
             <MenuItem
               size="300"
@@ -326,45 +327,22 @@ function ActiveCallPanel({ callEmbed }: ActiveCallPanelProps) {
           </Text>
         </span>
       </div>
-      <div className={css.CallPanelButtons}>
-        <WithTooltip label={micLabel}>
+      <div className={css.CallPanelButtons} role="group" aria-label="Call controls">
+        <WithTooltip label={screenshareLabel}>
           {(anchorRef) => (
             <IconButton
               ref={anchorRef}
               className={css.CallPanelButton}
-              variant={microphone ? 'SurfaceVariant' : 'Critical'}
-              data-quiet={microphone}
+              variant={screenshare ? 'Success' : 'SurfaceVariant'}
+              data-quiet={!screenshare}
               fill="Soft"
               size="300"
               radii="400"
-              aria-label={micLabel}
-              aria-pressed={!microphone}
-              disabled={micState.status === AsyncStatus.Loading}
-              onClick={toggleMic}
+              aria-label={screenshareLabel}
+              aria-pressed={screenshare}
+              onClick={handleScreenshare}
             >
-              <Icon size="100" src={microphone ? Icons.Mic : Icons.MicMute} filled={!microphone} />
-            </IconButton>
-          )}
-        </WithTooltip>
-        <WithTooltip label={soundLabel}>
-          {(anchorRef) => (
-            <IconButton
-              ref={anchorRef}
-              className={css.CallPanelButton}
-              variant={sound ? 'SurfaceVariant' : 'Critical'}
-              data-quiet={sound}
-              fill="Soft"
-              size="300"
-              radii="400"
-              aria-label={soundLabel}
-              aria-pressed={!sound}
-              onClick={() => callEmbed.control.toggleSound()}
-            >
-              <Icon
-                size="100"
-                src={sound ? Icons.Headphone : Icons.HeadphoneMute}
-                filled={!sound}
-              />
+              <Icon size="100" src={Icons.ScreenShare} filled={screenshare} />
             </IconButton>
           )}
         </WithTooltip>
@@ -391,44 +369,57 @@ function ActiveCallPanel({ callEmbed }: ActiveCallPanelProps) {
             </IconButton>
           )}
         </WithTooltip>
-        <PopOut anchor={moreCords} position="Top" align="Center" content={moreMenu}>
-          <PopOut
-            anchor={soundboardCords}
-            position="Top"
-            align="Center"
-            content={
-              <div ref={soundboardRef}>
-                <SoundboardMenu
-                  onClose={closeSoundboard}
-                  onImport={() => {
-                    setSoundboardCords(undefined);
-                    setImporting(true);
-                  }}
-                />
-              </div>
-            }
-          >
+        <PopOut
+          anchor={soundboardCords}
+          position="Top"
+          align="Center"
+          content={
+            <div ref={soundboardRef}>
+              <SoundboardMenu
+                onClose={closeSoundboard}
+                onImport={() => {
+                  setSoundboardCords(undefined);
+                  setImporting(true);
+                }}
+              />
+            </div>
+          }
+        >
+          <WithTooltip label="Soundboard">
+            {(anchorRef) => (
+              <IconButton
+                ref={bindRefs(soundboardButtonRef, anchorRef)}
+                className={css.CallPanelButton}
+                variant="SurfaceVariant"
+                data-quiet
+                fill="Soft"
+                size="300"
+                radii="400"
+                aria-label="Soundboard"
+                aria-haspopup="menu"
+                aria-expanded={soundboardCords !== undefined}
+                onClick={handleSoundboard}
+              >
+                <Icon size="100" src={Icons.Play} />
+              </IconButton>
+            )}
+          </WithTooltip>
+        </PopOut>
+        {hasMore && (
+          <PopOut anchor={moreCords} position="Top" align="Center" content={moreMenu}>
             <WithTooltip label="More call options">
               {(anchorRef) => (
                 <IconButton
-                  ref={(el: HTMLButtonElement | null) => {
-                    moreButtonRef.current = el;
-                    // Typed as a callback, but folds actually hands out a ref object.
-                    const tooltipRef = anchorRef as unknown as
-                      | RefCallback<HTMLElement>
-                      | MutableRefObject<HTMLElement | null>;
-                    if (typeof tooltipRef === 'function') tooltipRef(el);
-                    else tooltipRef.current = el;
-                  }}
+                  ref={bindRefs(moreButtonRef, anchorRef)}
                   className={css.CallPanelButton}
-                  variant={screenshare ? 'Success' : 'SurfaceVariant'}
-                  data-quiet={!screenshare}
+                  variant="SurfaceVariant"
+                  data-quiet
                   fill="Soft"
                   size="300"
                   radii="400"
                   aria-label="More call options"
                   aria-haspopup="menu"
-                  aria-expanded={moreCords !== undefined || soundboardCords !== undefined}
+                  aria-expanded={moreCords !== undefined}
                   onClick={handleMore}
                 >
                   <Icon size="100" src={Icons.HorizontalDots} />
@@ -436,7 +427,7 @@ function ActiveCallPanel({ callEmbed }: ActiveCallPanelProps) {
               )}
             </WithTooltip>
           </PopOut>
-        </PopOut>
+        )}
         <WithTooltip label="Leave call">
           {(anchorRef) => (
             <IconButton
