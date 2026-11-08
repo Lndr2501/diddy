@@ -75,6 +75,7 @@ final class AppModel: ObservableObject {
             guard let self, let account else { return }
             self.calls.roomsChanged(account: account, from: old, to: new)
             self.announceActivity(account: account, from: old, to: new)
+            CallPush.shared.publish(account: account)
         }
         return account
     }

@@ -519,6 +519,8 @@ final class CallSession: NSObject, ObservableObject {
 
         outgoing = .ringing
         Sounds.shared.startRingback()
+        // Reaches the other person while their Diddy is closed, if they set up call alerts.
+        Task { [account, roomId] in await CallPush.shared.notify(account: account, roomId: roomId) }
         let ownUserId = ownUserId
         declineHandle = try? matrixRoom.subscribeToCallDeclineEvents(
             rtcNotificationEventId: eventId,

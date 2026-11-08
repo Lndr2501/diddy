@@ -72,6 +72,7 @@ struct SettingsView: View {
 
                 Section {
                     NavigationLink("Sounds") { SoundSettingsView() }
+                    NavigationLink("Call Alerts") { CallAlertSettingsView() }
                 }
 
                 Section("Security") {
@@ -139,6 +140,85 @@ private struct SoundSettingsView: View {
         .navigationTitle("Sounds")
         .navigationBarTitleDisplayMode(.inline)
         .onDisappear { Sounds.shared.stopLoop() }
+    }
+}
+
+/// Turns on "<name> is calling you" through the ntfy app, for when Diddy is closed.
+private struct CallAlertSettingsView: View {
+    @EnvironmentObject private var app: AppModel
+    @AppStorage(CallPushSettings.enabledKey) private var enabled = false
+    @AppStorage(CallPushSettings.serverKey) private var server = CallPushSettings.defaultServer
+    @State private var testResult: String?
+    @State private var testing = false
+    @State private var copied = false
+
+    private var serverAllowed: Bool { CallPushTarget.isAllowed(server: CallPushSettings.server) }
+
+    var body: some View {
+        List {
+            Section {
+                Toggle("Alert me through ntfy", isOn: $enabled)
+            } footer: {
+                Text("When someone calls you from Diddy while it is closed, the ntfy app shows \u{201C}Name is calling you\u{201D}. Calls from other apps do not send this.")
+            }
+            if enabled {
+                Section {
+                    LabeledContent("Server") {
+                        TextField(CallPushSettings.defaultServer, text: $server)
+                            .multilineTextAlignment(.trailing)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .keyboardType(.URL)
+                            .onSubmit { if serverAllowed { publish() } }
+                    }
+                    Button {
+                        UIPasteboard.general.string = CallPushSettings.topic
+                        copied = true
+                    } label: {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(copied ? "Topic copied" : "Topic")
+                            // Monospaced and unhyphenated, so it can be typed off the screen too.
+                            Text(CallPushSettings.topic)
+                                .font(.footnote.monospaced())
+                                .foregroundStyle(Theme.muted)
+                                .textSelection(.enabled)
+                        }
+                    }
+                    .accessibilityHint("Copies the topic")
+                    Button(testing ? "Sending\u{2026}" : "Send Test Alert") {
+                        testing = true
+                        Task {
+                            testResult = await CallPush.shared.sendTest()
+                                ? "Sent. It should appear in ntfy within a few seconds."
+                                : "Could not reach the server."
+                            testing = false
+                        }
+                    }
+                    .disabled(testing || !serverAllowed)
+                } header: {
+                    Text("ntfy")
+                } footer: {
+                    VStack(alignment: .leading, spacing: 6) {
+                        if !serverAllowed { Text("The server must start with https://.").foregroundStyle(Theme.danger) }
+                        if let testResult { Text(testResult) }
+                        Text("Install ntfy from the App Store, tap +, and subscribe to this topic on this server. Keep the topic to yourself: anyone who knows it can send you alerts.")
+                        Text("The topic is stored in your direct messages, where the other person and their server can read it.")
+                    }
+                }
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .background(Theme.sidebar)
+        .navigationTitle("Call Alerts")
+        .navigationBarTitleDisplayMode(.inline)
+        .onChange(of: enabled) { _ in publish() }
+        // Written to the rooms once typing is done, not on every keystroke.
+        .onChange(of: server) { _ in testResult = nil }
+        .onDisappear { if serverAllowed { publish() } }
+    }
+
+    private func publish() {
+        for account in app.accounts { CallPush.shared.publish(account: account) }
     }
 }
 

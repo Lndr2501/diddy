@@ -23,7 +23,8 @@ Die App ist Beta: Alles in der Tabelle ist gebaut und läuft bei den ersten Test
 | Eigene Sounds für Anrufe, Bildschirmübertragung, Nachrichten, Erwähnungen und Einladungen, unter Einstellungen > Sounds abschaltbar und anhörbar | 🧪 |
 | Offline-Bildschirm: Sitzung bleibt erhalten, wenn der Server nicht erreichbar ist, und verbindet sich von selbst wieder | 🧪 |
 | App-Icon wechseln (Pink, Blau, Lila, Schwarz, Magenta) | 🧪 |
-| Push-Benachrichtigungen, Klingeln bei geschlossener App | ❌ (braucht einen Push-Gateway und ein bezahltes Apple-Konto) |
+| Anruf-Alarm bei geschlossener App über die ntfy-App („Name is calling you“), Einstellungen > Call Alerts | 🧪 nur bei Anrufen aus Diddy (Desktop oder iOS) |
+| Push-Benachrichtigungen für Nachrichten, Klingelbildschirm bei geschlossener App | ❌ (braucht einen Push-Gateway und ein bezahltes Apple-Konto) |
 | Online-Status | ❌ (Sliding Sync liefert keine Presence) |
 
 🧪 Beta: gebaut, läuft bei Testern, noch nicht im Alltag geprüft · ❌ fehlt noch
@@ -31,6 +32,8 @@ Die App ist Beta: Alles in der Tabelle ist gebaut und läuft bei den ersten Test
 **Verschlüsselung in Sprachkanälen:** In verschlüsselten Räumen sind die Medien Ende-zu-Ende verschlüsselt wie bei Element Call. Es fehlen aber noch die Schlüsselrotation beim Verlassen (wer den Kanal verlässt, kennt den Schlüssel bis zum Ende des Anrufs weiter), und den eigenen Schlüssel bekommen die Geräte aus der LiveKit-Teilnehmerliste statt nur die Geräte mit einer MatrixRTC-Mitgliedschaft im Raum. Die Härtung ist geplant, siehe [SECURITY-TODO.md](SECURITY-TODO.md).
 
 **Sounds:** Alle Sounds sind eigene, mit [Tools/make_sounds.py](Tools/make_sounds.py) synthetisierte Klänge. Das Skript schreibt sie nach `Diddy/Resources/Sounds`. Der Klingelton folgt dem Stummschalter des iPhones und vibriert zusätzlich.
+
+**Anruf-Alarm über ntfy:** Ein kostenloses Apple-Konto kann keine Push-Nachrichten empfangen. Deshalb schickt stattdessen der Anrufer den Alarm. Wer unter Einstellungen > Call Alerts den Alarm einschaltet, bekommt ein zufälliges ntfy-Topic. Diddy legt es als State-Event `app.diddy.call_push` (`{"server", "topic"}`, State-Key ist die eigene User-ID) in jeder Direktnachricht ab. Ruft dich jemand mit Diddy an, schickt seine App „Name is calling you“ an dieses Topic, und die ntfy-App zeigt es an. Das Topic können der Chatpartner und sein Server lesen. Anrufe aus Element und anderen Clients lösen keinen Alarm aus. Erlaubt sind nur HTTPS-Server.
 
 ## Voraussetzungen am Server
 

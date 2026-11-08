@@ -617,6 +617,22 @@ final class MatrixAccount: ObservableObject, Identifiable {
         return json
     }
 
+    func joinedMembers(of roomId: String) async throws -> [String] {
+        let json = try await clientRequest("/_matrix/client/v3/rooms/\(Self.pathComponent(roomId))/joined_members")
+        return (json["joined"] as? [String: Any]).map { Array($0.keys) } ?? []
+    }
+
+    /// The content of one state event, read from the server. Throws when the room has none.
+    func stateContent(of roomId: String, type: String, stateKey: String) async throws -> [String: Any] {
+        try await clientRequest(
+            "/_matrix/client/v3/rooms/\(Self.pathComponent(roomId))/state/\(Self.pathComponent(type))/\(Self.pathComponent(stateKey))"
+        )
+    }
+
+    private static func pathComponent(_ value: String) -> String {
+        value.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed.subtracting(CharacterSet(charactersIn: "/?#"))) ?? value
+    }
+
     /// A room created or joined a moment ago reaches the client with the next sync.
     func waitForRoom(_ roomId: String) async throws {
         for _ in 0..<40 {
