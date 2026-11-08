@@ -1,6 +1,6 @@
 {
   "name": "diddy",
-  "version": "1.3.2",
+  "version": "1.4.0",
   "description": "Diddy - a Matrix chat client (based on Cinny)",
   "engines": {
     "node": ">=16.0.0"

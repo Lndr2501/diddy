@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.4.0 (2026-11-08)
+
+### Highlights
+
+- **Do Not Disturb funktioniert (#71):** DND gilt jetzt auch, wenn es in den Profileinstellungen oder auf einem anderen Gerät gesetzt wurde. Nachrichten- und Einladungstöne, Systembenachrichtigungen und das Klingeln eingehender Anrufe sind stumm, das Anruffenster erscheint trotzdem. Die Badges für Ungelesenes bleiben.
+- **Anruf-Alarm über ntfy (#49):** Wer auf iOS unter Einstellungen > Call Alerts den Alarm einschaltet, bekommt bei geschlossener App „Name is calling you“ über die ntfy-App. Den Alarm schickt das Diddy des Anrufers (Desktop oder iOS) an das Topic, das in der Direktnachricht hinterlegt ist. Nur HTTPS-Server.
+- **iOS: Diddy-Profile (#44):** Banner, Status, Namensfarbe, Badges und Profilabschnitte auf der Profilkarte, in der Mitgliederliste und im Chat. Das eigene Profil lässt sich unter Einstellungen > Diddy Profile bearbeiten.
+- **iOS: mehr Einstellungen (#45):** Chat (Zeitformat, Beitritt/Verlassen anzeigen, Bilder automatisch laden, Tipp- und Lesestatus), Geräte, blockierte Nutzer, Über Diddy.
+
+### Weitere Änderungen
+
+- **iOS: @-Erwähnungen (#41):** Erwähnungen aus Desktop-Diddy und Element erscheinen als @Name und öffnen das Profil, Erwähnungen von dir sind markiert. Die Autovervollständigung kommt mit Namen zurecht, die mit einem anderen Namen beginnen.
+- **iOS: Chat öffnet unten (#42):** Der Chat bleibt bei der neuesten Nachricht, bis du selbst scrollst, auch wenn Seiten oder Bilder spät laden.
+- **Verbindungsprofile (#7):** Ein neues Verbindungsfenster, das länger als 30 s zum Öffnen brauchte, wurde nicht gespeichert, nach einem Neustart fehlte die Anmeldung. Dazu Tests für den Lebenszyklus und die Trennung der Datenspeicher.
+- **Stream-Auflösung (#11):** Wer zuschaut, schreibt ins Log, in welcher Größe jedes empfangene Video ankommt und in welcher Kachel es gezeigt wird (`receive watch`). In kleinen Kacheln kommt mit Absicht die halbe Auflösung an, erst „is upscaled“ ist ein echter Qualitätsverlust.
+- **Bildschirmübertragungen umschalten (#2, #66):** Auch in der Element-Call-Ansicht holt ein Klick eine Übertragung groß nach vorn, Escape führt zurück. Mehrere Bildschirme einer Person gehen weiterhin nicht.
+- **Statusmenü (#21):** Pfeiltasten, Home/End, Escape gibt den Fokus an den Profilknopf zurück, für Screenreader als Menü lesbar, DND mit kurzer Erklärung.
+
 ## 1.3.2 (2026-11-08)
 
 Erste veröffentlichte Version mit allen Neuerungen aus 1.3.1 (der Build von 1.3.1 schlug fehl und wurde nicht veröffentlicht).
@@ -57,16 +75,6 @@ Erste veröffentlichte Version mit allen Neuerungen aus 1.3.1 (der Build von 1.3
 - Der Update-Hinweis in der App vergleicht die eigene Version mit dem neuesten Release; dafür trägt `cinny/src/app/appInfo.ts` die Versionsnummer. Release-Builds setzen sie aus dem Tag.
 
 ### Details zu den einzelnen Änderungen
-
-### Call: zwischen Bildschirmübertragungen umschalten (#2, #66)
-
-- Ein Klick auf eine Übertragung im Raster holt sie groß nach vorn; die anderen Übertragungen stehen als kleine Vorschauen darunter, ein Klick darauf wechselt. Nochmal auf die große klicken oder Escape: zurück zum Raster. Jeder Zuschauer wählt für sich. Weil die Vorschauen klein sind, holt LiveKit nur für die große Übertragung die volle Auflösung.
-- Knöpfe in den Kacheln (Lautstärke, Menüs) und das Ziehen des schwebenden Spotlights lösen nichts aus. In `plugins/call/screenShareGrid.ts`.
-- Mehrere Bildschirme **einer** Person (#2) gehen weiterhin nicht: Element Call sendet einen Screen-Track pro Teilnehmer.
-
-### Call: Diagnose der empfangenen Auflösung (#11)
-
-- Auch wer nur zuschaut, schreibt jetzt ins Log, in welcher Größe jedes empfangene Video ankommt und in welcher Kachel es gezeigt wird (`receive watch`), mit dem Urteil „fits its tile“ oder „is upscaled“. Element Call sendet Übertragungen in zwei Stufen (volle Größe und halbe); in einer kleinen Kachel kommt mit Absicht die halbe an (1080p → 960×540, ein 720p-Fenster → 640×360). Erst „is upscaled“ ist ein echter Qualitätsverlust. In `plugins/call/streamStats.ts`.
 
 ### Call: alle Bildschirmübertragungen gleichzeitig (#66)
 
