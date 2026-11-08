@@ -579,9 +579,15 @@ struct MessageRowView: View {
                     if row.showsHeader {
                         HStack(alignment: .firstTextBaseline, spacing: 8) {
                             Button(action: onProfile) {
-                                Text(row.senderName).font(.subheadline.weight(.semibold)).foregroundStyle(Theme.color(for: row.sender))
+                                DiddyName(
+                                    name: row.senderName,
+                                    profile: account.diddyProfiles[row.sender],
+                                    font: .subheadline.weight(.semibold),
+                                    fallback: Theme.color(for: row.sender)
+                                )
                             }
                             .buttonStyle(.plain)
+                            if let badges = account.diddyBadges[row.sender] { DiddyBadges(badges: badges, size: 13, account: account) }
                             Text(row.date.chatTimestamp).font(.caption2).foregroundStyle(Theme.faint)
                         }
                     }

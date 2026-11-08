@@ -57,6 +57,13 @@ extension Error {
     }
 }
 
+/// A refused client API call, with the Matrix error code (`M_FORBIDDEN`, ...).
+struct ClientAPIError: LocalizedError {
+    let errcode: String?
+    let message: String
+    var errorDescription: String? { message }
+}
+
 extension SpaceRoom: Identifiable {
     public var id: String { roomId }
 
@@ -92,6 +99,17 @@ final class MatrixAccount: ObservableObject, Identifiable {
     @Published private(set) var recoveryState: RecoveryState = .unknown
     @Published private(set) var verificationState: VerificationState = .unknown
     @Published private(set) var started = false
+    /// Diddy profile extras by user id, read from the options rooms (see DiddyProfiles.swift).
+    @Published var diddyProfiles: [String: DiddyProfile] = [:]
+    /// The badges each user shows next to their name.
+    @Published var diddyBadges: [String: [DiddyBadge]] = [:]
+    var diddyOptionsRooms: Set<String> = []
+    var diddyCheckedRooms: Set<String> = []
+    var diddyPrimaryRoom: (id: String, encrypted: Bool)?
+    /// Your own profile event as written, so an edit here keeps the fields only desktop knows.
+    var diddyOwnProfileRaw: [String: Any]?
+    var diddyLoading = false
+    var diddyLoadedAt: Date?
 
     private var syncService: SyncService?
     private var roomList: RoomList?
@@ -193,7 +211,14 @@ final class MatrixAccount: ObservableObject, Identifiable {
 
     private func syncStateChanged(_ state: SyncServiceState) {
         syncState = state
-        if state == .running, alertsFrom == nil { alertsFrom = Date().addingTimeInterval(5) }
+        if state == .running, alertsFrom == nil {
+            alertsFrom = Date().addingTimeInterval(5)
+            // Give the room list a moment to fill before looking for the Diddy Options room.
+            Task { [weak self] in
+                try? await Task.sleep(nanoseconds: 3_000_000_000)
+                await self?.loadDiddyProfiles()
+            }
+        }
         guard state == .error, started else { return }
         restartTask?.cancel()
         restartTask = Task { [weak self] in
@@ -329,7 +354,9 @@ final class MatrixAccount: ObservableObject, Identifiable {
     /// Group rooms that are not part of any loaded server, shown under Home like Discord's DMs.
     var roomsOutsideServers: [RoomSummary] {
         let inServers = Set(categories.values.flatMap { $0.flatMap { $0.channels.map(\.roomId) } })
-        return rooms.filter { !$0.isDirect && !$0.isSpace && $0.isJoined && !inServers.contains($0.id) }
+        return rooms.filter {
+            !$0.isDirect && !$0.isSpace && $0.isJoined && !inServers.contains($0.id) && !isDiddyOptionsRoom($0.id, topic: $0.topic)
+        }
     }
 
     private func channelIds(inSpace spaceId: String) -> Set<String> {
@@ -492,7 +519,9 @@ final class MatrixAccount: ObservableObject, Identifiable {
             if case .idle(let endReached) = list.paginationState(), endReached { break }
             do { try await list.paginate() } catch { break }
         }
-        return await list.rooms()
+        // A joined Diddy Options room is plumbing, not a channel; desktop hides it too. One you
+        // have not joined stays visible, since profiles can only be read from inside it.
+        return await list.rooms().filter { !(isDiddyOptionsRoom($0.roomId, topic: $0.topic) && isJoined($0)) }
     }
 
     func join(_ channel: SpaceRoom) async throws {
@@ -606,24 +635,40 @@ final class MatrixAccount: ObservableObject, Identifiable {
         return id
     }
 
-    /// For the few client API calls the SDK has no way to make.
-    private func clientRequest(_ path: String, body: [String: Any]? = nil) async throws -> [String: Any] {
+    /// For the few client API calls the SDK has no way to make. A body is sent with POST unless
+    /// another method is given.
+    func clientRequest(_ path: String, body: [String: Any]? = nil, method: String? = nil) async throws -> [String: Any] {
+        let data = try await clientRequestData(path, body: body, method: method)
+        return (try? JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
+    }
+
+    /// The same for the calls that answer with a JSON array, such as a room's whole state.
+    func clientRequestArray(_ path: String) async throws -> [[String: Any]] {
+        let data = try await clientRequestData(path, body: nil, method: nil)
+        return (try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]) ?? []
+    }
+
+    private func clientRequestData(_ path: String, body: [String: Any]?, method: String?) async throws -> Data {
         let session = try client.session()
         let base = session.homeserverUrl.hasSuffix("/") ? String(session.homeserverUrl.dropLast()) : session.homeserverUrl
         guard let url = URL(string: base + path) else { throw DiddyError("Invalid homeserver URL.") }
         var request = URLRequest(url: url)
         request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+        if let method { request.httpMethod = method }
         if let body {
-            request.httpMethod = "POST"
+            if method == nil { request.httpMethod = "POST" }
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.httpBody = try JSONSerialization.data(withJSONObject: body)
         }
         let (data, response) = try await URLSession.shared.data(for: request)
-        let json = (try? JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
         guard (response as? HTTPURLResponse)?.statusCode == 200 else {
-            throw DiddyError(json["error"] as? String ?? "The server refused the request.")
+            let json = (try? JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
+            throw ClientAPIError(
+                errcode: json["errcode"] as? String,
+                message: json["error"] as? String ?? "The server refused the request."
+            )
         }
-        return json
+        return data
     }
 
     /// A room created or joined a moment ago reaches the client with the next sync.

@@ -239,6 +239,9 @@ private struct ProfileSection: View {
                 Button("Save Name") { saveName() }.disabled(saving)
             }
             if let error { Text(error).font(.footnote).foregroundStyle(Theme.danger) }
+            NavigationLink { DiddyProfileEditor(account: account) } label: {
+                Label("Diddy Profile", systemImage: "paintbrush.fill")
+            }
         }
         .task(id: account.displayName) { name = account.displayName ?? "" }
         .onChange(of: photo) { item in
