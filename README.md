@@ -1,139 +1,167 @@
 <div align="center">
 
-<img src="src-tauri/icons/128x128@2x.png" width="128" alt="Diddy-Icon">
+<img src="src-tauri/icons/128x128@2x.png" width="112" alt="Diddy icon">
 
 # Diddy
 
-**Matrix-Chat für macOS, Linux und iPhone/iPad, mit Sprachchat, der wirklich funktioniert.**
+**A Matrix chat client with voice calls that just work.**<br>
+Themes, profiles, plugins and a calm interface. Built for macOS, Linux and iPhone/iPad.
 
-[![Release](https://img.shields.io/github/v/release/Lndr2501/diddy?label=Release&color=e6007e)](../../releases/latest)
-[![Tests](https://github.com/Lndr2501/diddy/actions/workflows/test.yml/badge.svg)](../../actions/workflows/test.yml)
-[![Lizenz](https://img.shields.io/badge/Lizenz-AGPL--3.0-blue)](LICENSE)
-![Plattformen](https://img.shields.io/badge/macOS%20%7C%20Linux%20%7C%20iOS-lightgrey)
+[![Release](https://img.shields.io/github/v/release/Lndr2501/diddy?label=release&color=e5517c&style=flat-square)](../../releases/latest)
+[![Tests](https://img.shields.io/github/actions/workflow/status/Lndr2501/diddy/test.yml?label=tests&style=flat-square)](../../actions/workflows/test.yml)
+[![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=flat-square)](LICENSE)
+![Platforms](https://img.shields.io/badge/macOS%20%C2%B7%20Linux%20%C2%B7%20iOS-lightgrey?style=flat-square)
 
-[Download](../../releases/latest) · [Installation](#installation) · [Selbst bauen](#selbst-bauen) · [Änderungen](CHANGELOG.md)
+[**Download**](../../releases/latest) · [Features](#features) · [Install](#install) · [Build from source](#build-from-source) · [Changelog](CHANGELOG.md)
 
 <br>
 
-<img src="docs/screenshots/chat-diddy.png" width="900" alt="Diddy im Theme „Diddy“: Raumliste, Chat und Teilnehmerliste">
+<img src="docs/screenshots/chat-diddy.png" width="920" alt="Diddy showing a team chat with a room list, messages with reactions and a member list">
 
 </div>
 
----
+<br>
 
-Diddy basiert auf [Cinny](https://github.com/cinnyapp/cinny) und ergänzt alles, was im Alltag mit Sprachchat und Bildschirmübertragung fehlt.
+Diddy is built on [Cinny](https://github.com/cinnyapp/cinny) and adds what everyday chat with friends and teams needs: reliable voice calls, screen sharing with sound, rich profiles and a polished, themeable interface. It speaks plain [Matrix](https://matrix.org), so it works with any homeserver and with end-to-end encrypted rooms.
 
-## Auf einen Blick
-
-| | macOS | Linux | iPhone / iPad |
-|---|:---:|:---:|:---:|
-| Chat, Räume, Verschlüsselung | ✅ | ✅ NixOS (Electron) | 🧪 native App, neu |
-| Sprachchat | ✅ | ✅ NixOS, auch verschlüsselt | 🧪 |
-| Bildschirmübertragung | ✅ | 🧪 Electron: Wayland-Portal / X11-Auswahl | 🧪 ab iOS 27 ganzer Bildschirm, davor nur Diddy |
-| davon mit System-Ton | ✅ (macOS 14.2+) | 🧪 andere Apps, ohne Diddys eigenen Ton | 🧪 App-Ton |
-| Mehrere Verbindungsprofile | ✅ (ab macOS 14) | 🧪 ungetestet | 🧪 mehrere Konten |
-| Sprachnachrichten | ✅ | 🧪 | ❌ |
-| App-Icon wechseln | ✅ | 🧪 | 🧪 |
-
-✅ läuft und wird getestet · 🧪 gebaut, aber noch nicht im Alltag geprüft · ❌ funktioniert (noch) nicht
-
-
-## Vorschau
-
-Neun eingebaute Themes, von hell bis dunkel (Einstellungen → Appearance):
-
-<img src="docs/screenshots/themes.png" alt="Alle neun Themes: Light, Silver, Dark, Butter, Diddy, Red, Green, Purple, Amber">
+## Features
 
 <table>
 <tr>
-<td width="50%"><img src="docs/screenshots/settings-appearance.png" alt="Einstellungen: Themes"></td>
-<td width="50%"><img src="docs/screenshots/settings-profile.png" alt="Einstellungen: Profil und Profilkarte"></td>
+<td width="33%" valign="top">
+
+### Voice calls
+Join a voice room in one click. Calls work on macOS, where Cinny's web client hangs, and on Linux, including encrypted rooms. Noise suppression is built in, and the headphone button mutes microphone and sound together.
+
+</td>
+<td width="33%" valign="top">
+
+### Screen sharing
+Streams stay sharp even when Diddy is in the background. Share with system audio on macOS 14.2+ and Linux, switch the sound on or off from the call bar, and pull any stream to the front with a click.
+
+</td>
+<td width="33%" valign="top">
+
+### Profiles
+Name colors, banners, badges and animated name plates. Everyone running Diddy sees them on the profile card, in the member list and in the chat.
+
+</td>
 </tr>
 <tr>
-<td align="center">Theme wählen</td>
-<td align="center">Profil, Profilkarte und Namensstil</td>
+<td valign="top">
+
+### Ten themes
+From Light and Silver to Dark, Daaark, Butter, Diddy, Red, Green, Purple and Amber. Pick one in *Settings → Appearance*, or follow the system.
+
+</td>
+<td valign="top">
+
+### Plugins and sounds
+A sandboxed plugin system with a built-in gallery (to-do, timer, calendar and more), a soundboard with MyInstants import, and a full set of app sounds you can switch off or replace.
+
+</td>
+<td valign="top">
+
+### Status that means something
+Online, Idle, Do Not Disturb and Invisible. Do Not Disturb silences message sounds, notifications and the call ring, and syncs across your devices.
+
+</td>
 </tr>
 </table>
 
-Die Bilder entstehen automatisch aus der echten App, siehe [docs/screenshots](docs/screenshots/README.md).
+More details:
 
-## Was Diddy anders macht
+- **Chat:** voice messages that show up as voice messages in Element, a right-click menu with *Copy Text*, *Join All Rooms* for spaces, and a calm member list split by online and offline.
+- **Music stays loud:** with *Voice processing* off, Diddy records the microphone directly through Core Audio, so macOS no longer ducks other apps when you join a call.
+- **Call alerts:** on iOS, optional push alerts through [ntfy](https://ntfy.sh) ("Name is calling you") when someone calls and the app is closed.
+- **Connection profiles:** if a homeserver is down, open another one in its own window with a separate login and data store. Your existing account and keys stay untouched.
+- **No auto-update:** Diddy only changes when you install a new version.
 
-### 🎙️ Sprachchat
-- **Läuft auf macOS.** Bei Cinny hängt der Beitritt endlos.
-- **Musik bleibt laut.** Mit *Voice processing* aus nimmt Diddy das Mikrofon direkt über Core Audio auf. macOS senkt dann andere Apps beim Beitritt oder Mikrofonwechsel nicht mehr ab.
-- **Kopfhörer-Knopf** schaltet Mikro und Ton zusammen stumm, ein zweiter Klick schaltet beides wieder an.
+## Themes
 
-### 🖥️ Bildschirmübertragung
-- **Bleibt scharf**, auch wenn Diddy im Hintergrund ist.
-- **Mit System-Ton** (macOS 14.2+ und Linux): An/Aus-Knopf in der Call-Leiste, auch vor dem Start. Diddys eigener Call-Ton ist ausgenommen. Unter Linux werden alle anderen erkennbaren Wiedergabe-Apps erfasst, unabhängig vom ausgewählten Fenster; PipeWire mit `pipewire-pulse` oder PulseAudio erforderlich. Linux-Endgeräteabnahme steht noch aus.
+Ten built-in themes, from light to dark (*Settings → Appearance*):
 
-### 💬 Chat
-- **Sprachnachrichten** aufnehmen und abspielen. Element und andere Clients zeigen sie als Sprachnachricht.
-- **Eigenes Rechtsklick-Menü** mit *Copy Text*, statt dem Menü des Web-Views.
-- **Alle Räume eines Space mit einem Klick beitreten** (*Join All Rooms*) oder automatisch (*Auto-Join Rooms*), im Space-Menü.
-- **Konto-Menü** am Profilbild unten links: Konto, Verbindungen, Einstellungen.
+<img src="docs/screenshots/themes.png" alt="All ten themes side by side: Light, Silver, Dark, Daaark, Butter, Diddy, Red, Green, Purple and Amber">
 
-### 🔌 Wenn ein Homeserver ausfällt
-Die Verbindungsseite zeigt den betroffenen Server und bietet **Erneut versuchen** oder **Anderen Server verbinden**.
+<br>
 
-- Unter **Verbindungen** lassen sich gespeicherte Anmeldungen wieder öffnen.
-- Ein anderer Server bekommt ein eigenes Fenster mit getrenntem Login und Datenspeicher. Das bisherige Konto und seine Schlüssel bleiben erhalten.
-- Accounts werden nicht zwischen Servern übertragen.
-- Zusätzliche getrennte Anmeldungen brauchen auf macOS mindestens Version 14.
+<table>
+<tr>
+<td width="50%"><img src="docs/screenshots/settings-appearance.png" alt="Settings page for choosing a theme"></td>
+<td width="50%"><img src="docs/screenshots/settings-profile.png" alt="Settings page for editing the profile card"></td>
+</tr>
+<tr>
+<td align="center"><sub>Pick a theme</sub></td>
+<td align="center"><sub>Design your profile card</sub></td>
+</tr>
+</table>
 
-Kein Auto-Update: Diddy ändert sich nur, wenn du eine neue Version installierst.
+All images show example data and are generated from the real app, see [docs/screenshots](docs/screenshots/README.md).
 
-## Installation
+## Platforms
 
-Alle Downloads liegen unter [Releases](../../releases/latest). Ein Versions-Tag (`vX.Y.Z`) baut sie automatisch: macOS-DMG, Linux-AppImage, DEB und RPM sowie die iOS-IPA, dazu `SHA256SUMS` (Workflow *Release*).
+| | macOS | Linux | iPhone / iPad |
+|---|:---:|:---:|:---:|
+| Chat, rooms, encryption | ✅ | ✅ Electron | 🧪 native app, new |
+| Voice calls | ✅ | ✅ also encrypted | 🧪 |
+| Screen sharing | ✅ | 🧪 Wayland portal / X11 picker | 🧪 full screen on iOS 27+, otherwise Diddy only |
+| …with system sound | ✅ macOS 14.2+ | 🧪 other apps, not Diddy's own sound | 🧪 app sound |
+| Connection profiles | ✅ macOS 14+ | 🧪 untested | 🧪 multiple accounts |
+| Voice messages | ✅ | 🧪 | ❌ |
+| Change app icon | ✅ | 🧪 | 🧪 |
+
+✅ works and is tested · 🧪 built, but not yet tested in daily use · ❌ not supported (yet)
+
+## Install
+
+Downloads are on the [Releases](../../releases/latest) page. Pushing a version tag (`vX.Y.Z`) builds everything automatically: the macOS DMG, Linux AppImage, DEB and RPM, the iOS IPA and `SHA256SUMS`.
 
 <details open>
 <summary><b>macOS (Apple Silicon)</b></summary>
 
-1. `Diddy_*_aarch64.dmg` öffnen und Diddy nach *Programme* ziehen.
-2. Einmal im Terminal ausführen, weil die App nicht notarisiert ist:
+1. Open `Diddy_*_aarch64.dmg` and drag Diddy to *Applications*.
+2. The app is not notarized yet, so run this once in a terminal:
    ```sh
    xattr -cr /Applications/Diddy.app
    ```
-3. Diddy starten und das Mikrofon erlauben. Für den Stream-Ton zusätzlich *Bildschirm- & Systemaudio-Aufnahme* erlauben.
+3. Start Diddy and allow the microphone. For stream sound, also allow *Screen & System Audio Recording*.
 
 </details>
 
 <details>
 <summary><b>Linux</b></summary>
 
-| Paket | Befehl |
+| Package | Command |
 |---|---|
 | AppImage | `chmod +x Diddy_*.AppImage && ./Diddy_*.AppImage` |
-| Debian/Ubuntu | `sudo apt install ./Diddy_*.deb` |
-| Fedora/openSUSE | `sudo dnf install ./Diddy_*.rpm` |
-| NixOS | `nix run .#diddy` im Checkout, siehe [NixOS-Anleitung](docs/nixos.md) |
+| Debian / Ubuntu | `sudo apt install ./Diddy_*.deb` |
+| Fedora / openSUSE | `sudo dnf install ./Diddy_*.rpm` |
+| NixOS | `nix run .#diddy` in a checkout, see the [NixOS guide](docs/nixos.md) (German) |
 
 > [!NOTE]
-> Alle aktuellen Linux-Pakete nutzen Electron (Chromium): NixOS, AppImage und DEB. Für Systemton wird ein mitgelieferter Helfer über PipeWires PulseAudio-Schnittstelle oder PulseAudio verwendet. Alte Tauri-AppImages/DEBs erhalten diese Funktionen erst mit der neuen Electron-Version. Beim Umstieg von Tauri einmal neu anmelden und das neue Gerät verifizieren; alte Schlüssel bleiben im bisherigen Speicher erhalten. Details: [Linux-Anleitung](docs/nixos.md).
+> All current Linux packages use Electron (Chromium): NixOS, AppImage and DEB. System sound capture uses a bundled helper on top of PipeWire's PulseAudio interface or PulseAudio. When moving over from the old Tauri build, sign in once more and verify the new device; your old keys stay in the previous storage.
 
-Kein Linux-Rechner? Linux und NixOS lassen sich auf dem Mac in UTM testen: [VM-Anleitung](docs/vm-macos.md).
+No Linux machine? You can try Linux and NixOS on a Mac with UTM: [VM guide](docs/vm-macos.md) (German).
 
 </details>
 
 <details>
 <summary><b>iPhone / iPad</b></summary>
 
-Eigene native App im Discord-Stil (SwiftUI, matrix-rust-sdk, LiveKit), keine Web-Ansicht. Die IPA baut der Workflow *Build iOS*. Ohne bezahltes Apple-Konto wird sie mit AltStore, SideStore oder Sideloadly installiert. Details, Server-Voraussetzungen und Bau: [ios/README.md](ios/README.md).
+A native app in a Discord-like style (SwiftUI, matrix-rust-sdk, LiveKit), not a web view. The *Build iOS* workflow produces the IPA. Without a paid Apple account, install it with AltStore, SideStore or Sideloadly. Details, server requirements and build steps: [ios/README.md](ios/README.md).
 
-Die iOS-App ist Beta. Sprachkanäle in verschlüsselten Räumen sind Ende-zu-Ende verschlüsselt wie bei Element Call, aber noch ohne Schlüsselrotation beim Verlassen, und den Medienschlüssel bekommen die Geräte aus der LiveKit-Teilnehmerliste. Die Härtung ist geplant ([ios/SECURITY-TODO.md](ios/SECURITY-TODO.md)).
+The iOS app is in beta. Voice channels in encrypted rooms are end-to-end encrypted like Element Call, but without key rotation when someone leaves yet; devices get the media key from the LiveKit participant list. Hardening is planned ([ios/SECURITY-TODO.md](ios/SECURITY-TODO.md)).
 
 </details>
 
-## Apple-Emoji unter Linux
+### Apple emoji on Linux
 
-Auf dem Mac zeigt Diddy die Apple-Emoji. Unter Linux nimmt Diddy die Schrift „Apple Color Emoji“ automatisch, sobald sie installiert ist, sonst die Emoji deines Systems (Noto). In den Einstellungen unter *Appearance → Emoji* steht, ob sie gefunden wurde.
+On the Mac, Diddy shows Apple emoji. On Linux it uses the *Apple Color Emoji* font automatically once it is installed, and falls back to your system emoji (Noto) otherwise. *Settings → Appearance → Emoji* tells you whether the font was found.
 
 > [!IMPORTANT]
-> Die Apple-Emoji sind Apples Grafik, nicht frei lizenziert und nicht weitergebbar. Diddy liefert sie deshalb **nicht** mit, in keinem Paket. Installiere sie nur für dich selbst und auf eigene Verantwortung.
+> Apple emoji are Apple's artwork: not freely licensed and not redistributable. Diddy therefore does **not** ship them in any package. Install them for yourself and at your own responsibility.
 
-Mit dem Community-Build [samuelngs/apple-emoji-ttf](https://github.com/samuelngs/apple-emoji-ttf) (früher `apple-emoji-linux`, die alte Adresse leitet weiter):
+With the community build [samuelngs/apple-emoji-ttf](https://github.com/samuelngs/apple-emoji-ttf):
 
 ```sh
 mkdir -p ~/.local/share/fonts
@@ -142,47 +170,45 @@ curl -L -o ~/.local/share/fonts/AppleColorEmoji.ttf \
 fc-cache -f
 ```
 
-Danach Diddy neu starten. Die Datei ist über 100 MB groß. Fertige `.deb`/`.rpm`/Arch-Pakete gibt es auf derselben Release-Seite.
-
-**NixOS** (optional, nicht im Standardpaket `diddy` enthalten, Lizenz `unfree`):
+Restart Diddy afterwards. The file is over 100 MB. On **NixOS** there is an optional, unfree package (not part of the default `diddy` package):
 
 ```nix
 fonts.packages = [ inputs.diddy.packages.${pkgs.system}.apple-color-emoji ];
 ```
 
-## Fehler melden
+## Report a bug
 
-Hilft am meisten: die Logdatei anhängen. Sie liegt unter macOS in `~/Library/Logs/Diddy/app.log`, unter Linux in `~/.local/state/diddy/app.log` und unter Windows in `%LOCALAPPDATA%\Diddy\Logs\app.log`; in der App öffnet *Einstellungen → About → Diagnostics → Open Folder* den Ordner. Die Datei enthält technische Ereignisse und Fehler, keine Nachrichtentexte.
+The most helpful thing is the log file. It lives at `~/Library/Logs/Diddy/app.log` on macOS, `~/.local/state/diddy/app.log` on Linux and `%LOCALAPPDATA%\Diddy\Logs\app.log` on Windows. In the app, *Settings → About → Diagnostics → Open Folder* opens the folder. The log contains technical events and errors, never message text.
 
-## Selbst bauen
+## Build from source
 
-macOS: Node 24, Rust und die [Tauri-Abhängigkeiten](https://v2.tauri.app/start/prerequisites/).
+**macOS:** Node 24, Rust and the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/).
 
 ```sh
 (cd cinny && npm ci) && npm ci && npm run tauri -- build
 ```
 
-Linux: `(cd cinny && npm ci && npm run build)`, dann `(cd electron && npm ci && npm run dist:linux)` (C-Compiler, pkg-config und libpulse-Entwicklungsdateien erforderlich). NixOS: `nix build .#diddy`. Entwicklung mit Electron siehe [NixOS-Anleitung](docs/nixos.md#entwicklung-und-prüfung).
+**Linux:** `(cd cinny && npm ci && npm run build)`, then `(cd electron && npm ci && npm run dist:linux)` (needs a C compiler, pkg-config and libpulse development files). **NixOS:** `nix build .#diddy`. For development with Electron see the [NixOS guide](docs/nixos.md#entwicklung-und-prüfung) (German).
 
-Tests ohne Hardware:
+Tests that need no hardware:
 
 ```sh
 cd cinny && npm test                                  # JavaScript
-cd electron && npm test                               # Linux-Shell (Electron)
-cd src-tauri && cargo test --lib -- --test-threads=1  # nativ
-cd cinny && npm run build && npm run test:e2e         # Browser-Smoke (Playwright, Chromium)
+cd electron && npm test                               # Linux shell (Electron)
+cd src-tauri && cargo test --lib -- --test-threads=1  # native
+cd cinny && npm run build && npm run test:e2e         # browser smoke test (Playwright, Chromium)
 ```
 
-Auf macOS die nativen Tests mit `DYLD_LIBRARY_PATH=/usr/lib/swift` starten.
+On macOS, start the native tests with `DYLD_LIBRARY_PATH=/usr/lib/swift`.
 
-## Lizenz
+## License
 
-[AGPL-3.0](LICENSE), wie Cinny.
+[AGPL-3.0](LICENSE), like Cinny.
 
 ---
 
 <div align="center">
 
-**Diddy** · gebaut auf [Cinny](https://github.com/cinnyapp/cinny) und [Tauri 2](https://tauri.app/)
+**Diddy** · built on [Cinny](https://github.com/cinnyapp/cinny) and [Tauri 2](https://tauri.app/)
 
 </div>

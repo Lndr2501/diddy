@@ -49,6 +49,9 @@ ssh $MAC 'export PATH=/opt/homebrew/bin:$PATH; cd ~/diddy-build/cinny \
 
 ## 4. README-Screenshots erneuern
 
+Die Bilder zeigen nur erfundene Beispieldaten (Team "Northwind Studio"), nie echte Konten. Der Lauf geht auch unter Linux mit
+Chrome und einem lokalen Synapse, siehe `docs/screenshots/README.md`. Der Mac-Weg:
+
 ```sh
 ssh $MAC 'export PATH=/opt/homebrew/bin:$PATH; cd ~/diddy-build/cinny && npm run shots'   # ~1 Minute
 scp $MAC:diddy-build/docs/screenshots/\*.png docs/screenshots/

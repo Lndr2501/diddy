@@ -16,7 +16,7 @@ folds, jotai). Dazu `electron/` (Linux) und `ios/` (Swift). Repo: Lndr2501/diddy
 | Unit-Tests (schnell, überall) | `npm test` (Node-Testrunner, `tests/*.test.cjs`) |
 | Web-Build | `cp ../config.json . && npm run build` |
 | macOS-UI-Tests (WebKit) | `npm run test:ui:mac`, nur auf dem Mac, siehe Guide |
-| README-Screenshots | `npm run shots`, nur auf dem Mac |
+| README-Screenshots | `npm run shots` (Mac oder Linux mit `DIDDY_SHOTS_CHROME`), nur Beispieldaten, siehe `docs/screenshots/README.md` |
 | Linux/Electron-Tests | `cd electron && npm test` |
 
 Vor jedem Commit: `tsc` und `npm test` grün. Neue Logik bekommt einen Test in `cinny/tests/`.
