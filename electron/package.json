@@ -2,7 +2,7 @@
   "name": "diddy",
   "productName": "Diddy",
   "desktopName": "Diddy.desktop",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "description": "Diddy - a Matrix chat client (Linux shell, Electron)",
   "private": true,
   "main": "main.cjs",
