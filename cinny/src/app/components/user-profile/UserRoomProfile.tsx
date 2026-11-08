@@ -287,6 +287,17 @@ export function UserRoomProfile({ userId, large }: UserRoomProfileProps) {
                 }}
               />
             )}
+            {profile?.clientVersion && (
+              <Text
+                as="span"
+                size="T200"
+                priority="300"
+                className={css.ClientVersion}
+                title={`Uses Diddy ${profile.clientVersion}`}
+              >
+                Diddy {profile.clientVersion}
+              </Text>
+            )}
           </div>
           {switchPrompt}
           {callError && (

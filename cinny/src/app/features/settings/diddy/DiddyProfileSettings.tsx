@@ -34,6 +34,8 @@ import {
   OPTIONS_ROOM_NAME,
 } from '../../../plugins/diddy/types';
 import { BadgeEditor } from './BadgeEditor';
+import { setShareVersion, useShareVersion } from '../../../state/versionShare';
+import { APP_VERSION } from '../../../appInfo';
 import { DarkTheme, LightTheme } from '../../../hooks/useTheme';
 import {
   AboutEditor,
@@ -582,6 +584,7 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
   const hasOptionsRoom = optionsRooms.length > 0;
   const lightRooms = optionsRooms.filter((room) => isLightOptionsRoom(room));
   const stored = useDiddyProfile(mx, myId);
+  const shareVersion = useShareVersion();
 
   const storedBase = useMemo(() => toDraft(stored), [stored]);
   const storedKey = stableKey(storedBase);
@@ -1327,6 +1330,13 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
           Your profile card, badges and name style are shared with everyone in the data room who
           uses Diddy. Fields you leave empty are not shared. Links must be https addresses and are
           checked for each platform.
+        </Text>
+        <Field label={`Show my Diddy version (${APP_VERSION})`}>
+          <Switch variant="Primary" value={shareVersion} onChange={setShareVersion} />
+        </Field>
+        <Text size="T200" priority="300">
+          Other Diddy users see it small on your profile card. Switched off, it is removed from
+          your profile.
         </Text>
       </SettingsCard>
       <SettingsCard
