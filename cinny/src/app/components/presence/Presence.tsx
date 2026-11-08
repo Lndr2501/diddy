@@ -4,7 +4,6 @@ import {
   Box,
   color,
   ContainerColor,
-  MainColor,
   Text,
   Tooltip,
   TooltipProvider,
@@ -12,21 +11,19 @@ import {
 } from 'folds';
 import React, { ReactNode, useId } from 'react';
 import * as css from './styles.css';
-import { Presence, usePresenceLabel } from '../../hooks/useUserPresence';
-
-const PresenceToColor: Record<Presence, MainColor> = {
-  [Presence.Online]: 'Success',
-  [Presence.Unavailable]: 'Warning',
-  [Presence.Offline]: 'Secondary',
-};
+import {
+  PRESENCE_STATE_COLOR,
+  PRESENCE_STATE_LABEL,
+  PresenceState,
+} from '../../utils/presenceState';
 
 type PresenceBadgeProps = {
-  presence: Presence;
-  status?: string;
+  state: PresenceState;
+  message?: string;
   size?: '200' | '300' | '400' | '500';
 };
-export function PresenceBadge({ presence, status, size }: PresenceBadgeProps) {
-  const label = usePresenceLabel();
+/** Small presence dot with a tooltip; state and colors come from utils/presenceState. */
+export function PresenceBadge({ state, message, size }: PresenceBadgeProps) {
   const badgeLabelId = useId();
 
   return (
@@ -38,20 +35,20 @@ export function PresenceBadge({ presence, status, size }: PresenceBadgeProps) {
       tooltip={
         <Tooltip id={badgeLabelId}>
           <Box style={{ maxWidth: toRem(250) }} alignItems="Baseline" gap="100">
-            <Text size="L400">{label[presence]}</Text>
-            {status && <Text size="T200">•</Text>}
-            {status && <Text size="T200">{status}</Text>}
+            <Text size="L400">{PRESENCE_STATE_LABEL[state]}</Text>
+            {message && <Text size="T200">•</Text>}
+            {message && <Text size="T200">{message}</Text>}
           </Box>
         </Tooltip>
       }
     >
       {(triggerRef) => (
         <Badge
-          aria-labelledby={badgeLabelId}
+          aria-label={PRESENCE_STATE_LABEL[state]}
           ref={triggerRef}
           size={size}
-          variant={PresenceToColor[presence]}
-          fill={presence === Presence.Offline ? 'Soft' : 'Solid'}
+          variant={PRESENCE_STATE_COLOR[state]}
+          fill={state === 'offline' ? 'Soft' : 'Solid'}
           radii="Pill"
         />
       )}
