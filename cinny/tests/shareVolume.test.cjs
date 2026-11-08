@@ -6,12 +6,20 @@ const test = require('node:test');
 const vm = require('node:vm');
 const ts = require('typescript');
 
-const filename = path.join(__dirname, '../src/app/plugins/call/shareVolume.ts');
-const output = ts.transpileModule(fs.readFileSync(filename, 'utf8'), {
-  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2016 },
-}).outputText;
-const mod = {};
-vm.runInNewContext(output, { exports: mod, require: () => ({}) }, { filename });
+const load = (file, requireFn) => {
+  const filename = path.join(__dirname, '../src/app/plugins/call', file);
+  const output = ts.transpileModule(fs.readFileSync(filename, 'utf8'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2016 },
+  }).outputText;
+  const exports = {};
+  vm.runInNewContext(output, { exports, require: requireFn }, { filename });
+  return exports;
+};
+const memory = load('volumeMemory.ts', () => ({}));
+const mod = load('shareVolume.ts', (id) => {
+  if (id === './volumeMemory') return memory;
+  throw new Error(id);
+});
 
 const SHARE_ID = '@gho:x.org:DEVICE:screen-share';
 
