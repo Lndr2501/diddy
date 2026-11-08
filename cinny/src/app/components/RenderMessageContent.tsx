@@ -32,6 +32,8 @@ import { TextViewer } from './text-viewer';
 import { testMatrixTo } from '../plugins/matrix-to';
 import { IImageContent } from '../../types/matrix/common';
 import { VoiceContent } from './message/content/VoiceContent';
+import { BotCardView } from './message/BotCard';
+import { parseBotCard } from '../plugins/botCard';
 
 type RenderMessageContentProps = {
   displayName: string;
@@ -164,6 +166,13 @@ export function RenderMessageContent({
         renderUrlsPreview={urlPreview ? renderUrlsPreview : undefined}
       />
     );
+  }
+
+  // Bot messages with structured data (dev.diddy.card) are drawn as a card; every other client
+  // still shows the plain `body`.
+  if (msgType === MsgType.Notice || msgType === MsgType.Text) {
+    const botCard = parseBotCard(getContent());
+    if (botCard) return <BotCardView card={botCard} />;
   }
 
   if (msgType === MsgType.Notice) {
