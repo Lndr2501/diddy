@@ -328,3 +328,34 @@ export const Hint = style({
   opacity: 0.75,
   lineHeight: toRem(18),
 });
+
+// Bar chart rows: label + value on one line, bar below (width set inline as a percentage)
+export const ChartRow = style({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: toRem(3),
+  fontSize: toRem(13),
+});
+
+export const ChartHead = style({
+  display: 'flex',
+  gap: toRem(8),
+  alignItems: 'baseline',
+  minWidth: 0,
+});
+
+export const ChartLabel = style({
+  minWidth: 0,
+  flexGrow: 1,
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+});
+
+export const ChartValue = style({
+  flexShrink: 0,
+  fontVariantNumeric: 'tabular-nums',
+  fontWeight: 600,
+});
+
+export const ChartSub = style({ opacity: 0.65, fontSize: toRem(12) });

@@ -122,6 +122,33 @@ test('queue, help and note cards', () => {
   assert.equal(n.icon, '⏸');
 });
 
+test('list and stats cards are cleaned', () => {
+  const l = parseBotCard(
+    card({ kind: 'list', title: 'Favoriten', items: [{ title: 'A', subtitle: 'x' }, { nope: 1 }] })
+  );
+  assert.equal(l.items.length, 1);
+  assert.equal(l.total, 1);
+  assert.equal(parseBotCard(card({ kind: 'list', items: [] })), undefined);
+  const s = parseBotCard(
+    card({
+      kind: 'stats',
+      title: 'Stats',
+      charts: [
+        {
+          title: 'Top',
+          unit: '×',
+          items: [{ label: 'A', value: 3 }, { label: 'B', value: -1 }, { label: 'C' }],
+        },
+        { title: 'leer', items: [] },
+      ],
+    })
+  );
+  assert.equal(s.charts.length, 1);
+  assert.equal(s.charts[0].items.length, 1);
+  assert.equal(s.charts[0].items[0].value, 3);
+  assert.equal(parseBotCard(card({ kind: 'stats', title: 'x', charts: [] })), undefined);
+});
+
 test('seek command and volume are read and cleaned', () => {
   const c = parseBotCard(
     card({ kind: 'track', state: 'playing', title: 't', seek: '!seek', volume: 70 })

@@ -126,6 +126,43 @@ const samples = [
       { label: '🔀 Mischen', send: '!shuffle' },
     ],
   }),
+  wrap({
+    kind: 'stats',
+    title: 'Musik-Statistik',
+    charts: [
+      {
+        title: 'Meistgespielte Titel',
+        unit: '×',
+        items: [
+          { label: 'Modern Talking – Cheri Cheri Lady', value: 14 },
+          { label: 'Daft Punk – Around the World', value: 9 },
+          { label: 'a-ha – Take On Me', value: 5 },
+        ],
+      },
+      {
+        title: 'Wer hört am meisten Musik',
+        unit: 'min',
+        items: [
+          { label: 'lndr', value: 182.5, sub: '41 Titel' },
+          { label: 'testa', value: 64, sub: '15 Titel' },
+        ],
+      },
+    ],
+    actions: [{ label: '⭐ Meine Favoriten', send: '!fav list' }],
+  }),
+  wrap({
+    kind: 'list',
+    title: 'Favoriten von lndr',
+    total: 2,
+    items: [
+      { title: 'Modern Talking – Cheri Cheri Lady', subtitle: 'Modern Talking', duration: 197 },
+      { title: 'a-ha – Take On Me', duration: 255 },
+    ],
+    actions: [
+      { label: '▶ Alle abspielen', send: '!fav play' },
+      { label: '🔀 Gemischt', send: '!fav play shuffle' },
+    ],
+  }),
   wrap({ kind: 'note', icon: '🔊', text: 'Lautstärke: 80', tone: 'info' }),
   wrap({
     kind: 'note',

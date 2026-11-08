@@ -32,7 +32,7 @@ for (const theme of THEMES) {
     const errors = [];
     page.on('pageerror', (e) => errors.push(String(e)));
     await page.goto(`/preview/bot-card.html?theme=${theme}`);
-    await expect(page.locator('[data-bot-card]')).toHaveCount(8);
+    await expect(page.locator('[data-bot-card]')).toHaveCount(10);
     expect(await page.getByText('invalid card').count()).toBe(0);
 
     const problems = await page.evaluate(() => {
