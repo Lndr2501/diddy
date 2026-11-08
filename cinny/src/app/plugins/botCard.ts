@@ -6,6 +6,8 @@
  * Protocol description: docs/bot-cards.md
  */
 export const CARD_KEY = 'dev.diddy.card';
+/** Set on the message a card button / the timeline sends, so Diddy does not show it in the chat. */
+export const CARD_ACTION_KEY = 'dev.diddy.card_action';
 
 export type CardTone = 'info' | 'success' | 'warning' | 'error';
 export type TrackState = 'searching' | 'downloading' | 'playing' | 'paused' | 'stopped' | 'error';
@@ -14,6 +16,9 @@ export type CardAction = { label: string; send: string };
 export type QueueItem = { title: string; artist?: string; duration?: number };
 export type HelpItem = { usage: string; desc: string };
 export type HelpGroup = { title: string; items: HelpItem[] };
+export type ListItem = { title: string; subtitle?: string; duration?: number };
+export type ChartItem = { label: string; value: number; sub?: string };
+export type Chart = { title: string; unit?: string; items: ChartItem[] };
 
 export type BotCard =
   | {
@@ -31,10 +36,23 @@ export type BotCard =
       url?: string;
       source?: string;
       note?: string;
+      /** bot command for the timeline: a click sends `<seek> <mm:ss>`, arrow keys `<seek> -10` / `+10` */
+      seek?: string;
+      /** current volume of the bot (shown next to the times) */
+      volume?: number;
       actions: CardAction[];
     }
   | { kind: 'queue'; now?: QueueItem; items: QueueItem[]; total: number; actions: CardAction[] }
   | { kind: 'help'; groups: HelpGroup[]; note?: string }
+  | {
+      kind: 'list';
+      title: string;
+      items: ListItem[];
+      total: number;
+      empty?: string;
+      actions: CardAction[];
+    }
+  | { kind: 'stats'; title: string; charts: Chart[]; actions: CardAction[] }
   | { kind: 'note'; text: string; tone: CardTone; icon?: string };
 
 const TRACK_STATES: TrackState[] = [
@@ -76,7 +94,7 @@ const httpUrl = (v: unknown): string | undefined => {
 const actions = (v: unknown): CardAction[] => {
   if (!Array.isArray(v)) return [];
   const out: CardAction[] = [];
-  v.slice(0, 6).forEach((a) => {
+  v.slice(0, 10).forEach((a) => {
     if (!isObject(a)) return;
     const label = text(a.label, 24);
     const send = text(a.send, 120);
@@ -117,6 +135,9 @@ export const parseBotCard = (content: unknown): BotCard | undefined => {
       url: httpUrl(raw.url),
       source: text(raw.source, 30),
       note: text(raw.note, 200),
+      seek:
+        typeof raw.seek === 'string' && /^[!/][^\s]{1,30}$/.test(raw.seek) ? raw.seek : undefined,
+      volume: num(raw.volume, 1000),
       actions: actions(raw.actions),
     };
   }
@@ -146,6 +167,49 @@ export const parseBotCard = (content: unknown): BotCard | undefined => {
     });
     if (!groups.length) return undefined;
     return { kind: 'help', groups, note: text(raw.note, 400) };
+  }
+
+  if (raw.kind === 'list') {
+    const title = text(raw.title, 100);
+    if (!title) return undefined;
+    const items: ListItem[] = [];
+    (Array.isArray(raw.items) ? raw.items : []).slice(0, 50).forEach((i) => {
+      if (!isObject(i)) return;
+      const t = text(i.title, 160);
+      if (t)
+        items.push({
+          title: t,
+          subtitle: text(i.subtitle, 120),
+          duration: num(i.duration, 86400 * 7),
+        });
+    });
+    return {
+      kind: 'list',
+      title,
+      items,
+      total: num(raw.total, 1e6) ?? items.length,
+      empty: text(raw.empty, 200),
+      actions: actions(raw.actions),
+    };
+  }
+
+  if (raw.kind === 'stats') {
+    const title = text(raw.title, 100);
+    const charts: Chart[] = [];
+    (Array.isArray(raw.charts) ? raw.charts : []).slice(0, 6).forEach((c) => {
+      if (!isObject(c)) return;
+      const ct = text(c.title, 80);
+      const items: ChartItem[] = [];
+      (Array.isArray(c.items) ? c.items : []).slice(0, 15).forEach((i) => {
+        if (!isObject(i)) return;
+        const label = text(i.label, 120);
+        const value = num(i.value, 1e12);
+        if (label && value !== undefined) items.push({ label, value, sub: text(i.sub, 60) });
+      });
+      if (ct && items.length) charts.push({ title: ct, unit: text(c.unit, 12), items });
+    });
+    if (!title || !charts.length) return undefined;
+    return { kind: 'stats', title, charts, actions: actions(raw.actions) };
   }
 
   if (raw.kind === 'note') {
@@ -180,4 +244,21 @@ export const livePosition = (
       : 0;
   const pos = card.position + elapsed;
   return card.duration !== undefined ? Math.min(pos, card.duration) : pos;
+};
+
+/**
+ * A command that a card button sent for you ("!pause", "!seek 1:23", "!volume -10"): Diddy hides it
+ * in the timeline, the card itself changes instead. The flag alone is not enough: anybody could set it
+ * on any message, so only short bot-command-shaped texts count (a real message is never hidden).
+ */
+export const isCardActionMessage = (content: unknown): boolean => {
+  if (!isObject(content) || content[CARD_ACTION_KEY] !== true || content.msgtype !== 'm.text') {
+    return false;
+  }
+  const { body } = content;
+  return (
+    typeof body === 'string' &&
+    body.length <= 60 &&
+    /^[!/][^\s]{1,30}( [^\s]{1,20}){0,2}$/.test(body)
+  );
 };

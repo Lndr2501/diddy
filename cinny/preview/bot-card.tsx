@@ -40,12 +40,15 @@ document.body.style.backgroundColor = color.Background.Container;
 document.body.style.color = color.Background.OnContainer;
 
 const sent: string[] = [];
+const sentContent: Record<string, unknown>[] = [];
 (window as unknown as { __sent: string[] }).__sent = sent;
+(window as unknown as { __sentContent: unknown[] }).__sentContent = sentContent;
 const fakeMx = new Proxy({} as Record<string, unknown>, {
   get: (_t, key) => {
     if (key === 'sendMessage')
       return (_room: string, content: { body: string }) => {
         sent.push(content.body);
+        sentContent.push(content as unknown as Record<string, unknown>);
         return Promise.resolve({});
       };
     if (key === 'getUserId' || key === 'getSafeUserId') return () => '@lndr:x.de';
@@ -81,9 +84,15 @@ const samples = [
     duration: 197,
     position: 62,
     startedAt: now,
+    seek: '!seek',
+    volume: 60,
     actions: [
       { label: '⏸ Pause', send: '!pause' },
       { label: '⏭ Weiter', send: '!skip' },
+      { label: '⏪ 10 s', send: '!zurueck 10' },
+      { label: '⏩ 10 s', send: '!vor 10' },
+      { label: '🔉 −', send: '!volume -10' },
+      { label: '🔊 +', send: '!volume +10' },
       { label: '📜 Warteschlange', send: '!queue' },
       { label: '⏹ Stopp', send: '!stop' },
     ],
@@ -95,7 +104,13 @@ const samples = [
     artist: 'Daft Punk',
     duration: 429,
     position: 215,
-    actions: [{ label: '▶ Weiter', send: '!resume' }],
+    seek: '!seek',
+    volume: 60,
+    actions: [
+      { label: '▶ Weiter', send: '!resume' },
+      { label: '🔉 −', send: '!volume -10' },
+      { label: '🔊 +', send: '!volume +10' },
+    ],
   }),
   wrap({
     kind: 'queue',
@@ -109,6 +124,43 @@ const samples = [
     actions: [
       { label: '🗑 Leeren', send: '!clear' },
       { label: '🔀 Mischen', send: '!shuffle' },
+    ],
+  }),
+  wrap({
+    kind: 'stats',
+    title: 'Musik-Statistik',
+    charts: [
+      {
+        title: 'Meistgespielte Titel',
+        unit: '×',
+        items: [
+          { label: 'Modern Talking – Cheri Cheri Lady', value: 14 },
+          { label: 'Daft Punk – Around the World', value: 9 },
+          { label: 'a-ha – Take On Me', value: 5 },
+        ],
+      },
+      {
+        title: 'Wer hört am meisten Musik',
+        unit: 'min',
+        items: [
+          { label: 'lndr', value: 182.5, sub: '41 Titel' },
+          { label: 'testa', value: 64, sub: '15 Titel' },
+        ],
+      },
+    ],
+    actions: [{ label: '⭐ Meine Favoriten', send: '!fav list' }],
+  }),
+  wrap({
+    kind: 'list',
+    title: 'Favoriten von lndr',
+    total: 2,
+    items: [
+      { title: 'Modern Talking – Cheri Cheri Lady', subtitle: 'Modern Talking', duration: 197 },
+      { title: 'a-ha – Take On Me', duration: 255 },
+    ],
+    actions: [
+      { label: '▶ Alle abspielen', send: '!fav play' },
+      { label: '🔀 Gemischt', send: '!fav play shuffle' },
     ],
   }),
   wrap({ kind: 'note', icon: '🔊', text: 'Lautstärke: 80', tone: 'info' }),
