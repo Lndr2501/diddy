@@ -13,6 +13,8 @@ Die App ist Beta: Alles in der Tabelle ist gebaut und läuft bei den ersten Test
 | Live sehen, wer im Sprachkanal ist, mit Namen und Profilbild, auch in der Kanalliste | 🧪 |
 | Antworten, Reaktionen, Bearbeiten, Löschen, @-Erwähnungen, Tippanzeige, Bilder senden und ansehen, Dateien öffnen | 🧪 |
 | Eigenen Namen und Profilbild ändern | 🧪 |
+| Diddy-Profile vom Desktop (Namensfarbe, Banner, Status, Badges, Über mich, Infos, Aktivität, Interessen, Links) auf der Profilkarte, in der Mitgliederliste und im Chat; eigenes Profil bearbeiten (Status, Namensfarbe, Über mich, Infos, Aktivität) | 🧪 gelesen werden State-Events und unverschlüsselte Räume; Daten, die nur als verschlüsselte Nachricht im Options-Raum liegen, fehlen noch |
+| Einstellungen: Chat (Zeitformat, Beitritte anzeigen, Bilder automatisch laden, Tipp- und Lesestatus teilen), Geräte (umbenennen), blockierte Nutzer, Über Diddy | 🧪 |
 | Ende-zu-Ende-Verschlüsselung, Gerät mit Wiederherstellungsschlüssel bestätigen | 🧪 |
 | Mehrere Konten auf verschiedenen Servern, jedes mit eigenem Speicher | 🧪 |
 | Anmeldung mit Passwort oder über die Login-Seite des Servers (OAuth/MAS), nur über HTTPS | 🧪 |

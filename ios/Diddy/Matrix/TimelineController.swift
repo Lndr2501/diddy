@@ -75,7 +75,7 @@ final class TimelineController: ObservableObject {
                 Task { @MainActor in self?.typingUserIds = ids.filter { $0 != me } }
             })
             await paginate()
-            try? await timeline.markAsRead(receiptType: .read)
+            try? await timeline.markAsRead(receiptType: Self.receiptType)
         } catch {
             sendError = error.friendlyMessage
         }
@@ -98,7 +98,8 @@ final class TimelineController: ObservableObject {
     }
 
     func setTyping(_ typing: Bool) {
-        guard typing != isTyping else { return }
+        // With sharing off nothing is announced; a "stopped typing" is still sent if one started.
+        guard typing != isTyping, !typing || ChatSettings.shareActivity else { return }
         isTyping = typing
         let room = room
         Task { try? await room.typingNotice(isTyping: typing) }
@@ -106,8 +107,12 @@ final class TimelineController: ObservableObject {
 
     func markRead() {
         guard let timeline else { return }
-        Task { try? await timeline.markAsRead(receiptType: .read) }
+        let type = Self.receiptType
+        Task { try? await timeline.markAsRead(receiptType: type) }
     }
+
+    /// A private receipt clears your unread count without showing others how far you have read.
+    private static var receiptType: ReceiptType { ChatSettings.shareActivity ? .read : .readPrivate }
 
     // MARK: Sending
 
@@ -251,7 +256,8 @@ final class TimelineController: ObservableObject {
             }
         case .roomMembership(let userId, let displayName, let change, _):
             // Profile edits and other no-ops are noise in a channel; Discord does not show them either.
-            guard let text = Self.membershipText(name: displayName ?? userId, change: change) else { return nil }
+            guard ChatSettings.showMembership,
+                  let text = Self.membershipText(name: displayName ?? userId, change: change) else { return nil }
             body = .notice(text)
         case .rtcNotification, .callInvite:
             body = .notice("\(name) started a call")

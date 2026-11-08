@@ -737,6 +737,8 @@ private struct ChatImage: View {
     let onTap: (UIImage) -> Void
     @State private var image: UIImage?
     @State private var failed = false
+    /// Off until tapped when Settings > Chat says not to load pictures by themselves.
+    @State private var requested = ChatSettings.autoLoadMedia
 
     var body: some View {
         ZStack {
@@ -745,6 +747,8 @@ private struct ChatImage: View {
                 Image(uiImage: image).resizable().scaledToFit()
             } else if failed {
                 Image(systemName: "photo").foregroundStyle(Theme.faint)
+            } else if !requested {
+                Label("Tap to load", systemImage: "photo").font(.footnote).foregroundStyle(Theme.muted)
             } else {
                 ProgressView()
             }
@@ -753,6 +757,7 @@ private struct ChatImage: View {
         .frame(maxWidth: 280, maxHeight: 320, alignment: .leading)
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .onTapGesture {
+            guard requested else { requested = true; return }
             guard image != nil else { return }
             Task {
                 // Show the original rather than the chat thumbnail.
@@ -760,10 +765,12 @@ private struct ChatImage: View {
                 if let shown = full ?? image { onTap(shown) }
             }
         }
-        .task {
+        .task(id: requested) {
+            guard requested else { return }
             image = await MediaLoader.shared.image(source: source, size: 800, accountId: account.id, client: account.client)
             failed = image == nil
         }
+        .accessibilityHint(requested ? "" : "Loads the picture")
     }
 }
 

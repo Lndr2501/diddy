@@ -91,7 +91,8 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    NavigationLink("Sounds") { SoundSettingsView() }
+                    NavigationLink { ChatSettingsView() } label: { Label("Chat", systemImage: "bubble.left.and.bubble.right.fill") }
+                    NavigationLink { SoundSettingsView() } label: { Label("Sounds", systemImage: "speaker.wave.2.fill") }
                 }
 
                 Section {
@@ -127,6 +128,12 @@ struct SettingsView: View {
                     LabeledContent("Session", value: account.verificationState == .verified ? "Verified" : "Not verified")
                     LabeledContent("Device ID", value: account.deviceId)
                     Button("Enter recovery key") { showRecovery = true }
+                    NavigationLink("Devices") { DevicesView(account: account) }
+                    NavigationLink("Blocked Users") { BlockedUsersView(account: account) }
+                }
+
+                Section {
+                    NavigationLink { AboutView(account: account) } label: { Label("About Diddy", systemImage: "info.circle.fill") }
                 }
 
                 Section {
