@@ -3,7 +3,6 @@ import React, {
   FormEventHandler,
   useCallback,
   useEffect,
-  useMemo,
   useState,
 } from 'react';
 import {
@@ -18,10 +17,10 @@ import {
   Overlay,
   OverlayBackdrop,
   OverlayCenter,
-  Modal,
   Dialog,
   Header,
   config,
+  color,
   Spinner,
 } from 'folds';
 import FocusTrap from 'focus-trap-react';
@@ -34,12 +33,13 @@ import { useMediaAuthentication } from '../../../hooks/useMediaAuthentication';
 import { nameInitials } from '../../../utils/common';
 import { AsyncStatus, useAsyncCallback } from '../../../hooks/useAsyncCallback';
 import { useFilePicker } from '../../../hooks/useFilePicker';
-import { useObjectURL } from '../../../hooks/useObjectURL';
 import { stopPropagation } from '../../../utils/keyboard';
-import { ImageEditor } from '../../../components/image-editor';
-import { ModalWide } from '../../../styles/Modal.css';
-import { createUploadAtom, UploadSuccess } from '../../../state/upload';
-import { CompactUploadCardRenderer } from '../../../components/upload-card';
+import {
+  AVATAR_ACCEPT,
+  avatarErrorMessage,
+  uploadMatrixAvatar,
+} from '../../../plugins/diddy/avatar';
+import { serverUploadLimit } from '../../../plugins/diddy/media';
 import { useCapabilities } from '../../../hooks/useCapabilities';
 
 type ProfileProps = {
@@ -58,27 +58,25 @@ function ProfileAvatar({ profile, userId }: ProfileProps) {
     ? mxcUrlToHttp(mx, profile.avatarUrl, useAuthentication, 96, 96, 'crop') ?? undefined
     : undefined;
 
-  const [imageFile, setImageFile] = useState<File>();
-  const imageFileURL = useObjectURL(imageFile);
-  const uploadAtom = useMemo(() => {
-    if (imageFile) return createUploadAtom(imageFile);
-    return undefined;
-  }, [imageFile]);
-
-  const pickFile = useFilePicker(setImageFile, false);
-
-  const handleRemoveUpload = useCallback(() => {
-    setImageFile(undefined);
-  }, []);
-
-  const handleUploaded = useCallback(
-    (upload: UploadSuccess) => {
-      const { mxc } = upload;
-      mx.setAvatarUrl(mxc);
-      handleRemoveUpload();
+  // the picture is uploaded exactly as chosen: a GIF / WebP / APNG keeps moving (#93)
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string>();
+  const handleFile = useCallback(
+    async (file: File | undefined) => {
+      if (!file) return;
+      setUploading(true);
+      setUploadError(undefined);
+      try {
+        await uploadMatrixAvatar(mx, file, await serverUploadLimit(mx));
+      } catch (e) {
+        setUploadError(avatarErrorMessage(e));
+      } finally {
+        setUploading(false);
+      }
     },
-    [mx, handleRemoveUpload]
+    [mx]
   );
+  const pickFile = useFilePicker(handleFile, false);
 
   const handleRemoveAvatar = () => {
     mx.setAvatarUrl('');
@@ -89,7 +87,8 @@ function ProfileAvatar({ profile, userId }: ProfileProps) {
     <InsetRow
       before={
         <Avatar size="500" radii="300">
-          <UserAvatar surface="account"
+          <UserAvatar
+            surface="account"
             userId={userId}
             src={avatarUrl}
             renderFallback={() => <Text size="H4">{nameInitials(defaultDisplayName)}</Text>}
@@ -99,7 +98,7 @@ function ProfileAvatar({ profile, userId }: ProfileProps) {
       title="Profile Picture"
       description={defaultDisplayName}
       after={
-        !uploadAtom && (
+        !uploading && (
           <>
             {avatarUrl && (
               <Button
@@ -114,7 +113,7 @@ function ProfileAvatar({ profile, userId }: ProfileProps) {
               </Button>
             )}
             <Button
-              onClick={() => pickFile('image/*')}
+              onClick={() => pickFile(AVATAR_ACCEPT)}
               size="300"
               variant="Secondary"
               fill="Soft"
@@ -127,37 +126,21 @@ function ProfileAvatar({ profile, userId }: ProfileProps) {
         )
       }
     >
-      {uploadAtom && (
-        <Box gap="200" direction="Column">
-          <CompactUploadCardRenderer
-            uploadAtom={uploadAtom}
-            onRemove={handleRemoveUpload}
-            onComplete={handleUploaded}
-          />
+      {uploading && (
+        <Box gap="200" alignItems="Center">
+          <Spinner size="100" variant="Secondary" />
+          <Text size="T200">Uploading picture...</Text>
         </Box>
       )}
-
-      {imageFileURL && (
-        <Overlay open={false} backdrop={<OverlayBackdrop />}>
-          <OverlayCenter>
-            <FocusTrap
-              focusTrapOptions={{
-                initialFocus: false,
-                onDeactivate: handleRemoveUpload,
-                clickOutsideDeactivates: true,
-                escapeDeactivates: stopPropagation,
-              }}
-            >
-              <Modal className={ModalWide} variant="Surface" size="500">
-                <ImageEditor
-                  name={imageFile?.name ?? 'Unnamed'}
-                  url={imageFileURL}
-                  requestClose={handleRemoveUpload}
-                />
-              </Modal>
-            </FocusTrap>
-          </OverlayCenter>
-        </Overlay>
+      {uploadError && (
+        <Text size="T200" style={{ color: color.Critical.Main }}>
+          {uploadError}
+        </Text>
+      )}
+      {!uploading && !uploadError && (
+        <Text size="T200" priority="300">
+          PNG, JPG, GIF, WebP or APNG. Animated pictures keep moving.
+        </Text>
       )}
 
       <Overlay open={alertRemove} backdrop={<OverlayBackdrop />}>
