@@ -50,6 +50,7 @@ import { ThemeTiles } from './ThemeTiles';
 import { updateCallPrefs, useCallPrefs } from '../../../state/callPrefs';
 import { SoundSettings } from './SoundSettings';
 import { AgentVoiceSettings } from './AgentVoiceSettings';
+import { WatchTogetherSettings } from './WatchTogetherSettings';
 import { AvatarSurface, setAvatarAnimation, useAvatarPrefs } from '../../../state/avatarPrefs';
 import { resetDiddyOnboarding } from '../../../plugins/diddy/onboarding';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
@@ -950,6 +951,7 @@ export function General({ requestClose }: GeneralProps) {
       <AnimatedAvatarSettings />
       <CallSettings />
       <AgentVoiceSettings />
+      <WatchTogetherSettings />
       <SoundSettings />
       <WelcomeGuideSettings />
       <DateAndTime />

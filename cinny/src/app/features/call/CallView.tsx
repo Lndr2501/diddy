@@ -15,6 +15,7 @@ import { CallMemberRenderer, CallRoster } from './CallMemberCard';
 import * as css from './styles.css';
 import { CallStage } from './CallStage';
 import { CallControls } from './CallControls';
+import { WatchTogetherPanel } from './WatchTogether';
 import { useLivekitSupport } from '../../hooks/useLivekitSupport';
 import { webRTCSupported } from '../../utils/rtc';
 
@@ -149,6 +150,7 @@ function CallJoined({ joined, containerRef, members }: CallJoinedProps) {
   return (
     <Box grow="Yes" direction="Column">
       {joined && <CallRoster members={members} />}
+      {callEmbed && joined && <WatchTogetherPanel />}
       <Box grow="Yes" ref={containerRef} className={css.StagePlaceholder}>
         {callEmbed && joined && <CallStage callEmbed={callEmbed} />}
       </Box>
