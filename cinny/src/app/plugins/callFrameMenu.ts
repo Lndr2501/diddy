@@ -31,15 +31,29 @@ export const tileUserId = (tile: TileLike | null | undefined): string | undefine
   return label && /^@[^\s:]+:[^\s]+$/.test(label) ? label : undefined;
 };
 
-/** The tile of `userId` in the call document, if that person is shown. */
-export const findCallTile = <T extends TileLike>(
+type MenuTileLike = TileLike & { getAttribute?: (name: string) => string | null };
+
+/**
+ * Only the grid tiles of Element Call are the trigger of its tile menu (mute for me, volume):
+ * the context menu trigger sets `aria-haspopup="menu"` on the tile itself. The spotlight shows
+ * a person a second time (the speaker, a screen share) in a tile without that menu.
+ */
+const hasTileMenu = (tile: MenuTileLike): boolean =>
+  tile.getAttribute?.('aria-haspopup') === 'menu';
+
+/**
+ * The tile of `userId` in the call document, if that person is shown: the one with Element
+ * Call's tile menu when there are several (the spotlight comes first in the document).
+ */
+export const findCallTile = <T extends MenuTileLike>(
   doc: { querySelectorAll: (selector: string) => ArrayLike<T> } | null | undefined,
   userId: string
 ): T | undefined => {
   if (!doc) return undefined;
-  return Array.from(doc.querySelectorAll(CALL_TILE_SELECTOR)).find(
+  const tiles = Array.from(doc.querySelectorAll(CALL_TILE_SELECTOR)).filter(
     (tile) => tileUserId(tile) === userId
   );
+  return tiles.find(hasTileMenu) ?? tiles[0];
 };
 
 type MutedTileLike = TileLike & { querySelector: (selector: string) => LabelledLike | null };

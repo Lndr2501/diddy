@@ -150,6 +150,24 @@ test('finds the tile of a given user in the call document', () => {
   assert.equal(mod.findCallTile(null, '@a:x.org'), undefined);
 });
 
+// #91: in the spotlight (speaker, screen share) a person has a second tile without Element
+// Call's menu, and it comes first in the document: "Volume & Mute for me" did nothing.
+test('prefers the tile that has Element Call\'s tile menu', () => {
+  const mod = load();
+  const withMenu = (t, haspopup) => ({
+    ...t,
+    getAttribute: (name) => (name === 'aria-haspopup' ? haspopup : null),
+  });
+  const spotlight = withMenu(tile('@a:x.org'), null);
+  const grid = withMenu(tile('@a:x.org'), 'menu');
+  const other = withMenu(tile('@b:x.org'), 'menu');
+  const doc = { querySelectorAll: () => [spotlight, other, grid] };
+  assert.equal(mod.findCallTile(doc, '@a:x.org'), grid);
+  // only the spotlight shows them: that tile, as before
+  const only = { querySelectorAll: () => [spotlight, other] };
+  assert.equal(mod.findCallTile(only, '@a:x.org'), spotlight);
+});
+
 // Right-click on a tile: only the Diddy person menu, not also Element Call's own one.
 function install({ hidden = false } = {}) {
   const mod = load();
