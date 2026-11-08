@@ -17,6 +17,16 @@
  * If any of that is missing after an Element Call update, the control is simply not offered.
  */
 
+import {
+  KeyValueStore,
+  readVolumes,
+  RememberedVolume,
+  rememberedVolume,
+  rememberVolume,
+  STREAM_VOLUMES_KEY,
+  touchVolume,
+} from './volumeMemory';
+
 type Subscription = { unsubscribe: () => void };
 type Behavior<T> = { value: T; subscribe: (next: (value: T) => void) => Subscription };
 
@@ -108,71 +118,29 @@ export const watchShareVolume = (vm: ShareVolumeVm, onChange: () => void): (() =
 /*
  * Remembered per person: the volume you gave somebody's screen share comes back the next time
  * they share (Element Call starts every share at 100 %). Kept in localStorage under
- * `diddyStreamVolumes` as { "@user:server": { volume, muted } }; 100 % and not muted is the
- * default and is not stored.
+ * `diddyStreamVolumes` (see volumeMemory.ts); 100 % and not muted is the default and is not stored.
  */
 
-export type RememberedVolume = {
-  /** the level the slider stands at, also while muted (unmute returns to it); 0 < volume <= 1 */
-  volume: number;
-  muted: boolean;
-};
-
-type KeyValueStore = {
-  getItem: (key: string) => string | null;
-  setItem: (key: string, value: string) => void;
-};
-
-export const STREAM_VOLUMES_KEY = 'diddyStreamVolumes';
-
-const validLevel = (value: unknown): number | undefined => {
-  const n = Number(value);
-  return Number.isFinite(n) && n > 0 ? Math.min(1, n) : undefined;
-};
+export type { RememberedVolume } from './volumeMemory';
+export { STREAM_VOLUMES_KEY } from './volumeMemory';
 
 /** Everything remembered; broken or foreign entries are left out. */
 export const readStreamVolumes = (
   storage: KeyValueStore | undefined
-): Record<string, RememberedVolume> => {
-  try {
-    const raw = JSON.parse(storage?.getItem(STREAM_VOLUMES_KEY) ?? '{}');
-    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
-    const result: Record<string, RememberedVolume> = {};
-    Object.entries(raw as Record<string, Partial<RememberedVolume>>).forEach(([userId, entry]) => {
-      const volume = validLevel(entry?.volume);
-      if (userId.startsWith('@') && volume !== undefined) {
-        result[userId] = { volume, muted: entry?.muted === true };
-      }
-    });
-    return result;
-  } catch {
-    return {};
-  }
-};
+): Record<string, RememberedVolume> => readVolumes(storage, STREAM_VOLUMES_KEY);
 
 /** The remembered volume of `userId`'s screen shares, if any. */
 export const rememberedStreamVolume = (
   storage: KeyValueStore | undefined,
   userId: string
-): RememberedVolume | undefined => readStreamVolumes(storage)[userId];
+): RememberedVolume | undefined => rememberedVolume(storage, STREAM_VOLUMES_KEY, userId);
 
 /** Remember `entry` for `userId` (the default, 100 % and not muted, removes the entry). */
 export const rememberStreamVolume = (
   storage: KeyValueStore | undefined,
   userId: string,
   entry: RememberedVolume
-): void => {
-  if (!storage || !userId) return;
-  const all = readStreamVolumes(storage);
-  const volume = validLevel(entry.volume) ?? 1;
-  if (volume === 1 && !entry.muted) delete all[userId];
-  else all[userId] = { volume, muted: entry.muted };
-  try {
-    storage.setItem(STREAM_VOLUMES_KEY, JSON.stringify(all));
-  } catch {
-    // storage full or blocked: the volume still applies to this share
-  }
-};
+): void => rememberVolume(storage, STREAM_VOLUMES_KEY, userId, entry);
 
 /** Share models whose remembered volume was already applied (once per share, never again). */
 const restored = new WeakSet<object>();
@@ -190,6 +158,7 @@ export const restoreStreamVolume = (
   restored.add(vm);
   const entry = rememberedStreamVolume(storage, userId);
   if (!entry) return;
+  touchVolume(storage, STREAM_VOLUMES_KEY, userId);
   vm.adjustPlaybackVolume(entry.volume);
   vm.commitPlaybackVolume();
   // muted: Element Call keeps the level above, so unmute returns to it

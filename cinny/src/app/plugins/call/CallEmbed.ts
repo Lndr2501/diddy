@@ -32,6 +32,7 @@ import { installSoundboard } from './soundboard';
 import { installLocalSpeaking, stopLocalSpeaking } from './localSpeaking';
 import { installCallTheme } from './callTheme';
 import { installScreenShareGrid } from './screenShareGrid';
+import { installUserVolumeMemory } from './userVolume';
 import { startReceiveWatch, startVideoReceiveWatch, trackPeerConnections } from './streamStats';
 import { installE2eeWatch } from './e2eeWatch';
 import { diag } from '../diagnostics';
@@ -236,6 +237,8 @@ export class CallEmbed {
       installCallTheme(iframe.contentWindow);
       // Show all screen shares at once instead of Element Call's one-at-a-time carousel (#66).
       installScreenShareGrid(iframe.contentWindow);
+      // #103: the volume / mute-for-me you give a person comes back in the next call
+      installUserVolumeMemory(iframe.contentWindow);
     };
     const earlyInstall = window.setInterval(() => {
       const target = iframe.contentWindow;
