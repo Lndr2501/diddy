@@ -13,6 +13,7 @@ import {
 import React, { ReactNode, useId } from 'react';
 import * as css from './styles.css';
 import { Presence, usePresenceLabel } from '../../hooks/useUserPresence';
+import { DND_STATUS_MSG } from '../../plugins/diddy/dnd';
 
 const PresenceToColor: Record<Presence, MainColor> = {
   [Presence.Online]: 'Success',
@@ -24,10 +25,15 @@ type PresenceBadgeProps = {
   presence: Presence;
   status?: string;
   size?: '200' | '300' | '400' | '500';
+  /** Shown as Do not disturb (red) instead of the plain presence color. */
+  dnd?: boolean;
 };
-export function PresenceBadge({ presence, status, size }: PresenceBadgeProps) {
+export function PresenceBadge({ presence, status, size, dnd }: PresenceBadgeProps) {
   const label = usePresenceLabel();
   const badgeLabelId = useId();
+  const shownDnd = dnd && presence !== Presence.Offline;
+  // the DND status message would only repeat the label
+  const shownStatus = shownDnd && status?.trim() === DND_STATUS_MSG ? undefined : status;
 
   return (
     <TooltipProvider
@@ -38,9 +44,9 @@ export function PresenceBadge({ presence, status, size }: PresenceBadgeProps) {
       tooltip={
         <Tooltip id={badgeLabelId}>
           <Box style={{ maxWidth: toRem(250) }} alignItems="Baseline" gap="100">
-            <Text size="L400">{label[presence]}</Text>
-            {status && <Text size="T200">•</Text>}
-            {status && <Text size="T200">{status}</Text>}
+            <Text size="L400">{shownDnd ? DND_STATUS_MSG : label[presence]}</Text>
+            {shownStatus && <Text size="T200">•</Text>}
+            {shownStatus && <Text size="T200">{shownStatus}</Text>}
           </Box>
         </Tooltip>
       }
@@ -50,7 +56,7 @@ export function PresenceBadge({ presence, status, size }: PresenceBadgeProps) {
           aria-labelledby={badgeLabelId}
           ref={triggerRef}
           size={size}
-          variant={PresenceToColor[presence]}
+          variant={shownDnd ? 'Critical' : PresenceToColor[presence]}
           fill={presence === Presence.Offline ? 'Soft' : 'Solid'}
           radii="Pill"
         />
