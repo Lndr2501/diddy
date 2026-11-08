@@ -34,8 +34,12 @@ const MIME_BY_EXTENSION: Record<string, string> = {
   jpg: 'image/jpeg',
   jpeg: 'image/jpeg',
 };
-/** best first: a video loop, then an animated picture, then a still */
-const PREFERENCE = ['webm', 'mp4', 'apng', 'gif', 'webp', 'png', 'jpg', 'jpeg'];
+/**
+ * Best first: an animated picture, then a video loop, then a still. Pictures come first because
+ * nameplates are usually transparent on one side and WebKit (macOS) cannot play WebM with alpha:
+ * it draws black there, while APNG, GIF and WebP keep the transparency everywhere.
+ */
+const PREFERENCE = ['apng', 'gif', 'webp', 'webm', 'mp4', 'png', 'jpg', 'jpeg'];
 
 const extensionOf = (name: string): string => {
   const dot = name.lastIndexOf('.');

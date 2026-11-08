@@ -21,10 +21,11 @@ export const NameplateHost = style({
   overflow: 'hidden',
 });
 
-/** Text on a nameplate: a soft halo in the row colour keeps it readable on busy pictures. */
-export const NameplateText = style({
-  textShadow: `0 0 3px ${surface}, 0 0 8px ${surface}`,
-});
+/**
+ * Text on a nameplate. It has no halo of its own: the row scrim keeps it readable, and a halo
+ * would smear together with the name's own effect (glow, shadow, outline).
+ */
+export const NameplateText = style({});
 
 export const Backdrop = style({
   position: 'absolute',
