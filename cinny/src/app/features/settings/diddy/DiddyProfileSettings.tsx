@@ -109,8 +109,11 @@ import { RangeInput } from '../../../components/diddy/RangeInput';
 import { buildNameStyleCss } from '../../../components/diddy/DiddyName';
 import { safeAngle, safeColor } from '../../../plugins/diddy/sanitize';
 import { DEFAULT_IMAGE_POS, PositionedImg } from '../../../components/diddy/PositionedImg';
+import { animatedThumbnailUrl } from '../../../plugins/diddy/avatar';
+import { LegacyAvatarNotice } from './LegacyAvatarNotice';
 
-type Draft = Omit<DiddyProfile, 'v' | 'shownBadges'>;
+// the old Diddy avatar (#93) is not edited here any more; it is kept as stored until answered
+type Draft = Omit<DiddyProfile, 'v' | 'shownBadges' | 'animatedAvatarMxc'>;
 
 const STATUSES: { id: DiddyStatus; label: string; color: string }[] = [
   { id: 'online', label: 'Online', color: '#3BA55D' },
@@ -153,7 +156,7 @@ const stableKey = (value: unknown): string => JSON.stringify(stable(value));
 
 const toDraft = (profile: DiddyProfile | undefined): Draft => {
   if (!profile) return {};
-  const { v, shownBadges, ...rest } = profile;
+  const { v, shownBadges, animatedAvatarMxc, ...rest } = profile;
   return JSON.parse(JSON.stringify(rest)) as Draft;
 };
 
@@ -345,8 +348,8 @@ function PreviewAvatar({
   size,
   dot,
 }: Omit<PreviewProps, 'userId'> & { size: number; dot: number }) {
-  const animatedUrl = useMxcUrl(draft.animatedAvatarMxc);
-  const avatarSrc = animatedUrl ?? avatarUrl;
+  // the Matrix picture; a GIF moves here too (#93)
+  const avatarSrc = avatarUrl ? animatedThumbnailUrl(avatarUrl) : undefined;
   return (
     <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
       <div
@@ -366,11 +369,7 @@ function PreviewAvatar({
           border: size > 40 ? `4px solid ${color.Surface.Container}` : undefined,
         }}
       >
-        {avatarSrc ? (
-          <PositionedImg src={avatarSrc} pos={animatedUrl ? draft.avatarPos : undefined} />
-        ) : (
-          nameInitials(displayName)
-        )}
+        {avatarSrc ? <PositionedImg src={avatarSrc} /> : nameInitials(displayName)}
       </div>
       <span
         style={{
@@ -854,8 +853,6 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
         nameplate,
         effect,
         frame,
-        animatedAvatarMxc,
-        avatarPos,
         status,
         bio,
         about,
@@ -1281,36 +1278,9 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
     <>
       <SettingsCard
         icon={Icons.User}
-        title="Animated avatar"
-        description="Other Diddy users see it instead of your normal avatar."
-      >
-        <UploadField
-          title={draft.animatedAvatarMxc ? 'Animated avatar' : 'No animated avatar'}
-          hint="Supports GIF, WebP and PNG"
-          accept="image/gif,image/webp,image/png"
-          round
-          mxc={draft.animatedAvatarMxc}
-          busy={busyKey === 'avatar'}
-          onFile={(file) =>
-            upload('avatar', file, (mxc) =>
-              setDraft((d) => ({ ...d, animatedAvatarMxc: mxc, avatarPos: undefined }))
-            )
-          }
-          onRemove={() =>
-            setDraft((d) => ({ ...d, animatedAvatarMxc: undefined, avatarPos: undefined }))
-          }
-        />
-        {draft.animatedAvatarMxc && (
-          <PositionEditor
-            mxc={draft.animatedAvatarMxc}
-            pos={draft.avatarPos}
-            width={120}
-            ratio={1}
-            round
-            onChange={(avatarPos) => setDraft((d) => ({ ...d, avatarPos }))}
-          />
-        )}
-      </SettingsCard>
+        title="Profile picture"
+        description="Your profile picture is your Matrix picture, also as a GIF, WebP or APNG. Change it in Settings > Account."
+      />
       <SettingsCard
         icon={Icons.Bookmark}
         title="Nameplate"
@@ -1673,6 +1643,10 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
             </header>
 
             {!hasOptionsRoom && setupCard}
+            <LegacyAvatarNotice
+              legacyMxc={stored?.animatedAvatarMxc}
+              matrixMxc={userProfile.avatarUrl}
+            />
 
             <div className={css.Layout}>
               <div

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unveröffentlicht
+
+- **Profilbild nur noch über Matrix (#93):** Das eigene Diddy-Profilbild („Animated avatar“) ist entfernt, alle sehen das normale Matrix-Profilbild. Unter Einstellungen > Account lässt sich jetzt auch ein GIF, WebP oder APNG hochladen; die Datei wird unverändert hochgeladen (kein Zuschneiden, keine Neukodierung) und bewegt sich überall, wo es unter „Animated profile pictures“ eingeschaltet ist (Vorschaubilder werden mit `animated=true` angefragt). Das Upload-Limit des Servers wird vorher geprüft, Fehler sind lesbar. Wer ein altes Diddy-Bild hatte, bekommt unter Einstellungen > Profile einmalig das Angebot, es als Matrix-Profilbild zu übernehmen, oder kann den Hinweis schließen.
+
 ## 1.4.0 (2026-11-08)
 
 ### Highlights

@@ -226,10 +226,10 @@ export const sanitizeProfile = (raw: unknown): DiddyProfile | undefined => {
   if (effect) out.effect = effect;
   const frame = sanitizeProfileFrame(raw.frame);
   if (frame) out.frame = frame;
+  // the old Diddy avatar (#93): only kept for the one-time migration notice, never displayed;
+  // its crop (avatarPos) is dropped
   const animatedAvatarMxc = safeMxc(raw.animatedAvatarMxc);
   if (animatedAvatarMxc) out.animatedAvatarMxc = animatedAvatarMxc;
-  const avatarPos = sanitizeImagePos(raw.avatarPos);
-  if (animatedAvatarMxc && avatarPos) out.avatarPos = avatarPos;
   if (typeof raw.status === 'string' && STATUSES.includes(raw.status as DiddyStatus)) {
     out.status = raw.status as DiddyStatus;
   }
