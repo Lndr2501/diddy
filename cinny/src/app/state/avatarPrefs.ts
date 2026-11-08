@@ -1,6 +1,6 @@
 /**
- * Where animated (GIF / WebP) Diddy profile pictures actually move. Local to this device, kept in
- * localStorage. Switched off, a place shows the user's normal Matrix picture (or initials).
+ * Where animated (GIF / WebP / APNG) Matrix profile pictures actually move. Local to this device, kept in
+ * localStorage. Switched off, a place shows a still picture of it.
  */
 import { useSyncExternalStore } from 'react';
 
