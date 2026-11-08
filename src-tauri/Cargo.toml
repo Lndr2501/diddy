@@ -58,6 +58,16 @@ block2 = "0.6"
 # System-audio bridge for screen sharing (capture: src/audio_tap.rs, Core Audio process tap)
 tungstenite = "0.30"
 
+[target.'cfg(target_os = "macos")'.dev-dependencies]
+# tests/webkit_isolation.rs: cookies in real persistent WebKit stores (issue #7)
+objc2-web-kit = { version = "0.3", features = ["WKHTTPCookieStore"] }
+objc2-foundation = { version = "0.3", features = ["NSError", "NSHTTPCookie", "NSRunLoop"] }
+
 [lib]
 name = "app_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
+
+# WebKit has to run on the main thread, which libtest does not give a test: own main().
+[[test]]
+name = "webkit_isolation"
+harness = false
