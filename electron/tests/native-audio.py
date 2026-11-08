@@ -114,6 +114,9 @@ with tempfile.TemporaryDirectory(prefix='diddy-audio-') as runtime:
                     settle_attempts.append(attempts)
                     return levels
                 if time.monotonic() >= deadline:
+                    # The helper's INFO/WARN lines explain which stream was not captured and why.
+                    capture.terminate()
+                    print('helper stderr:', capture.stderr.read().decode(errors='replace'), flush=True)
                     raise AssertionError(('audio did not settle', tones, levels))
 
         excluded = measure()

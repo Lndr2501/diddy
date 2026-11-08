@@ -162,10 +162,15 @@ static void stream_state(pa_stream *stream, void *userdata) {
     Input *in = userdata;
     uint32_t index = in->index - 1;
     int error = pa_context_errno(context);
-    // A playback stream may disappear while its monitor is being connected; look it up again once.
-    int transient = error == PA_ERR_NOENTITY || error == PA_ERR_KILLED;
-    int ignored = drop_input(in, transient ? 1 : DENY_AFTER, "Application audio monitor failed", error);
-    if (transient && !ignored) operation(pa_context_get_sink_input_info(context, index, input_info, NULL));
+    // A playback stream may disappear, or (older PipeWire) not be linkable yet, while its monitor is being
+    // connected. That is not a failure of this stream: look it up again, as often as it takes, without
+    // counting it towards the deny-list (the REMOVE event ends the retries once the stream is gone).
+    if (error == PA_ERR_NOENTITY || error == PA_ERR_KILLED) {
+        remove_input(in);
+        operation(pa_context_get_sink_input_info(context, index, input_info, NULL));
+        return;
+    }
+    drop_input(in, DENY_AFTER, "Application audio monitor failed", error);
 }
 typedef struct { Input *input; uint32_t index, sink; } SinkRequest;
 static void sink_info(pa_context *ctx, const pa_sink_info *info, int eol, void *userdata) {
