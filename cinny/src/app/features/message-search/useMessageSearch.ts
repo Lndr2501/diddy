@@ -2,17 +2,26 @@ import {
   IEventWithRoomId,
   IResultContext,
   ISearchRequestBody,
-  ISearchResponse,
-  ISearchResult,
   SearchOrderBy,
 } from 'matrix-js-sdk';
 import { useCallback } from 'react';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
+import {
+  EventRef,
+  mergeSearchPages,
+  missingBundledEdits,
+  missingOriginals,
+  resolveSearchHits,
+} from './searchEdits';
 
 export type ResultItem = {
   rank: number;
+  /** Original event; for edited messages its content is the latest edit's m.new_content. */
   event: IEventWithRoomId;
   context: IResultContext;
+  /** Id of the original event (what the timeline shows and "Open" jumps to). */
+  originalEventId: string;
+  edited: boolean;
 };
 
 export type ResultGroup = {
@@ -23,45 +32,12 @@ export type ResultGroup = {
 export type SearchResult = {
   nextToken?: string;
   highlights: string[];
-  groups: ResultGroup[];
+  items: ResultItem[];
 };
 
-const groupSearchResult = (results: ISearchResult[]): ResultGroup[] => {
-  const groups: ResultGroup[] = [];
-
-  results.forEach((item) => {
-    const roomId = item.result.room_id;
-    const resultItem: ResultItem = {
-      rank: item.rank,
-      event: item.result,
-      context: item.context,
-    };
-
-    const lastAddedGroup: ResultGroup | undefined = groups[groups.length - 1];
-    if (lastAddedGroup && roomId === lastAddedGroup.roomId) {
-      lastAddedGroup.items.push(resultItem);
-      return;
-    }
-    groups.push({
-      roomId,
-      items: [resultItem],
-    });
-  });
-
-  return groups;
-};
-
-const parseSearchResult = (result: ISearchResponse): SearchResult => {
-  const roomEvents = result.search_categories.room_events;
-
-  const searchResult: SearchResult = {
-    nextToken: roomEvents?.next_batch,
-    highlights: roomEvents?.highlights ?? [],
-    groups: groupSearchResult(roomEvents?.results ?? []),
-  };
-
-  return searchResult;
-};
+/** Groups the items of all loaded pages, showing each message once (#109). */
+export const groupSearchPages = (pages: SearchResult[]): ResultGroup[] =>
+  mergeSearchPages(pages.map((page) => page.items));
 
 export type MessageSearchParams = {
   term?: string;
@@ -78,7 +54,7 @@ export const useMessageSearch = (params: MessageSearchParams) => {
       if (!term)
         return {
           highlights: [],
-          groups: [],
+          items: [],
         };
       const limit = 20;
 
@@ -106,7 +82,37 @@ export const useMessageSearch = (params: MessageSearchParams) => {
         body: requestBody,
         next_batch: nextBatch === '' ? undefined : nextBatch,
       });
-      return parseSearchResult(r);
+      const roomEvents = r.search_categories.room_events;
+      const hits = (roomEvents?.results ?? []).map((item) => ({
+        rank: item.rank,
+        event: item.result,
+        context: item.context,
+      }));
+
+      // Edited messages: load originals of edit hits and the latest edits the server only
+      // references, so each message shows once with its current text.
+      const fetchEvents = async (refs: EventRef[]): Promise<IEventWithRoomId[]> => {
+        const events = await Promise.all(
+          refs.map(async ({ roomId, eventId }) => {
+            try {
+              const event = await mx.fetchRoomEvent(roomId, eventId);
+              return { ...event, room_id: event.room_id ?? roomId } as IEventWithRoomId;
+            } catch {
+              return undefined;
+            }
+          })
+        );
+        return events.filter((e): e is IEventWithRoomId => !!e);
+      };
+      const originals = await fetchEvents(missingOriginals(hits));
+      const known = [...hits.map((h) => h.event), ...originals];
+      const edits = await fetchEvents(missingBundledEdits(known, known));
+
+      return {
+        nextToken: roomEvents?.next_batch,
+        highlights: roomEvents?.highlights ?? [],
+        items: resolveSearchHits(hits, [...originals, ...edits], term),
+      };
     },
     [mx, term, order, rooms, senders]
   );
