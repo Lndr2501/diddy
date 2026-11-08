@@ -52,6 +52,7 @@ import { SoundSettings } from './SoundSettings';
 import { browserStorage, clearAllCallVolumes } from '../../../plugins/call/volumeMemory';
 import { AgentVoiceSettings } from './AgentVoiceSettings';
 import { WatchTogetherSettings } from './WatchTogetherSettings';
+import { GifSettings } from './GifSettings';
 import { AvatarSurface, setAvatarAnimation, useAvatarPrefs } from '../../../state/avatarPrefs';
 import { resetDiddyOnboarding } from '../../../plugins/diddy/onboarding';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
@@ -999,6 +1000,7 @@ export function General({ requestClose }: GeneralProps) {
       <WelcomeGuideSettings />
       <DateAndTime />
       <Editor />
+      <GifSettings />
       <Messages />
     </SettingsPage>
   );
