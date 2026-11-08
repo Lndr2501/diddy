@@ -1,6 +1,5 @@
 import React, {
   ChangeEventHandler,
-  CSSProperties,
   MouseEventHandler,
   useCallback,
   useEffect,
@@ -27,7 +26,6 @@ import {
   Text,
   Tooltip,
   TooltipProvider,
-  color,
   config,
 } from 'folds';
 import { MatrixClient, Room, RoomMember, UserEvent } from 'matrix-js-sdk';
@@ -72,9 +70,15 @@ import { useRoomPermissions } from '../../hooks/useRoomPermissions';
 import { useOpenRoomSettings } from '../../state/hooks/roomSettings';
 import { DiddyName } from '../../components/diddy/DiddyName';
 import { useDiddyProfile } from '../../plugins/diddy/profiles';
-import { PositionedImg } from '../../components/diddy/PositionedImg';
-import { useMxcUrl } from '../../plugins/diddy/media';
-import { safeColor, safeMxc } from '../../plugins/diddy/sanitize';
+import {
+  NameplateBackdrop,
+  NameplateHost,
+  NameplateText,
+  hasNameplate,
+  nameplateSurfaceStyle,
+  useNameplateAnimation,
+} from '../../components/diddy/Nameplate';
+import { SIDE_TONE } from '../../components/sidebar/diddyTokens';
 
 type MemberDrawerHeaderProps = {
   room: Room;
@@ -156,28 +160,21 @@ function MemberItem({
     : undefined;
   const presence = usePresenceState(member.userId);
   const diddyProfile = useDiddyProfile(mx, member.userId);
-  const nameplateColor = safeColor(diddyProfile?.nameplate?.color);
-  const nameplateImageUrl = useMxcUrl(safeMxc(diddyProfile?.nameplate?.imageMxc), {
-    w: 560,
-    h: 80,
-  });
-
-  const nameplateStyle = useMemo<CSSProperties | undefined>(() => {
-    if (!nameplateColor && !nameplateImageUrl) return undefined;
-    return {
-      position: 'relative',
-      isolation: 'isolate',
-      overflow: 'hidden',
-      backgroundImage: nameplateColor
-        ? `linear-gradient(to right, color-mix(in srgb, ${nameplateColor} 28%, transparent), transparent)`
-        : undefined,
-    };
-  }, [nameplateColor, nameplateImageUrl]);
+  const nameplate = diddyProfile?.nameplate;
+  const animateNameplate = useNameplateAnimation();
+  const withNameplate = hasNameplate(nameplate);
 
   return (
     <MenuItem
-      className={classNames(css.MemberRow, offline && css.MemberRowOffline)}
-      style={{ padding: `0 ${config.space.S200}`, ...nameplateStyle }}
+      className={classNames(
+        css.MemberRow,
+        offline && css.MemberRowOffline,
+        withNameplate && NameplateHost
+      )}
+      style={{
+        padding: `0 ${config.space.S200}`,
+        ...(withNameplate ? nameplateSurfaceStyle(SIDE_TONE) : {}),
+      }}
       aria-pressed={pressed}
       data-user-id={member.userId}
       variant="Surface"
@@ -193,7 +190,8 @@ function MemberItem({
           }
         >
           <Avatar size="200">
-            <UserAvatar surface="members"
+            <UserAvatar
+              surface="members"
               userId={member.userId}
               src={avatarUrl ?? undefined}
               alt={name}
@@ -221,28 +219,8 @@ function MemberItem({
         </>
       }
     >
-      {nameplateImageUrl && (
-        <div
-          aria-hidden
-          style={{
-            position: 'absolute',
-            inset: 0,
-            zIndex: -1,
-            overflow: 'hidden',
-            pointerEvents: 'none',
-          }}
-        >
-          <PositionedImg src={nameplateImageUrl} pos={diddyProfile?.nameplate?.imagePos} />
-          <div
-            style={{
-              position: 'absolute',
-              inset: 0,
-              background: `color-mix(in srgb, ${color.Surface.Container} 65%, transparent)`,
-            }}
-          />
-        </div>
-      )}
-      <Box grow="Yes">
+      {withNameplate && <NameplateBackdrop plate={nameplate} animate={animateNameplate} />}
+      <Box grow="Yes" className={withNameplate ? NameplateText : undefined}>
         <Text size="T400" truncate>
           <DiddyName userId={member.userId} name={name} showBadges />
         </Text>

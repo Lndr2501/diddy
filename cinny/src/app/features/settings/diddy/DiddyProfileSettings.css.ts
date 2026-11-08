@@ -480,6 +480,43 @@ export const ThumbRound = style({
   borderRadius: '50%',
 });
 
+// --- nameplate presets (#78) -------------------------------------------------------------------
+
+export const PresetGrid = style({
+  display: 'grid',
+  gridTemplateColumns: `repeat(auto-fill, minmax(${toRem(84)}, 1fr))`,
+  gap: toRem(8),
+  width: '100%',
+});
+
+export const PresetSwatch = style({
+  height: toRem(40),
+  borderRadius: toRem(10),
+  border: LINE,
+  cursor: 'pointer',
+  padding: `${toRem(4)} ${toRem(8)}`,
+  display: 'flex',
+  alignItems: 'flex-end',
+  justifyContent: 'flex-start',
+  font: 'inherit',
+  fontSize: toRem(11.5),
+  fontWeight: 600,
+  color: '#fff',
+  textShadow: '0 1px 2px rgba(0, 0, 0, 0.6)',
+  background: color.SurfaceVariant.Container,
+  selectors: {
+    '&[aria-pressed=true], &:focus-visible': {
+      outline: `2px solid ${color.Primary.Main}`,
+      outlineOffset: toRem(2),
+    },
+  },
+});
+
+export const PresetNone = style({
+  color: color.SurfaceVariant.OnContainer,
+  textShadow: 'none',
+});
+
 // --- name preview ------------------------------------------------------------------------------
 
 export const NameStage = style({

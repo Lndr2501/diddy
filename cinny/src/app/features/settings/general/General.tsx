@@ -892,6 +892,17 @@ function AnimatedAvatarSettings() {
             }
           />
         ))}
+        <InsetRow
+          title="Nameplates"
+          description="Moving pictures, videos and gradients behind names in the member and DM lists. Off shows a still picture; with reduced motion turned on in your system they never move."
+          after={
+            <Switch
+              variant="Primary"
+              value={prefs.nameplates}
+              onChange={(value) => setAvatarAnimation('nameplates', value)}
+            />
+          }
+        />
       </InsetGroup>
     </InsetSection>
   );
