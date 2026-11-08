@@ -23,8 +23,10 @@ import {
   useOptionsRooms,
 } from '../../../plugins/diddy/optionsRoom';
 import { uploadDiddyMedia, uploadNameplateMedia, useMxcUrl } from '../../../plugins/diddy/media';
+import { readNameplateZip } from '../../../plugins/diddy/nameplateZip';
 import {
   MAX_NAMEPLATE_VIDEO_SECONDS,
+  isNameplateZip,
   NAMEPLATE_ACCEPT,
   NAMEPLATE_PRESETS,
   presetGradient,
@@ -748,8 +750,15 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
     setBusyKey('plate');
     setUploadError(undefined);
     try {
-      const { imageMxc, videoMxc } = await uploadNameplateMedia(mx, file);
-      patchPlate({ imageMxc, videoMxc, imagePos: undefined });
+      let upload = file;
+      let color: string | undefined;
+      if (isNameplateZip(file)) {
+        const zip = await readNameplateZip(await file.arrayBuffer());
+        upload = new File([zip.data], zip.name, { type: zip.type });
+        color = zip.color;
+      }
+      const { imageMxc, videoMxc } = await uploadNameplateMedia(mx, upload);
+      patchPlate({ imageMxc, videoMxc, imagePos: undefined, ...(color ? { color } : {}) });
     } catch (e) {
       setUploadError(e instanceof Error ? e.message : 'Upload failed.');
     } finally {
@@ -1294,9 +1303,9 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
             (draft.nameplate?.imageMxc && 'Nameplate image') ||
             'Picture or video (optional)'
           }
-          hint={`PNG, JPG, GIF, WebP or a short WebM / MP4 loop (max ${MAX_NAMEPLATE_VIDEO_SECONDS} s, muted)`}
+          hint={`PNG, JPG, GIF, WebP, a short WebM / MP4 loop (max ${MAX_NAMEPLATE_VIDEO_SECONDS} s, muted) or a ZIP with one`}
           accept={NAMEPLATE_ACCEPT}
-          acceptsFile={(file) => /^(image|video)\//.test(file.type)}
+          acceptsFile={(file) => /^(image|video)\//.test(file.type) || isNameplateZip(file)}
           wide
           mxc={draft.nameplate?.imageMxc}
           busy={busyKey === 'plate'}
