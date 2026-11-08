@@ -4,8 +4,9 @@ use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     fs, io::Write, net::Ipv4Addr,
+    path::{Path, PathBuf},
     sync::{
-        atomic::{AtomicBool, AtomicU64, Ordering},
+        atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering},
         mpsc, Arc, Mutex,
     },
     time::{Duration, Instant},
@@ -58,6 +59,40 @@ fn release_opening(app: &AppHandle, label: &str, attempt: u64) {
     }
 }
 
+const HANDOFF_PENDING: u8 = 0;
+const HANDOFF_GAVE_UP: u8 = 1;
+const HANDOFF_DELIVERED: u8 = 2;
+
+/// Who finishes one window construction: the waiting command, or, after the command gave up on
+/// its timeout, the construction itself (issue #7). Without this, a window that was still being
+/// built when the 30 s wait ran out opened anyway, but its new profile was never saved: the login
+/// in it vanished from the overview and its store was orphaned.
+#[derive(Default)]
+struct OpenHandoff(AtomicU8);
+
+impl OpenHandoff {
+    /// The construction may start; false once the waiter gave up before it began.
+    fn may_start(&self) -> bool {
+        self.0.load(Ordering::SeqCst) == HANDOFF_PENDING
+    }
+
+    /// The construction is done. True: the waiter is still there and takes the result. False: it
+    /// gave up, so the construction has to save a new profile itself.
+    fn deliver(&self) -> bool {
+        self.0
+            .compare_exchange(HANDOFF_PENDING, HANDOFF_DELIVERED, Ordering::SeqCst, Ordering::SeqCst)
+            .is_ok()
+    }
+
+    /// The waiter stops waiting. True: nothing was delivered, the construction takes over. False:
+    /// the result was delivered at the same moment and is about to arrive, so keep waiting for it.
+    fn give_up(&self) -> bool {
+        self.0
+            .compare_exchange(HANDOFF_PENDING, HANDOFF_GAVE_UP, Ordering::SeqCst, Ordering::SeqCst)
+            .is_ok()
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ConnectionProfile {
     pub id: String,
@@ -76,6 +111,52 @@ pub fn profile_identifier(id: &str) -> Result<[u8; 16], String> {
             .map_err(|_| "Ungültige Verbindungskennung.".to_string())?;
     }
     Ok(bytes)
+}
+
+/// The window of a connection. The original login keeps the label `main`; every saved connection
+/// gets its own label, so two profiles never share a window.
+pub fn window_label(profile: Option<&ConnectionProfile>) -> String {
+    profile.map(|p| format!("connection-{}", p.id)).unwrap_or_else(|| "main".into())
+}
+
+/// The WebKit data store a window uses on macOS: `None` is the original login's default store,
+/// a saved connection always has its own persistent store addressed by its UUID. There is no
+/// path from a saved connection to `None`: an invalid id fails instead of falling back.
+pub fn store_identifier(profile: Option<&ConnectionProfile>) -> Result<Option<[u8; 16]>, String> {
+    profile.map(|p| profile_identifier(&p.id)).transpose()
+}
+
+/// Linux/Windows: the web view data directory of a saved connection, one per id under
+/// `<app data>/connections`. The id is validated, so it cannot point outside that directory.
+#[cfg_attr(target_os = "macos", allow(dead_code))]
+pub fn connection_data_dir(app_data: &Path, id: &str) -> Result<PathBuf, String> {
+    profile_identifier(id)?;
+    Ok(app_data.join("connections").join(id))
+}
+
+/// macOS: the separate persistent store of a saved connection, never the default store. Must run
+/// on the main thread (WebKit).
+#[cfg(target_os = "macos")]
+pub fn isolated_data_store(
+    identifier: [u8; 16],
+    mtm: objc2::MainThreadMarker,
+) -> Result<objc2::rc::Retained<objc2_web_kit::WKWebsiteDataStore>, String> {
+    use objc2::{msg_send, runtime::Bool, sel};
+    use objc2_foundation::NSUUID;
+    use objc2_web_kit::WKWebsiteDataStore;
+    unsafe {
+        let supported: Bool = msg_send![objc2::class!(WKWebsiteDataStore), respondsToSelector: sel!(dataStoreForIdentifier:)];
+        if !supported.as_bool() {
+            return Err("Getrennte Anmeldungen benötigen macOS 14 oder neuer. Dein bisheriges Konto wurde nicht verändert.".into());
+        }
+        let store = WKWebsiteDataStore::dataStoreForIdentifier(&NSUUID::from_bytes(identifier), mtm);
+        let default_store = WKWebsiteDataStore::defaultDataStore(mtm);
+        let same_id = store.identifier().is_some_and(|id| id.as_bytes() == identifier);
+        if std::ptr::eq(&*store, &*default_store) || !store.isPersistent() || !same_id {
+            return Err("Getrennte Anmeldung konnte nicht sicher isoliert werden. Dein bisheriges Konto wurde nicht verändert.".into());
+        }
+        Ok(store)
+    }
 }
 
 pub fn normalize_server(server: &str) -> Result<String, String> {
@@ -133,16 +214,24 @@ fn encode_profiles(profiles: &[ConnectionProfile]) -> Result<Vec<u8>, String> {
 }
 
 fn read_profiles(app: &AppHandle) -> Result<Vec<ConnectionProfile>, String> {
-    let path = metadata_path(app)?;
+    read_profiles_at(&metadata_path(app)?)
+}
+
+fn read_profiles_at(path: &Path) -> Result<Vec<ConnectionProfile>, String> {
     if !path.exists() { return Ok(Vec::new()); }
-    let length = fs::metadata(&path).map_err(|_| "Verbindungsliste konnte nicht gelesen werden.")?.len();
+    let length = fs::metadata(path).map_err(|_| "Verbindungsliste konnte nicht gelesen werden.")?.len();
     if length > 128 * 1024 { return Err("Verbindungsliste ist zu groß.".into()); }
     let raw = fs::read(path).map_err(|_| "Gespeicherte Verbindungen konnten nicht gelesen werden.")?;
     decode_profiles(&raw)
 }
 
 fn save_profiles(app: &AppHandle, profiles: &[ConnectionProfile]) -> Result<(), String> {
-    let path = metadata_path(app)?;
+    save_profiles_at(&metadata_path(app)?, profiles)
+}
+
+/// Writes a temporary file and renames it over the registry, so a crash or a failed write leaves
+/// either the old or the new list, never half of one.
+fn save_profiles_at(path: &Path, profiles: &[ConnectionProfile]) -> Result<(), String> {
     let parent = path.parent().ok_or("Verbindungsverzeichnis fehlt.")?;
     fs::create_dir_all(parent).map_err(|_| "Verbindungsverzeichnis konnte nicht angelegt werden.")?;
     let temporary = path.with_extension("json.new");
@@ -157,7 +246,69 @@ fn save_profiles(app: &AppHandle, profiles: &[ConnectionProfile]) -> Result<(), 
     let mut file = options.open(&temporary).map_err(|_| "Verbindungen konnten nicht gespeichert werden.")?;
     file.write_all(&data).and_then(|_| file.sync_all())
         .map_err(|_| "Verbindungen konnten nicht gespeichert werden.")?;
-    fs::rename(temporary, path).map_err(|_| "Verbindungsliste konnte nicht aktualisiert werden.".to_string())
+    drop(file);
+    fs::rename(&temporary, path).map_err(|_| "Verbindungsliste konnte nicht aktualisiert werden.".to_string())
+}
+
+/// What opening a saved or new connection means, given the current registry: the profile to open
+/// and whether it is new (and has to be saved once its window exists).
+fn plan_open(
+    profiles: &[ConnectionProfile],
+    id: &str,
+    server: Option<String>,
+) -> Result<(ConnectionProfile, bool), String> {
+    profile_identifier(id)?;
+    if let Some(found) = profiles.iter().find(|profile| profile.id == id) {
+        if let Some(server) = server {
+            if normalize_server(&server)? != found.server {
+                return Err("Für einen anderen Server bitte eine neue Verbindung anlegen.".into());
+            }
+        }
+        return Ok((found.clone(), false));
+    }
+    // A new profile is persisted only after its window really exists, so a failed attempt
+    // cannot quietly consume one of the 20 registry slots.
+    if profiles.len() >= 20 { return Err("Es sind bereits 20 Verbindungen gespeichert.".into()); }
+    let server = normalize_server(&server.ok_or("Diese Verbindung ist nicht gespeichert.")?)?;
+    Ok((ConnectionProfile { id: id.to_string(), server }, true))
+}
+
+/// The registry after a new connection's window opened: `None` when it is already saved (a retry,
+/// or the late construction of a timed out attempt got there first), so nothing is written twice.
+fn registry_with_opened(
+    profiles: Vec<ConnectionProfile>,
+    opened: &ConnectionProfile,
+) -> Result<Option<Vec<ConnectionProfile>>, String> {
+    if profiles.iter().any(|saved| saved.id == opened.id) { return Ok(None); }
+    if profiles.len() >= 20 { return Err("Es sind bereits 20 Verbindungen gespeichert.".into()); }
+    let mut updated = profiles;
+    updated.push(opened.clone());
+    validate_profiles(&updated)?;
+    Ok(Some(updated))
+}
+
+fn persist_opened_at(path: &Path, opened: &ConnectionProfile) -> Result<(), String> {
+    if let Some(updated) = registry_with_opened(read_profiles_at(path)?, opened)? {
+        save_profiles_at(path, &updated)?;
+    }
+    Ok(())
+}
+
+/// Saves a new connection whose window is open. On failure the window stays usable; its store id
+/// goes to the log so the account stays findable although it is not listed in the overview.
+fn persist_opened(app: &AppHandle, opened: &ConnectionProfile) -> Result<(), String> {
+    let result = (|| {
+        let state = app.state::<ConnectionState>();
+        let _guard = state.lock.lock().map_err(|_| "Verbindungsliste ist gerade belegt.")?;
+        persist_opened_at(&metadata_path(app)?, opened)
+    })();
+    if let Err(error) = &result {
+        crate::diag::diag_log(format!(
+            "connection: window open but not registered store={} server={} error={}",
+            opened.id, opened.server, error
+        ));
+    }
+    result
 }
 
 #[tauri::command]
@@ -183,22 +334,10 @@ pub async fn open_connection_profile(
         let guard = state.lock.lock().map_err(|_| "Verbindungsliste ist gerade belegt.")?;
         let profiles = read_profiles(&app)?;
         drop(guard);
-        if let Some(found) = profiles.iter().find(|profile| profile.id == id) {
-            if let Some(server) = server {
-                if normalize_server(&server)? != found.server {
-                    return Err("Für einen anderen Server bitte eine neue Verbindung anlegen.".into());
-                }
-            }
-            (Some(found.clone()), false)
-        } else {
-            // A new profile is persisted only after its window really exists, so a failed attempt
-            // cannot quietly consume one of the 20 registry slots.
-            if profiles.len() >= 20 { return Err("Es sind bereits 20 Verbindungen gespeichert.".into()); }
-            let server = normalize_server(&server.ok_or("Diese Verbindung ist nicht gespeichert.")?)?;
-            (Some(ConnectionProfile { id: id.clone(), server }), true)
-        }
+        let (profile, is_new) = plan_open(&profiles, &id, server)?;
+        (Some(profile), is_new)
     };
-    let label = profile.as_ref().map(|p| format!("connection-{}", p.id)).unwrap_or_else(|| "main".into());
+    let label = window_label(profile.as_ref());
     let attempt = OPEN_ATTEMPT.fetch_add(1, Ordering::SeqCst) + 1;
     {
         let mut opening = state.opening.lock().map_err(|_| "Verbindungsfenster ist gerade belegt.")?;
@@ -212,18 +351,20 @@ pub async fn open_connection_profile(
     let window_app = app.clone();
     let marker = label.clone();
     // A timed out wait must not leave a queued construction behind that opens a window much later;
-    // window creation itself always re-checks the label on the main thread.
-    let cancelled = Arc::new(AtomicBool::new(false));
-    let cancel_check = Arc::clone(&cancelled);
+    // window creation itself always re-checks the label on the main thread. A construction that
+    // was already running when the wait timed out finishes the job itself (OpenHandoff).
+    let handoff = Arc::new(OpenHandoff::default());
+    let construction = Arc::clone(&handoff);
     // WKWebView configuration must be built on the main thread. Do not block that thread waiting.
     let window_profile = profile.clone();
+    let late_profile = if is_new { profile.clone() } else { None };
     // Timing of the phases, written to the app log: the window takes 45-55 s on the Mac and nobody
     // knows yet whether the time goes into the main thread queue or into building the web view.
     let started = Instant::now();
     let scheduled = app.run_on_main_thread(move || {
         let queued_ms = started.elapsed().as_millis();
         let build_started = Instant::now();
-        let result = if cancel_check.load(Ordering::SeqCst) {
+        let result = if !construction.may_start() {
             Err("Das Öffnen dieser Verbindung wurde abgebrochen.".to_string())
         } else if let Some(window) = window_app.get_webview_window(&marker) {
             window.show().and_then(|_| window.set_focus()).map_err(|_| "Fenster konnte nicht geöffnet werden.".to_string())
@@ -240,15 +381,29 @@ pub async fn open_connection_profile(
         if let Ok(mut opening) = window_app.state::<ConnectionState>().opening.lock() {
             release_reserved(&mut opening, &marker, attempt);
         }
-        let _ = sender.send(result);
+        if construction.deliver() {
+            let _ = sender.send(result);
+        } else if let (Ok(()), Some(opened)) = (&result, late_profile.as_ref()) {
+            // The command already returned its timeout error, but the window is open now.
+            if persist_opened(&window_app, opened).is_ok() {
+                crate::diag::diag_log(format!("connection: late window registered store={}", opened.id));
+            }
+        }
     });
     if scheduled.is_err() {
         release_opening(&app, &label, attempt);
         return Err("Verbindungsfenster konnte nicht vorbereitet werden.".into());
     }
+    let waiter = Arc::clone(&handoff);
     let result = tauri::async_runtime::spawn_blocking(move || {
-        receiver.recv_timeout(Duration::from_secs(30))
-            .map_err(|_| "Das Verbindungsfenster reagiert nicht.".to_string())?
+        match receiver.recv_timeout(Duration::from_secs(30)) {
+            Ok(result) => result,
+            Err(_) if waiter.give_up() => Err("Das Verbindungsfenster reagiert nicht.".to_string()),
+            // delivered at the same moment: the result is already being sent
+            Err(_) => receiver
+                .recv_timeout(Duration::from_secs(5))
+                .map_err(|_| "Das Verbindungsfenster reagiert nicht.".to_string())?,
+        }
     }).await.map_err(|_| "Verbindungsfenster konnte nicht geöffnet werden.".to_string())?;
     crate::diag::diag_log(format!(
         "connection: window open total_ms={} label={} ok={}",
@@ -257,30 +412,12 @@ pub async fn open_connection_profile(
         result.is_ok()
     ));
     if result.is_err() {
-        cancelled.store(true, Ordering::SeqCst);
         release_opening(&app, &label, attempt);
     }
     result?;
-    if is_new {
+    if let (true, Some(opened)) = (is_new, profile.as_ref()) {
         // Persist only now: a window that could not be built leaves no registry entry behind.
-        let guard = state.lock.lock().map_err(|_| "Verbindungsliste ist gerade belegt.")?;
-        let mut profiles = read_profiles(&app)?;
-        if !profiles.iter().any(|saved| saved.id == id) {
-            if profiles.len() >= 20 { return Err("Es sind bereits 20 Verbindungen gespeichert.".into()); }
-            profiles.push(profile.ok_or("Verbindung konnte nicht gespeichert werden.")?);
-            if let Err(error) = save_profiles(&app, &profiles) {
-                // The window itself is open and usable; keep its store identifier in the log so the
-                // account stays findable even though it is not listed in the overview.
-                if let Some(saved) = profiles.iter().find(|saved| saved.id == id) {
-                    crate::diag::diag_log(format!(
-                        "connection: window open but not registered store={} server={} error={}",
-                        saved.id, saved.server, error
-                    ));
-                }
-                return Err(error);
-            }
-        }
-        drop(guard);
+        persist_opened(&app, opened)?;
     }
     Ok(())
 }
@@ -344,9 +481,10 @@ async fn remove_connection_data(_app: &AppHandle, _id: &str) -> Result<(), Strin
 #[cfg(target_os = "linux")]
 async fn remove_connection_data(app: &AppHandle, id: &str) -> Result<(), String> {
     profile_identifier(id)?;
-    let dir = app.path().app_data_dir()
-        .map_err(|_| "Profilverzeichnis nicht verfügbar.".to_string())?
-        .join("connections").join(id);
+    let dir = connection_data_dir(
+        &app.path().app_data_dir().map_err(|_| "Profilverzeichnis nicht verfügbar.".to_string())?,
+        id,
+    )?;
     if dir.exists() {
         fs::remove_dir_all(&dir)
             .map_err(|_| String::from("Der Datenspeicher der Verbindung konnte nicht gelöscht werden."))?;
@@ -623,5 +761,165 @@ mod tests {
             .collect();
         assert!(validate_profiles(&many).is_err(), "the registry is capped at 20 entries");
         assert!(validate_profiles(&many[..20]).is_ok());
+    }
+
+    // --- issue #7: window/registry lifecycle and store isolation ---------------------------------
+
+    const A: &str = "aaaaaaaaaaaa4aaaaaaaaaaaaaaaaaaa";
+    const B: &str = "bbbbbbbbbbbb4bbbbbbbbbbbbbbbbbbb";
+
+    fn profile(id: &str, server: &str) -> ConnectionProfile {
+        ConnectionProfile { id: id.into(), server: server.into() }
+    }
+
+    fn numbered(count: usize) -> Vec<ConnectionProfile> {
+        (0..count)
+            .map(|i| profile(&format!("{:012x}4000{}{}", i, "89ab".chars().nth(i % 4).unwrap(), "0".repeat(15)), "https://example.org"))
+            .collect()
+    }
+
+    /// A fresh directory per test, removed again at the end.
+    struct TempDir(PathBuf);
+    impl TempDir {
+        fn new(name: &str) -> Self {
+            let dir = std::env::temp_dir().join(format!("diddy-connections-{}-{}", name, std::process::id()));
+            let _ = fs::remove_dir_all(&dir);
+            fs::create_dir_all(&dir).unwrap();
+            TempDir(dir)
+        }
+        fn registry(&self) -> PathBuf {
+            self.0.join("connections.json")
+        }
+    }
+    impl Drop for TempDir {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.0);
+        }
+    }
+
+    #[test]
+    fn a_timed_out_wait_hands_the_window_to_the_construction() {
+        // the wait gave up before the construction started: nothing is built
+        let handoff = OpenHandoff::default();
+        assert!(handoff.give_up());
+        assert!(!handoff.may_start());
+        assert!(!handoff.deliver(), "the construction must save a late window itself");
+
+        // the construction was already running when the wait gave up: it still finishes
+        let handoff = OpenHandoff::default();
+        assert!(handoff.may_start());
+        assert!(handoff.give_up());
+        assert!(!handoff.deliver());
+
+        // normal case: the result reaches the waiter, which then cannot give up any more
+        let handoff = OpenHandoff::default();
+        assert!(handoff.may_start());
+        assert!(handoff.deliver());
+        assert!(!handoff.give_up(), "a delivered result must be received, not dropped");
+    }
+
+    #[test]
+    fn exactly_one_side_owns_the_result_when_both_race() {
+        for _ in 0..200 {
+            let handoff = Arc::new(OpenHandoff::default());
+            let other = Arc::clone(&handoff);
+            let builder = std::thread::spawn(move || other.deliver());
+            let gave_up = handoff.give_up();
+            let delivered = builder.join().unwrap();
+            assert!(gave_up != delivered, "either the waiter or the construction finishes, never both or none");
+        }
+    }
+
+    #[test]
+    fn opening_plans_reopen_new_and_refusals() {
+        let saved = vec![profile(A, "https://matrix.example.org")];
+        // reopening a saved connection writes nothing
+        let (found, is_new) = plan_open(&saved, A, None).unwrap();
+        assert_eq!((found.id.as_str(), is_new), (A, false));
+        let (_, is_new) = plan_open(&saved, A, Some("matrix.example.org/".into())).unwrap();
+        assert!(!is_new, "the same server in another spelling is the same connection");
+        assert!(plan_open(&saved, A, Some("https://other.example".into())).is_err(), "a saved id is never retargeted");
+        // a new connection needs a valid server and a free slot
+        let (new, is_new) = plan_open(&saved, B, Some("http://127.0.0.1:8008/".into())).unwrap();
+        assert_eq!((new.server.as_str(), is_new), ("http://127.0.0.1:8008", true));
+        assert!(plan_open(&saved, B, None).is_err(), "an unknown id without a server");
+        assert!(plan_open(&saved, "../data", Some("https://example.org".into())).is_err());
+        assert!(plan_open(&numbered(20), B, Some("https://example.org".into())).is_err(), "all 20 slots used");
+    }
+
+    #[test]
+    fn registering_an_opened_window_is_idempotent_and_capped() {
+        let opened = profile(B, "https://example.org");
+        let saved = vec![profile(A, "https://example.org")];
+        let updated = registry_with_opened(saved.clone(), &opened).unwrap().unwrap();
+        assert_eq!(updated.iter().map(|p| p.id.as_str()).collect::<Vec<_>>(), [A, B]);
+        // a retry, or the late construction, finds it already saved: no second write
+        assert!(registry_with_opened(updated, &opened).unwrap().is_none());
+        // two new connections raced for the last slot: the second one is refused, nothing is dropped
+        let full = numbered(20);
+        assert!(registry_with_opened(full.clone(), &opened).is_err());
+        assert_eq!(full.len(), 20);
+        // a hostile profile can never get into the file through this path
+        assert!(registry_with_opened(saved, &profile(B, "http://example.org")).is_err());
+    }
+
+    #[test]
+    fn the_registry_file_survives_failed_writes_and_crashes() {
+        let dir = TempDir::new("lifecycle");
+        let path = dir.registry();
+        assert!(read_profiles_at(&path).unwrap().is_empty(), "no file yet is an empty list");
+
+        persist_opened_at(&path, &profile(A, "https://example.org")).unwrap();
+        persist_opened_at(&path, &profile(A, "https://example.org")).unwrap();
+        assert_eq!(read_profiles_at(&path).unwrap().len(), 1, "a retry does not duplicate the entry");
+
+        // a crash between writing the temporary file and the rename leaves a broken leftover
+        fs::write(path.with_extension("json.new"), b"[{\"id\":").unwrap();
+        assert_eq!(read_profiles_at(&path).unwrap()[0].id, A, "the leftover is never read");
+        persist_opened_at(&path, &profile(B, "https://example.org")).unwrap();
+        let ids: Vec<String> = read_profiles_at(&path).unwrap().into_iter().map(|p| p.id).collect();
+        assert_eq!(ids, [A, B], "the next save replaces the leftover");
+
+        // a write that fails (here: the temporary file cannot be created) keeps the old list intact
+        fs::create_dir(path.with_extension("json.new")).unwrap();
+        assert!(save_profiles_at(&path, &[]).is_err());
+        assert_eq!(read_profiles_at(&path).unwrap().len(), 2);
+        assert!(persist_opened_at(&path, &profile("cccccccccccc4ccc8ccccccccccccccc", "https://example.org")).is_err());
+        assert_eq!(read_profiles_at(&path).unwrap().len(), 2, "a failed registration changes nothing");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn the_registry_file_is_private_to_the_user() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = TempDir::new("mode");
+        save_profiles_at(&dir.registry(), &[profile(A, "https://example.org")]).unwrap();
+        let mode = fs::metadata(dir.registry()).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o600);
+    }
+
+    #[test]
+    fn every_saved_connection_gets_its_own_window_and_store() {
+        let a = profile(A, "https://example.org");
+        let b = profile(B, "https://example.org");
+        assert_eq!(window_label(None), "main");
+        assert_eq!(window_label(Some(&a)), format!("connection-{A}"));
+        assert_ne!(window_label(Some(&a)), window_label(Some(&b)), "same server, still two windows");
+
+        // macOS: the original login keeps the default store, saved connections never fall back to it
+        assert_eq!(store_identifier(None).unwrap(), None);
+        let store_a = store_identifier(Some(&a)).unwrap().unwrap();
+        let store_b = store_identifier(Some(&b)).unwrap().unwrap();
+        assert_ne!(store_a, store_b);
+        assert!(store_identifier(Some(&profile("../data", "https://example.org"))).is_err(), "no default fallback");
+
+        // Linux/Windows: one data directory per id, inside <app data>/connections
+        let base = Path::new("/app-data");
+        let dir_a = connection_data_dir(base, A).unwrap();
+        assert_eq!(dir_a, base.join("connections").join(A));
+        assert_ne!(dir_a, connection_data_dir(base, B).unwrap());
+        for invalid in ["main", "../data", "", "aaaaaaaaaaaa4aaaaaaaaaaaaaaaaaaa/.."] {
+            assert!(connection_data_dir(base, invalid).is_err(), "{invalid}");
+        }
     }
 }

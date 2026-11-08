@@ -33,6 +33,7 @@ import { CardStyle, DiddyProfile, DiddyStatus } from '../../plugins/diddy/types'
 import { useMxcUrl } from '../../plugins/diddy/media';
 import { useShownBadges } from '../../plugins/diddy/profiles';
 import { safeAngle, safeColor, safeMxc, safeText } from '../../plugins/diddy/sanitize';
+import { DND_STATUS_MSG, isShownAsDnd } from '../../plugins/diddy/dnd';
 import { DiddyName } from '../diddy/DiddyName';
 import { BadgeChip } from '../diddy/BadgeChip';
 import { PositionedImg } from '../diddy/PositionedImg';
@@ -154,6 +155,12 @@ export function UserHero({
 
   let badge: ReactNode = null;
   if (diddyStatus) badge = <StatusDot status={diddyStatus} />;
+  else if (
+    presence &&
+    presence.presence !== Presence.Offline &&
+    isShownAsDnd(undefined, presence.status)
+  )
+    badge = <StatusDot status="dnd" />;
   else if (presence) badge = <PresenceDot presence={presence} />;
 
   return (
@@ -327,14 +334,22 @@ export function ProfileStatus({ presence, profile }: ProfileStatusProps) {
   const diddyStatus = profile?.status;
   let dotColor: string | undefined;
   let label: string | undefined;
-  if (diddyStatus) {
-    dotColor = STATUS_COLOR[diddyStatus];
-    label = STATUS_LABEL[diddyStatus];
+  // without a Diddy profile, DND still arrives as the Matrix status message
+  const shownStatus: DiddyStatus | undefined =
+    diddyStatus ??
+    (presence && presence.presence !== Presence.Offline && isShownAsDnd(undefined, presence.status)
+      ? 'dnd'
+      : undefined);
+  if (shownStatus) {
+    dotColor = STATUS_COLOR[shownStatus];
+    label = STATUS_LABEL[shownStatus];
   } else if (presence) {
     dotColor = PRESENCE_COLOR[presence.presence];
     label = presenceLabel[presence.presence];
   }
-  const message = presence?.status?.trim();
+  const rawMessage = presence?.status?.trim();
+  // the DND status message would only repeat the DND pill
+  const message = shownStatus === 'dnd' && rawMessage === DND_STATUS_MSG ? undefined : rawMessage;
   if (!label && !message) return null;
 
   return (

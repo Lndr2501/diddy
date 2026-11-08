@@ -44,6 +44,7 @@ import { useSelectedRoom } from '../hooks/router/useSelectedRoom';
 import { ScreenSize, useScreenSizeContext } from '../hooks/useScreenSize';
 import { useMatrixClient } from '../hooks/useMatrixClient';
 import { getSoundUrl, isSoundEnabled } from '../plugins/sounds';
+import { isDoNotDisturb } from '../plugins/diddy/status';
 import { playCallSound, startRingback, stopRingback } from '../plugins/call/callSounds';
 import {
   ConnectionLossDetector,
@@ -51,10 +52,7 @@ import {
   RINGBACK_MAX_MS,
   RINGBACK_START_DELAY_MS,
 } from '../plugins/soundLogic';
-import {
-  getTrackedPeerConnections,
-  onPeerConnectionCreated,
-} from '../plugins/call/streamStats';
+import { getTrackedPeerConnections, onPeerConnectionCreated } from '../plugins/call/streamStats';
 import { useCallSpeakers } from '../hooks/useCallSpeakers';
 import { speakingUsersAtom } from '../state/speakingUsers';
 import { useCallMembersChange, useCallSession } from '../hooks/useCall';
@@ -121,10 +119,11 @@ function IncomingCall({ dm, info, onIgnore, onAnswer, onReject }: IncomingCallPr
 
   const playSound = useCallback(() => {
     const audioElement = audioRef.current;
-    if (!audioElement || !isSoundEnabled('ringing')) return;
+    // Do not disturb keeps the incoming call on screen but does not ring (#71)
+    if (!audioElement || !isSoundEnabled('ringing') || isDoNotDisturb(mx)) return;
     audioElement.src = getSoundUrl('ringing');
     audioElement.play().catch(() => {});
-  }, []);
+  }, [mx]);
 
   useEffect(() => {
     if (info.notificationType === 'ring') {

@@ -106,6 +106,19 @@ export const StatusMenuDot = style([
   },
 ]);
 
+/** The DND row has a second line, so it grows instead of clipping (44 pt like a native menu row). */
+export const StatusMenuItemTall = style({
+  height: 'auto',
+  minHeight: toRem(44),
+  paddingTop: toRem(6),
+  paddingBottom: toRem(6),
+});
+
+export const StatusMenuDescription = style({
+  whiteSpace: 'normal',
+  lineHeight: 1.3,
+});
+
 export const UserPanelText = style([
   DefaultReset,
   {

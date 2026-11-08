@@ -10,6 +10,10 @@ mod agent_voice;
 mod app_icon;
 mod diag;
 mod connections;
+/// For tests/webkit_isolation.rs only.
+#[cfg(target_os = "macos")]
+#[doc(hidden)]
+pub use connections::isolated_data_store;
 mod myinstants;
 #[cfg(target_os = "macos")]
 mod audio_tap;
@@ -32,7 +36,6 @@ use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 fn media_enabled_webview_configuration(profile: Option<[u8; 16]>) -> Result<objc2::rc::Retained<objc2_web_kit::WKWebViewConfiguration>, String> {
     use objc2::{msg_send, runtime::{Bool, NSObjectProtocol}, sel, MainThreadMarker};
     use objc2_web_kit::{WKWebViewConfiguration, WKWebsiteDataStore};
-    use objc2_foundation::NSUUID;
 
     let mtm = MainThreadMarker::new().expect("webview setup must run on the main thread");
     // Private WKPreferences setters. Guard with respondsToSelector so a future WebKit that
@@ -40,14 +43,9 @@ fn media_enabled_webview_configuration(profile: Option<[u8; 16]>) -> Result<objc
     unsafe {
         let config = WKWebViewConfiguration::new(mtm);
         if let Some(identifier) = profile {
-            let supported: Bool = msg_send![objc2::class!(WKWebsiteDataStore), respondsToSelector: sel!(dataStoreForIdentifier:)];
-            if !supported.as_bool() {
-                return Err("Getrennte Anmeldungen benötigen macOS 14 oder neuer. Dein bisheriges Konto wurde nicht verändert.".into());
-            }
             // Wry ignores data_store_identifier when a custom WK configuration is supplied.
             // Set the actual store here; never reuse the original account's default store.
-            let identifier = NSUUID::from_bytes(identifier);
-            let store = WKWebsiteDataStore::dataStoreForIdentifier(&identifier, mtm);
+            let store = connections::isolated_data_store(identifier, mtm)?;
             config.setWebsiteDataStore(&store);
             let selected = config.websiteDataStore();
             let default_store = WKWebsiteDataStore::defaultDataStore(mtm);
@@ -110,9 +108,10 @@ pub(crate) fn build_client_window(
     #[cfg(not(target_os = "macos"))]
     let window_builder = if let Some(profile) = profile {
         use tauri::Manager;
-        window_builder.data_directory(app.path().app_data_dir()
-            .map_err(|_| "Profilverzeichnis nicht verfügbar.".to_string())?
-            .join("connections").join(&profile.id))
+        window_builder.data_directory(connections::connection_data_dir(
+            &app.path().app_data_dir().map_err(|_| "Profilverzeichnis nicht verfügbar.".to_string())?,
+            &profile.id,
+        )?)
     } else { window_builder };
     #[cfg(target_os = "macos")]
     let window_builder = {
@@ -136,7 +135,7 @@ pub(crate) fn build_client_window(
         .hidden_title(true)
         .traffic_light_position(tauri::Position::Logical(tauri::LogicalPosition::new(20.0, 23.0)))
         .with_webview_configuration(media_enabled_webview_configuration(
-            profile.map(|p| connections::profile_identifier(&p.id)).transpose()?
+            connections::store_identifier(profile)?
         )?);
     let window = window_builder.build().map_err(|_| "Verbindungsfenster konnte nicht geöffnet werden.".to_string())?;
     if label == "main" {

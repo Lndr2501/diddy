@@ -64,6 +64,7 @@ import { ContainerColor } from '../../styles/ContainerColor.css';
 import { GetMemberPowerTag, useGetMemberPowerTag } from '../../hooks/useMemberPowerTag';
 import { MemberPowerTag } from '../../../types/matrix/room';
 import { useRoomCreators } from '../../hooks/useRoomCreators';
+import { isShownAsDnd } from '../../plugins/diddy/dnd';
 import { Presence, useUserPresence } from '../../hooks/useUserPresence';
 import { AvatarPresence, PresenceBadge } from '../../components/presence';
 import { InviteUserPrompt } from '../../components/invite-user-prompt';
@@ -187,12 +188,18 @@ function MemberItem({
           badge={
             presence &&
             presence.presence !== Presence.Offline && (
-              <PresenceBadge presence={presence.presence} status={presence.status} size="200" />
+              <PresenceBadge
+                presence={presence.presence}
+                status={presence.status}
+                dnd={isShownAsDnd(diddyProfile?.status, presence.status)}
+                size="200"
+              />
             )
           }
         >
           <Avatar size="200">
-            <UserAvatar surface="members"
+            <UserAvatar
+              surface="members"
               userId={member.userId}
               src={avatarUrl ?? undefined}
               alt={name}

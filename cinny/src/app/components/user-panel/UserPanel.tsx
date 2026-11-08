@@ -1,4 +1,11 @@
-import React, { MouseEventHandler, useCallback, useEffect, useRef, useState } from 'react';
+import React, {
+  KeyboardEventHandler,
+  MouseEventHandler,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useAtomValue } from 'jotai';
 import {
   Avatar,
@@ -32,6 +39,7 @@ import { ConnectionsMenu } from '../connection-recovery/AccountSwitcher';
 import { ConnectionOverview } from '../connection-recovery/ConnectionRecovery';
 import { getConnectionProfile, visibleHomeserver } from '../../plugins/connections';
 import { openIntro } from '../../plugins/diddy/intro';
+import { nextMenuIndex } from '../../utils/menuKeys';
 
 type ActiveCallButtonsProps = {
   callEmbed: CallEmbed;
@@ -124,10 +132,20 @@ function IdleCallButtons() {
   );
 }
 
-const STATUS_OPTIONS: { status: DiddyStatus; label: string; color: string }[] = [
+const STATUS_OPTIONS: {
+  status: DiddyStatus;
+  label: string;
+  color: string;
+  description?: string;
+}[] = [
   { status: 'online', label: 'Online', color: '#43B581' },
   { status: 'idle', label: 'Idle', color: '#F0B232' },
-  { status: 'dnd', label: 'Do Not Disturb', color: '#F04747' },
+  {
+    status: 'dnd',
+    label: 'Do Not Disturb',
+    color: '#F04747',
+    description: 'Mutes sounds and notifications. Unread badges stay.',
+  },
   { status: 'invisible', label: 'Invisible', color: '#747F8D' },
 ];
 
@@ -138,23 +156,58 @@ type StatusOptionsProps = {
   status: DiddyStatus;
   onSelect: (status: DiddyStatus) => void;
 };
+/**
+ * Native-like status list (#21): it opens with the current status focused and arrow keys /
+ * Home / End move through it. Escape is handled by the account menu itself.
+ */
 function StatusOptions({ status, onSelect }: StatusOptionsProps) {
+  const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  useEffect(() => {
+    const selected = STATUS_OPTIONS.findIndex((o) => o.status === status);
+    itemRefs.current[selected >= 0 ? selected : 0]?.focus();
+    // only when the menu opens
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleKeyDown: KeyboardEventHandler<HTMLDivElement> = (evt) => {
+    const items = itemRefs.current;
+    const current = items.findIndex((item) => item === document.activeElement);
+    const next = nextMenuIndex(current, evt.key, STATUS_OPTIONS.length);
+    if (next === undefined) return;
+    evt.preventDefault();
+    items[next]?.focus();
+  };
+
   return (
-    <Box direction="Column" gap="100">
-      {STATUS_OPTIONS.map((option) => (
+    <Box direction="Column" gap="100" role="menu" aria-label="Status" onKeyDown={handleKeyDown}>
+      {STATUS_OPTIONS.map((option, index) => (
         <MenuItem
           key={option.status}
+          ref={(el: HTMLButtonElement | null) => {
+            itemRefs.current[index] = el;
+          }}
           size="300"
           variant="Surface"
           radii="300"
-          aria-pressed={option.status === status}
+          role="menuitemradio"
+          aria-checked={option.status === status}
+          tabIndex={option.status === status ? 0 : -1}
+          className={option.description ? css.StatusMenuItemTall : undefined}
           before={<span className={css.StatusMenuDot} style={{ backgroundColor: option.color }} />}
           after={option.status === status ? <Icon size="100" src={Icons.Check} /> : undefined}
           onClick={() => onSelect(option.status)}
         >
-          <Text size="B300" truncate style={{ flexGrow: 1 }}>
-            {option.label}
-          </Text>
+          <Box direction="Column" grow="Yes" style={{ minWidth: 0 }}>
+            <Text size="B300" truncate>
+              {option.label}
+            </Text>
+            {option.description && (
+              <Text size="T200" priority="300" className={css.StatusMenuDescription}>
+                {option.description}
+              </Text>
+            )}
+          </Box>
         </MenuItem>
       ))}
     </Box>
@@ -196,7 +249,9 @@ export function UserPanel() {
       setStatusCords(undefined);
     };
     const onKeyDown = (evt: KeyboardEvent) => {
-      if (evt.key === 'Escape') setStatusCords(undefined);
+      if (evt.key !== 'Escape') return;
+      setStatusCords(undefined);
+      statusButtonRef.current?.focus();
     };
     document.addEventListener('pointerdown', onPointerDown, true);
     window.addEventListener('keydown', onKeyDown);
@@ -289,7 +344,8 @@ export function UserPanel() {
           type="button"
           className={css.UserPanelProfileButton}
           onClick={handleOpenStatus}
-          aria-pressed={statusCords !== undefined}
+          aria-haspopup="menu"
+          aria-expanded={statusCords !== undefined}
           aria-label={`Account and status (${statusLabel})`}
           title="Account and status"
         >
