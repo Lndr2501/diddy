@@ -383,7 +383,7 @@ export function RoomNavItem({
             <Box as="span" grow="Yes" alignItems="Center" gap="200">
               <AvatarPresence
                 as="span"
-                variant="Background"
+                ringColor={SIDE_TONE}
                 badge={
                   dmPresence && (
                     <PresenceBadge

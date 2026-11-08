@@ -48,7 +48,8 @@ export function PresenceBadge({ state, message, size }: PresenceBadgeProps) {
           ref={triggerRef}
           size={size}
           variant={PRESENCE_STATE_COLOR[state]}
-          fill={state === 'offline' ? 'Soft' : 'Solid'}
+          fill="Solid"
+          className={state === 'offline' ? css.OfflineBadge : undefined}
           radii="Pill"
         />
       )}
@@ -59,14 +60,16 @@ export function PresenceBadge({ state, message, size }: PresenceBadgeProps) {
 type AvatarPresenceProps = {
   badge: ReactNode;
   variant?: ContainerColor;
+  /** Overrides the ring color around the dot when the row is not painted in a folds container color. */
+  ringColor?: string;
 };
 export const AvatarPresence = as<'div', AvatarPresenceProps>(
-  ({ as: AsAvatarPresence, badge, variant = 'Surface', children, ...props }, ref) => (
+  ({ as: AsAvatarPresence, badge, variant = 'Surface', ringColor, children, ...props }, ref) => (
     <Box as={AsAvatarPresence} className={css.AvatarPresence} {...props} ref={ref}>
       {badge && (
         <div
           className={css.AvatarPresenceBadge}
-          style={{ backgroundColor: color[variant].Container }}
+          style={{ backgroundColor: ringColor ?? color[variant].Container }}
         >
           {badge}
         </div>
