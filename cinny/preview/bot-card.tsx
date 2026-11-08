@@ -40,12 +40,15 @@ document.body.style.backgroundColor = color.Background.Container;
 document.body.style.color = color.Background.OnContainer;
 
 const sent: string[] = [];
+const sentContent: Record<string, unknown>[] = [];
 (window as unknown as { __sent: string[] }).__sent = sent;
+(window as unknown as { __sentContent: unknown[] }).__sentContent = sentContent;
 const fakeMx = new Proxy({} as Record<string, unknown>, {
   get: (_t, key) => {
     if (key === 'sendMessage')
       return (_room: string, content: { body: string }) => {
         sent.push(content.body);
+        sentContent.push(content as unknown as Record<string, unknown>);
         return Promise.resolve({});
       };
     if (key === 'getUserId' || key === 'getSafeUserId') return () => '@lndr:x.de';
