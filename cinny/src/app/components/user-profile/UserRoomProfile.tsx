@@ -1,11 +1,10 @@
-import { Box, Button, color, Icon, Icons, Spinner, Text } from 'folds';
+import { color, Text } from 'folds';
 import React, { useCallback, useState } from 'react';
 import { ICreateRoomStateEvent, Preset, Visibility } from 'matrix-js-sdk';
-import classNames from 'classnames';
 import { useNavigate } from 'react-router-dom';
-import { ProfileStatus, UserHero, UserHeroName } from './UserHero';
 import { safeColor } from '../../plugins/diddy/sanitize';
-import * as css from './styles.css';
+import { shownCardLayout } from '../../plugins/diddy/profilePreview';
+import { ProfileCardActions, ProfileCardView } from './ProfileCardView';
 import { useDiddyProfile } from '../../plugins/diddy/profiles';
 import {
   addRoomIdToMDirect,
@@ -35,8 +34,6 @@ import { useMemberPowerCompare } from '../../hooks/useMemberPowerCompare';
 import { CreatorChip } from './CreatorChip';
 import { getDirectCreatePath, getDirectRoomPath, withSearchParam } from '../../pages/pathUtils';
 import { DirectCreateSearchParams } from '../../pages/paths';
-import { ProfileModules, readableTextOn } from './ProfileModules';
-import { DarkTheme, LightTheme } from '../../hooks/useTheme';
 import { visibleModules } from '../../plugins/diddy/profileExtras';
 import { findDirectRoomId, PROFILE_CALL_PREFERENCES } from '../../plugins/directCall';
 import { createRoomEncryptionState } from '../create-room';
@@ -45,7 +42,6 @@ import { useSwitchCall } from '../call-switch/useSwitchCall';
 import { useLivekitSupport } from '../../hooks/useLivekitSupport';
 import { webRTCSupported } from '../../utils/rtc';
 import { AccountDataEvent } from '../../../types/matrix/accountData';
-import { ProfileEffectOverlay, useProfileEffectAnimation } from '../diddy/ProfileEffect';
 
 type UserRoomProfileProps = {
   userId: string;
@@ -88,15 +84,11 @@ export function UserRoomProfile({ userId, large }: UserRoomProfileProps) {
 
   const profile = useDiddyProfile(mx, userId);
   const accent = safeColor(profile?.card?.accent);
-  const accentText = accent ? readableTextOn(accent) : undefined;
-  const big = profile?.cardLayout?.big;
   // the big window has its own layout (expanded unless the owner chose tabs for it)
-  const layout = large ? big?.layout ?? 'expanded' : profile?.cardLayout?.layout ?? 'standard';
+  const layout = shownCardLayout(profile, !!large);
   const compact = layout === 'compact';
-  const cardTheme = profile?.cardLayout?.theme;
   const modules = visibleModules({ ...profile?.cardLayout, layout });
   const openLargeProfile = useOpenLargeUserProfile();
-  const animateEffect = useProfileEffectAnimation();
 
   const handleMessage = () => {
     closeUserRoomProfile();
@@ -186,161 +178,85 @@ export function UserRoomProfile({ userId, large }: UserRoomProfileProps) {
 
   const notMe = userId !== myUserId;
   const actions = notMe ? (
-    <>
-      {canCall && (
-        <Button
-          size="300"
-          variant="Secondary"
-          fill="Soft"
-          radii="Pill"
-          onClick={handleCall}
-          disabled={calling}
-          before={
-            calling ? (
-              <Spinner size="100" variant="Secondary" />
-            ) : (
-              <Icon size="50" src={Icons.Phone} filled />
-            )
-          }
-          title={callEmbed ? 'Leaves your current call' : 'Call privately'}
-        >
-          <Text size="B300">Call</Text>
-        </Button>
-      )}
-      <Button
-        size="300"
-        variant="Primary"
-        fill="Solid"
-        radii="Pill"
-        before={<Icon size="50" src={Icons.Message} filled />}
-        onClick={handleMessage}
-        style={
-          accent ? { backgroundColor: accent, color: accentText, borderColor: accent } : undefined
-        }
-      >
-        <Text size="B300">Message</Text>
-      </Button>
-    </>
+    <ProfileCardActions
+      accent={accent}
+      canCall={canCall}
+      calling={calling}
+      callTitle={callEmbed ? 'Leaves your current call' : 'Call privately'}
+      onCall={handleCall}
+      onMessage={handleMessage}
+    />
   ) : undefined;
 
   return (
-    <div
-      className={classNames(
-        css.CardRoot,
-        cardTheme === 'light' && LightTheme.classNames,
-        cardTheme === 'dark' && DarkTheme.classNames,
-        profile?.cardLayout?.glass && css.CardGlass,
-        profile?.cardLayout?.calm && css.CardCalm
-      )}
+    <ProfileCardView
+      userId={userId}
+      displayName={displayName}
+      avatarUrl={avatarUrl}
+      presence={shownPresence}
+      profile={profile}
+      layout={layout}
+      large={large}
+      onAvatarClick={large ? undefined : () => openLargeProfile(room.roomId, userId)}
+      actions={actions}
+      sharedRooms={notMe ? <MutualRoomsChip userId={userId} /> : undefined}
+      meta={
+        <>
+          <ShareChip userId={userId} />
+          {!compact && server && <ServerChip server={server} />}
+          {!compact && (creator ? <CreatorChip /> : <PowerChip userId={userId} />)}
+          {layout !== 'tabs' && modules.includes('sharedRooms') && notMe && (
+            <MutualRoomsChip userId={userId} />
+          )}
+          {notMe && (
+            <OptionsChip
+              userId={userId}
+              displayName={displayName ?? getMxIdLocalPart(userId) ?? userId}
+              moderation={{
+                canInvite: canInvite && membership === Membership.Leave,
+                canKick: canKickUser && membership === Membership.Join,
+                canBan: canBanUser && membership !== Membership.Ban,
+              }}
+            />
+          )}
+        </>
+      }
     >
-      {accent && (
-        <div
-          className={css.CardRing}
-          style={{
-            boxShadow: `inset 0 0 0 2px ${accent}, inset 0 0 16px color-mix(in srgb, ${accent} 33%, transparent)`,
-          }}
+      {switchPrompt}
+      {callError && (
+        <Text size="T200" style={{ color: color.Critical.Main }}>
+          {callError}
+        </Text>
+      )}
+      {ignored && <IgnoredUserAlert />}
+      {member && membership === Membership.Ban && (
+        <UserBanAlert
+          userId={userId}
+          reason={member.events.member?.getContent().reason}
+          canUnban={canUnban}
+          bannedBy={member.events.member?.getSender()}
+          ts={member.events.member?.getTs()}
         />
       )}
-      <div className={css.CardScroll}>
-        <UserHero
-          userId={userId}
-          avatarUrl={avatarUrl}
-          presence={shownPresence}
-          profile={profile}
-          compact={compact}
-          large={
-            large ? { banner: big?.banner ?? 'tall', avatar: big?.avatar ?? 'large' } : undefined
-          }
-          onAvatarClick={large ? undefined : () => openLargeProfile(room.roomId, userId)}
-          actions={actions}
-        />
-        <div className={classNames(css.CardBody, compact && css.CardBodyCompact)}>
-          <Box direction="Column" gap={compact ? '100' : '200'}>
-            <UserHeroName
-              displayName={displayName}
-              userId={userId}
-              profile={profile}
-              showBio={false}
-              compact={compact}
-            />
-            <ProfileStatus presence={shownPresence} />
-          </Box>
-          <ProfileModules
-            profile={profile}
-            accent={accent}
-            layout={layout}
-            sharedRooms={
-              layout === 'tabs' && notMe ? <MutualRoomsChip userId={userId} /> : undefined
-            }
+      {member &&
+        membership === Membership.Leave &&
+        member.events.member &&
+        member.events.member.getSender() !== userId && (
+          <UserKickAlert
+            reason={member.events.member?.getContent().reason}
+            kickedBy={member.events.member?.getSender()}
+            ts={member.events.member?.getTs()}
           />
-          <div className={css.MetaRow}>
-            <ShareChip userId={userId} />
-            {!compact && server && <ServerChip server={server} />}
-            {!compact && (creator ? <CreatorChip /> : <PowerChip userId={userId} />)}
-            {layout !== 'tabs' && modules.includes('sharedRooms') && notMe && (
-              <MutualRoomsChip userId={userId} />
-            )}
-            {notMe && (
-              <OptionsChip
-                userId={userId}
-                displayName={displayName ?? getMxIdLocalPart(userId) ?? userId}
-                moderation={{
-                  canInvite: canInvite && membership === Membership.Leave,
-                  canKick: canKickUser && membership === Membership.Join,
-                  canBan: canBanUser && membership !== Membership.Ban,
-                }}
-              />
-            )}
-            {profile?.clientVersion && (
-              <Text
-                as="span"
-                size="T200"
-                priority="300"
-                className={css.ClientVersion}
-                title={`Uses Diddy ${profile.clientVersion}`}
-              >
-                Diddy {profile.clientVersion}
-              </Text>
-            )}
-          </div>
-          {switchPrompt}
-          {callError && (
-            <Text size="T200" style={{ color: color.Critical.Main }}>
-              {callError}
-            </Text>
-          )}
-          {ignored && <IgnoredUserAlert />}
-          {member && membership === Membership.Ban && (
-            <UserBanAlert
-              userId={userId}
-              reason={member.events.member?.getContent().reason}
-              canUnban={canUnban}
-              bannedBy={member.events.member?.getSender()}
-              ts={member.events.member?.getTs()}
-            />
-          )}
-          {member &&
-            membership === Membership.Leave &&
-            member.events.member &&
-            member.events.member.getSender() !== userId && (
-              <UserKickAlert
-                reason={member.events.member?.getContent().reason}
-                kickedBy={member.events.member?.getSender()}
-                ts={member.events.member?.getTs()}
-              />
-            )}
-          {member && membership === Membership.Invite && (
-            <UserInviteAlert
-              userId={userId}
-              reason={member.events.member?.getContent().reason}
-              canKick={canKickUser}
-              invitedBy={member.events.member?.getSender()}
-              ts={member.events.member?.getTs()}
-            />
-          )}
-        </div>
-      </div>
-      {profile?.effect && <ProfileEffectOverlay effect={profile.effect} animate={animateEffect} />}
-    </div>
+        )}
+      {member && membership === Membership.Invite && (
+        <UserInviteAlert
+          userId={userId}
+          reason={member.events.member?.getContent().reason}
+          canKick={canKickUser}
+          invitedBy={member.events.member?.getSender()}
+          ts={member.events.member?.getTs()}
+        />
+      )}
+    </ProfileCardView>
   );
 }

@@ -25,14 +25,25 @@ export function initialsFromName(name: string): string {
   return (first + second).toUpperCase() || '?';
 }
 
-function CallRosterChip({ userId }: { userId: string }) {
+type CallRosterChipViewProps = {
+  userId: string;
+  name: string;
+  avatarMxc?: string;
+  agent?: boolean;
+  onClick?: () => void;
+  onContextMenu?: (evt: React.MouseEvent) => void;
+};
+/** A person in the call roster strip. Also drawn by the profile editor's call preview (#105). */
+export function CallRosterChipView({
+  userId,
+  name,
+  avatarMxc,
+  agent,
+  onClick,
+  onContextMenu,
+}: CallRosterChipViewProps) {
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
-  const room = useRoom();
-  const agent = useAgentTalking(userId, mx.getUserId() ?? undefined);
-  const openLargeProfile = useOpenLargeUserProfile();
-  const name = getMemberDisplayName(room, userId) ?? getMxIdLocalPart(userId) ?? userId;
-  const avatarMxc = getMemberAvatarMxc(room, userId);
   const avatarUrl = avatarMxc
     ? mxcUrlToHttp(mx, avatarMxc, useAuthentication, 64, 64) ?? undefined
     : undefined;
@@ -45,11 +56,8 @@ function CallRosterChip({ userId }: { userId: string }) {
       gap="200"
       data-agent={agent || undefined}
       title={agent ? `${name} redet mit Agent` : `Profil von ${name}`}
-      onClick={() => openLargeProfile(room.roomId, userId)}
-      onContextMenu={(evt: React.MouseEvent) => {
-        evt.preventDefault();
-        openCallUserMenu(userId, evt.clientX, evt.clientY);
-      }}
+      onClick={onClick}
+      onContextMenu={onContextMenu}
     >
       <Avatar size="300" radii="Pill">
         <UserAvatar
@@ -73,6 +81,27 @@ function CallRosterChip({ userId }: { userId: string }) {
         </Text>
       )}
     </Box>
+  );
+}
+
+function CallRosterChip({ userId }: { userId: string }) {
+  const mx = useMatrixClient();
+  const room = useRoom();
+  const agent = useAgentTalking(userId, mx.getUserId() ?? undefined);
+  const openLargeProfile = useOpenLargeUserProfile();
+  const name = getMemberDisplayName(room, userId) ?? getMxIdLocalPart(userId) ?? userId;
+  return (
+    <CallRosterChipView
+      userId={userId}
+      name={name}
+      avatarMxc={getMemberAvatarMxc(room, userId)}
+      agent={agent}
+      onClick={() => openLargeProfile(room.roomId, userId)}
+      onContextMenu={(evt: React.MouseEvent) => {
+        evt.preventDefault();
+        openCallUserMenu(userId, evt.clientX, evt.clientY);
+      }}
+    />
   );
 }
 

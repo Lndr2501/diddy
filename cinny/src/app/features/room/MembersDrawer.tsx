@@ -141,25 +141,32 @@ type MemberItemProps = {
   /** shown in the "Offline" group: the row is greyed out */
   offline?: boolean;
 };
-function MemberItem({
+type MemberRowViewProps = Omit<MemberItemProps, 'room' | 'member'> & {
+  userId: string;
+  name: string;
+  avatarMxc?: string;
+};
+/**
+ * One member row: avatar with presence, name in the member's name style with badges, nameplate.
+ * Also drawn by the profile editor's preview with the draft (#105).
+ */
+export function MemberRowView({
   mx,
   useAuthentication,
-  room,
-  member,
+  userId,
+  name,
+  avatarMxc,
   onClick,
   pressed,
   typing,
   admin,
   offline,
-}: MemberItemProps) {
-  const name =
-    getMemberDisplayName(room, member.userId) ?? getMxIdLocalPart(member.userId) ?? member.userId;
-  const avatarMxcUrl = member.getMxcAvatarUrl();
-  const avatarUrl = avatarMxcUrl
-    ? mx.mxcUrlToHttp(avatarMxcUrl, 100, 100, 'crop', undefined, false, useAuthentication)
+}: MemberRowViewProps) {
+  const avatarUrl = avatarMxc
+    ? mx.mxcUrlToHttp(avatarMxc, 100, 100, 'crop', undefined, false, useAuthentication)
     : undefined;
-  const presence = usePresenceState(member.userId);
-  const diddyProfile = useDiddyProfile(mx, member.userId);
+  const presence = usePresenceState(userId);
+  const diddyProfile = useDiddyProfile(mx, userId);
   const nameplate = diddyProfile?.nameplate;
   const animateNameplate = useNameplateAnimation();
   const withNameplate = hasNameplate(nameplate);
@@ -176,7 +183,7 @@ function MemberItem({
         ...(withNameplate ? nameplateSurfaceStyle(SIDE_TONE) : {}),
       }}
       aria-pressed={pressed}
-      data-user-id={member.userId}
+      data-user-id={userId}
       variant="Surface"
       radii="400"
       onClick={onClick}
@@ -192,7 +199,7 @@ function MemberItem({
           <Avatar size="200">
             <UserAvatar
               surface="members"
-              userId={member.userId}
+              userId={userId}
               src={avatarUrl ?? undefined}
               alt={name}
               renderFallback={() => <Icon size="50" src={Icons.User} filled />}
@@ -222,10 +229,39 @@ function MemberItem({
       {withNameplate && <NameplateBackdrop plate={nameplate} animate={animateNameplate} />}
       <Box grow="Yes" className={withNameplate ? NameplateText : undefined}>
         <Text size="T400" truncate>
-          <DiddyName userId={member.userId} name={name} showBadges />
+          <DiddyName userId={userId} name={name} showBadges />
         </Text>
       </Box>
     </MenuItem>
+  );
+}
+
+function MemberItem({
+  mx,
+  useAuthentication,
+  room,
+  member,
+  onClick,
+  pressed,
+  typing,
+  admin,
+  offline,
+}: MemberItemProps) {
+  const name =
+    getMemberDisplayName(room, member.userId) ?? getMxIdLocalPart(member.userId) ?? member.userId;
+  return (
+    <MemberRowView
+      mx={mx}
+      useAuthentication={useAuthentication}
+      userId={member.userId}
+      name={name}
+      avatarMxc={member.getMxcAvatarUrl()}
+      onClick={onClick}
+      pressed={pressed}
+      typing={typing}
+      admin={admin}
+      offline={offline}
+    />
   );
 }
 

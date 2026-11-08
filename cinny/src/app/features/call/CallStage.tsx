@@ -148,24 +148,30 @@ type TileProps = {
   onSelect: () => void;
 };
 
-export function PersonTile({
+/**
+ * A person's tile on the call stage: camera or picture, speaking ring, name tag. Also drawn by
+ * the profile editor's call preview (#105).
+ */
+export function PersonTileView({
   person,
+  avatarMxc,
+  agent,
   focused,
   small,
   onSelect,
-}: TileProps & { person: StagePerson }) {
+  onContextMenu,
+}: TileProps & {
+  person: StagePerson;
+  avatarMxc?: string;
+  agent?: boolean;
+  onContextMenu?: (evt: MouseEvent) => void;
+}) {
   const mx = useMatrixClient();
-  const agent = useAgentTalking(person.userId, mx.getUserId() ?? undefined);
-  const room = useRoom();
   const useAuthentication = useMediaAuthentication();
-  const avatarMxc = getMemberAvatarMxc(room, person.userId);
   const avatarUrl = avatarMxc
     ? mxcUrlToHttp(mx, avatarMxc, useAuthentication, 192, 192, 'crop') ?? undefined
     : undefined;
-  const handleContextMenu = (evt: MouseEvent) => {
-    evt.preventDefault();
-    openCallUserMenu(person.userId, evt.clientX, evt.clientY);
-  };
+  const handleContextMenu = onContextMenu;
   const camera = person.video?.getVideoTracks()[0]?.getSettings?.();
   const ratio = camera?.width && camera?.height ? camera.width / camera.height : 16 / 9;
   return (
@@ -209,6 +215,32 @@ export function PersonTile({
         <span className={css.StageTagText}>{person.name}</span>
       </span>
     </button>
+  );
+}
+
+export function PersonTile({
+  person,
+  focused,
+  small,
+  onSelect,
+}: TileProps & { person: StagePerson }) {
+  const mx = useMatrixClient();
+  const agent = useAgentTalking(person.userId, mx.getUserId() ?? undefined);
+  const room = useRoom();
+  const handleContextMenu = (evt: MouseEvent) => {
+    evt.preventDefault();
+    openCallUserMenu(person.userId, evt.clientX, evt.clientY);
+  };
+  return (
+    <PersonTileView
+      person={person}
+      avatarMxc={getMemberAvatarMxc(room, person.userId)}
+      agent={agent}
+      focused={focused}
+      small={small}
+      onSelect={onSelect}
+      onContextMenu={handleContextMenu}
+    />
   );
 }
 

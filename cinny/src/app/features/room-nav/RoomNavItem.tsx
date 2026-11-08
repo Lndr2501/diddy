@@ -1,4 +1,4 @@
-import React, { MouseEventHandler, forwardRef, useState } from 'react';
+import React, { MouseEventHandler, ReactNode, forwardRef, useState } from 'react';
 import { Room } from 'matrix-js-sdk';
 import {
   Avatar,
@@ -64,7 +64,7 @@ import { livekitSupport } from '../../hooks/useLivekitSupport';
 import { RoomTag, StateEvent } from '../../../types/matrix/room';
 import { webRTCSupported } from '../../utils/rtc';
 import { CallMemberList } from './CallMemberList';
-import { usePresenceState } from '../../hooks/usePresenceState';
+import { ShownPresence, usePresenceState } from '../../hooks/usePresenceState';
 import { AvatarPresence, PresenceBadge } from '../../components/presence';
 import { useDiddyProfile } from '../../plugins/diddy/profiles';
 import {
@@ -273,6 +273,77 @@ function CallChatToggle() {
   );
 }
 
+type NavRowFaceProps = {
+  name: string;
+  /** the other user's online state on a 1:1 DM avatar (#72) */
+  presence?: ShownPresence;
+  unread?: boolean;
+  /** the row has a nameplate behind it (#78): the name gets the readable text treatment */
+  withNameplate?: boolean;
+  /** what goes into the 32px avatar */
+  avatar: ReactNode;
+  /** badges after the name */
+  children?: ReactNode;
+};
+/**
+ * The visible part of a room list row: avatar with presence and the name. Also drawn by the
+ * profile editor's DM preview with the draft (#105).
+ */
+export function NavRowFace({
+  name,
+  presence,
+  unread,
+  withNameplate,
+  avatar,
+  children,
+}: NavRowFaceProps) {
+  return (
+    <Box as="span" grow="Yes" alignItems="Center" gap="200">
+      <AvatarPresence
+        as="span"
+        ringColor={SIDE_TONE}
+        badge={
+          presence && <PresenceBadge state={presence.state} message={presence.message} size="200" />
+        }
+      >
+        <Avatar size="200" radii="400">
+          {avatar}
+        </Avatar>
+      </AvatarPresence>
+      <Box as="span" grow="Yes" className={withNameplate ? NameplateText : undefined}>
+        <Text priority={unread ? '500' : '300'} as="span" size="Inherit" truncate>
+          {name}
+        </Text>
+      </Box>
+      {children}
+    </Box>
+  );
+}
+
+/** A room / DM picture in a list row, initials while it has none. */
+export function NavRowRoomAvatar({
+  roomId,
+  name,
+  src,
+}: {
+  roomId: string;
+  name: string;
+  src?: string;
+}) {
+  return (
+    <RoomAvatar
+      roomId={roomId}
+      src={src}
+      alt={name}
+      renderFallback={() => (
+        <Text as="span" size="H6">
+          {nameInitials(name)}
+        </Text>
+      )}
+    />
+  );
+}
+
 type RoomNavItemProps = {
   room: Room;
   selected: boolean;
@@ -380,54 +451,35 @@ export function RoomNavItem({
         {withNameplate && <NameplateBackdrop plate={dmNameplate} animate={animateNameplate} />}
         <NavLink to={linkPath} onClick={room.isCallRoom() ? handleStartCall : undefined}>
           <NavItemContent>
-            <Box as="span" grow="Yes" alignItems="Center" gap="200">
-              <AvatarPresence
-                as="span"
-                ringColor={SIDE_TONE}
-                badge={
-                  dmPresence && (
-                    <PresenceBadge
-                      state={dmPresence.state}
-                      message={dmPresence.message}
-                      size="200"
-                    />
-                  )
-                }
-              >
-                <Avatar size="200" radii="400">
-                  {showAvatar ? (
-                    <RoomAvatar
-                      roomId={room.roomId}
-                      src={
-                        direct
-                          ? getDirectRoomAvatarUrl(mx, room, 96, useAuthentication)
-                          : getRoomAvatarUrl(mx, room, 96, useAuthentication)
-                      }
-                      alt={roomName}
-                      renderFallback={() => (
-                        <Text as="span" size="H6">
-                          {nameInitials(roomName)}
-                        </Text>
-                      )}
-                    />
-                  ) : (
-                    <RoomIcon
-                      style={{
-                        opacity: unread ? config.opacity.P500 : config.opacity.P300,
-                      }}
-                      filled={selected}
-                      size="100"
-                      joinRule={room.getJoinRule()}
-                      roomType={room.getType()}
-                    />
-                  )}
-                </Avatar>
-              </AvatarPresence>
-              <Box as="span" grow="Yes" className={withNameplate ? NameplateText : undefined}>
-                <Text priority={unread ? '500' : '300'} as="span" size="Inherit" truncate>
-                  {roomName}
-                </Text>
-              </Box>
+            <NavRowFace
+              name={roomName}
+              presence={dmPresence}
+              unread={!!unread}
+              withNameplate={withNameplate}
+              avatar={
+                showAvatar ? (
+                  <NavRowRoomAvatar
+                    roomId={room.roomId}
+                    name={roomName}
+                    src={
+                      direct
+                        ? getDirectRoomAvatarUrl(mx, room, 96, useAuthentication)
+                        : getRoomAvatarUrl(mx, room, 96, useAuthentication)
+                    }
+                  />
+                ) : (
+                  <RoomIcon
+                    style={{
+                      opacity: unread ? config.opacity.P500 : config.opacity.P300,
+                    }}
+                    filled={selected}
+                    size="100"
+                    joinRule={room.getJoinRule()}
+                    roomType={room.getType()}
+                  />
+                )
+              }
+            >
               {!optionsVisible && !unread && !selected && typingMember.length > 0 && (
                 <Badge size="300" variant="Secondary" fill="Soft" radii="Pill" outlined>
                   <TypingIndicator size="300" disableAnimation />
@@ -452,7 +504,7 @@ export function RoomNavItem({
                   </Text>
                 </Badge>
               )}
-            </Box>
+            </NavRowFace>
           </NavItemContent>
         </NavLink>
         {optionsVisible && (
