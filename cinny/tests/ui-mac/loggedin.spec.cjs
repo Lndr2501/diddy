@@ -77,3 +77,14 @@ test('testa skips onboarding and opens the create-room dialog', async ({ page })
   await page.getByRole('button', { name: 'Create Room' }).first().click();
   await page.screenshot({ path: 'test-results/ui-mac/screens/create-room.png' });
 });
+
+test('no "Connecting..." banner lingers after a reload on a quiet account', async ({ browser }) => {
+  // The first quick sync answers within milliseconds; the banner used to stay until the next
+  // (long-poll) response, about 30 s on an account with no new events.
+  test.setTimeout(90000);
+  const { openApp } = require('./helpers.cjs');
+  const page = await openApp(browser, 'testa');
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'User settings' })).toBeVisible({ timeout: 30000 });
+  await expect(page.getByText('Connecting...')).toHaveCount(0, { timeout: 8000 });
+});

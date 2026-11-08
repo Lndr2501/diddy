@@ -4,6 +4,7 @@ import { Box, config, Line, Text } from 'folds';
 import { useSyncState } from '../../hooks/useSyncState';
 import { ContainerColor } from '../../styles/ContainerColor.css';
 import { ConnectionsButton } from '../../components/connection-recovery/ConnectionRecovery';
+import { syncBanner } from '../../plugins/syncBanner';
 
 type StateData = {
   current: SyncState | null;
@@ -31,12 +32,9 @@ export function SyncStatus({ mx }: SyncStatusProps) {
     }, [])
   );
 
-  if (
-    (stateData.current === SyncState.Prepared ||
-      stateData.current === SyncState.Syncing ||
-      stateData.current === SyncState.Catchup) &&
-    stateData.previous !== SyncState.Syncing
-  ) {
+  const banner = syncBanner(stateData.current);
+
+  if (banner === 'connecting') {
     return (
       <Box direction="Column" shrink="No">
         <Box
@@ -52,7 +50,7 @@ export function SyncStatus({ mx }: SyncStatusProps) {
     );
   }
 
-  if (stateData.current === SyncState.Reconnecting) {
+  if (banner === 'reconnecting') {
     return (
       <Box direction="Column" shrink="No">
         <Box
@@ -69,7 +67,7 @@ export function SyncStatus({ mx }: SyncStatusProps) {
     );
   }
 
-  if (stateData.current === SyncState.Error) {
+  if (banner === 'error') {
     return (
       <Box direction="Column" shrink="No">
         <Box
