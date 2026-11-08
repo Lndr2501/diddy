@@ -72,21 +72,43 @@ export const pickDefinition = <T extends Cand>(
 
 export type ResolvedAward = { by: string; at: number; ts: number };
 
+const isAward = (c: Cand) => typeof c.content.by === 'string' && c.content.by !== '';
+
+/**
+ * When an award was given. `content.at` is written by the giver and proves nothing, so it may only
+ * make an award OLDER than its event (a re-announce of an old award keeps its original time), never
+ * newer: anything that is not a finite number in [0, event time] falls back to the event time
+ * (`ts`, assigned by the homeserver and plausibility-checked on ingestion).
+ */
+export const awardTime = (c: Cand): number => {
+  const { at } = c.content;
+  if (typeof at !== 'number' || !Number.isFinite(at) || at < 0) return c.ts;
+  return Math.min(at, c.ts);
+};
+
 /**
  * The awards of one badge for one recipient that are in force. `candidates` are all known events
- * for the key (every sender).
+ * for the key (every sender), in any order.
  */
 export const resolveAwards = (recipient: string, candidates: Cand[]): ResolvedAward[] => {
-  const latest = latestPerSender(candidates);
-  const isAward = (c: Cand) => typeof c.content.by === 'string' && c.content.by !== '';
-  // the recipient may always remove a badge they were given: their empty event ends older awards
+  // newest event per sender; on the same server time a removal beats an award (order independent)
+  const newest = new Map<string, Cand>();
+  candidates.forEach((c) => {
+    if (!c.sender) return;
+    const known = newest.get(c.sender);
+    if (!known || c.ts > known.ts || (c.ts === known.ts && isAward(known) && !isAward(c))) {
+      newest.set(c.sender, c);
+    }
+  });
+  const latest = Array.from(newest.values());
+  // the recipient may always remove a badge they were given: their empty event ends every award
+  // that is not strictly newer by trusted time
   const recipientRemoved = latest.find((c) => c.sender === recipient && !isAward(c))?.ts;
   const result: ResolvedAward[] = [];
   latest.forEach((c) => {
     if (!isAward(c) || !c.sender) return;
-    const at =
-      typeof c.content.at === 'number' && Number.isFinite(c.content.at) ? c.content.at : c.ts;
-    if (recipientRemoved !== undefined && recipientRemoved > at) return;
+    const at = awardTime(c);
+    if (recipientRemoved !== undefined && recipientRemoved >= at) return;
     result.push({ by: c.sender, at, ts: c.ts });
   });
   return result;
