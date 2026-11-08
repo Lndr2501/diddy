@@ -262,6 +262,61 @@ export const amberTheme = createTheme(color, {
 });
 
 /**
+ * DAAARK: the dark theme of T3 Code (github.com/pingdotgg/t3code, apps/web/src/index.css):
+ * pure black content (`--background: #000`), side columns and cards one step up (#111, T3's
+ * `--card`), hairlines of white at 8 % (`--border`), text neutral-100 and the blue accent
+ * `oklch(0.571 0.21 264)` = #346BF1.
+ */
+export const daaarkTheme = createTheme(color, {
+  ...darkThemeData,
+  Background: {
+    Container: '#111111',
+    ContainerHover: '#1A1A1A',
+    ContainerActive: '#222222',
+    ContainerLine: '#262626',
+    OnContainer: '#F5F5F5',
+  },
+  Surface: {
+    Container: '#000000',
+    ContainerHover: '#0B0B0B',
+    ContainerActive: '#141414',
+    ContainerLine: '#1F1F1F',
+    OnContainer: '#F5F5F5',
+  },
+  SurfaceVariant: {
+    Container: '#111111',
+    ContainerHover: '#1A1A1A',
+    ContainerActive: '#222222',
+    ContainerLine: '#2A2A2A',
+    OnContainer: '#F5F5F5',
+  },
+  Primary: {
+    Main: '#346BF1',
+    MainHover: '#2F61DB',
+    MainActive: '#2B59C9',
+    MainLine: '#2852B8',
+    OnMain: '#FFFFFF',
+    Container: '#0D1A3A',
+    ContainerHover: '#112149',
+    ContainerActive: '#152858',
+    ContainerLine: '#1A3068',
+    OnContainer: '#C5D5FB',
+  },
+  Secondary: {
+    Main: '#F5F5F5',
+    MainHover: '#DCDCDC',
+    MainActive: '#D0D0D0',
+    MainLine: '#C4C4C4',
+    OnMain: '#000000',
+    Container: '#0B0B0B',
+    ContainerHover: '#141414',
+    ContainerActive: '#1C1C1C',
+    ContainerLine: '#262626',
+    OnContainer: '#F5F5F5',
+  },
+});
+
+/**
  * Diddy: neutral-violet near-black with a plum navigation tone and a pink accent.
  * Background = sidebar / navigation column (plum), Surface = main content area,
  * SurfaceVariant = raised panels / cards (user panel, call tiles, composer).
