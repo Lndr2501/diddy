@@ -23,6 +23,7 @@ import {
   sanitizeLinks,
 } from './profileExtras';
 import { NAMEPLATE_PRESET_IDS } from './nameplate';
+import { safeVersion } from './clientVersion';
 
 const HEX_COLOR = /^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/;
 const MXC_URI = /^mxc:\/\/[A-Za-z0-9.\-:[\]]+\/[A-Za-z0-9_-]+$/;
@@ -182,6 +183,8 @@ export const sanitizeProfile = (raw: unknown): DiddyProfile | undefined => {
   if (activity) out.activity = activity;
   const cardLayout = sanitizeCardLayout(raw.cardLayout);
   if (cardLayout) out.cardLayout = cardLayout;
+  const clientVersion = safeVersion(raw.clientVersion);
+  if (clientVersion) out.clientVersion = clientVersion;
   return out;
 };
 

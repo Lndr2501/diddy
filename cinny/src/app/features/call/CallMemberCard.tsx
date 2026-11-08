@@ -3,10 +3,7 @@ import React, { useState } from 'react';
 import { Avatar, Box, Icon, Icons, Text, toRem } from 'folds';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
-import {
-  useOpenLargeUserProfile,
-  useOpenUserRoomProfile,
-} from '../../state/hooks/userRoomProfile';
+import { useOpenLargeUserProfile, useOpenUserRoomProfile } from '../../state/hooks/userRoomProfile';
 import { getMemberAvatarMxc, getMemberDisplayName } from '../../utils/room';
 import { useRoom } from '../../hooks/useRoom';
 import { getMxIdLocalPart, mxcUrlToHttp } from '../../utils/matrix';
@@ -54,14 +51,14 @@ function CallRosterChip({ userId }: { userId: string }) {
         openCallUserMenu(userId, evt.clientX, evt.clientY);
       }}
     >
-      <Avatar size="200" radii="Pill">
+      <Avatar size="300" radii="Pill">
         <UserAvatar
           surface="call"
           userId={userId}
           src={avatarUrl}
           alt={name}
           renderFallback={() => (
-            <Text as="span" size="T200" style={{ fontSize: toRem(11), fontWeight: 600 }}>
+            <Text as="span" size="T200" style={{ fontSize: toRem(12), fontWeight: 600 }}>
               {initialsFromName(name)}
             </Text>
           )}
@@ -71,7 +68,7 @@ function CallRosterChip({ userId }: { userId: string }) {
         {name}
       </Text>
       {agent && (
-        <Text as="span" size="T200" priority="300" className={css.CallRosterAgent}>
+        <Text as="span" size="T200" className={css.CallRosterAgent} role="status">
           redet mit Agent
         </Text>
       )}

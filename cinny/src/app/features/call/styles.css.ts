@@ -305,8 +305,8 @@ export const CallRosterLabel = style({
   },
 });
 export const CallRosterChip = style({
-  height: toRem(28),
-  padding: `0 ${toRem(10)} 0 ${toRem(2)}`,
+  height: toRem(34),
+  padding: `0 ${toRem(12)} 0 ${toRem(3)}`,
   borderRadius: toRem(999),
   backgroundColor: t.material,
   WebkitBackdropFilter: t.blur,
@@ -331,7 +331,8 @@ export const CallRosterChip = style({
     },
     // talking to an agent (#57)
     '&[data-agent]': {
-      boxShadow: `0 0 0 ${toRem(2)} ${color.Secondary.Main}`,
+      boxShadow: `0 0 0 ${toRem(3)} ${color.Secondary.Main}`,
+      backgroundColor: color.Secondary.Container,
     },
   },
   '@media': {
@@ -341,9 +342,14 @@ export const CallRosterChip = style({
 export const CallRosterAgent = style({
   flexShrink: 0,
   selectors: {
+    // a filled badge (was a small italic note) so it is visible at a glance
     '&[class]': {
-      fontSize: toRem(11),
-      fontStyle: 'italic',
+      fontSize: toRem(12),
+      fontWeight: 700,
+      padding: `${toRem(1)} ${toRem(8)}`,
+      borderRadius: toRem(999),
+      backgroundColor: color.Secondary.Main,
+      color: color.Secondary.OnMain,
     },
   },
 });
@@ -351,7 +357,7 @@ export const CallRosterName = style({
   // `&[class]` wins over the folds Text size class
   selectors: {
     '&[class]': {
-      fontSize: toRem(12),
+      fontSize: toRem(14),
       fontWeight: 500,
     },
   },
@@ -484,6 +490,11 @@ export const StageTile = style({
     '&[data-speaking]': {
       boxShadow: `0 0 0 2px ${color.Primary.Main}, 0 0 0 6px color-mix(in srgb, ${color.Primary.Main} 22%, transparent)`,
     },
+    // talking to an agent (#57): tinted tile, thick accent frame, big badge (StageAgentBadge)
+    '&[data-agent]': {
+      backgroundColor: `color-mix(in srgb, ${color.Secondary.Main} 16%, ${color.SurfaceVariant.Container})`,
+      boxShadow: `0 0 0 ${toRem(3)} ${color.Secondary.Main}`,
+    },
     '&[data-small]': {
       flexGrow: 0,
       width: toRem(200),
@@ -573,6 +584,32 @@ export const StageTag = style({
       left: toRem(8),
       bottom: toRem(8),
       height: toRem(24),
+      fontSize: toRem(12),
+    },
+  },
+});
+
+// Big "Redet mit Agent" pill at the top of a person's tile (#57)
+export const StageAgentBadge = style({
+  ...stagePill,
+  top: toRem(12),
+  left: '50%',
+  transform: 'translateX(-50%)',
+  gap: toRem(8),
+  height: toRem(36),
+  padding: `0 ${toRem(16)} 0 ${toRem(12)}`,
+  borderRadius: toRem(999),
+  backgroundColor: color.Secondary.Main,
+  color: color.Secondary.OnMain,
+  fontSize: toRem(16),
+  fontWeight: 700,
+  whiteSpace: 'nowrap',
+  boxShadow: '0 2px 10px rgba(0, 0, 0, 0.35)',
+  selectors: {
+    [`${StageTile}[data-small] &`]: {
+      top: toRem(8),
+      height: toRem(26),
+      padding: `0 ${toRem(10)} 0 ${toRem(8)}`,
       fontSize: toRem(12),
     },
   },
