@@ -117,6 +117,8 @@ export type DiddyProfile = {
   activity?: ProfileActivity;
   /** card layout and module visibility chosen by the owner */
   cardLayout?: CardLayoutSettings;
+  /** Diddy version the owner runs (#75), written by their client unless they switched it off */
+  clientVersion?: string;
 };
 
 export const MAX_SHOWN_BADGES = 4;
