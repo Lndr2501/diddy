@@ -2,6 +2,7 @@ import React, { useCallback, useRef, useState } from 'react';
 import { Box, Button, Icon, Icons, Spinner, Text } from 'folds';
 import * as css from './styles.css';
 import { SoundboardButton } from './Soundboard';
+import { WatchTogetherButton } from './WatchTogether';
 import { DeviceChevron } from './DevicePicker';
 import {
   ChatButton,
@@ -110,6 +111,7 @@ export function CallControls({ callEmbed }: CallControlsProps) {
         {!compact && <ControlDivider />}
         <ReactionsButton onClick={handleReactionsClick} />
         <SoundboardButton />
+        <WatchTogetherButton />
         <ChatButton />
         <MoreButton
           spotlight={spotlight}
