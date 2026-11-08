@@ -220,6 +220,44 @@ Die Content Security Policy der Desktop-App (`src-tauri/tauri.conf.json`) erlaub
 Für `diddy:resize` die Höhe des **Inhalts** messen, nicht `document.documentElement.scrollHeight`:
 Das Dokument ist immer mindestens so hoch wie der Rahmen, die Höhe könnte dann nur wachsen.
 
+## Fertiges Plugin: GitHub Issues
+
+[`plugins/github-issues.html`](plugins/github-issues.html) ist eine einzelne HTML-Datei ohne
+Abhängigkeiten und ohne GitHub-Token. Sie zeigt die **offenen Issues eines öffentlichen
+Repositories**, ohne Pull Requests, nach letzter Aktualisierung sortiert. Standard: `Lndr2501/diddy`.
+
+### Installieren
+
+1. Die [HTML-Datei herunterladen](https://raw.githubusercontent.com/Lndr2501/diddy/main/docs/plugins/github-issues.html)
+   und über **HTTPS** als `text/html` bereitstellen. GitHubs Datei-Ansicht und die Raw-URL sind
+   **keine Plugin-Adressen**: Sie liefern keine einbettbare HTML-Seite.
+2. Zum lokalen Ausprobieren stattdessen im Ordner der heruntergeladenen Datei starten:
+   `python3 -m http.server 8000 --bind 127.0.0.1` (auf dem Gerät, auf dem Diddy läuft).
+3. In **Einstellungen → Plugins → Add Plugin** den Namen `GitHub Issues` und die Adresse
+   `http://localhost:8000/github-issues.html?repo=Lndr2501/diddy` eintragen. Bei HTTPS-Hosting die
+   eigene Adresse entsprechend verwenden. Der lokale Server muss während der Nutzung laufen.
+4. `repo=Besitzer/Repository` bestimmt das Start-Repository. Es lässt sich auch direkt in der Karte
+   ändern; akzeptiert werden `Besitzer/Repository` und vollständige `https://github.com/…`-Adressen.
+   Diddy merkt sich die Auswahl auf diesem Gerät. Ein expliziter `repo`-Parameter hat beim Laden
+   Vorrang vor der gespeicherten Auswahl; ohne Parameter wird die zuletzt gespeicherte verwendet.
+
+### Funktionen und Grenzen
+
+- Anzahl offener Issues, Titel, Nummer, Autor, Aktualisierungsdatum, Kommentare und Labels;
+  jeweils 20 Treffer mit Vor-/Zurück-Blättern. Titel und „Alle auf GitHub“ öffnen den Browser
+  über `diddy:open`, auch in Diddys Sandbox.
+- Aktualisierung alle **5 Minuten**, zusätzlich manuell mit **↻**. Fehler lassen vorhandene Daten
+  mit einem Warnhinweis stehen; GitHubs Anfragelimits werden mit Wartezeit berücksichtigt.
+- Übernimmt Hell-/Dunkelmodus, Zahlen-/Datumsformat und eigenes CSS. In der kompakten
+  Seitenleistenkarte erscheinen Repository, Anzahl und Datenstand.
+- Verwendet GitHubs öffentliche [Issue-Suche](https://docs.github.com/en/rest/search/search#search-issues-and-pull-requests)
+  mit `repo:… is:issue is:open`. Der Suchindex kann neue Änderungen etwas verzögert anzeigen;
+  die Karte zeigt den Zeitpunkt des letzten erfolgreichen Abrufs, keine Echtzeit-Garantie.
+  GitHub begrenzt die blätterbaren Suchtreffer auf 1.000 und kann unvollständige Ergebnisse melden;
+  beides wird angezeigt. Anfragelimits gelten je öffentlicher IP und werden ggf. mit anderen geteilt.
+- **Keine privaten Repositories, Tokens oder Anmeldung.** Die Sandbox bleibt unverändert
+  (`allow-scripts`, kein `allow-same-origin`); fremde Texte werden nie als HTML eingesetzt.
+
 ## Vollständiges Beispiel: Wetter
 
 Die Datei liegt auch als [`docs/plugins/weather.html`](plugins/weather.html) im Repository. Sie
