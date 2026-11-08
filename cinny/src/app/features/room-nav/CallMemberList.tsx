@@ -10,7 +10,9 @@ import { getMouseEventCords } from '../../utils/dom';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
 import { useOpenUserRoomProfile } from '../../state/hooks/userRoomProfile';
-import { mutedCallUsers, openCallUserMenu } from '../../plugins/callFrameMenu';
+import { openCallUserMenu } from '../../plugins/callFrameMenu';
+import { readCallStage } from '../../plugins/call/callStage';
+import { CallControlEvent } from '../../plugins/call/CallControl';
 import { callEmbedAtom } from '../../state/callEmbed';
 import * as css from './styles.css';
 
@@ -26,6 +28,8 @@ const MUTE_POLL_MS = 500;
  * mute state of the others). Empty when you are not in that call.
  */
 function useMutedCallUsers(roomId: string): ReadonlySet<string> {
+  const mx = useMatrixClient();
+  const userId = mx.getUserId() ?? undefined;
   const callEmbed = useAtomValue(callEmbedAtom);
   const [muted, setMuted] = useState<ReadonlySet<string>>(new Set());
 
@@ -37,7 +41,11 @@ function useMutedCallUsers(roomId: string): ReadonlySet<string> {
     const update = () => {
       let next: Set<string>;
       try {
-        next = mutedCallUsers(callEmbed.document);
+        // the same reading as the call stage and status bar (#107): you from the call control,
+        // the others from LiveKit
+        const local = userId ? { userId, microphone: callEmbed.control.microphone } : undefined;
+        const model = readCallStage(callEmbed.document, local);
+        next = new Set(model.people.filter((p) => p.muted).map((p) => p.userId));
       } catch {
         next = new Set(); // torn-down or not yet loaded iframe
       }
@@ -47,8 +55,12 @@ function useMutedCallUsers(roomId: string): ReadonlySet<string> {
     };
     update();
     const timer = window.setInterval(update, MUTE_POLL_MS);
-    return () => window.clearInterval(timer);
-  }, [callEmbed, roomId]);
+    callEmbed.control.on(CallControlEvent.StateUpdate, update);
+    return () => {
+      window.clearInterval(timer);
+      callEmbed.control.off(CallControlEvent.StateUpdate, update);
+    };
+  }, [callEmbed, roomId, userId]);
 
   return muted;
 }

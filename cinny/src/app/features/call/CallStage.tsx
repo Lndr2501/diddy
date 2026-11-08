@@ -1,6 +1,6 @@
 import React, { MouseEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { Avatar, Icon, IconButton, Icons, Text, toRem } from 'folds';
-import { CallEmbed } from '../../plugins/call';
+import { CallEmbed, useCallControlState } from '../../plugins/call';
 import {
   EMPTY_STAGE,
   enableCallStage,
@@ -30,13 +30,17 @@ function useCallStage(callEmbed: CallEmbed): StageModel {
   const localSpeaking = useLocalSpeaking();
   const [model, setModel] = useState<StageModel>(EMPTY_STAGE);
   const signature = useRef('');
+  // your own mute state is Diddy's call control (#107), not Element Call's tile
+  const { microphone } = useCallControlState(callEmbed.control);
+  const userId = mx.getUserId() ?? undefined;
 
   useEffect(() => {
     const doc = callEmbed.document;
+    const local = userId ? { userId, microphone } : undefined;
     let frame = 0;
     const update = () => {
       frame = 0;
-      const next = readCallStage(callEmbed.document);
+      const next = readCallStage(callEmbed.document, local);
       const sig = stageSignature(next);
       if (sig === signature.current) return;
       signature.current = sig;
@@ -47,7 +51,8 @@ function useCallStage(callEmbed: CallEmbed): StageModel {
     };
     update();
     // tiles come and go, speaking / mute change classes and attributes; a camera that starts
-    // or stops sending changes nothing in the DOM, so a slow poll catches that
+    // or stops sending and somebody else's LiveKit mute change nothing in the DOM, so a slow
+    // poll catches that
     const observer = new MutationObserver(schedule);
     if (doc?.body) {
       observer.observe(doc.body, {
@@ -63,7 +68,7 @@ function useCallStage(callEmbed: CallEmbed): StageModel {
       window.clearInterval(poll);
       if (frame) window.cancelAnimationFrame(frame);
     };
-  }, [callEmbed]);
+  }, [callEmbed, userId, microphone]);
 
   // your own ring comes from Diddy's microphone level (#76)
   return useMemo(
