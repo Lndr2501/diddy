@@ -150,30 +150,9 @@ pub(crate) fn build_client_window(
     });
     #[cfg(target_os = "linux")]
     enable_linux_media(&window);
-    #[cfg(target_os = "macos")]
-    enable_macos_swipe_navigation(&window);
-    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    #[cfg(not(target_os = "linux"))]
     let _ = window;
     Ok(())
-}
-
-/// macOS: swiping with two fingers to the right / left goes back / forward in the history, like in
-/// Safari. WKWebView supports it natively (with the page sliding along), but it is off by default.
-/// The router writes every page change into the history, so this walks back through the pages.
-#[cfg(target_os = "macos")]
-fn enable_macos_swipe_navigation(window: &tauri::WebviewWindow) {
-    let result = window.with_webview(|webview| {
-        use objc2_web_kit::WKWebView;
-        let pointer = webview.inner().cast::<WKWebView>();
-        // SAFETY: on macOS the inner pointer of a Tauri webview is its WKWebView, and the closure
-        // runs on the main thread (WKWebView must only be touched there).
-        if let Some(view) = unsafe { pointer.as_ref() } {
-            unsafe { view.setAllowsBackForwardNavigationGestures(true) };
-        }
-    });
-    if let Err(e) = result {
-        diag::diag_log(format!("macos: swipe navigation unavailable: {e}"));
-    }
 }
 
 /// Fits a restored window rectangle into a screen area: never larger than the area, and the whole
