@@ -18,7 +18,7 @@ import { decodeSearchParamValueArray, encodeSearchParamValueArray } from '../../
 import { useRooms } from '../../state/hooks/roomList';
 import { allRoomsAtom } from '../../state/room-list/roomList';
 import { mDirectAtom } from '../../state/mDirectList';
-import { MessageSearchParams, useMessageSearch } from './useMessageSearch';
+import { groupSearchPages, MessageSearchParams, useMessageSearch } from './useMessageSearch';
 import { SearchResultGroup } from './SearchResultGroup';
 import { SearchInput } from './SearchInput';
 import { SearchFilters } from './SearchFilters';
@@ -110,7 +110,7 @@ export function MessageSearch({
     getNextPageParam: (lastPage) => lastPage.nextToken,
   });
 
-  const groups = useMemo(() => data?.pages.flatMap((result) => result.groups) ?? [], [data]);
+  const groups = useMemo(() => groupSearchPages(data?.pages ?? []), [data]);
   const highlights = useMemo(() => {
     const mixed = data?.pages.flatMap((result) => result.highlights);
     return Array.from(new Set(mixed));
@@ -179,15 +179,16 @@ export function MessageSearch({
   const lastVItemIndex: number | undefined = lastVItem?.index;
   const lastGroupIndex = groups.length - 1;
   useEffect(() => {
+    // A page can resolve to no results when all its hits were stale edits (#109): keep loading.
     if (
-      lastGroupIndex > -1 &&
-      lastGroupIndex === lastVItemIndex &&
+      (lastGroupIndex === -1 || lastGroupIndex === lastVItemIndex) &&
+      status === 'success' &&
       !isFetchingNextPage &&
       hasNextPage
     ) {
       fetchNextPage();
     }
-  }, [lastVItemIndex, lastGroupIndex, fetchNextPage, isFetchingNextPage, hasNextPage]);
+  }, [lastVItemIndex, lastGroupIndex, fetchNextPage, isFetchingNextPage, hasNextPage, status]);
 
   return (
     <Box direction="Column" gap="700">
@@ -236,7 +237,7 @@ export function MessageSearch({
         </PageHeroEmpty>
       )}
 
-      {msgSearchParams.term && groups.length === 0 && status === 'success' && (
+      {msgSearchParams.term && groups.length === 0 && status === 'success' && !hasNextPage && (
         <Box
           className={ContainerColor({ variant: 'Warning' })}
           style={{ padding: config.space.S300, borderRadius: config.radii.R400 }}
