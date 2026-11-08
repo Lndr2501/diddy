@@ -12,6 +12,7 @@ import { FeatureCheck } from './FeatureCheck';
 import { createRouter } from './Router';
 import { ScreenSizeProvider, useScreenSize } from '../hooks/useScreenSize';
 import { useCompositionEndTracking } from '../hooks/useComposingCheck';
+import { DevWatermark } from '../components/DevWatermark';
 import './App.css';
 
 const queryClient = new QueryClient();
@@ -23,33 +24,36 @@ function App() {
   const portalContainer = document.getElementById('portalContainer') ?? undefined;
 
   return (
-    <TooltipContainerProvider value={portalContainer}>
-      <PopOutContainerProvider value={portalContainer}>
-        <OverlayContainerProvider value={portalContainer}>
-          <ScreenSizeProvider value={screenSize}>
-            <FeatureCheck>
-              <ClientConfigLoader
-                fallback={() => <ConfigConfigLoading />}
-                error={(err, retry, ignore) => (
-                  <ConfigConfigError error={err} retry={retry} ignore={ignore} />
-                )}
-              >
-                {(clientConfig) => (
-                  <ClientConfigProvider value={clientConfig}>
-                    <QueryClientProvider client={queryClient}>
-                      <JotaiProvider>
-                        <RouterProvider router={createRouter(clientConfig, screenSize)} />
-                      </JotaiProvider>
-                      <ReactQueryDevtools initialIsOpen={false} />
-                    </QueryClientProvider>
-                  </ClientConfigProvider>
-                )}
-              </ClientConfigLoader>
-            </FeatureCheck>
-          </ScreenSizeProvider>
-        </OverlayContainerProvider>
-      </PopOutContainerProvider>
-    </TooltipContainerProvider>
+    <>
+      <DevWatermark />
+      <TooltipContainerProvider value={portalContainer}>
+        <PopOutContainerProvider value={portalContainer}>
+          <OverlayContainerProvider value={portalContainer}>
+            <ScreenSizeProvider value={screenSize}>
+              <FeatureCheck>
+                <ClientConfigLoader
+                  fallback={() => <ConfigConfigLoading />}
+                  error={(err, retry, ignore) => (
+                    <ConfigConfigError error={err} retry={retry} ignore={ignore} />
+                  )}
+                >
+                  {(clientConfig) => (
+                    <ClientConfigProvider value={clientConfig}>
+                      <QueryClientProvider client={queryClient}>
+                        <JotaiProvider>
+                          <RouterProvider router={createRouter(clientConfig, screenSize)} />
+                        </JotaiProvider>
+                        <ReactQueryDevtools initialIsOpen={false} />
+                      </QueryClientProvider>
+                    </ClientConfigProvider>
+                  )}
+                </ClientConfigLoader>
+              </FeatureCheck>
+            </ScreenSizeProvider>
+          </OverlayContainerProvider>
+        </PopOutContainerProvider>
+      </TooltipContainerProvider>
+    </>
   );
 }
 
