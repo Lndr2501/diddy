@@ -88,6 +88,127 @@ export const resolutionDiagnosis = (
   return `sent ${sent.width}x${sent.height} stays below capture ${capture.width}x${capture.height}; ${cause}`;
 };
 
+export type ReceivedVideo = {
+  /** decoded frame size (inbound-rtp frameWidth/frameHeight) */
+  width?: number;
+  height?: number;
+  frameRate?: number;
+  /** CSS size of the <video> element showing it; undefined when it is not on screen */
+  tileWidth?: number;
+  tileHeight?: number;
+  /** devicePixelRatio of the viewer's display */
+  pixelRatio?: number;
+};
+
+/**
+ * Viewer side of issue #11: is the received picture as sharp as the tile it is shown in?
+ *
+ * Element Call publishes a screen share with two simulcast layers (full capture size and half of
+ * it) and subscribes with LiveKit's adaptive stream, which asks the server for the layer that fits
+ * the tile. A 1080p share in a tile smaller than ~960 device pixels therefore arrives at 960x540 on
+ * purpose (a 720p window: 640x360). That is "fits tile", not a fault. Only a picture that is
+ * smaller than what the tile displays is upscaled and looks blurry. `key` changes only when the
+ * received size or the verdict changes, so a window resize does not flood the log.
+ */
+export const receiveDiagnosis = (v: ReceivedVideo): { key: string; text: string } | null => {
+  if (!v.width || !v.height) return null;
+  const size = `${v.width}x${v.height}`;
+  const fps = v.frameRate !== undefined ? `@${Math.round(v.frameRate)}fps` : '';
+  if (!v.tileWidth || !v.tileHeight) {
+    return { key: `${size}|hidden`, text: `received ${size}${fps}, not on screen` };
+  }
+  const ratio = v.pixelRatio && v.pixelRatio > 0 ? v.pixelRatio : 1;
+  // object-fit: contain - the picture is scaled to fit inside the tile
+  const scale = Math.min(v.tileWidth / v.width, v.tileHeight / v.height);
+  const shownW = Math.round(v.width * scale * ratio);
+  const shownH = Math.round(v.height * scale * ratio);
+  const tileSize = `${Math.round(v.tileWidth)}x${Math.round(v.tileHeight)}`;
+  const tile = `tile ${tileSize}@${ratio}x shows ${shownW}x${shownH} px`;
+  // 10% slack: rounding, borders and a layer that is a few pixels off are no real loss.
+  if (shownW <= v.width * 1.1) {
+    return { key: `${size}|sharp`, text: `received ${size}${fps} fits its ${tile}` };
+  }
+  return {
+    key: `${size}|upscaled`,
+    text: `received ${size}${fps} is upscaled: ${tile}; Ursache: Server/Sender liefert keine höhere Ebene (Bandbreite des Senders oder Zuschauers, oder die Aufnahme selbst ist so klein)`,
+  };
+};
+
+const RECEIVE_POLL_MS = 5000;
+const receiveWatches = new WeakMap<Window, () => void>();
+const noop = () => undefined;
+
+/**
+ * Logs, for every received video in the call iframe, its decoded size against the tile it is
+ * shown in (see receiveDiagnosis). Runs for viewers too, who never call getDisplayMedia, so a log
+ * from the receiving side settles what a viewer really got. Idempotent per window.
+ */
+export const startReceiveWatch = (win: Window | null | undefined): (() => void) => {
+  if (!win) return noop;
+  const running = receiveWatches.get(win);
+  if (running) return running;
+  const last = new Map<string, string>();
+
+  const poll = async () => {
+    const list = registries.get(win);
+    if (!list || list.length === 0) return;
+    let videos: HTMLVideoElement[];
+    try {
+      videos = Array.from(win.document.querySelectorAll('video'));
+    } catch {
+      return;
+    }
+    const elementFor = (trackId: string): HTMLVideoElement | undefined =>
+      videos.find((video) => {
+        const stream = video.srcObject as MediaStream | null;
+        return !!stream?.getVideoTracks?.().some((t) => t.id === trackId);
+      });
+    const seen = new Set<string>();
+    const open = list.filter((pc) => pc.connectionState !== 'closed');
+    for (let i = 0; i < open.length; i += 1) {
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        const report = await open[i].getStats();
+        report.forEach((r: Record<string, any>) => {
+          if (r.type !== 'inbound-rtp') return;
+          if (!(r.kind === 'video' || r.mediaType === 'video')) return;
+          const id = String(r.trackIdentifier ?? r.id);
+          seen.add(id);
+          const element = r.trackIdentifier ? elementFor(String(r.trackIdentifier)) : undefined;
+          const visible = !!element && element.clientWidth > 0 && element.clientHeight > 0;
+          const verdict = receiveDiagnosis({
+            width: r.frameWidth,
+            height: r.frameHeight,
+            frameRate: r.framesPerSecond,
+            tileWidth: visible ? element.clientWidth : undefined,
+            tileHeight: visible ? element.clientHeight : undefined,
+            pixelRatio: win.devicePixelRatio,
+          });
+          if (!verdict || last.get(id) === verdict.key) return;
+          last.set(id, verdict.key);
+          const where = element?.closest?.('[class*="_item_"]') ? 'spotlight' : 'grid';
+          diag(`receive watch ${id.slice(0, 8)} (${visible ? where : '-'}): ${verdict.text}`);
+        });
+      } catch {
+        // closed while reading
+      }
+    }
+    Array.from(last.keys()).forEach((id) => {
+      if (!seen.has(id)) last.delete(id);
+    });
+  };
+
+  const timer = window.setInterval(() => {
+    poll().catch(() => undefined);
+  }, RECEIVE_POLL_MS);
+  const stop = () => {
+    window.clearInterval(timer);
+    receiveWatches.delete(win);
+  };
+  receiveWatches.set(win, stop);
+  return stop;
+};
+
 /** Logs sender/receiver stats every few seconds until the returned function is called. */
 export const startStatsLogging = (
   win: Window | null | undefined,
