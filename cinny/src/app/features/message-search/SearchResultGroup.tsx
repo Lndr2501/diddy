@@ -120,9 +120,11 @@ export function SearchResultGroup({
     ]
   );
 
-  const renderMatrixEvent = useMatrixEventRenderer<[IEventWithRoomId, string, GetContentCallback]>(
+  const renderMatrixEvent = useMatrixEventRenderer<
+    [IEventWithRoomId, string, GetContentCallback, boolean]
+  >(
     {
-      [MessageEvent.RoomMessage]: (event, displayName, getContent) => {
+      [MessageEvent.RoomMessage]: (event, displayName, getContent, edited) => {
         if (event.unsigned?.redacted_because) {
           return <RedactedContent reason={event.unsigned?.redacted_because.content.reason} />;
         }
@@ -132,6 +134,7 @@ export function SearchResultGroup({
             displayName={displayName}
             msgType={event.content.msgtype ?? ''}
             ts={event.origin_server_ts}
+            edited={edited}
             getContent={getContent}
             mediaAutoLoad={mediaAutoLoad}
             urlPreview={urlPreview}
@@ -228,8 +231,8 @@ export function SearchResultGroup({
           const senderAvatarMxc = getMemberAvatarMxc(room, event.sender);
 
           const relation = event.content['m.relates_to'];
-          const mainEventId =
-            relation?.rel_type === RelationType.Replace ? relation.event_id : event.event_id;
+          // Edits are folded into their original (#109), so this is the original event id.
+          const mainEventId = item.originalEventId;
 
           const getContent = (() =>
             event.content['m.new_content'] ?? event.content) as GetContentCallback;
@@ -250,7 +253,7 @@ export function SearchResultGroup({
 
           return (
             <SequenceCard
-              key={event.event_id}
+              key={item.originalEventId}
               style={{ padding: config.space.S400 }}
               variant="SurfaceVariant"
               direction="Column"
@@ -318,7 +321,7 @@ export function SearchResultGroup({
                     legacyUsernameColor={legacyUsernameColor}
                   />
                 )}
-                {renderMatrixEvent(event.type, false, event, displayName, getContent)}
+                {renderMatrixEvent(event.type, false, event, displayName, getContent, item.edited)}
               </ModernLayout>
             </SequenceCard>
           );
