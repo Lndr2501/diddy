@@ -123,6 +123,9 @@ import { useDebounce } from '../../hooks/useDebounce';
 import { VoiceRecorderButton } from './VoiceRecorderButton';
 import { VoiceRecording } from '../../hooks/useVoiceRecorder';
 import { sendVoiceMessage } from './sendVoiceMessage';
+import { sendGif } from './sendGif';
+import { useGifPrefs } from '../../state/gifPrefs';
+import { GifProviderId, GifResult } from '../../plugins/gifSearch';
 
 const getReplyContent = (replyDraft: IReplyDraft | undefined): IEventRelation => {
   if (!replyDraft) return {};
@@ -260,6 +263,20 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
         }
       },
       [mx, room, replyDraft, setReplyDraft, addFiles]
+    );
+    const gifEnabled = useGifPrefs().enabled;
+    const handleGifSelect = useCallback(
+      async (provider: GifProviderId, gif: GifResult) => {
+        await sendGif(
+          mx,
+          room,
+          provider,
+          gif,
+          replyDraft ? getReplyContent(replyDraft) : undefined
+        );
+        setReplyDraft(undefined);
+      },
+      [mx, room, replyDraft, setReplyDraft]
     );
     const pickFile = useFilePicker(handleFiles, true);
     const handlePaste = useFilePasteHandler(handleFiles);
@@ -711,6 +728,7 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
                         onEmojiSelect={handleEmoticonSelect}
                         onCustomEmojiSelect={handleEmoticonSelect}
                         onStickerSelect={handleStickerSelect}
+                        onGifSelect={gifEnabled ? handleGifSelect : undefined}
                         requestClose={() => {
                           setEmojiBoardTab((t) => {
                             if (t) {
@@ -723,6 +741,23 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
                       />
                     }
                   >
+                    {!hideStickerBtn && gifEnabled && (
+                      <IconButton
+                        aria-label="GIFs"
+                        title="GIFs"
+                        aria-pressed={emojiBoardTab === EmojiBoardTab.Gif}
+                        onClick={() => setEmojiBoardTab(EmojiBoardTab.Gif)}
+                        variant="SurfaceVariant"
+                        fill="None"
+                        className={css.ComposerIconButton}
+                        size="300"
+                        radii="Pill"
+                      >
+                        <Text as="span" size="L400" style={{ fontWeight: 700, letterSpacing: 0 }}>
+                          GIF
+                        </Text>
+                      </IconButton>
+                    )}
                     {!hideStickerBtn && (
                       <IconButton
                         aria-pressed={emojiBoardTab === EmojiBoardTab.Sticker}

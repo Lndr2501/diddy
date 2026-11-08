@@ -52,6 +52,8 @@ import {
 } from './components';
 import { EmojiBoardTab, EmojiType } from './types';
 import { VirtualTile } from '../virtualizer';
+import { GifPanel } from './GifPanel';
+import { GifProviderId, GifResult } from '../../plugins/gifSearch';
 
 const RECENT_GROUP_ID = 'recent_group';
 const SEARCH_GROUP_ID = 'search_group';
@@ -362,6 +364,8 @@ type EmojiBoardProps = {
   onStickerSelect?: (mxc: string, shortcode: string, label: string) => void;
   allowTextCustomEmoji?: boolean;
   addToRecentEmoji?: boolean;
+  /** shows the GIF tab; resolves once the GIF is sent */
+  onGifSelect?: (provider: GifProviderId, gif: GifResult) => Promise<void>;
 };
 
 export function EmojiBoard({
@@ -375,8 +379,10 @@ export function EmojiBoard({
   onStickerSelect,
   allowTextCustomEmoji,
   addToRecentEmoji = true,
+  onGifSelect,
 }: EmojiBoardProps) {
   const mx = useMatrixClient();
+  const gifTab = tab === EmojiBoardTab.Gif && !!onGifSelect;
 
   const emojiTab = tab === EmojiBoardTab.Emoji;
   const usage = emojiTab ? ImageUsage.Emoticon : ImageUsage.Sticker;
@@ -502,79 +508,89 @@ export function EmojiBoard({
         escapeDeactivates: stopPropagation,
       }}
     >
-      <EmojiBoardLayout
-        header={
-          <Box direction="Column" gap="200">
-            {onTabChange && <EmojiBoardTabs tab={tab} onTabChange={onTabChange} />}
-            <SearchInput
+      {gifTab && onGifSelect ? (
+        <EmojiBoardLayout
+          header={onTabChange && <EmojiBoardTabs tab={tab} onTabChange={onTabChange} gif />}
+        >
+          <GifPanel onSelect={onGifSelect} requestClose={requestClose} />
+        </EmojiBoardLayout>
+      ) : (
+        <EmojiBoardLayout
+          header={
+            <Box direction="Column" gap="200">
+              {onTabChange && (
+                <EmojiBoardTabs tab={tab} onTabChange={onTabChange} gif={!!onGifSelect} />
+              )}
+              <SearchInput
+                key={tab}
+                query={result?.query}
+                onChange={handleOnChange}
+                allowTextCustomEmoji={allowTextCustomEmoji}
+                onTextCustomEmojiSelect={handleTextCustomEmojiSelect}
+              />
+            </Box>
+          }
+          sidebar={
+            emojiTab ? (
+              <EmojiSidebar
+                activeGroupAtom={activeGroupIdAtom}
+                packs={imagePacks}
+                onScrollToGroup={handleScrollToGroup}
+              />
+            ) : (
+              <StickerSidebar
+                activeGroupAtom={activeGroupIdAtom}
+                packs={imagePacks}
+                onScrollToGroup={handleScrollToGroup}
+              />
+            )
+          }
+        >
+          <Box grow="Yes">
+            <EmojiGroupHolder
               key={tab}
-              query={result?.query}
-              onChange={handleOnChange}
-              allowTextCustomEmoji={allowTextCustomEmoji}
-              onTextCustomEmojiSelect={handleTextCustomEmojiSelect}
-            />
-          </Box>
-        }
-        sidebar={
-          emojiTab ? (
-            <EmojiSidebar
-              activeGroupAtom={activeGroupIdAtom}
-              packs={imagePacks}
-              onScrollToGroup={handleScrollToGroup}
-            />
-          ) : (
-            <StickerSidebar
-              activeGroupAtom={activeGroupIdAtom}
-              packs={imagePacks}
-              onScrollToGroup={handleScrollToGroup}
-            />
-          )
-        }
-      >
-        <Box grow="Yes">
-          <EmojiGroupHolder
-            key={tab}
-            contentScrollRef={contentScrollRef}
-            previewAtom={previewAtom}
-            onGroupItemClick={handleGroupItemClick}
-          >
-            {searchedItems && (
-              <EmojiGroup
-                id={SEARCH_GROUP_ID}
-                label={searchedItems.length ? 'Search Results' : 'No Results found'}
-              >
-                {searchedItems.map(renderItem)}
-              </EmojiGroup>
-            )}
-            <div
-              ref={virtualBaseRef}
-              style={{
-                position: 'relative',
-                height: virtualizer.getTotalSize(),
-              }}
+              contentScrollRef={contentScrollRef}
+              previewAtom={previewAtom}
+              onGroupItemClick={handleGroupItemClick}
             >
-              {vItems.map((vItem) => {
-                const group = groups[vItem.index];
+              {searchedItems && (
+                <EmojiGroup
+                  id={SEARCH_GROUP_ID}
+                  label={searchedItems.length ? 'Search Results' : 'No Results found'}
+                >
+                  {searchedItems.map(renderItem)}
+                </EmojiGroup>
+              )}
+              <div
+                ref={virtualBaseRef}
+                style={{
+                  position: 'relative',
+                  height: virtualizer.getTotalSize(),
+                }}
+              >
+                {vItems.map((vItem) => {
+                  const group = groups[vItem.index];
 
-                return (
-                  <VirtualTile
-                    virtualItem={vItem}
-                    style={{ paddingTop: config.space.S200 }}
-                    ref={virtualizer.measureElement}
-                    key={vItem.index}
-                  >
-                    <EmojiGroup key={group.id} id={group.id} label={group.name}>
-                      {group.items.map(renderItem)}
-                    </EmojiGroup>
-                  </VirtualTile>
-                );
-              })}
-            </div>
-            {tab === EmojiBoardTab.Sticker && groups.length === 0 && <NoStickerPacks />}
-          </EmojiGroupHolder>
-        </Box>
-        <Preview previewAtom={previewAtom} />
-      </EmojiBoardLayout>
+                  return (
+                    <VirtualTile
+                      virtualItem={vItem}
+                      style={{ paddingTop: config.space.S200 }}
+                      ref={virtualizer.measureElement}
+                      key={vItem.index}
+                    >
+                      <EmojiGroup key={group.id} id={group.id} label={group.name}>
+                        {group.items.map(renderItem)}
+                      </EmojiGroup>
+                    </VirtualTile>
+                  );
+                })}
+              </div>
+              {tab === EmojiBoardTab.Sticker && groups.length === 0 && <NoStickerPacks />}
+            </EmojiGroupHolder>
+          </Box>
+          <Preview previewAtom={previewAtom} />
+        </EmojiBoardLayout>
+      )}
     </FocusTrap>
   );
 }

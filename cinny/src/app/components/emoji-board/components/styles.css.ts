@@ -170,3 +170,61 @@ export const StickerImg = style([
     objectFit: 'contain',
   },
 ]);
+
+/**
+ * GIFs (#82): justified rows of fixed-height previews
+ */
+
+export const GifGrid = style([
+  DefaultReset,
+  {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: toRem(4),
+    padding: config.space.S200,
+  },
+]);
+
+export const GifItem = style([
+  DefaultReset,
+  FocusOutline,
+  {
+    position: 'relative',
+    height: toRem(100),
+    minWidth: toRem(60),
+    maxWidth: '100%',
+    overflow: 'hidden',
+    borderRadius: 'var(--diddy-radius-ctl, 10px)',
+    cursor: 'pointer',
+    backgroundColor: `color-mix(in srgb, ${color.Surface.OnContainer} 6%, transparent)`,
+    selectors: {
+      '&:disabled': { cursor: 'progress' },
+    },
+  },
+]);
+
+export const GifImg = style([
+  DefaultReset,
+  {
+    display: 'block',
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
+  },
+]);
+
+export const GifItemOverlay = style({
+  position: 'absolute',
+  inset: 0,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  backgroundColor: 'rgba(0, 0, 0, 0.45)',
+});
+
+export const GifFooter = style({
+  padding: `${config.space.S100} ${config.space.S300}`,
+  borderTop: `1px solid color-mix(in srgb, ${color.Surface.OnContainer} 8%, transparent)`,
+  color: color.Surface.OnContainer,
+  opacity: 0.8,
+});
