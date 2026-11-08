@@ -26,6 +26,7 @@ const load = (file) => {
   return mod;
 };
 const pv = load(path.join(root, 'plugins/diddy/profilePreview.ts'));
+const el = load(path.join(root, 'features/settings/diddy/editorLayout.ts'));
 const plain = (v) => (v === undefined ? undefined : JSON.parse(JSON.stringify(v)));
 
 const STORED = {
@@ -39,7 +40,11 @@ const STORED = {
 
 test('toDraft drops what the editor does not manage and copies deeply', () => {
   const draft = pv.toDraft(STORED);
-  assert.deepEqual(plain(draft), { bio: 'old bio', clientVersion: '1.0.0', card: { accent: '#112233' } });
+  assert.deepEqual(plain(draft), {
+    bio: 'old bio',
+    clientVersion: '1.0.0',
+    card: { accent: '#112233' },
+  });
   draft.card.accent = '#000000';
   assert.equal(STORED.card.accent, '#112233');
   assert.deepEqual(plain(pv.toDraft(undefined)), {});
@@ -127,10 +132,32 @@ test('previewTargetForTab and the target list', () => {
   assert.deepEqual(plain(ids), ['card', 'window', 'members', 'dms', 'panel', 'call']);
 });
 
+test('editorLayout: two columns only when the editor keeps its minimum width', () => {
+  const twoAt = el.EDITOR_MIN_PX + el.COLUMN_GAP_PX + el.PREVIEW_COLUMN_PX;
+  assert.deepEqual(plain(el.editorLayout(twoAt)), { columns: 'two', compact: false });
+  assert.deepEqual(plain(el.editorLayout(twoAt - 1)), { columns: 'one', compact: false });
+  assert.deepEqual(plain(el.editorLayout(el.COMPACT_BELOW_PX - 1)), {
+    columns: 'one',
+    compact: true,
+  });
+  // not measured yet: the wide layout, so nothing jumps on the first frame of a wide window
+  assert.deepEqual(plain(el.editorLayout(0)), { columns: 'two', compact: false });
+  assert.deepEqual(plain(el.editorLayout(Number.NaN)), { columns: 'two', compact: false });
+});
+
 test('deviceMotionNotes names what this device switched off', () => {
-  const all = { profileEffects: true, nameplates: true, profileFrames: true, profile: true, reducedMotion: false };
+  const all = {
+    profileEffects: true,
+    nameplates: true,
+    profileFrames: true,
+    profile: true,
+    reducedMotion: false,
+  };
   assert.deepEqual(plain(pv.deviceMotionNotes(all)), []);
-  assert.match(pv.deviceMotionNotes({ ...all, reducedMotion: true, nameplates: false })[0], /Reduce motion/);
+  assert.match(
+    pv.deviceMotionNotes({ ...all, reducedMotion: true, nameplates: false })[0],
+    /Reduce motion/
+  );
   const notes = pv.deviceMotionNotes({ ...all, profileEffects: false, nameplates: false });
   assert.equal(notes.length, 1);
   assert.match(notes[0], /profile effects and nameplates/);

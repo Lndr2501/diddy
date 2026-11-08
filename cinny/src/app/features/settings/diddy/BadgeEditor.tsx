@@ -1,5 +1,6 @@
 import React, { ChangeEventHandler, useRef, useState } from 'react';
-import { Box, Button, color, config, Icons, Spinner, Text } from 'folds';
+import classNames from 'classnames';
+import { Box, Button, color, config, Icons, Spinner, Text, toRem } from 'folds';
 import { BadgeChip } from '../../../components/diddy/BadgeChip';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { useOptionsRooms } from '../../../plugins/diddy/optionsRoom';
@@ -16,7 +17,9 @@ import {
 import { BadgeDef, MAX_SHOWN_BADGES } from '../../../plugins/diddy/types';
 import { uploadDiddyMedia } from '../../../plugins/diddy/media';
 import * as css from './DiddyProfileSettings.css';
-import { Field, SettingsCard } from './ProfileSettingsUI';
+import { ColorField, Counter, Field, Hint, SettingsCard } from './ProfileSettingsUI';
+import { SPACE } from './editorSpace';
+import { RADIUS_ROW } from '../../../components/sidebar/diddyTokens';
 
 const DEFAULT_BADGE_COLOR = '#7AA2F7';
 const MAX_EMOJI_CODEPOINTS = 6;
@@ -79,34 +82,29 @@ function BadgeLibrary() {
 
   return (
     <SettingsCard
-      wide
       icon={Icons.Category}
       title="Badge library"
       description={`Built-in and community badges. You own ${owned.length} of ${defs.length}.`}
-      action={
-        <input
-          className={css.Input}
-          style={{ width: 240 }}
-          value={filter}
-          onChange={(evt) => setFilter(evt.target.value)}
-          placeholder="Search badges"
-          aria-label="Search badges"
-        />
-      }
+      footer={error && <Hint tone="error">{error}</Hint>}
     >
+      <input
+        className={classNames(css.Input, css.InputFull)}
+        value={filter}
+        onChange={(evt) => setFilter(evt.target.value)}
+        placeholder="Search badges"
+        aria-label="Search badges"
+      />
       {visible.length === 0 ? (
-        <Text size="T200" priority="300">
-          No badges match your search.
-        </Text>
+        <Hint>No badges match your search.</Hint>
       ) : (
         <div
           style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-            gap: config.space.S300,
+            gap: SPACE.md,
             maxHeight: 440,
             overflowY: 'auto',
-            padding: 2,
+            padding: toRem(2),
           }}
         >
           {visible.map((badge) => {
@@ -117,8 +115,8 @@ function BadgeLibrary() {
                 direction="Column"
                 gap="200"
                 style={{
-                  padding: config.space.S300,
-                  borderRadius: 14,
+                  padding: SPACE.md,
+                  borderRadius: RADIUS_ROW,
                   background: color.Surface.Container,
                   border: `${config.borderWidth.B300} solid ${color.Surface.ContainerLine}`,
                 }}
@@ -173,11 +171,6 @@ function BadgeLibrary() {
           })}
         </div>
       )}
-      {error && (
-        <Text size="T200" style={{ color: color.Critical.Main }}>
-          {error}
-        </Text>
-      )}
     </SettingsCard>
   );
 }
@@ -212,16 +205,13 @@ function YourBadges() {
       icon={Icons.Star}
       title="Equipped badges"
       description={`Pick up to ${MAX_SHOWN_BADGES} badges to show next to your name. Saved right away.`}
-      action={
-        <Text size="T200" priority="300">
-          {shownIds.length}/{MAX_SHOWN_BADGES}
-        </Text>
-      }
+      action={<Counter value={shownIds.length} max={MAX_SHOWN_BADGES} />}
+      footer={error && <Hint tone="error">{error}</Hint>}
     >
       {owned.length === 0 ? (
-        <Text size="T200" priority="300">
+        <Hint>
           You do not have any badges yet. Create one below or ask someone to give you one.
-        </Text>
+        </Hint>
       ) : (
         <Box gap="200" wrap="Wrap">
           {owned.map((badge) => {
@@ -245,11 +235,6 @@ function YourBadges() {
             );
           })}
         </Box>
-      )}
-      {error && (
-        <Text size="T200" style={{ color: color.Critical.Main }}>
-          {error}
-        </Text>
       )}
     </SettingsCard>
   );
@@ -368,7 +353,11 @@ function CreateBadge() {
           aria-label="Badge name"
         />
       </Field>
-      <Field label="Emoji or image" top>
+      <Field
+        label="Emoji or image"
+        top
+        hint={imageMxc ? 'Using an uploaded image.' : 'Type an emoji, or upload an image instead.'}
+      >
         <Box direction="Column" gap="200" style={{ minWidth: 0 }}>
           <Box gap="200" alignItems="Center" wrap="Wrap">
             <input
@@ -410,25 +399,16 @@ function CreateBadge() {
               style={{ display: 'none' }}
             />
           </Box>
-          <Text size="T200" priority="300">
-            {imageMxc ? 'Using an uploaded image.' : 'Type an emoji, or upload an image instead.'}
-          </Text>
-          {emojiTooLong && (
-            <Text size="T200" style={{ color: color.Critical.Main }}>
-              Use a single emoji.
-            </Text>
-          )}
+          {emojiTooLong && <Hint tone="error">Use a single emoji.</Hint>}
         </Box>
       </Field>
       <Field label="Color">
-        <input
-          type="color"
-          aria-label="Badge color"
-          className={css.ColorInput}
+        <ColorField
+          label="Badge color"
           value={badgeColor}
-          onChange={(evt) => setBadgeColor(evt.target.value)}
+          fallback={DEFAULT_BADGE_COLOR}
+          onChange={setBadgeColor}
         />
-        <span className={css.HexLabel}>{badgeColor.toUpperCase()}</span>
       </Field>
       {duplicate && (
         <Box direction="Column" gap="200" alignItems="Start">
@@ -454,11 +434,7 @@ function CreateBadge() {
           </Box>
         </Box>
       )}
-      {error && (
-        <Text size="T200" style={{ color: color.Critical.Main }}>
-          {error}
-        </Text>
-      )}
+      {error && <Hint tone="error">{error}</Hint>}
       <Box justifyContent="End">
         <Button
           size="300"

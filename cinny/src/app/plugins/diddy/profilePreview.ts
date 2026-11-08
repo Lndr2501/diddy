@@ -181,7 +181,7 @@ export type DeviceMotion = {
  */
 export const deviceMotionNotes = (m: DeviceMotion): string[] => {
   if (m.reducedMotion) {
-    return ['Reduce motion is on: effects, nameplates and pictures show as stills here.'];
+    return ['Reduce motion is on: profile effects and nameplates show as stills here.'];
   }
   const still: string[] = [];
   if (!m.profileEffects) still.push('profile effects');

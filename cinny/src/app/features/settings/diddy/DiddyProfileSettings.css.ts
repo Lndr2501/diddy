@@ -1,48 +1,61 @@
 import { globalStyle, style } from '@vanilla-extract/css';
 import { color, config, toRem } from 'folds';
+import { SPACE } from './editorSpace';
+import { COLUMN_GAP_PX, PREVIEW_COLUMN_PX } from './editorLayout';
+import {
+  RADIUS_CARD,
+  RADIUS_CTL,
+  RADIUS_ROW,
+  SEPARATOR,
+  SHADOW_1,
+} from '../../../components/sidebar/diddyTokens';
 
-/** Preview column moves above the editor below this width. */
-const NARROW = 'screen and (max-width: 1099px)';
-const TINY = 'screen and (max-width: 600px)';
+/*
+ * Settings > Profile (#105). One spacing scale (SPACE: 4/8/12/16/24), one card, one field
+ * pattern. The page measures its own width (editorLayout) and sets data-columns / data-compact
+ * on Wrap; nothing here depends on the viewport, because the settings sheet's sidebar takes part
+ * of the window.
+ */
 
-const SOFT_SHADOW = '0 1px 2px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.07)';
-const LINE = `${config.borderWidth.B300} solid ${color.SurfaceVariant.ContainerLine}`;
+const LINE = `${config.borderWidth.B300} solid ${SEPARATOR}`;
+const CONTROL_LINE = `${config.borderWidth.B300} solid ${color.SurfaceVariant.ContainerLine}`;
+const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
 
 // --- page frame --------------------------------------------------------------------------------
 
-/** Centered page column, uses the wide settings sheet (max ~1360px). */
+/** Centered page column; carries data-columns="one|two" and data-compact. */
 export const Wrap = style({
   width: '100%',
-  maxWidth: toRem(1360),
+  maxWidth: toRem(1240),
   margin: '0 auto',
   boxSizing: 'border-box',
-  padding: `${toRem(28)} ${toRem(32)} ${toRem(40)}`,
+  padding: SPACE.xl,
   display: 'flex',
   flexDirection: 'column',
-  gap: toRem(24),
-  '@media': {
-    [TINY]: { padding: `${toRem(16)} ${toRem(16)} ${toRem(32)}` },
+  gap: SPACE.xl,
+  selectors: {
+    '&[data-compact=true]': { padding: SPACE.lg, gap: SPACE.lg },
   },
 });
 
-/** Big title with subtitle on the left, actions on the right. */
+/** Large title with subtitle on the left, actions on the right. */
 export const Head = style({
   display: 'flex',
   alignItems: 'flex-start',
   justifyContent: 'space-between',
-  gap: toRem(20),
+  gap: SPACE.lg,
   flexWrap: 'wrap',
 });
 
 export const HeadText = style({
   display: 'flex',
   flexDirection: 'column',
-  gap: toRem(4),
+  gap: SPACE.xs,
   minWidth: 0,
 });
 
 export const HeadTitle = style({
-  fontSize: toRem(30),
+  fontSize: toRem(28),
   lineHeight: 1.15,
   fontWeight: 700,
   letterSpacing: '-0.02em',
@@ -52,26 +65,31 @@ export const HeadTitle = style({
 export const HeadActions = style({
   display: 'flex',
   alignItems: 'center',
-  gap: toRem(10),
+  gap: SPACE.sm,
   flexWrap: 'wrap',
 });
 
-/** Editor and sticky live preview side by side. */
+/** Editor and sticky preview side by side; the preview goes above the editor in one column. */
 export const Layout = style({
   display: 'grid',
-  gridTemplateColumns: `minmax(0, 1fr) ${toRem(380)}`,
-  gap: toRem(28),
+  gridTemplateColumns: `minmax(0, 1fr) ${toRem(PREVIEW_COLUMN_PX)}`,
+  columnGap: toRem(COLUMN_GAP_PX),
+  rowGap: SPACE.xl,
   alignItems: 'start',
-  '@media': {
-    [NARROW]: { gridTemplateColumns: 'minmax(0, 1fr)' },
-  },
+});
+globalStyle(`${Wrap}[data-columns=one] ${Layout}`, {
+  gridTemplateColumns: 'minmax(0, 1fr)',
+});
+globalStyle(`${Wrap}[data-compact=true] ${Layout}`, {
+  rowGap: SPACE.lg,
 });
 
+/** Tab strip and the cards of the current tab. */
 export const Main = style({
   minWidth: 0,
   display: 'flex',
   flexDirection: 'column',
-  gap: toRem(20),
+  gap: SPACE.lg,
 });
 
 export const Disabled = style({
@@ -80,117 +98,129 @@ export const Disabled = style({
   filter: 'saturate(0.6)',
 });
 
-/** Cards of the current tab: two columns when there is room, one otherwise. */
-export const Grid = style({
-  display: 'grid',
-  gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, ${toRem(400)}), 1fr))`,
-  gap: toRem(20),
-  alignItems: 'start',
-});
-
-export const Wide = style({
-  gridColumn: '1 / -1',
+/** Cards of the current tab: one column, the same gap between every card. */
+export const Panel = style({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: SPACE.lg,
+  minWidth: 0,
 });
 
 // --- tabs --------------------------------------------------------------------------------------
 
 export const Tabs = style({
   display: 'flex',
-  gap: toRem(4),
-  padding: toRem(5),
-  borderRadius: toRem(16),
+  gap: SPACE.xs,
+  padding: SPACE.xs,
+  borderRadius: RADIUS_ROW,
   background: color.SurfaceVariant.Container,
   border: LINE,
-  boxShadow: SOFT_SHADOW,
   // Wrap instead of scrolling: with a hidden scrollbar the last tabs were cut off and unreachable.
   flexWrap: 'wrap',
-  alignSelf: 'flex-start',
-  maxWidth: '100%',
+  alignSelf: 'stretch',
   boxSizing: 'border-box',
 });
 
 export const Tab = style({
   display: 'flex',
   alignItems: 'center',
-  gap: toRem(8),
-  flexShrink: 0,
-  height: toRem(38),
-  padding: `0 ${toRem(16)}`,
-  borderRadius: toRem(11),
-  border: `${config.borderWidth.B300} solid transparent`,
+  justifyContent: 'center',
+  gap: SPACE.sm,
+  // a wrapped strip fills every row evenly instead of leaving a ragged gap on the right
+  flex: '1 1 auto',
+  height: toRem(32),
+  padding: `0 ${SPACE.md}`,
+  borderRadius: RADIUS_CTL,
+  border: 'none',
   background: 'transparent',
   color: color.SurfaceVariant.OnContainer,
   cursor: 'pointer',
   font: 'inherit',
-  fontSize: toRem(14),
+  fontSize: toRem(13),
   fontWeight: 500,
   whiteSpace: 'nowrap',
   transition: 'background 120ms ease, color 120ms ease',
   selectors: {
     '&:hover': { background: color.SurfaceVariant.ContainerHover },
     '&[aria-selected=true]': {
-      background: color.Primary.Container,
-      color: color.Primary.OnContainer,
-      borderColor: color.Primary.ContainerLine,
+      background: color.Primary.Main,
+      color: color.Primary.OnMain,
       fontWeight: 600,
+      boxShadow: '0 1px 2px rgba(0, 0, 0, 0.2)',
     },
     '&:focus-visible': { outline: `2px solid ${color.Primary.Main}`, outlineOffset: 1 },
   },
 });
 
-// --- section cards -----------------------------------------------------------------------------
+// --- the card ----------------------------------------------------------------------------------
 
-/** Rounded section card with icon tile, title and description. */
+/** Every section of the editor and the preview: header, body, optional footer. */
 export const SectionCard = style({
   display: 'flex',
   flexDirection: 'column',
-  gap: toRem(20),
-  padding: toRem(22),
-  borderRadius: toRem(20),
+  gap: SPACE.lg,
+  padding: SPACE.xl,
+  borderRadius: RADIUS_CARD,
   background: color.SurfaceVariant.Container,
   color: color.SurfaceVariant.OnContainer,
   border: LINE,
-  boxShadow: SOFT_SHADOW,
+  boxShadow: SHADOW_1,
   boxSizing: 'border-box',
   minWidth: 0,
-  '@media': {
-    [TINY]: { padding: toRem(16) },
-  },
 });
+globalStyle(`${Wrap}[data-compact=true] ${SectionCard}`, { padding: SPACE.lg });
 
 export const SectionHeader = style({
   display: 'flex',
   alignItems: 'flex-start',
-  gap: toRem(14),
+  gap: SPACE.md,
   minWidth: 0,
 });
 
 export const SectionTitle = style({
   display: 'flex',
   flexDirection: 'column',
-  gap: toRem(3),
+  gap: SPACE.xs,
   minWidth: 0,
   flexGrow: 1,
-  paddingTop: toRem(1),
+  // centres a one-line title on the 36px icon tile
+  minHeight: toRem(36),
+  justifyContent: 'center',
+});
+
+export const SectionAction = style({
+  flexShrink: 0,
+  display: 'flex',
+  alignItems: 'center',
+  gap: SPACE.sm,
+  minHeight: toRem(36),
 });
 
 export const IconTile = style({
-  width: toRem(40),
-  height: toRem(40),
-  borderRadius: toRem(12),
+  width: toRem(36),
+  height: toRem(36),
+  borderRadius: RADIUS_CTL,
   flexShrink: 0,
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
   background: color.Primary.Container,
   color: color.Primary.OnContainer,
-  border: `${config.borderWidth.B300} solid ${color.Primary.ContainerLine}`,
 });
 
 export const SectionBody = style({
   display: 'flex',
   flexDirection: 'column',
-  gap: toRem(16),
+  gap: SPACE.md,
+  minWidth: 0,
+});
+
+export const SectionFooter = style({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: SPACE.sm,
+  paddingTop: SPACE.md,
+  borderTop: LINE,
   minWidth: 0,
 });
 
@@ -198,79 +228,78 @@ export const SectionBody = style({
 export const Group = style({
   display: 'flex',
   flexDirection: 'column',
-  borderRadius: toRem(14),
+  borderRadius: RADIUS_ROW,
   background: color.Surface.Container,
-  border: `${config.borderWidth.B300} solid ${color.Surface.ContainerLine}`,
+  border: LINE,
   overflow: 'hidden',
 });
 
 export const GroupRow = style({
   display: 'flex',
   alignItems: 'center',
-  gap: toRem(12),
-  minHeight: toRem(48),
-  padding: `${toRem(8)} ${toRem(14)}`,
+  gap: SPACE.md,
+  minHeight: toRem(44),
+  padding: `${SPACE.sm} ${SPACE.md}`,
   boxSizing: 'border-box',
   selectors: {
-    '& + &': { borderTop: `${config.borderWidth.B300} solid ${color.Surface.ContainerLine}` },
+    '& + &': { borderTop: LINE },
   },
 });
 
-export const Card = style({
-  borderRadius: toRem(18),
-  overflow: 'hidden',
-  background: color.Surface.Container,
-  border: `${config.borderWidth.B300} solid ${color.Surface.ContainerLine}`,
-  boxShadow: '0 12px 32px rgba(0, 0, 0, 0.16)',
-});
+// --- fields ------------------------------------------------------------------------------------
 
-// --- form rows ---------------------------------------------------------------------------------
-
-/** Form row: label column and the controls. */
+/** Label (and hint) on the left, controls on the right; stacked when the page is compact. */
 export const Field = style({
   display: 'grid',
-  gridTemplateColumns: `${toRem(132)} minmax(0, 1fr)`,
+  gridTemplateColumns: `${toRem(136)} minmax(0, 1fr)`,
   alignItems: 'center',
-  columnGap: toRem(16),
-  rowGap: toRem(6),
+  columnGap: SPACE.lg,
+  rowGap: SPACE.sm,
   minWidth: 0,
   minHeight: toRem(36),
-  '@media': {
-    [TINY]: { gridTemplateColumns: 'minmax(0, 1fr)' },
-  },
 });
+globalStyle(`${Wrap}[data-compact=true] ${Field}`, { gridTemplateColumns: 'minmax(0, 1fr)' });
 
 export const FieldTop = style({
   alignItems: 'start',
 });
 
-/** Label above the control, used in form grids. */
+/** Label and hint of a field. */
+export const FieldLabel = style({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: SPACE.xs,
+  minWidth: 0,
+});
+globalStyle(`${FieldTop} > ${FieldLabel}`, { paddingTop: SPACE.sm });
+
+/** Label above the control (form grids, full-width pickers). */
 export const StackField = style({
   display: 'flex',
   flexDirection: 'column',
-  gap: toRem(6),
+  gap: SPACE.sm,
   minWidth: 0,
 });
 
 export const FormGrid = style({
   display: 'grid',
-  gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, ${toRem(170)}), 1fr))`,
-  gap: toRem(14),
+  gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, ${toRem(168)}), 1fr))`,
+  gap: SPACE.md,
 });
 
 export const Controls = style({
   display: 'flex',
   alignItems: 'center',
   flexWrap: 'wrap',
-  gap: toRem(10),
+  gap: SPACE.sm,
   minWidth: 0,
 });
 
 const inputBase = {
   background: color.Surface.Container,
   color: color.Surface.OnContainer,
-  border: LINE,
-  borderRadius: toRem(10),
+  border: CONTROL_LINE,
+  borderRadius: RADIUS_CTL,
   font: 'inherit',
   fontSize: toRem(14),
   outline: 'none',
@@ -287,8 +316,8 @@ const focusRing = {
 export const Input = style({
   ...inputBase,
   maxWidth: toRem(380),
-  height: toRem(38),
-  padding: `0 ${toRem(12)}`,
+  height: toRem(36),
+  padding: `0 ${SPACE.md}`,
   selectors: {
     '&:focus': focusRing,
     '&:disabled': { opacity: 0.6 },
@@ -296,11 +325,13 @@ export const Input = style({
   },
 });
 
+export const InputFull = style({ maxWidth: '100%' });
+
 export const TextArea = style({
   ...inputBase,
   maxWidth: '100%',
   minHeight: toRem(96),
-  padding: `${toRem(10)} ${toRem(12)}`,
+  padding: `${SPACE.sm} ${SPACE.md}`,
   lineHeight: 1.45,
   resize: 'vertical',
   selectors: {
@@ -314,8 +345,8 @@ export const ColorInput = style({
   height: toRem(36),
   padding: 0,
   flexShrink: 0,
-  border: LINE,
-  borderRadius: toRem(10),
+  border: CONTROL_LINE,
+  borderRadius: RADIUS_CTL,
   background: 'transparent',
   cursor: 'pointer',
   overflow: 'hidden',
@@ -329,7 +360,7 @@ export const ColorInput = style({
 export const ColorPair = style({
   display: 'inline-flex',
   alignItems: 'center',
-  gap: toRem(8),
+  gap: SPACE.sm,
 });
 
 export const HexLabel = style({
@@ -340,41 +371,64 @@ export const HexLabel = style({
   opacity: 0.8,
 });
 
+/** Slider with its value on the right (angles, zoom). */
+export const SliderRow = style({
+  display: 'flex',
+  alignItems: 'center',
+  gap: SPACE.md,
+  flexGrow: 1,
+  minWidth: 0,
+  maxWidth: toRem(320),
+});
+
+export const SliderValue = style({
+  width: toRem(40),
+  textAlign: 'right',
+  flexShrink: 0,
+});
+
 // --- segmented control -------------------------------------------------------------------------
 
 export const Segment = style({
   display: 'inline-flex',
-  gap: toRem(3),
-  padding: toRem(3),
-  borderRadius: toRem(11),
-  background: color.Surface.Container,
-  border: `${config.borderWidth.B300} solid ${color.Surface.ContainerLine}`,
+  gap: toRem(2),
+  padding: toRem(2),
+  borderRadius: toRem(9),
+  background: color.Background.Container,
+  boxShadow: `inset 0 0 0 ${config.borderWidth.B300} ${color.SurfaceVariant.ContainerLine}`,
   flexWrap: 'wrap',
   maxWidth: '100%',
   boxSizing: 'border-box',
+});
+
+/** a segmented control laid out as an even grid (many options in a narrow column) */
+export const SegmentGrid = style({
+  display: 'grid',
+  width: '100%',
 });
 
 export const SegmentButton = style({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  gap: config.space.S200,
-  minHeight: toRem(30),
-  padding: `${toRem(4)} ${toRem(12)}`,
-  borderRadius: toRem(8),
+  gap: SPACE.xs,
+  minHeight: toRem(28),
+  padding: `${SPACE.xs} ${SPACE.md}`,
+  borderRadius: toRem(7),
   border: 'none',
   background: 'transparent',
-  color: color.Surface.OnContainer,
+  color: color.Background.OnContainer,
   cursor: 'pointer',
   font: 'inherit',
+  whiteSpace: 'nowrap',
   transition: 'background 120ms ease',
   selectors: {
-    '&:hover': { background: color.Surface.ContainerHover },
+    '&:hover:not([aria-pressed=true])': { background: color.Background.ContainerHover },
     '&[aria-pressed=true]': {
-      background: color.Primary.Container,
-      color: color.Primary.OnContainer,
+      background: color.Primary.Main,
+      color: color.Primary.OnMain,
       fontWeight: 600,
-      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.18)',
+      boxShadow: '0 1px 2px rgba(0, 0, 0, 0.2)',
     },
     '&:focus-visible': { outline: `2px solid ${color.Primary.Main}`, outlineOffset: 1 },
   },
@@ -384,11 +438,11 @@ export const SegmentButton = style({
 export const Pill = style({
   display: 'inline-flex',
   alignItems: 'center',
-  gap: toRem(8),
+  gap: SPACE.sm,
   height: toRem(36),
-  padding: `0 ${toRem(14)}`,
-  borderRadius: toRem(11),
-  border: LINE,
+  padding: `0 ${SPACE.md}`,
+  borderRadius: RADIUS_CTL,
+  border: CONTROL_LINE,
   background: color.Surface.Container,
   color: color.Surface.OnContainer,
   cursor: 'pointer',
@@ -412,15 +466,21 @@ export const Dot = style({
   flexShrink: 0,
 });
 
+export const ChipRow = style({
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: SPACE.sm,
+});
+
 export const Chip = style({
   display: 'inline-flex',
   alignItems: 'center',
-  gap: toRem(6),
-  padding: `${toRem(3)} ${toRem(10)}`,
+  gap: SPACE.xs,
+  padding: `${toRem(2)} ${SPACE.md}`,
   borderRadius: toRem(999),
   fontSize: toRem(12.5),
   background: color.Surface.Container,
-  border: `${config.borderWidth.B300} solid ${color.Surface.ContainerLine}`,
+  border: LINE,
   color: color.Surface.OnContainer,
   whiteSpace: 'nowrap',
 });
@@ -428,7 +488,7 @@ export const Chip = style({
 export const Badge = style({
   display: 'inline-flex',
   alignItems: 'center',
-  padding: `${toRem(1)} ${toRem(8)}`,
+  padding: `${toRem(1)} ${SPACE.sm}`,
   borderRadius: toRem(999),
   fontSize: toRem(11),
   fontWeight: 600,
@@ -437,15 +497,24 @@ export const Badge = style({
   whiteSpace: 'nowrap',
 });
 
+export const ErrorText = style({
+  color: color.Critical.Main,
+});
+
+export const SuccessText = style({
+  color: color.Success.Main,
+});
+
 // --- uploads -----------------------------------------------------------------------------------
 
 /** Dashed drop area for images; also takes dropped files. */
 export const DropZone = style({
   display: 'flex',
   alignItems: 'center',
-  gap: toRem(14),
-  padding: toRem(14),
-  borderRadius: toRem(14),
+  flexWrap: 'wrap',
+  gap: SPACE.md,
+  padding: SPACE.md,
+  borderRadius: RADIUS_ROW,
   border: `${toRem(1.5)} dashed ${color.SurfaceVariant.ContainerLine}`,
   background: color.Surface.Container,
   minWidth: 0,
@@ -458,10 +527,25 @@ export const DropZone = style({
   },
 });
 
+export const DropText = style({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: SPACE.xs,
+  flex: `1 1 ${toRem(180)}`,
+  minWidth: 0,
+});
+
+export const DropActions = style({
+  display: 'flex',
+  gap: SPACE.sm,
+  flexShrink: 0,
+  marginLeft: 'auto',
+});
+
 export const Thumb = style({
   width: toRem(56),
   height: toRem(56),
-  borderRadius: toRem(12),
+  borderRadius: RADIUS_CTL,
   overflow: 'hidden',
   flexShrink: 0,
   display: 'flex',
@@ -480,21 +564,37 @@ export const ThumbRound = style({
   borderRadius: '50%',
 });
 
-// --- nameplate presets (#78) -------------------------------------------------------------------
+/** Drag-to-crop frame of the image position editor. */
+export const CropFrame = style({
+  maxWidth: '100%',
+  flexShrink: 0,
+  overflow: 'hidden',
+  position: 'relative',
+  borderRadius: RADIUS_ROW,
+  background: color.Surface.Container,
+  border: LINE,
+  cursor: 'grab',
+  touchAction: 'none',
+  userSelect: 'none',
+});
+
+// --- presets (#78, #86, #87) -------------------------------------------------------------------
 
 export const PresetGrid = style({
   display: 'grid',
   gridTemplateColumns: `repeat(auto-fill, minmax(${toRem(84)}, 1fr))`,
-  gap: toRem(8),
+  gap: SPACE.sm,
   width: '100%',
 });
 
 export const PresetSwatch = style({
-  height: toRem(40),
-  borderRadius: toRem(10),
+  position: 'relative',
+  // grid rows stretch, so "None" is as tall as the effect / frame tiles next to it
+  minHeight: toRem(40),
+  borderRadius: RADIUS_CTL,
   border: LINE,
   cursor: 'pointer',
-  padding: `${toRem(4)} ${toRem(8)}`,
+  padding: `${SPACE.xs} ${SPACE.sm}`,
   display: 'flex',
   alignItems: 'flex-end',
   justifyContent: 'flex-start',
@@ -514,9 +614,8 @@ export const PresetSwatch = style({
 
 /** a built-in profile effect playing on a small dark tile (#86) */
 export const EffectSwatch = style({
-  position: 'relative',
   overflow: 'hidden',
-  height: toRem(64),
+  minHeight: toRem(64),
   background: 'linear-gradient(160deg, #23243a, #121320)',
 });
 
@@ -527,7 +626,7 @@ export const EffectSwatchLabel = style({
 
 /** a built-in profile frame around a tiny card (#87) */
 export const FrameSwatch = style({
-  height: toRem(64),
+  minHeight: toRem(64),
   flexDirection: 'column',
   alignItems: 'center',
   justifyContent: 'space-between',
@@ -552,34 +651,33 @@ export const PresetNone = style({
 export const NameStage = style({
   display: 'grid',
   gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-  borderRadius: toRem(16),
+  borderRadius: RADIUS_ROW,
   overflow: 'hidden',
-  border: `${config.borderWidth.B300} solid ${color.Surface.ContainerLine}`,
-  '@media': {
-    [TINY]: { gridTemplateColumns: 'minmax(0, 1fr)' },
-  },
+  border: LINE,
 });
+globalStyle(`${Wrap}[data-compact=true] ${NameStage}`, { gridTemplateColumns: 'minmax(0, 1fr)' });
 
 export const NameStageHalf = style({
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
   justifyContent: 'center',
-  gap: toRem(6),
-  minHeight: toRem(112),
-  padding: toRem(20),
+  gap: SPACE.xs,
+  minHeight: toRem(96),
+  padding: SPACE.lg,
   boxSizing: 'border-box',
   textAlign: 'center',
   background: color.Surface.Container,
   color: color.Surface.OnContainer,
+  overflowWrap: 'anywhere',
 });
 
 // --- layouts -----------------------------------------------------------------------------------
 
 export const LayoutGrid = style({
   display: 'grid',
-  gridTemplateColumns: `repeat(auto-fit, minmax(${toRem(150)}, 1fr))`,
-  gap: toRem(14),
+  gridTemplateColumns: `repeat(auto-fit, minmax(${toRem(140)}, 1fr))`,
+  gap: SPACE.md,
 });
 
 export const LayoutOption = style({
@@ -587,18 +685,18 @@ export const LayoutOption = style({
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'stretch',
-  gap: toRem(10),
-  padding: toRem(12),
-  borderRadius: toRem(16),
+  gap: SPACE.sm,
+  padding: SPACE.md,
+  borderRadius: RADIUS_ROW,
   border: `${toRem(1.5)} solid ${color.Surface.ContainerLine}`,
   background: color.Surface.Container,
   color: color.Surface.OnContainer,
   cursor: 'pointer',
   font: 'inherit',
   textAlign: 'center',
-  transition: 'border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease',
+  transition: 'border-color 120ms ease, box-shadow 120ms ease',
   selectors: {
-    '&:hover': { borderColor: color.SurfaceVariant.ContainerLine, transform: 'translateY(-1px)' },
+    '&:hover': { borderColor: color.SurfaceVariant.ContainerLine },
     '&[aria-pressed=true]': {
       borderColor: color.Primary.Main,
       boxShadow: `0 0 0 3px color-mix(in srgb, ${color.Primary.Main} 22%, transparent)`,
@@ -608,20 +706,20 @@ export const LayoutOption = style({
 });
 
 export const LayoutWire = style({
-  padding: toRem(10),
-  borderRadius: toRem(10),
+  padding: SPACE.sm,
+  borderRadius: RADIUS_CTL,
   background: color.SurfaceVariant.Container,
-  border: `${config.borderWidth.B300} solid ${color.SurfaceVariant.ContainerLine}`,
+  border: LINE,
   minHeight: toRem(84),
   boxSizing: 'border-box',
 });
 
 export const CheckMark = style({
   position: 'absolute',
-  top: toRem(8),
-  right: toRem(8),
-  width: toRem(22),
-  height: toRem(22),
+  top: SPACE.sm,
+  right: SPACE.sm,
+  width: toRem(20),
+  height: toRem(20),
   borderRadius: '50%',
   display: 'flex',
   alignItems: 'center',
@@ -645,20 +743,96 @@ export const ModuleRow = style({
 
 // --- preview column ----------------------------------------------------------------------------
 
+/**
+ * Sticky next to the editor. Its height is capped to the visible area and it scrolls on its own,
+ * so a tall preview never runs under the save bar or out of the window.
+ */
 export const PreviewColumn = style({
   position: 'sticky',
-  top: toRem(16),
+  top: SPACE.lg,
+  minWidth: 0,
+  // --pe-viewport-h: height of the settings scroll area, --pe-savebar: room the save bar takes
+  maxHeight: `calc(var(--pe-viewport-h, 100vh) - var(--pe-savebar, 0px) - 2 * ${SPACE.lg})`,
+  overflowY: 'auto',
+  overscrollBehavior: 'contain',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: SPACE.lg,
+  borderRadius: RADIUS_CARD,
+});
+globalStyle(`${Wrap}[data-columns=one] ${PreviewColumn}`, {
+  position: 'static',
+  order: -1,
+  maxHeight: 'none',
+  overflowY: 'visible',
+});
+
+/**
+ * The stage the previews are drawn on: the app's window tone, so cards and rows sit on the same
+ * background as in the app. Clicks do nothing in a preview.
+ */
+export const PreviewStage = style({
+  position: 'relative',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  gap: SPACE.md,
+  padding: SPACE.lg,
+  borderRadius: RADIUS_ROW,
+  background: color.Background.Container,
+  color: color.Background.OnContainer,
+  border: LINE,
+  overflow: 'hidden',
+  minWidth: 0,
+});
+
+export const PreviewInert = style({
+  pointerEvents: 'none',
+  userSelect: 'none',
+  width: '100%',
   minWidth: 0,
   display: 'flex',
   flexDirection: 'column',
-  gap: toRem(20),
+  alignItems: 'center',
+  gap: SPACE.md,
+});
+
+/** label above one preview on the stage ("Member list", "Light", ...) */
+export const PreviewCaption = style({
+  alignSelf: 'stretch',
+  opacity: 0.65,
+});
+
+/** a list column (member drawer, room list) of the given width, in its side tone */
+export const PreviewList = style({
+  width: '100%',
+  boxSizing: 'border-box',
+  padding: SPACE.sm,
+  borderRadius: RADIUS_ROW,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: SPACE.xs,
+});
+
+/** a call tile in its 16:9 stage cell */
+export const PreviewTileCell = style({
+  width: '100%',
+  aspectRatio: '16 / 9',
+  display: 'flex',
+});
+
+/** The scaled box of ScaledPreview: drawn at full size, shrunk to the column. */
+export const ScaleBox = style({
+  transformOrigin: 'top left',
   '@media': {
-    [NARROW]: {
-      position: 'static',
-      order: -1,
-      maxWidth: toRem(440),
-    },
+    [REDUCED_MOTION]: { transition: 'none' },
   },
+});
+
+export const PreviewNotes = style({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: SPACE.xs,
 });
 
 // --- data room debug ---------------------------------------------------------------------------
@@ -671,39 +845,41 @@ export const DebugTable = style({
 });
 globalStyle(`${DebugTable} th, ${DebugTable} td`, {
   textAlign: 'left',
-  padding: `${toRem(4)} ${toRem(8)}`,
+  padding: `${SPACE.xs} ${SPACE.sm}`,
   borderBottom: LINE,
   verticalAlign: 'top',
 });
 
-export const Details = style({});
+export const Details = style({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: SPACE.sm,
+});
 globalStyle(`${Details} > summary`, { cursor: 'pointer', userSelect: 'none' });
 
 export const DebugScroll = style({
   overflowX: 'auto',
-  marginTop: toRem(8),
+  marginTop: SPACE.sm,
 });
 
 /** Floating save bar, bottom center. */
 export const SaveBar = style({
   position: 'sticky',
-  bottom: toRem(16),
+  bottom: SPACE.lg,
   alignSelf: 'center',
   width: `min(${toRem(620)}, 100%)`,
   boxSizing: 'border-box',
-  padding: `${toRem(10)} ${toRem(12)} ${toRem(10)} ${toRem(18)}`,
+  padding: `${SPACE.sm} ${SPACE.md} ${SPACE.sm} ${SPACE.lg}`,
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
-  gap: config.space.S300,
-  borderRadius: toRem(16),
+  flexWrap: 'wrap',
+  gap: SPACE.md,
+  borderRadius: RADIUS_ROW,
   background: `color-mix(in srgb, ${color.Surface.Container} 88%, transparent)`,
   backdropFilter: 'blur(18px) saturate(1.4)',
   WebkitBackdropFilter: 'blur(18px) saturate(1.4)',
   border: LINE,
   boxShadow: '0 12px 36px rgba(0, 0, 0, 0.28)',
   zIndex: 2,
-  '@media': {
-    [TINY]: { flexWrap: 'wrap' },
-  },
 });

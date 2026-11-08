@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import classNames from 'classnames';
 import { Box, Button, Icon, IconButton, IconSrc, Icons, Switch, Text, color } from 'folds';
 import * as css from './DiddyProfileSettings.css';
 import { DiddyProfile } from '../../../plugins/diddy/types';
@@ -29,7 +30,15 @@ import {
   safeLinkUrl,
 } from '../../../plugins/diddy/profileExtras';
 import { ACTIVITY_LABEL } from '../../../components/user-profile/ProfileModules';
-import { Segmented, SettingsCard, StackField } from './ProfileSettingsUI';
+import {
+  ClearButton,
+  Counter,
+  Field,
+  Hint,
+  Segmented,
+  SettingsCard,
+  StackField,
+} from './ProfileSettingsUI';
 
 type Draft = Omit<DiddyProfile, 'v' | 'shownBadges'>;
 type PatchDraft = (fn: (d: Draft) => Draft) => void;
@@ -84,15 +93,11 @@ export function InterestsEditor({ draft, patch }: { draft: Draft; patch: PatchDr
       icon={Icons.Heart}
       title="Interests"
       description={`Shown as tags. Separate them with commas, up to ${MAX_INTERESTS}.`}
-      action={
-        <Text size="T200" priority="300">
-          {list.length}/{MAX_INTERESTS}
-        </Text>
-      }
+      action={<Counter value={list.length} max={MAX_INTERESTS} />}
     >
       <input
-        className={css.Input}
-        style={{ maxWidth: '100%' }}
+        className={classNames(css.Input, css.InputFull)}
+        aria-label="Interests"
         placeholder="Homelab, Music, Films"
         value={text}
         onChange={(e) => {
@@ -106,13 +111,13 @@ export function InterestsEditor({ draft, patch }: { draft: Draft; patch: PatchDr
         }}
       />
       {list.length > 0 && (
-        <Box gap="200" wrap="Wrap">
+        <div className={css.ChipRow}>
           {list.map((tag) => (
             <span key={tag} className={css.Chip}>
               {tag}
             </span>
           ))}
-        </Box>
+        </div>
       )}
     </SettingsCard>
   );
@@ -136,11 +141,7 @@ export function LinksEditor({ draft, patch }: { draft: Draft; patch: PatchDraft 
       icon={Icons.Link}
       title="Links"
       description="GitHub, GitLab, LinkedIn, Spotify, YouTube or your own website. Only https addresses."
-      action={
-        <Text size="T200" priority="300">
-          {links.length}/{MAX_LINKS}
-        </Text>
-      }
+      action={<Counter value={links.length} max={MAX_LINKS} />}
     >
       {links.length > 0 && (
         <div className={css.Group}>
@@ -156,8 +157,7 @@ export function LinksEditor({ draft, patch }: { draft: Draft; patch: PatchDraft 
                 />
                 <Box direction="Column" grow="Yes" gap="100" style={{ minWidth: 0 }}>
                   <input
-                    className={css.Input}
-                    style={{ maxWidth: '100%' }}
+                    className={classNames(css.Input, css.InputFull)}
                     placeholder="https://github.com/you"
                     value={link.url}
                     aria-invalid={bad}
@@ -169,13 +169,9 @@ export function LinksEditor({ draft, patch }: { draft: Draft; patch: PatchDraft 
                       );
                     }}
                   />
-                  <Text
-                    size="T200"
-                    priority="300"
-                    style={bad ? { color: color.Critical.Main } : undefined}
-                  >
+                  <Hint tone={bad ? 'error' : undefined}>
                     {bad ? 'Not a valid https address' : LINK_LABEL[link.kind]}
-                  </Text>
+                  </Hint>
                 </Box>
                 <IconButton
                   size="300"
@@ -222,17 +218,7 @@ export function ActivityEditor({ draft, patch }: { draft: Draft; patch: PatchDra
       title="Activity"
       description="What you are up to, typed in by hand. Diddy does not read it from other apps."
       action={
-        activity && (
-          <Button
-            size="300"
-            variant="Secondary"
-            fill="None"
-            radii="300"
-            onClick={() => patch((d) => ({ ...d, activity: undefined }))}
-          >
-            <Text size="B300">Clear</Text>
-          </Button>
-        )
+        activity && <ClearButton onClick={() => patch((d) => ({ ...d, activity: undefined }))} />
       }
     >
       <div className={css.FormGrid}>
@@ -415,10 +401,9 @@ export function LayoutEditor({ draft, patch }: { draft: Draft; patch: PatchDraft
   return (
     <>
       <SettingsCard
-        wide
         icon={Icons.Category}
         title="Layout variants"
-        description="Choose how your profile card is shown to others. The live preview updates right away."
+        description="How your profile card is shown to others. The preview shows it right away."
       >
         <div className={css.LayoutGrid}>
           {CARD_LAYOUTS.map((l) => (
@@ -452,17 +437,14 @@ export function LayoutEditor({ draft, patch }: { draft: Draft; patch: PatchDraft
         title="Look"
         description="Colors and motion of your card, the same for everyone who opens it."
       >
-        <Box direction="Column" gap="200">
-          <Text size="T300" priority="300">
-            Card theme
-          </Text>
+        <Field label="Card theme">
           <Segmented
             label="Card theme"
             value={settings.theme ?? 'auto'}
             options={CARD_THEMES.map((t) => ({ id: t, label: THEME_LABEL[t] }))}
             onChange={(t) => setSettings({ ...settings, theme: t === 'auto' ? undefined : t })}
           />
-        </Box>
+        </Field>
         <div className={css.Group}>
           <div className={css.GroupRow}>
             <Box direction="Column" grow="Yes" style={{ minWidth: 0 }}>
@@ -497,44 +479,44 @@ export function LayoutEditor({ draft, patch }: { draft: Draft; patch: PatchDraft
         title="Big profile"
         description="The large view people get when they click your profile picture or your name in a call."
       >
-        <Box direction="Column" gap="200">
-          <Text size="T300" priority="300">
-            Layout
-          </Text>
+        <Field label="Layout">
           <Segmented
             label="Big profile layout"
             value={big.layout ?? 'expanded'}
             options={BIG_PROFILE_LAYOUTS.map((l) => ({ id: l, label: BIG_LAYOUT_LABEL[l] }))}
             onChange={(l) => setBig({ layout: l === 'expanded' ? undefined : l })}
           />
-        </Box>
-        <Box direction="Column" gap="200">
-          <Text size="T300" priority="300">
-            Banner
-          </Text>
+        </Field>
+        <Field label="Banner">
           <Segmented
             label="Big profile banner"
             value={big.banner ?? 'tall'}
             options={BIG_PROFILE_BANNERS.map((b) => ({ id: b, label: BIG_BANNER_LABEL[b] }))}
             onChange={(b) => setBig({ banner: b === 'tall' ? undefined : b })}
           />
-        </Box>
-        <Box direction="Column" gap="200">
-          <Text size="T300" priority="300">
-            Profile picture
-          </Text>
+        </Field>
+        <Field label="Profile picture">
           <Segmented
             label="Big profile picture size"
             value={big.avatar ?? 'large'}
             options={BIG_PROFILE_AVATARS.map((a) => ({ id: a, label: BIG_AVATAR_LABEL[a] }))}
             onChange={(a) => setBig({ avatar: a === 'large' ? undefined : a })}
           />
-        </Box>
+        </Field>
       </SettingsCard>
       <SettingsCard
         icon={Icons.Sort}
         title="Modules"
         description="Show, hide and reorder the parts of your card. Drag a row or use the arrows."
+        footer={
+          (layout === 'compact' || layout === 'tabs') && (
+            <Hint>
+              {layout === 'compact'
+                ? 'The compact layout only shows the bio. Pick another layout for more modules.'
+                : 'In the tab layout the modules are grouped into tabs; the order applies inside a tab.'}
+            </Hint>
+          )
+        }
       >
         <div className={css.Group}>
           {order.map((m, i) => (
@@ -601,16 +583,6 @@ export function LayoutEditor({ draft, patch }: { draft: Draft; patch: PatchDraft
             </div>
           ))}
         </div>
-        {layout === 'compact' && (
-          <Text size="T200" priority="300">
-            The compact layout only shows the bio. Pick another layout for more modules.
-          </Text>
-        )}
-        {layout === 'tabs' && (
-          <Text size="T200" priority="300">
-            In the tab layout the modules are grouped into tabs; the order applies inside a tab.
-          </Text>
-        )}
       </SettingsCard>
     </>
   );
