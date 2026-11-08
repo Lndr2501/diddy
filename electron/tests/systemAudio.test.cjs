@@ -64,3 +64,42 @@ test('closing during setup rejects the handshake; a hung helper is timed out', a
   const second = env.capture.start(); const rejected = assert.rejects(second, /canceled/);
   env.capture.close(); await rejected;
 });
+test('INFO and WARN helper lines are logged but keep the capture and its audio running', async () => {
+  const lines = [];
+  const env = setup({ log: (line) => lines.push(line) }); const { id, child } = await env.start();
+  child.stderr.emit('data', Buffer.from('WARN Application audio monitor failed: Entity killed; sink input 7 (app "Firefox", binary "firefox", sink "easyeffects_sink"), not capturing this stream\nINFO Monitoring sink input 8\n'));
+  child.stderr.emit('data', Buffer.from('WARN split '));
+  child.stderr.emit('data', Buffer.from('line\n'));
+  assert.equal(env.sent.length, 0); assert.equal(child.killed.length, 0);
+  child.stdout.emit('data', Buffer.alloc(BLOCK_BYTES));
+  assert.equal(env.sent.length, 1); assert.equal(env.sent[0].id, id); assert.ok(env.sent[0].pcm);
+  assert.ok(lines.some((line) => line.includes('Entity killed') && line.includes('easyeffects_sink') && line.includes('WARN')));
+  assert.ok(lines.some((line) => line.includes('INFO Monitoring sink input 8')));
+  assert.ok(lines.some((line) => line.endsWith('WARN split line')));
+  assert.ok(lines.some((line) => line.endsWith('READY')));
+  env.capture.close();
+});
+test('a burst of many complete helper lines is not mistaken for an invalid response', async () => {
+  const env = setup(); const { child } = await env.start();
+  child.stderr.emit('data', Buffer.from('WARN something happened to one stream\n'.repeat(300)));
+  assert.equal(child.killed.length, 0); assert.equal(env.sent.length, 0);
+  child.stderr.emit('data', Buffer.from('x'.repeat(5000)));
+  assert.equal(child.killed[0], 'SIGTERM'); assert.match(env.sent[0].error, /Invalid/);
+});
+test('an ERROR helper line is logged and still ends the capture with its reason', async () => {
+  const lines = [];
+  const env = setup({ log: (line) => lines.push(line) }); const { id, child } = await env.start();
+  child.stderr.emit('data', Buffer.from('ERROR Audio server disconnected or unavailable: Connection terminated\n'));
+  assert.deepEqual(env.sent.at(-1), { id, error: 'Audio server disconnected or unavailable: Connection terminated' });
+  assert.equal(child.killed[0], 'SIGTERM');
+  assert.ok(lines.some((line) => line.includes('Connection terminated')));
+  child.stdout.emit('data', Buffer.alloc(BLOCK_BYTES));
+  assert.equal(env.sent.filter((m) => m.pcm).length, 0);
+});
+test('an unexpected helper exit is logged and reported', async () => {
+  const lines = [];
+  const env = setup({ log: (line) => lines.push(line) }); const { id, child } = await env.start();
+  child.emit('exit', 1, null);
+  assert.deepEqual(env.sent.at(-1), { id, error: 'Linux audio capture stopped' });
+  assert.ok(lines.some((line) => line.includes('exited code=1')));
+});
