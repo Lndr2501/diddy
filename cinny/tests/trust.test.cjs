@@ -97,3 +97,68 @@ test('latestPerSender keeps the newest event of every sender and ignores anonymo
   const r = latestPerSender([{ sender: ALICE, ts: 1 }, { sender: ALICE, ts: 5 }, { sender: BOB, ts: 2 }, { ts: 9 }]);
   assert.deepEqual(r.map((x) => `${x.sender}:${x.ts}`).sort(), [`${ALICE}:5`, `${BOB}:2`]);
 });
+
+// --- #108: the giver-controlled content.at must never outrank the server-assigned event time ---
+// Mirrors the report's reproduction (regression/parent-badge-adversarial.cjs): the award event
+// itself has a normal recent origin_server_ts, only the content claims a far-future `at`.
+const NOW = 1_800_000_000_000;
+const awardAt = (sender, eventTs, at) => ({ sender, ts: eventTs, content: { by: sender, at } });
+
+test('#108 normal award + recipient removal resolves to no award', () => {
+  assert.deepEqual(resolveAwards(BOB, [awardAt(ALICE, NOW - 200, NOW - 200), revoke(BOB, NOW - 100)]), []);
+});
+
+[
+  ['1e15', 1e15],
+  ['Infinity', Infinity],
+  ['-Infinity', -Infinity],
+  ['NaN', NaN],
+  ['a string', String(1e15)],
+  ['a negative number', -5],
+  ['0', 0],
+  ['null', null],
+  ['an object', { valueOf: () => 1e15 }],
+  ['Number.MAX_VALUE', Number.MAX_VALUE],
+  ['one minute in the future', NOW - 200 + 60_000],
+].forEach(([label, at]) => {
+  test(`#108 content.at = ${label} does not survive the recipient's removal`, () => {
+    const list = [awardAt(ALICE, NOW - 200, at), revoke(BOB, NOW - 100)];
+    assert.deepEqual(resolveAwards(BOB, list), []);
+    // order in the timeline does not matter: the removal listed before the award still wins
+    assert.deepEqual(resolveAwards(BOB, [...list].reverse()), []);
+  });
+
+  test(`#108 content.at = ${label} resolves to a time no later than the event itself`, () => {
+    const [r] = resolveAwards(BOB, [awardAt(ALICE, NOW - 200, at)]);
+    assert.ok(Number.isFinite(r.at));
+    assert.ok(r.at <= NOW - 200);
+    assert.ok(r.at >= 0);
+  });
+});
+
+test('#108 the giver\'s own removal wins regardless of content.at or timeline order', () => {
+  const list = [awardAt(ALICE, NOW - 200, 1e15), revoke(ALICE, NOW - 100)];
+  assert.deepEqual(resolveAwards(BOB, list), []);
+  assert.deepEqual(resolveAwards(BOB, [...list].reverse()), []);
+});
+
+test('#108 a removal at the same trusted time as the award wins', () => {
+  assert.deepEqual(resolveAwards(BOB, [awardAt(ALICE, NOW, NOW), revoke(BOB, NOW)]), []);
+  assert.deepEqual(resolveAwards(BOB, [awardAt(ALICE, NOW, NOW), revoke(ALICE, NOW)]), []);
+  assert.deepEqual(resolveAwards(BOB, [revoke(ALICE, NOW), awardAt(ALICE, NOW, NOW)]), []);
+});
+
+test('#108 a re-award after the removal with a newer trusted time still counts', () => {
+  const r = resolveAwards(BOB, [awardAt(ALICE, NOW + 100, NOW + 100), revoke(BOB, NOW)]);
+  assert.equal(r.length, 1);
+  assert.equal(r[0].at, NOW + 100);
+  // by the giver: award, removal, award again
+  const again = [awardAt(ALICE, NOW - 200, NOW - 200), revoke(ALICE, NOW - 100), awardAt(ALICE, NOW, NOW)];
+  assert.equal(resolveAwards(BOB, again).length, 1);
+  // a re-award whose content.at is invalid falls back to its own (newer) event time
+  assert.equal(resolveAwards(BOB, [awardAt(ALICE, NOW + 100, 'x'), revoke(BOB, NOW)]).length, 1);
+});
+
+test('#108 a re-announced old award keeps its earlier content.at (still removed)', () => {
+  assert.deepEqual(resolveAwards(BOB, [awardAt(ALICE, NOW + 500, NOW - 200), revoke(BOB, NOW - 100)]), []);
+});
