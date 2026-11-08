@@ -1,6 +1,37 @@
 # Changelog
 
-## Unveröffentlicht
+## 1.3.0 (2026-11-08)
+
+### Highlights
+
+- **Linux läuft in Electron, Calls funktionieren auch verschlüsselt (#58).** AppImage und DEB sind jetzt Electron-Pakete mit Anwendungston bei der Bildschirmfreigabe (PulseAudio/PipeWire). Neu: auch ein RPM. macOS bleibt Tauri. Beim Umstieg von Tauri einmal neu anmelden und das Gerät verifizieren.
+- **Releases entstehen automatisch.** Ein Tag `vX.Y.Z` baut macOS-DMG, Linux-AppImage, DEB und RPM sowie die iOS-IPA und veröffentlicht alles in einem GitHub-Release samt `SHA256SUMS` (Workflow *Release*).
+- **Neues Hauptfenster-Layout:** Raumliste, Chat und Teilnehmerliste sitzen in einer gemeinsamen Karte neben der Space-Leiste. Das Konto-Menü öffnet sich über das Bild im Benutzerbereich, Kick/Ban/Einladen stehen im Optionsmenü der Profilkarte.
+- **Calls:** alle Bildschirmübertragungen gleichzeitig (#66), Rechtsklick-Menü auf Personen im Call, privat anrufen vom Profil aus (#55), Mute-Anzeige und Teilnehmer in der Raumliste (#67), neue Töne für Rufton, Beitritt, Erwähnung, Abgelehnt und Verbindungsverlust (#68).
+- **Rauschunterdrückung (RNNoise)** am Desktop und auf iOS (#53), acht eingebaute Plugins mit Plugin-Galerie.
+- **iOS:** Rauschunterdrückung, Benachrichtigungen im Hintergrund (ohne bezahltes Apple-Konto), Soundpack.
+- Teilnehmerliste nach online und offline getrennt, "Redet mit Agent" (#57), sanftes "Jump to Latest" (#63), Badge-Bibliothek mit Löschen (#33, #34), animierte Avatare überall (#35 bis #37).
+
+### Weitere Änderungen
+
+- **Töne (#68):** eigene Töne mit Schalter und eigener Datei unter Einstellungen → Allgemein → Sounds für ausgehenden Rufton (läuft bis jemand beitritt, ablehnt oder 30 s vergehen), eigenen Beitritt, Erwähnungen (statt des normalen Nachrichtentons), abgelehnte Anrufe und Verbindungsverlust.
+- **Verbindungsbanner:** "Connecting..." erscheint nicht mehr, wenn der Client schon synchronisiert; nach einem Neuladen blieb das Banner sonst bis zum nächsten Sync (bis zu 30 s). Logik in `plugins/syncBanner.ts` mit Tests.
+- **Rauschunterdrückung:** beide Kanäle werden verarbeitet, ein Stereo-Mikrofon ist nicht mehr nur links hörbar.
+- **Profil-Editor:** die Tab-Leiste bricht um, statt Tabs abzuschneiden.
+- **Hauptfenster:** Raumliste, Chat und Teilnehmerliste teilen eine Karte; die Seitenspalten heben sich durch einen vom Theme abgeleiteten Ton ab statt durch Linien und Lücken, die Kopfzeilen sind gleich hoch. Das doppelte Konto-Bild unten in der Space-Leiste entfällt: das Bild im Benutzerbereich öffnet ein Menü mit Konto, Status, Verbindungen, Einstellungen und Einführung. Kick, Ban und Einladen wandern aus der Profilkarte in deren Optionsmenü, mit Bestätigung und optionalem Grund.
+- **Plugins:** eingebaute Plugin-Galerie, Plugin-Speicher und "Link öffnen"-Schnittstelle, acht eingebaute Plugins.
+- **Fehlercodes:** Matrix-Upload-Fehler behalten ihren Fehlercode (#64). Optionsraum: der Ersteller steht beim Anlegen nicht mehr in `power_levels.users`. MyInstants-Import zeigt, welche Töne gewählt sind (#59). Soundboard und Call-Töne folgen dem gewählten Ausgabegerät.
+- **Tests und CI:** UI-Tests für Einstellungen, Profil-Editor und Überlappungen, lokale macOS-UI-Tests (Playwright WebKit), Linux-Audio-Tests in der gepackten App; schnellere Builds durch Caches (Rust, Nix).
+- **README:** Vorschaubilder mit allen neun Themes, direkt aus der laufenden App erzeugt.
+
+### Release-Pakete
+
+- Linux: `Diddy_<Version>_x86_64.AppImage`, `Diddy_<Version>_amd64.deb`, `Diddy_<Version>_x86_64.rpm` (nicht signiert).
+- macOS: `Diddy_<Version>_aarch64.dmg` (ad hoc signiert, solange keine Apple-Zertifikate als Secrets gesetzt sind).
+- iOS: `Diddy_<Version>_iOS_unsigned.ipa` (zum Sideloaden).
+- Der Update-Hinweis in der App vergleicht die eigene Version mit dem neuesten Release; dafür trägt `cinny/src/app/appInfo.ts` die Versionsnummer. Release-Builds setzen sie aus dem Tag.
+
+### Details zu den einzelnen Änderungen
 
 ### Call: alle Bildschirmübertragungen gleichzeitig (#66)
 
