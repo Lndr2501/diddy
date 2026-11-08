@@ -9,6 +9,7 @@ import { animatedThumbnailUrl, isOriginalMedia } from '../../plugins/diddy/avata
 import { PositionedImg } from '../diddy/PositionedImg';
 import { AvatarSurface, useAvatarPrefs } from '../../state/avatarPrefs';
 import { speakingUsersAtom } from '../../state/speakingUsers';
+import { usePreviewOverride } from '../../plugins/diddy/previewOverride';
 
 type UserAvatarProps = {
   className?: string;
@@ -65,7 +66,10 @@ function PlainUserAvatar(props: UserAvatarProps & { onFail?: () => void }) {
 function AnimatedUserAvatar(props: UserAvatarProps) {
   const { src, userId, className, alt, surface = 'chat' } = props;
   const prefs = useAvatarPrefs();
-  const speaking = useAtomValue(speakingUsersAtom).has(userId);
+  const speakingNow = useAtomValue(speakingUsersAtom).has(userId);
+  // the profile editor's call preview can show you as speaking (#105)
+  const previewSpeaking = usePreviewOverride(userId)?.speaking;
+  const speaking = previewSpeaking ?? speakingNow;
   const [failedSrc, setFailedSrc] = useState<string>();
   const animate = prefs[surface] && !(prefs.speakingOnly && !speaking);
   const animatedSrc = src && animate ? animatedThumbnailUrl(src) : undefined;
@@ -73,12 +77,7 @@ function AnimatedUserAvatar(props: UserAvatarProps) {
   if (src && !animate && isOriginalMedia(src)) {
     // the original file (e.g. the big profile picture) moves by itself: show its first frame
     return (
-      <PositionedImg
-        className={classNames(css.UserAvatar, className)}
-        src={src}
-        alt={alt}
-        paused
-      />
+      <PositionedImg className={classNames(css.UserAvatar, className)} src={src} alt={alt} paused />
     );
   }
   if (!src || !animatedSrc || animatedSrc === src || failedSrc === animatedSrc) {

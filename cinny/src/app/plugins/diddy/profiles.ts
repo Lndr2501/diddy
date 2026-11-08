@@ -59,6 +59,7 @@ import {
 } from './optionsRoom';
 import { sanitizeBadgeDef, sanitizeProfile } from './sanitize';
 import { stampClientVersion } from './clientVersion';
+import { usePreviewOverride } from './previewOverride';
 import { APP_VERSION } from '../../appInfo';
 import { getShareVersion } from '../../state/versionShare';
 import { ReAnnouncer } from './reannounce';
@@ -836,8 +837,11 @@ export const useDiddyProfile = (
   userId: string | undefined
 ): DiddyProfile | undefined => {
   const v = useDiddyVersion(mx);
+  // the profile editor's previews show the unsaved draft here (#105)
+  const override = usePreviewOverride(userId);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  return useMemo(() => (userId ? readProfile(mx, userId) : undefined), [mx, userId, v]);
+  const stored = useMemo(() => (userId ? readProfile(mx, userId) : undefined), [mx, userId, v]);
+  return override ? override.profile : stored;
 };
 
 export const setMyProfile = async (mx: MatrixClient, profile: DiddyProfile): Promise<void> => {

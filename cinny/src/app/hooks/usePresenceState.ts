@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useMatrixClient } from './useMatrixClient';
 import { useUserPresence } from './useUserPresence';
 import { useDiddyProfile } from '../plugins/diddy/profiles';
+import { usePreviewOverride } from '../plugins/diddy/previewOverride';
 import { PresenceState, presenceMessage, resolvePresenceState } from '../utils/presenceState';
 
 export type ShownPresence = {
@@ -18,8 +19,10 @@ export const usePresenceState = (userId: string | undefined): ShownPresence | un
   const mx = useMatrixClient();
   const presence = useUserPresence(userId);
   const chosen = useDiddyProfile(mx, userId)?.status;
+  // the profile editor's previews show the state the draft status will give (#105)
+  const override = usePreviewOverride(userId)?.presence;
 
-  return useMemo(() => {
+  const live = useMemo(() => {
     if (!presence) return undefined;
     const state = resolvePresenceState({
       presence: presence.presence,
@@ -30,4 +33,5 @@ export const usePresenceState = (userId: string | undefined): ShownPresence | un
     if (!state) return undefined;
     return { state, message: presenceMessage(presence.status) };
   }, [presence, chosen]);
+  return override ?? live;
 };
