@@ -25,14 +25,23 @@ Eine normale Nachricht (`m.notice` oder `m.text`) mit einem Zusatzfeld im `conte
 
 | `kind` | Felder |
 |---|---|
-| `track` | `state` (`searching`, `downloading`, `playing`, `paused`, `stopped`, `error`), `title`, `artist?`, `duration?` (s), `position?` (s zum Zeitpunkt `startedAt`), `startedAt?` (Bot-Uhr, ms; damit läuft der Balken im Client von selbst), `thumbnail?` (`mxc://`), `url?` (http/https), `source?`, `note?`, `actions?` |
+| `track` | `state` (`searching`, `downloading`, `playing`, `paused`, `stopped`, `error`), `title`, `artist?`, `duration?` (s), `position?` (s zum Zeitpunkt `startedAt`), `startedAt?` (Bot-Uhr, ms; damit läuft der Balken im Client von selbst), `thumbnail?` (`mxc://`), `url?` (http/https), `source?`, `note?`, `seek?`, `volume?`, `actions?` |
 | `queue` | `now?` (`title`, `artist?`, `duration?`), `items[]` (gleiche Felder), `total`, `actions?` |
 | `help` | `groups[]` mit `title` und `items[]` (`usage`, `desc`), `note?` |
 | `note` | `text`, `tone` (`info`, `success`, `warning`, `error`), `icon?` (ein Emoji) |
 
+`seek` (z. B. `"!seek"`) macht die Zeitleiste anklickbar: ein Klick sendet `<seek> mm:ss`, die Pfeiltasten auf der
+Zeitleiste `<seek> -10` / `<seek> +10`; beim Darüberfahren zeigt Diddy die Zeit unter dem Mauszeiger. `volume` ist die
+aktuelle Lautstärke des Bots (wird neben den Zeiten angezeigt). Beide ändern sich, wenn der Bot die Karte bearbeitet.
+
 `actions` sind Knöpfe: `{ "label": "⏸ Pause", "send": "!pause" }`. Ein Klick schreibt `send` als normale Nachricht des
 Nutzers in den Raum (der Bot prüft wie immer, ob er den Befehl ausführen darf). `send` muss mit `!` oder `/`
-beginnen, höchstens 6 Knöpfe.
+beginnen, höchstens 10 Knöpfe.
+
+## Verschlüsselte Räume
+
+Bearbeitungen funktionieren auch dort. Der Bot muss `m.relates_to` wie gewohnt senden (nio kopiert es unverschlüsselt
+mit). Diddy zeichnet die Karte nach dem Entschlüsseln der Bearbeitung neu (`RoomTimeline.tsx`, `useLiveEventArrive`).
 
 ## Sicherheit
 

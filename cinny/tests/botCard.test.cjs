@@ -80,7 +80,7 @@ test('buttons must look like bot commands and are capped', () => {
       ],
     })
   );
-  assert.equal(c.actions.length <= 6, true);
+  assert.equal(c.actions.length <= 10, true);
   assert.equal(
     c.actions.some((a) => a.send === 'rm -rf /'),
     false
@@ -120,6 +120,35 @@ test('queue, help and note cards', () => {
   const n = parseBotCard(card({ kind: 'note', text: 'pausiert', tone: 'bogus', icon: '⏸' }));
   assert.equal(n.tone, 'info');
   assert.equal(n.icon, '⏸');
+});
+
+test('seek command and volume are read and cleaned', () => {
+  const c = parseBotCard(
+    card({ kind: 'track', state: 'playing', title: 't', seek: '!seek', volume: 70 })
+  );
+  assert.equal(c.seek, '!seek');
+  assert.equal(c.volume, 70);
+  const bad = parseBotCard(
+    card({ kind: 'track', state: 'playing', title: 't', seek: 'rm -rf /', volume: -3 })
+  );
+  assert.equal(bad.seek, undefined);
+  assert.equal(bad.volume, undefined);
+  const spaces = parseBotCard(
+    card({ kind: 'track', state: 'playing', title: 't', seek: '!seek now' })
+  );
+  assert.equal(spaces.seek, undefined, 'only a bare command, arguments are added by the client');
+});
+
+test('up to ten buttons are kept', () => {
+  const c = parseBotCard(
+    card({
+      kind: 'track',
+      state: 'playing',
+      title: 't',
+      actions: Array.from({ length: 14 }, (_, i) => ({ label: `b${i}`, send: `!b${i}` })),
+    })
+  );
+  assert.equal(c.actions.length, 10);
 });
 
 test('time formatting and the live position', () => {
