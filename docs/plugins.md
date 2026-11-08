@@ -2,12 +2,14 @@
 
 Mit Plugins kann jeder eigene kleine Erweiterungen in seinen Diddy-Client einbauen, zum Beispiel
 ein Wetter-Widget, einen Kalender, eine Statusseite oder einen Börsenticker. Ein Plugin ist
-einfach **eine Web-Seite** (eine URL). Diddy zeigt sie in einem streng abgeschotteten Rahmen an
+einfach **eine Web-Seite**: eine Adresse (URL) oder eine HTML-Datei, die Diddy auf dem Gerät
+speichert ([ohne Hosting](#ohne-hosting-aus-datei-code-oder-github)). Diddy zeigt sie in einem streng abgeschotteten Rahmen an
 und spricht mit ihr nur über ein paar kleine, festgelegte Nachrichten.
 
 - Verwalten: **Einstellungen → Plugins** (hinzufügen, ein/aus, entfernen, mit Live-Vorschau)
 - Anzeigen: Tab **Plugins** in der Seitenleiste (erscheint, sobald mindestens ein Plugin aktiv ist)
 - Gespeichert wird die Liste nur lokal auf diesem Gerät (localStorage), höchstens 12 Plugins.
+  Der HTML-Inhalt lokaler Plugins liegt in IndexedDB.
 
 ## Schnellstart
 
@@ -16,8 +18,9 @@ und spricht mit ihr nur über ein paar kleine, festgelegte Nachrichten.
    - zum Ausprobieren lokal: `python3 -m http.server 8000` im Ordner der Datei, Adresse dann
      `http://localhost:8000/weather.html`
    - dauerhaft über **https** auf einem beliebigen statischen Hoster (GitHub Pages, Netlify,
-     Cloudflare Pages, eigener Webserver …). `raw.githubusercontent.com` funktioniert nicht,
-     weil es HTML als Text ausliefert.
+     Cloudflare Pages, eigener Webserver …). `raw.githubusercontent.com` funktioniert als Adresse
+     nicht, weil es HTML als Text ausliefert. Dafür gibt es den GitHub-Import (siehe unten).
+   - oder ganz ohne Hosting: siehe [Ohne Hosting](#ohne-hosting-aus-datei-code-oder-github).
 3. In Diddy: **Einstellungen → Plugins → Add Plugin**, Name und Adresse eintragen, **Add Plugin**.
    Die Vorschau erscheint sofort darunter.
 4. In der Seitenleiste erscheint der Tab **Plugins** mit allen aktiven Plugins.
@@ -29,6 +32,49 @@ Adresse sowie doppelte Adressen oder Namen.
 
 Hinweis: Wird Diddy im Browser über https geöffnet, kann es je nach Browser `http://localhost`
 als gemischten Inhalt blockieren. In der Desktop-App funktioniert es.
+
+## Ohne Hosting: aus Datei, Code oder GitHub
+
+Unter **Einstellungen → Plugins → Without Hosting** lässt sich ein Plugin ohne eigenen Server
+einbinden. Der HTML-Inhalt wird **auf diesem Gerät** gespeichert (IndexedDB, je Plugin-ID) und wie
+die mitgelieferten Plugins per `srcdoc` angezeigt, in **derselben Sandbox** (`allow-scripts`,
+kein `allow-same-origin`), mit denselben gesperrten Berechtigungen und derselben Nachrichtenprüfung.
+Ein lokales Plugin bekommt keinerlei zusätzliche Rechte. In der Liste steht es als
+`diddy:local/<id>`.
+
+- **From file:** `.html`/`.htm`-Datei wählen oder in das Feld ziehen. Höchstens **512 KB**, der
+  Inhalt muss nach HTML aussehen. Der Name ist der `<title>` der Seite oder der Dateiname, solange
+  keiner eingetragen ist.
+- **Paste code:** HTML in das Textfeld einfügen, darunter erscheint eine Live-Vorschau (in der
+  Sandbox, ohne Plugin-Speicher). **Add Plugin** speichert es.
+- **GitHub / Gist:** Link zu einer einzelnen Datei eintragen, **Import** lädt sie **einmal** und
+  speichert sie lokal. Akzeptiert werden nur `https://` und genau diese Hosts:
+  - `github.com/<user>/<repo>/blob/<branch>/<pfad>.html` (auch `/raw/`)
+  - `raw.githubusercontent.com/<user>/<repo>/<branch>/<pfad>.html`
+  - `gist.github.com/<user>/<id>` (erste Datei des Gists) und
+    `gist.githubusercontent.com/<user>/<id>/raw/…`
+
+  Diddy wandelt den Link in die Raw-Adresse um und lädt sie ohne Cookies, ohne Referrer, ohne
+  Weiterleitungen, mit 512-KB-Grenze und 15 s Zeitlimit. Abgelehnt werden u. a. Benutzer/Passwort
+  oder Port in der Adresse, `..`, kodierte Schrägstriche und andere Hosts. Nur öffentliche
+  Repositories und Gists.
+
+Auf der Karte des Plugins steht die Herkunft (Datei, eingefügter Code oder GitHub-Link mit
+Ladezeitpunkt), die Größe und ein kurzer **SHA-256**-Hash des Inhalts (voller Hash im Tooltip).
+Darunter unter **Content**:
+
+- **Replace from file:** neue Version der Datei wählen, ideal zum schnellen Ausprobieren beim
+  Entwickeln (dieselbe Datei erneut wählen lädt sie neu).
+- **Edit code:** den gespeicherten Code direkt bearbeiten und speichern.
+- **Update from source** (nur bei GitHub/Gist): lädt die Quelle erneut und zeigt, ob sich der
+  Hash geändert hat. Ersetzt wird erst nach **Replace**.
+
+Name, Ein/Aus, Seitenleiste, Aussehen und Plugin-Speicher funktionieren wie bei jedem Plugin.
+Beim Entfernen wird der gespeicherte Inhalt mit gelöscht. Fehlt er (z. B. Browserdaten gelöscht),
+zeigt die Karte „Content missing“: Plugin entfernen und neu hinzufügen.
+
+Grenzen: Der Inhalt liegt nur auf diesem Gerät und wird nicht synchronisiert. Nur eine einzelne
+HTML-Datei; Bilder oder Skripte daneben müssen eingebettet oder von `https://` nachgeladen werden.
 
 ## Der Vertrag (apiVersion 1)
 
@@ -159,6 +205,9 @@ Ein Plugin ist fremder Code. Deshalb ist es so eingesperrt, dass es dem Konto ni
 - Nur `https://` (bzw. `http://localhost` zum Entwickeln) wird akzeptiert; Diddys eigene Adresse
   und interne `*.localhost`-Namen der Desktop-App sind gesperrt. Gespeicherte Einträge werden
   beim Laden erneut geprüft.
+- Lokale Plugins (`diddy:local/<id>`) laufen per `srcdoc` in genau derselben Sandbox. Ein
+  gespeicherter Eintrag darf nur auf den eigenen Inhalt (gleiche ID) zeigen; der GitHub-Import
+  lädt nur von den vier erlaubten GitHub-Hosts und nur einmal auf Knopfdruck.
 
 Was die Sandbox **nicht** verhindert und wofür der Nutzer selbst verantwortlich ist:
 
@@ -227,6 +276,10 @@ Abhängigkeiten und ohne GitHub-Token. Sie zeigt die **offenen Issues eines öff
 Repositories**, ohne Pull Requests, nach letzter Aktualisierung sortiert. Standard: `Lndr2501/diddy`.
 
 ### Installieren
+
+Am einfachsten: **Einstellungen → Plugins → Without Hosting → GitHub / Gist** und
+`https://github.com/Lndr2501/diddy/blob/main/docs/plugins/github-issues.html` importieren (das
+Start-Repository lässt sich dann in der Karte ändern). Alternativ mit eigener Adresse:
 
 1. Die [HTML-Datei herunterladen](https://raw.githubusercontent.com/Lndr2501/diddy/main/docs/plugins/github-issues.html)
    und über **HTTPS** als `text/html` bereitstellen. GitHubs Datei-Ansicht und die Raw-URL sind

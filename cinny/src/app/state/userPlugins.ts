@@ -5,8 +5,12 @@
  */
 import { useSyncExternalStore } from 'react';
 import { clearPluginData } from './pluginData';
+import { deleteLocalPluginRecord, putLocalPluginRecord } from './localPlugins';
+import { LocalPluginRecord } from '../plugins/localPlugins';
 import {
   addBuiltinPlugin,
+  addLocalPlugin,
+  localPluginId,
   addPlugin,
   PluginInput,
   parseStoredPlugins,
@@ -91,12 +95,37 @@ export const addBuiltinUserPlugin = (slug: string, name: string): Result<UserPlu
   return result;
 };
 
+/** Adds a local plugin: its HTML is stored first, then the plugin appears in the list. */
+export const addLocalUserPlugin = async (
+  name: string,
+  record: LocalPluginRecord
+): Promise<Result<UserPlugin[]>> => {
+  const id = newId();
+  const check = addLocalPlugin(current, { id, now: Date.now(), name });
+  if (!check.ok) return check;
+  await putLocalPluginRecord(id, record);
+  // the list may have changed while the content was being stored
+  const result = addLocalPlugin(current, { id, now: Date.now(), name });
+  if (result.ok) commit(result.value);
+  else deleteLocalPluginRecord(id);
+  return result;
+};
+
+/** Replaces the stored HTML of a local plugin (new file, new code or update from source). */
+export const replaceLocalUserPlugin = async (id: string, record: LocalPluginRecord) => {
+  const plugin = current.find((p) => p.id === id);
+  if (!plugin || localPluginId(plugin.url) !== id) return;
+  await putLocalPluginRecord(id, record);
+};
+
 export const setUserPluginEnabled = (id: string, enabled: boolean) => {
   commit(setPluginEnabled(current, id, enabled));
 };
 
 export const removeUserPlugin = (id: string) => {
   clearPluginData(id);
+  const plugin = current.find((p) => p.id === id);
+  if (plugin && localPluginId(plugin.url) === id) deleteLocalPluginRecord(id);
   commit(removePlugin(current, id));
 };
 
