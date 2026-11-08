@@ -49,6 +49,7 @@ import { BackgroundSettings, CustomThemeSettings } from './CustomThemeSettings';
 import { ThemeTiles } from './ThemeTiles';
 import { updateCallPrefs, useCallPrefs } from '../../../state/callPrefs';
 import { SoundSettings } from './SoundSettings';
+import { browserStorage, clearAllCallVolumes } from '../../../plugins/call/volumeMemory';
 import { AgentVoiceSettings } from './AgentVoiceSettings';
 import { AvatarSurface, setAvatarAnimation, useAvatarPrefs } from '../../../state/avatarPrefs';
 import { resetDiddyOnboarding } from '../../../plugins/diddy/onboarding';
@@ -910,6 +911,7 @@ function AnimatedAvatarSettings() {
 
 function CallSettings() {
   const prefs = useCallPrefs();
+  const [volumesReset, setVolumesReset] = useState(false);
 
   return (
     <InsetSection title="Calls">
@@ -934,6 +936,25 @@ function CallSettings() {
               value={prefs.echoCancellation}
               onChange={(echoCancellation) => updateCallPrefs({ echoCancellation })}
             />
+          }
+        />
+        <InsetRow
+          title="Volumes of people"
+          description="Diddy remembers the volume and mute for me you give each person (and their screen share) on this device. Reset puts everyone back to 100 % from their next call on."
+          after={
+            <Button
+              size="300"
+              variant="Secondary"
+              fill="Soft"
+              radii="300"
+              disabled={volumesReset}
+              onClick={() => {
+                clearAllCallVolumes(browserStorage());
+                setVolumesReset(true);
+              }}
+            >
+              <Text size="B300">{volumesReset ? 'Reset' : 'Reset volumes'}</Text>
+            </Button>
           }
         />
       </InsetGroup>
