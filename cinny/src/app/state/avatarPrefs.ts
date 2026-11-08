@@ -9,6 +9,8 @@ export type AvatarSurface = 'profile' | 'chat' | 'members' | 'account' | 'call';
 export type AvatarPrefs = Record<AvatarSurface, boolean> & {
   /** the picture only moves while its owner is speaking in the call you are in */
   speakingOnly: boolean;
+  /** nameplates (GIF / video / flowing gradient) move; off shows a still frame (#78) */
+  nameplates: boolean;
 };
 
 const KEY = 'diddyAvatarAnimation';
@@ -19,6 +21,7 @@ const DEFAULTS: AvatarPrefs = {
   account: true,
   call: true,
   speakingOnly: true,
+  nameplates: true,
 };
 
 const read = (): AvatarPrefs => {

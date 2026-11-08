@@ -66,6 +66,16 @@ import { webRTCSupported } from '../../utils/rtc';
 import { CallMemberList } from './CallMemberList';
 import { usePresenceState } from '../../hooks/usePresenceState';
 import { AvatarPresence, PresenceBadge } from '../../components/presence';
+import { useDiddyProfile } from '../../plugins/diddy/profiles';
+import {
+  NameplateBackdrop,
+  NameplateHost,
+  NameplateText,
+  hasNameplate,
+  nameplateSurfaceStyle,
+  useNameplateAnimation,
+} from '../../components/diddy/Nameplate';
+import { SIDE_TONE } from '../../components/sidebar/diddyTokens';
 
 type RoomNavItemMenuProps = {
   room: Room;
@@ -294,6 +304,10 @@ export function RoomNavItem({
   // a 1:1 DM shows the other user's presence on its avatar (#72); group DMs have none
   const dmUserId = direct && showAvatar ? room.getAvatarFallbackMember()?.userId : undefined;
   const dmPresence = usePresenceState(dmUserId);
+  // ...and the other user's Diddy nameplate behind the row (#78)
+  const dmNameplate = useDiddyProfile(mx, dmUserId)?.nameplate;
+  const withNameplate = !!dmUserId && hasNameplate(dmNameplate);
+  const animateNameplate = useNameplateAnimation();
 
   const handleContextMenu: MouseEventHandler<HTMLElement> = (evt) => {
     evt.preventDefault();
@@ -358,9 +372,12 @@ export function RoomNavItem({
         aria-selected={selected}
         data-hover={!!menuAnchor}
         onContextMenu={handleContextMenu}
+        className={withNameplate ? NameplateHost : undefined}
+        style={withNameplate ? nameplateSurfaceStyle(SIDE_TONE) : undefined}
         {...hoverProps}
         {...focusWithinProps}
       >
+        {withNameplate && <NameplateBackdrop plate={dmNameplate} animate={animateNameplate} />}
         <NavLink to={linkPath} onClick={room.isCallRoom() ? handleStartCall : undefined}>
           <NavItemContent>
             <Box as="span" grow="Yes" alignItems="Center" gap="200">
@@ -406,7 +423,7 @@ export function RoomNavItem({
                   )}
                 </Avatar>
               </AvatarPresence>
-              <Box as="span" grow="Yes">
+              <Box as="span" grow="Yes" className={withNameplate ? NameplateText : undefined}>
                 <Text priority={unread ? '500' : '300'} as="span" size="Inherit" truncate>
                   {roomName}
                 </Text>
