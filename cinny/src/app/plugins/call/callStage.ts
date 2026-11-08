@@ -13,10 +13,11 @@
  *   - data-id="…:screen-share"            a screen share tile (camera tiles have none or another)
  *   - [aria-label="@user:server"]         the owner of a tile (avatar label)
  *   - [data-testid="name_tag"]            the display name
- *   - [data-muted="true"]                 microphone muted
+ *   - microphone mute: see callMute.ts (#107), not a broad [data-muted] match
  *   - class substrings _speaking_, _inRoom_, _grid_
  */
 import { tileUserId } from '../callFrameMenu';
+import { cachedLiveKitRooms, LocalMic, MuteVotes, tileMicMuted } from './callMute';
 
 export type StagePerson = {
   userId: string;
@@ -65,11 +66,17 @@ const liveVideo = (tile: Element): MediaStream | undefined => {
 
 const SCREEN_SHARE_SUFFIX = ':screen-share';
 
-/** Who is on the call and which screen shares run, read from Element Call's tiles. */
-export const readCallStage = (doc: Document | null | undefined): StageModel => {
+/**
+ * Who is on the call and which screen shares run, read from Element Call's tiles. `local` is your
+ * own microphone from Diddy's call control: your mute state comes from there, everybody else's
+ * from LiveKit (callMute.ts).
+ */
+export const readCallStage = (doc: Document | null | undefined, local?: LocalMic): StageModel => {
   if (!doc) return EMPTY_STAGE;
   const people = new Map<string, StagePerson>();
   const shares: StageShare[] = [];
+  const votes = new MuteVotes();
+  const ctx = { local, rooms: cachedLiveKitRooms(doc) };
   doc.querySelectorAll(TILE).forEach((tile) => {
     const userId = tileUserId(tile);
     if (!userId) return;
@@ -82,15 +89,18 @@ export const readCallStage = (doc: Document | null | undefined): StageModel => {
     }
     // a person can have two tiles (the spotlight and the grid): merge them
     const speaking = /(^|\s)_speaking_/.test(tile.className.toString());
-    const muted = !!tile.querySelector('[data-muted="true"]');
+    votes.add(userId, tileMicMuted(tile, userId, ctx));
     const known = people.get(userId);
     if (known) {
       known.speaking = known.speaking || speaking;
-      known.muted = known.muted || muted;
       known.video = known.video ?? video;
       return;
     }
-    people.set(userId, { userId, name, speaking, muted, video });
+    people.set(userId, { userId, name, speaking, muted: false, video });
+  });
+  people.forEach((person) => {
+    // eslint-disable-next-line no-param-reassign
+    person.muted = votes.muted(person.userId);
   });
   return { people: [...people.values()], shares };
 };
@@ -98,7 +108,7 @@ export const readCallStage = (doc: Document | null | undefined): StageModel => {
 /**
  * Your own speaking state, measured by Diddy (#76): Element Call leaves your tile without the
  * speaking class in one-on-one calls and whenever the server does not report you as a speaker.
- * Only marks you while your tile does not show you muted; never clears what Element Call shows.
+ * Only marks you while you are not muted; never clears what Element Call shows.
  */
 export const markSpeaking = (
   model: StageModel,
