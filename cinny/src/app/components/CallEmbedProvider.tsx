@@ -71,6 +71,7 @@ import { useLivekitSupport } from '../hooks/useLivekitSupport';
 import { CallAvatarAnimation } from '../styles/Animations.css';
 import { webRTCSupported } from '../utils/rtc';
 import { AgentVoiceSync } from './AgentVoiceSync';
+import { WatchTogetherSync } from './WatchTogetherSync';
 
 type IncomingCallInfo = {
   room: Room;
@@ -585,6 +586,7 @@ export function CallEmbedProvider({ children }: CallEmbedProviderProps) {
       {callEmbed && joined && <CallConnectionSounds embed={callEmbed} />}
       {callEmbed && joined && <CallSpeakingSync embed={callEmbed} />}
       <AgentVoiceSync />
+      {callEmbed && joined && <WatchTogetherSync key={callEmbed.roomId} embed={callEmbed} />}
       <CallEmbedRefContextProvider value={callEmbedRef}>
         <IncomingCallListener callEmbed={callEmbed} joined={joined} />
         {children}

@@ -664,3 +664,86 @@ export const StageCorner = style({
     },
   },
 });
+
+// Watch together (#83): the YouTube panel above the call stage.
+export const WatchPanel = style({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: config.space.S200,
+  margin: `${config.space.S300} ${config.space.S400} 0`,
+  padding: config.space.S300,
+  borderRadius: t.radiusCard,
+  backgroundColor: t.material,
+  WebkitBackdropFilter: t.blur,
+  backdropFilter: t.blur,
+  border: t.border,
+  boxShadow: t.shadow1,
+  color: color.Surface.OnContainer,
+  minWidth: 0,
+  flexShrink: 0,
+});
+
+export const WatchHeader = style({
+  display: 'flex',
+  alignItems: 'center',
+  gap: config.space.S200,
+  minWidth: 0,
+});
+
+export const WatchFrame = style({
+  position: 'relative',
+  width: '100%',
+  maxWidth: 'min(100%, calc(45vh * 16 / 9))',
+  aspectRatio: '16 / 9',
+  alignSelf: 'center',
+  borderRadius: t.radiusRow,
+  overflow: 'hidden',
+  backgroundColor: '#000',
+});
+
+export const WatchIframe = style({
+  position: 'absolute',
+  inset: 0,
+  width: '100%',
+  height: '100%',
+  border: 0,
+});
+
+export const WatchError = style({
+  position: 'absolute',
+  inset: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: config.space.S200,
+  padding: config.space.S400,
+  textAlign: 'center',
+  color: '#fff',
+  backgroundColor: 'rgba(0, 0, 0, 0.85)',
+});
+
+export const WatchBar = style({
+  display: 'flex',
+  alignItems: 'center',
+  flexWrap: 'wrap',
+  gap: config.space.S300,
+  minWidth: 0,
+});
+
+export const WatchVolume = style({
+  display: 'flex',
+  alignItems: 'center',
+  gap: config.space.S100,
+  minWidth: toRem(160),
+});
+
+export const WatchSelect = style({
+  font: 'inherit',
+  fontSize: toRem(13),
+  padding: `${toRem(4)} ${toRem(8)}`,
+  borderRadius: t.radiusCtl,
+  border: t.border,
+  backgroundColor: color.Surface.Container,
+  color: color.Surface.OnContainer,
+});
