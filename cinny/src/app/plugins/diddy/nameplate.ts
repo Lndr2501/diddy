@@ -58,7 +58,7 @@ export const presetGradient = (id: unknown, angle = 90): string | undefined => {
 /** What a row actually draws for a nameplate, decided from the (sanitised) data and the viewer. */
 export type NameplateLayers = {
   fit: NameplateFit;
-  /** CSS background (preset gradient or colour wash) under any media */
+  /** CSS background-image (preset gradient or colour wash) under any media */
   background?: string;
   /** the background gradient slowly moves */
   flow: boolean;
@@ -81,7 +81,10 @@ export const resolveNameplate = (
   const preset = findPreset(plate.preset);
   let background: string | undefined;
   if (preset) background = presetGradient(preset.id);
-  else if (plate.color) background = `color-mix(in srgb, ${plate.color} 45%, transparent)`;
+  else if (plate.color) {
+    const wash = `color-mix(in srgb, ${plate.color} 45%, transparent)`;
+    background = `linear-gradient(90deg, ${wash}, ${wash})`;
+  }
 
   const out: NameplateLayers = {
     fit: plate.fit === 'full' ? 'full' : 'fade',
