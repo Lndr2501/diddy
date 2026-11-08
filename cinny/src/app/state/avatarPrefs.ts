@@ -13,6 +13,8 @@ export type AvatarPrefs = Record<AvatarSurface, boolean> & {
   nameplates: boolean;
   /** profile effects (#86) move over profile cards; off shows their still picture */
   profileEffects: boolean;
+  /** profile frames (#87) are drawn around profile cards */
+  profileFrames: boolean;
 };
 
 const KEY = 'diddyAvatarAnimation';
@@ -25,6 +27,7 @@ const DEFAULTS: AvatarPrefs = {
   speakingOnly: true,
   nameplates: true,
   profileEffects: true,
+  profileFrames: true,
 };
 
 const read = (): AvatarPrefs => {

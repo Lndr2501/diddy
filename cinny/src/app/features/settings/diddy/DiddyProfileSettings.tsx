@@ -1,7 +1,19 @@
 import React, { PointerEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EventType } from 'matrix-js-sdk';
 import classNames from 'classnames';
-import { Box, Button, Icon, IconButton, Icons, Scroll, Switch, Text, color, config } from 'folds';
+import {
+  Box,
+  Button,
+  Icon,
+  IconButton,
+  Icons,
+  Scroll,
+  Switch,
+  Text,
+  color,
+  config,
+  toRem,
+} from 'folds';
 import { Page } from '../../../components/page';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { useUserProfile } from '../../../hooks/useUserProfile';
@@ -26,10 +38,19 @@ import {
   uploadDiddyMedia,
   uploadNameplateMedia,
   uploadProfileEffect,
+  uploadProfileFrame,
   useMxcUrl,
 } from '../../../plugins/diddy/media';
 import { readNameplateZip } from '../../../plugins/diddy/nameplateZip';
 import { readProfileEffectImage, readProfileEffectZip } from '../../../plugins/diddy/effectZip';
+import { readProfileFrameImage, readProfileFrameZip } from '../../../plugins/diddy/frameZip';
+import {
+  MAX_FRAME_LAYER_BYTES,
+  MAX_FRAME_LAYERS,
+  MAX_FRAME_TOTAL_BYTES,
+  PROFILE_FRAME_PRESETS,
+} from '../../../plugins/diddy/profileFrame';
+import { ProfileFrameBox } from '../../../components/diddy/ProfileFrame';
 import { MAX_EFFECT_LAYERS, PROFILE_EFFECT_PRESETS } from '../../../plugins/diddy/profileEffect';
 import {
   ProfileEffectOverlay,
@@ -800,6 +821,24 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
     }
   };
 
+  // a profile frame (#87): a ZIP in the collection layout or one PNG / WebP
+  const uploadFrame = async (file: File) => {
+    setBusyKey('frame');
+    setUploadError(undefined);
+    try {
+      const data = new Uint8Array(await file.arrayBuffer());
+      const imported = isNameplateZip(file)
+        ? await readProfileFrameZip(data.buffer)
+        : readProfileFrameImage(file.name, data);
+      const frame = await uploadProfileFrame(mx, imported);
+      setDraft((d) => ({ ...d, frame }));
+    } catch (e) {
+      setUploadError(e instanceof Error ? e.message : 'Upload failed.');
+    } finally {
+      setBusyKey(undefined);
+    }
+  };
+
   // save
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string>();
@@ -814,6 +853,7 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
         card,
         nameplate,
         effect,
+        frame,
         animatedAvatarMxc,
         avatarPos,
         status,
@@ -1408,6 +1448,63 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
           onRemove={() => setDraft((d) => ({ ...d, effect: undefined }))}
         />
       </SettingsCard>
+      <SettingsCard
+        icon={Icons.Photo}
+        title="Profile frame"
+        description="A decorative frame other Diddy users see around your profile card."
+      >
+        <StackField label="Built-in">
+          <div className={css.PresetGrid} role="group" aria-label="Profile frame presets">
+            <button
+              type="button"
+              className={classNames(css.PresetSwatch, css.PresetNone)}
+              aria-pressed={!draft.frame}
+              onClick={() => setDraft((d) => ({ ...d, frame: undefined }))}
+            >
+              None
+            </button>
+            {PROFILE_FRAME_PRESETS.map((preset) => (
+              <button
+                key={preset.id}
+                type="button"
+                className={classNames(css.PresetSwatch, css.FrameSwatch)}
+                aria-pressed={!draft.frame?.layers && draft.frame?.preset === preset.id}
+                onClick={() => setDraft((d) => ({ ...d, frame: { preset: preset.id } }))}
+              >
+                <ProfileFrameBox
+                  frame={{ preset: preset.id }}
+                  width={toRem(44)}
+                  respectViewerSwitch={false}
+                >
+                  <div className={css.FrameSwatchCard} />
+                </ProfileFrameBox>
+                <span>{preset.label}</span>
+              </button>
+            ))}
+          </div>
+        </StackField>
+        <UploadField
+          title={
+            draft.frame?.layers
+              ? `${draft.frame.name ?? 'Your frame'} (${draft.frame.layers.length} ${
+                  draft.frame.layers.length === 1 ? 'layer' : 'layers'
+                })`
+              : 'Your own frame (optional)'
+          }
+          hint={`A ZIP with konfiguration.json and its layers (Ebenen/), a ZIP with a *top* and a *bottom* picture, or one PNG / WebP laid over the whole card. Up to ${MAX_FRAME_LAYERS} layers, ${
+            MAX_FRAME_LAYER_BYTES / (1024 * 1024)
+          } MB each, ${MAX_FRAME_TOTAL_BYTES / (1024 * 1024)} MB in total.`}
+          accept=".zip,application/zip,image/png,image/webp"
+          acceptsFile={(file) =>
+            ['image/png', 'image/webp'].includes(file.type) || isNameplateZip(file)
+          }
+          wide
+          mxc={draft.frame?.layers?.[0]?.mxc}
+          busy={busyKey === 'frame'}
+          onFile={uploadFrame}
+          onRemove={() => setDraft((d) => ({ ...d, frame: undefined }))}
+        />
+      </SettingsCard>
     </>
   );
 
@@ -1602,15 +1699,17 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
                 <SettingsCard
                   icon={Icons.Eye}
                   title="Live preview"
-                  description="See how your profile card, profile effect and nameplate look to others."
+                  description="See how your profile card, effect, frame and nameplate look to others."
                 >
                   <div className={themeClass(draft.cardLayout?.theme)}>
-                    <CardPreview
-                      userId={myId}
-                      displayName={displayName}
-                      avatarUrl={avatarUrl}
-                      draft={draft}
-                    />
+                    <ProfileFrameBox frame={draft.frame} respectViewerSwitch={false}>
+                      <CardPreview
+                        userId={myId}
+                        displayName={displayName}
+                        avatarUrl={avatarUrl}
+                        draft={draft}
+                      />
+                    </ProfileFrameBox>
                   </div>
                 </SettingsCard>
                 <SettingsCard

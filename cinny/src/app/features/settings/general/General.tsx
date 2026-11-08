@@ -914,6 +914,17 @@ function AnimatedAvatarSettings() {
             />
           }
         />
+        <InsetRow
+          title="Profile frames"
+          description="Decorative frames other people put around their profile card."
+          after={
+            <Switch
+              variant="Primary"
+              value={prefs.profileFrames}
+              onChange={(value) => setAvatarAnimation('profileFrames', value)}
+            />
+          }
+        />
       </InsetGroup>
     </InsetSection>
   );

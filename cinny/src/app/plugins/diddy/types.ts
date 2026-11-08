@@ -6,6 +6,7 @@ import type {
 } from './profileExtras';
 import type { NameplateFit, NameplatePresetId } from './nameplate';
 import type { ProfileEffectPresetId } from './profileEffect';
+import type { ProfileFrameAnchor, ProfileFrameOrder, ProfileFramePresetId } from './profileFrame';
 
 /**
  * Diddy profile system: data model.
@@ -140,6 +141,30 @@ export type ProfileEffect = {
   name?: string;
 };
 
+/** One uploaded picture of a profile frame (#87), see profileFrame.ts for the geometry. */
+export type ProfileFrameLayer = {
+  /** PNG / APNG / WebP (mxc://) */
+  mxc: string;
+  /** in front of the card or behind it */
+  order: ProfileFrameOrder;
+  /** which card edge the picture hangs on; `fill` stretches it over the whole frame */
+  anchor: ProfileFrameAnchor;
+};
+
+/** Decorative frame around the profile card (#87): a built-in preset or uploaded layers. */
+export type ProfileFrame = {
+  /** original Diddy preset drawn with CSS / SVG (ignored when there are layers) */
+  preset?: ProfileFramePresetId;
+  layers?: ProfileFrameLayer[];
+  /** geometry of the layers, in the units of their pictures */
+  innerWidth?: number;
+  overflowTop?: number;
+  overflowBottom?: number;
+  overflowHorizontal?: number;
+  /** name of the imported frame */
+  name?: string;
+};
+
 export type DiddyStatus = 'online' | 'idle' | 'dnd' | 'invisible';
 
 export type DiddyProfile = {
@@ -149,6 +174,8 @@ export type DiddyProfile = {
   nameplate?: NameplateStyle;
   /** animated overlay over the profile card (#86); older clients ignore it */
   effect?: ProfileEffect;
+  /** decorative frame around the profile card (#87); older clients ignore it */
+  frame?: ProfileFrame;
   /** animated avatar (mxc://, GIF/WebP) shown by other Diddy clients instead of the normal avatar */
   animatedAvatarMxc?: string;
   /** visible part of the animated avatar */
