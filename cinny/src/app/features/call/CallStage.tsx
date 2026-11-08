@@ -221,7 +221,7 @@ export function ShareTile({
 }: TileProps & { share: StageShare; doc: Document | undefined }) {
   const tileRef = useRef<HTMLDivElement>(null);
   // turned down to nothing for you (right-click > Stream Volume): shown on the name tag
-  const volume = useShareVolume(doc, share.id);
+  const volume = useShareVolume(doc, share.id, share.userId);
   const mutedForMe = !!volume?.hasAudio && volume.volume === 0;
   const label = `${share.name}’s Stream`;
   // the shared screen's own shape: the large view takes exactly that, without black bars

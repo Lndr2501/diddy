@@ -129,7 +129,8 @@ export function CallUserMenu() {
   // opened on somebody else's screen share: its sound, turned down only for you
   const streamVolume = useShareVolume(
     callEmbed?.document,
-    menu?.shareId && !isMe ? menu.shareId : undefined
+    menu?.shareId && !isMe ? menu.shareId : undefined,
+    userId
   );
 
   const handleProfile = () => {

@@ -175,3 +175,87 @@ test('the shipped Element Call still has the share volume hooks', () => {
   );
   assert.ok(js.includes('__reactFiber$'), 'React fiber key changed');
 });
+
+// Remembered per person (#stream volume): the next share of that person starts at that volume.
+const memoryStorage = (initial) => {
+  const data = new Map(initial ? [['diddyStreamVolumes', JSON.stringify(initial)]] : []);
+  return {
+    getItem: (k) => (data.has(k) ? data.get(k) : null),
+    setItem: (k, v) => data.set(k, v),
+    saved: () => JSON.parse(data.get('diddyStreamVolumes') ?? '{}'),
+  };
+};
+
+test('a new share of a person gets the volume remembered for them, once', () => {
+  const storage = memoryStorage({ '@gho:x.org': { volume: 0.3, muted: false } });
+  const model = shareVm();
+  mod.restoreStreamVolume(model, '@gho:x.org', storage);
+  assert.equal(mod.readShareVolume(model).volume, 0.3);
+  // what you change while the share runs is never overridden
+  model.adjustPlaybackVolume(0.8);
+  mod.restoreStreamVolume(model, '@gho:x.org', storage);
+  assert.equal(mod.readShareVolume(model).volume, 0.8);
+  // nothing remembered: Element Call's 100 % stays
+  const other = shareVm({ id: 'b:screen-share' });
+  mod.restoreStreamVolume(other, '@b:x.org', storage);
+  assert.equal(mod.readShareVolume(other).volume, 1);
+});
+
+test('a muted person comes back muted, and unmute returns to their level', () => {
+  const storage = memoryStorage({ '@gho:x.org': { volume: 0.4, muted: true } });
+  const model = shareVm();
+  mod.restoreStreamVolume(model, '@gho:x.org', storage);
+  assert.equal(mod.readShareVolume(model).volume, 0);
+  model.togglePlaybackMuted();
+  assert.equal(mod.readShareVolume(model).volume, 0.4);
+});
+
+test('slider and mute button are remembered per person', () => {
+  const storage = memoryStorage();
+  const model = shareVm();
+  model.adjustPlaybackVolume(0.55);
+  mod.commitAndRemember(model, '@gho:x.org', storage);
+  assert.deepEqual(storage.saved(), { '@gho:x.org': { volume: 0.55, muted: false } });
+
+  mod.toggleAndRemember(model, '@gho:x.org', storage);
+  assert.deepEqual(storage.saved(), { '@gho:x.org': { volume: 0.55, muted: true } });
+  mod.toggleAndRemember(model, '@gho:x.org', storage);
+  assert.deepEqual(storage.saved(), { '@gho:x.org': { volume: 0.55, muted: false } });
+
+  // dragged down to nothing: muted at the level before
+  model.adjustPlaybackVolume(0);
+  mod.commitAndRemember(model, '@gho:x.org', storage);
+  assert.deepEqual(storage.saved(), { '@gho:x.org': { volume: 0.55, muted: true } });
+
+  // back to 100 %: the default, nothing stored any more
+  model.adjustPlaybackVolume(1);
+  mod.commitAndRemember(model, '@gho:x.org', storage);
+  assert.deepEqual(storage.saved(), {});
+});
+
+test('broken or foreign stored data never breaks a call', () => {
+  const broken = { getItem: () => '{not json', setItem: () => undefined };
+  assert.deepEqual({ ...mod.readStreamVolumes(broken) }, {});
+  const throwing = {
+    getItem: () => {
+      throw new Error('blocked');
+    },
+    setItem: () => {
+      throw new Error('full');
+    },
+  };
+  assert.deepEqual({ ...mod.readStreamVolumes(throwing) }, {});
+  mod.rememberStreamVolume(throwing, '@gho:x.org', { volume: 0.5, muted: false });
+  const model = shareVm();
+  mod.restoreStreamVolume(model, '@gho:x.org', throwing);
+  assert.equal(mod.readShareVolume(model).volume, 1);
+  const odd = memoryStorage({
+    '@a:x.org': { volume: 'loud' },
+    '@b:x.org': { volume: 7, muted: 'yes' },
+    'not-a-user': { volume: 0.5 },
+  });
+  assert.deepEqual(JSON.parse(JSON.stringify(mod.readStreamVolumes(odd))), {
+    '@b:x.org': { volume: 1, muted: false },
+  });
+  assert.deepEqual({ ...mod.readStreamVolumes(undefined) }, {});
+});
