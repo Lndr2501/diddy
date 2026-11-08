@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { Box, Line } from 'folds';
+import { Box } from 'folds';
 import { useParams } from 'react-router-dom';
 import { isKeyHotkey } from 'is-hotkey';
 import { useAtomValue } from 'jotai';
@@ -72,12 +72,7 @@ export function Room() {
         )}
 
         {callView && chat && (
-          <>
-            {screenSize === ScreenSize.Desktop && (
-              <Line variant="Background" direction="Vertical" size="300" />
-            )}
-            <CallChatView />
-          </>
+          <CallChatView />
         )}
         {!callView && screenSize === ScreenSize.Desktop && isDrawer && (
           <MembersDrawer key={room.roomId} room={room} members={members} />

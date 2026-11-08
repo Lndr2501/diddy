@@ -7,7 +7,12 @@ import { ProfileStatus, UserHero, UserHeroName } from './UserHero';
 import { safeColor } from '../../plugins/diddy/sanitize';
 import * as css from './styles.css';
 import { useDiddyProfile } from '../../plugins/diddy/profiles';
-import { addRoomIdToMDirect, getMxIdServer, mxcUrlToHttp } from '../../utils/matrix';
+import {
+  addRoomIdToMDirect,
+  getMxIdLocalPart,
+  getMxIdServer,
+  mxcUrlToHttp,
+} from '../../utils/matrix';
 import { getMemberAvatarMxc, getMemberDisplayName } from '../../utils/room';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
@@ -17,7 +22,7 @@ import { useUserPresence } from '../../hooks/useUserPresence';
 import { IgnoredUserAlert, MutualRoomsChip, OptionsChip, ServerChip, ShareChip } from './UserChips';
 import { useCloseUserRoomProfile } from '../../state/hooks/userRoomProfile';
 import { PowerChip } from './PowerChip';
-import { UserInviteAlert, UserBanAlert, UserModeration, UserKickAlert } from './UserModeration';
+import { UserInviteAlert, UserBanAlert, UserKickAlert } from './UserModeration';
 import { useIgnoredUsers } from '../../hooks/useIgnoredUsers';
 import { useMembership } from '../../hooks/useMembership';
 import { Membership } from '../../../types/matrix/room';
@@ -229,7 +234,17 @@ export function UserRoomProfile({ userId }: UserRoomProfileProps) {
             {layout !== 'tabs' && modules.includes('sharedRooms') && notMe && (
               <MutualRoomsChip userId={userId} />
             )}
-            {notMe && <OptionsChip userId={userId} />}
+            {notMe && (
+              <OptionsChip
+                userId={userId}
+                displayName={displayName ?? getMxIdLocalPart(userId) ?? userId}
+                moderation={{
+                  canInvite: canInvite && membership === Membership.Leave,
+                  canKick: canKickUser && membership === Membership.Join,
+                  canBan: canBanUser && membership !== Membership.Ban,
+                }}
+              />
+            )}
           </div>
           {callError && (
             <Text size="T200" style={{ color: color.Critical.Main }}>
@@ -265,14 +280,6 @@ export function UserRoomProfile({ userId }: UserRoomProfileProps) {
               ts={member.events.member?.getTs()}
             />
           )}
-          <div className={css.ModerationBox}>
-            <UserModeration
-              userId={userId}
-              canInvite={canInvite && membership === Membership.Leave}
-              canKick={canKickUser && membership === Membership.Join}
-              canBan={canBanUser && membership !== Membership.Ban}
-            />
-          </div>
         </div>
       </div>
     </div>

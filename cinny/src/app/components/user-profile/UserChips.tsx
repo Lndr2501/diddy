@@ -19,6 +19,7 @@ import {
   Box,
   Scroll,
   Avatar,
+  IconSrc,
 } from 'folds';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { getMxIdServer } from '../../utils/matrix';
@@ -38,6 +39,7 @@ import { useDirectRooms } from '../../pages/client/direct/useDirectRooms';
 import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
 import { useAllJoinedRoomsSet, useGetRoom } from '../../hooks/useGetRoom';
 import { RoomAvatar, RoomIcon } from '../room-avatar';
+import { ModerationAction, ModerationPrompt } from './UserModeration';
 import { getDirectRoomAvatarUrl, getRoomAvatarUrl } from '../../utils/room';
 import { nameInitials } from '../../utils/common';
 import { getMatrixToUser } from '../../plugins/matrix-to';
@@ -442,9 +444,27 @@ export function IgnoredUserAlert() {
   );
 }
 
-export function OptionsChip({ userId }: { userId: string }) {
+type OptionsChipProps = {
+  userId: string;
+  displayName: string;
+  /** moderation actions the viewer may take in the current room (kick, ban, invite back) */
+  moderation?: { canKick: boolean; canBan: boolean; canInvite: boolean };
+};
+export function OptionsChip({ userId, displayName, moderation }: OptionsChipProps) {
   const mx = useMatrixClient();
   const [cords, setCords] = useState<RectCords>();
+  const [prompt, setPrompt] = useState<ModerationAction>();
+  const closePrompt = useCallback(() => setPrompt(undefined), []);
+  const modActions: { action: ModerationAction; label: string; icon: IconSrc }[] = [];
+  if (moderation?.canInvite) {
+    modActions.push({ action: 'invite', label: 'Invite to Room', icon: Icons.UserPlus });
+  }
+  if (moderation?.canKick) {
+    modActions.push({ action: 'kick', label: 'Kick from Room', icon: Icons.ArrowLeft });
+  }
+  if (moderation?.canBan) {
+    modActions.push({ action: 'ban', label: 'Ban from Room', icon: Icons.NoEntry });
+  }
 
   const open: MouseEventHandler<HTMLButtonElement> = (evt) => {
     setCords(evt.currentTarget.getBoundingClientRect());
@@ -504,17 +524,54 @@ export function OptionsChip({ userId }: { userId: string }) {
                 <Text size="B300">{ignored ? 'Unblock User' : 'Block User'}</Text>
               </MenuItem>
             </div>
+            {modActions.length > 0 && (
+              <>
+                <Line variant="Surface" size="300" />
+                <div style={{ padding: config.space.S100 }}>
+                  {modActions.map(({ action, label, icon }) => (
+                    <MenuItem
+                      key={action}
+                      variant={action === 'invite' ? 'Surface' : 'Critical'}
+                      fill="None"
+                      size="300"
+                      radii="400"
+                      onClick={() => {
+                        close();
+                        setPrompt(action);
+                      }}
+                      before={<Icon size="50" src={icon} />}
+                    >
+                      <Text size="B300">{label}</Text>
+                    </MenuItem>
+                  ))}
+                </div>
+              </>
+            )}
           </Menu>
         </FocusTrap>
       }
     >
-      <Chip variant="SurfaceVariant" radii="Pill" onClick={open} aria-pressed={!!cords}>
+      <Chip
+        variant="SurfaceVariant"
+        radii="Pill"
+        onClick={open}
+        aria-pressed={!!cords}
+        aria-label="More options"
+      >
         {ignoring ? (
           <Spinner variant="Secondary" size="50" />
         ) : (
           <Icon size="50" src={Icons.HorizontalDots} />
         )}
       </Chip>
+      {prompt && (
+        <ModerationPrompt
+          userId={userId}
+          displayName={displayName}
+          action={prompt}
+          onClose={closePrompt}
+        />
+      )}
     </PopOut>
   );
 }

@@ -12,7 +12,6 @@ import {
   SpaceTabs,
   InboxTab,
   ExploreTab,
-  SettingsTab,
   UnverifiedTab,
   SearchTab,
   PluginsTab,
@@ -46,7 +45,6 @@ export function SidebarNav() {
               <PluginsTab />
               <SearchTab />
               <UnverifiedTab />
-              <SettingsTab />
             </SidebarStack>
           </>
         }

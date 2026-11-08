@@ -1,16 +1,18 @@
 import { keyframes, style } from '@vanilla-extract/css';
 import { color, config, toRem } from 'folds';
+import { SIDE_TONE } from '../../components/sidebar/diddyTokens';
 
+// Right column of the main card: same top and bottom as the chat and, like the rooms list,
+// set apart from it by its tone instead of a line, so its header lines up with the room header.
 export const MembersDrawer = style({
   width: toRem(280),
-  // runs down to the window edge like the chat next to it (no gap at the bottom)
-  margin: `${config.space.S200} ${config.space.S200} 0 0`,
-  borderRadius: `var(--diddy-radius-card, 18px) var(--diddy-radius-card, 18px) 0 0`,
-  border: `var(--diddy-border, 1px solid color-mix(in srgb, ${color.Surface.OnContainer} 8%, transparent))`,
-  borderBottom: 'none',
-  backgroundColor: color.Surface.Container,
-  boxShadow: `var(--diddy-shadow-1, 0 ${toRem(1)} ${toRem(3)} rgba(0, 0, 0, 0.08))`,
   overflow: 'hidden',
+  selectors: {
+    // beats the Surface ContainerColor class on the same element
+    '&&': {
+      backgroundColor: SIDE_TONE,
+    },
+  },
 });
 
 export const MembersDrawerHeader = style({

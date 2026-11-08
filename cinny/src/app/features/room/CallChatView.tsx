@@ -3,6 +3,7 @@ import { useSetAtom } from 'jotai';
 import { useParams } from 'react-router-dom';
 import { Box, Text, TooltipProvider, Tooltip, Icon, Icons, IconButton, toRem } from 'folds';
 import { Page, PageHeader } from '../../components/page';
+import { PageColumnDivider } from '../../components/page/style.css';
 import { callChatAtom } from '../../state/callEmbed';
 import { RoomView } from './RoomView';
 import { ScreenSize, useScreenSizeContext } from '../../hooks/useScreenSize';
@@ -16,6 +17,7 @@ export function CallChatView() {
 
   return (
     <Page
+      className={screenSize === ScreenSize.Desktop ? PageColumnDivider : undefined}
       style={{
         width: screenSize === ScreenSize.Desktop ? toRem(456) : '100%',
         flexShrink: 0,

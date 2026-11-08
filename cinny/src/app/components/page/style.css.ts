@@ -2,11 +2,9 @@ import { style } from '@vanilla-extract/css';
 import { recipe, RecipeVariants } from '@vanilla-extract/recipes';
 import { DefaultReset, color, config, toRem } from 'folds';
 import {
-  BLUR,
   BORDER,
   FOCUS_RING,
   HOVER,
-  MATERIAL,
   MATERIAL_STRONG,
   RADIUS_CARD,
   RADIUS_CTL,
@@ -15,21 +13,16 @@ import {
   SEPARATOR,
   SHADOW_1,
   SHADOW_2,
+  SIDE_TONE,
   transition,
 } from '../sidebar/diddyTokens';
 
-// Translucent sidebar "material" used by the client navigation columns (macOS sidebar look):
-// the window background shows through, blurred and saturated.
+// Navigation column (rooms list). It shares one card with the content (PageRoot below) and is
+// set apart from the chat by its tone alone, no line or gap in between.
 export const PageNavPanel = style({
-  margin: `${config.space.S200} ${config.space.S200} ${config.space.S200} 0`,
-  borderRadius: RADIUS_CARD,
   overflow: 'hidden',
-  backgroundColor: MATERIAL,
-  backdropFilter: BLUR,
-  WebkitBackdropFilter: BLUR,
+  backgroundColor: SIDE_TONE,
   color: color.Surface.OnContainer,
-  border: BORDER,
-  boxShadow: SHADOW_2,
 });
 
 export const PageNav = recipe({
@@ -47,16 +40,28 @@ export const PageNav = recipe({
 });
 export type PageNavVariants = RecipeVariants<typeof PageNav>;
 
-// Root of a client page: the window background/glow shows through the gaps around panels.
+// Root of a client page. Next to the space rail, nav + content form one card: the window
+// background shows only around it, and nav, chat and members drawer meet edge to edge, so their
+// tops, bottoms and header hairlines line up.
 export const PageRoot = style({
   selectors: {
     [`&:has(.${PageNavPanel})`]: {
-      backgroundColor: 'transparent',
+      margin: `${config.space.S200} ${config.space.S200} ${config.space.S200} 0`,
+      borderRadius: RADIUS_CARD,
+      overflow: 'hidden',
+      backgroundColor: color.Surface.Container,
+      border: BORDER,
+      boxShadow: SHADOW_2,
     },
   },
 });
 
-// Vertical line between nav and content is replaced by the panel gap.
+// Hairline on the left of a side column inside the content (call chat next to the call).
+export const PageColumnDivider = style({
+  borderLeft: BORDER,
+});
+
+// The vertical line between nav and content is not needed: the nav tone sets it apart.
 export const PageRootSeparator = style({
   selectors: {
     [`.${PageRoot}:has(.${PageNavPanel}) &`]: {

@@ -3,7 +3,6 @@ import { useAtomValue } from 'jotai';
 import {
   Avatar,
   Box,
-  config,
   Icon,
   IconButton,
   Icons,
@@ -12,7 +11,6 @@ import {
   PopOut,
   RectCords,
   Text,
-  toRem,
 } from 'folds';
 import * as css from './UserPanel.css';
 import { UserAvatar } from '../user-avatar';
@@ -30,6 +28,10 @@ import { DiddyStatus } from '../../plugins/diddy/types';
 import { getMxIdLocalPart, mxcUrlToHttp } from '../../utils/matrix';
 import { nameInitials } from '../../utils/common';
 import { useOwnAgentTalking } from '../../state/agentVoice';
+import { ConnectionsMenu } from '../connection-recovery/AccountSwitcher';
+import { ConnectionOverview } from '../connection-recovery/ConnectionRecovery';
+import { getConnectionProfile, visibleHomeserver } from '../../plugins/connections';
+import { openIntro } from '../../plugins/diddy/intro';
 
 type ActiveCallButtonsProps = {
   callEmbed: CallEmbed;
@@ -132,34 +134,30 @@ const STATUS_OPTIONS: { status: DiddyStatus; label: string; color: string }[] = 
 const statusInfo = (status: DiddyStatus) =>
   STATUS_OPTIONS.find((o) => o.status === status) ?? STATUS_OPTIONS[0];
 
-type StatusMenuProps = {
+type StatusOptionsProps = {
   status: DiddyStatus;
   onSelect: (status: DiddyStatus) => void;
 };
-function StatusMenu({ status, onSelect }: StatusMenuProps) {
+function StatusOptions({ status, onSelect }: StatusOptionsProps) {
   return (
-    <Menu style={{ minWidth: toRem(190) }}>
-      <Box direction="Column" gap="100" style={{ padding: config.space.S100 }}>
-        {STATUS_OPTIONS.map((option) => (
-          <MenuItem
-            key={option.status}
-            size="300"
-            variant="Surface"
-            radii="300"
-            aria-pressed={option.status === status}
-            before={
-              <span className={css.StatusMenuDot} style={{ backgroundColor: option.color }} />
-            }
-            after={option.status === status ? <Icon size="100" src={Icons.Check} /> : undefined}
-            onClick={() => onSelect(option.status)}
-          >
-            <Text size="B300" truncate style={{ flexGrow: 1 }}>
-              {option.label}
-            </Text>
-          </MenuItem>
-        ))}
-      </Box>
-    </Menu>
+    <Box direction="Column" gap="100">
+      {STATUS_OPTIONS.map((option) => (
+        <MenuItem
+          key={option.status}
+          size="300"
+          variant="Surface"
+          radii="300"
+          aria-pressed={option.status === status}
+          before={<span className={css.StatusMenuDot} style={{ backgroundColor: option.color }} />}
+          after={option.status === status ? <Icon size="100" src={Icons.Check} /> : undefined}
+          onClick={() => onSelect(option.status)}
+        >
+          <Text size="B300" truncate style={{ flexGrow: 1 }}>
+            {option.label}
+          </Text>
+        </MenuItem>
+      ))}
+    </Box>
   );
 }
 
@@ -170,6 +168,7 @@ export function UserPanel() {
   const profile = useUserProfile(userId);
   const callEmbed = useAtomValue(callEmbedAtom);
   const [settings, setSettings] = useState(false);
+  const [manage, setManage] = useState(false);
   const [statusCords, setStatusCords] = useState<RectCords>();
 
   const storedStatus = useMyStatus(mx);
@@ -221,6 +220,20 @@ export function UserPanel() {
   const avatarUrl = profile.avatarUrl
     ? mxcUrlToHttp(mx, profile.avatarUrl, useAuthentication, 96, 96, 'crop') ?? undefined
     : undefined;
+  const connection = getConnectionProfile();
+  const serverLabel = connection
+    ? visibleHomeserver(connection.server).replace(/^https?:\/\//, '')
+    : mx.getDomain() ?? '';
+
+  const closeMenu = () => setStatusCords(undefined);
+  const avatar = (size: 'H4' | 'H6') => (
+    <UserAvatar
+      surface="account"
+      userId={userId}
+      src={avatarUrl}
+      renderFallback={() => <Text size={size}>{nameInitials(displayName)}</Text>}
+    />
+  );
 
   return (
     <div className={css.UserPanel}>
@@ -229,8 +242,45 @@ export function UserPanel() {
         position="Top"
         align="Start"
         content={
+          // Account menu (formerly the avatar at the bottom of the space rail): who you are,
+          // your status, the other connections, settings.
           <div ref={statusMenuRef}>
-            <StatusMenu status={status} onSelect={handleSelectStatus} />
+            <Menu>
+              <ConnectionsMenu
+                account={
+                  <>
+                    <Box alignItems="Center" gap="300" style={{ padding: 4 }}>
+                      <Avatar size="400" radii="Pill" style={{ flexShrink: 0 }}>
+                        {avatar('H4')}
+                      </Avatar>
+                      <Box direction="Column" style={{ minWidth: 0 }}>
+                        <Text size="H6" truncate>
+                          {displayName}
+                        </Text>
+                        <Text size="T200" priority="300" truncate>
+                          {userId}
+                          {serverLabel ? ` · ${serverLabel}` : ''}
+                        </Text>
+                      </Box>
+                    </Box>
+                    <StatusOptions status={status} onSelect={handleSelectStatus} />
+                  </>
+                }
+                onSettings={() => {
+                  closeMenu();
+                  setSettings(true);
+                }}
+                onIntro={() => {
+                  closeMenu();
+                  openIntro();
+                }}
+                onManage={() => {
+                  closeMenu();
+                  setManage(true);
+                }}
+                onDone={closeMenu}
+              />
+            </Menu>
           </div>
         }
       >
@@ -240,16 +290,12 @@ export function UserPanel() {
           className={css.UserPanelProfileButton}
           onClick={handleOpenStatus}
           aria-pressed={statusCords !== undefined}
-          aria-label={`Status: ${statusLabel}. Change status`}
-          title="Change status"
+          aria-label={`Account and status (${statusLabel})`}
+          title="Account and status"
         >
           <span className={css.UserPanelAvatarWrap}>
             <Avatar size="300" radii="Pill">
-              <UserAvatar surface="account"
-                userId={userId}
-                src={avatarUrl}
-                renderFallback={() => <Text size="H6">{nameInitials(displayName)}</Text>}
-              />
+              {avatar('H6')}
             </Avatar>
             {agentTalking && <span className={css.UserPanelAgentRing} aria-hidden />}
             <span
@@ -288,6 +334,7 @@ export function UserPanel() {
           <Settings requestClose={() => setSettings(false)} />
         </SettingsSheet>
       )}
+      <ConnectionOverview open={manage} onClose={() => setManage(false)} />
     </div>
   );
 }

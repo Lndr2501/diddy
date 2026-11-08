@@ -82,7 +82,7 @@ function MemberDrawerHeader({ room }: MemberDrawerHeaderProps) {
   const setPeopleDrawer = useSetSetting(settingsAtom, 'isPeopleDrawer');
 
   return (
-    <Header className={css.MembersDrawerHeader} variant="Surface" size="500">
+    <Header className={css.MembersDrawerHeader} variant="Surface" size="600">
       <Box grow="Yes" alignItems="Center" gap="200">
         <Box grow="Yes" alignItems="Center" gap="200">
           <Icon size="200" src={Icons.User} />

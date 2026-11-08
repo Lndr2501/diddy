@@ -15,6 +15,13 @@ export const MATERIAL = `var(--diddy-material, color-mix(in srgb, ${color.Surfac
 export const MATERIAL_STRONG = `var(--diddy-material-strong, color-mix(in srgb, ${color.SurfaceVariant.Container} 88%, transparent))`;
 export const BLUR = 'var(--diddy-blur, saturate(180%) blur(24px))';
 
+/**
+ * Tone of the side columns (rooms list, members drawer) next to the chat in the main card. The
+ * content surface moved 5 % towards its text colour: a bit lighter in dark themes, a bit darker
+ * in light ones, so the columns separate by tone alone with the same contrast in every theme.
+ */
+export const SIDE_TONE = `color-mix(in srgb, ${color.Surface.OnContainer} 5%, ${color.Surface.Container})`;
+
 export const SHADOW_1 = 'var(--diddy-shadow-1, 0 1px 2px rgba(0, 0, 0, 0.12))';
 export const SHADOW_2 =
   'var(--diddy-shadow-2, 0 1px 2px rgba(0, 0, 0, 0.1), 0 6px 18px rgba(0, 0, 0, 0.14))';

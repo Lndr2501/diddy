@@ -1,5 +1,20 @@
-import { Box, Button, color, config, Icon, Icons, Spinner, Text, Input } from 'folds';
-import React, { useCallback, useRef } from 'react';
+import {
+  Box,
+  Button,
+  color,
+  config,
+  Dialog,
+  Input,
+  Overlay,
+  OverlayBackdrop,
+  OverlayCenter,
+  Spinner,
+  Text,
+} from 'folds';
+import React, { FormEventHandler, useCallback, useEffect, useRef } from 'react';
+import FocusTrap from 'focus-trap-react';
+import { stopPropagation } from '../../utils/keyboard';
+import * as sheetCss from '../sheet/Sheet.css';
 import { useRoom } from '../../hooks/useRoom';
 import { CutoutCard } from '../cutout-card';
 import { SettingTile } from '../setting-tile';
@@ -208,142 +223,123 @@ export function UserInviteAlert({ userId, reason, canKick, invitedBy, ts }: User
   );
 }
 
-type UserModerationProps = {
-  userId: string;
-  canKick: boolean;
-  canBan: boolean;
-  canInvite: boolean;
+export type ModerationAction = 'invite' | 'kick' | 'ban';
+
+const ACTION_TEXT: Record<ModerationAction, { title: string; text: string; button: string }> = {
+  invite: {
+    title: 'Invite',
+    text: 'will be invited back to this room.',
+    button: 'Invite',
+  },
+  kick: {
+    title: 'Kick',
+    text: 'will be removed from this room. They can rejoin if the room allows it.',
+    button: 'Kick',
+  },
+  ban: {
+    title: 'Ban',
+    text: 'will be removed from this room and cannot rejoin until unbanned.',
+    button: 'Ban',
+  },
 };
-export function UserModeration({ userId, canKick, canBan, canInvite }: UserModerationProps) {
+
+type ModerationPromptProps = {
+  userId: string;
+  displayName: string;
+  action: ModerationAction;
+  onClose: () => void;
+};
+/** Confirmation dialog with an optional reason, opened from the profile card's options menu. */
+export function ModerationPrompt({ userId, displayName, action, onClose }: ModerationPromptProps) {
   const mx = useMatrixClient();
   const room = useRoom();
   const reasonInputRef = useRef<HTMLInputElement>(null);
+  const text = ACTION_TEXT[action];
 
-  const getReason = useCallback((): string | undefined => {
-    const reason = reasonInputRef.current?.value.trim() || undefined;
-    if (reasonInputRef.current) {
-      reasonInputRef.current.value = '';
-    }
-    return reason;
-  }, []);
-
-  const [kickState, kick] = useAsyncCallback<undefined, Error, []>(
+  const [state, run] = useAsyncCallback<undefined, Error, []>(
     useCallback(async () => {
-      await mx.kick(room.roomId, userId, getReason());
-    }, [mx, room, userId, getReason])
+      const reason = reasonInputRef.current?.value.trim() || undefined;
+      if (action === 'kick') await mx.kick(room.roomId, userId, reason);
+      else if (action === 'ban') await mx.ban(room.roomId, userId, reason);
+      else await mx.invite(room.roomId, userId, reason);
+    }, [mx, room, userId, action])
   );
+  const busy = state.status === AsyncStatus.Loading;
 
-  const [banState, ban] = useAsyncCallback<undefined, Error, []>(
-    useCallback(async () => {
-      await mx.ban(room.roomId, userId, getReason());
-    }, [mx, room, userId, getReason])
-  );
+  useEffect(() => {
+    if (state.status === AsyncStatus.Success) onClose();
+  }, [state, onClose]);
 
-  const [inviteState, invite] = useAsyncCallback<undefined, Error, []>(
-    useCallback(async () => {
-      await mx.invite(room.roomId, userId, getReason());
-    }, [mx, room, userId, getReason])
-  );
-
-  const disabled =
-    kickState.status === AsyncStatus.Loading ||
-    banState.status === AsyncStatus.Loading ||
-    inviteState.status === AsyncStatus.Loading;
-
-  if (!canBan && !canKick && !canInvite) return null;
+  const handleSubmit: FormEventHandler<HTMLFormElement> = (evt) => {
+    evt.preventDefault();
+    if (!busy) run();
+  };
 
   return (
-    <Box direction="Column" gap="400">
-      <Box direction="Column" gap="200">
-        <Box grow="Yes" direction="Column" gap="100">
-          <Text size="L400">Moderation</Text>
-          <Input
-            ref={reasonInputRef}
-            placeholder="Reason"
-            size="300"
-            variant="Background"
-            radii="400"
-            disabled={disabled}
-          />
-          {kickState.status === AsyncStatus.Error && (
-            <Text style={{ color: color.Critical.Main }} className={BreakWord} size="T200">
-              <b>{kickState.error.message}</b>
-            </Text>
-          )}
-          {banState.status === AsyncStatus.Error && (
-            <Text style={{ color: color.Critical.Main }} className={BreakWord} size="T200">
-              <b>{banState.error.message}</b>
-            </Text>
-          )}
-          {inviteState.status === AsyncStatus.Error && (
-            <Text style={{ color: color.Critical.Main }} className={BreakWord} size="T200">
-              <b>{inviteState.error.message}</b>
-            </Text>
-          )}
-        </Box>
-        <Box shrink="No" gap="200">
-          {canInvite && (
-            <Button
-              style={{ flexGrow: 1 }}
-              size="300"
-              variant="Secondary"
-              fill="Soft"
-              radii="400"
-              before={
-                inviteState.status === AsyncStatus.Loading ? (
-                  <Spinner size="50" variant="Secondary" fill="Soft" />
-                ) : (
-                  <Icon size="50" src={Icons.ArrowRight} />
-                )
-              }
-              onClick={invite}
-              disabled={disabled}
-            >
-              <Text size="B300">Invite</Text>
-            </Button>
-          )}
-          {canKick && (
-            <Button
-              style={{ flexGrow: 1 }}
-              size="300"
-              variant="Critical"
-              fill="Soft"
-              radii="400"
-              before={
-                kickState.status === AsyncStatus.Loading ? (
-                  <Spinner size="50" variant="Critical" fill="Soft" />
-                ) : (
-                  <Icon size="50" src={Icons.ArrowLeft} />
-                )
-              }
-              onClick={kick}
-              disabled={disabled}
-            >
-              <Text size="B300">Kick</Text>
-            </Button>
-          )}
-          {canBan && (
-            <Button
-              style={{ flexGrow: 1 }}
-              size="300"
-              variant="Critical"
-              fill="Solid"
-              radii="400"
-              before={
-                banState.status === AsyncStatus.Loading ? (
-                  <Spinner size="50" variant="Critical" fill="Solid" />
-                ) : (
-                  <Icon size="50" src={Icons.Prohibited} />
-                )
-              }
-              onClick={ban}
-              disabled={disabled}
-            >
-              <Text size="B300">Ban</Text>
-            </Button>
-          )}
-        </Box>
-      </Box>
-    </Box>
+    <Overlay open backdrop={<OverlayBackdrop className={sheetCss.Backdrop} />}>
+      <OverlayCenter>
+        <FocusTrap
+          focusTrapOptions={{
+            initialFocus: () => reasonInputRef.current ?? false,
+            onDeactivate: onClose,
+            clickOutsideDeactivates: true,
+            escapeDeactivates: stopPropagation,
+          }}
+        >
+          <Dialog variant="Surface" className={sheetCss.Alert}>
+            <form className={sheetCss.AlertBody} onSubmit={handleSubmit}>
+              <Text as="h2" className={sheetCss.AlertTitle}>
+                {text.title} {displayName}?
+              </Text>
+              <Text as="p" className={sheetCss.AlertText}>
+                {displayName} {text.text}
+              </Text>
+              <Input
+                ref={reasonInputRef}
+                placeholder="Reason (optional)"
+                size="400"
+                variant="Background"
+                radii="400"
+                disabled={busy}
+                style={{ width: '100%' }}
+              />
+              {state.status === AsyncStatus.Error && (
+                <Text style={{ color: color.Critical.Main }} className={BreakWord} size="T200">
+                  <b>{state.error.message}</b>
+                </Text>
+              )}
+              <div className={sheetCss.AlertActions}>
+                <Button
+                  className={sheetCss.Pill}
+                  type="submit"
+                  variant={action === 'invite' ? 'Primary' : 'Critical'}
+                  before={
+                    busy ? (
+                      <Spinner
+                        fill="Solid"
+                        variant={action === 'invite' ? 'Primary' : 'Critical'}
+                        size="200"
+                      />
+                    ) : undefined
+                  }
+                  aria-disabled={busy}
+                >
+                  <Text size="B400">{text.button}</Text>
+                </Button>
+                <Button
+                  className={sheetCss.Pill}
+                  type="button"
+                  variant="Secondary"
+                  fill="Soft"
+                  onClick={onClose}
+                >
+                  <Text size="B400">Cancel</Text>
+                </Button>
+              </div>
+            </form>
+          </Dialog>
+        </FocusTrap>
+      </OverlayCenter>
+    </Overlay>
   );
 }

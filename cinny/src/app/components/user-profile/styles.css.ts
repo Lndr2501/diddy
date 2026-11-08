@@ -459,11 +459,3 @@ export const Divider = style({
   flexShrink: 0,
   backgroundColor: t.separator,
 });
-/** moderation and alerts; hidden while the moderation part renders nothing */
-export const ModerationBox = style({
-  paddingTop: config.space.S300,
-  borderTop: `1px solid ${t.separator}`,
-  selectors: {
-    '&:empty': { display: 'none' },
-  },
-});
