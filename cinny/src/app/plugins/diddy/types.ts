@@ -4,6 +4,7 @@ import type {
   ProfileActivity,
   ProfileLink,
 } from './profileExtras';
+import type { NameplateFit, NameplatePresetId } from './nameplate';
 
 /**
  * Diddy profile system: data model.
@@ -84,13 +85,22 @@ export type CardStyle = {
   bannerPos?: ImagePos;
 };
 
+/** Background of the user's row in member / DM lists (#78), see nameplate.ts. */
 export type NameplateStyle = {
   /** color wash behind the name in the member list / user panel */
   color?: string;
-  /** optional image (mxc://) shown behind the name, can be a GIF */
+  /** original gradient preset (wins over the color) */
+  preset?: NameplatePresetId;
+  /** the preset gradient slowly moves (only where the viewer allows animation) */
+  flow?: boolean;
+  /** optional image (mxc://) shown behind the name, can be a GIF; with a video it is its poster */
   imageMxc?: string;
-  /** visible part of the nameplate image */
+  /** optional short looping video (mxc://, WebM / MP4), muted */
+  videoMxc?: string;
+  /** visible part of the nameplate image / video */
   imagePos?: ImagePos;
+  /** fade in from the right (default) or cover the whole row */
+  fit?: NameplateFit;
 };
 
 export type DiddyStatus = 'online' | 'idle' | 'dnd' | 'invisible';
