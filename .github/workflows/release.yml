@@ -1,0 +1,180 @@
+name: Release
+# Pushing a version tag `vX.Y.Z` builds every package and publishes them as ONE GitHub release:
+#
+#   build.yml  (macOS, Tauri)     Diddy_X.Y.Z_aarch64.dmg
+#   linux.yml  (Electron)         Diddy_X.Y.Z_x86_64.AppImage, Diddy_X.Y.Z_amd64.deb, Diddy_X.Y.Z_x86_64.rpm
+#   ios.yml    (SwiftUI)          Diddy_X.Y.Z_iOS_unsigned.ipa (or Diddy_X.Y.Z_iOS.ipa when signed)
+#   + SHA256SUMS over all of them
+#
+# The build jobs only hold read access; the last job (publish) is the only one with write access
+# and creates the release, or updates it when the tag already has one. The release text is the
+# matching "## X.Y.Z" section of CHANGELOG.md (up to its first "### Stand" subsection).
+#
+# Release steps: bump the version (package.json, electron/package.json, src-tauri/tauri.conf.json,
+# src-tauri/Cargo.toml + Cargo.lock, ios/project.yml, cinny/src/app/appInfo.ts), add a CHANGELOG.md
+# section, push to main, then `git tag vX.Y.Z && git push origin vX.Y.Z`.
+#
+# Re-running: "Re-run failed jobs" on a run continues with the missing parts; "Run workflow" on a
+# tag ref repeats the whole release. An existing release gets its assets replaced.
+#
+# Signing is optional everywhere and degrades to unsigned builds without the secrets: macOS
+# (APPLE_CERTIFICATE, APPLE_CERTIFICATE_PASSWORD, APPLE_SIGNING_IDENTITY, notarization:
+# APPLE_ID, APPLE_PASSWORD, APPLE_TEAM_ID) and iOS (APPLE_TEAM_ID, ASC_KEY_ID, ASC_ISSUER_ID,
+# ASC_KEY_P8). Linux packages are not signed.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    # Fail early, before the long builds, when the tag and the versions in the repository disagree.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check that the tag matches the versions and the changelog
+        id: check
+        env:
+          REF: ${{ github.ref }}
+        run: |
+          case "$REF" in
+            refs/tags/v*) ;;
+            *) echo "::error::Run this workflow on a version tag vX.Y.Z (got $REF)"; exit 1 ;;
+          esac
+          version="${REF#refs/tags/v}"
+          bad=0
+          check() { # name found
+            if [ "$2" != "$version" ]; then echo "::error::$1 has version '$2', the tag is v$version"; bad=1; fi
+          }
+          check package.json "$(node -p "require('./package.json').version")"
+          check electron/package.json "$(node -p "require('./electron/package.json').version")"
+          check src-tauri/tauri.conf.json "$(node -p "require('./src-tauri/tauri.conf.json').version")"
+          check src-tauri/Cargo.toml "$(sed -n 's/^version = "\(.*\)"/\1/p' src-tauri/Cargo.toml | head -n 1)"
+          check ios/project.yml "$(sed -n 's/^ *MARKETING_VERSION: "\(.*\)"/\1/p' ios/project.yml | head -n 1)"
+          if ! grep -q "^## $version" CHANGELOG.md; then
+            echo "::error::No section '## $version' in CHANGELOG.md"; bad=1
+          fi
+          # Not fatal: the build jobs set it from the tag (.github/scripts/stamp-version.sh).
+          app=$(sed -n "s/^export const APP_VERSION = '\(.*\)';/\1/p" cinny/src/app/appInfo.ts)
+          if [ "$app" != "$version" ]; then
+            echo "::warning::cinny/src/app/appInfo.ts has APP_VERSION '$app'; the release is built with '$version'. Update the file."
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          exit $bad
+
+  macos:
+    needs: check
+    uses: ./.github/workflows/build.yml
+    secrets: inherit
+
+  linux:
+    needs: check
+    uses: ./.github/workflows/linux.yml
+
+  ios:
+    # The IPA is a bonus: a failing iOS build does not hold back the desktop packages (publish below
+    # does not need it to succeed). Re-run the failed jobs afterwards to add it to the release.
+    needs: check
+    uses: ./.github/workflows/ios.yml
+    secrets: inherit
+    permissions:
+      # ios.yml's own release job (only for ios-v* tags) asks for write access; the caller has to
+      # allow what the called workflow requests, even for jobs that are skipped here.
+      contents: write
+
+  publish:
+    needs: [check, macos, linux, ios]
+    if: ${{ !cancelled() && needs.macos.result == 'success' && needs.linux.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      HAVE_CERT: ${{ secrets.APPLE_CERTIFICATE != '' }}
+      HAVE_NOTARY: ${{ secrets.APPLE_ID != '' && secrets.APPLE_PASSWORD != '' && secrets.APPLE_TEAM_ID != '' }}
+    steps:
+      - name: Checkout repository (for CHANGELOG.md)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download packages
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: diddy-*
+          merge-multiple: true
+          path: dist
+
+      - name: Check the packages
+        env:
+          VERSION: ${{ needs.check.outputs.version }}
+        run: |
+          ls -l dist
+          missing=0
+          for f in "Diddy_${VERSION}_aarch64.dmg" "Diddy_${VERSION}_x86_64.AppImage" "Diddy_${VERSION}_amd64.deb" "Diddy_${VERSION}_x86_64.rpm"; do
+            if [ ! -s "dist/$f" ]; then echo "::error::dist/$f is missing"; missing=1; fi
+          done
+          if ! ls dist/*.ipa >/dev/null 2>&1; then
+            echo "::warning::No iOS IPA (the iOS build did not succeed): the release is published without it"
+          fi
+          exit $missing
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          version="${TAG#v}"
+          # the release text: the CHANGELOG section "## <version> ..." up to the next "## "
+          awk -v v="$version" '
+            /^## / { if (found) exit; if (index($0, "## " v) == 1) { found = 1; next } }
+            /^### Stand/ { if (found) exit }
+            found { print }
+          ' CHANGELOG.md > "$RUNNER_TEMP/changes.md"
+          if [ ! -s "$RUNNER_TEMP/changes.md" ]; then
+            echo "::error::No section '## $version' in CHANGELOG.md"; exit 1
+          fi
+          if [ "$HAVE_CERT" = "true" ] && [ "$HAVE_NOTARY" = "true" ]; then
+            mac="drag Diddy to Applications. The app is signed with a Developer ID and notarized."
+          elif [ "$HAVE_CERT" = "true" ]; then
+            mac="drag Diddy to Applications. Signed with a Developer ID, not notarized: if macOS blocks it, run \`xattr -cr /Applications/Diddy.app\` once."
+          else
+            mac="drag Diddy to Applications. Ad-hoc signed, not notarized: run \`xattr -cr /Applications/Diddy.app\` once before the first start."
+          fi
+          cat > "$RUNNER_TEMP/notes.md" <<NOTES
+          | Platform | Package | Install |
+          |---|---|---|
+          | macOS (Apple Silicon) | \`Diddy_${version}_aarch64.dmg\` | Open the DMG and $mac |
+          | Linux x86_64, any distribution | \`Diddy_${version}_x86_64.AppImage\` | \`chmod +x Diddy_*.AppImage && ./Diddy_*.AppImage\` |
+          | Debian / Ubuntu | \`Diddy_${version}_amd64.deb\` | \`sudo apt install ./Diddy_*.deb\` |
+          | Fedora / openSUSE | \`Diddy_${version}_x86_64.rpm\` | \`sudo dnf install ./Diddy_*.rpm\` |
+          | iPhone / iPad | \`Diddy_${version}_iOS_unsigned.ipa\` | Sideload with AltStore, SideStore or Sideloadly (see ios/README.md) |
+
+          The Linux packages are not signed. \`SHA256SUMS\` lists the checksums of all files.
+
+          NOTES
+          cat "$RUNNER_TEMP/changes.md" >> "$RUNNER_TEMP/notes.md"
+          (cd dist && shopt -s nullglob && sha256sum -- *.dmg *.AppImage *.deb *.rpm *.ipa > SHA256SUMS && cat SHA256SUMS)
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $TAG exists: replacing its assets and text"
+            gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --clobber
+            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --title "Diddy $version" --notes-file "$RUNNER_TEMP/notes.md"
+          else
+            gh release create "$TAG" dist/* --repo "$GITHUB_REPOSITORY" \
+              --verify-tag --title "Diddy $version" --notes-file "$RUNNER_TEMP/notes.md"
+          fi

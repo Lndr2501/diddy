@@ -1,15 +1,19 @@
 name: Linux
+# Builds and tests the Linux packages (AppImage, deb, rpm; Electron) and stores them as artifact
+# `diddy-linux`. A version tag is built and published by release.yml, which calls this workflow.
 on:
   workflow_dispatch:
+  workflow_call:
   pull_request:
     paths: ["electron/**", "cinny/**", "config.json", ".github/workflows/linux.yml"]
   push:
     branches: [main]
-    tags: ["v*"]
-    paths: ["electron/**", "cinny/**", "config.json", ".github/workflows/linux.yml"]
+    paths: ["electron/**", "cinny/**", "config.json", ".github/workflows/linux.yml", ".github/scripts/stamp-version.sh"]
+# Own group name: as a called workflow github.workflow is the caller's name, and the release
+# workflow's other jobs must not cancel this one. Tag runs are never cancelled.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: linux-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 permissions:
   contents: read
 jobs:
@@ -30,7 +34,7 @@ jobs:
       - name: Install native capture and sound-server test dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libpulse-dev pulseaudio pulseaudio-utils pipewire pipewire-pulse wireplumber dbus-x11 openbox xvfb xauth libgtk-3-0 libgbm1 libasound2 libasound2-plugins libnss3
+          sudo apt-get install -y rpm libpulse-dev pulseaudio pulseaudio-utils pipewire pipewire-pulse wireplumber dbus-x11 openbox xvfb xauth libgtk-3-0 libgbm1 libasound2 libasound2-plugins libnss3
       - name: Install frontend and packaging dependencies
         run: |
           (cd cinny && npm ci --no-audit --no-fund)
@@ -40,6 +44,8 @@ jobs:
           (cd electron && npm run build:audio && npm test)
           python3 electron/tests/native-audio.py pulse
           dbus-run-session -- python3 electron/tests/native-audio.py pipewire
+      - name: Show the tag version in the app
+        run: .github/scripts/stamp-version.sh
       - name: Build frontend and Linux packages
         env:
           NODE_OPTIONS: --max_old_space_size=4096
@@ -47,13 +53,17 @@ jobs:
           cp config.json cinny/config.json
           (cd cinny && npm run build)
           (cd electron && npm run dist:linux)
-          (cd electron/dist && sha256sum ./*.AppImage ./*.deb > SHA256SUMS)
+          ls -l electron/dist
       - name: Verify packaged capture helper and frontend
         run: |
           test -x electron/dist/linux-unpacked/resources/diddy-system-audio
           test -s electron/dist/linux-unpacked/resources/frontend/index.html
           test -s electron/dist/linux-unpacked/resources/app.asar
           dpkg-deb --info electron/dist/*.deb
+          rpm -qpi electron/dist/*.rpm
+          # AppImage: ELF runtime with an embedded squashfs, named with version and architecture
+          file electron/dist/*.AppImage | grep -q ELF
+          for f in electron/dist/Diddy_*_x86_64.AppImage electron/dist/Diddy_*_amd64.deb electron/dist/Diddy_*_x86_64.rpm; do test -s "$f"; done
       - name: Exercise packaged Electron screen capture and received WebRTC audio
         env:
           DIDDY_TEST_NO_SANDBOX: "1"
@@ -64,5 +74,5 @@ jobs:
           path: |
             electron/dist/*.AppImage
             electron/dist/*.deb
-            electron/dist/SHA256SUMS
+            electron/dist/*.rpm
           if-no-files-found: error

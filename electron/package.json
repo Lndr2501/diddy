@@ -2,7 +2,7 @@
   "name": "diddy",
   "productName": "Diddy",
   "desktopName": "Diddy.desktop",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Diddy - a Matrix chat client (Linux shell, Electron)",
   "private": true,
   "main": "main.cjs",
@@ -10,7 +10,7 @@
   "scripts": {
     "test": "node --test tests/*.test.cjs",
     "build:audio": "mkdir -p native/bin && cc -std=c11 -O2 -Wall -Wextra -Werror native/system-audio.c -o native/bin/diddy-system-audio $(pkg-config --cflags --libs libpulse) -lm",
-    "dist:linux": "npm run build:audio && electron-builder --linux AppImage deb --publish never"
+    "dist:linux": "npm run build:audio && electron-builder --linux AppImage deb rpm --publish never"
   },
   "devDependencies": {
     "electron": "45.2.3",
@@ -47,7 +47,8 @@
     "linux": {
       "target": [
         "AppImage",
-        "deb"
+        "deb",
+        "rpm"
       ],
       "category": "Network",
       "icon": "../src-tauri/icons/128x128.png",
@@ -73,6 +74,22 @@
         "libasound2",
         "libgbm1",
         "libpulse0"
+      ]
+    },
+    "rpm": {
+      "depends": [
+        "gtk3",
+        "libnotify",
+        "nss",
+        "libXScrnSaver",
+        "libXtst",
+        "xdg-utils",
+        "at-spi2-core",
+        "libuuid",
+        "libsecret",
+        "alsa-lib",
+        "mesa-libgbm",
+        "pulseaudio-libs"
       ]
     }
   },

@@ -11,7 +11,11 @@ name: Build iOS
 #   ASC_KEY_ID, ASC_ISSUER_ID   App Store Connect API key (Users and Access > Integrations)
 #   ASC_KEY_P8                  contents of the AuthKey_XXXX.p8 file
 # Xcode then signs automatically (app.diddy.ios).
+#
+# A desktop release tag (v*) calls this workflow from release.yml, which attaches the IPA to the
+# desktop release. The `release` job below only serves ios-v* tags and manual runs.
 on:
+  workflow_call:
   workflow_dispatch:
     inputs:
       export_method:
@@ -35,7 +39,7 @@ on:
       - ".github/workflows/ios.yml"
     tags:
       # iOS-only releases: builds the IPA and publishes it as a GitHub release (pre-release while
-      # the tag contains "beta"/"alpha"/"rc"). Desktop v* tags are left to build.yml, and an iOS
+      # the tag contains "beta"/"alpha"/"rc"). Desktop v* tags are left to release.yml, and an iOS
       # release is never marked "Latest", so releases/latest keeps pointing at the desktop builds.
       - "ios-v*"
   pull_request:

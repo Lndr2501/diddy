@@ -86,7 +86,7 @@ Kein Auto-Update: Diddy ändert sich nur, wenn du eine neue Version installierst
 
 ## Installation
 
-Alle Downloads liegen unter [Releases](../../releases/latest).
+Alle Downloads liegen unter [Releases](../../releases/latest). Ein Versions-Tag (`vX.Y.Z`) baut sie automatisch: macOS-DMG, Linux-AppImage, DEB und RPM sowie die iOS-IPA, dazu `SHA256SUMS` (Workflow *Release*).
 
 <details open>
 <summary><b>macOS (Apple Silicon)</b></summary>
@@ -107,6 +107,7 @@ Alle Downloads liegen unter [Releases](../../releases/latest).
 |---|---|
 | AppImage | `chmod +x Diddy_*.AppImage && ./Diddy_*.AppImage` |
 | Debian/Ubuntu | `sudo apt install ./Diddy_*.deb` |
+| Fedora/openSUSE | `sudo dnf install ./Diddy_*.rpm` |
 | NixOS | `nix run .#diddy` im Checkout, siehe [NixOS-Anleitung](docs/nixos.md) |
 
 > [!NOTE]
