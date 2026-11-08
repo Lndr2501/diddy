@@ -39,7 +39,7 @@ let
       && !(builtins.elem (baseNameOf path) [ "node_modules" "dist" "target" ".claude" ]);
   };
 
-  frontendSrc = sourceFor "diddy-frontend-source" [ "cinny" "config.json" ];
+  frontendSrc = sourceFor "diddy-frontend-source" [ "cinny" "config.json" "docs/plugins" ];
   shellSrc = sourceFor "diddy-shell-source" [
     "electron"
     "src-tauri/app-icons"
