@@ -162,14 +162,16 @@ test('toggle mode flips once per physical press', () => {
   assert.equal(gate.active, false);
 });
 
-function sessionSetup({ muteMic = true, live = true } = {}) {
+function sessionSetup({ muteMode = 'mute', live = true, deafened = false } = {}) {
   const timers = new Map();
   let now = 0;
   let nextId = 1;
   const changes = [];
   const mic = {
     live,
+    deafened,
     sets: [],
+    deafens: [],
     isLive() {
       return this.live;
     },
@@ -177,8 +179,15 @@ function sessionSetup({ muteMic = true, live = true } = {}) {
       this.sets.push(value);
       this.live = value;
     },
+    isDeafened() {
+      return this.deafened;
+    },
+    setDeafened(value) {
+      this.deafens.push(value);
+      this.deafened = value;
+    },
   };
-  const ctx = { mic, mute: muteMic };
+  const ctx = { mic, mode: muteMode };
   const s = new session.AgentVoiceSession({
     timers: {
       set: (run, ms) => {
@@ -189,7 +198,7 @@ function sessionSetup({ muteMic = true, live = true } = {}) {
       clear: (id) => timers.delete(id),
     },
     getMic: () => ctx.mic,
-    muteMic: () => ctx.mute,
+    muteMode: () => ctx.mode,
     onActiveChange: (active) => changes.push(active),
   });
   const advance = (ms) => {
@@ -233,10 +242,11 @@ test('never unmutes a microphone it did not mute, nor a different call', () => {
   assert.deepEqual(t.mic.sets, []);
 
   // the setting is off: the microphone is not touched, the status still changes
-  t = sessionSetup({ muteMic: false });
+  t = sessionSetup({ muteMode: 'off' });
   t.s.set('hotkey', true);
   t.s.reset();
   assert.deepEqual(t.mic.sets, []);
+  assert.deepEqual(t.mic.deafens, []);
   assert.deepEqual(t.changes, [true, false]);
 
   // unmuted by hand in the meantime: nothing to restore
@@ -249,7 +259,14 @@ test('never unmutes a microphone it did not mute, nor a different call', () => {
   // left the call and joined another one: the new call's microphone is not touched
   t = sessionSetup();
   t.s.set('trigger', true);
-  const other = { live: false, sets: [], isLive: () => false, setLive: (v) => other.sets.push(v) };
+  const other = {
+    live: false,
+    sets: [],
+    isLive: () => false,
+    setLive: (v) => other.sets.push(v),
+    isDeafened: () => false,
+    setDeafened: () => assert.fail('another call must not be deafened'),
+  };
   t.ctx.mic = other;
   t.s.set('trigger', false);
   t.advance(session.RELEASE_DELAY_MS);
@@ -261,6 +278,80 @@ test('never unmutes a microphone it did not mute, nor a different call', () => {
   t.s.set('hotkey', true);
   t.s.reset();
   assert.deepEqual(t.changes, [true, false]);
+});
+
+test('full mute deafens while talking to the agent and undeafens after the release delay', () => {
+  const { s, mic, changes, advance } = sessionSetup({ muteMode: 'full' });
+  s.set('hotkey', true);
+  assert.deepEqual(mic.deafens, [true]);
+  assert.deepEqual(mic.sets, []); // the call control mutes and restores the microphone itself
+  s.set('hotkey', false);
+  advance(session.RELEASE_DELAY_MS - 1);
+  assert.deepEqual(mic.deafens, [true]);
+  advance(1);
+  assert.deepEqual(mic.deafens, [true, false]);
+  assert.deepEqual(changes, [true, false]);
+});
+
+test('full mute never undeafens what it did not deafen, nor a different call', () => {
+  // already deafened by the user: stays deafened afterwards
+  let t = sessionSetup({ muteMode: 'full', deafened: true, live: false });
+  t.s.set('hotkey', true);
+  t.s.reset();
+  assert.deepEqual(t.mic.deafens, []);
+
+  // already muted by the user: still deafens, and the microphone is left to the call control
+  t = sessionSetup({ muteMode: 'full', live: false });
+  t.s.set('hotkey', true);
+  t.s.reset();
+  assert.deepEqual(t.mic.deafens, [true, false]);
+  assert.deepEqual(t.mic.sets, []);
+
+  // undeafened by hand in the meantime: nothing to restore
+  t = sessionSetup({ muteMode: 'full' });
+  t.s.set('hotkey', true);
+  t.mic.deafened = false;
+  t.s.reset();
+  assert.deepEqual(t.mic.deafens, [true]);
+
+  // left the call and joined another one: the new call stays as it is
+  t = sessionSetup({ muteMode: 'full' });
+  t.s.set('trigger', true);
+  const other = {
+    deafens: [],
+    isLive: () => true,
+    setLive: () => assert.fail('another call must not be touched'),
+    isDeafened: () => true,
+    setDeafened: (v) => other.deafens.push(v),
+  };
+  t.ctx.mic = other;
+  t.s.reset();
+  assert.deepEqual(other.deafens, []);
+
+  // no call at all
+  t = sessionSetup({ muteMode: 'full' });
+  t.ctx.mic = undefined;
+  t.s.set('hotkey', true);
+  t.s.reset();
+  assert.deepEqual(t.changes, [true, false]);
+});
+
+test('the mode is taken when the session starts; a change only counts for the next one', () => {
+  const t = sessionSetup({ muteMode: 'mute' });
+  t.s.set('hotkey', true);
+  t.ctx.mode = 'full';
+  t.s.reset();
+  assert.deepEqual(t.mic.sets, [false, true]);
+  assert.deepEqual(t.mic.deafens, []);
+});
+
+test('stored mute choice: valid values, and the older on/off setting carries over', () => {
+  assert.equal(session.parseMuteMode('full', undefined), 'full');
+  assert.equal(session.parseMuteMode('off', true), 'off');
+  assert.equal(session.parseMuteMode(undefined, false), 'off');
+  assert.equal(session.parseMuteMode(undefined, true), 'mute');
+  assert.equal(session.parseMuteMode(undefined, undefined), 'mute');
+  assert.equal(session.parseMuteMode('nonsense', false), 'off');
 });
 
 test('hotkey and trigger combine; a forgotten start ends after the safety timeout', () => {

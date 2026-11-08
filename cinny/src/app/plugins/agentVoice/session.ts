@@ -1,9 +1,21 @@
 // Talking-to-agent session (#57): sources, release delay, safety timeout, microphone.
 
-/** The microphone of the call the user is in. */
+/** The microphone and the sound of the call the user is in. */
 export type AgentMic = {
   isLive(): boolean;
   setLive(live: boolean): void;
+  isDeafened(): boolean;
+  /** Deafening also mutes the microphone; undeafening restores it (see CallControl.toggleSound). */
+  setDeafened(deafened: boolean): void;
+};
+
+/** What happens to the call while talking to the agent: nothing, mic off, or mic and sound off. */
+export type AgentMuteMode = 'off' | 'mute' | 'full';
+
+/** Reads the stored choice. `muteMic` is the older on/off setting it replaces. */
+export const parseMuteMode = (muteMode: unknown, muteMic: unknown): AgentMuteMode => {
+  if (muteMode === 'off' || muteMode === 'mute' || muteMode === 'full') return muteMode;
+  return muteMic === false ? 'off' : 'mute';
 };
 
 export type AgentSource = 'hotkey' | 'trigger';
@@ -17,7 +29,7 @@ export type AgentSessionDeps = {
   timers: Timers;
   /** current call microphone, undefined outside a (joined) call */
   getMic: () => AgentMic | undefined;
-  muteMic: () => boolean;
+  muteMode: () => AgentMuteMode;
   onActiveChange: (active: boolean) => void;
 };
 
@@ -27,9 +39,9 @@ export const RELEASE_DELAY_MS = 350;
 export const MAX_ACTIVE_MS = 5 * 60 * 1000;
 
 /**
- * Talking-to-agent session: combines the sources, mutes the microphone when it starts (if wanted)
- * and turns it back on afterwards, but only when Diddy muted it, it is still muted and it is still
- * the same call. Unmuting by hand in between is respected.
+ * Talking-to-agent session: combines the sources, mutes the microphone or deafens when it starts
+ * (if wanted) and undoes that afterwards, but only when Diddy did it, it is still in place and it
+ * is still the same call. Unmuting or undeafening by hand in between is respected.
  */
 export class AgentVoiceSession {
   private sources = new Set<AgentSource>();
@@ -41,6 +53,8 @@ export class AgentVoiceSession {
   private maxTimer?: number;
 
   private mutedMic?: AgentMic;
+
+  private deafenedCall?: AgentMic;
 
   private readonly deps: AgentSessionDeps;
 
@@ -82,12 +96,14 @@ export class AgentVoiceSession {
       this.maxTimer = undefined;
       this.reset();
     }, MAX_ACTIVE_MS);
-    if (this.deps.muteMic()) {
-      const mic = this.deps.getMic();
-      if (mic?.isLive()) {
-        mic.setLive(false);
-        this.mutedMic = mic;
-      }
+    const mode = this.deps.muteMode();
+    const mic = this.deps.getMic();
+    if (mode === 'full' && mic && !mic.isDeafened()) {
+      mic.setDeafened(true);
+      this.deafenedCall = mic;
+    } else if (mode === 'mute' && mic?.isLive()) {
+      mic.setLive(false);
+      this.mutedMic = mic;
     }
     this.deps.onActiveChange(true);
   }
@@ -97,9 +113,12 @@ export class AgentVoiceSession {
     if (this.maxTimer !== undefined) this.deps.timers.clear(this.maxTimer);
     this.maxTimer = undefined;
     const muted = this.mutedMic;
+    const deafened = this.deafenedCall;
     this.mutedMic = undefined;
+    this.deafenedCall = undefined;
     const mic = this.deps.getMic();
     if (muted && mic === muted && !mic.isLive()) mic.setLive(true);
+    if (deafened && mic === deafened && mic.isDeafened()) mic.setDeafened(false);
     this.deps.onActiveChange(false);
   }
 
