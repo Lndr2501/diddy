@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-myinstants-fetch-audio"
+description = "Enables the myinstants_fetch_audio command without any pre-configured scope."
+commands.allow = ["myinstants_fetch_audio"]
+
+[[permission]]
+identifier = "deny-myinstants-fetch-audio"
+description = "Denies the myinstants_fetch_audio command without any pre-configured scope."
+commands.deny = ["myinstants_fetch_audio"]

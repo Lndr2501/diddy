@@ -23,7 +23,24 @@ mod system_audio;
 use tauri::utils::config::BackgroundThrottlingPolicy;
 use tauri_plugin_opener::OpenerExt;
 
+/// The local port the page is served on. A dev build (identifier ending in `.dev`) uses its own
+/// port: both apps listen on `localhost`, and with a shared port `localhost` resolved to the
+/// stable app (IPv6), so "Diddy Dev" silently showed the stable app's page.
 const APP_PORT: u16 = 44548;
+const DEV_APP_PORT: u16 = 44549;
+static ACTIVE_PORT: std::sync::OnceLock<u16> = std::sync::OnceLock::new();
+
+pub(crate) fn port_for_identifier(identifier: &str) -> u16 {
+    if identifier.ends_with(".dev") {
+        DEV_APP_PORT
+    } else {
+        APP_PORT
+    }
+}
+
+fn app_port() -> u16 {
+    *ACTIVE_PORT.get().unwrap_or(&APP_PORT)
+}
 
 #[cfg(feature = "updater")]
 use tauri_plugin_updater::UpdaterExt;
@@ -77,7 +94,7 @@ pub(crate) fn build_client_window(
     label: &str,
     profile: Option<&connections::ConnectionProfile>,
 ) -> Result<(), String> {
-    let port = APP_PORT;
+    let port = app_port();
     #[cfg(debug_assertions)]
     let window_url = WebviewUrl::App(Default::default());
     #[cfg(not(debug_assertions))]
@@ -343,6 +360,7 @@ pub fn run() {
 
     diag::init(env!("CARGO_PKG_VERSION"));
     let context = tauri::generate_context!();
+    let _ = ACTIVE_PORT.set(port_for_identifier(&context.config().identifier));
     let builder = tauri::Builder::default();
     // Forward additional launches into the existing process instead of opening the same account
     // store in multiple app processes. The first plugin must handle this before localhost setup.
@@ -376,7 +394,7 @@ pub fn run() {
         ])
         .manage(connections::ConnectionState::default())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_localhost::Builder::new(APP_PORT).build())
+        .plugin(tauri_plugin_localhost::Builder::new(app_port()).build())
         // Without VISIBLE: the plugin would show every restored window right away (on window ready),
         // which defeats the hidden-until-loaded start (#25); reveal_window shows it instead.
         // The startup window is temporary and has no state worth keeping.
@@ -456,5 +474,17 @@ mod window_fit_tests {
     fn pulls_an_offscreen_window_back() {
         assert_eq!(fit_into_area((-500, -200), (800, 600), SCREEN), ((0, 30), (800, 600)));
         assert_eq!(fit_into_area((5000, 4000), (800, 600), SCREEN), ((1120, 480), (800, 600)));
+    }
+}
+
+#[cfg(test)]
+mod port_tests {
+    use super::*;
+
+    #[test]
+    fn dev_build_has_its_own_port() {
+        assert_eq!(port_for_identifier("app.diddy.desktop"), 44548);
+        assert_eq!(port_for_identifier("app.diddy.desktop.dev"), 44549);
+        assert_ne!(port_for_identifier("app.diddy.desktop"), port_for_identifier("app.diddy.desktop.dev"));
     }
 }
