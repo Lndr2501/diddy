@@ -512,18 +512,20 @@ export const StageTileHit = style({
   },
 });
 
+// holds the pooled <video> element of a stream (CallStage.tsx)
 export const StageVideo = style({
   position: 'absolute',
   inset: 0,
+  pointerEvents: 'none',
+});
+globalStyle(`${StageVideo} > video`, {
+  display: 'block',
   width: '100%',
   height: '100%',
   objectFit: 'cover',
-  pointerEvents: 'none',
-  selectors: {
-    '&[data-fit=contain]': {
-      objectFit: 'contain',
-    },
-  },
+});
+globalStyle(`${StageVideo}[data-fit=contain] > video`, {
+  objectFit: 'contain',
 });
 
 export const StageAvatar = style({

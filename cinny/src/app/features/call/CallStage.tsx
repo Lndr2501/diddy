@@ -62,16 +62,55 @@ function useCallStage(callEmbed: CallEmbed): StageModel {
   return model;
 }
 
+/**
+ * One <video> element per stream for the whole call. Switching between the grid and the large
+ * view moves that element into the new tile instead of destroying it and creating another one:
+ * tearing down and rebuilding Chromium's media player for the call's streams on every click
+ * crashed the renderer when someone switched quickly between streams.
+ */
+const videoPool = new Map<string, HTMLVideoElement>();
+
+const pooledVideo = (stream: MediaStream): HTMLVideoElement => {
+  let video = videoPool.get(stream.id);
+  if (video && video.srcObject !== stream) {
+    video.srcObject = stream;
+  }
+  if (!video) {
+    video = document.createElement('video');
+    video.autoplay = true;
+    video.playsInline = true;
+    // the sound plays in the call itself: this element only shows the picture
+    video.muted = true;
+    video.srcObject = stream;
+    videoPool.set(stream.id, video);
+  }
+  return video;
+};
+
+/** Let go of the elements of streams that ended (all of them when the stage closes). */
+const releaseVideos = (keep: Set<string>) => {
+  videoPool.forEach((element, id) => {
+    if (keep.has(id)) return;
+    const video = element;
+    video.pause();
+    video.srcObject = null;
+    video.remove();
+    videoPool.delete(id);
+  });
+};
+
 function StageVideo({ stream, fit }: { stream: MediaStream; fit: 'cover' | 'contain' }) {
-  const ref = useRef<HTMLVideoElement>(null);
+  const hostRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const video = ref.current;
-    if (!video) return;
-    if (video.srcObject !== stream) video.srcObject = stream;
+    const host = hostRef.current;
+    if (!host) return;
+    const video = pooledVideo(stream);
+    // appendChild moves the element if another tile showed it until now
+    if (video.parentElement !== host) host.appendChild(video);
+    // a media element is paused while it is out of the document
     video.play().catch(() => undefined);
   }, [stream]);
-  // the sound plays in the call itself: this element only shows the picture
-  return <video ref={ref} className={css.StageVideo} data-fit={fit} autoPlay playsInline muted />;
+  return <div ref={hostRef} className={css.StageVideo} data-fit={fit} />;
 }
 
 const ICON_MIC = 'M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z M5 11a7 7 0 0 0 14 0 M12 18v3';
@@ -226,6 +265,15 @@ export function CallStage({ callEmbed }: { callEmbed: CallEmbed }) {
   const [focusKey, setFocusKey] = useState<string>();
 
   useEffect(() => enableCallStage(callEmbed.iframe), [callEmbed]);
+
+  // free the video elements of streams that ended, and all of them when the stage goes away
+  useEffect(() => {
+    const live = new Set<string>();
+    model.people.forEach((p) => p.video && live.add(p.video.id));
+    model.shares.forEach((s) => s.video && live.add(s.video.id));
+    releaseVideos(live);
+  }, [model]);
+  useEffect(() => () => releaseVideos(new Set()), []);
 
   const items: StageItem[] = [
     ...model.people.map((person) => ({ key: `p:${person.userId}`, kind: 'person' as const, person })),
