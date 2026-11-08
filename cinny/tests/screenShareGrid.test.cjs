@@ -16,22 +16,26 @@ const css = exported.SCREEN_SHARE_GRID_CSS;
 
 const fakeWindow = () => {
   const appended = [];
+  const listeners = [];
   const doc = {
     head: { appendChild: (el) => appended.push(el) },
+    addEventListener: (type) => listeners.push(type),
     createElement: () => {
       const attrs = {};
       return { attrs, setAttribute: (k, v) => (attrs[k] = v), textContent: '' };
     },
     querySelector: (sel) => appended.find((el) => sel.includes(Object.keys(el.attrs)[0])) ?? null,
   };
-  return { win: { document: doc }, appended };
+  return { win: { document: doc }, appended, listeners };
 };
 
 test('the stylesheet is injected once, and a missing window is ignored', () => {
-  const { win, appended } = fakeWindow();
+  const { win, appended, listeners } = fakeWindow();
   exported.installScreenShareGrid(win);
   exported.installScreenShareGrid(win);
   assert.equal(appended.length, 1);
+  // the focus switching listeners are installed once too
+  assert.deepEqual(listeners.sort(), ['click', 'keydown', 'pointerdown']);
   assert.equal(appended[0].textContent, css);
   assert.doesNotThrow(() => exported.installScreenShareGrid(null));
   assert.doesNotThrow(() => exported.installScreenShareGrid(undefined));
@@ -63,6 +67,86 @@ test('no :has() is nested in another :has() (browsers drop the whole rule)', () 
       }
     }
   }
+});
+
+// Issue #2, viewer side: click a share to focus it, click again (or Escape) for the grid.
+const fakeEl = (kind, parent) => {
+  const attrs = new Map();
+  const el = {
+    kind,
+    parentElement: parent ?? null,
+    children: [],
+    matches: (sel) =>
+      (kind === 'item' && sel.includes('_item_') && sel.includes('videoTile')) ||
+      (kind === 'contents' && sel === '[class*="_contents_"]') ||
+      (kind === 'control' && sel.includes('button')),
+    closest: (sel) => {
+      for (let cur = el; cur; cur = cur.parentElement) if (cur.matches(sel)) return cur;
+      return null;
+    },
+    hasAttribute: (k) => attrs.has(k),
+    setAttribute: (k, v) => attrs.set(k, v),
+    removeAttribute: (k) => attrs.delete(k),
+  };
+  if (parent) parent.children.push(el);
+  return el;
+};
+
+const carouselWith = (n) => {
+  const contents = fakeEl('contents');
+  const items = Array.from({ length: n }, () => fakeEl('item', contents));
+  // a share's video inside its tile, and Element Call's volume button inside the first one
+  const videos = items.map((item) => fakeEl('video', item));
+  const control = fakeEl('control', items[0]);
+  return { contents, items, videos, control };
+};
+
+const focusOf = (items) => items.map((i) => i.hasAttribute(exported.FOCUS_ATTR));
+
+test('a click on a share focuses it, a second click returns to the grid', () => {
+  const { toggleShareFocus } = exported;
+  const { items, videos } = carouselWith(3);
+  assert.equal(toggleShareFocus(videos[1]), true);
+  assert.deepEqual(focusOf(items), [false, true, false]);
+  // a thumbnail click switches to that share
+  assert.equal(toggleShareFocus(videos[2]), true);
+  assert.deepEqual(focusOf(items), [false, false, true]);
+  assert.equal(toggleShareFocus(videos[2]), true);
+  assert.deepEqual(focusOf(items), [false, false, false]);
+});
+
+test('clicks on controls, single shares and outside tiles are left to Element Call', () => {
+  const { toggleShareFocus } = exported;
+  const { items, control } = carouselWith(2);
+  assert.equal(toggleShareFocus(control), false);
+  assert.deepEqual(focusOf(items), [false, false]);
+  assert.equal(toggleShareFocus(carouselWith(1).videos[0]), false);
+  assert.equal(toggleShareFocus(fakeEl('video')), false);
+  assert.equal(toggleShareFocus(null), false);
+  // tiles outside the spotlight carousel (no _contents_ parent)
+  const grid = fakeEl('grid');
+  const stray = fakeEl('item', grid);
+  fakeEl('item', grid);
+  assert.equal(toggleShareFocus(stray), false);
+});
+
+test('Escape clears the focus', () => {
+  const { FOCUS_ATTR, clearShareFocus } = exported;
+  const focused = { removed: false };
+  focused.removeAttribute = () => {
+    focused.removed = true;
+  };
+  const doc = { querySelectorAll: (sel) => (sel === `[${FOCUS_ATTR}]` ? [focused] : []) };
+  assert.equal(clearShareFocus(doc), true);
+  assert.equal(focused.removed, true);
+  assert.equal(clearShareFocus({ querySelectorAll: () => [] }), false);
+});
+
+test('the focused layout only applies while a share carries the focus attribute', () => {
+  const { FOCUS_ATTR } = exported;
+  assert.ok(css.includes(`:has(> [data-testid="videoTile"][class*="_item_"][${FOCUS_ATTR}])`));
+  assert.match(css, /display: flex !important/);
+  assert.match(css, /order: -1/);
 });
 
 // Guards the selectors against an Element Call update: the bundled spotlight carousel must still

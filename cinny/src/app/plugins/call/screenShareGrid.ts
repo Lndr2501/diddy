@@ -18,12 +18,21 @@
  * or more media tiles that are carousel items. If a selector stops matching after an Element Call
  * update, the call simply falls back to the stock carousel.
  *
+ * Switching (issue #2, viewer side): a click on one of the shares focuses it - it takes the large
+ * area, the other shares shrink to a row of thumbnails below it. A click on the focused share,
+ * or Escape, goes back to the side-by-side grid; a click on a thumbnail switches to that share.
+ * Each viewer chooses on their own (it is local DOM state), and adaptive stream fetches the large
+ * layer only for the focused share. The focus lives as an attribute on Element Call's tile: if
+ * Element Call re-creates the tile, or that share ends, the view falls back to the grid.
+ *
  * Limits (Element Call keeps control of the layout): the shares stay inside the spotlight area,
  * they are not mixed into the camera grid; Element Call's volume button for screen-share audio
  * still acts on the share it thinks is "visible" (the first one).
  */
 
 const STYLE_ATTR = 'data-diddy-screen-share-grid';
+/** Set on the share a viewer focused (issue #2). */
+export const FOCUS_ATTR = 'data-diddy-share-focus';
 
 const TILE = '[data-testid="videoTile"]';
 /** A media tile that is an item of the spotlight carousel (grid tiles have no `_item_` class). */
@@ -31,6 +40,8 @@ const ITEM = `${TILE}[class*="_item_"]`;
 const CONTENTS = '[class*="_contents_"]';
 /** The spotlight carousel, only while it holds two or more media tiles. */
 const CAROUSEL = `${CONTENTS}:has(> ${ITEM} ~ ${ITEM})`;
+/** Such a carousel while one of its shares is focused. */
+const FOCUSED = `${CAROUSEL}:has(> ${ITEM}[${FOCUS_ATTR}])`;
 /** The spotlight tile around such a carousel (spelled out: `:has()` must not be nested). */
 const SPOTLIGHT = `[class*="_tile_"]:has(> ${CONTENTS} > ${ITEM} ~ ${ITEM})`;
 
@@ -65,12 +76,90 @@ html body ${CAROUSEL} > ${ITEM} {
   scroll-snap-align: none;
 }
 
+/* --- one share focused: it takes the large area, the others become thumbnails below --- */
+html body ${CAROUSEL} > ${ITEM} {
+  cursor: zoom-in;
+}
+html body ${FOCUSED} {
+  display: flex !important;
+  flex-wrap: wrap;
+  align-content: stretch;
+  justify-content: center;
+}
+html body ${FOCUSED} > ${ITEM} {
+  flex: 1 1 0;
+  max-inline-size: 25%;
+  block-size: calc(22% - 8px);
+  cursor: pointer;
+}
+html body ${FOCUSED} > ${ITEM}[${FOCUS_ATTR}] {
+  order: -1;
+  flex: 0 0 100%;
+  max-inline-size: none;
+  block-size: 78%;
+  cursor: zoom-out;
+}
+
 /* --- nothing to page through any more: no arrows, no indicator dashes --- */
 html body ${SPOTLIGHT} > [class*="_advance_"],
 html body ${SPOTLIGHT} > [class*="_indicators_"] {
   display: none !important;
 }
 `;
+
+/** Clicks on these stay Element Call's (volume, menus, buttons inside a tile). */
+const CONTROLS =
+  'button, a, input, select, textarea, [role="button"], [role="menu"], [role="slider"]';
+
+/**
+ * Handles a click inside the call (issue #2): on a share of a carousel that holds two or more
+ * shares it focuses that share, or unfocuses it when it already is. Returns true when it did.
+ */
+export function toggleShareFocus(target: EventTarget | null): boolean {
+  const el = target as Element | null;
+  if (!el || typeof el.closest !== 'function') return false;
+  if (el.closest(CONTROLS)) return false;
+  const tile = el.closest(ITEM);
+  const carousel = tile?.parentElement;
+  if (!tile || !carousel || !carousel.matches(CONTENTS)) return false;
+  const items = Array.from(carousel.children).filter((child) => child.matches(ITEM));
+  if (items.length < 2) return false;
+  const wasFocused = tile.hasAttribute(FOCUS_ATTR);
+  items.forEach((item) => item.removeAttribute(FOCUS_ATTR));
+  if (!wasFocused) tile.setAttribute(FOCUS_ATTR, 'true');
+  return true;
+}
+
+/** Back to the side-by-side grid. Returns true when a share was focused. */
+export function clearShareFocus(doc: Document): boolean {
+  const focused = Array.from(doc.querySelectorAll(`[${FOCUS_ATTR}]`));
+  focused.forEach((item) => item.removeAttribute(FOCUS_ATTR));
+  return focused.length > 0;
+}
+
+/** A press that moved this far is a drag (the floating spotlight can be dragged), not a click. */
+const DRAG_PX = 6;
+
+const installFocusSwitching = (doc: Document) => {
+  let down: { x: number; y: number } | undefined;
+  doc.addEventListener(
+    'pointerdown',
+    (evt) => {
+      down = { x: evt.clientX, y: evt.clientY };
+    },
+    true
+  );
+  doc.addEventListener('click', (evt) => {
+    const start = down;
+    down = undefined;
+    if (evt.button !== 0) return;
+    if (start && Math.hypot(evt.clientX - start.x, evt.clientY - start.y) > DRAG_PX) return;
+    toggleShareFocus(evt.target);
+  });
+  doc.addEventListener('keydown', (evt) => {
+    if (evt.key === 'Escape' && clearShareFocus(doc)) evt.stopPropagation();
+  });
+};
 
 /**
  * Inject the screen-share grid into an Element Call iframe window. Idempotent; does nothing for a
@@ -86,6 +175,7 @@ export function installScreenShareGrid(win: Window | null | undefined): void {
     style.setAttribute(STYLE_ATTR, 'true');
     style.textContent = SCREEN_SHARE_GRID_CSS;
     parent.appendChild(style);
+    installFocusSwitching(doc);
   } catch {
     // cross-origin or torn-down iframe: Element Call keeps its carousel
   }

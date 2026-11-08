@@ -2,6 +2,16 @@
 
 ## Unveröffentlicht
 
+### Call: zwischen Bildschirmübertragungen umschalten (#2, #66)
+
+- Ein Klick auf eine Übertragung im Raster holt sie groß nach vorn; die anderen Übertragungen stehen als kleine Vorschauen darunter, ein Klick darauf wechselt. Nochmal auf die große klicken oder Escape: zurück zum Raster. Jeder Zuschauer wählt für sich. Weil die Vorschauen klein sind, holt LiveKit nur für die große Übertragung die volle Auflösung.
+- Knöpfe in den Kacheln (Lautstärke, Menüs) und das Ziehen des schwebenden Spotlights lösen nichts aus. In `plugins/call/screenShareGrid.ts`.
+- Mehrere Bildschirme **einer** Person (#2) gehen weiterhin nicht: Element Call sendet einen Screen-Track pro Teilnehmer.
+
+### Call: Diagnose der empfangenen Auflösung (#11)
+
+- Auch wer nur zuschaut, schreibt jetzt ins Log, in welcher Größe jedes empfangene Video ankommt und in welcher Kachel es gezeigt wird (`receive watch`), mit dem Urteil „fits its tile“ oder „is upscaled“. Element Call sendet Übertragungen in zwei Stufen (volle Größe und halbe); in einer kleinen Kachel kommt mit Absicht die halbe an (1080p → 960×540, ein 720p-Fenster → 640×360). Erst „is upscaled“ ist ein echter Qualitätsverlust. In `plugins/call/streamStats.ts`.
+
 ### Call: alle Bildschirmübertragungen gleichzeitig (#66)
 
 - Teilen mehrere Leute ihren Bildschirm, zeigt der Call alle Übertragungen nebeneinander als eigene Kacheln mit dem Namen unten, statt sie einzeln durchzublättern (keine Pfeile und Striche mehr). Die Kamera-Kacheln bzw. Profilbilder bleiben unverändert daneben.
