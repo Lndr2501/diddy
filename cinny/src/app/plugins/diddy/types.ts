@@ -110,10 +110,12 @@ export type DiddyProfile = {
   nameStyle?: NameStyle;
   card?: CardStyle;
   nameplate?: NameplateStyle;
-  /** animated avatar (mxc://, GIF/WebP) shown by other Diddy clients instead of the normal avatar */
+  /**
+   * @deprecated (#93) the old Diddy-only avatar. Never shown any more: the profile picture is the
+   * Matrix avatar (which can be a GIF). Still read and kept so Settings > Profile can offer once
+   * to make it the Matrix picture.
+   */
   animatedAvatarMxc?: string;
-  /** visible part of the animated avatar */
-  avatarPos?: ImagePos;
   status?: DiddyStatus;
   /** badge ids shown next to the name, in order (max MAX_SHOWN_BADGES) */
   shownBadges?: string[];
