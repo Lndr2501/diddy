@@ -187,7 +187,7 @@ const SPEED: Record<ProfileEffectPresetId, [number, number]> = {
 };
 
 const SIZE: Record<ProfileEffectPresetId, [number, number]> = {
-  sparkles: [6, 14],
+  sparkles: [9, 18],
   petals: [9, 15],
   embers: [2, 5],
   snow: [2, 6],
