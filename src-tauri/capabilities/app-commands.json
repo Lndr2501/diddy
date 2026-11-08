@@ -4,7 +4,8 @@
   "local": true,
   "remote": {
     "urls": [
-      "http://localhost:44548"
+      "http://localhost:44548",
+      "http://localhost:44549"
     ]
   },
   "windows": [
