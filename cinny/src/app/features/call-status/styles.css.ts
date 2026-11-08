@@ -40,8 +40,8 @@ export const SpeakerAvatarOutline = style({
 
 // Somebody talks to an agent (dictation) instead of to the call (#57)
 export const AgentAvatarOutline = style({
-  boxShadow: `0 0 0 ${config.borderWidth.B600} ${color.Secondary.Main}`,
-  opacity: 0.75,
+  // full opacity: the old 0.75 made the person look dimmed instead of marked
+  boxShadow: `0 0 0 ${config.borderWidth.B600} ${color.Secondary.Main}, 0 0 ${config.borderWidth.B600} ${config.borderWidth.B600} ${color.Secondary.Main}`,
   transition: t.transition('box-shadow'),
 });
 

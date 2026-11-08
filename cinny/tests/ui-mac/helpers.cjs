@@ -81,7 +81,7 @@ async function dismissOnboarding(page, wait = 2500) {
 /** Opens the app in a fresh WebKit context as macOS + mocked Tauri, logs in and skips onboarding. */
 async function openApp(browser, user, viewport = { width: 1100, height: 750 }, options = {}) {
   // options.tauri = false: plain web layout without the macOS title bar (used for README images)
-  const { tauri = true, deviceScaleFactor = 1, settings } = options;
+  const { tauri = true, deviceScaleFactor = 1, settings, storage } = options;
   const context = await browser.newContext({ viewport, deviceScaleFactor });
   // The German intro ("Matrix für Discord-Umsteiger") pops up 4 s after load and would cover the
   // UI under test: mark it as seen unless a test wants it (options.intro = true).
@@ -101,6 +101,16 @@ async function openApp(browser, user, viewport = { width: 1100, height: 750 }, o
         /* storage unavailable */
       }
     }, settings);
+  }
+  // options.storage: more localStorage entries to set before the app starts ({ key: object })
+  if (storage) {
+    await context.addInitScript((entries) => {
+      try {
+        Object.entries(entries).forEach(([k, v]) => localStorage.setItem(k, JSON.stringify(v)));
+      } catch (e) {
+        /* storage unavailable */
+      }
+    }, storage);
   }
   if (tauri) await context.addInitScript(() => {
     Object.defineProperty(window.navigator, 'platform', { get: () => 'MacIntel' });

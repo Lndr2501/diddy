@@ -1,4 +1,4 @@
-import { style } from '@vanilla-extract/css';
+import { keyframes, style } from '@vanilla-extract/css';
 import { DefaultReset, color, config, toRem } from 'folds';
 import { FOCUS_RING, HOVER, RADIUS_CTL, REDUCED_MOTION, transition } from '../sidebar/diddyTokens';
 
@@ -49,6 +49,11 @@ export const UserPanelProfileButton = style([
         outline: `2px solid ${FOCUS_RING}`,
         outlineOffset: '0px',
       },
+      // talking to an agent (#57): the whole profile card lights up, not just a small ring
+      '&[data-agent]': {
+        backgroundColor: color.Secondary.Container,
+        boxShadow: `inset 0 0 0 ${toRem(2)} ${color.Secondary.Main}`,
+      },
     },
     '@media': {
       [REDUCED_MOTION]: {
@@ -82,15 +87,46 @@ export const UserPanelOnlineDot = style([
   },
 ]);
 
-// Ring around your picture while you talk to an agent (#57)
+// Ring around your picture while you talk to an agent (#57): solid, thick and pulsing
+const agentPulse = keyframes({
+  '0%': { boxShadow: `0 0 0 0 ${color.Secondary.Main}` },
+  '70%': { boxShadow: `0 0 0 ${toRem(9)} transparent` },
+  '100%': { boxShadow: `0 0 0 0 transparent` },
+});
 export const UserPanelAgentRing = style([
   DefaultReset,
   {
     position: 'absolute',
-    inset: toRem(-3),
+    inset: toRem(-4),
     borderRadius: '50%',
-    border: `${toRem(2)} dashed ${color.Secondary.Main}`,
+    border: `${toRem(3)} solid ${color.Secondary.Main}`,
     pointerEvents: 'none',
+    animation: `${agentPulse} 1.4s ease-out infinite`,
+    '@media': {
+      [REDUCED_MOTION]: {
+        animation: 'none',
+      },
+    },
+  },
+]);
+
+// "Talking to agent" as a badge instead of grey small text under the name
+export const UserPanelAgentBadge = style([
+  DefaultReset,
+  {
+    alignSelf: 'flex-start',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: toRem(4),
+    maxWidth: '100%',
+    padding: `${toRem(1)} ${toRem(8)} ${toRem(1)} ${toRem(5)}`,
+    borderRadius: toRem(999),
+    backgroundColor: color.Secondary.Main,
+    color: color.Secondary.OnMain,
+    fontSize: toRem(12),
+    fontWeight: 700,
+    lineHeight: toRem(18),
+    whiteSpace: 'nowrap',
   },
 ]);
 
