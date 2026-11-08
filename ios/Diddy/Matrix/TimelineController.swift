@@ -75,7 +75,7 @@ final class TimelineController: ObservableObject {
                 Task { @MainActor in self?.typingUserIds = ids.filter { $0 != me } }
             })
             await paginate()
-            try? await timeline.markAsRead(receiptType: .read)
+            try? await timeline.markAsRead(receiptType: Self.receiptType)
         } catch {
             sendError = error.friendlyMessage
         }
@@ -98,7 +98,8 @@ final class TimelineController: ObservableObject {
     }
 
     func setTyping(_ typing: Bool) {
-        guard typing != isTyping else { return }
+        // With sharing off nothing is announced; a "stopped typing" is still sent if one started.
+        guard typing != isTyping, !typing || ChatSettings.shareActivity else { return }
         isTyping = typing
         let room = room
         Task { try? await room.typingNotice(isTyping: typing) }
@@ -106,8 +107,12 @@ final class TimelineController: ObservableObject {
 
     func markRead() {
         guard let timeline else { return }
-        Task { try? await timeline.markAsRead(receiptType: .read) }
+        let type = Self.receiptType
+        Task { try? await timeline.markAsRead(receiptType: type) }
     }
+
+    /// A private receipt clears your unread count without showing others how far you have read.
+    private static var receiptType: ReceiptType { ChatSettings.shareActivity ? .read : .readPrivate }
 
     // MARK: Sending
 
@@ -251,7 +256,8 @@ final class TimelineController: ObservableObject {
             }
         case .roomMembership(let userId, let displayName, let change, _):
             // Profile edits and other no-ops are noise in a channel; Discord does not show them either.
-            guard let text = Self.membershipText(name: displayName ?? userId, change: change) else { return nil }
+            guard ChatSettings.showMembership,
+                  let text = Self.membershipText(name: displayName ?? userId, change: change) else { return nil }
             body = .notice(text)
         case .rtcNotification, .callInvite:
             body = .notice("\(name) started a call")
@@ -281,9 +287,9 @@ final class TimelineController: ObservableObject {
 
     private static func body(of message: MessageContent) -> MessageRow.Body {
         switch message.msgType {
-        case .text(let text): return .text(text.body)
-        case .emote(let emote): return .text("_\(emote.body)_")
-        case .notice(let notice): return .text(notice.body)
+        case .text(let text): return .text(Self.text(text.body, formatted: text.formatted))
+        case .emote(let emote): return .text("_\(Self.text(emote.body, formatted: emote.formatted))_")
+        case .notice(let notice): return .text(Self.text(notice.body, formatted: notice.formatted))
         case .image(let image):
             return .image(image.source, filename: image.filename,
                           width: image.info?.width.map { CGFloat($0) }, height: image.info?.height.map { CGFloat($0) })
@@ -292,6 +298,12 @@ final class TimelineController: ObservableObject {
         case .file(let file): return .file("📎 \(file.filename)", source: file.source, mimeType: file.info?.mimetype)
         default: return .text(message.body)
         }
+    }
+
+    /// The plain body, unless the HTML body has mentions the plain body may only name in passing.
+    private static func text(_ body: String, formatted: FormattedBody?) -> String {
+        guard let formatted, case .html = formatted.format, let markdown = MentionText.markdown(fromHTML: formatted.body) else { return body }
+        return markdown
     }
 
     /// One line for reply previews and the direct message list.

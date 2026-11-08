@@ -31,10 +31,10 @@ enum Theme {
 extension Date {
     var chatTimestamp: String {
         let calendar = Calendar.current
-        let time = formatted(date: .omitted, time: .shortened)
+        let time = ChatSettings.time(self)
         if calendar.isDateInToday(self) { return "Today at \(time)" }
         if calendar.isDateInYesterday(self) { return "Yesterday at \(time)" }
-        return formatted(date: .numeric, time: .shortened)
+        return "\(formatted(date: .numeric, time: .omitted)) \(time)"
     }
 }
 

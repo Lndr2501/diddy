@@ -114,7 +114,8 @@ struct MembersView: View {
                                     subtitle: "In voice",
                                     avatarUrl: entry?.avatarUrl ?? account.profiles[userId]?.avatarUrl,
                                     trailing: "speaker.wave.2.fill",
-                                    account: account
+                                    account: account,
+                                    userId: userId
                                 )
                             }
                             .listRowBackground(Color.clear)
@@ -127,7 +128,7 @@ struct MembersView: View {
                         Section {
                             ForEach(entries) { entry in
                                 Button { selected = entry } label: {
-                                    PersonRow(name: entry.name, subtitle: entry.userId, avatarUrl: entry.avatarUrl, account: account)
+                                    PersonRow(name: entry.name, subtitle: entry.userId, avatarUrl: entry.avatarUrl, account: account, userId: entry.userId)
                                 }
                                 .listRowBackground(Color.clear)
                             }
@@ -156,8 +157,14 @@ struct MembersView: View {
                     }
                 }
             }
-            .task { await store.load(account: account, roomId: roomId) }
-            .refreshable { await store.load(account: account, roomId: roomId) }
+            .task {
+                await store.load(account: account, roomId: roomId)
+                await account.loadDiddyProfiles()
+            }
+            .refreshable {
+                await store.load(account: account, roomId: roomId)
+                await account.loadDiddyProfiles(force: true)
+            }
             .sheet(item: $selected, onDismiss: {
                 Task { await store.load(account: account, roomId: roomId) }
             }) { entry in
@@ -184,18 +191,36 @@ struct PersonRow: View {
     let avatarUrl: String?
     var trailing: String?
     var account: MatrixAccount?
+    /// Set to show the person's Diddy name style, status, nameplate and badges.
+    var userId: String?
+
+    private var diddy: DiddyProfile? { userId.flatMap { account?.diddyProfiles[$0] } }
+    private var badges: [DiddyBadge] { userId.flatMap { account?.diddyBadges[$0] } ?? [] }
 
     var body: some View {
         HStack(spacing: 12) {
             AvatarView(url: avatarUrl, name: name, size: 36, account: account)
+                .overlay(alignment: .bottomTrailing) { DiddyStatusDot(status: diddy?.status, size: 11) }
             VStack(alignment: .leading, spacing: 1) {
-                Text(name).foregroundStyle(Theme.text).lineLimit(1)
+                HStack(spacing: 4) {
+                    DiddyName(name: name, profile: diddy).lineLimit(1)
+                    if !badges.isEmpty { DiddyBadges(badges: badges, account: account) }
+                }
                 if let subtitle { Text(subtitle).font(.caption).foregroundStyle(Theme.faint).lineLimit(1) }
             }
             Spacer(minLength: 0)
             if let trailing { Image(systemName: trailing).foregroundStyle(Theme.online).font(.caption) }
         }
         .contentShape(Rectangle())
+        // Diddy's nameplate: a wash of the colour the person chose, fading out to the right.
+        .background {
+            if let plate = Color(diddyHex: diddy?.nameplateColor) {
+                LinearGradient(colors: [plate.opacity(0.35), .clear], startPoint: .leading, endPoint: .trailing)
+                    .padding(.horizontal, -8)
+                    .padding(.vertical, -4)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+        }
     }
 }
 
@@ -225,15 +250,32 @@ struct UserProfileSheet: View {
     private var profile: UserSummary? { account.profiles[userId] }
     private var name: String { member?.name ?? account.name(of: userId) }
     private var avatar: String? { member?.avatarUrl ?? profile?.avatarUrl }
+    private var diddy: DiddyProfile? { account.diddyProfiles[userId] }
+    private var badges: [DiddyBadge] { account.diddyBadges[userId] ?? [] }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
-                    AvatarView(url: avatar, name: name, size: 96, account: account)
+                    VStack(spacing: 0) {
+                        DiddyBanner(profile: diddy, seed: userId, account: account)
+                            .frame(height: 100)
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
+                        AvatarView(url: avatar, name: name, size: 96, account: account)
+                            .overlay(Circle().stroke(Theme.sidebar, lineWidth: 5))
+                            .overlay(alignment: .bottomTrailing) { DiddyStatusDot(status: diddy?.status, size: 24) }
+                            .padding(.top, -48)
+                    }
                     VStack(spacing: 4) {
-                        Text(name).font(.title2.bold()).foregroundStyle(Theme.text)
+                        HStack(spacing: 6) {
+                            DiddyName(name: name, profile: diddy, font: .title2.bold())
+                            if !badges.isEmpty { DiddyBadges(badges: badges, size: 20, account: account) }
+                        }
+                        .multilineTextAlignment(.center)
                         Text(userId).font(.footnote).foregroundStyle(Theme.muted).textSelection(.enabled)
+                        if let status = diddy?.status, status != .invisible {
+                            Text(status.title).font(.caption).foregroundStyle(Theme.muted)
+                        }
                         if let group = member?.group, group != .member {
                             Text(group == .owner ? "Owner" : String(group.title.dropLast()))
                                 .font(.caption.weight(.semibold))
@@ -251,11 +293,21 @@ struct UserProfileSheet: View {
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
-                            .background(RoundedRectangle(cornerRadius: 10).fill(Theme.accent))
+                            .background(RoundedRectangle(cornerRadius: 10).fill(Color(diddyHex: diddy?.cardAccent) ?? Theme.accent))
                             .foregroundStyle(.white)
                         }
                         .disabled(busy)
                     }
+                    if isSelf {
+                        NavigationLink { DiddyProfileEditor(account: account) } label: {
+                            Label("Edit Diddy Profile", systemImage: "paintbrush.fill").bold()
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .background(RoundedRectangle(cornerRadius: 10).fill(Theme.elevated))
+                                .foregroundStyle(Theme.text)
+                        }
+                    }
+                    if let diddy, diddy.hasCardContent { DiddyCardModules(profile: diddy) }
                     VStack(spacing: 0) {
                         actionRow("Copy User ID", icon: "doc.on.doc") { UIPasteboard.general.string = userId }
                         if !isSelf {
@@ -283,7 +335,10 @@ struct UserProfileSheet: View {
                     Button(action.title, role: .destructive) { Task { await moderate(action) } }
                 }
             }
-            .task { await load() }
+            .task {
+                await load()
+                await account.loadDiddyProfiles()
+            }
         }
         .presentationDetents([.medium, .large])
     }

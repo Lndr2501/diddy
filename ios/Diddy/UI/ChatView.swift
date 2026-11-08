@@ -51,9 +51,11 @@ private struct ChatContent: View {
     @State private var profile: ProfileTarget?
     @State private var viewedImage: ViewedImage?
     @State private var openedFile: URL?
+    /// Whether the chat follows the newest message. Only the user scrolling up turns this off.
     @State private var atBottom = true
-    /// While a chat opens, rows and images keep arriving and push the bottom out of view.
-    @State private var settling = true
+    @State private var bottomVisible = false
+    /// Set by a drag, so the end leaving the screen can be told apart from content growing above it.
+    @State private var userScrolled = false
     @State private var mentions: [String: String] = [:]
     @State private var canSend = true
     @FocusState private var composerFocused: Bool
@@ -164,7 +166,9 @@ private struct ChatContent: View {
                         MessageRowView(
                             row: row,
                             account: account,
+                            roomId: roomId,
                             onProfile: { profile = ProfileTarget(userId: row.sender) },
+                            onMention: { profile = ProfileTarget(userId: $0) },
                             onReact: { key in Task { await controller.toggleReaction(key, on: row) } },
                             onImage: { viewedImage = ViewedImage(image: $0) },
                             onFile: { openedFile = $0 }
@@ -173,17 +177,43 @@ private struct ChatContent: View {
                         .contextMenu { menu(for: row) }
                     }
                     Color.clear.frame(height: 8).id("bottom")
-                        .onAppear { atBottom = true; controller.markRead() }
+                        .onAppear {
+                            atBottom = true
+                            bottomVisible = true
+                            userScrolled = false
+                            controller.markRead()
+                        }
                         .onDisappear {
-                            if settling { proxy.scrollTo("bottom", anchor: .bottom) } else { atBottom = false }
+                            bottomVisible = false
+                            // Only a finger leaves the newest message. Anything else that pushes it
+                            // out of view (older pages, images and names arriving late, the
+                            // keyboard) is undone, however long after opening it happens. VoiceOver
+                            // scrolls without a drag, so it is always taken as the user's own.
+                            if userScrolled || UIAccessibility.isVoiceOverRunning {
+                                atBottom = false
+                            } else {
+                                proxy.scrollTo("bottom", anchor: .bottom)
+                            }
                         }
                 }
             }
+            .stickToBottom()
             .scrollDismissesKeyboard(.interactively)
-            .simultaneousGesture(DragGesture(minimumDistance: 10).onChanged { _ in settling = false })
-            .task {
-                try? await Task.sleep(nanoseconds: 2_000_000_000)
-                settling = false
+            .simultaneousGesture(DragGesture(minimumDistance: 10)
+                .onChanged { _ in userScrolled = true }
+                .onEnded { _ in
+                    // A small drag that stays at the bottom keeps following new content. The
+                    // check waits for a fling to carry the list away first.
+                    Task {
+                        try? await Task.sleep(nanoseconds: 600_000_000)
+                        if bottomVisible { userScrolled = false }
+                    }
+                })
+            .onChange(of: controller.rows.count) { _ in
+                // The lazy list only estimates the height of rows it has not drawn yet, so one
+                // jump can land short of the end; follow up while the chat is meant to be there.
+                guard atBottom, !userScrolled else { return }
+                proxy.scrollTo("bottom", anchor: .bottom)
             }
             .onChange(of: controller.rows.last?.id) { _ in
                 // Reading further up stays put when a message comes in, unless it is your own.
@@ -358,10 +388,11 @@ private struct ChatContent: View {
     private func send() {
         var text = draft
         // Picked mentions become real links, so they highlight and notify the person.
+        // Longest names first, so "@Lu" does not eat the start of "@Luis".
         var mentioned: [String] = []
-        for (name, userId) in mentions where text.contains("@\(name)") {
-            text = text.replacingOccurrences(of: "@\(name)", with: "[\(name)](https://matrix.to/#/\(userId))")
-            mentioned.append(userId)
+        for (name, userId) in mentions.sorted(by: { $0.key.count > $1.key.count }) where text.contains("@\(name)") {
+            text = text.replacingOccurrences(of: "@\(name)", with: "[\(MentionText.escaped(name))](\(MentionText.link(to: userId)))")
+            if !mentioned.contains(userId) { mentioned.append(userId) }
         }
         let reply = replyTo?.eventId
         let edited = editing
@@ -382,10 +413,24 @@ private struct ChatContent: View {
     private static func readableMentions(in text: String) -> (text: String, mentions: [String: String]) {
         var mentions: [String: String] = [:]
         let readable = text.replacing(#/\[([^\]]+)\]\(https://matrix\.to/\#/(@[^)\s]+)\)/#) { match in
-            mentions[String(match.1)] = String(match.2)
-            return "@\(match.1)"
+            let name = String(match.1).replacingOccurrences(of: "\\", with: "")
+            mentions[name] = String(match.2)
+            return "@\(name)"
         }
         return (readable, mentions)
+    }
+}
+
+private extension View {
+    /// From iOS 17 the scroll view itself opens at the end and, from iOS 18, stays anchored there
+    /// when content changes size. Older systems rely on the bottom marker in the chat alone.
+    @ViewBuilder
+    func stickToBottom() -> some View {
+        if #available(iOS 17.0, *) {
+            defaultScrollAnchor(.bottom)
+        } else {
+            self
+        }
     }
 }
 
@@ -477,7 +522,10 @@ struct MessageRowView: View {
     let row: MessageRow
     /// The account this timeline belongs to; its client loads the avatars and images.
     let account: MatrixAccount
+    /// Where names of mentioned people are looked up first.
+    var roomId = ""
     var onProfile: () -> Void = {}
+    var onMention: (String) -> Void = { _ in }
     var onReact: (String) -> Void = { _ in }
     var onImage: (UIImage) -> Void = { _ in }
     var onFile: (URL) -> Void = { _ in }
@@ -513,7 +561,7 @@ struct MessageRowView: View {
                 HStack(spacing: 6) {
                     Image(systemName: "arrow.turn.up.right").font(.caption2).foregroundStyle(Theme.faint)
                     Text("@\(reply.sender)").font(.caption.weight(.semibold)).foregroundStyle(Theme.muted)
-                    Text(reply.text).font(.caption).foregroundStyle(Theme.faint).lineLimit(1)
+                    Text(MentionText.readable(reply.text) { account.name(of: $0) }).font(.caption).foregroundStyle(Theme.faint).lineLimit(1)
                 }
                 .padding(.leading, 64)
             }
@@ -531,9 +579,15 @@ struct MessageRowView: View {
                     if row.showsHeader {
                         HStack(alignment: .firstTextBaseline, spacing: 8) {
                             Button(action: onProfile) {
-                                Text(row.senderName).font(.subheadline.weight(.semibold)).foregroundStyle(Theme.color(for: row.sender))
+                                DiddyName(
+                                    name: row.senderName,
+                                    profile: account.diddyProfiles[row.sender],
+                                    font: .subheadline.weight(.semibold),
+                                    fallback: Theme.color(for: row.sender)
+                                )
                             }
                             .buttonStyle(.plain)
+                            if let badges = account.diddyBadges[row.sender] { DiddyBadges(badges: badges, size: 13, account: account) }
                             Text(row.date.chatTimestamp).font(.caption2).foregroundStyle(Theme.faint)
                         }
                     }
@@ -545,6 +599,11 @@ struct MessageRowView: View {
             .padding(.horizontal, 16)
         }
         .padding(.top, row.showsHeader ? 12 : 2)
+        .padding(.bottom, mentionsMe ? 4 : 0)
+        .background(mentionsMe ? Theme.accent.opacity(0.1) : .clear)
+        .overlay(alignment: .leading) {
+            if mentionsMe { Rectangle().fill(Theme.accent).frame(width: 3) }
+        }
         .opacity(row.isPending ? 0.6 : 1)
     }
 
@@ -552,9 +611,18 @@ struct MessageRowView: View {
     private var content: some View {
         switch row.body {
         case .text(let text):
-            (Text(Self.markdown(text)) + Text(row.isEdited ? " (edited)" : "").font(.caption2).foregroundColor(Theme.faint))
+            (Text(rendered(text)) + Text(row.isEdited ? " (edited)" : "").font(.caption2).foregroundColor(Theme.faint))
                 .foregroundStyle(Theme.text)
                 .textSelection(.enabled)
+                .environment(\.openURL, OpenURLAction { url in
+                    guard let userId = MentionText.userId(in: url) else { return .systemAction }
+                    onMention(userId)
+                    return .handled
+                })
+                .onAppear {
+                    let unknown = MentionText.userIds(in: text).filter { account.profiles[$0] == nil }
+                    if !unknown.isEmpty { account.resolveProfiles(unknown, in: roomId) }
+                }
         case .image(let source, _, let width, let height):
             ChatImage(source: source, account: account, aspect: (width ?? 4) / max(height ?? 3, 1), onTap: onImage)
         case .file(let name, let source, _):
@@ -587,6 +655,37 @@ struct MessageRowView: View {
             }
         }
         .padding(.top, 2)
+    }
+
+    /// True when the message names you or the whole room, which Discord marks with a coloured bar.
+    private var mentionsMe: Bool {
+        guard !row.isOwn, case .text(let text) = row.body else { return false }
+        return text.contains("@room") || MentionText.userIds(in: text).contains(account.userId)
+    }
+
+    /// The message with mentions as highlighted names. Bare ids (how Diddy desktop writes them into
+    /// the plain body) are first turned into links named after the person.
+    private func rendered(_ text: String) -> AttributedString {
+        let linked = MentionText.linkingBareIds(in: text) { account.name(of: $0) }
+        let parsed = Self.markdown(linked)
+        var result = AttributedString()
+        var previousLink: URL?
+        for run in parsed.runs {
+            var piece = AttributedString(parsed[run.range])
+            if let link = run.link, let userId = MentionText.userId(in: link) {
+                // A name split into several runs (bold inside, say) gets its "@" only once.
+                if link != previousLink, !String(piece.characters).hasPrefix("@") {
+                    var at = AttributedString("@")
+                    at.link = link
+                    piece = at + piece
+                }
+                piece.font = .body.weight(.semibold)
+                piece.backgroundColor = (userId == account.userId ? Theme.accent : Theme.accent.opacity(0.6)).opacity(0.25)
+            }
+            previousLink = run.link
+            result.append(piece)
+        }
+        return result
     }
 
     private static let linkDetector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
@@ -638,6 +737,8 @@ private struct ChatImage: View {
     let onTap: (UIImage) -> Void
     @State private var image: UIImage?
     @State private var failed = false
+    /// Off until tapped when Settings > Chat says not to load pictures by themselves.
+    @State private var requested = ChatSettings.autoLoadMedia
 
     var body: some View {
         ZStack {
@@ -646,6 +747,8 @@ private struct ChatImage: View {
                 Image(uiImage: image).resizable().scaledToFit()
             } else if failed {
                 Image(systemName: "photo").foregroundStyle(Theme.faint)
+            } else if !requested {
+                Label("Tap to load", systemImage: "photo").font(.footnote).foregroundStyle(Theme.muted)
             } else {
                 ProgressView()
             }
@@ -654,6 +757,7 @@ private struct ChatImage: View {
         .frame(maxWidth: 280, maxHeight: 320, alignment: .leading)
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .onTapGesture {
+            guard requested else { requested = true; return }
             guard image != nil else { return }
             Task {
                 // Show the original rather than the chat thumbnail.
@@ -661,10 +765,12 @@ private struct ChatImage: View {
                 if let shown = full ?? image { onTap(shown) }
             }
         }
-        .task {
+        .task(id: requested) {
+            guard requested else { return }
             image = await MediaLoader.shared.image(source: source, size: 800, accountId: account.id, client: account.client)
             failed = image == nil
         }
+        .accessibilityHint(requested ? "" : "Loads the picture")
     }
 }
 
