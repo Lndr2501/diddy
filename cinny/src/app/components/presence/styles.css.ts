@@ -34,3 +34,17 @@ export const OfflineBadge = style({
     },
   },
 });
+
+/**
+ * Fixed status colors for the dot. A badge inside a nav row (DM list) inherits remapped folds
+ * colors there (Success and Critical both become the accent so call badges match the theme),
+ * which made "Online" and "Do not disturb" the same pink in the Diddy theme. Status colors must
+ * look the same in every theme, so they are set here. Idle keeps the folds Warning color.
+ */
+export const OnlineBadge = style({
+  selectors: { '&&': { backgroundColor: '#23A55A' } },
+});
+
+export const DndBadge = style({
+  selectors: { '&&': { backgroundColor: '#F23F43' } },
+});
