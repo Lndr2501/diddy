@@ -95,6 +95,29 @@ export const readCallStage = (doc: Document | null | undefined): StageModel => {
   return { people: [...people.values()], shares };
 };
 
+/**
+ * Your own speaking state, measured by Diddy (#76): Element Call leaves your tile without the
+ * speaking class in one-on-one calls and whenever the server does not report you as a speaker.
+ * Only marks you while your tile does not show you muted; never clears what Element Call shows.
+ */
+export const markSpeaking = (
+  model: StageModel,
+  userId: string | undefined,
+  speaking: boolean
+): StageModel => {
+  if (!speaking || !userId) return model;
+  const person = model.people.find((p) => p.userId === userId);
+  if (!person || person.speaking || person.muted) return model;
+  return {
+    ...model,
+    people: model.people.map((p) => (p === person ? { ...p, speaking: true } : p)),
+  };
+};
+
+/** Who is speaking on the stage. */
+export const stageSpeakers = (model: StageModel): Set<string> =>
+  new Set(model.people.filter((p) => p.speaking).map((p) => p.userId));
+
 /** A string that changes whenever anything visible on the stage changes. */
 export const stageSignature = (model: StageModel): string =>
   [

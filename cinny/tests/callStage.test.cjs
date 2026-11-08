@@ -129,3 +129,33 @@ test('the signature changes with what the stage shows', () => {
     stageSignature(readCallStage(doc([tile({ userId: '@a:x.eu', name: 'a' })])))
   );
 });
+
+// #76: your own ring comes from Diddy's microphone level, Element Call leaves it off.
+test('markSpeaking rings you while Diddy hears you, unless your tile shows you muted', () => {
+  const { readCallStage, markSpeaking, stageSpeakers } = load();
+  const me = '@me:x.eu';
+  const model = readCallStage(
+    doc([tile({ userId: me, name: 'me' }), tile({ userId: '@b:x.eu', name: 'b', speaking: true })])
+  );
+  assert.deepEqual([...stageSpeakers(model)], ['@b:x.eu']);
+
+  const marked = markSpeaking(model, me, true);
+  assert.deepEqual([...stageSpeakers(marked)].sort(), ['@b:x.eu', me].sort());
+  // the input model is left alone
+  assert.equal(model.people[0].speaking, false);
+
+  // not speaking, no user id, not on the stage: the same model
+  assert.equal(markSpeaking(model, me, false), model);
+  assert.equal(markSpeaking(model, undefined, true), model);
+  assert.equal(markSpeaking(model, '@nobody:x.eu', true), model);
+
+  const muted = readCallStage(doc([tile({ userId: me, name: 'me', muted: true })]));
+  assert.equal(markSpeaking(muted, me, true), muted);
+  assert.equal(stageSpeakers(muted).size, 0);
+});
+
+test('markSpeaking never clears a ring Element Call shows', () => {
+  const { readCallStage, markSpeaking, stageSpeakers } = load();
+  const model = readCallStage(doc([tile({ userId: '@me:x.eu', name: 'me', speaking: true })]));
+  assert.deepEqual([...stageSpeakers(markSpeaking(model, '@me:x.eu', false))], ['@me:x.eu']);
+});
