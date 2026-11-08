@@ -1,22 +1,19 @@
-import React, { PointerEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  PointerEvent,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { EventType } from 'matrix-js-sdk';
 import classNames from 'classnames';
-import {
-  Box,
-  Button,
-  Icon,
-  IconButton,
-  Icons,
-  Scroll,
-  Switch,
-  Text,
-  color,
-  config,
-  toRem,
-} from 'folds';
+import { Avatar, Box, Button, Icon, IconButton, Icons, Scroll, Switch, Text, toRem } from 'folds';
 import { Page } from '../../../components/page';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { useUserProfile } from '../../../hooks/useUserProfile';
+import { useUserPresence } from '../../../hooks/useUserPresence';
 import { useMediaAuthentication } from '../../../hooks/useMediaAuthentication';
 import { getMxIdLocalPart, mxcUrlToHttp } from '../../../utils/matrix';
 import { nameInitials } from '../../../utils/common';
@@ -64,15 +61,7 @@ import {
   presetGradient,
 } from '../../../plugins/diddy/nameplate';
 import {
-  NameplateBackdrop,
-  NameplateHost,
-  NameplateText,
-  useNameplateAnimation,
-} from '../../../components/diddy/Nameplate';
-import {
   CardStyle,
-  DiddyProfile,
-  DiddyStatus,
   ImagePos,
   NAME_FONTS,
   NameEffect,
@@ -97,68 +86,39 @@ import {
   AngleField,
   ClearButton,
   ColorField,
+  Counter,
   Field,
+  Hint,
   Segmented,
   SettingsCard,
+  SliderField,
   StackField,
   UploadField,
 } from './ProfileSettingsUI';
-import { ProfileModules } from '../../../components/user-profile/ProfileModules';
 import * as css from './DiddyProfileSettings.css';
-import { RangeInput } from '../../../components/diddy/RangeInput';
-import { buildNameStyleCss } from '../../../components/diddy/DiddyName';
-import { safeAngle, safeColor } from '../../../plugins/diddy/sanitize';
+import { DiddyName } from '../../../components/diddy/DiddyName';
 import { DEFAULT_IMAGE_POS, PositionedImg } from '../../../components/diddy/PositionedImg';
-import { animatedThumbnailUrl } from '../../../plugins/diddy/avatar';
+import { UserAvatar } from '../../../components/user-avatar';
 import { LegacyAvatarNotice } from './LegacyAvatarNotice';
+import { ProfilePreviewProvider } from '../../../plugins/diddy/previewOverride';
+import {
+  ProfileDraft,
+  PreviewTarget,
+  mergeDraft,
+  previewPresence,
+  previewProfile,
+  previewTargetForTab,
+  stableKey,
+  toDraft,
+} from '../../../plugins/diddy/profilePreview';
+import { ProfilePreviewPanel } from './ProfilePreviews';
+import { editorLayout } from './editorLayout';
+import { STATUS_OPTIONS } from '../../../components/user-panel/UserPanelFace';
 
-// the old Diddy avatar (#93) is not edited here any more; it is kept as stored until answered
-type Draft = Omit<DiddyProfile, 'v' | 'shownBadges' | 'animatedAvatarMxc'>;
-
-const STATUSES: { id: DiddyStatus; label: string; color: string }[] = [
-  { id: 'online', label: 'Online', color: '#3BA55D' },
-  { id: 'idle', label: 'Idle', color: '#F0B232' },
-  { id: 'dnd', label: 'Do not disturb', color: '#ED4245' },
-  { id: 'invisible', label: 'Invisible', color: '#80848E' },
-];
-const statusColor = (s?: DiddyStatus) =>
-  (STATUSES.find((x) => x.id === (s ?? 'online')) ?? STATUSES[0]).color;
+type Draft = ProfileDraft;
 
 const EFFECTS: NameEffect[] = ['none', 'glow', 'shadow', 'outline'];
 const MAX_BIO = 160;
-
-// JSON with sorted keys and without undefined / empty / "off" values, to compare drafts reliably
-const stable = (value: unknown): unknown => {
-  if (Array.isArray(value)) return value.map(stable);
-  if (value && typeof value === 'object') {
-    const out: Record<string, unknown> = {};
-    Object.keys(value as Record<string, unknown>)
-      .sort()
-      .forEach((k) => {
-        const v = (value as Record<string, unknown>)[k];
-        if (v === undefined || v === '' || v === false || (k === 'effect' && v === 'none')) return;
-        const next = stable(v);
-        if (
-          next &&
-          typeof next === 'object' &&
-          !Array.isArray(next) &&
-          Object.keys(next as object).length === 0
-        ) {
-          return;
-        }
-        out[k] = next;
-      });
-    return out;
-  }
-  return value;
-};
-const stableKey = (value: unknown): string => JSON.stringify(stable(value));
-
-const toDraft = (profile: DiddyProfile | undefined): Draft => {
-  if (!profile) return {};
-  const { v, shownBadges, animatedAvatarMxc, ...rest } = profile;
-  return JSON.parse(JSON.stringify(rest)) as Draft;
-};
 
 const EFFECT_LABEL: Record<NameEffect, string> = {
   none: 'None',
@@ -166,32 +126,6 @@ const EFFECT_LABEL: Record<NameEffect, string> = {
   shadow: 'Shadow',
   outline: 'Outline',
 };
-
-const themeClass = (theme?: string): string | undefined => {
-  if (theme === 'light') return LightTheme.classNames.join(' ');
-  if (theme === 'dark') return DarkTheme.classNames.join(' ');
-  return undefined;
-};
-
-// --- name style --------------------------------------------------------------------------------
-
-function PreviewName({ name, style, size }: { name: string; style?: NameStyle; size?: number }) {
-  const cssProps = useMemo(() => buildNameStyleCss(style), [style]);
-  return (
-    <span
-      style={{
-        fontSize: size ?? 20,
-        fontWeight: 600,
-        display: 'inline-block',
-        maxWidth: '100%',
-        overflowWrap: 'anywhere',
-        ...cssProps,
-      }}
-    >
-      {name}
-    </span>
-  );
-}
 
 // --- image position editor ---------------------------------------------------------------------
 
@@ -204,10 +138,9 @@ type PositionEditorProps = {
   /** frame width in px and width / height ratio of the target */
   width: number;
   ratio: number;
-  round?: boolean;
   onChange: (pos: ImagePos | undefined) => void;
 };
-function PositionEditor({ mxc, pos, width, ratio, round, onChange }: PositionEditorProps) {
+function PositionEditor({ mxc, pos, width, ratio, onChange }: PositionEditorProps) {
   const url = useMxcUrl(mxc);
   const frameRef = useRef<HTMLDivElement>(null);
   const natural = useRef<{ w: number; h: number }>();
@@ -256,29 +189,16 @@ function PositionEditor({ mxc, pos, width, ratio, round, onChange }: PositionEdi
 
   if (!url) return null;
   return (
-    <Box direction={round ? 'Row' : 'Column'} alignItems={round ? 'Center' : 'Start'} gap="400">
+    <StackField label="Visible part" hint="Drag the picture to choose the visible part.">
       <div
         ref={frameRef}
+        className={css.CropFrame}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
         title="Drag to choose the visible part"
-        style={{
-          width,
-          maxWidth: '100%',
-          aspectRatio: String(ratio),
-          flexShrink: 0,
-          overflow: 'hidden',
-          position: 'relative',
-          borderRadius: round ? '50%' : 14,
-          background: color.Surface.Container,
-          border: `1px solid ${color.Surface.ContainerLine}`,
-          boxShadow: '0 4px 14px rgba(0, 0, 0, 0.12)',
-          cursor: 'grab',
-          touchAction: 'none',
-          userSelect: 'none',
-        }}
+        style={{ width: toRem(width), aspectRatio: String(ratio) }}
       >
         <PositionedImg
           src={url}
@@ -291,228 +211,30 @@ function PositionEditor({ mxc, pos, width, ratio, round, onChange }: PositionEdi
           }}
         />
       </div>
-      <Box direction="Column" gap="200" grow="Yes" style={{ width: '100%', minWidth: 0 }}>
-        <Text size="T200" priority="300">
-          Drag the image to choose the visible part.
-        </Text>
-        <Box alignItems="Center" gap="300">
-          <Text size="T300" priority="300" style={{ flexShrink: 0 }}>
-            Zoom
-          </Text>
-          <RangeInput
-            min={1}
-            max={3}
-            step={0.05}
-            value={cur.zoom}
-            aria-label="Zoom"
-            style={{ flexGrow: 1, minWidth: 80 }}
-            onChange={(e) =>
-              onChange({
-                ...cur,
-                zoom: clampNum(Math.round(Number(e.target.value) * 100) / 100, 1, 3),
-              })
-            }
-          />
-          <Text size="T200" priority="300" style={{ width: 36, textAlign: 'right' }}>
-            {cur.zoom.toFixed(1)}x
-          </Text>
-          <Button
-            size="300"
-            variant="Secondary"
-            fill="None"
-            radii="300"
-            disabled={!pos}
-            onClick={() => onChange(undefined)}
-          >
-            <Text size="B300">Reset</Text>
-          </Button>
-        </Box>
-      </Box>
-    </Box>
-  );
-}
-
-// --- preview -----------------------------------------------------------------------------------
-
-type PreviewProps = {
-  userId: string;
-  displayName: string;
-  avatarUrl?: string;
-  draft: Draft;
-};
-
-function PreviewAvatar({
-  displayName,
-  avatarUrl,
-  draft,
-  size,
-  dot,
-}: Omit<PreviewProps, 'userId'> & { size: number; dot: number }) {
-  // the Matrix picture; a GIF moves here too (#93)
-  const avatarSrc = avatarUrl ? animatedThumbnailUrl(avatarUrl) : undefined;
-  return (
-    <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
-      <div
-        style={{
-          width: size,
-          height: size,
-          borderRadius: '50%',
-          overflow: 'hidden',
-          background: color.Secondary.Container,
-          color: color.Secondary.OnContainer,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontWeight: 600,
-          fontSize: size / 3,
-          boxSizing: 'border-box',
-          border: size > 40 ? `4px solid ${color.Surface.Container}` : undefined,
-        }}
-      >
-        {avatarSrc ? <PositionedImg src={avatarSrc} /> : nameInitials(displayName)}
-      </div>
-      <span
-        style={{
-          position: 'absolute',
-          right: size > 40 ? 2 : -1,
-          bottom: size > 40 ? 2 : -1,
-          width: dot,
-          height: dot,
-          borderRadius: '50%',
-          background: statusColor(draft.status),
-          border: `3px solid ${color.Surface.Container}`,
-          boxSizing: 'content-box',
-          opacity: draft.status === 'invisible' ? 0.7 : 1,
-        }}
-      />
-    </div>
-  );
-}
-
-function CardPreview({ userId, displayName, avatarUrl, draft }: PreviewProps) {
-  const { card } = draft;
-  const bannerUrl = useMxcUrl(card?.bannerMxc);
-  const accent = safeColor(card?.accent);
-  const glass = !!draft.cardLayout?.glass;
-
-  const headerFrom = safeColor(card?.from);
-  const headerTo = safeColor(card?.to);
-  let headerBg: string = color.SurfaceVariant.Container;
-  if (headerFrom && headerTo) {
-    headerBg = `linear-gradient(${safeAngle(card?.angle, 135)}deg, ${headerFrom}, ${headerTo})`;
-  } else if (headerFrom || headerTo) {
-    headerBg = headerFrom ?? headerTo ?? headerBg;
-  }
-
-  const animateEffect = useProfileEffectAnimation();
-
-  return (
-    <div
-      className={css.Card}
-      style={{
-        position: 'relative',
-        ...(accent
-          ? {
-              borderColor: accent,
-              boxShadow: `0 0 0 1px color-mix(in srgb, ${accent} 33%, transparent), 0 12px 32px rgba(0, 0, 0, 0.16)`,
-            }
-          : {}),
-        ...(glass
-          ? {
-              background: `color-mix(in srgb, ${color.Surface.Container} 72%, transparent)`,
-              backdropFilter: 'blur(16px) saturate(1.3)',
-            }
-          : {}),
-      }}
-    >
-      <div
-        style={{
-          height: draft.cardLayout?.layout === 'compact' ? 64 : 104,
-          background: headerBg,
-          position: 'relative',
-          overflow: 'hidden',
-        }}
-      >
-        {bannerUrl && <PositionedImg src={bannerUrl} pos={card?.bannerPos} />}
-      </div>
-      <div style={{ padding: `0 ${config.space.S400} ${config.space.S400}` }}>
-        <div style={{ marginTop: -44, marginBottom: config.space.S200 }}>
-          <PreviewAvatar
-            displayName={displayName}
-            avatarUrl={avatarUrl}
-            draft={draft}
-            size={88}
-            dot={14}
-          />
-        </div>
-        <PreviewName name={displayName} style={draft.nameStyle} size={22} />
-        <Text size="T200" priority="300" style={{ display: 'block' }}>
-          {userId}
-        </Text>
-        <div style={{ marginTop: config.space.S400 }}>
-          <ProfileModules profile={{ v: 1, ...draft }} accent={accent} />
-        </div>
-        <div
-          style={{
-            marginTop: config.space.S400,
-            display: 'flex',
-            alignItems: 'center',
-            gap: config.space.S200,
-          }}
-        >
-          <span className={css.Dot} style={{ background: statusColor(draft.status) }} />
-          <Text size="T200" priority="300">
-            {(STATUSES.find((s) => s.id === (draft.status ?? 'online')) ?? STATUSES[0]).label}
-          </Text>
-        </div>
-        {accent && (
-          <div
-            style={{
-              marginTop: config.space.S300,
-              padding: `${config.space.S200} ${config.space.S300}`,
-              borderRadius: 12,
-              background: accent,
-              color: '#fff',
-              textAlign: 'center',
-              fontSize: 14,
-              fontWeight: 600,
-              textShadow: '0 1px 2px rgba(0,0,0,.4)',
-            }}
-          >
-            Message
-          </div>
-        )}
-      </div>
-      <ProfileEffectOverlay effect={draft.effect} animate={animateEffect} />
-    </div>
-  );
-}
-
-function NameplatePreview({ displayName, avatarUrl, draft }: Omit<PreviewProps, 'userId'>) {
-  const animate = useNameplateAnimation();
-  return (
-    <div
-      className={classNames(css.Card, NameplateHost)}
-      style={{
-        padding: `${config.space.S300} ${config.space.S400}`,
-        boxShadow: 'none',
-      }}
-    >
-      <NameplateBackdrop plate={draft.nameplate} animate={animate} />
-      <div
-        className={NameplateText}
-        style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 12 }}
-      >
-        <PreviewAvatar
-          displayName={displayName}
-          avatarUrl={avatarUrl}
-          draft={draft}
-          size={36}
-          dot={8}
+      <div className={css.Controls}>
+        <SliderField
+          value={cur.zoom}
+          min={1}
+          max={3}
+          step={0.05}
+          label="Zoom"
+          format={(z) => `${z.toFixed(1)}x`}
+          onChange={(zoom) =>
+            onChange({ ...cur, zoom: clampNum(Math.round(zoom * 100) / 100, 1, 3) })
+          }
         />
-        <PreviewName name={displayName} style={draft.nameStyle} size={15} />
+        <Button
+          size="300"
+          variant="Secondary"
+          fill="None"
+          radii="300"
+          disabled={!pos}
+          onClick={() => onChange(undefined)}
+        >
+          <Text size="B300">Reset</Text>
+        </Button>
       </div>
-    </div>
+    </StackField>
   );
 }
 
@@ -531,7 +253,7 @@ function DebugPanel({ mx }: { mx: Parameters<typeof getDiddyDebugInfo>[0] }) {
       .then((result) => {
         if (alive) setInfo(result);
       })
-      .catch(() => {});
+      .catch(() => undefined);
     return () => {
       alive = false;
     };
@@ -548,61 +270,87 @@ function DebugPanel({ mx }: { mx: Parameters<typeof getDiddyDebugInfo>[0] }) {
           Debug info
         </Text>
       </summary>
-      <Box direction="Column" gap="200" style={{ marginTop: 8 }}>
-        <Box>
-          <Button
-            size="300"
-            variant="Secondary"
-            fill="Soft"
-            radii="300"
-            onClick={() => setTick((t) => t + 1)}
-          >
-            <Text size="B300">Refresh</Text>
-          </Button>
-        </Box>
-        <div className={css.DebugScroll}>
-          <table className={css.DebugTable}>
-            <thead>
-              <tr>
-                <th>Room</th>
-                <th>Mode</th>
-                <th>Enc</th>
-                <th>Members</th>
-                <th>State ev.</th>
-                <th>Msg ev.</th>
-                <th>Accepted</th>
-                <th>Dropped</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(info?.rooms ?? []).map((r) => (
-                <tr key={r.roomId} title={r.roomId}>
-                  <td>{r.name}</td>
-                  <td>{r.mode}</td>
-                  <td>{r.encrypted ? 'yes' : 'no'}</td>
-                  <td>{r.joinedMembers}</td>
-                  <td>{r.stateEvents}</td>
-                  <td>{r.messageEvents}</td>
-                  <td>{r.profilesAccepted}</td>
-                  <td>
-                    {Object.entries(r.dropped)
-                      .map(([k, v]) => `${k}:${v}`)
-                      .join(' ') || '-'}
-                  </td>
-                </tr>
-              ))}
-              {info && info.rooms.length === 0 && (
-                <tr>
-                  <td colSpan={8}>No data rooms.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+      <Box>
+        <Button
+          size="300"
+          variant="Secondary"
+          fill="Soft"
+          radii="300"
+          onClick={() => setTick((t) => t + 1)}
+        >
+          <Text size="B300">Refresh</Text>
+        </Button>
       </Box>
+      <div className={css.DebugScroll}>
+        <table className={css.DebugTable}>
+          <thead>
+            <tr>
+              <th>Room</th>
+              <th>Mode</th>
+              <th>Enc</th>
+              <th>Members</th>
+              <th>State ev.</th>
+              <th>Msg ev.</th>
+              <th>Accepted</th>
+              <th>Dropped</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(info?.rooms ?? []).map((r) => (
+              <tr key={r.roomId} title={r.roomId}>
+                <td>{r.name}</td>
+                <td>{r.mode}</td>
+                <td>{r.encrypted ? 'yes' : 'no'}</td>
+                <td>{r.joinedMembers}</td>
+                <td>{r.stateEvents}</td>
+                <td>{r.messageEvents}</td>
+                <td>{r.profilesAccepted}</td>
+                <td>
+                  {Object.entries(r.dropped)
+                    .map(([k, v]) => `${k}:${v}`)
+                    .join(' ') || '-'}
+                </td>
+              </tr>
+            ))}
+            {info && info.rooms.length === 0 && (
+              <tr>
+                <td colSpan={8}>No data rooms.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </details>
   );
 }
+
+// --- page layout -------------------------------------------------------------------------------
+
+/**
+ * Measures the page column (layout, #105) and the settings scroll area (so the sticky preview
+ * column is never taller than what is visible).
+ */
+const usePageLayout = () => {
+  const ref = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(0);
+  const [viewport, setViewport] = useState<number>();
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    const scroller = el.parentElement;
+    const measure = () => {
+      setWidth(el.clientWidth);
+      if (scroller) setViewport(scroller.clientHeight);
+    };
+    measure();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    if (scroller) observer.observe(scroller);
+    return () => observer.disconnect();
+  }, []);
+  return { ref, layout: editorLayout(width), viewport };
+};
 
 // --- main --------------------------------------------------------------------------------------
 
@@ -614,10 +362,8 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
   const useAuthentication = useMediaAuthentication();
   const myId = mx.getSafeUserId();
   const userProfile = useUserProfile(myId);
+  const livePresence = useUserPresence(myId);
   const displayName = userProfile.displayName ?? getMxIdLocalPart(myId) ?? myId;
-  const avatarUrl = userProfile.avatarUrl
-    ? mxcUrlToHttp(mx, userProfile.avatarUrl, useAuthentication, 160, 160, 'crop') ?? undefined
-    : undefined;
 
   const optionsRooms = useOptionsRooms(mx);
   const hasOptionsRoom = optionsRooms.length > 0;
@@ -645,6 +391,31 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
 
   const dirty = stableKey(draft) !== baseKey;
   const [tab, setTab] = useState<EditorTab>('identity');
+  const [previewTarget, setPreviewTarget] = useState<PreviewTarget>('card');
+  const openTab = (next: EditorTab) => {
+    setTab(next);
+    const suggested = previewTargetForTab(next);
+    if (suggested) setPreviewTarget(suggested);
+  };
+
+  // the draft as other Diddy users will receive it, and the online state it gives (#105)
+  const shown = useMemo(
+    () => previewProfile(stored, draft, shareVersion ? APP_VERSION : undefined),
+    [stored, draft, shareVersion]
+  );
+  const shownPresence = useMemo(
+    () => previewPresence(draft.status, livePresence?.status),
+    [draft.status, livePresence?.status]
+  );
+  const nameOverride = useMemo(
+    () => ({ userId: myId, profile: shown, presence: shownPresence }),
+    [myId, shown, shownPresence]
+  );
+
+  const page = usePageLayout();
+  // one column: the preview sits above the editor and can be folded away
+  const oneColumn = page.layout.columns === 'one';
+  const [previewOpen, setPreviewOpen] = useState(true);
 
   const patchNameStyle = (p: Partial<NameStyle>) =>
     setDraft((d) => ({ ...d, nameStyle: { ...d.nameStyle, ...p } }));
@@ -786,15 +557,20 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
     setBusyKey('plate');
     setUploadError(undefined);
     try {
-      let upload = file;
-      let color: string | undefined;
+      let plateFile = file;
+      let plateColor: string | undefined;
       if (isNameplateZip(file)) {
         const zip = await readNameplateZip(await file.arrayBuffer());
-        upload = new File([zip.data], zip.name, { type: zip.type });
-        color = zip.color;
+        plateFile = new File([zip.data], zip.name, { type: zip.type });
+        plateColor = zip.color;
       }
-      const { imageMxc, videoMxc } = await uploadNameplateMedia(mx, upload);
-      patchPlate({ imageMxc, videoMxc, imagePos: undefined, ...(color ? { color } : {}) });
+      const { imageMxc, videoMxc } = await uploadNameplateMedia(mx, plateFile);
+      patchPlate({
+        imageMxc,
+        videoMxc,
+        imagePos: undefined,
+        ...(plateColor ? { color: plateColor } : {}),
+      });
     } catch (e) {
       setUploadError(e instanceof Error ? e.message : 'Upload failed.');
     } finally {
@@ -846,23 +622,8 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
     setSaveError(undefined);
     try {
       const clean = JSON.parse(JSON.stringify(draft)) as Draft;
-      // keep everything the editor does not manage (shownBadges is written by BadgeEditor)
-      const {
-        nameStyle,
-        card,
-        nameplate,
-        effect,
-        frame,
-        status,
-        bio,
-        about,
-        interests,
-        links,
-        activity,
-        cardLayout,
-        ...kept
-      } = (stored ?? { v: 1 }) as DiddyProfile;
-      await setMyProfile(mx, { ...kept, ...clean, v: 1 });
+      // keeps everything the editor does not manage (shownBadges is written by BadgeEditor)
+      await setMyProfile(mx, mergeDraft(stored, clean));
       setLocalBase(clean);
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : 'Could not save.');
@@ -883,15 +644,19 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
 
   const setupCard = (
     <SettingsCard
-      wide
       icon={Icons.Server}
       title="Set up the data room"
       description="Diddy needs a hidden room to share profiles, badges and name styles. Without it your customization cannot be saved or seen by others."
+      footer={
+        <Hint>
+          Not an admin? Ask the admin of your server to set it up; Diddy joins it automatically.
+        </Hint>
+      }
     >
-      <Text size="T300">
+      <Hint>
         On a private server where everyone uses Diddy, an admin creates a hidden room that Diddy
         uses to share profiles, badges and name styles between everyone.
-      </Text>
+      </Hint>
       <Field label="Mode">
         <Segmented
           label="Mode"
@@ -913,6 +678,7 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
               value={roomName}
               onChange={(e) => setRoomName(e.target.value)}
               placeholder={OPTIONS_ROOM_NAME}
+              aria-label="Room name"
               disabled={creating}
             />
           </Field>
@@ -921,6 +687,7 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
               className={css.Input}
               value={spaceId}
               onChange={(e) => setSpaceId(e.target.value)}
+              aria-label="Create it in"
               disabled={creating}
             >
               <option value="">No space (private room)</option>
@@ -940,6 +707,7 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
               className={css.Input}
               value={existingRoomId}
               onChange={(e) => setExistingRoomId(e.target.value)}
+              aria-label="Room"
               disabled={creating}
             >
               <option value="">Choose a room...</option>
@@ -962,7 +730,14 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
             </select>
             {selectedIsDiddy && <span className={css.Badge}>Diddy room</span>}
           </Field>
-          <Field label="Spaces">
+          <Field
+            label="Spaces"
+            hint={
+              (discovering && 'Looking in your spaces...') ||
+              (unjoinedRooms.length === 0 && 'No unjoined rooms found in your spaces.') ||
+              undefined
+            }
+          >
             <Button
               size="300"
               variant="Secondary"
@@ -973,33 +748,22 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
             >
               <Text size="B300">Refresh</Text>
             </Button>
-            {discovering && (
-              <Text size="T200" priority="300">
-                Looking in your spaces...
-              </Text>
-            )}
-            {!discovering && unjoinedRooms.length === 0 && (
-              <Text size="T200" priority="300">
-                No unjoined rooms found in your spaces.
-              </Text>
-            )}
           </Field>
-          <Field label="Let others find it">
+          <Field
+            label="Let others find it"
+            hint="Adds [diddy-options] to the topic, so Diddy clients in the same space join it automatically."
+          >
             <Switch variant="Primary" value={tagTopic} onChange={setTagTopic} />
           </Field>
-          <Text size="T200" priority="300">
+          <Hint>
             The room is then hidden from the room lists in Diddy. You need permission to change its
-            settings. With this switch on, [diddy-options] is added to its topic so Diddy clients in
-            the same space join it automatically.
-          </Text>
-          <Text size="T200" priority="300">
-            No admin rights in that room? You can still use it without them: everyone who uses Diddy
-            has to choose this same room themselves; your profile is then stored as hidden messages
-            in it.
-          </Text>
+            settings. No admin rights in that room? You can still use it without them: everyone who
+            uses Diddy has to choose this same room themselves; your profile is then stored as
+            hidden messages in it.
+          </Hint>
         </>
       )}
-      <Box alignItems="Center" gap="300" wrap="Wrap">
+      <div className={css.Controls}>
         <Button
           size="400"
           variant="Primary"
@@ -1009,28 +773,20 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
         >
           <Text size="B400">{creating ? 'Working...' : setupLabel}</Text>
         </Button>
-        {created && (
-          <Text size="T200" style={{ color: color.Success.Main }}>
-            Room created. You can customize your profile now.
-          </Text>
-        )}
+        {created && <Hint tone="success">Room created. You can customize your profile now.</Hint>}
         {lightUsed && (
-          <Text size="T200" style={{ color: color.Success.Main }}>
+          <Hint tone="success">
             Room is used in message mode. You can customize your profile now.
-          </Text>
+          </Hint>
         )}
-      </Box>
-      {setupError && (
-        <Text size="T200" style={{ color: color.Critical.Main }}>
-          {setupError}
-        </Text>
-      )}
+      </div>
+      {setupError && <Hint tone="error">{setupError}</Hint>}
       {setupError &&
         setupMode === 'existing' &&
         existingRoomId &&
         !created &&
         mx.getRoom(existingRoomId)?.getMyMembership() === 'join' && (
-          <Box alignItems="Center" gap="300" wrap="Wrap">
+          <div className={css.Controls}>
             <Button
               size="300"
               variant="Secondary"
@@ -1041,39 +797,40 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
             >
               <Text size="B300">Use without admin rights</Text>
             </Button>
-            <Text size="T200" priority="300">
-              Everyone has to choose this same room themselves.
-            </Text>
-          </Box>
+            <Hint>Everyone has to choose this same room themselves.</Hint>
+          </div>
         )}
-      <Text size="T200" priority="300">
-        Not an admin? Ask the admin of your server to set it up; Diddy joins it automatically.
-      </Text>
     </SettingsCard>
   );
 
   const identityTab = (
     <>
       <SettingsCard
-        wide
         icon={Icons.Eye}
         title="Display name"
         description="How your name looks to others, in light and in dark mode."
       >
-        <div className={css.NameStage}>
-          <div className={`${LightTheme.classNames.join(' ')} ${css.NameStageHalf}`}>
-            <PreviewName name={displayName} style={draft.nameStyle} size={30} />
-            <Text size="T200" priority="300">
-              Light
-            </Text>
+        <ProfilePreviewProvider value={nameOverride}>
+          <div className={css.NameStage}>
+            {[
+              { id: 'light', label: 'Light', theme: LightTheme },
+              { id: 'dark', label: 'Dark', theme: DarkTheme },
+            ].map((half) => (
+              <div
+                key={half.id}
+                className={classNames(half.theme.classNames, css.NameStageHalf)}
+                data-theme-preview={half.id}
+              >
+                <Text as="span" size="H2">
+                  <DiddyName userId={myId} name={displayName} />
+                </Text>
+                <Text size="T200" priority="300">
+                  {half.label}
+                </Text>
+              </div>
+            ))}
           </div>
-          <div className={`${DarkTheme.classNames.join(' ')} ${css.NameStageHalf}`}>
-            <PreviewName name={displayName} style={draft.nameStyle} size={30} />
-            <Text size="T200" priority="300">
-              Dark
-            </Text>
-          </div>
-        </div>
+        </ProfilePreviewProvider>
       </SettingsCard>
       <SettingsCard
         icon={Icons.Alphabet}
@@ -1084,6 +841,7 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
           <select
             className={css.Input}
             value={ns.font ?? 'default'}
+            aria-label="Font"
             onChange={(e) => patchNameStyle({ font: e.target.value })}
           >
             {NAME_FONTS.map((f) => (
@@ -1251,11 +1009,7 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
         icon={Icons.Pencil}
         title="Bio"
         description="A short text under your name."
-        action={
-          <Text size="T200" priority="300">
-            {(draft.bio ?? '').length}/{MAX_BIO}
-          </Text>
-        }
+        action={<Counter value={(draft.bio ?? '').length} max={MAX_BIO} />}
       >
         <textarea
           className={css.TextArea}
@@ -1274,13 +1028,29 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
     </>
   );
 
+  const avatarSrc = userProfile.avatarUrl
+    ? mxcUrlToHttp(mx, userProfile.avatarUrl, useAuthentication, 96, 96, 'crop') ?? undefined
+    : undefined;
   const avatarTab = (
     <>
       <SettingsCard
         icon={Icons.User}
         title="Profile picture"
-        description="Your profile picture is your Matrix picture, also as a GIF, WebP or APNG. Change it in Settings > Account."
-      />
+        description="Your profile picture is your Matrix picture, also as a GIF, WebP or APNG."
+      >
+        <div className={css.Controls}>
+          <Avatar size="400" radii="Pill">
+            <UserAvatar
+              surface="account"
+              userId={myId}
+              src={avatarSrc}
+              alt={displayName}
+              renderFallback={() => <Text size="H4">{nameInitials(displayName)}</Text>}
+            />
+          </Avatar>
+          <Hint>Change it in Settings &gt; Account. It shows in every preview here.</Hint>
+        </div>
+      </SettingsCard>
       <SettingsCard
         icon={Icons.Bookmark}
         title="Nameplate"
@@ -1480,15 +1250,20 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
 
   const statusTab = (
     <>
-      <SettingsCard icon={Icons.Smile} title="Status" description="Shown next to your avatar.">
-        <Box gap="200" wrap="Wrap" role="group" aria-label="Status">
-          {STATUSES.map((s) => (
+      <SettingsCard
+        icon={Icons.Smile}
+        title="Status"
+        description="Shown next to your picture everywhere: profile card, member and DM lists, user panel."
+      >
+        <div className={css.ChipRow} role="group" aria-label="Status">
+          {STATUS_OPTIONS.map((s) => (
             <button
-              key={s.id}
+              key={s.status}
               type="button"
               className={css.Pill}
-              aria-pressed={(draft.status ?? 'online') === s.id}
-              onClick={() => setDraft((d) => ({ ...d, status: s.id }))}
+              aria-pressed={(draft.status ?? 'online') === s.status}
+              title={s.description}
+              onClick={() => setDraft((d) => ({ ...d, status: s.status }))}
             >
               <span className={css.Dot} style={{ background: s.color }} />
               <Text as="span" size="T300">
@@ -1496,7 +1271,7 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
               </Text>
             </button>
           ))}
-        </Box>
+        </div>
       </SettingsCard>
       <BadgeEditor />
     </>
@@ -1508,6 +1283,11 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
         icon={Icons.Server}
         title="Data room"
         description="The hidden room Diddy uses to share profiles, badges and name styles."
+        footer={
+          lightRooms.length > 0 && (
+            <Hint>Message mode (no admin rights): your profile is stored as hidden messages.</Hint>
+          )
+        }
       >
         <div className={css.Group}>
           {optionsRooms.map((room) => {
@@ -1540,32 +1320,25 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
             );
           })}
         </div>
-        {lightRooms.length > 0 && (
-          <Text size="T200" priority="300">
-            Message mode (no admin rights): your profile is stored as hidden messages.
-          </Text>
-        )}
       </SettingsCard>
       <SettingsCard
         icon={Icons.ShieldLock}
         title="What others see"
         description="Everything on this page is optional."
       >
-        <Text size="T300">
+        <Hint>
           Your profile card, badges and name style are shared with everyone in the data room who
           uses Diddy. Fields you leave empty are not shared. Links must be https addresses and are
           checked for each platform.
-        </Text>
-        <Field label={`Show my Diddy version (${APP_VERSION})`}>
+        </Hint>
+        <Field
+          label="Show my Diddy version"
+          hint={`${APP_VERSION}, small on your profile card. Switched off, it is removed from your profile.`}
+        >
           <Switch variant="Primary" value={shareVersion} onChange={setShareVersion} />
         </Field>
-        <Text size="T200" priority="300">
-          Other Diddy users see it small on your profile card. Switched off, it is removed from your
-          profile.
-        </Text>
       </SettingsCard>
       <SettingsCard
-        wide
         icon={Icons.Terminal}
         title="Diagnostics"
         description="Technical details about the data rooms, for troubleshooting."
@@ -1584,11 +1357,24 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
     privacy: hasOptionsRoom ? privacyTab : null,
   };
 
+  const showSaveBar = dirty && hasOptionsRoom;
+
   return (
     <Page>
       <Box grow="Yes">
         <Scroll hideTrack visibility="Hover">
-          <div className={css.Wrap}>
+          <div
+            ref={page.ref}
+            className={css.Wrap}
+            data-columns={page.layout.columns}
+            data-compact={page.layout.compact}
+            style={
+              {
+                '--pe-viewport-h': page.viewport ? `${page.viewport}px` : undefined,
+                '--pe-savebar': showSaveBar ? toRem(72) : '0px',
+              } as React.CSSProperties
+            }
+          >
             <header className={css.Head}>
               <div className={css.HeadText}>
                 <Text as="h1" size="H2" className={css.HeadTitle}>
@@ -1656,15 +1442,11 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
               >
                 <EditorTabs
                   tab={tab}
-                  onChange={setTab}
+                  onChange={openTab}
                   hide={hasOptionsRoom ? undefined : ['privacy']}
                 />
-                {uploadError && (
-                  <Text size="T200" style={{ color: color.Critical.Main }}>
-                    {uploadError}
-                  </Text>
-                )}
-                <div className={css.Grid} role="tabpanel">
+                {uploadError && <Hint tone="error">{uploadError}</Hint>}
+                <div className={css.Panel} role="tabpanel">
                   {tabContent[tab]}
                 </div>
               </div>
@@ -1672,35 +1454,44 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
               <aside className={css.PreviewColumn} aria-label="Live preview">
                 <SettingsCard
                   icon={Icons.Eye}
-                  title="Live preview"
-                  description="See how your profile card, effect, frame and nameplate look to others."
+                  title="Preview"
+                  description="Your unsaved changes, drawn by the same parts of Diddy others see them in."
+                  action={
+                    oneColumn && (
+                      <Button
+                        size="300"
+                        variant="Secondary"
+                        fill="Soft"
+                        radii="300"
+                        aria-expanded={previewOpen}
+                        onClick={() => setPreviewOpen((o) => !o)}
+                      >
+                        <Text size="B300">{previewOpen ? 'Hide' : 'Show'}</Text>
+                      </Button>
+                    )
+                  }
                 >
-                  <div className={themeClass(draft.cardLayout?.theme)}>
-                    <ProfileFrameBox frame={draft.frame} respectViewerSwitch={false}>
-                      <CardPreview
-                        userId={myId}
-                        displayName={displayName}
-                        avatarUrl={avatarUrl}
-                        draft={draft}
-                      />
-                    </ProfileFrameBox>
-                  </div>
-                </SettingsCard>
-                <SettingsCard
-                  icon={Icons.Bookmark}
-                  title="Nameplate preview"
-                  description="In the member and DM lists."
-                >
-                  <NameplatePreview displayName={displayName} avatarUrl={avatarUrl} draft={draft} />
+                  {(previewOpen || !oneColumn) && (
+                    <ProfilePreviewPanel
+                      userId={myId}
+                      displayName={displayName}
+                      avatarMxc={userProfile.avatarUrl}
+                      profile={shown}
+                      presence={shownPresence}
+                      status={draft.status ?? 'online'}
+                      target={previewTarget}
+                      onTarget={setPreviewTarget}
+                    />
+                  )}
                 </SettingsCard>
               </aside>
             </div>
 
-            {dirty && hasOptionsRoom && (
+            {showSaveBar && (
               <div className={css.SaveBar}>
                 <Text size="T300">
                   {saveError ? (
-                    <span style={{ color: color.Critical.Main }}>{saveError}</span>
+                    <span className={css.ErrorText}>{saveError}</span>
                   ) : (
                     'You have unsaved changes.'
                   )}

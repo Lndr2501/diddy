@@ -21,6 +21,7 @@ import {
 } from 'folds';
 import * as css from './UserPanel.css';
 import { UserAvatar } from '../user-avatar';
+import { STATUS_OPTIONS, UserPanelFace, statusInfo, userPanelAvatarUrl } from './UserPanelFace';
 import { SettingsSheet } from '../SettingsSheet';
 import { Settings } from '../../features/settings';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
@@ -32,7 +33,7 @@ import { callEmbedAtom } from '../../state/callEmbed';
 import { DeviceChevron } from '../../features/call/DevicePicker';
 import { setMyStatus, useMyStatus } from '../../plugins/diddy/status';
 import { DiddyStatus } from '../../plugins/diddy/types';
-import { getMxIdLocalPart, mxcUrlToHttp } from '../../utils/matrix';
+import { getMxIdLocalPart } from '../../utils/matrix';
 import { nameInitials } from '../../utils/common';
 import { useOwnAgentTalking } from '../../state/agentVoice';
 import { ConnectionsMenu } from '../connection-recovery/AccountSwitcher';
@@ -132,26 +133,6 @@ function IdleCallButtons() {
   );
 }
 
-const STATUS_OPTIONS: {
-  status: DiddyStatus;
-  label: string;
-  color: string;
-  description?: string;
-}[] = [
-  { status: 'online', label: 'Online', color: '#43B581' },
-  { status: 'idle', label: 'Idle', color: '#F0B232' },
-  {
-    status: 'dnd',
-    label: 'Do Not Disturb',
-    color: '#F04747',
-    description: 'Mutes sounds and notifications. Unread badges stay.',
-  },
-  { status: 'invisible', label: 'Invisible', color: '#747F8D' },
-];
-
-const statusInfo = (status: DiddyStatus) =>
-  STATUS_OPTIONS.find((o) => o.status === status) ?? STATUS_OPTIONS[0];
-
 type StatusOptionsProps = {
   status: DiddyStatus;
   onSelect: (status: DiddyStatus) => void;
@@ -229,9 +210,8 @@ export function UserPanel() {
   const [pickedStatus, setPickedStatus] = useState<DiddyStatus>();
   useEffect(() => setPickedStatus(undefined), [storedStatus]);
   const status = pickedStatus ?? storedStatus;
-  const { label: chosenLabel, color: statusColor } = statusInfo(status);
   const agentTalking = useOwnAgentTalking();
-  const statusLabel = agentTalking ? 'Talking to agent' : chosenLabel;
+  const statusLabel = agentTalking ? 'Talking to agent' : statusInfo(status).label;
 
   const statusMenuRef = useRef<HTMLDivElement>(null);
   const statusButtonRef = useRef<HTMLButtonElement>(null);
@@ -272,9 +252,7 @@ export function UserPanel() {
   };
 
   const displayName = profile.displayName ?? getMxIdLocalPart(userId) ?? userId;
-  const avatarUrl = profile.avatarUrl
-    ? mxcUrlToHttp(mx, profile.avatarUrl, useAuthentication, 96, 96, 'crop') ?? undefined
-    : undefined;
+  const avatarUrl = userPanelAvatarUrl(mx, profile.avatarUrl, useAuthentication);
   const connection = getConnectionProfile();
   const serverLabel = connection
     ? visibleHomeserver(connection.server).replace(/^https?:\/\//, '')
@@ -350,32 +328,13 @@ export function UserPanel() {
           title="Account and status"
           data-agent={agentTalking || undefined}
         >
-          <span className={css.UserPanelAvatarWrap}>
-            <Avatar size={agentTalking ? '400' : '300'} radii="Pill">
-              {avatar('H6')}
-            </Avatar>
-            {agentTalking && <span className={css.UserPanelAgentRing} aria-hidden />}
-            <span
-              className={css.UserPanelOnlineDot}
-              style={{ backgroundColor: statusColor }}
-              aria-hidden
-            />
-          </span>
-          <div className={css.UserPanelText}>
-            <Text size="T300" priority="500" truncate>
-              <b>{displayName}</b>
-            </Text>
-            {agentTalking ? (
-              <span className={css.UserPanelAgentBadge} role="status" aria-label={statusLabel}>
-                <Icon size="50" src={Icons.Mic} filled />
-                Agent
-              </span>
-            ) : (
-              <Text size="T200" priority="300" truncate>
-                {statusLabel}
-              </Text>
-            )}
-          </div>
+          <UserPanelFace
+            userId={userId}
+            displayName={displayName}
+            avatarUrl={avatarUrl}
+            status={status}
+            agentTalking={agentTalking}
+          />
         </button>
       </PopOut>
       <div className={css.UserPanelActions}>
