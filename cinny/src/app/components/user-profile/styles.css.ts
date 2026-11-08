@@ -84,6 +84,12 @@ export const UserHeroCoverContainer = style({
 export const UserHeroCoverCompact = style({
   height: toRem(52),
 });
+export const UserHeroCoverTall = style({
+  height: toRem(180),
+});
+export const UserHeroCoverHero = style({
+  height: toRem(260),
+});
 export const UserHeroBanner = style({
   backgroundSize: 'cover',
   backgroundPosition: 'center',
@@ -107,6 +113,11 @@ export const UserHeroBar = style({
   padding: `0 ${config.space.S400}`,
   marginTop: toRem(-46),
   minHeight: toRem(46),
+});
+export const UserHeroBarLarge = style({
+  padding: `0 ${config.space.S500}`,
+  marginTop: toRem(-62),
+  minHeight: toRem(62),
 });
 export const UserHeroBarCompact = style({
   padding: `0 ${config.space.S300}`,

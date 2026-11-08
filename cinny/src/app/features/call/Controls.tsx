@@ -1,6 +1,24 @@
-import React from 'react';
-import { Icon, IconButton, Icons, Line, Text, Tooltip, TooltipProvider } from 'folds';
+import React, { MouseEventHandler, useCallback, useState } from 'react';
+import {
+  Box,
+  config,
+  Icon,
+  IconButton,
+  Icons,
+  Line,
+  Menu,
+  MenuItem,
+  PopOut,
+  RectCords,
+  Text,
+  toRem,
+  Tooltip,
+  TooltipProvider,
+} from 'folds';
+import FocusTrap from 'focus-trap-react';
 import { useAtom } from 'jotai';
+import { stopPropagation } from '../../utils/keyboard';
+import * as sheetCss from '../../components/sheet/Sheet.css';
 import * as css from './styles.css';
 import { callChatAtom } from '../../state/callEmbed';
 import { AsyncStatus, useAsyncCallback } from '../../hooks/useAsyncCallback';
@@ -34,7 +52,7 @@ export function MicrophoneButton({ enabled, onToggle }: MicrophoneButtonProps) {
           ref={anchorRef}
           variant={enabled ? 'SurfaceVariant' : 'Critical'}
           fill="Soft"
-          radii="Pill"
+          radii="400"
           size="400"
           className={css.ControlButton}
           onClick={toggleMic}
@@ -67,7 +85,7 @@ export function SoundButton({ enabled, onToggle }: SoundButtonProps) {
           ref={anchorRef}
           variant={enabled ? 'SurfaceVariant' : 'Critical'}
           fill="Soft"
-          radii="Pill"
+          radii="400"
           size="400"
           className={css.ControlButton}
           onClick={() => onToggle()}
@@ -106,7 +124,7 @@ export function VideoButton({ enabled, onToggle }: VideoButtonProps) {
           ref={anchorRef}
           variant={enabled ? 'Primary' : 'SurfaceVariant'}
           fill="Soft"
-          radii="Pill"
+          radii="400"
           size="400"
           className={css.ControlButton}
           onClick={toggleVideo}
@@ -143,46 +161,12 @@ export function ScreenShareButton({ enabled, onToggle }: ScreenShareButtonProps)
           ref={anchorRef}
           variant={enabled ? 'Primary' : 'SurfaceVariant'}
           fill="Soft"
-          radii="Pill"
+          radii="400"
           size="400"
           className={css.ControlButton}
           onClick={() => onToggle()}
         >
           <Icon size="400" src={Icons.ScreenShare} filled={enabled} />
-        </IconButton>
-      )}
-    </TooltipProvider>
-  );
-}
-
-type ScreenShareAudioButtonProps = {
-  enabled: boolean;
-  onToggle: () => void;
-};
-export function ScreenShareAudioButton({ enabled, onToggle }: ScreenShareAudioButtonProps) {
-  return (
-    <TooltipProvider
-      position="Top"
-      delay={500}
-      tooltip={
-        <Tooltip>
-          <Text size="T200">{enabled ? 'Systemton teilen: an (ohne Diddy)' : 'Systemton teilen: aus'}</Text>
-        </Tooltip>
-      }
-    >
-      {(anchorRef) => (
-        <IconButton
-          ref={anchorRef}
-          variant={enabled ? 'Primary' : 'Critical'}
-          fill="Soft"
-          radii="Pill"
-          size="400"
-          className={css.ControlButton}
-          aria-label="Systemton teilen (alle anderen Apps)"
-          aria-pressed={enabled}
-          onClick={() => onToggle()}
-        >
-          <Icon size="400" src={enabled ? Icons.VolumeHigh : Icons.VolumeMute} filled={!enabled} />
         </IconButton>
       )}
     </TooltipProvider>
@@ -207,46 +191,12 @@ export function ChatButton() {
           ref={anchorRef}
           variant={chat ? 'Primary' : 'SurfaceVariant'}
           fill="Soft"
-          radii="Pill"
+          radii="400"
           size="400"
           className={css.ControlButton}
           onClick={() => setChat(!chat)}
         >
           <Icon size="400" src={Icons.Message} filled={chat} />
-        </IconButton>
-      )}
-    </TooltipProvider>
-  );
-}
-
-type ViewToggleButtonProps = {
-  active: boolean;
-  onToggle: () => void;
-};
-export function SpotlightButton({ active, onToggle }: ViewToggleButtonProps) {
-  return (
-    <TooltipProvider
-      position="Top"
-      delay={500}
-      tooltip={
-        <Tooltip>
-          <Text size="T200">{active ? 'Grid View' : 'Spotlight View'}</Text>
-        </Tooltip>
-      }
-    >
-      {(anchorRef) => (
-        <IconButton
-          ref={anchorRef}
-          variant={active ? 'Primary' : 'SurfaceVariant'}
-          fill="Soft"
-          radii="Pill"
-          size="400"
-          className={css.ControlButton}
-          onClick={() => onToggle()}
-          aria-pressed={active}
-          aria-label={active ? 'Grid View' : 'Spotlight View'}
-        >
-          <Icon size="400" src={Icons.Category} filled={active} />
         </IconButton>
       )}
     </TooltipProvider>
@@ -272,7 +222,7 @@ export function ReactionsButton({ onClick }: SimpleControlButtonProps) {
           ref={anchorRef}
           variant="SurfaceVariant"
           fill="Soft"
-          radii="Pill"
+          radii="400"
           size="400"
           className={css.ControlButton}
           onClick={() => onClick()}
@@ -285,31 +235,160 @@ export function ReactionsButton({ onClick }: SimpleControlButtonProps) {
   );
 }
 
-export function CallSettingsButton({ onClick }: SimpleControlButtonProps) {
+/** Small menu anchored to a bar button, closed by a click outside or Escape. */
+function useBarMenu() {
+  const [cords, setCords] = useState<RectCords>();
+  const close = useCallback(() => setCords(undefined), []);
+  const toggle: MouseEventHandler<HTMLButtonElement> = (evt) => {
+    const rect = evt.currentTarget.getBoundingClientRect();
+    setCords((current) => (current ? undefined : rect));
+  };
+  return { cords, close, toggle };
+}
+
+type ShareOptionsButtonProps = {
+  /** null: the system sound cannot be shared on this device, no toggle */
+  audio: { enabled: boolean; onToggle: () => void } | null;
+  onStop: () => void;
+};
+/** Chevron next to the share button while sharing: system sound on/off, stop sharing. */
+export function ShareOptionsButton({ audio, onStop }: ShareOptionsButtonProps) {
+  const { cords, close, toggle } = useBarMenu();
   return (
-    <TooltipProvider
+    <PopOut
+      anchor={cords}
       position="Top"
-      delay={500}
-      tooltip={
-        <Tooltip>
-          <Text size="T200">Call Settings</Text>
-        </Tooltip>
+      align="Center"
+      offset={10}
+      content={
+        <FocusTrap
+          focusTrapOptions={{
+            initialFocus: false,
+            onDeactivate: close,
+            clickOutsideDeactivates: true,
+            escapeDeactivates: stopPropagation,
+          }}
+        >
+          <Menu className={sheetCss.MenuMaterial} style={{ minWidth: toRem(240) }}>
+            <Box direction="Column" gap="100" style={{ padding: config.space.S100 }}>
+              {audio && (
+                <MenuItem
+                  className={sheetCss.MenuRow}
+                  size="300"
+                  radii="300"
+                  aria-pressed={audio.enabled}
+                  before={<Icon size="100" src={audio.enabled ? Icons.VolumeHigh : Icons.VolumeMute} />}
+                  after={audio.enabled ? <Icon size="100" src={Icons.Check} /> : undefined}
+                  onClick={() => {
+                    audio.onToggle();
+                    close();
+                  }}
+                >
+                  <Text size="T300">Share system sound</Text>
+                </MenuItem>
+              )}
+              <MenuItem
+                className={sheetCss.MenuRow}
+                size="300"
+                radii="300"
+                variant="Critical"
+                before={<Icon size="100" src={Icons.Cross} />}
+                onClick={() => {
+                  close();
+                  onStop();
+                }}
+              >
+                <Text size="T300">Stop sharing</Text>
+              </MenuItem>
+            </Box>
+          </Menu>
+        </FocusTrap>
       }
     >
-      {(anchorRef) => (
-        <IconButton
-          ref={anchorRef}
-          variant="SurfaceVariant"
-          fill="Soft"
-          radii="Pill"
-          size="400"
-          className={css.ControlButton}
-          onClick={() => onClick()}
-          aria-label="Call Settings"
+      <IconButton
+        variant="Primary"
+        fill="Soft"
+        size="400"
+        className={css.ControlChevron}
+        onClick={toggle}
+        aria-pressed={!!cords}
+        aria-label="Sharing options"
+        title="Sharing options"
+      >
+        <Icon size="50" src={Icons.ChevronTop} />
+      </IconButton>
+    </PopOut>
+  );
+}
+
+type MoreButtonProps = {
+  spotlight: boolean;
+  onToggleSpotlight: () => void;
+  onSettings: () => void;
+};
+/** Things used now and then: the view of the call and the call settings. */
+export function MoreButton({ spotlight, onToggleSpotlight, onSettings }: MoreButtonProps) {
+  const { cords, close, toggle } = useBarMenu();
+  return (
+    <PopOut
+      anchor={cords}
+      position="Top"
+      align="End"
+      offset={10}
+      content={
+        <FocusTrap
+          focusTrapOptions={{
+            initialFocus: false,
+            onDeactivate: close,
+            clickOutsideDeactivates: true,
+            escapeDeactivates: stopPropagation,
+          }}
         >
-          <Icon size="400" src={Icons.Setting} />
-        </IconButton>
-      )}
-    </TooltipProvider>
+          <Menu className={sheetCss.MenuMaterial} style={{ minWidth: toRem(220) }}>
+            <Box direction="Column" gap="100" style={{ padding: config.space.S100 }}>
+              <MenuItem
+                className={sheetCss.MenuRow}
+                size="300"
+                radii="300"
+                aria-pressed={spotlight}
+                before={<Icon size="100" src={Icons.Category} />}
+                after={spotlight ? <Icon size="100" src={Icons.Check} /> : undefined}
+                onClick={() => {
+                  onToggleSpotlight();
+                  close();
+                }}
+              >
+                <Text size="T300">Spotlight view</Text>
+              </MenuItem>
+              <MenuItem
+                className={sheetCss.MenuRow}
+                size="300"
+                radii="300"
+                before={<Icon size="100" src={Icons.Setting} />}
+                onClick={() => {
+                  close();
+                  onSettings();
+                }}
+              >
+                <Text size="T300">Call settings</Text>
+              </MenuItem>
+            </Box>
+          </Menu>
+        </FocusTrap>
+      }
+    >
+      <IconButton
+        variant="SurfaceVariant"
+        fill="Soft"
+        size="400"
+        className={css.ControlButton}
+        onClick={toggle}
+        aria-pressed={!!cords}
+        aria-label="More"
+        title="More"
+      >
+        <Icon size="400" src={Icons.HorizontalDots} />
+      </IconButton>
+    </PopOut>
   );
 }

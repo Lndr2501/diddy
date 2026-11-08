@@ -20,7 +20,10 @@ import { usePowerLevels } from '../../hooks/usePowerLevels';
 import { useRoom } from '../../hooks/useRoom';
 import { useUserPresence } from '../../hooks/useUserPresence';
 import { IgnoredUserAlert, MutualRoomsChip, OptionsChip, ServerChip, ShareChip } from './UserChips';
-import { useCloseUserRoomProfile } from '../../state/hooks/userRoomProfile';
+import {
+  useCloseUserRoomProfile,
+  useOpenLargeUserProfile,
+} from '../../state/hooks/userRoomProfile';
 import { PowerChip } from './PowerChip';
 import { UserInviteAlert, UserBanAlert, UserKickAlert } from './UserModeration';
 import { useIgnoredUsers } from '../../hooks/useIgnoredUsers';
@@ -44,8 +47,10 @@ import { AccountDataEvent } from '../../../types/matrix/accountData';
 
 type UserRoomProfileProps = {
   userId: string;
+  /** the big profile window: large banner and avatar, always the roomy layout */
+  large?: boolean;
 };
-export function UserRoomProfile({ userId }: UserRoomProfileProps) {
+export function UserRoomProfile({ userId, large }: UserRoomProfileProps) {
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
   const navigate = useNavigate();
@@ -82,10 +87,13 @@ export function UserRoomProfile({ userId }: UserRoomProfileProps) {
   const profile = useDiddyProfile(mx, userId);
   const accent = safeColor(profile?.card?.accent);
   const accentText = accent ? readableTextOn(accent) : undefined;
-  const layout = profile?.cardLayout?.layout ?? 'standard';
+  const big = profile?.cardLayout?.big;
+  // the big window has its own layout (expanded unless the owner chose tabs for it)
+  const layout = large ? big?.layout ?? 'expanded' : profile?.cardLayout?.layout ?? 'standard';
   const compact = layout === 'compact';
   const cardTheme = profile?.cardLayout?.theme;
-  const modules = visibleModules(profile?.cardLayout);
+  const modules = visibleModules({ ...profile?.cardLayout, layout });
+  const openLargeProfile = useOpenLargeUserProfile();
 
   const handleMessage = () => {
     closeUserRoomProfile();
@@ -207,6 +215,8 @@ export function UserRoomProfile({ userId }: UserRoomProfileProps) {
           presence={shownPresence}
           profile={profile}
           compact={compact}
+          large={large ? { banner: big?.banner ?? 'tall', avatar: big?.avatar ?? 'large' } : undefined}
+          onAvatarClick={large ? undefined : () => openLargeProfile(room.roomId, userId)}
           actions={actions}
         />
         <div className={classNames(css.CardBody, compact && css.CardBodyCompact)}>
@@ -223,6 +233,7 @@ export function UserRoomProfile({ userId }: UserRoomProfileProps) {
           <ProfileModules
             profile={profile}
             accent={accent}
+            layout={layout}
             sharedRooms={
               layout === 'tabs' && notMe ? <MutualRoomsChip userId={userId} /> : undefined
             }

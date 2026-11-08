@@ -30,6 +30,7 @@ import { copyToClipboard } from '../../utils/dom';
 import { useTimeoutToggle } from '../../hooks/useTimeoutToggle';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { CardStyle, DiddyProfile, DiddyStatus } from '../../plugins/diddy/types';
+import type { BigProfileAvatar, BigProfileBanner } from '../../plugins/diddy/profileExtras';
 import { useMxcUrl } from '../../plugins/diddy/media';
 import { useShownBadges } from '../../plugins/diddy/profiles';
 import { safeAngle, safeColor, safeMxc, safeText } from '../../plugins/diddy/sanitize';
@@ -129,6 +130,10 @@ type UserHeroProps = {
   profile?: DiddyProfile;
   /** the compact card layout uses a slimmer banner and a smaller avatar */
   compact?: boolean;
+  /** the big profile window: banner height and avatar size chosen by the owner */
+  large?: { banner: BigProfileBanner; avatar: BigProfileAvatar };
+  /** a click on the picture does this instead of showing the picture full size */
+  onAvatarClick?: () => void;
   /** buttons shown right of the avatar, below the banner */
   actions?: ReactNode;
 };
@@ -138,6 +143,8 @@ export function UserHero({
   presence,
   profile,
   compact,
+  large,
+  onAvatarClick,
   actions,
 }: UserHeroProps) {
   const [viewAvatar, setViewAvatar] = useState<string>();
@@ -150,7 +157,12 @@ export function UserHero({
   const animatedAvatarUrl = avatarPrefs.profile ? animatedAvatarMxcUrl : undefined;
   const shownAvatarUrl = animatedAvatarUrl || avatarUrl;
   const diddyStatus = profile?.status;
-  const avatarSize = compact ? 60 : 88;
+  let avatarSize = 88;
+  if (large) avatarSize = large.avatar === 'large' ? 120 : 88;
+  else if (compact) avatarSize = 60;
+  let avatarClick: (() => void) | undefined;
+  if (onAvatarClick) avatarClick = onAvatarClick;
+  else if (shownAvatarUrl) avatarClick = () => setViewAvatar(shownAvatarUrl);
 
   let badge: ReactNode = null;
   if (diddyStatus) badge = <StatusDot status={diddyStatus} />;
@@ -163,19 +175,27 @@ export function UserHero({
         className={classNames(
           css.UserHeroCoverContainer,
           css.UserHeroBanner,
-          compact && css.UserHeroCoverCompact
+          compact && !large && css.UserHeroCoverCompact,
+          large?.banner === 'tall' && css.UserHeroCoverTall,
+          large?.banner === 'hero' && css.UserHeroCoverHero
         )}
         style={{ position: 'relative', ...getBannerStyle(userId, profile?.card, bannerUrl) }}
       >
         {bannerUrl && <PositionedImg src={bannerUrl} pos={profile?.card?.bannerPos} />}
         <div className={css.UserHeroBannerShade} />
       </div>
-      <div className={classNames(css.UserHeroBar, compact && css.UserHeroBarCompact)}>
+      <div
+        className={classNames(
+          css.UserHeroBar,
+          compact && !large && css.UserHeroBarCompact,
+          large?.avatar === 'large' && css.UserHeroBarLarge
+        )}
+      >
         <div className={css.AvatarWrap}>
           <Avatar
-            as={shownAvatarUrl ? 'button' : 'div'}
-            onClick={shownAvatarUrl ? () => setViewAvatar(shownAvatarUrl) : undefined}
-            aria-label={shownAvatarUrl ? 'View avatar' : undefined}
+            as={avatarClick ? 'button' : 'div'}
+            onClick={avatarClick}
+            aria-label={onAvatarClick ? 'Open full profile' : avatarClick && 'View avatar'}
             className={css.UserHeroAvatar}
             radii="Pill"
             size="500"

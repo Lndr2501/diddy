@@ -1,4 +1,4 @@
-import React, { ReactNode } from 'react';
+import React, { createContext, ReactNode, useContext } from 'react';
 import classNames from 'classnames';
 import { as, Box, Icon, IconButton, Icons, Scroll, Spinner, Text } from 'folds';
 import { Page, PageContent, PageHeader } from '../../../components/page';
@@ -6,10 +6,13 @@ import { BreakWord } from '../../../styles/Text.css';
 import * as css from './style.css';
 
 /*
- * Building blocks for the settings pages in the style of macOS System Settings:
- * a centered page column, small grey section titles and rounded "inset" groups
- * whose rows are separated by hairlines (label left, control right).
+ * Building blocks for the settings pages: a slim header with a breadcrumb, a centered page
+ * column, section headings above rounded groups whose rows are split by hairlines (title and
+ * description left, control right).
  */
+
+/** Name of the settings window shown in front of the page title ("Settings / General"). */
+export const SettingsBreadcrumb = createContext<string | undefined>(undefined);
 
 type SettingsPageProps = {
   title: ReactNode;
@@ -18,20 +21,36 @@ type SettingsPageProps = {
 };
 /** Full settings page: header with the title aligned to the content column, scrolling body. */
 export function SettingsPage({ title, requestClose, children }: SettingsPageProps) {
+  const crumb = useContext(SettingsBreadcrumb);
   return (
     <Page>
-      <PageHeader outlined={false}>
-        <div className={css.HeaderGrid}>
-          <div className={css.HeaderTitle}>
-            <Text size="H3" truncate>
-              {title}
-            </Text>
-          </div>
-          <div className={css.HeaderActions}>
-            <IconButton onClick={requestClose} variant="Surface" aria-label="Close">
-              <Icon src={Icons.Cross} />
-            </IconButton>
-          </div>
+      <PageHeader outlined={false} className={css.Header}>
+        <div className={css.Crumbs}>
+          {crumb && (
+            <>
+              <Text as="span" size="T300" className={css.CrumbParent}>
+                {crumb}
+              </Text>
+              <span className={css.CrumbSeparator} aria-hidden>
+                /
+              </span>
+            </>
+          )}
+          <Text as="h1" size="T300" className={css.CrumbTitle} truncate>
+            {title}
+          </Text>
+        </div>
+        <div className={css.HeaderActions}>
+          <IconButton
+            onClick={requestClose}
+            variant="Surface"
+            fill="None"
+            size="300"
+            radii="300"
+            aria-label="Close"
+          >
+            <Icon size="100" src={Icons.Cross} />
+          </IconButton>
         </div>
       </PageHeader>
       <Box grow="Yes">
@@ -59,7 +78,7 @@ export function InsetSection({ title, after, footer, children }: InsetSectionPro
       {(title || after) && (
         <div className={css.SectionHeader}>
           {title && (
-            <Text as="h2" size="T200" className={css.SectionTitle}>
+            <Text as="h2" size="H5" className={css.SectionTitle}>
               {title}
             </Text>
           )}

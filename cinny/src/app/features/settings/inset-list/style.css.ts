@@ -1,31 +1,58 @@
 import { globalStyle, style } from '@vanilla-extract/css';
 import { recipe, RecipeVariants } from '@vanilla-extract/recipes';
 import { color, config, toRem } from 'folds';
+import { SEPARATOR } from '../../../components/sidebar/diddyTokens';
 
 /** Max width of a settings list page (like macOS System Settings), centered in the sheet. */
-const CONTENT_MAX_WIDTH = toRem(760);
+const CONTENT_MAX_WIDTH = toRem(780);
 const GROUP_RADIUS = toRem(12);
 
 /* ---------- page ---------- */
 
-// Three-column grid: the title sits in the same centered column as the content below,
-// the close button stays at the right edge of the page.
-export const HeaderGrid = style({
-  flexGrow: 1,
-  minWidth: 0,
-  display: 'grid',
-  gridTemplateColumns: `1fr minmax(0, ${CONTENT_MAX_WIDTH}) 1fr`,
-  alignItems: 'center',
+// Slim header: breadcrumb on the left, close on the right, one hairline below.
+export const Header = style({
+  selectors: {
+    '&&': {
+      height: toRem(52),
+      minHeight: toRem(52),
+      padding: `0 ${config.space.S300} 0 ${config.space.S500}`,
+      gap: config.space.S300,
+      backgroundColor: 'transparent',
+      borderBottom: `1px solid ${SEPARATOR}`,
+    },
+  },
 });
 
-export const HeaderTitle = style({
-  gridColumn: 2,
+export const Crumbs = style({
+  flexGrow: 1,
   minWidth: 0,
+  display: 'flex',
+  alignItems: 'center',
+  gap: config.space.S200,
+});
+
+export const CrumbParent = style({
+  flexShrink: 0,
+  opacity: 0.6,
+});
+
+export const CrumbSeparator = style({
+  flexShrink: 0,
+  opacity: 0.35,
+});
+
+export const CrumbTitle = style({
+  margin: 0,
+  minWidth: 0,
+  selectors: {
+    '&&': {
+      fontWeight: config.fontWeight.W500,
+    },
+  },
 });
 
 export const HeaderActions = style({
-  gridColumn: 3,
-  justifySelf: 'end',
+  flexShrink: 0,
   display: 'flex',
   alignItems: 'center',
   gap: config.space.S200,
@@ -40,7 +67,7 @@ export const Body = style({
   paddingTop: config.space.S200,
   display: 'flex',
   flexDirection: 'column',
-  gap: config.space.S700,
+  gap: toRem(30),
 });
 
 /* ---------- section ---------- */
@@ -48,7 +75,7 @@ export const Body = style({
 export const Section = style({
   display: 'flex',
   flexDirection: 'column',
-  gap: config.space.S200,
+  gap: config.space.S300,
   minWidth: 0,
 });
 
@@ -58,14 +85,21 @@ export const SectionHeader = style({
   justifyContent: 'space-between',
   flexWrap: 'wrap',
   gap: config.space.S200,
-  padding: `0 ${config.space.S200}`,
+  padding: `0 ${toRem(2)}`,
 });
 
+// Section heading above a group: a real heading, not a small grey label.
 export const SectionTitle = style({
   margin: 0,
-  fontWeight: config.fontWeight.W600,
   color: color.Surface.OnContainer,
-  opacity: 0.6,
+  selectors: {
+    '&&': {
+      fontSize: toRem(16),
+      lineHeight: toRem(22),
+      fontWeight: config.fontWeight.W600,
+      letterSpacing: '-0.01em',
+    },
+  },
 });
 
 export const SectionFooter = style({
@@ -82,9 +116,9 @@ export const Group = style({
   minWidth: 0,
   borderRadius: GROUP_RADIUS,
   overflow: 'hidden',
-  backgroundColor: color.SurfaceVariant.Container,
-  color: color.SurfaceVariant.OnContainer,
-  boxShadow: `0 0 0 ${config.borderWidth.B300} ${color.SurfaceVariant.ContainerLine}`,
+  backgroundColor: `color-mix(in srgb, ${color.Surface.OnContainer} 3%, ${color.Surface.Container})`,
+  color: color.Surface.OnContainer,
+  border: `1px solid ${SEPARATOR}`,
 });
 
 const ItemBase = style({
@@ -94,8 +128,8 @@ const ItemBase = style({
   justifyContent: 'center',
   gap: config.space.S300,
   minWidth: 0,
-  minHeight: toRem(52),
-  padding: `${config.space.S300} ${config.space.S400}`,
+  minHeight: toRem(60),
+  padding: `${toRem(14)} ${config.space.S400}`,
 });
 
 export const Item = recipe({
@@ -115,15 +149,15 @@ export const Item = recipe({
 });
 export type ItemVariants = RecipeVariants<typeof Item>;
 
-// hairline between rows, inset from the left like Apple's grouped lists
+// full-width hairline between rows
 globalStyle(`${ItemBase} + ${ItemBase}::before`, {
   content: '""',
   position: 'absolute',
   top: 0,
-  left: config.space.S400,
+  left: 0,
   right: 0,
-  height: config.borderWidth.B300,
-  backgroundColor: color.SurfaceVariant.ContainerLine,
+  height: '1px',
+  backgroundColor: SEPARATOR,
   pointerEvents: 'none',
 });
 
@@ -133,7 +167,7 @@ export const Row = style({
   display: 'flex',
   alignItems: 'center',
   flexWrap: 'wrap',
-  columnGap: config.space.S300,
+  columnGap: config.space.S500,
   rowGap: config.space.S200,
   minWidth: 0,
 });
@@ -153,7 +187,12 @@ export const RowText = style({
 });
 
 export const RowDescription = style({
-  opacity: 0.7,
+  opacity: 0.65,
+});
+
+// row title: medium weight, the description below stays regular
+globalStyle(`${RowText} > p:first-child:not(${RowDescription})`, {
+  fontWeight: config.fontWeight.W500,
 });
 
 // wraps below the label on narrow screens and stays right-aligned

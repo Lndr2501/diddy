@@ -1,9 +1,10 @@
-import React from 'react';
-import { Menu, PopOut, toRem } from 'folds';
+import React, { useCallback } from 'react';
+import { useSetAtom } from 'jotai';
+import { Menu, Overlay, OverlayBackdrop, OverlayCenter, PopOut, toRem } from 'folds';
 import FocusTrap from 'focus-trap-react';
-import { useCloseUserRoomProfile, useUserRoomProfileState } from '../state/hooks/userRoomProfile';
+import { useUserRoomProfileState } from '../state/hooks/userRoomProfile';
 import { UserRoomProfile } from './user-profile';
-import { UserRoomProfileState } from '../state/userRoomProfile';
+import { userRoomProfileAtom, UserRoomProfileState } from '../state/userRoomProfile';
 import { useAllJoinedRoomsSet, useGetRoom } from '../hooks/useGetRoom';
 import { stopPropagation } from '../utils/keyboard';
 import { SpaceProvider } from '../hooks/useSpace';
@@ -17,9 +18,49 @@ function UserRoomProfileContextMenu({ state }: { state: UserRoomProfileState }) 
   const room = getRoom(roomId);
   const space = spaceId ? getRoom(spaceId) : undefined;
 
-  const close = useCloseUserRoomProfile();
+  const setUserRoomProfile = useSetAtom(userRoomProfileAtom);
+  // Only close what is still open: switching from the small popover to the big profile unmounts
+  // the popover, and its focus trap reports that as a close.
+  const close = useCallback(
+    () => setUserRoomProfile((current) => (current === state ? undefined : current)),
+    [setUserRoomProfile, state]
+  );
 
   if (!room) return null;
+
+  const profile = (
+    <SpaceProvider value={space ?? null}>
+      <RoomProvider value={room}>
+        <UserRoomProfile userId={userId} large={state.large} />
+      </RoomProvider>
+    </SpaceProvider>
+  );
+
+  if (state.large) {
+    return (
+      <Overlay open backdrop={<OverlayBackdrop className={sheetCss.Backdrop} />}>
+        <OverlayCenter>
+          <FocusTrap
+            focusTrapOptions={{
+              initialFocus: false,
+              onDeactivate: close,
+              clickOutsideDeactivates: true,
+              escapeDeactivates: stopPropagation,
+            }}
+          >
+            <Menu
+              className={sheetCss.PopoverCard}
+              style={{ width: `min(${toRem(600)}, calc(100vw - ${toRem(32)}))` }}
+              role="dialog"
+              aria-label="Profile"
+            >
+              {profile}
+            </Menu>
+          </FocusTrap>
+        </OverlayCenter>
+      </Overlay>
+    );
+  }
 
   return (
     <PopOut
@@ -36,11 +77,7 @@ function UserRoomProfileContextMenu({ state }: { state: UserRoomProfileState }) 
           }}
         >
           <Menu className={sheetCss.PopoverCard} style={{ width: toRem(340) }}>
-            <SpaceProvider value={space ?? null}>
-              <RoomProvider value={room}>
-                <UserRoomProfile userId={userId} />
-              </RoomProvider>
-            </SpaceProvider>
+            {profile}
           </Menu>
         </FocusTrap>
       }

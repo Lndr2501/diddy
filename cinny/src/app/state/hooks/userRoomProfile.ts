@@ -39,3 +39,21 @@ export const useOpenUserRoomProfile = (): OpenCallback => {
 
   return open;
 };
+
+type OpenLargeCallback = (roomId: string, userId: string) => void;
+/** Open the big profile of `userId` (a centred window), in the context of `roomId`. */
+export const useOpenLargeUserProfile = (): OpenLargeCallback => {
+  const setUserRoomProfile = useSetAtom(userRoomProfileAtom);
+
+  return useCallback(
+    (roomId, userId) => {
+      setUserRoomProfile({
+        roomId,
+        userId,
+        cords: { x: 0, y: 0, width: 0, height: 0 },
+        large: true,
+      });
+    },
+    [setUserRoomProfile]
+  );
+};

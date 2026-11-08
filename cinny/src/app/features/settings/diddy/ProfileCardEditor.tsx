@@ -6,6 +6,13 @@ import {
   ABOUT_FIELDS,
   ACTIVITY_KINDS,
   ActivityKind,
+  BIG_PROFILE_AVATARS,
+  BIG_PROFILE_BANNERS,
+  BIG_PROFILE_LAYOUTS,
+  BigProfileAvatar,
+  BigProfileBanner,
+  BigProfileLayout,
+  BigProfileSettings,
   CARD_LAYOUTS,
   CARD_THEMES,
   CardTheme,
@@ -271,6 +278,20 @@ const LAYOUT_INFO: Record<CardLayout, { label: string; text: string }> = {
   expanded: { label: 'Expanded', text: 'More space for details.' },
   tabs: { label: 'Tabs', text: 'Organized in tabs.' },
 };
+const BIG_LAYOUT_LABEL: Record<BigProfileLayout, string> = {
+  expanded: 'Expanded',
+  tabs: 'Tabs',
+};
+const BIG_BANNER_LABEL: Record<BigProfileBanner, string> = {
+  normal: 'Normal',
+  tall: 'Tall',
+  hero: 'Extra tall',
+};
+const BIG_AVATAR_LABEL: Record<BigProfileAvatar, string> = {
+  normal: 'Normal',
+  large: 'Large',
+};
+
 const MODULE_LABEL: Record<CardModule, string> = {
   about: 'Facts',
   bio: 'Bio',
@@ -367,6 +388,15 @@ export function LayoutEditor({ draft, patch }: { draft: Draft; patch: PatchDraft
     ...allowed.filter((m) => !(settings.order ?? []).includes(m)),
   ];
   const setSettings = (next: CardLayoutSettings) => patch((d) => ({ ...d, cardLayout: next }));
+  const big: BigProfileSettings = settings.big ?? {};
+  // defaults are stored as "unset", so an untouched big profile keeps following the defaults
+  const setBig = (change: BigProfileSettings) => {
+    const next: BigProfileSettings = { ...big, ...change };
+    (Object.keys(next) as (keyof BigProfileSettings)[]).forEach((k) => {
+      if (next[k] === undefined) delete next[k];
+    });
+    setSettings({ ...settings, big: Object.keys(next).length > 0 ? next : undefined });
+  };
   const dropOn = (target: CardModule) => {
     setOver(undefined);
     if (!dragging || dragging === target) return;
@@ -461,6 +491,45 @@ export function LayoutEditor({ draft, patch }: { draft: Draft; patch: PatchDraft
             />
           </div>
         </div>
+      </SettingsCard>
+      <SettingsCard
+        icon={Icons.User}
+        title="Big profile"
+        description="The large view people get when they click your profile picture or your name in a call."
+      >
+        <Box direction="Column" gap="200">
+          <Text size="T300" priority="300">
+            Layout
+          </Text>
+          <Segmented
+            label="Big profile layout"
+            value={big.layout ?? 'expanded'}
+            options={BIG_PROFILE_LAYOUTS.map((l) => ({ id: l, label: BIG_LAYOUT_LABEL[l] }))}
+            onChange={(l) => setBig({ layout: l === 'expanded' ? undefined : l })}
+          />
+        </Box>
+        <Box direction="Column" gap="200">
+          <Text size="T300" priority="300">
+            Banner
+          </Text>
+          <Segmented
+            label="Big profile banner"
+            value={big.banner ?? 'tall'}
+            options={BIG_PROFILE_BANNERS.map((b) => ({ id: b, label: BIG_BANNER_LABEL[b] }))}
+            onChange={(b) => setBig({ banner: b === 'tall' ? undefined : b })}
+          />
+        </Box>
+        <Box direction="Column" gap="200">
+          <Text size="T300" priority="300">
+            Profile picture
+          </Text>
+          <Segmented
+            label="Big profile picture size"
+            value={big.avatar ?? 'large'}
+            options={BIG_PROFILE_AVATARS.map((a) => ({ id: a, label: BIG_AVATAR_LABEL[a] }))}
+            onChange={(a) => setBig({ avatar: a === 'large' ? undefined : a })}
+          />
+        </Box>
       </SettingsCard>
       <SettingsCard
         icon={Icons.Sort}

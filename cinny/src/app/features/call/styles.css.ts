@@ -1,4 +1,4 @@
-import { style } from '@vanilla-extract/css';
+import { globalStyle, style } from '@vanilla-extract/css';
 import { color, config, toRem } from 'folds';
 import * as t from '../../components/diddy/designTokens';
 
@@ -12,13 +12,18 @@ export const CallViewContent = style({
 // Floating material pill (in-call bar and prescreen controls share it). One row of 44px buttons
 // plus padding is 62px high, so a 31px radius reads as a pill and still looks right when wrapping.
 export const ControlCard = style({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  flexWrap: 'wrap',
+  gap: config.space.S200,
   padding: config.space.S200,
   backgroundColor: t.material,
   WebkitBackdropFilter: t.blur,
   backdropFilter: t.blur,
   color: color.Surface.OnContainer,
   border: t.border,
-  borderRadius: toRem(31),
+  borderRadius: toRem(20),
   boxShadow: t.shadow3,
   maxWidth: '100%',
   minWidth: 0,
@@ -41,7 +46,7 @@ export const ControlButton = style({
       width: toRem(44),
       height: toRem(44),
       padding: 0,
-      borderRadius: '50%',
+      borderRadius: toRem(12),
       flexShrink: 0,
       transition: t.transition('background-color', 'color', 'box-shadow', 'transform'),
     },
@@ -83,6 +88,86 @@ export const ControlPrimaryButton = style({
 
 // A group of buttons inside the pill. Groups wrap as a whole; a group that is still too
 // wide wraps internally instead of overflowing.
+// Button + chevron (device or sharing options) as one rounded unit.
+export const ControlSplit = style({
+  display: 'flex',
+  alignItems: 'stretch',
+  flexShrink: 0,
+  borderRadius: toRem(12),
+  backgroundColor: color.SurfaceVariant.Container,
+  selectors: {
+    '&[data-active]': {
+      backgroundColor: color.Primary.Container,
+    },
+  },
+});
+globalStyle(`${ControlSplit} > ${ControlButton}[class]`, {
+  borderTopRightRadius: 0,
+  borderBottomRightRadius: 0,
+});
+
+export const ControlChevron = style({
+  selectors: {
+    '&[class]': {
+      width: toRem(24),
+      minWidth: 0,
+      height: toRem(44),
+      padding: 0,
+      margin: 0,
+      flexShrink: 0,
+      borderRadius: `0 ${toRem(12)} ${toRem(12)} 0`,
+      backgroundColor: 'transparent',
+      boxShadow: `inset 1px 0 0 ${t.separator}`,
+    },
+    '&[class]:hover, &[class][aria-pressed=true]': {
+      backgroundColor: `color-mix(in srgb, ${color.Surface.OnContainer} 8%, transparent)`,
+    },
+    '&[class]:focus-visible': t.focusOutline,
+  },
+});
+
+// Leave: a red rounded rectangle like the other buttons, icon only on narrow windows.
+export const ControlLeaveButton = style({
+  selectors: {
+    '&[class]': {
+      height: toRem(44),
+      minWidth: toRem(44),
+      padding: `0 ${config.space.S400}`,
+      borderRadius: toRem(12),
+      flexShrink: 0,
+      gap: config.space.S200,
+    },
+    [`${ControlCard}[data-compact] &[class]`]: {
+      padding: 0,
+      width: toRem(52),
+    },
+    '&[class]:focus-visible': t.focusOutline,
+  },
+});
+
+// One status line above the bar (sharing sound, errors), centred like the bar.
+export const ControlToast = style({
+  display: 'flex',
+  alignItems: 'center',
+  gap: config.space.S200,
+  maxWidth: `min(${toRem(640)}, 100%)`,
+  minWidth: 0,
+  padding: `${toRem(6)} ${config.space.S300}`,
+  borderRadius: toRem(999),
+  backgroundColor: t.material,
+  WebkitBackdropFilter: t.blur,
+  backdropFilter: t.blur,
+  border: t.border,
+  boxShadow: t.shadow1,
+  color: color.Surface.OnContainer,
+  pointerEvents: 'auto',
+  selectors: {
+    '&[data-kind=warning]': {
+      color: color.Warning.Main,
+    },
+  },
+});
+
 export const ControlGroup = style({
   display: 'flex',
   alignItems: 'center',
@@ -230,11 +315,27 @@ export const CallRosterChip = style({
   boxShadow: t.shadow1,
   maxWidth: toRem(240),
   minWidth: 0,
+  // a button: opens the person's big profile
+  margin: 0,
+  font: 'inherit',
+  color: 'inherit',
+  cursor: 'pointer',
+  transition: 'filter 120ms ease',
   selectors: {
+    '&:hover': {
+      filter: 'brightness(1.15)',
+    },
+    '&:focus-visible': {
+      outline: `${toRem(2)} solid ${color.Primary.Main}`,
+      outlineOffset: toRem(2),
+    },
     // talking to an agent (#57)
     '&[data-agent]': {
       boxShadow: `0 0 0 ${toRem(2)} ${color.Secondary.Main}`,
     },
+  },
+  '@media': {
+    '(prefers-reduced-motion: reduce)': { transition: 'none' },
   },
 });
 export const CallRosterAgent = style({
@@ -297,4 +398,230 @@ export const PopoverSeparator = style({
   height: 1,
   flexShrink: 0,
   backgroundColor: t.separator,
+});
+
+/* ---------- Diddy call stage (CallStage.tsx): people and streams as equal tiles ---------- */
+
+// The call container (fixed, above the stage) lets clicks through to the stage, except while
+// Element Call shows one of its menus or dialogs.
+globalStyle('[data-call-embed-container][data-call-stage]:not([data-call-overlay])', {
+  pointerEvents: 'none',
+});
+
+export const StagePlaceholder = style({
+  position: 'relative',
+  minHeight: 0,
+});
+
+export const StageRoot = style({
+  position: 'absolute',
+  inset: 0,
+  boxSizing: 'border-box',
+  padding: `${config.space.S300} ${config.space.S400} ${config.space.S200}`,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: config.space.S300,
+});
+
+export const StageGrid = style({
+  flexGrow: 1,
+  minHeight: 0,
+  width: '100%',
+  margin: '0 auto',
+  display: 'grid',
+  gap: toRem(10),
+});
+
+export const StageFocus = style({
+  flexGrow: 1,
+  minHeight: 0,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  // the large stream sizes itself to this box in its own aspect ratio (cqw / cqh below)
+  containerType: 'size',
+});
+
+export const StageStrip = style({
+  flexShrink: 0,
+  height: toRem(118),
+  display: 'flex',
+  justifyContent: 'center',
+  gap: toRem(10),
+  overflowX: 'auto',
+  overflowY: 'hidden',
+});
+
+export const StageTile = style({
+  position: 'relative',
+  minWidth: 0,
+  minHeight: 0,
+  flexGrow: 1,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  margin: 0,
+  padding: 0,
+  overflow: 'hidden',
+  borderRadius: toRem(14),
+  border: t.border,
+  backgroundColor: color.SurfaceVariant.Container,
+  color: color.SurfaceVariant.OnContainer,
+  font: 'inherit',
+  cursor: 'pointer',
+  transition: t.transition('box-shadow'),
+  selectors: {
+    // letterbox of a stream in a grid tile: a quiet dark tone, not pure black
+    '&[data-kind=stream]': {
+      backgroundColor: `color-mix(in srgb, ${color.Background.Container} 35%, #0c0c0e)`,
+    },
+    // the large tile: its picture's shape (a stream's screen, a camera, else 16:9), as big as fits
+    '&[data-focused]': {
+      flexGrow: 0,
+      width: 'min(100cqw, calc(100cqh * var(--stage-ratio, 1.7778)))',
+      height: 'min(100cqh, calc(100cqw / var(--stage-ratio, 1.7778)))',
+    },
+    '&[data-speaking]': {
+      boxShadow: `0 0 0 2px ${color.Primary.Main}, 0 0 0 6px color-mix(in srgb, ${color.Primary.Main} 22%, transparent)`,
+    },
+    '&[data-small]': {
+      flexGrow: 0,
+      width: toRem(200),
+      borderRadius: toRem(12),
+    },
+    '&:focus-visible': t.focusOutline,
+  },
+  '@media': {
+    [REDUCED_MOTION]: { transition: 'none' },
+  },
+});
+
+// invisible full-size button of a stream tile (the tile itself holds other buttons too)
+export const StageTileHit = style({
+  position: 'absolute',
+  inset: 0,
+  zIndex: 1,
+  margin: 0,
+  padding: 0,
+  border: 'none',
+  background: 'transparent',
+  cursor: 'pointer',
+  borderRadius: 'inherit',
+  selectors: {
+    '&:focus-visible': t.focusOutline,
+  },
+});
+
+export const StageVideo = style({
+  position: 'absolute',
+  inset: 0,
+  width: '100%',
+  height: '100%',
+  objectFit: 'cover',
+  pointerEvents: 'none',
+  selectors: {
+    '&[data-fit=contain]': {
+      objectFit: 'contain',
+    },
+  },
+});
+
+export const StageAvatar = style({
+  selectors: {
+    '&[class]': {
+      width: `min(${toRem(104)}, 40%)`,
+      height: 'auto',
+      aspectRatio: '1',
+      fontSize: toRem(34),
+    },
+    [`${StageTile}[data-small] &[class]`]: {
+      width: toRem(52),
+      fontSize: toRem(18),
+    },
+  },
+});
+
+export const StageWaiting = style({
+  position: 'relative',
+});
+
+const stagePill = {
+  position: 'absolute',
+  zIndex: 2,
+  display: 'flex',
+  alignItems: 'center',
+  pointerEvents: 'none',
+} as const;
+
+export const StageTag = style({
+  ...stagePill,
+  left: toRem(10),
+  bottom: toRem(10),
+  maxWidth: `calc(100% - ${toRem(20)})`,
+  gap: toRem(6),
+  height: toRem(28),
+  padding: `0 ${toRem(10)} 0 ${toRem(8)}`,
+  borderRadius: toRem(999),
+  backgroundColor: 'rgba(18, 18, 18, 0.66)',
+  color: '#F2F2F2',
+  fontSize: toRem(13),
+  fontWeight: 500,
+  selectors: {
+    [`${StageTile}[data-small] &`]: {
+      left: toRem(8),
+      bottom: toRem(8),
+      height: toRem(24),
+      fontSize: toRem(12),
+    },
+  },
+});
+
+export const StageTagText = style({
+  minWidth: 0,
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+});
+
+export const StageTagIcon = style({
+  flexShrink: 0,
+  width: toRem(15),
+  height: toRem(15),
+  fill: 'none',
+  stroke: 'currentColor',
+  strokeWidth: 1.9,
+  strokeLinecap: 'round',
+  strokeLinejoin: 'round',
+  selectors: {
+    '&[data-muted]': {
+      color: '#FF8A8F',
+    },
+  },
+});
+
+export const StageLive = style({
+  ...stagePill,
+  left: toRem(10),
+  top: toRem(10),
+  height: toRem(20),
+  padding: `0 ${toRem(7)}`,
+  borderRadius: toRem(5),
+  backgroundColor: '#E5484D',
+  color: '#FFFFFF',
+  fontSize: toRem(11),
+  fontWeight: 700,
+  letterSpacing: '0.05em',
+});
+
+export const StageCorner = style({
+  position: 'absolute',
+  zIndex: 2,
+  top: toRem(8),
+  right: toRem(8),
+  selectors: {
+    '&[class]': {
+      backgroundColor: 'rgba(18, 18, 18, 0.66)',
+      color: '#F2F2F2',
+    },
+  },
 });

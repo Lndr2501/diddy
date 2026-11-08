@@ -7,6 +7,8 @@ export type UserRoomProfileState = {
   spaceId?: string;
   cords: RectCords;
   position?: Position;
+  /** the big profile: a centred window instead of the small popover next to the click */
+  large?: boolean;
 };
 
 export const userRoomProfileAtom = atom<UserRoomProfileState | undefined>(undefined);

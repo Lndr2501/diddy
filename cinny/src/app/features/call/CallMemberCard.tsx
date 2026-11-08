@@ -3,7 +3,10 @@ import React, { useState } from 'react';
 import { Avatar, Box, Icon, Icons, Text, toRem } from 'folds';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
-import { useOpenUserRoomProfile } from '../../state/hooks/userRoomProfile';
+import {
+  useOpenLargeUserProfile,
+  useOpenUserRoomProfile,
+} from '../../state/hooks/userRoomProfile';
 import { getMemberAvatarMxc, getMemberDisplayName } from '../../utils/room';
 import { useRoom } from '../../hooks/useRoom';
 import { getMxIdLocalPart, mxcUrlToHttp } from '../../utils/matrix';
@@ -30,6 +33,7 @@ function CallRosterChip({ userId }: { userId: string }) {
   const useAuthentication = useMediaAuthentication();
   const room = useRoom();
   const agent = useAgentTalking(userId, mx.getUserId() ?? undefined);
+  const openLargeProfile = useOpenLargeUserProfile();
   const name = getMemberDisplayName(room, userId) ?? getMxIdLocalPart(userId) ?? userId;
   const avatarMxc = getMemberAvatarMxc(room, userId);
   const avatarUrl = avatarMxc
@@ -37,11 +41,18 @@ function CallRosterChip({ userId }: { userId: string }) {
     : undefined;
   return (
     <Box
+      as="button"
+      type="button"
       className={css.CallRosterChip}
       alignItems="Center"
       gap="200"
       data-agent={agent || undefined}
-      title={agent ? `${name} redet mit Agent` : undefined}
+      title={agent ? `${name} redet mit Agent` : `Profil von ${name}`}
+      onClick={() => openLargeProfile(room.roomId, userId)}
+      onContextMenu={(evt: React.MouseEvent) => {
+        evt.preventDefault();
+        openCallUserMenu(userId, evt.clientX, evt.clientY);
+      }}
     >
       <Avatar size="200" radii="Pill">
         <UserAvatar
