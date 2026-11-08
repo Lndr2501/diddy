@@ -86,6 +86,7 @@ final class AppModel: ObservableObject {
             self.calls.roomsChanged(account: account, from: old, to: new)
             self.announceActivity(account: account, from: old, to: new)
             LocalNotifications.shared.roomsChanged(account: account, from: old, to: new)
+            CallPush.shared.publish(account: account)
         }
         return account
     }

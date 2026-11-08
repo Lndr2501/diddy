@@ -26,6 +26,7 @@ Die App ist Beta: Alles in der Tabelle ist gebaut und läuft bei den ersten Test
 | Offline-Bildschirm: Sitzung bleibt erhalten, wenn der Server nicht erreichbar ist, und verbindet sich von selbst wieder | 🧪 |
 | App-Icon wechseln (Pink, Blau, Lila, Schwarz, Magenta) | 🧪 |
 | Benachrichtigungen im Hintergrund (Nachrichten, Erwähnungen, Einladungen, Anrufe) | 🧪 Einstellung, aus ab Werk: die App läuft dafür im Hintergrund weiter (stilles Audio, kostet Akku). Ohne bezahltes Apple-Konto gibt es keinen Push-Dienst; nach einem Neustart des iPhones oder wenn iOS die App beendet, kommt bis zum nächsten Öffnen nichts |
+| Anruf-Alarm bei geschlossener App über die ntfy-App („Name is calling you“), Einstellungen > Call Alerts | 🧪 nur bei Anrufen aus Diddy (Desktop oder iOS) |
 | Echte Push-Benachrichtigungen bei geschlossener App | ❌ (braucht einen Push-Gateway und ein bezahltes Apple-Konto) |
 | Online-Status | ❌ (Sliding Sync liefert keine Presence) |
 
@@ -34,6 +35,8 @@ Die App ist Beta: Alles in der Tabelle ist gebaut und läuft bei den ersten Test
 **Verschlüsselung in Sprachkanälen:** In verschlüsselten Räumen sind die Medien Ende-zu-Ende verschlüsselt wie bei Element Call. Es fehlen aber noch die Schlüsselrotation beim Verlassen (wer den Kanal verlässt, kennt den Schlüssel bis zum Ende des Anrufs weiter), und den eigenen Schlüssel bekommen die Geräte aus der LiveKit-Teilnehmerliste statt nur die Geräte mit einer MatrixRTC-Mitgliedschaft im Raum. Die Härtung ist geplant, siehe [SECURITY-TODO.md](SECURITY-TODO.md).
 
 **Sounds:** Die meisten Sounds kommen aus Diddys Soundpack in `cinny/public/sound/diddy` (MP3), das auch die Desktop-App spielt; `project.yml` nimmt den Ordner in die App auf, die Zuordnung steht in `Sound.packFile` (`Diddy/App/Sounds.swift`). Für Freizeichen, eigenen Beitritt, Erwähnung, Einladung, abgelehnten Anruf, keine Antwort und Verbindungsabbruch hat das Pack keinen Sound; die synthetisiert [Tools/make_sounds.py](Tools/make_sounds.py) nach `Diddy/Resources/Sounds`. Mitteilungen können kein MP3 abspielen, deshalb liegen dort auch CAF-Kopien von Nachricht und Klingeln (`afconvert -f caff -d ima4 -c 1 message1.mp3 notification_message.caf`, ebenso `call_ringing.mp3` → `notification_ringtone.caf`). Der Klingelton folgt dem Stummschalter des iPhones und vibriert zusätzlich.
+
+**Anruf-Alarm über ntfy:** Ein kostenloses Apple-Konto kann keine Push-Nachrichten empfangen. Deshalb schickt stattdessen der Anrufer den Alarm. Wer unter Einstellungen > Call Alerts den Alarm einschaltet, bekommt ein zufälliges ntfy-Topic. Diddy legt es als State-Event `app.diddy.call_push` (`{"server", "topic"}`, State-Key ist die eigene User-ID) in jeder Direktnachricht ab. Ruft dich jemand mit Diddy an, schickt seine App „Name is calling you“ an dieses Topic, und die ntfy-App zeigt es an. Das Topic können der Chatpartner und sein Server lesen. Anrufe aus Element und anderen Clients lösen keinen Alarm aus. Erlaubt sind nur HTTPS-Server.
 
 ## Voraussetzungen am Server
 

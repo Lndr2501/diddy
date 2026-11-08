@@ -25,6 +25,7 @@ import {
 } from 'matrix-js-sdk';
 import { getCallCapabilities } from './utils';
 import { downloadMedia, mxcUrlToHttp } from '../../utils/matrix';
+import { sendCallPush } from '../diddy/callPush';
 
 export class CallWidgetDriver extends WidgetDriver {
   private allowedCapabilities: Set<Capability>;
@@ -71,6 +72,12 @@ export class CallWidgetDriver extends WidgetDriver {
         eventType as keyof TimelineEvents,
         content as TimelineEvents[keyof TimelineEvents]
       );
+      if (
+        eventType === 'org.matrix.msc4075.rtc.notification' &&
+        content.notification_type === 'ring'
+      ) {
+        sendCallPush(this.mx, roomId).catch(() => undefined);
+      }
     }
 
     return { roomId, eventId: r.event_id };
