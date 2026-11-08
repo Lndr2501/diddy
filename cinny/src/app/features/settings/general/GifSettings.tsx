@@ -30,11 +30,11 @@ const RATINGS: { value: GifRating; label: string; title: string }[] = [
 const KEY_HELP: Record<GifProviderId, { site: string; how: string }> = {
   giphy: {
     site: 'developers.giphy.com',
-    how: 'Create an app (type "API") in the GIPHY developer dashboard and paste its API key.',
+    how: 'Create an app (type "API") in the GIPHY developer dashboard and paste its API key. New (beta) keys are limited to 100 requests per hour until GIPHY upgrades them to production.',
   },
   klipy: {
     site: 'partner.klipy.com',
-    how: 'Create an app in the KLIPY Partner panel and paste its app key. A test key is limited to 100 requests per minute; a production key is free. KLIPY may show ads in results if you enable them for the key (Diddy hides them).',
+    how: 'Create an app under API Keys in the KLIPY Partner Panel and paste its app key. Keys in testing mode are limited to 100 requests per hour until you request production access there. Leave ads off for the key (Diddy does not show ads).',
   },
 };
 
