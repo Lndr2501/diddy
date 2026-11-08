@@ -11,6 +11,8 @@ export type AvatarPrefs = Record<AvatarSurface, boolean> & {
   speakingOnly: boolean;
   /** nameplates (GIF / video / flowing gradient) move; off shows a still frame (#78) */
   nameplates: boolean;
+  /** profile effects (#86) move over profile cards; off shows their still picture */
+  profileEffects: boolean;
 };
 
 const KEY = 'diddyAvatarAnimation';
@@ -22,6 +24,7 @@ const DEFAULTS: AvatarPrefs = {
   call: true,
   speakingOnly: true,
   nameplates: true,
+  profileEffects: true,
 };
 
 const read = (): AvatarPrefs => {
