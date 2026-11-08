@@ -89,12 +89,6 @@ const playNotificationSound = (audio: HTMLAudioElement | null, id: SoundId) => {
   playViaWebAudio(url).catch(fallback);
 };
 
-/** Diddy always shows the system emoji (Apple Color Emoji on macOS) instead of Twemoji. */
-function SystemEmojiFeature() {
-  document.documentElement.style.setProperty('--font-emoji', "'Apple Color Emoji'");
-  return null;
-}
-
 function PageZoomFeature() {
   const [pageZoom] = useSetting(settingsAtom, 'pageZoom');
 
@@ -381,7 +375,6 @@ export function ClientNonUIFeatures({ children }: ClientNonUIFeaturesProps) {
 
   return (
     <>
-      <SystemEmojiFeature />
       <PageZoomFeature />
       <FaviconUpdater />
       <ImageViewerHost />

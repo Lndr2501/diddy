@@ -70,6 +70,14 @@ html body [data-testid="footer-container"] {
   background: none !important;
 }
 
+/* --- emoji: Apple Color Emoji when installed (never bundled), else the platform emoji font ---
+   Element Call's own font stack (Inter) has no emoji, so reactions/names would use whatever the
+   system picks. Same list as --font-emoji in the app's index.css; the iframe cannot see that var. */
+html body, html body *:not(code):not(pre):not(kbd):not(samp) {
+  font-family: var(--cpd-font-family-sans, Inter), 'Apple Color Emoji', 'Noto Color Emoji',
+    'Segoe UI Emoji', sans-serif;
+}
+
 /* --- tile --- */
 ${TILE} {
   --video-tile-background: var(--diddy-tile-bg);

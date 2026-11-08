@@ -4,6 +4,7 @@ import React, {
   KeyboardEventHandler,
   MouseEventHandler,
   useEffect,
+  useMemo,
   useState,
 } from 'react';
 import dayjs from 'dayjs';
@@ -30,6 +31,7 @@ import { useSetting } from '../../../state/hooks/settings';
 import { DateFormat, MessageSpacing, settingsAtom } from '../../../state/settings';
 import { KeySymbol } from '../../../utils/key-symbol';
 import { isMacOS } from '../../../utils/user-agent';
+import { isAppleEmojiInstalled } from '../../../utils/emojiFont';
 import {
   DarkTheme,
   LightTheme,
@@ -202,6 +204,36 @@ function DisplaySettings() {
           title="Page Zoom"
           description="Between 75% and 150%. Press Enter to apply."
           after={<PageZoomInput />}
+        />
+      </InsetGroup>
+    </InsetSection>
+  );
+}
+
+const APPLE_EMOJI_HELP = 'https://github.com/Lndr2501/diddy#apple-emoji-unter-linux';
+
+/** Apple Color Emoji is used whenever installed. It cannot be bundled, so say how to get it. */
+function EmojiSettings() {
+  const installed = useMemo(() => isAppleEmojiInstalled(), []);
+  return (
+    <InsetSection title="Emoji">
+      <InsetGroup>
+        <InsetRow
+          title="Apple Color Emoji"
+          description={
+            installed ? (
+              'Installed on this system, so emoji look like on a Mac.'
+            ) : (
+              <>
+                Not installed on this system, so your system emoji are shown. Apple emoji are used
+                automatically once the font is installed.{' '}
+                <a href={APPLE_EMOJI_HELP} target="_blank" rel="noreferrer noopener">
+                  See how to install it
+                </a>
+                .
+              </>
+            )
+          }
         />
       </InsetGroup>
     </InsetSection>
@@ -926,6 +958,7 @@ export function AppearanceSettings({ requestClose }: AppearanceSettingsProps) {
       <CustomThemeSettings />
       <BackgroundSettings />
       <DisplaySettings />
+      <EmojiSettings />
       <AppIconSettings />
     </SettingsPage>
   );

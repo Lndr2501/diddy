@@ -35,13 +35,25 @@ export type NameEffect = 'none' | 'glow' | 'shadow' | 'outline';
 /** Fonts that exist on macOS and most Linux systems (no downloads needed). */
 export const NAME_FONTS: { id: string; label: string; css: string }[] = [
   { id: 'default', label: 'Default', css: 'inherit' },
-  { id: 'serif', label: 'Serif', css: 'Georgia, "Times New Roman", serif' },
-  { id: 'mono', label: 'Monospace', css: 'Menlo, "Courier New", monospace' },
-  { id: 'rounded', label: 'Rounded', css: '"Arial Rounded MT Bold", "Trebuchet MS", sans-serif' },
-  { id: 'impact', label: 'Impact', css: 'Impact, "Arial Black", sans-serif' },
-  { id: 'script', label: 'Script', css: '"Snell Roundhand", "Brush Script MT", cursive' },
-  { id: 'fantasy', label: 'Fantasy', css: 'Papyrus, fantasy' },
-  { id: 'marker', label: 'Marker', css: '"Marker Felt", "Comic Sans MS", cursive' },
+  { id: 'serif', label: 'Serif', css: 'Georgia, "Times New Roman", var(--font-emoji), serif' },
+  { id: 'mono', label: 'Monospace', css: 'Menlo, "Courier New", var(--font-emoji), monospace' },
+  {
+    id: 'rounded',
+    label: 'Rounded',
+    css: '"Arial Rounded MT Bold", "Trebuchet MS", var(--font-emoji), sans-serif',
+  },
+  { id: 'impact', label: 'Impact', css: 'Impact, "Arial Black", var(--font-emoji), sans-serif' },
+  {
+    id: 'script',
+    label: 'Script',
+    css: '"Snell Roundhand", "Brush Script MT", var(--font-emoji), cursive',
+  },
+  { id: 'fantasy', label: 'Fantasy', css: 'Papyrus, var(--font-emoji), fantasy' },
+  {
+    id: 'marker',
+    label: 'Marker',
+    css: '"Marker Felt", "Comic Sans MS", var(--font-emoji), cursive',
+  },
 ];
 
 export type NameStyle = {
@@ -174,7 +186,9 @@ export const GLOBAL_BADGES: BadgeDef[] = [
 ];
 
 export const awardStateKey = (badgeId: string, userId: string) => `${badgeId}|${userId}`;
-export const parseAwardStateKey = (key: string): { badgeId: string; userId: string } | undefined => {
+export const parseAwardStateKey = (
+  key: string
+): { badgeId: string; userId: string } | undefined => {
   const i = key.indexOf('|');
   if (i <= 0) return undefined;
   return { badgeId: key.slice(0, i), userId: key.slice(i + 1) };
