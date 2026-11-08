@@ -45,6 +45,12 @@ ssh $MAC 'export PATH=/opt/homebrew/bin:$PATH; cd ~/diddy-build/cinny \
 - `chat.spec.cjs` ist selten flaky (einmal 25 s Timeout, danach 3 von 3 grün): erst einzeln wiederholen
   (`npx playwright test -c playwright.mac.config.cjs chat`).
 - Bei Fehlern liegen Bilder unter `cinny/test-results/ui-mac/<test>/test-failed-1.png`. Mit `scp` holen und ansehen.
+- `profile-effects.spec.cjs` (Profileffekte/-rahmen, zweites Konto als Betrachter) überspringt sich auf Builds ohne diese Karten.
+  Optionale ZIP-Fixtures: `~/diddy-testserver/zips/frame.zip` (oder `DIDDY_TEST_ZIPS=<Ordner>`). Der Betrachter-Test legt selbst
+  einen gemeinsamen Space an und hängt den "Diddy Options"-Raum von `testa` hinein (Profildaten sehen nur Mitglieder dieses Raums).
+- Anderen Branch testen: Branch in einen eigenen Ordner auf dem Mac syncen (`~/diddy-dev-build`), dort `cp ../config.json . && npm run build`,
+  dann mit einer Playwright-Config auf `vite preview` dieses Ordners zeigen. Die echte Tauri-App lässt sich über SSH nicht bedienen
+  (keine Screenshot- und Klick-Rechte): das DEV-Abzeichen und Anrufe mit YouTube/Watch together sind damit nicht testbar.
 - Detektor-Tests prüfen, dass sich Buttons nicht überlappen; neue Seiten in `settings.spec.cjs` ergänzen.
 
 ## 4. README-Screenshots erneuern
