@@ -1,5 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { Box, config, Line, Menu, MenuItem, PopOut, RectCords, Text } from 'folds';
+import {
+  Box,
+  config,
+  Icon,
+  IconButton,
+  Icons,
+  Line,
+  Menu,
+  MenuItem,
+  PopOut,
+  RectCords,
+  Text,
+  toRem,
+} from 'folds';
 import FocusTrap from 'focus-trap-react';
 import { useAtomValue } from 'jotai';
 import { useNavigate } from 'react-router-dom';
@@ -18,7 +31,66 @@ import { useOpenUserRoomProfile } from '../state/hooks/userRoomProfile';
 import { getMxIdLocalPart } from '../utils/matrix';
 import { getMemberDisplayName } from '../utils/room';
 import { getDirectCreatePath, withSearchParam } from '../pages/pathUtils';
+import { RangeInput } from './diddy/RangeInput';
+import { ShareVolume, useShareVolume } from '../features/call/useShareVolume';
 import * as sheetCss from './sheet/Sheet.css';
+
+/** The volume of somebody's screen share, for you only: mute button and slider. */
+export function StreamVolume({ volume }: { volume: ShareVolume }) {
+  const percent = Math.round(volume.volume * 100);
+  const muted = volume.volume === 0;
+  if (!volume.hasAudio) {
+    return (
+      <Text
+        size="T200"
+        priority="300"
+        style={{ padding: `${config.space.S100} ${config.space.S200}` }}
+      >
+        This stream has no sound
+      </Text>
+    );
+  }
+  return (
+    <Box
+      direction="Column"
+      gap="100"
+      style={{ padding: `${config.space.S100} ${config.space.S200} ${config.space.S200}` }}
+    >
+      <Box alignItems="Center" justifyContent="SpaceBetween" gap="200">
+        <Text size="T300">Stream Volume</Text>
+        <Text size="T200" priority="300" aria-hidden>
+          {muted ? 'Muted' : `${percent}%`}
+        </Text>
+      </Box>
+      <Box alignItems="Center" gap="200">
+        <IconButton
+          size="300"
+          radii="300"
+          variant={muted ? 'Critical' : 'SurfaceVariant'}
+          fill={muted ? 'Soft' : 'None'}
+          aria-pressed={muted}
+          aria-label={muted ? 'Unmute stream for me' : 'Mute stream for me'}
+          title={muted ? 'Unmute stream for me' : 'Mute stream for me'}
+          onClick={volume.toggleMuted}
+        >
+          <Icon size="100" src={muted ? Icons.VolumeMute : Icons.VolumeHigh} />
+        </IconButton>
+        <RangeInput
+          aria-label="Stream volume"
+          aria-valuetext={muted ? 'Muted' : `${percent}%`}
+          min={0}
+          max={100}
+          step={1}
+          value={percent}
+          onChange={(evt) => volume.setVolume(Number(evt.currentTarget.value) / 100)}
+          onPointerUp={volume.commit}
+          onKeyUp={volume.commit}
+          onBlur={volume.commit}
+        />
+      </Box>
+    </Box>
+  );
+}
 
 /**
  * The right-click menu of a person in a call, like Discord's: profile, message, volume / mute
@@ -30,12 +102,12 @@ export function CallUserMenu() {
   const navigate = useNavigate();
   const callEmbed = useAtomValue(callEmbedAtom);
   const openUserProfile = useOpenUserRoomProfile();
-  const [menu, setMenu] = useState<{ anchor: RectCords; userId: string }>();
+  const [menu, setMenu] = useState<{ anchor: RectCords; userId: string; shareId?: string }>();
 
   useEffect(() => {
     const onMenu = (evt: Event) => {
-      const { x, y, userId } = (evt as CustomEvent<CallUserMenuDetail>).detail;
-      setMenu({ anchor: { x, y, width: 0, height: 0 }, userId });
+      const { x, y, userId, shareId } = (evt as CustomEvent<CallUserMenuDetail>).detail;
+      setMenu({ anchor: { x, y, width: 0, height: 0 }, userId, shareId });
     };
     window.addEventListener(CALL_USER_MENU_EVENT, onMenu);
     return () => window.removeEventListener(CALL_USER_MENU_EVENT, onMenu);
@@ -54,6 +126,11 @@ export function CallUserMenu() {
   // reachable only while the call view is visible
   const tile = userId && !isMe ? findCallTile(callEmbed?.document, userId) : undefined;
   const tileVisible = !!tile && !isCallFrameHidden(callEmbed?.iframe.style);
+  // opened on somebody else's screen share: its sound, turned down only for you
+  const streamVolume = useShareVolume(
+    callEmbed?.document,
+    menu?.shareId && !isMe ? menu.shareId : undefined
+  );
 
   const handleProfile = () => {
     if (!menu || !userId || !callRoom) return;
@@ -94,7 +171,7 @@ export function CallUserMenu() {
             escapeDeactivates: stopPropagation,
           }}
         >
-          <Menu className={sheetCss.MenuMaterial}>
+          <Menu className={sheetCss.MenuMaterial} style={{ minWidth: toRem(232) }}>
             <Box direction="Column" gap="100" style={{ padding: config.space.S100 }}>
               <Text
                 size="L400"
@@ -104,6 +181,12 @@ export function CallUserMenu() {
                 {name}
               </Text>
               <Line variant="Surface" size="300" />
+              {streamVolume && (
+                <>
+                  <StreamVolume volume={streamVolume} />
+                  <Line variant="Surface" size="300" />
+                </>
+              )}
               {callRoom && (
                 <MenuItem
                   className={sheetCss.MenuRow}
@@ -131,7 +214,9 @@ export function CallUserMenu() {
                   radii="300"
                   onClick={handleVolume}
                 >
-                  <Text size="T300">Volume & Mute for me…</Text>
+                  <Text size="T300">
+                    {streamVolume ? 'Voice Volume & Mute for me…' : 'Volume & Mute for me…'}
+                  </Text>
                 </MenuItem>
               )}
               <Line variant="Surface" size="300" />

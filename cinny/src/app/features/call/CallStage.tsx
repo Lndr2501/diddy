@@ -21,6 +21,7 @@ import { openCallUserMenu } from '../../plugins/callFrameMenu';
 import { useLocalSpeaking } from '../../plugins/call/localSpeaking';
 import { initialsFromName } from './CallMemberCard';
 import { useAgentTalking } from '../../state/agentVoice';
+import { useShareVolume } from './useShareVolume';
 import * as css from './styles.css';
 
 /** Who is on the call, read from Element Call and kept up to date (cheap: only on change). */
@@ -125,6 +126,8 @@ function StageVideo({ stream, fit }: { stream: MediaStream; fit: 'cover' | 'cont
 const ICON_MIC =
   'M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z M5 11a7 7 0 0 0 14 0 M12 18v3';
 const ICON_SCREEN = 'M3 5h18v11H3z M8 20h8 M12 16v4';
+const ICON_SPEAKER =
+  'M4 9.5h3.5L12 6v12l-4.5-3.5H4z M15.5 9.5a3.5 3.5 0 0 1 0 5 M18 7a7 7 0 0 1 0 10';
 
 function TagIcon({ d, muted }: { d: string; muted?: boolean }) {
   return (
@@ -209,15 +212,24 @@ export function PersonTile({
   );
 }
 
-function ShareTile({ share, focused, small, onSelect }: TileProps & { share: StageShare }) {
+export function ShareTile({
+  share,
+  doc,
+  focused,
+  small,
+  onSelect,
+}: TileProps & { share: StageShare; doc: Document | undefined }) {
   const tileRef = useRef<HTMLDivElement>(null);
+  // turned down to nothing for you (right-click > Stream Volume): shown on the name tag
+  const volume = useShareVolume(doc, share.id);
+  const mutedForMe = !!volume?.hasAudio && volume.volume === 0;
   const label = `${share.name}’s Stream`;
   // the shared screen's own shape: the large view takes exactly that, without black bars
   const settings = share.video?.getVideoTracks()[0]?.getSettings?.();
   const ratio = settings?.width && settings?.height ? settings.width / settings.height : 16 / 9;
   const handleContextMenu = (evt: MouseEvent) => {
     evt.preventDefault();
-    openCallUserMenu(share.userId, evt.clientX, evt.clientY);
+    openCallUserMenu(share.userId, evt.clientX, evt.clientY, share.id);
   };
   return (
     <div
@@ -260,6 +272,16 @@ function ShareTile({ share, focused, small, onSelect }: TileProps & { share: Sta
       <span className={css.StageTag}>
         <TagIcon d={ICON_SCREEN} />
         <span className={css.StageTagText}>{label}</span>
+        {mutedForMe && (
+          <span
+            role="img"
+            aria-label="Muted for you"
+            title="Muted for you"
+            style={{ display: 'flex' }}
+          >
+            <TagIcon d={ICON_SPEAKER} muted />
+          </span>
+        )}
       </span>
     </div>
   );
@@ -335,6 +357,7 @@ export function CallStage({ callEmbed }: { callEmbed: CallEmbed }) {
       <ShareTile
         key={item.key}
         share={item.share}
+        doc={callEmbed.document}
         focused={isFocused}
         small={small}
         onSelect={onSelect}
