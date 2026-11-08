@@ -270,9 +270,14 @@ extension MatrixAccount {
         // The marker is checked once per room and session; most rooms answer "not found".
         let candidates = rooms.filter { $0.isJoined && !$0.isSpace && !$0.isDirect && !diddyCheckedRooms.contains($0.id) }
         for room in candidates.prefix(300) {
-            diddyCheckedRooms.insert(room.id)
-            if (try? await clientRequest("/_matrix/client/v3/rooms/\(Self.pathComponent(room.id))/state/\(DiddyEvents.marker)/")) != nil {
+            do {
+                _ = try await clientRequest("/_matrix/client/v3/rooms/\(Self.pathComponent(room.id))/state/\(DiddyEvents.marker)/")
                 diddyOptionsRooms.insert(room.id)
+                diddyCheckedRooms.insert(room.id)
+            } catch let error as ClientAPIError where error.errcode == "M_NOT_FOUND" {
+                diddyCheckedRooms.insert(room.id)
+            } catch {
+                // Offline or similar: asked again on the next load.
             }
         }
         let joined = Set(rooms.filter(\.isJoined).map(\.id))
