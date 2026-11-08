@@ -208,10 +208,7 @@ export const MUTE_ICON_SELECTOR = '[class*="_muteIcon_"][data-muted]';
  * The tile's own mute icon: `undefined` when the tile has none (the spotlight) or when the icon
  * only says that you muted the person for yourself.
  */
-export const tileMuteMarker = (
-  tile: MuteTileLike,
-  vm?: UserMediaVmLike
-): boolean | undefined => {
+export const tileMuteMarker = (tile: MuteTileLike, vm?: UserMediaVmLike): boolean | undefined => {
   const icon = tile.querySelector(MUTE_ICON_SELECTOR);
   if (!icon) return undefined;
   if (icon.getAttribute('data-muted') !== 'true') return false;
@@ -263,6 +260,10 @@ export class MuteVotes {
   }
 
   public all(): Set<string> {
-    return new Set(Array.from(this.votes).filter(([, m]) => m).map(([id]) => id));
+    return new Set(
+      Array.from(this.votes)
+        .filter(([, m]) => m)
+        .map(([id]) => id)
+    );
   }
 }
