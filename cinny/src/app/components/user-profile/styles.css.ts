@@ -465,6 +465,13 @@ export const MetaRow = style({
   flexWrap: 'wrap',
   gap: config.space.S100,
 });
+/** the Diddy version of the user (#75): small, quiet, at the end of the meta row */
+export const ClientVersion = style({
+  marginLeft: 'auto',
+  whiteSpace: 'nowrap',
+  fontVariantNumeric: 'tabular-nums',
+  opacity: 0.7,
+});
 export const Divider = style({
   height: 1,
   flexShrink: 0,

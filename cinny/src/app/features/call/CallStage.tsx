@@ -1,9 +1,10 @@
-import React, { MouseEvent, useEffect, useRef, useState } from 'react';
+import React, { MouseEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { Avatar, Icon, IconButton, Icons, Text, toRem } from 'folds';
 import { CallEmbed } from '../../plugins/call';
 import {
   EMPTY_STAGE,
   enableCallStage,
+  markSpeaking,
   readCallStage,
   StageModel,
   StagePerson,
@@ -17,11 +18,14 @@ import { getMemberAvatarMxc } from '../../utils/room';
 import { mxcUrlToHttp } from '../../utils/matrix';
 import { UserAvatar } from '../../components/user-avatar';
 import { openCallUserMenu } from '../../plugins/callFrameMenu';
+import { useLocalSpeaking } from '../../plugins/call/localSpeaking';
 import { initialsFromName } from './CallMemberCard';
 import * as css from './styles.css';
 
 /** Who is on the call, read from Element Call and kept up to date (cheap: only on change). */
 function useCallStage(callEmbed: CallEmbed): StageModel {
+  const mx = useMatrixClient();
+  const localSpeaking = useLocalSpeaking();
   const [model, setModel] = useState<StageModel>(EMPTY_STAGE);
   const signature = useRef('');
 
@@ -59,7 +63,11 @@ function useCallStage(callEmbed: CallEmbed): StageModel {
     };
   }, [callEmbed]);
 
-  return model;
+  // your own ring comes from Diddy's microphone level (#76)
+  return useMemo(
+    () => markSpeaking(model, mx.getUserId() ?? undefined, localSpeaking),
+    [model, mx, localSpeaking]
+  );
 }
 
 /**

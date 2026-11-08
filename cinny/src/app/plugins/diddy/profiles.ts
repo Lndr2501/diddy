@@ -58,6 +58,9 @@ import {
   LIGHT_ROOMS_EVENT,
 } from './optionsRoom';
 import { sanitizeBadgeDef, sanitizeProfile } from './sanitize';
+import { stampClientVersion } from './clientVersion';
+import { APP_VERSION } from '../../appInfo';
+import { getShareVersion } from '../../state/versionShare';
 import { ReAnnouncer } from './reannounce';
 import { RecentOwnData, RECENT_WINDOW_EVENTS } from './recentOwn';
 import { makeBadgeId, pickDefinition, resolveAwards } from './trust';
@@ -840,7 +843,9 @@ export const useDiddyProfile = (
 export const setMyProfile = async (mx: MatrixClient, profile: DiddyProfile): Promise<void> => {
   const room = getPrimaryOptionsRoom(mx);
   if (!room) throw new Error('No Diddy Options room found.');
-  await writeDiddyData(mx, room, PROFILE_EVENT, profile, mx.getSafeUserId());
+  // every write carries this client's version (#75), or none when you do not share it
+  const stamped = stampClientVersion(profile, getShareVersion() ? APP_VERSION : undefined);
+  await writeDiddyData(mx, room, PROFILE_EVENT, stamped, mx.getSafeUserId());
   // the write itself is the announcement: joins before it are already covered
   announcer.markSent(room.roomId);
 };
