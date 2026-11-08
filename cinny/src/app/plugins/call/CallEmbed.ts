@@ -29,6 +29,7 @@ import { installScreenShareAudio, screenShareAudio } from './screenShareAudio';
 import { installContextMenuGuard } from '../contextMenu';
 import { installCallFrameMenu } from '../callFrameMenu';
 import { installSoundboard } from './soundboard';
+import { installLocalSpeaking, stopLocalSpeaking } from './localSpeaking';
 import { installCallTheme } from './callTheme';
 import { installScreenShareGrid } from './screenShareGrid';
 import { trackPeerConnections } from './streamStats';
@@ -203,6 +204,8 @@ export class CallEmbed {
       installContextMenuGuard(iframe.contentWindow?.document);
       installCallFrameMenu(iframe.contentWindow?.document, iframe);
       installSoundboard(iframe.contentWindow);
+      // after the soundboard: measures the microphone exactly as the call gets it (#76)
+      installLocalSpeaking(iframe.contentWindow);
       // Restyle the Element Call tiles to match the app theme.
       installCallTheme(iframe.contentWindow);
       // Show all screen shares at once instead of Element Call's one-at-a-time carousel (#66).
@@ -315,6 +318,8 @@ export class CallEmbed {
       disposable();
     });
     this.call.stop();
+    // before the iframe goes: its window tells whether the measured microphone is this call's
+    stopLocalSpeaking(this.iframe.contentWindow);
     this.container.removeChild(this.iframe);
     this.control.dispose();
     // Release the screen-share audio session (AudioContext, WebSocket, native capture).
