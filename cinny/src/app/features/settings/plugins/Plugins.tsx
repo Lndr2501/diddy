@@ -16,7 +16,12 @@ import { InsetGroup, InsetItem, InsetRow, InsetSection, SettingsPage } from '../
 import * as sheetCss from '../../../components/sheet/Sheet.css';
 import { BreakWord } from '../../../styles/Text.css';
 import { APP_REPO_URL } from '../../../appInfo';
-import { BUILTIN_URL_PREFIX, MAX_PLUGINS, UserPlugin } from '../../../plugins/userPlugins';
+import {
+  BUILTIN_URL_PREFIX,
+  localPluginId,
+  MAX_PLUGINS,
+  UserPlugin,
+} from '../../../plugins/userPlugins';
 import { getBuiltinPlugins } from '../../../plugins/builtinPlugins';
 import {
   addBuiltinUserPlugin,
@@ -26,6 +31,7 @@ import {
   useUserPlugins,
 } from '../../../state/userPlugins';
 import { PluginFrame } from '../../plugins/PluginFrame';
+import { AddLocalPluginForm, LocalPluginDescription, LocalPluginTools } from './LocalPlugins';
 
 const DOCS_URL = `${APP_REPO_URL}/blob/main/docs/plugins.md`;
 
@@ -204,10 +210,11 @@ function PluginRow({ plugin, confirming, onConfirm }: PluginRowProps) {
   const dock = usePluginDock();
   const pinned = dock.pinned.includes(plugin.id);
   const look = dock.styles[plugin.id];
+  const local = localPluginId(plugin.url) === plugin.id;
   return (
     <InsetRow
       title={plugin.name}
-      description={plugin.url}
+      description={local ? <LocalPluginDescription plugin={plugin} /> : plugin.url}
       after={
         <Box alignItems="Center" gap="200" wrap="Wrap" justifyContent="End">
           {confirming ? (
@@ -272,10 +279,11 @@ function PluginRow({ plugin, confirming, onConfirm }: PluginRowProps) {
         </Box>
       }
     >
-      {plugin.enabled && (
+      {(plugin.enabled || local) && (
         <Box direction="Column" gap="300" style={{ marginTop: config.space.S300 }}>
-          <PluginFrame plugin={plugin} look={look} />
-          <PluginLookEditor id={plugin.id} look={look} />
+          {plugin.enabled && <PluginFrame plugin={plugin} look={look} />}
+          {local && <LocalPluginTools plugin={plugin} />}
+          {plugin.enabled && <PluginLookEditor id={plugin.id} look={look} />}
         </Box>
       )}
     </InsetRow>
@@ -353,6 +361,30 @@ export function Plugins({ requestClose }: PluginsProps) {
         </InsetGroup>
       </InsetSection>
       <InsetSection
+        title="Without Hosting"
+        footer={
+          <>
+            No server needed: the HTML is stored on this device and runs in the same sandbox as
+            every other plugin, with no extra permissions. Pick a file, paste code, or import a
+            public GitHub file or Gist once. To try changes, use “Replace from file” on the plugin
+            below.{' '}
+            <a
+              href={`${DOCS_URL}#ohne-hosting-aus-datei-code-oder-github`}
+              target="_blank"
+              rel="noreferrer noopener"
+            >
+              More
+            </a>
+          </>
+        }
+      >
+        <InsetGroup>
+          <InsetItem>
+            <AddLocalPluginForm full={full} />
+          </InsetItem>
+        </InsetGroup>
+      </InsetSection>
+      <InsetSection
         title={`Your Plugins (${plugins.length}/${MAX_PLUGINS})`}
         footer="Active plugins appear in the Plugins tab of the sidebar. They are stored on this device only."
       >
@@ -360,7 +392,7 @@ export function Plugins({ requestClose }: PluginsProps) {
           {plugins.length === 0 ? (
             <InsetRow
               title="No plugins yet"
-              description="Add the address of a plugin above to see it here."
+              description="Add a built-in plugin, an address, a file or code above to see it here."
             />
           ) : (
             plugins.map((plugin) => (
