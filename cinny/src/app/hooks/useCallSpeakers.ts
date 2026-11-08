@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CallEmbed } from '../plugins/call';
+import { CallEmbed, useCallControlState } from '../plugins/call';
 import { markSpeaking, readCallStage, stageSpeakers } from '../plugins/call/callStage';
 import { useLocalSpeaking } from '../plugins/call/localSpeaking';
 import { useMatrixClient } from './useMatrixClient';
@@ -18,15 +18,19 @@ export const useCallSpeakers = (callEmbed: CallEmbed): Set<string> => {
   const localSpeaking = useLocalSpeaking();
   // the call document is replaced while the call loads: observe the one of the joined call
   const joined = useCallJoined(callEmbed);
+  // your own mute state is Diddy's call control (#107), not Element Call's tile
+  const { microphone } = useCallControlState(callEmbed.control);
+  const userId = mx.getUserId() ?? undefined;
   const [model, setModel] = useState(() => readCallStage(callEmbed.document));
 
   useEffect(() => {
     const doc = callEmbed.document;
     let frame = 0;
     let signature = '';
+    const local = userId ? { userId, microphone } : undefined;
     const update = () => {
       frame = 0;
-      const read = readCallStage(callEmbed.document);
+      const read = readCallStage(callEmbed.document, local);
       // only who is there, speaking and muted matters here (not names or videos)
       const sig = read.people.map((p) => `${p.userId}|${p.speaking}|${p.muted}`).join('\n');
       if (sig === signature) return;
@@ -46,11 +50,14 @@ export const useCallSpeakers = (callEmbed: CallEmbed): Set<string> => {
         attributeFilter: ['class', 'data-muted', 'aria-label'],
       });
     }
+    // somebody else muting changes LiveKit state, not necessarily the DOM: a slow poll catches it
+    const poll = window.setInterval(schedule, 1000);
     return () => {
       observer.disconnect();
+      window.clearInterval(poll);
       if (frame) window.cancelAnimationFrame(frame);
     };
-  }, [callEmbed, joined]);
+  }, [callEmbed, joined, userId, microphone]);
 
   const [speakers, setSpeakers] = useState(() => new Set<string>());
   const next = useMemo(

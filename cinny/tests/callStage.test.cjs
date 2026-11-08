@@ -13,6 +13,7 @@ const compile = (file) =>
 
 const frameMenuFile = path.join(__dirname, '../src/app/plugins/callFrameMenu.ts');
 const stageFile = path.join(__dirname, '../src/app/plugins/call/callStage.ts');
+const muteFile = path.join(__dirname, '../src/app/plugins/call/callMute.ts');
 
 function load() {
   const frameMenu = {};
@@ -20,11 +21,14 @@ function load() {
     exports: frameMenu,
     require: () => ({ describeElement: () => 'el' }),
   });
+  const mute = {};
+  vm.runInNewContext(compile(muteFile), { exports: mute, WeakMap, Date });
   const mod = {};
   vm.runInNewContext(compile(stageFile), {
     exports: mod,
     require: (id) => {
       if (id === '../callFrameMenu') return frameMenu;
+      if (id === './callMute') return mute;
       throw new Error(id);
     },
   });
@@ -42,7 +46,8 @@ const tile = ({ userId, name, dataId, video, width = 1280, speaking, muted }) =>
     '[aria-label]': { getAttribute: () => userId },
     '[data-testid="name_tag"]': { textContent: ` ${name} ` },
     video: video ? { srcObject: video, videoWidth: width } : null,
-    '[data-muted="true"]': muted ? {} : null,
+    '[class*="_muteIcon_"][data-muted]':
+      muted === undefined ? null : { getAttribute: () => String(!!muted) },
   };
   return {
     className: `_media_x_1 _tile_y_2${speaking ? ' _speaking_ghafa_28' : ''}`,
@@ -131,7 +136,7 @@ test('the signature changes with what the stage shows', () => {
 });
 
 // #76: your own ring comes from Diddy's microphone level, Element Call leaves it off.
-test('markSpeaking rings you while Diddy hears you, unless your tile shows you muted', () => {
+test('markSpeaking rings you while Diddy hears you, unless you are muted', () => {
   const { readCallStage, markSpeaking, stageSpeakers } = load();
   const me = '@me:x.eu';
   const model = readCallStage(
@@ -149,7 +154,11 @@ test('markSpeaking rings you while Diddy hears you, unless your tile shows you m
   assert.equal(markSpeaking(model, undefined, true), model);
   assert.equal(markSpeaking(model, '@nobody:x.eu', true), model);
 
-  const muted = readCallStage(doc([tile({ userId: me, name: 'me', muted: true })]));
+  // #107: your mute state is Diddy's call control, whatever your tile shows
+  const muted = readCallStage(doc([tile({ userId: me, name: 'me', muted: false })]), {
+    userId: me,
+    microphone: false,
+  });
   assert.equal(markSpeaking(muted, me, true), muted);
   assert.equal(stageSpeakers(muted).size, 0);
 });
