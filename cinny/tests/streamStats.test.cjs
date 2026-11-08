@@ -56,3 +56,21 @@ test('missing numbers produce no verdict instead of a wrong one', () => {
   assert.equal(exported.resolutionDiagnosis({}, { width: 640, height: 360 }), null);
   assert.equal(exported.resolutionDiagnosis({ width: 1920, height: 1080 }, {}), null);
 });
+
+// Issue #74: received audio stuck near full scale (undecrypted frames decoded as noise).
+test('interval RMS follows totalAudioEnergy over totalSamplesDuration', () => {
+  // speech-like: level ~0.1 for 5 s -> energy 0.01 * 5
+  const speech = exported.intervalRms({ energy: 1, duration: 10 }, { energy: 1.05, duration: 15 });
+  assert.ok(Math.abs(speech - 0.1) < 1e-9);
+  assert.ok(speech < exported.LOUD_RECEIVE_RMS);
+  // noise-like: level ~0.8 for 5 s
+  const noise = exported.intervalRms({ energy: 0, duration: 0 }, { energy: 3.2, duration: 5 });
+  assert.ok(Math.abs(noise - 0.8) < 1e-9);
+  assert.ok(noise >= exported.LOUD_RECEIVE_RMS);
+});
+
+test('short intervals and restarted counters give no level', () => {
+  assert.equal(exported.intervalRms({ energy: 0, duration: 0 }, { energy: 1, duration: 0.5 }), undefined);
+  assert.equal(exported.intervalRms({ energy: 5, duration: 10 }, { energy: 1, duration: 20 }), undefined);
+  assert.equal(exported.intervalRms({ energy: 5, duration: 10 }, { energy: 6, duration: 2 }), undefined);
+});

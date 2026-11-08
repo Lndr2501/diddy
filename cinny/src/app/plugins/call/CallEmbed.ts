@@ -32,7 +32,9 @@ import { installSoundboard } from './soundboard';
 import { installLocalSpeaking, stopLocalSpeaking } from './localSpeaking';
 import { installCallTheme } from './callTheme';
 import { installScreenShareGrid } from './screenShareGrid';
-import { trackPeerConnections } from './streamStats';
+import { startReceiveWatch, trackPeerConnections } from './streamStats';
+import { installE2eeWatch } from './e2eeWatch';
+import { diag } from '../diagnostics';
 
 export class CallEmbed {
   private mx: MatrixClient;
@@ -54,6 +56,16 @@ export class CallEmbed {
   private eventsToFeed = new WeakSet<MatrixEvent>();
 
   private readonly disposables: Array<() => void> = [];
+
+  // Bound once: dispose() must pass the same functions to off(), otherwise every finished call
+  // kept receiving (and decrypting) events and to-device messages for its stopped widget.
+  private readonly boundOnEvent = this.onEvent.bind(this);
+
+  private readonly boundOnEventDecrypted = this.onEventDecrypted.bind(this);
+
+  private readonly boundOnStateUpdate = this.onStateUpdate.bind(this);
+
+  private readonly boundOnToDeviceEvent = this.onToDeviceEvent.bind(this);
 
   static getIntent(dm: boolean, ongoing: boolean, video?: boolean): ElementCallIntent {
     if (dm && ongoing) {
@@ -199,6 +211,10 @@ export class CallEmbed {
     const installMediaPatches = () => {
       // the call's peer connections: stream diagnostics and the "connection lost" sound
       trackPeerConnections(iframe.contentWindow);
+      // E2EE worker of the call: logs decryption trouble and sets a missing decrypt flag (#74)
+      installE2eeWatch(iframe.contentWindow);
+      // received audio stuck near full scale (undecrypted noise) gets a log line (#74)
+      this.disposables.push(startReceiveWatch(iframe.contentWindow));
       installScreenShareAudio(iframe.contentWindow);
       // the call view is its own document: without this it showed the web view menu again
       installContextMenuGuard(iframe.contentWindow?.document);
@@ -302,10 +318,10 @@ export class CallEmbed {
     });
 
     // Attach listeners for feeding events - the underlying widget classes handle permissions for us
-    this.mx.on(ClientEvent.Event, this.onEvent.bind(this));
-    this.mx.on(MatrixEventEvent.Decrypted, this.onEventDecrypted.bind(this));
-    this.mx.on(RoomStateEvent.Events, this.onStateUpdate.bind(this));
-    this.mx.on(ClientEvent.ToDeviceEvent, this.onToDeviceEvent.bind(this));
+    this.mx.on(ClientEvent.Event, this.boundOnEvent);
+    this.mx.on(MatrixEventEvent.Decrypted, this.boundOnEventDecrypted);
+    this.mx.on(RoomStateEvent.Events, this.boundOnStateUpdate);
+    this.mx.on(ClientEvent.ToDeviceEvent, this.boundOnToDeviceEvent);
   }
 
   /**
@@ -325,10 +341,10 @@ export class CallEmbed {
     // Release the screen-share audio session (AudioContext, WebSocket, native capture).
     screenShareAudio.stop();
 
-    this.mx.off(ClientEvent.Event, this.onEvent.bind(this));
-    this.mx.off(MatrixEventEvent.Decrypted, this.onEventDecrypted.bind(this));
-    this.mx.off(RoomStateEvent.Events, this.onStateUpdate.bind(this));
-    this.mx.off(ClientEvent.ToDeviceEvent, this.onToDeviceEvent.bind(this));
+    this.mx.off(ClientEvent.Event, this.boundOnEvent);
+    this.mx.off(MatrixEventEvent.Decrypted, this.boundOnEventDecrypted);
+    this.mx.off(RoomStateEvent.Events, this.boundOnStateUpdate);
+    this.mx.off(ClientEvent.ToDeviceEvent, this.boundOnToDeviceEvent);
 
     // Clear internal state
     this.readUpToMap = {};
@@ -358,7 +374,16 @@ export class CallEmbed {
 
   private async onToDeviceEvent(ev: MatrixEvent): Promise<void> {
     await this.mx.decryptEventIfNeeded(ev);
-    if (ev.isDecryptionFailure()) return;
+    if (ev.isDecryptionFailure()) {
+      // Call keys travel as encrypted to-device messages: a failure here means that member's
+      // media cannot be decrypted (frozen picture/silence) until it sends a new key (#74).
+      diag(
+        `call to-device from ${ev.getSender() ?? '?'} could not be decrypted (${
+          ev.decryptionFailureReason ?? 'unknown'
+        }); a call encryption key may be missing`
+      );
+      return;
+    }
     await this.call?.feedToDevice(ev.getEffectiveEvent() as IRoomEvent, ev.isEncrypted());
   }
 

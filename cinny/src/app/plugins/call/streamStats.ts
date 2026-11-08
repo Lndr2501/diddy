@@ -186,6 +186,93 @@ export const startStatsLogging = (
   return () => window.clearInterval(timer);
 };
 
+export type AudioEnergySample = { energy: number; duration: number };
+
+/** Received audio this loud (RMS of the level, 0..1) for a whole poll interval is suspicious. */
+export const LOUD_RECEIVE_RMS = 0.5;
+
+/**
+ * RMS audio level (0..1) of a received stream between two inbound-rtp samples, from
+ * totalAudioEnergy (sum of level^2 * seconds) and totalSamplesDuration. Undefined when the
+ * interval is shorter than a second or the counters went backwards (stream restarted).
+ */
+export const intervalRms = (
+  prev: AudioEnergySample,
+  cur: AudioEnergySample
+): number | undefined => {
+  const duration = cur.duration - prev.duration;
+  const energy = cur.energy - prev.energy;
+  if (!(duration >= 1) || !(energy >= 0)) return undefined;
+  return Math.sqrt(energy / duration);
+};
+
+const RECEIVE_POLL_MS = 5000;
+const LOUD_REPEAT_MS = 30000;
+const receiveWatches = new WeakMap<Window, () => void>();
+
+/**
+ * Issue #74: logs when a received audio stream stays near full scale for a whole poll interval.
+ * Speech sits far below that; undecrypted frames decoded as Opus come out as loud noise. Runs for
+ * the whole call (not only while sharing); idempotent per window. Returns the stop function.
+ */
+export const startReceiveWatch = (win: Window | null | undefined): (() => void) => {
+  const list = win ? registries.get(win) : undefined;
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  if (!win || !list) return () => {};
+  const running = receiveWatches.get(win);
+  if (running) return running;
+
+  const last = new Map<string, AudioEnergySample>();
+  const warned = new Map<string, number>();
+  let busy = false;
+  const poll = async () => {
+    if (busy) return;
+    busy = true;
+    try {
+      const pcs = list.filter((pc) => pc.connectionState !== 'closed');
+      for (let i = 0; i < pcs.length; i += 1) {
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          const report = await pcs[i].getStats();
+          report.forEach((r: Record<string, any>) => {
+            if (r.type !== 'inbound-rtp' || (r.kind ?? r.mediaType) !== 'audio') return;
+            if (typeof r.totalAudioEnergy !== 'number') return;
+            if (typeof r.totalSamplesDuration !== 'number') return;
+            const key = `${r.trackIdentifier ?? '-'}:${r.ssrc}`;
+            const cur = { energy: r.totalAudioEnergy, duration: r.totalSamplesDuration };
+            const prev = last.get(key);
+            last.set(key, cur);
+            if (!prev) return;
+            const rms = intervalRms(prev, cur);
+            if (rms === undefined || rms < LOUD_RECEIVE_RMS) return;
+            const now = Date.now();
+            if (now - (warned.get(key) ?? -Infinity) < LOUD_REPEAT_MS) return;
+            warned.set(key, now);
+            diag(
+              `receive audio ssrc=${r.ssrc} very loud for ${(cur.duration - prev.duration).toFixed(
+                1
+              )}s (rms ${rms.toFixed(2)}, concealed=${
+                r.concealedSamples ?? '-'
+              }): harsh noise? (#74)`
+            );
+          });
+        } catch {
+          // closed while reading: ignore this connection
+        }
+      }
+    } finally {
+      busy = false;
+    }
+  };
+  const timer = window.setInterval(poll, RECEIVE_POLL_MS);
+  const stop = () => {
+    window.clearInterval(timer);
+    receiveWatches.delete(win);
+  };
+  receiveWatches.set(win, stop);
+  return stop;
+};
+
 /**
  * The real round-trip time (ms) between this device and the call server, taken from the active
  * connection of the call's peer connections (ICE candidate pair, or the RTCP round trip of a
