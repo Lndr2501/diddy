@@ -7,6 +7,8 @@ import {
   BotCard,
   CARD_ACTION_KEY,
   CardAction,
+  Chart,
+  ListItem,
   QueueItem,
   TrackState,
   formatCardTime,
@@ -258,6 +260,81 @@ function HelpCard({ card }: { card: Extract<BotCard, { kind: 'help' }> }) {
   );
 }
 
+function ListCard({ card }: { card: Extract<BotCard, { kind: 'list' }> }) {
+  const more = card.total - card.items.length;
+  return (
+    <div className={css.Card} data-bot-card="list">
+      <p className={css.SectionTitle}>
+        {card.title} · {card.total}
+      </p>
+      {card.items.length > 0 ? (
+        <ol className={css.List}>
+          {card.items.map((item: ListItem, i) => (
+            // eslint-disable-next-line react/no-array-index-key
+            <QueueRow key={i} item={{ ...item, artist: item.subtitle }} index={i + 1} />
+          ))}
+        </ol>
+      ) : (
+        <span className={css.Hint}>{card.empty ?? 'Nichts hier.'}</span>
+      )}
+      {more > 0 && <span className={css.Hint}>… und {more} weitere</span>}
+      <CardActions actions={card.actions} />
+    </div>
+  );
+}
+
+const trimNumber = (n: number): string => (Number.isInteger(n) ? String(n) : n.toFixed(1));
+
+function BarChart({ chart }: { chart: Chart }) {
+  const max = Math.max(...chart.items.map((i) => i.value), 1);
+  return (
+    <div className={css.HelpGroup} data-chart={chart.title}>
+      <p className={css.SectionTitle}>{chart.title}</p>
+      {chart.items.map((item, i) => (
+        // eslint-disable-next-line react/no-array-index-key
+        <div key={i} className={css.ChartRow}>
+          <div className={css.ChartHead}>
+            <span className={css.QueueIndex}>{i + 1}.</span>
+            <span className={css.ChartLabel} title={item.label}>
+              {item.label}
+            </span>
+            {item.sub && <span className={css.ChartSub}>{item.sub}</span>}
+            <span className={css.ChartValue}>
+              {trimNumber(item.value)}
+              {chart.unit ? ` ${chart.unit}` : ''}
+            </span>
+          </div>
+          <div
+            className={css.Bar}
+            role="progressbar"
+            aria-label={item.label}
+            aria-valuemin={0}
+            aria-valuemax={max}
+            aria-valuenow={item.value}
+          >
+            <div
+              className={css.BarFill}
+              style={{ width: `${Math.max(2, (item.value / max) * 100)}%` }}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function StatsCard({ card }: { card: Extract<BotCard, { kind: 'stats' }> }) {
+  return (
+    <div className={css.Card} data-bot-card="stats">
+      <p className={css.Title}>{card.title}</p>
+      {card.charts.map((chart) => (
+        <BarChart key={chart.title} chart={chart} />
+      ))}
+      <CardActions actions={card.actions} />
+    </div>
+  );
+}
+
 function NoteCard({ card }: { card: Extract<BotCard, { kind: 'note' }> }) {
   return (
     <div className={css.Note} data-bot-card="note" data-tone={card.tone} role="status">
@@ -280,6 +357,10 @@ export function BotCardView({ card }: { card: BotCard }) {
       return <QueueCard card={card} />;
     case 'help':
       return <HelpCard card={card} />;
+    case 'list':
+      return <ListCard card={card} />;
+    case 'stats':
+      return <StatsCard card={card} />;
     default:
       return <NoteCard card={card} />;
   }

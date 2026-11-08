@@ -16,6 +16,9 @@ export type CardAction = { label: string; send: string };
 export type QueueItem = { title: string; artist?: string; duration?: number };
 export type HelpItem = { usage: string; desc: string };
 export type HelpGroup = { title: string; items: HelpItem[] };
+export type ListItem = { title: string; subtitle?: string; duration?: number };
+export type ChartItem = { label: string; value: number; sub?: string };
+export type Chart = { title: string; unit?: string; items: ChartItem[] };
 
 export type BotCard =
   | {
@@ -41,6 +44,15 @@ export type BotCard =
     }
   | { kind: 'queue'; now?: QueueItem; items: QueueItem[]; total: number; actions: CardAction[] }
   | { kind: 'help'; groups: HelpGroup[]; note?: string }
+  | {
+      kind: 'list';
+      title: string;
+      items: ListItem[];
+      total: number;
+      empty?: string;
+      actions: CardAction[];
+    }
+  | { kind: 'stats'; title: string; charts: Chart[]; actions: CardAction[] }
   | { kind: 'note'; text: string; tone: CardTone; icon?: string };
 
 const TRACK_STATES: TrackState[] = [
@@ -155,6 +167,49 @@ export const parseBotCard = (content: unknown): BotCard | undefined => {
     });
     if (!groups.length) return undefined;
     return { kind: 'help', groups, note: text(raw.note, 400) };
+  }
+
+  if (raw.kind === 'list') {
+    const title = text(raw.title, 100);
+    if (!title) return undefined;
+    const items: ListItem[] = [];
+    (Array.isArray(raw.items) ? raw.items : []).slice(0, 50).forEach((i) => {
+      if (!isObject(i)) return;
+      const t = text(i.title, 160);
+      if (t)
+        items.push({
+          title: t,
+          subtitle: text(i.subtitle, 120),
+          duration: num(i.duration, 86400 * 7),
+        });
+    });
+    return {
+      kind: 'list',
+      title,
+      items,
+      total: num(raw.total, 1e6) ?? items.length,
+      empty: text(raw.empty, 200),
+      actions: actions(raw.actions),
+    };
+  }
+
+  if (raw.kind === 'stats') {
+    const title = text(raw.title, 100);
+    const charts: Chart[] = [];
+    (Array.isArray(raw.charts) ? raw.charts : []).slice(0, 6).forEach((c) => {
+      if (!isObject(c)) return;
+      const ct = text(c.title, 80);
+      const items: ChartItem[] = [];
+      (Array.isArray(c.items) ? c.items : []).slice(0, 15).forEach((i) => {
+        if (!isObject(i)) return;
+        const label = text(i.label, 120);
+        const value = num(i.value, 1e12);
+        if (label && value !== undefined) items.push({ label, value, sub: text(i.sub, 60) });
+      });
+      if (ct && items.length) charts.push({ title: ct, unit: text(c.unit, 12), items });
+    });
+    if (!title || !charts.length) return undefined;
+    return { kind: 'stats', title, charts, actions: actions(raw.actions) };
   }
 
   if (raw.kind === 'note') {
