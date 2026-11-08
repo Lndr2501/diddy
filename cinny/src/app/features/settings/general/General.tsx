@@ -903,6 +903,17 @@ function AnimatedAvatarSettings() {
             />
           }
         />
+        <InsetRow
+          title="Profile effects"
+          description="Animated overlays other people put over their profile card. Off shows a still picture; with reduced motion turned on in your system they never move."
+          after={
+            <Switch
+              variant="Primary"
+              value={prefs.profileEffects}
+              onChange={(value) => setAvatarAnimation('profileEffects', value)}
+            />
+          }
+        />
       </InsetGroup>
     </InsetSection>
   );

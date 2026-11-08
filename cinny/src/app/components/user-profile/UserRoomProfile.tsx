@@ -45,6 +45,7 @@ import { useSwitchCall } from '../call-switch/useSwitchCall';
 import { useLivekitSupport } from '../../hooks/useLivekitSupport';
 import { webRTCSupported } from '../../utils/rtc';
 import { AccountDataEvent } from '../../../types/matrix/accountData';
+import { ProfileEffectOverlay, useProfileEffectAnimation } from '../diddy/ProfileEffect';
 
 type UserRoomProfileProps = {
   userId: string;
@@ -95,6 +96,7 @@ export function UserRoomProfile({ userId, large }: UserRoomProfileProps) {
   const cardTheme = profile?.cardLayout?.theme;
   const modules = visibleModules({ ...profile?.cardLayout, layout });
   const openLargeProfile = useOpenLargeUserProfile();
+  const animateEffect = useProfileEffectAnimation();
 
   const handleMessage = () => {
     closeUserRoomProfile();
@@ -246,7 +248,9 @@ export function UserRoomProfile({ userId, large }: UserRoomProfileProps) {
           presence={shownPresence}
           profile={profile}
           compact={compact}
-          large={large ? { banner: big?.banner ?? 'tall', avatar: big?.avatar ?? 'large' } : undefined}
+          large={
+            large ? { banner: big?.banner ?? 'tall', avatar: big?.avatar ?? 'large' } : undefined
+          }
           onAvatarClick={large ? undefined : () => openLargeProfile(room.roomId, userId)}
           actions={actions}
         />
@@ -336,6 +340,7 @@ export function UserRoomProfile({ userId, large }: UserRoomProfileProps) {
           )}
         </div>
       </div>
+      {profile?.effect && <ProfileEffectOverlay effect={profile.effect} animate={animateEffect} />}
     </div>
   );
 }
