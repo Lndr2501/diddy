@@ -31,7 +31,7 @@ import { installCallFrameMenu } from '../callFrameMenu';
 import { installSoundboard } from './soundboard';
 import { installCallTheme } from './callTheme';
 import { installScreenShareGrid } from './screenShareGrid';
-import { trackPeerConnections } from './streamStats';
+import { startReceiveWatch, trackPeerConnections } from './streamStats';
 
 export class CallEmbed {
   private mx: MatrixClient;
@@ -195,9 +195,19 @@ export class CallEmbed {
     // Desktop app: give getDisplayMedia() system audio and mix soundboard clips into getUserMedia().
     // Installed as early as possible because Element Call may ask for the microphone right away;
     // both installers are idempotent, so the load handler is just a safety net.
+    let receiveWatchWindow: Window | undefined;
+    let stopReceiveWatch: (() => void) | undefined;
+    this.disposables.push(() => stopReceiveWatch?.());
     const installMediaPatches = () => {
       // the call's peer connections: stream diagnostics and the "connection lost" sound
       trackPeerConnections(iframe.contentWindow);
+      // #11: what a viewer really receives, per video, against the tile it is shown in
+      const target = iframe.contentWindow;
+      if (target && target !== receiveWatchWindow) {
+        stopReceiveWatch?.();
+        receiveWatchWindow = target;
+        stopReceiveWatch = startReceiveWatch(target);
+      }
       installScreenShareAudio(iframe.contentWindow);
       // the call view is its own document: without this it showed the web view menu again
       installContextMenuGuard(iframe.contentWindow?.document);
