@@ -1,8 +1,24 @@
 # Changelog
 
-## Unveröffentlicht
+## 1.5.0 (2026-11-08)
 
-- **Profilbild nur noch über Matrix (#93):** Das eigene Diddy-Profilbild („Animated avatar“) ist entfernt, alle sehen das normale Matrix-Profilbild. Unter Einstellungen > Account lässt sich jetzt auch ein GIF, WebP oder APNG hochladen; die Datei wird unverändert hochgeladen (kein Zuschneiden, keine Neukodierung) und bewegt sich überall, wo es unter „Animated profile pictures“ eingeschaltet ist (Vorschaubilder werden mit `animated=true` angefragt). Das Upload-Limit des Servers wird vorher geprüft, Fehler sind lesbar. Wer ein altes Diddy-Bild hatte, bekommt unter Einstellungen > Profile einmalig das Angebot, es als Matrix-Profilbild zu übernehmen, oder kann den Hinweis schließen.
+### Highlights
+
+- **Watch together (#83):** Ein YouTube-Video gemeinsam im Call schauen. Play, Pause und Springen sind für alle synchron, Lautstärke und Qualität stellt jeder für sich ein. Läuft über den offiziellen YouTube-Player; SponsorBlock-Segmente werden für alle übersprungen (Kategorien in Einstellungen > Allgemein). Werbung wird nicht geblockt.
+- **Profileffekte (#86) und Profilrahmen (#87):** Animierte Overlays und Rahmen um die Profilkarte. Eingebaute Effekte und Rahmen, dazu Import eigener ZIP-Dateien oder Bilder (keine Discord-Dateien im Lieferumfang). Schalter „Profile effects“ und „Profile frames“ in Einstellungen > Allgemein.
+- **Plugins ohne Hosting (#98):** Ein Plugin lässt sich aus einer HTML-Datei, per eingefügtem Code oder per GitHub-/Gist-Link hinzufügen und wird lokal gespeichert, ohne Server oder Docker. Dazu ein eigenständiges GitHub-Issues-Plugin und Bot-Karten (`dev.diddy.card`) mit Live-Änderungen, auch in verschlüsselten Räumen.
+- **Profil-Editor überarbeitet (#105):** Einheitliche Abstände, eine Karten-Komponente für alle Bereiche und Vorschauen für alle Ansichten (Profilkarte in vier Layouts, großes Profil, Mitglieder, DMs, Panel, Call-Kachel), die den ungespeicherten Entwurf mit den echten Komponenten zeigen.
+- **Profilbild nur noch über Matrix (#93):** Das eigene Diddy-Profilbild („Animated avatar“) ist entfernt, alle sehen das normale Matrix-Profilbild. Unter Einstellungen > Account lässt sich jetzt auch ein GIF, WebP oder APNG hochladen; die Datei wird unverändert hochgeladen und bewegt sich überall, wo es unter „Animated profile pictures“ eingeschaltet ist. Wer ein altes Diddy-Bild hatte, bekommt einmalig das Angebot, es als Matrix-Profilbild zu übernehmen.
+
+### Weitere Änderungen
+
+- **Nutzer-Lautstärke bleibt gespeichert (#103):** Stimm-Lautstärke und „Für mich stumm“ werden pro Person gemerkt, auch nach dem Verlassen des Calls und nach einem Neustart. „Reset volumes“ in Einstellungen > Allgemein > Calls.
+- **Mute-Anzeige stimmt (#107):** Kachel, Statusleiste, Avatar-Ring und Seitenleiste lesen denselben Zustand (eigenes Mikro aus Diddys Call-Steuerung, andere aus ihrem LiveKit-Mikrofon). „Für mich stumm“ zeigt niemanden mehr für alle als stumm.
+- **Doppelte Call-Knöpfe weg (#94):** Mikrofon und Kopfhörer nur noch unten neben dem Namen, oben Bildschirmübertragung, Kamera und Soundboard.
+- **Suche (#109):** Eine bearbeitete Nachricht erscheint einmal, mit dem aktuellen Text und „(edited)“.
+- **Badges (#108):** Ein manipuliertes `content.at` kann einen Widerruf nicht mehr überstimmen.
+- **Dev-Builds (#95):** „Diddy Dev“ nutzt den eigenen Port 44549 und zeigt nicht mehr die Seite der installierten Diddy-App; jedes Fenster zeigt ein Wasserzeichen mit Branch und Commit.
+- **Linux/Nix (#100):** Der Nix-Build enthält `docs/plugins` im Frontend-Paket.
 
 ## 1.4.0 (2026-11-08)
 
