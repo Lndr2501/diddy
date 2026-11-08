@@ -65,6 +65,10 @@ jobs:
           JSON
           sed -i.bak "s/^export const APP_VERSION = '\(.*\)';/export const APP_VERSION = '\1-dev';/" cinny/src/app/appInfo.ts
           rm -f cinny/src/app/appInfo.ts.bak
+          label="${GITHUB_REF_NAME} · $(git rev-parse --short=7 HEAD) · $(date -u '+%Y-%m-%d %H:%M')Z"
+          sed -i.bak "s|^export const DEV_BUILD_LABEL = '';|export const DEV_BUILD_LABEL = '${label//|/-}';|" cinny/src/app/appInfo.ts
+          rm -f cinny/src/app/appInfo.ts.bak
+          grep -n "DEV_BUILD_LABEL =" cinny/src/app/appInfo.ts
           echo "DEV_CONFIG=$RUNNER_TEMP/dev.conf.json" >> "$GITHUB_ENV"
 
       - name: Setup node
