@@ -7,6 +7,16 @@ import { checkNameplateFile, checkNameplateVideoDuration } from './nameplate';
 
 export const MAX_DIDDY_MEDIA_BYTES = 8 * 1024 * 1024;
 
+/** The server's upload limit in bytes, undefined when it does not tell. */
+export const serverUploadLimit = async (mx: MatrixClient): Promise<number | undefined> => {
+  try {
+    const serverMax = (await mx.getMediaConfig())['m.upload.size'];
+    return typeof serverMax === 'number' && serverMax > 0 ? serverMax : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
 /** The upload limit: ours, or the server's when it is lower. */
 const uploadLimit = async (mx: MatrixClient): Promise<number> => {
   let maxBytes = MAX_DIDDY_MEDIA_BYTES;
