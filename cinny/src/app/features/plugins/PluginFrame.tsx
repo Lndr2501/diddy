@@ -2,12 +2,14 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Box, Icon, IconButton, Icons, Spinner, Text } from 'folds';
 import { getBuiltinHtml } from '../../plugins/builtinPlugins';
 import { getPluginData, setPluginData } from '../../state/pluginData';
+import { useLocalPluginRecord } from '../../state/localPlugins';
 import { DOCK_DEFAULT_HEIGHT, PluginStyle } from '../../state/pluginDock';
 import {
   builtinSlug,
   createInitMessage,
   DEFAULT_FRAME_HEIGHT,
   HostStorageValueMessage,
+  localPluginId,
   parsePluginMessage,
   PluginManifest,
   PluginTheme,
@@ -49,6 +51,9 @@ const browserLocale = (): string | undefined => {
 const MISSING_BUILTIN =
   '<!doctype html><meta charset="utf-8"><body style="font:13px system-ui;padding:12px;color:gray">This built-in plugin is not part of this version of Diddy.</body>';
 
+const MISSING_LOCAL =
+  '<!doctype html><meta charset="utf-8"><body style="font:13px system-ui;padding:12px;color:gray">The content of this plugin is missing on this device. Remove it and add it again (from a file, code or GitHub).</body>';
+
 /** Opens a link a plugin asked for in the system browser (https only, checked before). */
 const openExternal = (url: string) => {
   const a = document.createElement('a');
@@ -64,6 +69,11 @@ type PluginFrameProps = {
   compact?: boolean;
   /** the user's look for this plugin: sidebar height and zoom, custom CSS */
   look?: PluginStyle;
+  /**
+   * Show this HTML instead of the plugin's own content (live preview of pasted code). The preview
+   * runs in the same sandbox, but gets no plugin storage.
+   */
+  previewHtml?: string;
 };
 /**
  * One user plugin, live. The page runs in an iframe with `sandbox="allow-scripts"` only: it gets
@@ -71,7 +81,10 @@ type PluginFrameProps = {
  * navigate the app, open popups or submit forms. The only channel is postMessage, and every
  * message is checked to come from exactly this frame and to have one of the known shapes.
  */
-export function PluginFrame({ plugin, compact, look }: PluginFrameProps) {
+export function PluginFrame({ plugin, compact, look, previewHtml }: PluginFrameProps) {
+  const isPreview = previewHtml !== undefined;
+  const isPreviewRef = useRef(isPreview);
+  isPreviewRef.current = isPreview;
   const layout = compact ? 'compact' : 'full';
   const layoutRef = useRef<'full' | 'compact'>(layout);
   layoutRef.current = layout;
@@ -128,14 +141,14 @@ export function PluginFrame({ plugin, compact, look }: PluginFrameProps) {
             type: 'diddy:storage:value',
             id: message.id,
             key: message.key,
-            value: getPluginData(pluginIdRef.current, message.key),
+            value: isPreviewRef.current ? null : getPluginData(pluginIdRef.current, message.key),
           } satisfies HostStorageValueMessage,
           '*'
         );
         return;
       }
       if (message.type === 'diddy:storage:set') {
-        setPluginData(pluginIdRef.current, message.key, message.value);
+        if (!isPreviewRef.current) setPluginData(pluginIdRef.current, message.key, message.value);
         return;
       }
       if (message.type === 'diddy:open') {
@@ -157,6 +170,21 @@ export function PluginFrame({ plugin, compact, look }: PluginFrameProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [layout, look?.css]);
 
+  const slug = builtinSlug(plugin.url);
+  const localId = isPreview ? undefined : localPluginId(plugin.url);
+  const localRecord = useLocalPluginRecord(localId);
+  let srcDoc: string | undefined;
+  if (isPreview) srcDoc = previewHtml;
+  else if (slug) srcDoc = getBuiltinHtml(slug) ?? MISSING_BUILTIN;
+  else if (localId) {
+    // empty while the stored content is read, a clear notice if there is none
+    srcDoc = localRecord === null ? MISSING_LOCAL : localRecord?.html ?? '';
+  }
+  const missingLocal = !!localId && localRecord === null;
+  // a new version of a local plugin (or of the previewed code) loads the frame again
+  const contentKey =
+    isPreview || localId ? `${srcDoc?.length ?? 0}:${localRecord?.sha256 ?? ''}` : '';
+
   // reset whenever the page is (re)loaded and warn if it never answers
   useEffect(() => {
     setReady(false);
@@ -166,17 +194,16 @@ export function PluginFrame({ plugin, compact, look }: PluginFrameProps) {
     sentThemeRef.current = undefined;
     const timer = window.setTimeout(() => setSilent(true), READY_TIMEOUT);
     return () => window.clearTimeout(timer);
-  }, [plugin.url, loadKey]);
+  }, [plugin.url, loadKey, contentKey, previewHtml]);
 
   // sidebar card: capped at the user's height; the page itself scrolls inside
   const zoom = compact ? (look?.zoom ?? 100) / 100 : 1;
   const shownHeight = compact ? Math.min(height, look?.height ?? DOCK_DEFAULT_HEIGHT) : height;
 
-  const slug = builtinSlug(plugin.url);
-  const builtinHtml = slug ? getBuiltinHtml(slug) ?? MISSING_BUILTIN : undefined;
-
   let status: string | undefined = manifest?.description;
-  if (!ready) {
+  if (missingLocal) {
+    status = 'Content missing on this device. Remove the plugin and add it again.';
+  } else if (!ready) {
     status = silent
       ? 'This page does not talk to Diddy. It is shown as a plain page.'
       : 'Loading plugin…';
@@ -189,7 +216,7 @@ export function PluginFrame({ plugin, compact, look }: PluginFrameProps) {
         style={compact ? { height: `${shownHeight * zoom}px` } : undefined}
       >
         <iframe
-          key={`${plugin.url}#${loadKey}`}
+          key={`${plugin.url}#${loadKey}#${contentKey}`}
           ref={frameRef}
           className={css.Frame}
           style={{
@@ -200,7 +227,7 @@ export function PluginFrame({ plugin, compact, look }: PluginFrameProps) {
               : {}),
           }}
           title={plugin.name}
-          {...(builtinHtml !== undefined ? { srcDoc: builtinHtml } : { src: plugin.url })}
+          {...(srcDoc !== undefined ? { srcDoc } : { src: plugin.url })}
           sandbox="allow-scripts"
           referrerPolicy="no-referrer"
           allow={DENIED_FEATURES}
@@ -209,7 +236,7 @@ export function PluginFrame({ plugin, compact, look }: PluginFrameProps) {
       </div>
       {(!compact || !ready) && (
         <div className={css.Status}>
-          {!ready && !silent && <Spinner variant="Secondary" size="100" />}
+          {!ready && !silent && !missingLocal && <Spinner variant="Secondary" size="100" />}
           <Box grow="Yes" style={{ minWidth: 0 }}>
             {status && (
               <Text size="T200" className={`${css.StatusText} ${BreakWord}`}>
