@@ -10,9 +10,17 @@ export const useCallLatency = (callEmbed: CallEmbed): number | undefined => {
 
   useEffect(() => {
     let cancelled = false;
+    let busy = false;
     const poll = async () => {
-      const ms = await measureRoundTripMs(callEmbed.iframe.contentWindow);
-      if (!cancelled) setLatency(ms);
+      // a slow measurement is waited for, never asked for a second time on top (#144)
+      if (busy) return;
+      busy = true;
+      try {
+        const ms = await measureRoundTripMs(callEmbed.iframe.contentWindow);
+        if (!cancelled) setLatency(ms);
+      } finally {
+        busy = false;
+      }
     };
     poll();
     const timer = window.setInterval(poll, POLL_MS);
