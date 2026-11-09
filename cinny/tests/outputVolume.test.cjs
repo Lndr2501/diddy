@@ -10,9 +10,9 @@ const filename = path.join(__dirname, '../src/app/plugins/call/outputVolume.ts')
 const out = ts.transpileModule(fs.readFileSync(filename, 'utf8'), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2016 },
 }).outputText;
-const exports = {};
-vm.runInNewContext(out, { exports }, { filename });
-const { shouldWriteOutputVolume: should } = exports;
+const mod = {};
+vm.runInNewContext(out, { exports: mod }, { filename });
+const { shouldWriteOutputVolume: should } = mod;
 
 test('a new element at the default output volume keeps the volume the call gave it', () => {
   assert.equal(should(undefined, 1), false);
