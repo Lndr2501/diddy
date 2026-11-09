@@ -10,6 +10,7 @@ struct VoiceChannelView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var showChat = false
     @State private var showMembers = false
+    @State private var showSoundboard = false
     @State private var joining = false
     @State private var profile: ProfileTarget?
 
@@ -37,6 +38,10 @@ struct VoiceChannelView: View {
                 }
             }
             ToolbarItemGroup(placement: .navigationBarTrailing) {
+                if calls.current?.roomId == roomId {
+                    Button { showSoundboard = true } label: { Image(systemName: "music.note.list") }
+                        .accessibilityLabel("Soundboard")
+                }
                 Button { showMembers = true } label: { Image(systemName: "person.2.fill") }
                     .accessibilityLabel("Members")
                 Button { showChat = true } label: { Image(systemName: "bubble.left.fill") }
@@ -52,6 +57,7 @@ struct VoiceChannelView: View {
             }
         }
         .sheet(isPresented: $showMembers) { MembersView(account: account, roomId: roomId) }
+        .sheet(isPresented: $showSoundboard) { SoundboardSheet() }
         .sheet(item: $profile) { UserProfileSheet(account: account, userId: $0.userId, roomId: roomId) }
     }
 

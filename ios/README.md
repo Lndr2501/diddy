@@ -21,6 +21,7 @@ Die App ist Beta: Alles in der Tabelle ist gebaut und läuft bei den ersten Test
 | Sprachkanäle mit Desktop-Diddy und Element Call (gleiches MatrixRTC, gleiche Medien-Verschlüsselung) | 🧪 |
 | Bildschirmübertragung | 🧪 ab iOS 27 ganzer Bildschirm, davor nur Diddy selbst |
 | Stummschalten, Taubschalten, Kamera | 🧪 |
+| Soundboard im Sprachkanal: eigene Clips (bis 20 s) importieren, alle im Call hören sie über dein Mikrofon | 🧪 ein Clip gleichzeitig; bei stummem Mikrofon hört ihn niemand (wie am Desktop) |
 | Klingeln in Direktnachrichten mit Annehmen und Ablehnen, kompatibel zu Desktop-Diddy und Element Call | 🧪 nur solange die App geöffnet ist |
 | Sounds aus Diddys Soundpack (wie am Desktop) für Anrufe, Bildschirmübertragung, Nachrichten, Erwähnungen und Einladungen, unter Einstellungen > Sounds abschaltbar und anhörbar | 🧪 |
 | Offline-Bildschirm: Sitzung bleibt erhalten, wenn der Server nicht erreichbar ist, und verbindet sich von selbst wieder | 🧪 |

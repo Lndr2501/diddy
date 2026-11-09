@@ -94,6 +94,7 @@ final class CallManager: ObservableObject {
         current = nil
         showCallScreen = false
         DiagLog.shared.write("call: leaving")
+        Soundboard.shared.stop()
         await session.disconnect()
         DiagLog.shared.write("call: left")
         // The call released the audio session; in the background, keep running for notifications.
