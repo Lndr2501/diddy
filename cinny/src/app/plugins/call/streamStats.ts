@@ -70,6 +70,54 @@ export const withTimeout = <T>(p: Promise<T>, ms: number): Promise<T> =>
     );
   });
 
+/** A report younger than this is handed to every poller instead of asking the connection again. */
+export const STATS_SHARE_MS = 1500;
+
+type StatsSource<R> = { getStats: () => Promise<R> };
+type StatsEntry = { at: number; report: Promise<unknown>; settled: boolean };
+const statsCache = new WeakMap<object, StatsEntry>();
+
+/**
+ * getStats() of `pc`, shared by everybody who polls it (#144).
+ *
+ * Several watchers poll the call's connections: the ping in the call panel (every 3 s), the
+ * receive watches (every 5 s) and the screen-share logging (every 4 s). Each of them called
+ * getStats() on its own, without waiting for a slow one to finish. In WebKit a report crosses
+ * processes and is built on the WebRTC thread that also moves the media; on a busy machine the
+ * calls piled up, the ping rose and the audio stalled. Now there is at most one getStats() per
+ * connection at a time: callers within STATS_SHARE_MS get the same report, a call that has not
+ * returned yet is joined (never repeated), and every caller gives up after STATS_TIMEOUT_MS.
+ */
+export const sharedStats = <R>(
+  pc: StatsSource<R>,
+  now: number = Date.now(),
+  timeoutMs: number = STATS_TIMEOUT_MS
+): Promise<R> => {
+  const entry = statsCache.get(pc);
+  if (entry && (!entry.settled || now - entry.at < STATS_SHARE_MS)) {
+    return withTimeout(entry.report as Promise<R>, timeoutMs);
+  }
+  let report: Promise<R>;
+  try {
+    report = pc.getStats();
+  } catch (e) {
+    return Promise.reject(e);
+  }
+  const fresh: StatsEntry = { at: now, report, settled: false };
+  statsCache.set(pc, fresh);
+  report.then(
+    () => {
+      fresh.settled = true;
+    },
+    () => {
+      fresh.settled = true;
+      // a failed report is not shared: the next caller asks again
+      fresh.at = -Infinity;
+    }
+  );
+  return withTimeout(report, timeoutMs);
+};
+
 /** Drops closed connections and trims the list to `max` entries (oldest first). In place. */
 export const pruneConnections = <T extends { connectionState: string }>(list: T[], max = MAX_TRACKED_PCS): void => {
   for (let i = list.length - 1; i >= 0; i -= 1) {
@@ -174,9 +222,7 @@ export const startVideoReceiveWatch = (win: Window | null | undefined): (() => v
   if (running) return running;
   const last = new Map<string, string>();
 
-  const poll = async () => {
-    const list = registries.get(win);
-    if (!list || list.length === 0) return;
+  const pollOnce = async (list: PcList) => {
     let videos: HTMLVideoElement[];
     try {
       videos = Array.from(win.document.querySelectorAll('video'));
@@ -193,7 +239,7 @@ export const startVideoReceiveWatch = (win: Window | null | undefined): (() => v
     for (let i = 0; i < open.length; i += 1) {
       try {
         // eslint-disable-next-line no-await-in-loop
-        const report = await open[i].getStats();
+        const report = await sharedStats(open[i]);
         report.forEach((r: Record<string, any>) => {
           if (r.type !== 'inbound-rtp') return;
           if (!(r.kind === 'video' || r.mediaType === 'video')) return;
@@ -221,6 +267,18 @@ export const startVideoReceiveWatch = (win: Window | null | undefined): (() => v
     Array.from(last.keys()).forEach((id) => {
       if (!seen.has(id)) last.delete(id);
     });
+  };
+  // never overlap: a slow report is waited for instead of asked for again (#144)
+  let busy = false;
+  const poll = async () => {
+    const list = registries.get(win);
+    if (busy || !list || list.length === 0) return;
+    busy = true;
+    try {
+      await pollOnce(list);
+    } finally {
+      busy = false;
+    }
   };
 
   const timer = window.setInterval(() => {
@@ -264,7 +322,7 @@ export const startStatsLogging = (
       {
         try {
           // eslint-disable-next-line no-await-in-loop
-          const report = await withTimeout(pc.getStats(), STATS_TIMEOUT_MS);
+          const report = await sharedStats(pc);
           const codecs = new Map<string, string>();
           report.forEach((r: Record<string, any>) => {
             if (r.type === 'codec') codecs.set(r.id, String(r.mimeType ?? ''));
@@ -391,11 +449,12 @@ export const startReceiveWatch = (win: Window | null | undefined): (() => void) 
     if (busy) return;
     busy = true;
     try {
+      pruneConnections(list);
       const pcs = list.filter((pc) => pc.connectionState !== 'closed');
       for (let i = 0; i < pcs.length; i += 1) {
         try {
           // eslint-disable-next-line no-await-in-loop
-          const report = await pcs[i].getStats();
+          const report = await sharedStats(pcs[i]);
           report.forEach((r: Record<string, any>) => {
             if (r.type !== 'inbound-rtp' || (r.kind ?? r.mediaType) !== 'audio') return;
             if (typeof r.totalAudioEnergy !== 'number') return;
@@ -451,7 +510,7 @@ export const measureRoundTripMs = async (
       .filter((pc) => pc.connectionState === 'connected')
       .map(async (pc) => {
         try {
-          const report = await pc.getStats();
+          const report = await sharedStats(pc);
           let pairRtt: number | undefined;
           let rtpRtt: number | undefined;
           report.forEach((r: Record<string, any>) => {

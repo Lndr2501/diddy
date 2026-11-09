@@ -1,4 +1,5 @@
-// Pure resolution diagnosis (issue #11: logs showed 640x360 sent where 1080p was requested).
+// Pure resolution diagnosis (issue #11: logs showed 640x360 sent where 1080p was requested)
+// and the shared getStats() of the call's connections (#144).
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -151,4 +152,59 @@ test('pruneConnections drops closed connections and caps the list, oldest first'
 test('withTimeout rejects a promise that never settles and passes through fast ones', async () => {
   await assert.rejects(exported.withTimeout(new Promise(() => {}), 10), /timeout/);
   assert.equal(await exported.withTimeout(Promise.resolve(7), 1000), 7);
+});
+
+// #144: every poller shares one getStats() per connection; a slow one is never repeated on top.
+const fakePc = () => {
+  const pc = { calls: 0, pending: [] };
+  pc.getStats = () => {
+    pc.calls += 1;
+    return new Promise((resolve, reject) => {
+      pc.pending.push({ resolve, reject });
+    });
+  };
+  return pc;
+};
+
+test('callers within the share window get one report from one getStats()', async () => {
+  const pc = fakePc();
+  const a = exported.sharedStats(pc, 1000);
+  const b = exported.sharedStats(pc, 1500);
+  pc.pending[0].resolve('report');
+  assert.equal(await a, 'report');
+  assert.equal(await b, 'report');
+  assert.equal(await exported.sharedStats(pc, 1000 + exported.STATS_SHARE_MS - 1), 'report');
+  assert.equal(pc.calls, 1);
+  // older than the share window: asked again
+  const c = exported.sharedStats(pc, 1000 + exported.STATS_SHARE_MS);
+  assert.equal(pc.calls, 2);
+  pc.pending[1].resolve('newer');
+  assert.equal(await c, 'newer');
+});
+
+test('a getStats() that hangs times out for callers and is not asked again', async () => {
+  const pc = fakePc();
+  await assert.rejects(exported.sharedStats(pc, 0, 5), /timeout/);
+  await assert.rejects(exported.sharedStats(pc, 60000, 5), /timeout/);
+  assert.equal(pc.calls, 1);
+  // once it finally answers, the next poll asks for a fresh report
+  pc.pending[0].resolve('late');
+  await new Promise((r) => {
+    setTimeout(r, 0);
+  });
+  const next = exported.sharedStats(pc, 120000, 5);
+  assert.equal(pc.calls, 2);
+  pc.pending[1].resolve('fresh');
+  assert.equal(await next, 'fresh');
+});
+
+test('a failed report is not shared', async () => {
+  const pc = fakePc();
+  const first = exported.sharedStats(pc, 0);
+  pc.pending[0].reject(new Error('closed'));
+  await assert.rejects(first, /closed/);
+  const second = exported.sharedStats(pc, 1);
+  assert.equal(pc.calls, 2);
+  pc.pending[1].resolve('ok');
+  assert.equal(await second, 'ok');
 });
