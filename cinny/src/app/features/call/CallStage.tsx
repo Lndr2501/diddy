@@ -59,7 +59,7 @@ function useCallStage(callEmbed: CallEmbed): StageModel {
         childList: true,
         subtree: true,
         attributes: true,
-        attributeFilter: ['class', 'data-muted', 'data-id', 'aria-label'],
+        attributeFilter: ['class', 'data-muted', 'data-id', 'aria-label', 'style'],
       });
     }
     const poll = window.setInterval(schedule, 1000);

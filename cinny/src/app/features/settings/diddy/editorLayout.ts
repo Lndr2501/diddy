@@ -30,3 +30,21 @@ export const editorLayout = (width: number): EditorLayout => {
     compact: width < COMPACT_BELOW_PX,
   };
 };
+
+/** Width margin (px) before the layout flips back: a flip changes the page height and with it the
+ * scrollbar, which changes the width again (the preview wobbled endlessly). */
+export const LAYOUT_HYSTERESIS_PX = 32;
+
+/**
+ * Like editorLayout, but a layout that is already shown is kept until the width moved clearly
+ * past its threshold, so a width that jitters around the threshold does not flip it back and forth.
+ */
+export const stickyEditorLayout = (width: number, previous?: EditorLayout): EditorLayout => {
+  const next = editorLayout(width);
+  if (!previous || next.columns === previous.columns) return next;
+  const margin =
+    previous.columns === 'two' ? width + LAYOUT_HYSTERESIS_PX : width - LAYOUT_HYSTERESIS_PX;
+  return editorLayout(margin).columns === previous.columns
+    ? { ...next, columns: previous.columns }
+    : next;
+};

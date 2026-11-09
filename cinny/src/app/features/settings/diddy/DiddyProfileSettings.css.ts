@@ -763,6 +763,8 @@ export const PreviewColumn = style({
   // --pe-viewport-h: height of the settings scroll area, --pe-savebar: room the save bar takes
   maxHeight: `calc(var(--pe-viewport-h, 100vh) - var(--pe-savebar, 0px) - 2 * ${SPACE.lg})`,
   overflowY: 'auto',
+  // the scrollbar must not take width from the previews when it appears (resize loop)
+  scrollbarGutter: 'stable',
   overscrollBehavior: 'contain',
   display: 'flex',
   flexDirection: 'column',

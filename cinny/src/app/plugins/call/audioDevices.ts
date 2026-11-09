@@ -12,6 +12,7 @@ import { playCallSound } from './callSounds';
 import { applyAudioProcessingPolicy } from './audioConstraints';
 import { setSharedAudioSink } from './sharedAudio';
 import { listNativeInputs, nativeMicAvailable, NATIVE_DEVICE_PREFIX } from './nativeMic';
+import { nextElementVolume, OutputVolumeRecord } from './outputVolume';
 
 const INPUT_KEY = 'diddyAudioInput';
 const INPUT_LABEL_KEY = 'diddyAudioInputLabel';
@@ -143,18 +144,19 @@ export const isOutputSelectionSupported = (): boolean =>
 /** The sink id WE applied last to an element, so unchanged elements are never touched again. */
 const appliedSinks = new WeakMap<HTMLMediaElement, { sink: string }>();
 
-/** Output volume WE applied last to an element (the call's own per-user volume is left alone). */
-const appliedVolumes = new WeakMap<HTMLMediaElement, number>();
+/** What WE applied to an element: the output volume as a factor on the person's own volume (#142). */
+const appliedVolumes = new WeakMap<HTMLMediaElement, OutputVolumeRecord>();
 
 /** Applies the output device and output volume to one media element of the call. */
 export const applyAudioOutput = (el: HTMLMediaElement): void => {
   const { output, outputVolume } = current;
-  // Only write the volume when our preference changed (or on first sight). Writing it on every
-  // call overwrote the per-user volume slider of the call (#38).
-  if (appliedVolumes.get(el) !== outputVolume) {
-    appliedVolumes.set(el, outputVolume);
+  // The per-person volume of the call (slider, remembered volume) must survive: the output
+  // volume only scales it, and is not written at all while it is 100 % and unchanged (#38, #142).
+  const step = nextElementVolume(appliedVolumes.get(el), el.volume, outputVolume);
+  appliedVolumes.set(el, step.record);
+  if (step.write !== undefined) {
     // eslint-disable-next-line no-param-reassign
-    el.volume = outputVolume;
+    el.volume = step.write;
   }
 
   const sink = el as SinkElement;

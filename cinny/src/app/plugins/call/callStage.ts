@@ -61,6 +61,9 @@ const liveVideo = (tile: Element): MediaStream | undefined => {
   const track = stream.getVideoTracks()[0];
   if (!track || track.readyState !== 'live' || track.muted) return undefined;
   if (video.videoWidth === 0) return undefined;
+  // Element Call hides the <video> (display: none) and shows the avatar while the camera is off.
+  // The track itself can stay live and unmuted in WebKit, with the last picture frozen in it (#145).
+  if (video.style?.display === 'none') return undefined;
   return stream as unknown as MediaStream;
 };
 
