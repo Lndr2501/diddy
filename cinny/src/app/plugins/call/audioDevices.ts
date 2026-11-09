@@ -11,6 +11,7 @@ import { diag } from '../diagnostics';
 import { playCallSound } from './callSounds';
 import { applyAudioProcessingPolicy } from './audioConstraints';
 import { setSharedAudioSink } from './sharedAudio';
+import { shouldWriteOutputVolume } from './outputVolume';
 import { listNativeInputs, nativeMicAvailable, NATIVE_DEVICE_PREFIX } from './nativeMic';
 
 const INPUT_KEY = 'diddyAudioInput';
@@ -151,8 +152,10 @@ export const applyAudioOutput = (el: HTMLMediaElement): void => {
   const { output, outputVolume } = current;
   // Only write the volume when our preference changed (or on first sight). Writing it on every
   // call overwrote the per-user volume slider of the call (#38).
-  if (appliedVolumes.get(el) !== outputVolume) {
-    appliedVolumes.set(el, outputVolume);
+  // A new element at the default 100 % keeps the remembered per-user volume the call gave it (#142).
+  const mustWrite = shouldWriteOutputVolume(appliedVolumes.get(el), outputVolume);
+  appliedVolumes.set(el, outputVolume);
+  if (mustWrite) {
     // eslint-disable-next-line no-param-reassign
     el.volume = outputVolume;
   }
