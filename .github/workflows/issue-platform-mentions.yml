@@ -1,0 +1,53 @@
+name: Issue platform mentions
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  mention-platform-maintainers:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Mention platform maintainers
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const text = `${issue.title}\n${issue.body ?? ""}`.toLowerCase();
+            const labels = (issue.labels ?? [])
+              .map((label) => (typeof label === "string" ? label : label.name ?? ""))
+              .map((name) => name.toLowerCase());
+
+            const inText = (regex) => regex.test(text);
+            const inLabels = (value) => labels.some((label) => label.includes(value));
+            const hasMatch = (regex, value) => inText(regex) || inLabels(value);
+
+            const mentions = [];
+            if (hasMatch(/(?:^|[^a-z])ios(?:$|[^a-z])/i, "ios")) {
+              mentions.push("@karmakido");
+            }
+            if (hasMatch(/mac\s?os/i, "macos")) {
+              mentions.push("@lndr2501");
+            }
+            if (hasMatch(/(?:^|[^a-z])linux(?:$|[^a-z])/i, "linux")) {
+              mentions.push("@luis");
+            }
+
+            if (mentions.length === 0) {
+              core.info("No platform mention detected.");
+              return;
+            }
+
+            const uniqueMentions = [...new Set(mentions)];
+            const body = `cc ${uniqueMentions.join(" ")} (automatic platform mention).`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              body,
+            });
