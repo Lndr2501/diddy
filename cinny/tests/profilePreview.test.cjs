@@ -145,6 +145,21 @@ test('editorLayout: two columns only when the editor keeps its minimum width', (
   assert.deepEqual(plain(el.editorLayout(Number.NaN)), { columns: 'two', compact: false });
 });
 
+test('stickyEditorLayout keeps a layout while the width only jitters around the threshold', () => {
+  const twoAt = el.EDITOR_MIN_PX + el.COLUMN_GAP_PX + el.PREVIEW_COLUMN_PX;
+  const two = el.editorLayout(twoAt);
+  const one = el.editorLayout(twoAt - 1);
+  // a scrollbar appearing takes a few px: two columns stay
+  assert.equal(el.stickyEditorLayout(twoAt - 15, two).columns, 'two');
+  // and one column stays when the width comes back a few px
+  assert.equal(el.stickyEditorLayout(twoAt + 15, one).columns, 'one');
+  // a clear move still flips
+  assert.equal(el.stickyEditorLayout(twoAt - 100, two).columns, 'one');
+  assert.equal(el.stickyEditorLayout(twoAt + 100, one).columns, 'two');
+  // nothing shown yet: plain layout
+  assert.equal(el.stickyEditorLayout(twoAt - 1).columns, 'one');
+});
+
 test('deviceMotionNotes names what this device switched off', () => {
   const all = {
     profileEffects: true,
