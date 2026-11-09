@@ -77,6 +77,7 @@ function setup({ bridge = true, worklet, native } = {}) {
   const mocks = {
     react: {},
     '../diagnostics': { diag: (line) => diagnostics.push(line) },
+    './codecPreference': { capShareConstraints: (o) => o },
     './streamStats': {
       trackPeerConnections() {},
       startStatsLogging: () => () => { statsStopped += 1; },

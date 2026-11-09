@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.5.1 (2026-11-09)
+
+### Highlights
+
+- **Updater vor dem Start (#120):** Diddy sucht beim Start nach einer neuen Version, bevor das Hauptfenster aufgeht. Gibt es eine, fragt ein kleines Fenster „Auf vX aktualisieren?“ mit den Release-Notizen und den Knöpfen Aktualisieren, Diese Version überspringen und Nicht jetzt. Unter macOS lädt es das DMG mit Fortschrittsbalken, ersetzt `/Applications/Diddy.app` (nur dort, wo die laufende App liegt) und startet neu. Schlägt das fehl, steht die Meldung im Fenster und die Release-Seite lässt sich öffnen. Ohne Netz oder nach 3 s startet die App sofort. Unter Linux und Windows öffnet der Knopf die Release-Seite. Unter Einstellungen > Über Diddy lässt sich die Suche abschalten und das Update-Repository (`owner/name`, Standard `Lndr2501/diddy`) ändern; der Hinweis im laufenden Programm nutzt dieselben Einstellungen. Noch nicht auf einem echten Mac durchgespielt (nur Logik-Tests und `cargo check`).
+- **Fenster verschwindet beim Ziehen (#143):** In der gespeicherten Fensterdatei eines betroffenen Macs stand eine Größe von 5×5 Pixeln. Das Fenster wurde also winzig und damit unsichtbar, nur Fenster > Zoomen holte es zurück. Es gibt jetzt eine Mindestgröße (480×360), ein zu kleines Fenster wird bei jeder Größenänderung und beim Start wieder auf eine brauchbare Größe gebracht und auf den Hauptbildschirm gesetzt; gespeichertes „sichtbar/Rahmen“ wird nicht mehr wiederhergestellt. Was das Fenster beim Ziehen zusammenfallen lässt, ist damit nicht gefunden, die Folgen sind abgefangen. Bitte auf dem Mac prüfen.
+
+### Weitere Änderungen
+
+- **Hoher Ping und hängendes Audio im Call (#144):** Die Statistikabfrage beim Bildschirmteilen läuft nicht mehr überlappend, hat ein Zeitlimit, beendet sich selbst und hält die Liste der Verbindungen klein. Dazu bevorzugen Anrufe H264 (VideoToolbox) statt Software-VP8, und die Bildschirmübertragung ist auf 1080p30 begrenzt. Beste Annahme für die Ursache, nicht in einem echten Call bestätigt.
+- **iOS: Absturz nach dem Verlassen eines Anrufs (#116):** Beim Auflegen werden zuerst alle Videos aus der Oberfläche entfernt und ein noch laufender Verbindungsaufbau wird abgebrochen. Beste Annahme, nicht auf einem Gerät bestätigt.
+
 ## 1.5.0 (2026-11-08)
 
 ### Highlights

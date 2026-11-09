@@ -10,9 +10,14 @@
   },
   "windows": [
     "main",
-    "connection-*"
+    "connection-*",
+    "updater"
   ],
   "permissions": [
+    "allow-updater-state",
+    "allow-updater-action",
+    "allow-updater-open-release-page",
+    "allow-updater-set-config",
     "allow-set-app-icon",
     "allow-myinstants-fetch-text",
     "allow-myinstants-fetch-audio",

@@ -206,6 +206,8 @@ final class CallSession: NSObject, ObservableObject {
     private let liveKitRoom: LiveKit.Room
     private let keyProvider: LiveKit.BaseKeyProvider
     private var encrypted = false
+    /// Set once teardown starts: late LiveKit callbacks must not touch the dying room or republish tracks.
+    private var closed = false
     private var ownKey = Data()
     private let ownKeyIndex: Int32 = 0
     private var toDeviceHandle: TaskHandle?
@@ -290,6 +292,11 @@ final class CallSession: NSObject, ObservableObject {
         try configureAudioSession()
         NoiseSuppression.apply()
         try await liveKitRoom.connect(url: sfu.url, token: sfu.jwt, roomOptions: roomOptions)
+        // Left while still connecting: disconnect() already ran, so undo the late connect and stop.
+        if closed {
+            await liveKitRoom.disconnect()
+            throw CancellationError()
+        }
 
         if encrypted {
             keyProvider.setKey(keyData: ownKey, participantId: liveKitRoom.localParticipant.identity?.stringValue ?? ownIdentity, index: ownKeyIndex)
@@ -325,16 +332,32 @@ final class CallSession: NSObject, ObservableObject {
         stopOutgoingRing()
         errorDismissal?.cancel()
         observers.removeAll()
+        guard !closed else { return }
+        closed = true
+        let wasConnected = connected
+        // Drop every video track from the UI first, so no SwiftUIVideoView renders a track of a room
+        // that is being torn down (the likely crash after leaving a call).
+        members = []
+        connected = false
+        microphoneOn = false
+        cameraOn = false
+        screenSharing = false
+        state = "Disconnected"
         membershipRefresh?.cancel()
         toDeviceHandle?.cancel()
         toDeviceHandle = nil
-        if connected || membershipCreatedTs != nil {
+        if wasConnected || membershipCreatedTs != nil {
             // An empty content ends our membership for everyone else.
             _ = try? await matrixRoom.sendStateEventRaw(eventType: Self.memberEventType, stateKey: stateKey, content: "{}", requestConfigOverride: nil)
         }
+        // Stop local capture (camera, screen share) before the room goes away.
+        let local = liveKitRoom.localParticipant
+        _ = try? await local.setScreenShare(enabled: false)
+        _ = try? await local.setCamera(enabled: false)
+        liveKitRoom.remove(delegate: self)
         await liveKitRoom.disconnect()
-        connected = false
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        // The audio session is LiveKit's: it deactivates it itself once the audio engine has stopped.
+        // Deactivating it here raced with the running engine.
     }
 
     // MARK: Controls
@@ -411,11 +434,6 @@ final class CallSession: NSObject, ObservableObject {
                 (publication.track as? LiveKit.RemoteAudioTrack)?.volume = deafened ? 0 : 1
             }
         }
-    }
-
-    private func configureAudioSession() throws {
-        let session = AVAudioSession.sharedInstance()
-        try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetooth, .allowBluetoothA2DP, .defaultToSpeaker])
     }
 
     // MARK: MatrixRTC
@@ -624,6 +642,7 @@ final class CallSession: NSObject, ObservableObject {
     }
 
     private func receiveKeys(_ message: ToDeviceMessage) {
+        guard !closed else { return }
         guard message.eventType == Self.keysEventType,
               let data = message.content.data(using: .utf8),
               let content = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -661,6 +680,7 @@ final class CallSession: NSObject, ObservableObject {
     }
 
     fileprivate func refreshMembers() {
+        guard !closed else { return }
         var result: [CallMember] = []
         let local = liveKitRoom.localParticipant
         result.append(member(for: local, isLocal: true))
@@ -717,6 +737,7 @@ final class CallSession: NSObject, ObservableObject {
 extension CallSession: LiveKit.RoomDelegate {
     nonisolated func room(_ room: LiveKit.Room, participantDidConnect participant: LiveKit.RemoteParticipant) {
         Task { @MainActor in
+            guard !self.closed else { return }
             await self.distributeKey(to: [participant])
             self.refreshMembers()
             self.playForOthers(.userJoined)
@@ -785,6 +806,7 @@ extension CallSession: LiveKit.RoomDelegate {
 
     nonisolated func room(_ room: LiveKit.Room, didUpdateConnectionState connectionState: LiveKit.ConnectionState, from oldConnectionState: LiveKit.ConnectionState) {
         Task { @MainActor in
+            guard !self.closed else { return }
             switch connectionState {
             case .connected: self.state = "Voice connected"
             case .reconnecting: self.state = "Reconnecting…"
