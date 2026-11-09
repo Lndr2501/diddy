@@ -201,6 +201,15 @@ cd cinny && npm run build && npm run test:e2e         # browser smoke test (Play
 
 On macOS, start the native tests with `DYLD_LIBRARY_PATH=/usr/lib/swift`.
 
+## Contributing
+
+Diddy has three clients: macOS (Tauri), Linux (Electron, `electron/`) and iOS (Swift, `ios/`). The chat UI is a Cinny fork in `cinny/` (React, TypeScript).
+
+- Open work is in the [issues](../../issues), labelled *iOS*, *Linux* and *macOS*.
+- Work on a branch (`fix/...`) and open a pull request. Do not push to `main`.
+- Before committing in `cinny/`, run `npx tsc --noEmit` and `npm test`. New logic gets a test in `cinny/tests/`.
+- Tests, Mac build and DMG are described in [docs/agent-guide.md](docs/agent-guide.md), CI in [docs/ci.md](docs/ci.md). If you work with an AI agent, point it at [AGENTS.md](AGENTS.md).
+
 ## License
 
 [AGPL-3.0](LICENSE), like Cinny.
