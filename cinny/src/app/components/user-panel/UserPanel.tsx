@@ -21,6 +21,8 @@ import {
 } from 'folds';
 import * as css from './UserPanel.css';
 import { UserAvatar } from '../user-avatar';
+import { StatusIcon } from '../presence/StatusIcon';
+import { stateOfChosen } from '../../utils/presenceState';
 import { STATUS_OPTIONS, UserPanelFace, statusInfo, userPanelAvatarUrl } from './UserPanelFace';
 import { SettingsSheet } from '../SettingsSheet';
 import { Settings } from '../../features/settings';
@@ -175,7 +177,11 @@ function StatusOptions({ status, onSelect }: StatusOptionsProps) {
           aria-checked={option.status === status}
           tabIndex={option.status === status ? 0 : -1}
           className={option.description ? css.StatusMenuItemTall : undefined}
-          before={<span className={css.StatusMenuDot} style={{ backgroundColor: option.color }} />}
+          before={
+            <span className={css.StatusMenuDot}>
+              <StatusIcon state={stateOfChosen(option.status)} size={12} decorative />
+            </span>
+          }
           after={option.status === status ? <Icon size="100" src={Icons.Check} /> : undefined}
           onClick={() => onSelect(option.status)}
         >

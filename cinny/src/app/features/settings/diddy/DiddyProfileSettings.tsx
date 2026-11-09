@@ -114,6 +114,8 @@ import {
 import { ProfilePreviewPanel } from './ProfilePreviews';
 import { editorLayout } from './editorLayout';
 import { STATUS_OPTIONS } from '../../../components/user-panel/UserPanelFace';
+import { StatusIcon } from '../../../components/presence/StatusIcon';
+import { stateOfChosen } from '../../../utils/presenceState';
 
 type Draft = ProfileDraft;
 
@@ -1265,7 +1267,7 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
               title={s.description}
               onClick={() => setDraft((d) => ({ ...d, status: s.status }))}
             >
-              <span className={css.Dot} style={{ background: s.color }} />
+              <StatusIcon state={stateOfChosen(s.status)} size={12} decorative />
               <Text as="span" size="T300">
                 {s.label}
               </Text>

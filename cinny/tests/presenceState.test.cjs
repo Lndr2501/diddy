@@ -89,3 +89,22 @@ test('present means reachable: not offline and not unknown', () => {
   assert.equal(mod.isPresentState('offline'), false);
   assert.equal(mod.isPresentState(undefined), false);
 });
+
+test('every state has its own fixed icon color and a shape in StatusIcon (#115)', () => {
+  const states = ['online', 'idle', 'dnd', 'offline'];
+  const colors = states.map((state) => mod.PRESENCE_STATE_HEX[state]);
+  for (const hex of colors) assert.match(hex, /^#[0-9a-f]{6}$/);
+  assert.equal(new Set(colors).size, states.length);
+  const icon = fs.readFileSync(
+    path.join(__dirname, '../src/app/components/presence/StatusIcon.tsx'),
+    'utf8'
+  );
+  for (const state of ['idle', 'dnd', 'offline']) assert.ok(icon.includes(`case '${state}'`));
+});
+
+test('a status picked in Diddy maps to a shown state; invisible looks offline (#115)', () => {
+  assert.equal(mod.stateOfChosen('online'), 'online');
+  assert.equal(mod.stateOfChosen('idle'), 'idle');
+  assert.equal(mod.stateOfChosen('dnd'), 'dnd');
+  assert.equal(mod.stateOfChosen('invisible'), 'offline');
+});

@@ -1,6 +1,5 @@
 import {
   as,
-  Badge,
   Box,
   color,
   ContainerColor,
@@ -11,18 +10,14 @@ import {
 } from 'folds';
 import React, { ReactNode, useId } from 'react';
 import * as css from './styles.css';
+import { StatusIcon } from './StatusIcon';
 import {
-  PRESENCE_STATE_COLOR,
   PRESENCE_STATE_LABEL,
   PresenceState,
 } from '../../utils/presenceState';
 
-const PRESENCE_BADGE_CLASS: Record<PresenceState, string | undefined> = {
-  online: css.OnlineBadge,
-  idle: undefined,
-  dnd: css.DndBadge,
-  offline: css.OfflineBadge,
-};
+/** Icon edge in px per badge size; the shapes need a little more room than a plain dot. */
+const BADGE_ICON_SIZE = { '200': 10, '300': 12, '400': 14, '500': 16 } as const;
 
 type PresenceBadgeProps = {
   state: PresenceState;
@@ -50,15 +45,9 @@ export function PresenceBadge({ state, message, size }: PresenceBadgeProps) {
       }
     >
       {(triggerRef) => (
-        <Badge
-          aria-label={PRESENCE_STATE_LABEL[state]}
-          ref={triggerRef}
-          size={size}
-          variant={PRESENCE_STATE_COLOR[state]}
-          fill="Solid"
-          className={PRESENCE_BADGE_CLASS[state]}
-          radii="Pill"
-        />
+        <span ref={triggerRef} style={{ display: 'flex' }}>
+          <StatusIcon state={state} size={BADGE_ICON_SIZE[size ?? '200']} />
+        </span>
       )}
     </TooltipProvider>
   );
