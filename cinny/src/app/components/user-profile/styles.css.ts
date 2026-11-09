@@ -192,18 +192,6 @@ export const StatusDot = style({
   borderRadius: '50%',
   flexShrink: 0,
 });
-export const StatusDotBar = style({
-  width: toRem(8),
-  height: toRem(2.5),
-  borderRadius: toRem(2),
-  backgroundColor: color.Surface.Container,
-});
-export const StatusDotHole = style({
-  width: toRem(6),
-  height: toRem(6),
-  borderRadius: '50%',
-  backgroundColor: color.Surface.Container,
-});
 
 /* ---------- name block ---------- */
 
@@ -282,12 +270,6 @@ export const Pill = style({
   boxShadow: `inset 0 0 0 1px ${t.separator}`,
   textDecoration: 'none',
   lineHeight: 1.2,
-});
-export const PillDot = style({
-  width: toRem(8),
-  height: toRem(8),
-  borderRadius: '50%',
-  flexShrink: 0,
 });
 export const PillIcon = style({
   flexShrink: 0,

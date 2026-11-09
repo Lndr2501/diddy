@@ -48,6 +48,17 @@ export const PRESENCE_STATE_COLOR: Record<
   offline: 'Secondary',
 };
 
+/**
+ * The fixed color of each state's icon (#115). Same in every theme, so a status reads the same
+ * everywhere. The shapes (circle, crescent, bar, ring) live in components/presence/StatusIcon.
+ */
+export const PRESENCE_STATE_HEX: Record<PresenceState, string> = {
+  online: '#23a55a',
+  idle: '#f0b232',
+  dnd: '#f23f43',
+  offline: '#80848e',
+};
+
 const isDndMessage = (statusMsg: string | undefined): boolean =>
   statusMsg?.trim().toLowerCase() === DND_STATUS_MSG.toLowerCase();
 

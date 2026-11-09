@@ -2,7 +2,6 @@ import React, { ReactNode, useState } from 'react';
 import {
   Avatar,
   Box,
-  color,
   config,
   Icon,
   Icons,
@@ -22,7 +21,6 @@ import { getMxIdLocalPart } from '../../utils/matrix';
 import { BreakWord, LineClamp2, LineClamp3 } from '../../styles/Text.css';
 import type { ShownPresence } from '../../hooks/usePresenceState';
 import {
-  PRESENCE_STATE_COLOR,
   PRESENCE_STATE_LABEL,
   PresenceState,
 } from '../../utils/presenceState';
@@ -39,6 +37,7 @@ import { safeAngle, safeColor, safeMxc, safeText } from '../../plugins/diddy/san
 import { DiddyName } from '../diddy/DiddyName';
 import { BadgeChip } from '../diddy/BadgeChip';
 import { PositionedImg } from '../diddy/PositionedImg';
+import { StatusIcon } from '../presence/StatusIcon';
 
 /** Kept for compatibility: the validation lives in plugins/diddy/sanitize. */
 export { safeColor };
@@ -46,15 +45,8 @@ export { safeColor };
 /** The presence dot on the profile avatar, same state and color as everywhere else. */
 function StatusDot({ state }: { state: PresenceState }) {
   return (
-    <span
-      className={css.StatusDot}
-      style={{ backgroundColor: color[PRESENCE_STATE_COLOR[state]].Main }}
-      title={PRESENCE_STATE_LABEL[state]}
-      role="img"
-      aria-label={PRESENCE_STATE_LABEL[state]}
-    >
-      {state === 'dnd' && <span className={css.StatusDotBar} />}
-      {state === 'offline' && <span className={css.StatusDotHole} />}
+    <span className={css.StatusDot} title={PRESENCE_STATE_LABEL[state]}>
+      <StatusIcon state={state} size={14} />
     </span>
   );
 }
@@ -301,7 +293,6 @@ type ProfileStatusProps = {
 /** Online state and the Matrix status message as small pills with icons. */
 export function ProfileStatus({ presence }: ProfileStatusProps) {
   const state = presence?.state;
-  const dotColor = state ? color[PRESENCE_STATE_COLOR[state]].Main : undefined;
   const label = state ? PRESENCE_STATE_LABEL[state] : undefined;
   const message = presence?.message;
   if (!label && !message) return null;
@@ -310,13 +301,7 @@ export function ProfileStatus({ presence }: ProfileStatusProps) {
     <Box gap="100" wrap="Wrap" alignItems="Center">
       {label && (
         <span className={css.Pill}>
-          <span
-            className={css.PillDot}
-            style={{
-              backgroundColor: dotColor,
-              boxShadow: `0 0 0 ${toRem(3)} color-mix(in srgb, ${dotColor} 22%, transparent)`,
-            }}
-          />
+          {state && <StatusIcon state={state} size={10} decorative />}
           <Text as="span" size="T200">
             {label}
           </Text>
