@@ -72,9 +72,18 @@ function ScaledPreview({ children }: { children: ReactNode }) {
     if (!outer || !inner) return undefined;
     const measure = () => {
       // offsetWidth / offsetHeight are the unscaled layout size
-      const scale = fitScale(outer.clientWidth, inner.offsetWidth);
+      const scale = Math.round(fitScale(outer.clientWidth, inner.offsetWidth) * 100) / 100;
       const height = Math.ceil(inner.offsetHeight * scale);
-      setBox((prev) => (prev.scale === scale && prev.height === height ? prev : { scale, height }));
+      // Ignore tiny changes: the box height can change the scrollbar of the column and with it
+      // the width again, which made the preview wobble (an endless resize loop).
+      setBox((prev) =>
+        prev.scale === scale ||
+        (prev.height !== undefined &&
+          Math.abs(prev.height - height) <= 2 &&
+          Math.abs(prev.scale - scale) <= 0.02)
+          ? prev
+          : { scale, height }
+      );
     };
     measure();
     if (typeof ResizeObserver === 'undefined') return undefined;

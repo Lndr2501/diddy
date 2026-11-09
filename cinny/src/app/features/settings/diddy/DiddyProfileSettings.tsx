@@ -112,7 +112,7 @@ import {
   toDraft,
 } from '../../../plugins/diddy/profilePreview';
 import { ProfilePreviewPanel } from './ProfilePreviews';
-import { editorLayout } from './editorLayout';
+import { EditorLayout, stickyEditorLayout } from './editorLayout';
 import { STATUS_OPTIONS } from '../../../components/user-panel/UserPanelFace';
 
 type Draft = ProfileDraft;
@@ -349,7 +349,10 @@ const usePageLayout = () => {
     if (scroller) observer.observe(scroller);
     return () => observer.disconnect();
   }, []);
-  return { ref, layout: editorLayout(width), viewport };
+  // keep the shown layout while the width only jitters around a threshold
+  const shown = useRef<EditorLayout>();
+  shown.current = stickyEditorLayout(width, shown.current);
+  return { ref, layout: shown.current, viewport };
 };
 
 // --- main --------------------------------------------------------------------------------------
