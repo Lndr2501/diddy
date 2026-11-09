@@ -10,6 +10,7 @@
  */
 import { useSyncExternalStore } from 'react';
 import { diag } from '../diagnostics';
+import { capShareConstraints } from './codecPreference';
 import { startStatsLogging, trackPeerConnections } from './streamStats';
 
 type NativeMessage = { id: string; pcm?: Uint8Array; error?: string };
@@ -395,7 +396,7 @@ export const installScreenShareAudio = (win: Window | null | undefined) => {
     let pending: PendingScreenShareAudio | undefined;
     let stream: MediaStream | undefined;
     let cleanup: (() => void) | undefined;
-    const requested = preferRequestedResolution(constraints);
+    const requested = preferRequestedResolution(capShareConstraints(constraints));
     try {
       const activation = (win?.navigator as unknown as { userActivation?: { isActive: boolean } })
         ?.userActivation;

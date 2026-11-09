@@ -1,4 +1,5 @@
 import { atom } from 'jotai';
+import { DEFAULT_UPDATE_REPO } from '../utils/updateCheck';
 
 const STORAGE_KEY = 'settings';
 export type DateFormat =
@@ -48,6 +49,11 @@ export interface Settings {
   dateFormatString: string;
 
   developerTools: boolean;
+
+  /** #120: look for a newer release at app start (desktop) and while running. */
+  checkUpdatesAtStart: boolean;
+  /** GitHub "owner/name" the releases come from. */
+  updateRepo: string;
 }
 
 const defaultSettings: Settings = {
@@ -83,6 +89,9 @@ const defaultSettings: Settings = {
   dateFormatString: 'D MMM YYYY',
 
   developerTools: false,
+
+  checkUpdatesAtStart: true,
+  updateRepo: DEFAULT_UPDATE_REPO,
 };
 
 export const getSettings = () => {

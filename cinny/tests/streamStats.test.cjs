@@ -16,6 +16,9 @@ vm.runInNewContext(
   {
     exports: exported,
     WeakMap,
+    setTimeout,
+    clearTimeout,
+    Promise,
     window: { setInterval: () => 1, clearInterval: () => {} },
     require: (id) => {
       if (id !== '../diagnostics') throw new Error(`Unexpected dependency: ${id}`);
@@ -132,4 +135,20 @@ test('short intervals and restarted counters give no level', () => {
   assert.equal(exported.intervalRms({ energy: 0, duration: 0 }, { energy: 1, duration: 0.5 }), undefined);
   assert.equal(exported.intervalRms({ energy: 5, duration: 10 }, { energy: 1, duration: 20 }), undefined);
   assert.equal(exported.intervalRms({ energy: 5, duration: 10 }, { energy: 6, duration: 2 }), undefined);
+});
+
+test('pruneConnections drops closed connections and caps the list, oldest first', () => {
+  const list = [
+    { id: 1, connectionState: 'closed' },
+    { id: 2, connectionState: 'connected' },
+    { id: 3, connectionState: 'connected' },
+    { id: 4, connectionState: 'connected' },
+  ];
+  exported.pruneConnections(list, 2);
+  assert.deepEqual(list.map((p) => p.id), [3, 4]);
+});
+
+test('withTimeout rejects a promise that never settles and passes through fast ones', async () => {
+  await assert.rejects(exported.withTimeout(new Promise(() => {}), 10), /timeout/);
+  assert.equal(await exported.withTimeout(Promise.resolve(7), 1000), 7);
 });

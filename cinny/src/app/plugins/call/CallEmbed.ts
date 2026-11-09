@@ -1,3 +1,4 @@
+import { installVideoCodecPreference } from './codecPreference';
 import {
   ClientEvent,
   KnownMembership,
@@ -233,6 +234,7 @@ export class CallEmbed {
       installSoundboard(iframe.contentWindow);
       // after the soundboard: measures the microphone exactly as the call gets it (#76)
       installLocalSpeaking(iframe.contentWindow);
+      installVideoCodecPreference(iframe.contentWindow);
       // Restyle the Element Call tiles to match the app theme.
       installCallTheme(iframe.contentWindow);
       // Show all screen shares at once instead of Element Call's one-at-a-time carousel (#66).
