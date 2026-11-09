@@ -1,9 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Button, IconButton, Icon, Icons, Text, color, config, toRem } from 'folds';
-import { APP_REPO_URL, APP_VERSION } from '../../appInfo';
-import { compareVersions } from '../../utils/version';
+import { useAtomValue } from 'jotai';
+import { APP_VERSION } from '../../appInfo';
+import { settingsAtom } from '../../state/settings';
+import { canInvoke, invoke } from '../../plugins/tauri';
+import {
+  effectiveUpdateRepo,
+  isUpdateWanted,
+  parseRelease,
+  releasesApiUrl,
+} from '../../utils/updateCheck';
 
-const LATEST_URL = 'https://api.github.com/repos/Lndr2501/diddy/releases/latest';
 const DISMISSED_KEY = 'diddyUpdateDismissed';
 const CHECK_DELAY_MS = 10_000;
 const CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
@@ -21,18 +28,31 @@ type Release = { version: string; url: string };
 /** Tells the user when GitHub has a newer Diddy release than the running app (#39). */
 export function UpdateNotice() {
   const [release, setRelease] = useState<Release>();
+  const { checkUpdatesAtStart, updateRepo } = useAtomValue(settingsAtom);
+  const repo = effectiveUpdateRepo(updateRepo);
+
+  // The desktop shell reads the same two settings before the main window opens (#120).
+  useEffect(() => {
+    if (!canInvoke()) return;
+    invoke('updater_set_config', { enabled: checkUpdatesAtStart, repo }).catch(() => undefined);
+  }, [checkUpdatesAtStart, repo]);
 
   useEffect(() => {
+    if (!checkUpdatesAtStart) {
+      setRelease(undefined);
+      return undefined;
+    }
     let cancelled = false;
     const check = async () => {
       try {
-        const res = await fetch(LATEST_URL, { headers: { Accept: 'application/vnd.github+json' } });
+        const res = await fetch(releasesApiUrl(repo), {
+          headers: { Accept: 'application/vnd.github+json' },
+        });
         if (!res.ok) return;
-        const data = (await res.json()) as { tag_name?: string; html_url?: string };
-        const version = (data.tag_name ?? '').replace(/^v/, '');
-        if (cancelled || !version) return;
-        if (compareVersions(version, APP_VERSION) > 0 && readDismissed() !== version) {
-          setRelease({ version, url: data.html_url ?? `${APP_REPO_URL}/releases/latest` });
+        const info = parseRelease(await res.json(), repo);
+        if (cancelled || !info) return;
+        if (isUpdateWanted(info.version, APP_VERSION, readDismissed())) {
+          setRelease({ version: info.version, url: info.pageUrl });
         }
       } catch {
         // offline or rate limited: try again at the next interval
@@ -45,7 +65,7 @@ export function UpdateNotice() {
       window.clearTimeout(first);
       window.clearInterval(timer);
     };
-  }, []);
+  }, [checkUpdatesAtStart, repo]);
 
   if (!release) return null;
 

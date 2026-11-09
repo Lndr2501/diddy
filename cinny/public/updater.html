@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Diddy Update</title>
+<style>
+  :root { color-scheme: light dark; --bg:#fff; --fg:#1d1d1f; --muted:#6e6e73; --accent:#c2185b; --line:#d2d2d7; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#140812; --fg:#e8dfe6; --muted:#a79aa4; --accent:#f06292; --line:#3a2a37; } }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--fg); font:14px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; user-select:none; -webkit-user-select:none; }
+  main { box-sizing:border-box; height:100%; padding:28px 28px 22px; display:flex; flex-direction:column; gap:12px; }
+  h1 { margin:0; font-size:17px; font-weight:650; }
+  p { margin:0; color:var(--muted); line-height:1.4; }
+  pre { margin:0; flex:1; min-height:0; overflow:auto; white-space:pre-wrap; font:12px/1.45 inherit; font-family:inherit; border:1px solid var(--line); border-radius:8px; padding:8px 10px; user-select:text; -webkit-user-select:text; }
+  .bar { height:8px; border-radius:4px; background:var(--line); overflow:hidden; }
+  .bar > i { display:block; height:100%; width:0; background:var(--accent); transition:width .2s; }
+  .bar.busy > i { width:35%; animation:slide 1.1s ease-in-out infinite alternate; }
+  @keyframes slide { from { margin-left:0 } to { margin-left:65% } }
+  .buttons { display:flex; gap:8px; justify-content:flex-end; margin-top:auto; }
+  button { font:inherit; font-weight:600; padding:7px 14px; border-radius:999px; border:1px solid var(--line); background:transparent; color:var(--fg); cursor:pointer; }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  [hidden] { display:none !important; }
+</style>
+</head>
+<body>
+<main>
+  <h1 id="title">Checking for updates…</h1>
+  <p id="text"></p>
+  <pre id="notes" hidden></pre>
+  <div class="bar busy" id="bar"><i id="fill"></i></div>
+  <div class="buttons" id="buttons"></div>
+</main>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var invoke = function (cmd, args) {
+    var t = window.__TAURI_INTERNALS__;
+    return t ? t.invoke(cmd, args) : Promise.reject(new Error('no shell'));
+  };
+  var act = function (a) { return function () { invoke('updater_action', { action: a }).catch(function () {}); }; };
+  var mb = function (n) { return (n / 1048576).toFixed(1) + ' MB'; };
+  var last = '';
+  function buttons(list) {
+    var box = $('buttons');
+    box.textContent = '';
+    list.forEach(function (b) {
+      var el = document.createElement('button');
+      el.textContent = b[0];
+      if (b[2]) el.className = 'primary';
+      el.onclick = function () {
+        if (b[1] === 'open_page') {
+          invoke('updater_open_release_page').catch(function () {});
+          if (b[3]) act('later')();
+        } else { act(b[1])(); }
+      };
+      box.appendChild(el);
+    });
+  }
+  function render(s) {
+    var key = JSON.stringify(s);
+    if (key === last) return;
+    last = key;
+    var bar = $('bar'), fill = $('fill');
+    $('notes').hidden = true;
+    bar.hidden = true;
+    switch (s.phase) {
+      case 'checking':
+        $('title').textContent = 'Checking for updates…';
+        $('text').textContent = '';
+        bar.hidden = false; bar.className = 'bar busy'; fill.style.width = '';
+        buttons([]);
+        break;
+      case 'available':
+        $('title').textContent = 'Update to v' + s.version + '?';
+        $('text').textContent = 'Diddy ' + s.version + ' is available (you have ' + s.current + '). Source: ' + s.repo + '.';
+        if (s.notes) { $('notes').hidden = false; $('notes').textContent = s.notes; }
+        buttons(s.canInstall
+          ? [['Not now', 'later'], ['Skip this version', 'skip'], ['Update', 'update', true]]
+          : [['Not now', 'later'], ['Skip this version', 'skip'], ['Open release page', 'open_page', true, true]]);
+        break;
+      case 'downloading':
+        $('title').textContent = 'Downloading Diddy…';
+        bar.hidden = false;
+        if (s.percent == null) { bar.className = 'bar busy'; fill.style.width = ''; $('text').textContent = mb(s.received); }
+        else { bar.className = 'bar'; fill.style.width = s.percent + '%'; $('text').textContent = mb(s.received) + ' of ' + mb(s.total) + ' (' + s.percent + '%)'; }
+        buttons([]);
+        break;
+      case 'installing':
+        $('title').textContent = 'Installing…';
+        $('text').textContent = 'Diddy restarts when this is done.';
+        bar.hidden = false; bar.className = 'bar busy'; fill.style.width = '';
+        buttons([]);
+        break;
+      case 'failed':
+        $('title').textContent = 'Update did not work';
+        $('text').textContent = s.message;
+        buttons([['Open release page', 'open_page'], ['Start Diddy', 'later', true]]);
+        break;
+    }
+  }
+  function poll() {
+    invoke('updater_state').then(render).catch(function () {});
+  }
+  poll();
+  setInterval(poll, 250);
+})();
+</script>
+</body>
+</html>

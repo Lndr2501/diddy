@@ -15,6 +15,8 @@ mod connections;
 #[doc(hidden)]
 pub use connections::isolated_data_store;
 mod myinstants;
+mod updater;
+mod window_guard;
 #[cfg(target_os = "macos")]
 mod audio_tap;
 #[cfg(target_os = "macos")]
@@ -38,7 +40,7 @@ pub(crate) fn port_for_identifier(identifier: &str) -> u16 {
     }
 }
 
-fn app_port() -> u16 {
+pub(crate) fn app_port() -> u16 {
     *ACTIVE_PORT.get().unwrap_or(&APP_PORT)
 }
 
@@ -89,6 +91,53 @@ fn media_enabled_webview_configuration(profile: Option<[u8; 16]>) -> Result<objc
     }
 }
 
+/// Rebuilds a collapsed window (a few pixels wide: invisible, and the cause of the "window vanishes
+/// when dragged" reports) and pulls a position outside every monitor back onto the primary one.
+/// Saved state from an old session can hold either.
+fn keep_window_on_screen(window: &tauri::WebviewWindow) {
+    let (Ok(pos), Ok(size), Ok(monitors)) = (window.outer_position(), window.outer_size(), window.available_monitors()) else { return };
+    if window.is_minimized().unwrap_or(false) || window.is_fullscreen().unwrap_or(false) {
+        return;
+    }
+    let mut rects: Vec<window_guard::Rect> = monitors.iter()
+        .map(|m| window_guard::Rect { x: m.position().x, y: m.position().y, w: m.size().width, h: m.size().height })
+        .collect();
+    // The primary monitor is the fallback target.
+    if let Ok(Some(primary)) = window.primary_monitor() {
+        let first = window_guard::Rect { x: primary.position().x, y: primary.position().y, w: primary.size().width, h: primary.size().height };
+        rects.retain(|r| *r != first);
+        rects.insert(0, first);
+    }
+    let scale = window.scale_factor().unwrap_or(1.0);
+    let min = ((window_guard::MIN_LOGICAL_W * scale) as u32, (window_guard::MIN_LOGICAL_H * scale) as u32);
+    let default = ((window_guard::DEFAULT_LOGICAL_W * scale) as u32, (window_guard::DEFAULT_LOGICAL_H * scale) as u32);
+    let mut current = window_guard::Rect { x: pos.x, y: pos.y, w: size.width, h: size.height };
+    if let Some(fixed) = window_guard::repair_collapsed(current, min, default, &rects) {
+        diag::diag_log(format!("window: collapsed to {}x{} at {},{}, rebuilding as {}x{} at {},{}", current.w, current.h, current.x, current.y, fixed.w, fixed.h, fixed.x, fixed.y));
+        if window.is_maximized().unwrap_or(false) {
+            let _ = window.unmaximize();
+        }
+        let _ = window.set_size(tauri::PhysicalSize::new(fixed.w, fixed.h));
+        let _ = window.set_position(tauri::PhysicalPosition::new(fixed.x, fixed.y));
+        current = fixed;
+    }
+    if let Some((x, y)) = window_guard::fix_position(current, &rects) {
+        diag::diag_log(format!("window: restored position {},{} is off screen, moving to {x},{y}", current.x, current.y));
+        let _ = window.set_position(tauri::PhysicalPosition::new(x, y));
+    }
+}
+
+/// Opens the main window (after the update check, or at once when it is off or offline).
+pub(crate) fn launch_main(app: &tauri::AppHandle) {
+    if let Err(message) = build_client_window(app, "main", None) {
+        diag::diag_log(format!("main window failed: {message}"));
+        return;
+    }
+    app_icon::apply_saved(app);
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    connections::handle_launch(app, &std::env::args().collect::<Vec<_>>());
+}
+
 pub(crate) fn build_client_window(
     app: &tauri::AppHandle,
     label: &str,
@@ -104,6 +153,7 @@ pub(crate) fn build_client_window(
     let window_builder = WebviewWindowBuilder::new(app, label.to_string(), window_url)
         .title(title)
         .disable_drag_drop_handler()
+        .min_inner_size(window_guard::MIN_LOGICAL_W, window_guard::MIN_LOGICAL_H)
         // Stay hidden until the page has loaded; a small movable startup window covers the wait (#25).
         .visible(false)
         .on_page_load(move |window, payload| {
@@ -164,6 +214,16 @@ pub(crate) fn build_client_window(
         std::thread::sleep(std::time::Duration::from_secs(10));
         reveal_window(fallback);
     });
+    keep_window_on_screen(&window);
+    // Dragging must never leave a collapsed window behind: repair it on every size change.
+    {
+        let guarded = window.clone();
+        window.on_window_event(move |event| {
+            if matches!(event, tauri::WindowEvent::Resized(_)) {
+                keep_window_on_screen(&guarded);
+            }
+        });
+    }
     #[cfg(target_os = "linux")]
     enable_linux_media(&window);
     #[cfg(not(target_os = "linux"))]
@@ -209,6 +269,7 @@ fn fit_window_to_screen(window: &tauri::WebviewWindow) {
 
 /// Shows a finished (or timed-out) client window, after fitting it to the screen, and closes the startup window.
 fn reveal_window(window: tauri::WebviewWindow) {
+    keep_window_on_screen(&window);
     fit_window_to_screen(&window);
     let _ = window.show();
     if window.label() == "main" {
@@ -383,6 +444,8 @@ pub fn run() {
     let builder = builder.plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
         // Agent-voice triggers (#57) come in while the user dictates elsewhere: never focus Diddy.
         if agent_voice::handle_launch(&args) { return; }
+        // The main window opens after the update check; a second launch meanwhile changes nothing.
+        if updater::is_active(app) { return; }
         if !connections::handle_launch(app, &args) { connections::focus_or_reopen_main(app); }
     }));
 
@@ -405,9 +468,14 @@ pub fn run() {
             connections::connection_profiles,
             connections::open_connection_profile,
             connections::remove_connection_profile,
-            agent_voice::agent_voice_state
+            agent_voice::agent_voice_state,
+            updater::updater_state,
+            updater::updater_action,
+            updater::updater_open_release_page,
+            updater::updater_set_config
         ])
         .manage(connections::ConnectionState::default())
+        .manage(updater::UpdaterState::default())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_localhost::Builder::new(app_port()).build())
         // Without VISIBLE: the plugin would show every restored window right away (on window ready),
@@ -415,8 +483,8 @@ pub fn run() {
         // The startup window is temporary and has no state worth keeping.
         .plugin(
             tauri_plugin_window_state::Builder::default()
-                .with_state_flags(tauri_plugin_window_state::StateFlags::all() & !tauri_plugin_window_state::StateFlags::VISIBLE)
-                .with_denylist(&["startup"])
+                .with_state_flags(tauri_plugin_window_state::StateFlags::all() & !tauri_plugin_window_state::StateFlags::VISIBLE & !tauri_plugin_window_state::StateFlags::DECORATIONS)
+                .with_denylist(&["startup", "updater"])
                 .build(),
         )
         .plugin(tauri_plugin_opener::init())
@@ -455,26 +523,19 @@ pub fn run() {
                 });
             }
 
+            // Check for updates first (#120); the main window opens afterwards via launch_main.
+            // On macOS this waits until Core Audio answers (usually at once, #124).
             #[cfg(target_os = "macos")]
             {
-                // The main window opens once Core Audio answers (usually at once, #124).
                 let handle = app.handle().clone();
                 std::thread::spawn(move || {
                     wait_for_core_audio(&handle);
-                    let window_handle = handle.clone();
-                    let _ = handle.run_on_main_thread(move || {
-                        if let Err(message) = build_client_window(&window_handle, "main", None) {
-                            diag::diag_log(format!("window: main window failed: {message}"));
-                        }
-                    });
+                    let start_handle = handle.clone();
+                    let _ = handle.run_on_main_thread(move || updater::start(start_handle));
                 });
             }
             #[cfg(not(target_os = "macos"))]
-            build_client_window(app.handle(), "main", None)
-                .map_err(|message| std::io::Error::new(std::io::ErrorKind::Other, message))?;
-            app_icon::apply_saved(app.handle());
-            #[cfg(not(any(target_os = "android", target_os = "ios")))]
-            connections::handle_launch(app.handle(), &std::env::args().collect::<Vec<_>>());
+            updater::start(app.handle().clone());
             Ok(())
         })
         .run(context)

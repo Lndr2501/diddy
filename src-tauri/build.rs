@@ -19,6 +19,10 @@ fn main() {
                 "connection_profiles",
                 "open_connection_profile",
                 "agent_voice_state",
+                "updater_state",
+                "updater_action",
+                "updater_open_release_page",
+                "updater_set_config",
             ])),
     )
     .expect("failed to run tauri-build");
