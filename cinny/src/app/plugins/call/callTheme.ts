@@ -183,7 +183,15 @@ ${TILE} > div:nth-child(2) > button:first-of-type > svg {
 /* --- Element Call's own menus (a tile's "mute for me" / volume menu): the same material,
    radius, header and rows as Diddy's menus in the app window (CallUserMenu). The colours come
    from the app theme (syncAccent); the --cpd-* tokens retint the switch and the slider. --- */
+/* The name tags above use backdrop-filter, which makes each one its own layer; a menu that
+   opens next to a neighbouring tile then went underneath that tile's name tag (#118). The
+   popper wrapper of every menu is lifted above all tiles. */
+html body [data-radix-popper-content-wrapper] {
+  z-index: 2147483000 !important;
+}
 html body [role="menu"][class*="_menu_"] {
+  position: relative;
+  z-index: 1;
   --cpd-separator-inset: 0;
   --cpd-color-bg-canvas-default: transparent;
   --cpd-color-bg-accent-rest: var(--diddy-speaking);
