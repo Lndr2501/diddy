@@ -28,13 +28,13 @@ jobs:
 
             const mentions = [];
             if (hasMatch(/(?:^|[^a-z])ios(?:$|[^a-z])/i, "ios")) {
-              mentions.push("@karmakido");
+              mentions.push("@Karmakido");
             }
             if (hasMatch(/mac\s?os/i, "macos")) {
               mentions.push("@lndr2501");
             }
             if (hasMatch(/(?:^|[^a-z])linux(?:$|[^a-z])/i, "linux")) {
-              mentions.push("@luis");
+              mentions.push("@luis-7654");
             }
 
             if (mentions.length === 0) {
