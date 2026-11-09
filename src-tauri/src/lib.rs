@@ -206,7 +206,7 @@ pub(crate) fn build_client_window(
         )?);
     let window = window_builder.build().map_err(|_| "Verbindungsfenster konnte nicht geöffnet werden.".to_string())?;
     if label == "main" {
-        show_startup_window(app);
+        show_startup_window(app, "Diddy startet...");
     }
     // If the page never finishes loading, show the window anyway so the problem is visible (#26).
     let fallback = window.clone();
@@ -281,11 +281,11 @@ fn reveal_window(window: tauri::WebviewWindow) {
 }
 
 /// A small startup window that can be moved while the real window is still loading (#25).
-fn show_startup_window(app: &tauri::AppHandle) {
+fn show_startup_window(app: &tauri::AppHandle, message: &str) {
     if app.get_webview_window("startup").is_some() {
         return;
     }
-    let html = "<body style='margin:0;height:100vh;display:flex;align-items:center;justify-content:center;background:#140812;color:#e8dfe6;font:600 17px -apple-system,sans-serif'>Diddy startet...</body>";
+    let html = format!("<body style='margin:0;height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:0 24px;box-sizing:border-box;background:#140812;color:#e8dfe6;font:600 17px -apple-system,sans-serif'>{message}</body>");
     let encoded = html.replace('%', "%25").replace('#', "%23").replace(' ', "%20").replace('\'', "%27");
     let Ok(url) = format!("data:text/html;charset=utf-8,{encoded}").parse() else { return };
     let _ = WebviewWindowBuilder::new(app, "startup", WebviewUrl::External(url))
@@ -299,15 +299,19 @@ fn show_startup_window(app: &tauri::AppHandle) {
 }
 
 /// macOS: WebKit's GPU process asks Core Audio for the default device while it connects to a page.
-/// When coreaudiod does not answer (seen on macOS 27: even `AudioObjectGetPropertyData` for the
-/// default output device never returns, Music.app hangs the same way), the GPU process blocks, WebKit
-/// kills it as unresponsive and the window stays black and then shows only the background colour (#26).
-/// Diddy cannot repair that, so probe Core Audio on a side thread and tell the user what to do.
+/// When coreaudiod is busy (after a quick quit and reopen, or after wake, it needed 25 to 60 s in
+/// the logs of #124), that call blocks, WebKit kills its GPU process as unresponsive and the window
+/// stays black (#26). Opening the window only once Core Audio answers avoids that: the user sees a
+/// small startup window instead of a broken one, and nothing has to be repaired by hand (#124).
+/// Returns when Core Audio answered, or after `GIVE_UP` (then the window opens anyway).
 #[cfg(target_os = "macos")]
-fn watch_core_audio(app: tauri::AppHandle) {
-    const TIMEOUT: std::time::Duration = std::time::Duration::from_secs(8);
+fn wait_for_core_audio(app: &tauri::AppHandle) {
+    use std::sync::mpsc::RecvTimeoutError;
+    use std::time::{Duration, Instant};
+    const NOTICE_AFTER: Duration = Duration::from_secs(2);
+    const GIVE_UP: Duration = Duration::from_secs(120);
     let (tx, rx) = std::sync::mpsc::channel();
-    let started = std::time::Instant::now();
+    let started = Instant::now();
     // The probe thread may block forever when coreaudiod hangs; it is detached on purpose.
     let spawned = std::thread::Builder::new().name("coreaudio-probe".into()).spawn(move || {
         let _ = tx.send(audio_tap::probe_default_output());
@@ -315,31 +319,42 @@ fn watch_core_audio(app: tauri::AppHandle) {
     if spawned.is_err() {
         return;
     }
-    std::thread::spawn(move || match rx.recv_timeout(TIMEOUT) {
-        Ok(Ok(_)) => {}
-        Ok(Err(e)) => diag::diag_log(format!("coreaudio: probe failed: {e}")),
+    match rx.recv_timeout(NOTICE_AFTER) {
+        Ok(Ok(_)) | Err(RecvTimeoutError::Disconnected) => return,
+        Ok(Err(e)) => {
+            diag::diag_log(format!("coreaudio: probe failed: {e}"));
+            return;
+        }
+        Err(RecvTimeoutError::Timeout) => {}
+    }
+    diag::diag_log("coreaudio: slow to answer, opening the window once it does (#124)".into());
+    let handle = app.clone();
+    let _ = app.run_on_main_thread(move || {
+        show_startup_window(&handle, "Diddy wartet auf das Audiosystem von macOS...")
+    });
+    match rx.recv_timeout(GIVE_UP - NOTICE_AFTER) {
+        Ok(_) => {
+            diag::diag_log(format!("coreaudio: answered after {:.1} s", started.elapsed().as_secs_f64()));
+        }
         Err(_) => {
             diag::diag_log(format!(
-                "coreaudio: no answer from coreaudiod after {} s; WebKit cannot draw the window (#26)",
-                TIMEOUT.as_secs()
+                "coreaudio: no answer from coreaudiod after {} s; WebKit may not draw the window (#26)",
+                GIVE_UP.as_secs()
             ));
             use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
             app.dialog()
                 .message(
-                    "Das Audiosystem von macOS (coreaudiod) antwortet nicht. Deshalb kann das Diddy-Fenster \
-                     nicht gezeichnet werden und bleibt leer. Andere Apps (z. B. Musik) hängen dann ebenfalls.\n\n\
+                    "Das Audiosystem von macOS (coreaudiod) antwortet seit über zwei Minuten nicht. \
+                     Deshalb kann das Diddy-Fenster nicht gezeichnet werden. Andere Apps (z. B. Musik) \
+                     hängen dann ebenfalls.\n\n\
                      Abhilfe: Im Terminal „sudo killall coreaudiod“ ausführen (oder den Mac neu starten) \
                      und Diddy danach neu öffnen.",
                 )
                 .title("Diddy kann nicht starten")
                 .kind(MessageDialogKind::Warning)
                 .show(|_| {});
-            // Log when (if ever) Core Audio comes back, to tell a slow start from a hang.
-            if rx.recv().is_ok() {
-                diag::diag_log(format!("coreaudio: answered after {:.1} s", started.elapsed().as_secs_f64()));
-            }
         }
-    });
+    }
 }
 
 /// Linux: WebKitGTK ships with media capture and WebRTC switched off and denies every permission
@@ -508,9 +523,18 @@ pub fn run() {
                 });
             }
 
-            #[cfg(target_os = "macos")]
-            watch_core_audio(app.handle().clone());
             // Check for updates first (#120); the main window opens afterwards via launch_main.
+            // On macOS this waits until Core Audio answers (usually at once, #124).
+            #[cfg(target_os = "macos")]
+            {
+                let handle = app.handle().clone();
+                std::thread::spawn(move || {
+                    wait_for_core_audio(&handle);
+                    let start_handle = handle.clone();
+                    let _ = handle.run_on_main_thread(move || updater::start(start_handle));
+                });
+            }
+            #[cfg(not(target_os = "macos"))]
             updater::start(app.handle().clone());
             Ok(())
         })
