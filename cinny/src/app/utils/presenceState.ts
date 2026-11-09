@@ -30,6 +30,10 @@ export type PresenceInput = {
   chosen?: ChosenStatus;
 };
 
+/** The state a status picked in Diddy shows as (invisible looks offline to everybody else). */
+export const stateOfChosen = (chosen: ChosenStatus): PresenceState =>
+  chosen === 'invisible' ? 'offline' : chosen;
+
 export const PRESENCE_STATE_LABEL: Record<PresenceState, string> = {
   online: 'Online',
   idle: 'Idle',

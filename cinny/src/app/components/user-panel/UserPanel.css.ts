@@ -75,14 +75,13 @@ export const UserPanelOnlineDot = style([
   DefaultReset,
   {
     position: 'absolute',
-    right: toRem(-1),
-    bottom: toRem(-1),
-    width: toRem(12),
-    height: toRem(12),
+    display: 'flex',
+    // ring in the panel colour around the status shape
+    padding: toRem(2),
+    right: toRem(-3),
+    bottom: toRem(-3),
     borderRadius: '50%',
-    backgroundColor: color.Success.Main,
-    // cut-out ring in the panel colour
-    boxShadow: `0 0 0 ${toRem(2.5)} ${color.SurfaceVariant.Container}`,
+    backgroundColor: color.SurfaceVariant.Container,
   },
 ]);
 
@@ -134,10 +133,7 @@ export const StatusMenuDot = style([
   DefaultReset,
   {
     flexShrink: 0,
-    width: toRem(10),
-    height: toRem(10),
-    borderRadius: '50%',
-    display: 'inline-block',
+    display: 'inline-flex',
   },
 ]);
 

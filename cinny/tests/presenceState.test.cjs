@@ -101,3 +101,10 @@ test('every state has its own fixed icon color and a shape in StatusIcon (#115)'
   );
   for (const state of ['idle', 'dnd', 'offline']) assert.ok(icon.includes(`case '${state}'`));
 });
+
+test('a status picked in Diddy maps to a shown state; invisible looks offline (#115)', () => {
+  assert.equal(mod.stateOfChosen('online'), 'online');
+  assert.equal(mod.stateOfChosen('idle'), 'idle');
+  assert.equal(mod.stateOfChosen('dnd'), 'dnd');
+  assert.equal(mod.stateOfChosen('invisible'), 'offline');
+});

@@ -6,6 +6,8 @@ import { UserAvatar } from '../user-avatar';
 import { DiddyStatus } from '../../plugins/diddy/types';
 import { mxcUrlToHttp } from '../../utils/matrix';
 import { nameInitials } from '../../utils/common';
+import { StatusIcon } from '../presence/StatusIcon';
+import { stateOfChosen } from '../../utils/presenceState';
 
 /*
  * The visible part of the user panel's profile button (#105): kept apart from UserPanel, which
@@ -15,18 +17,16 @@ import { nameInitials } from '../../utils/common';
 export const STATUS_OPTIONS: {
   status: DiddyStatus;
   label: string;
-  color: string;
   description?: string;
 }[] = [
-  { status: 'online', label: 'Online', color: '#43B581' },
-  { status: 'idle', label: 'Idle', color: '#F0B232' },
+  { status: 'online', label: 'Online' },
+  { status: 'idle', label: 'Idle' },
   {
     status: 'dnd',
     label: 'Do Not Disturb',
-    color: '#F04747',
     description: 'Mutes sounds and notifications. Unread badges stay.',
   },
-  { status: 'invisible', label: 'Invisible', color: '#747F8D' },
+  { status: 'invisible', label: 'Invisible' },
 ];
 
 export const statusInfo = (status: DiddyStatus) =>
@@ -60,7 +60,7 @@ export function UserPanelFace({
   status,
   agentTalking,
 }: UserPanelFaceProps) {
-  const { label: chosenLabel, color: statusColor } = statusInfo(status);
+  const { label: chosenLabel } = statusInfo(status);
   const statusLabel = agentTalking ? 'Talking to agent' : chosenLabel;
   return (
     <>
@@ -74,11 +74,9 @@ export function UserPanelFace({
           />
         </Avatar>
         {agentTalking && <span className={css.UserPanelAgentRing} aria-hidden />}
-        <span
-          className={css.UserPanelOnlineDot}
-          style={{ backgroundColor: statusColor }}
-          aria-hidden
-        />
+        <span className={css.UserPanelOnlineDot} aria-hidden>
+          <StatusIcon state={stateOfChosen(status)} size={12} decorative />
+        </span>
       </span>
       <div className={css.UserPanelText}>
         <Text size="T300" priority="500" truncate>
