@@ -41,11 +41,13 @@ const stream = (id, { live = true, muted = false } = {}) => ({
 });
 
 // A fake Element Call media tile: owner label, name tag, optional video, speaking / muted.
-const tile = ({ userId, name, dataId, video, width = 1280, speaking, muted }) => {
+const tile = ({ userId, name, dataId, video, width = 1280, speaking, muted, hidden }) => {
   const parts = {
     '[aria-label]': { getAttribute: () => userId },
     '[data-testid="name_tag"]': { textContent: ` ${name} ` },
-    video: video ? { srcObject: video, videoWidth: width } : null,
+    video: video
+      ? { srcObject: video, videoWidth: width, style: { display: hidden ? 'none' : 'block' } }
+      : null,
     '[class*="_muteIcon_"][data-muted]':
       muted === undefined ? null : { getAttribute: () => String(!!muted) },
   };
@@ -101,6 +103,18 @@ test('a camera that is off or sends no pictures shows the avatar instead', () =>
     [...model.people].map((p) => p.video),
     [undefined, undefined, undefined]
   );
+});
+
+test('a camera Element Call hides (avatar shown) has no picture even if the track stays live (#145)', () => {
+  const { readCallStage } = load();
+  const model = readCallStage(
+    doc([
+      tile({ userId: '@a:x.eu', name: 'a', video: stream('m'), hidden: true }),
+      tile({ userId: '@b:x.eu', name: 'b', video: stream('n') }),
+    ])
+  );
+  assert.equal(model.people[0].video, undefined);
+  assert.equal(model.people[1].video?.id, 'n');
 });
 
 test('two tiles of one person (spotlight and grid) are merged into one', () => {
