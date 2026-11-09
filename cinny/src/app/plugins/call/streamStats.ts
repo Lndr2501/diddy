@@ -40,6 +40,7 @@ export const trackPeerConnections = (win: Window | null | undefined) => {
             diag(`peer connection listener failed: ${String(e)}`);
           }
         });
+        pruneConnections(list);
       }
     }
     Object.defineProperty(w, 'RTCPeerConnection', {
@@ -54,6 +55,28 @@ export const trackPeerConnections = (win: Window | null | undefined) => {
 };
 
 const POLL_MS = 4000;
+/** A getStats() call that takes longer than this is abandoned (a stuck connection must not pile up work). */
+export const STATS_TIMEOUT_MS = 3000;
+/** Never keep more than this many tracked connections; the oldest are dropped first. */
+export const MAX_TRACKED_PCS = 16;
+
+/** Rejects when the promise does not settle in time. */
+export const withTimeout = <T>(p: Promise<T>, ms: number): Promise<T> =>
+  new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error('timeout')), ms);
+    p.then(
+      (v) => { clearTimeout(t); resolve(v); },
+      (e) => { clearTimeout(t); reject(e); }
+    );
+  });
+
+/** Drops closed connections and trims the list to `max` entries (oldest first). In place. */
+export const pruneConnections = <T extends { connectionState: string }>(list: T[], max = MAX_TRACKED_PCS): void => {
+  for (let i = list.length - 1; i >= 0; i -= 1) {
+    if (list[i].connectionState === 'closed') list.splice(i, 1);
+  }
+  if (list.length > max) list.splice(0, list.length - max);
+};
 
 export type FrameDims = {
   width?: number;
@@ -223,17 +246,25 @@ export const startStatsLogging = (
   // Issue #11: log the capture-vs-sent verdict whenever it changes, not on every poll.
   let lastVerdict = '';
 
+  let polling = false;
+  let timer = 0;
   const poll = async () => {
-    // Forget closed connections.
-    for (let i = list.length - 1; i >= 0; i -= 1) {
-      if (list[i].connectionState === 'closed') list.splice(i, 1);
+    // Never overlap polls: a slow getStats() would otherwise stack up work and make the call lag.
+    if (polling) return;
+    polling = true;
+    try {
+    // The capture ended without us hearing about it: stop polling for good.
+    if (videoTrack && videoTrack.readyState === 'ended') {
+      window.clearInterval(timer);
+      return;
     }
+    pruneConnections(list);
     for (let i = 0; i < list.length; i += 1) {
       const pc = list[i];
       {
         try {
           // eslint-disable-next-line no-await-in-loop
-          const report = await pc.getStats();
+          const report = await withTimeout(pc.getStats(), STATS_TIMEOUT_MS);
           const codecs = new Map<string, string>();
           report.forEach((r: Record<string, any>) => {
             if (r.type === 'codec') codecs.set(r.id, String(r.mimeType ?? ''));
@@ -308,9 +339,12 @@ export const startStatsLogging = (
         }
       }
     }
+    } finally {
+      polling = false;
+    }
   };
 
-  const timer = window.setInterval(poll, POLL_MS);
+  timer = window.setInterval(poll, POLL_MS);
   return () => window.clearInterval(timer);
 };
 

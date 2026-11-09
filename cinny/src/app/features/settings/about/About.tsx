@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Box, Text, Icon, Icons, Button, config, toRem } from 'folds';
+import { Box, Text, Icon, Icons, Button, Input, Switch, config, toRem } from 'folds';
+import { useAtomValue, useSetAtom } from 'jotai';
+import { settingsAtom } from '../../../state/settings';
+import { DEFAULT_UPDATE_REPO, isValidUpdateRepo } from '../../../utils/updateCheck';
 import { AppLogo } from '../../../components/app-logo/AppLogo';
 import { APP_NAME, APP_REPO_URL, APP_VERSION, UPSTREAM_NAME, UPSTREAM_URL } from '../../../appInfo';
 import { clearCacheAndReload } from '../../../../client/initMatrix';
@@ -24,6 +27,11 @@ export function About({ requestClose }: AboutProps) {
       .then((path) => setLogPath(path ?? undefined))
       .catch(() => undefined);
   }, [desktop]);
+
+  const settings = useAtomValue(settingsAtom);
+  const setSettings = useSetAtom(settingsAtom);
+  const [repoDraft, setRepoDraft] = useState(settings.updateRepo);
+  const repoValid = isValidUpdateRepo(repoDraft);
 
   return (
     <SettingsPage title="About" requestClose={requestClose}>
@@ -94,6 +102,68 @@ export function About({ requestClose }: AboutProps) {
               >
                 <Text size="B300">Clear Cache</Text>
               </Button>
+            }
+          />
+        </InsetGroup>
+      </InsetSection>
+      <InsetSection
+        title="Updates"
+        footer={
+          desktop
+            ? 'At start Diddy looks for a newer release before the window opens and asks whether to install it. Without internet it starts at once.'
+            : 'Diddy shows a notice when a newer release exists.'
+        }
+      >
+        <InsetGroup>
+          <InsetRow
+            title="Check for updates"
+            description="Look for a newer version when Diddy starts."
+            after={
+              <Switch
+                variant="Primary"
+                value={settings.checkUpdatesAtStart}
+                onChange={(value: boolean) => setSettings({ ...settings, checkUpdatesAtStart: value })}
+              />
+            }
+          />
+          <InsetRow
+            title="Update repository"
+            description={
+              repoValid ? 'GitHub owner/name that publishes the releases.' : 'Use the form owner/name.'
+            }
+            after={
+              <Box gap="200" alignItems="Center">
+                <Input
+                  value={repoDraft}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                    const { value } = e.target;
+                    setRepoDraft(value);
+                    if (isValidUpdateRepo(value)) {
+                      setSettings({ ...settings, updateRepo: value.trim() });
+                    }
+                  }}
+                  variant={repoValid ? 'Background' : 'Critical'}
+                  size="300"
+                  radii="300"
+                  aria-label="Update repository"
+                  spellCheck={false}
+                  style={{ width: toRem(200) }}
+                />
+                <Button
+                  className={sheetCss.Pill}
+                  disabled={repoDraft === DEFAULT_UPDATE_REPO}
+                  onClick={() => {
+                    setRepoDraft(DEFAULT_UPDATE_REPO);
+                    setSettings({ ...settings, updateRepo: DEFAULT_UPDATE_REPO });
+                  }}
+                  variant="Secondary"
+                  fill="Soft"
+                  size="300"
+                  radii="Pill"
+                >
+                  <Text size="B300">Default</Text>
+                </Button>
+              </Box>
             }
           />
         </InsetGroup>
