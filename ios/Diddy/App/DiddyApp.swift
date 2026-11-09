@@ -5,6 +5,7 @@ struct DiddyApp: App {
     @StateObject private var app = AppModel()
 
     init() {
+        DiagLog.shared.setUp()
         LocalNotifications.shared.setUp()
         BackgroundKeepAlive.shared.setUp()
     }

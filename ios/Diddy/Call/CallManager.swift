@@ -58,6 +58,7 @@ final class CallManager: ObservableObject {
         let session = CallSession(account: account, room: room, roomName: roomName)
         session.onDropped = { [weak self, weak session] in
             guard let self, let session, self.current === session else { return }
+            DiagLog.shared.write("call: connection to the voice server lost")
             self.error = "The connection to the voice server was lost."
             Sounds.shared.play(.connectionLost)
             Task { await self.leave(silently: true) }
@@ -70,11 +71,14 @@ final class CallManager: ObservableObject {
         }
         current = session
         if present { showCallScreen = true }
+        DiagLog.shared.write("call: joining")
         do {
             try await session.connect()
+            DiagLog.shared.write("call: connected")
             Sounds.shared.play(.callJoined)
             await session.notifyRoom()
         } catch {
+            DiagLog.shared.write("call: join failed: \(error.friendlyMessage)")
             self.error = error.friendlyMessage
             await session.disconnect()
             if current === session {
@@ -89,7 +93,9 @@ final class CallManager: ObservableObject {
         guard let session = current else { return }
         current = nil
         showCallScreen = false
+        DiagLog.shared.write("call: leaving")
         await session.disconnect()
+        DiagLog.shared.write("call: left")
         // The call released the audio session; in the background, keep running for notifications.
         BackgroundKeepAlive.shared.refresh()
         if !silently { Sounds.shared.play(.callLeft) }
@@ -807,6 +813,7 @@ extension CallSession: LiveKit.RoomDelegate {
     nonisolated func room(_ room: LiveKit.Room, didUpdateConnectionState connectionState: LiveKit.ConnectionState, from oldConnectionState: LiveKit.ConnectionState) {
         Task { @MainActor in
             guard !self.closed else { return }
+            DiagLog.shared.write("call: LiveKit \(oldConnectionState) -> \(connectionState)")
             switch connectionState {
             case .connected: self.state = "Voice connected"
             case .reconnecting: self.state = "Reconnecting…"

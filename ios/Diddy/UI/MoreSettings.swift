@@ -176,6 +176,8 @@ struct DevicesView: View {
 /// Version, account and where to report problems.
 struct AboutView: View {
     @ObservedObject var account: MatrixAccount
+    @State private var exporting = false
+    @State private var exported: URL?
 
     private var version: String {
         let info = Bundle.main.infoDictionary
@@ -203,6 +205,28 @@ struct AboutView: View {
                 }
             } footer: {
                 Text("Diddy for iOS is built with matrix-rust-sdk and LiveKit.")
+            }
+            Section {
+                if let exported {
+                    ShareLink(item: exported) { Label("Share Diagnostics File", systemImage: "square.and.arrow.up") }
+                }
+                Button {
+                    exporting = true
+                    Task {
+                        exported = await DiagLog.shared.export()
+                        exporting = false
+                    }
+                } label: {
+                    HStack {
+                        Label(exported == nil ? "Export Diagnostics" : "Export Again", systemImage: "doc.text.magnifyingglass")
+                        if exporting { Spacer(); ProgressView() }
+                    }
+                }
+                .disabled(exporting)
+            } header: {
+                Text("Diagnostics")
+            } footer: {
+                Text("A text file with Diddy's log, crash reports and your device model, to attach to a bug report. It contains no messages or keys.")
             }
         }
         .scrollContentBackground(.hidden)

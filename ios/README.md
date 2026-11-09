@@ -24,6 +24,7 @@ Die App ist Beta: Alles in der Tabelle ist gebaut und läuft bei den ersten Test
 | Klingeln in Direktnachrichten mit Annehmen und Ablehnen, kompatibel zu Desktop-Diddy und Element Call | 🧪 nur solange die App geöffnet ist |
 | Sounds aus Diddys Soundpack (wie am Desktop) für Anrufe, Bildschirmübertragung, Nachrichten, Erwähnungen und Einladungen, unter Einstellungen > Sounds abschaltbar und anhörbar | 🧪 |
 | Offline-Bildschirm: Sitzung bleibt erhalten, wenn der Server nicht erreichbar ist, und verbindet sich von selbst wieder | 🧪 |
+| Logdatei und Diagnose-Export (Einstellungen > Über Diddy > Export Diagnostics): Log, Absturzberichte über MetricKit, Gerät und Version als Textdatei | 🧪 |
 | App-Icon wechseln (Pink, Blau, Lila, Schwarz, Magenta) | 🧪 |
 | Benachrichtigungen im Hintergrund (Nachrichten, Erwähnungen, Einladungen, Anrufe) | 🧪 Einstellung, aus ab Werk: die App läuft dafür im Hintergrund weiter (stilles Audio, kostet Akku). Ohne bezahltes Apple-Konto gibt es keinen Push-Dienst; nach einem Neustart des iPhones oder wenn iOS die App beendet, kommt bis zum nächsten Öffnen nichts |
 | Anruf-Alarm bei geschlossener App über die ntfy-App („Name is calling you“), Einstellungen > Call Alerts | 🧪 nur bei Anrufen aus Diddy (Desktop oder iOS) |
