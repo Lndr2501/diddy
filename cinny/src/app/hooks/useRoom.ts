@@ -11,6 +11,14 @@ export function useRoom(): Room {
   return room;
 }
 
+/**
+ * The room of the surrounding view, or null outside of one. Message content is also drawn where no
+ * room view exists (inbox notifications, search results), so it must not use useRoom() (#125).
+ */
+export function useOptionalRoom(): Room | null {
+  return useContext(RoomContext);
+}
+
 const IsDirectRoomContext = createContext<boolean>(false);
 
 export const IsDirectRoomProvider = IsDirectRoomContext.Provider;
