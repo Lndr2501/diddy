@@ -91,11 +91,11 @@ export function MyInstantsImport({ onClose }: MyInstantsImportProps) {
     setError(undefined);
     try {
       const page = await searchMyInstants(term, nextPage);
-      setResults((prev) => {
-        const known = new Set(prev.map((r) => r.path));
-        return [...prev, ...page.items.filter((i) => !known.has(i.path))];
-      });
-      setNextPage(page.hasNext ? nextPage + 1 : undefined);
+      const known = new Set(results.map((r) => r.path));
+      const fresh = page.items.filter((i) => !known.has(i.path));
+      setResults([...results, ...fresh]);
+      // A page with nothing new means the site repeats itself: stop instead of looping.
+      setNextPage(page.hasNext && fresh.length > 0 ? nextPage + 1 : undefined);
     } catch (e) {
       setError(messageOf(e));
     } finally {
@@ -167,8 +167,9 @@ export function MyInstantsImport({ onClose }: MyInstantsImportProps) {
         // eslint-disable-next-line no-await-in-loop
         const next = await searchMyInstants(term, page);
         const known = new Set(all.map((r) => r.path));
-        all = [...all, ...next.items.filter((i) => !known.has(i.path))];
-        page = next.hasNext ? page + 1 : undefined;
+        const fresh = next.items.filter((i) => !known.has(i.path));
+        all = [...all, ...fresh];
+        page = next.hasNext && fresh.length > 0 ? page + 1 : undefined;
         // eslint-disable-next-line no-await-in-loop
         await wait(PAUSE_MS);
       }
