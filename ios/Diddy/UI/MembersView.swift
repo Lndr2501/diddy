@@ -288,13 +288,13 @@ struct UserProfileSheet: View {
                     if !isSelf {
                         Button { Task { await openChat() } } label: {
                             HStack {
-                                if busy { ProgressView().tint(.white) }
+                                if busy { ProgressView().tint(Color(diddyHex: diddy?.cardAccent) == nil ? Theme.onAccent : .white) }
                                 Label("Message", systemImage: "bubble.left.fill").bold()
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
                             .background(RoundedRectangle(cornerRadius: 10).fill(Color(diddyHex: diddy?.cardAccent) ?? Theme.accent))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(Color(diddyHex: diddy?.cardAccent) == nil ? Theme.onAccent : .white)
                         }
                         .disabled(busy)
                     }

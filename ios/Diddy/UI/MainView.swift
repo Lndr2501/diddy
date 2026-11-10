@@ -32,6 +32,7 @@ struct MainView: View {
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var navigator = AppNavigator()
     @State private var showSettings = false
+    @ObservedObject private var themes = ThemeStore.shared
 
     var body: some View {
         NavigationSplitView {
@@ -57,15 +58,19 @@ struct MainView: View {
             }
         }
         .navigationSplitViewStyle(.balanced)
+        // A new theme rebuilds the screens (the Theme colours are plain values); the sheets and
+        // the navigator stay, so Settings remains open while you pick.
+        .id(themes.id)
         .environmentObject(navigator)
         .sheet(isPresented: $showSettings) {
-            SettingsView(account: account)
+            SettingsView(account: account).id(themes.id)
         }
         .fullScreenCover(isPresented: $calls.showCallScreen) {
             if let call = calls.current {
                 NavigationStack {
                     VoiceChannelView(account: account, roomId: call.roomId, showsClose: true)
                 }
+                .id(themes.id)
                 .environmentObject(navigator)
             }
         }

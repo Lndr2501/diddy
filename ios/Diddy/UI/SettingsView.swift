@@ -56,6 +56,8 @@ struct SettingsView: View {
                     }
                 }
 
+                ThemeSection()
+
                 Section {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 64), spacing: 14)], spacing: 14) {
                         ForEach(AppIconChoice.allCases) { choice in
@@ -307,7 +309,7 @@ private struct ProfileSection: View {
                     AvatarView(url: account.avatarUrl, name: account.title, size: 60, account: account)
                         .overlay(alignment: .bottomTrailing) {
                             Image(systemName: "pencil.circle.fill")
-                                .foregroundStyle(.white, Theme.accent)
+                                .foregroundStyle(Theme.onAccent, Theme.accent)
                                 .font(.title3)
                         }
                 }

@@ -3,6 +3,7 @@ import SwiftUI
 @main
 struct DiddyApp: App {
     @StateObject private var app = AppModel()
+    @ObservedObject private var themes = ThemeStore.shared
 
     init() {
         DiagLog.shared.setUp()
@@ -15,8 +16,8 @@ struct DiddyApp: App {
             RootView()
                 .environmentObject(app)
                 .environmentObject(app.calls)
-                .preferredColorScheme(.dark)
-                .tint(Theme.accent)
+                .preferredColorScheme(themes.theme.isLight ? .light : .dark)
+                .tint(themes.theme.accent)
                 .task { await app.restore() }
         }
     }
@@ -91,7 +92,7 @@ private struct OfflineView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 13)
                         .background(RoundedRectangle(cornerRadius: 8).fill(Theme.accent))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Theme.onAccent)
                 }
                 .disabled(retrying)
                 Button("Sign in to another account") { app.addingAccount = true }

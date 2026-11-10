@@ -233,7 +233,7 @@ private struct ChatContent: View {
                     } label: {
                         Image(systemName: "chevron.down")
                             .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(Theme.text)
                             .frame(width: 40, height: 40)
                             .background(Circle().fill(Theme.elevated))
                             .overlay(Circle().stroke(Theme.faint.opacity(0.4), lineWidth: 1))
@@ -358,7 +358,7 @@ private struct ChatContent: View {
                 if !trimmedDraft.isEmpty {
                     Button(action: send) {
                         Image(systemName: editing == nil ? "paperplane.fill" : "checkmark")
-                            .foregroundStyle(.white)
+                            .foregroundStyle(Theme.onAccent)
                             .frame(width: 36, height: 36)
                             .background(Circle().fill(Theme.accent))
                     }

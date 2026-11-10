@@ -78,7 +78,7 @@ final class IncomingCallWindow {
         else { return }
         let window = UIWindow(windowScene: scene)
         window.windowLevel = .alert + 1
-        let host = UIHostingController(rootView: IncomingCallView(call: call, manager: manager).preferredColorScheme(.dark).tint(Theme.accent))
+        let host = UIHostingController(rootView: IncomingCallView(call: call, manager: manager).preferredColorScheme(DiddyTheme.current.isLight ? .light : .dark).tint(Theme.accent))
         host.view.backgroundColor = .clear
         window.rootViewController = host
         window.isHidden = false
