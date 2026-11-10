@@ -25,7 +25,10 @@ const { configDir, browserDataDir } = require('./lib/paths.cjs');
 const diag = require('./lib/diag.cjs');
 const connections = require('./lib/connections.cjs');
 const myinstants = require('./lib/myinstants.cjs');
-const { fitIntoArea, parseWindowState } = require('./lib/windowFit.cjs');
+const { fitIntoArea, parseWindowState, guardWindowBounds } = require('./lib/windowFit.cjs');
+const { addFeatureSwitch } = require('./lib/commandLine.cjs');
+const { createStartupGate } = require('./lib/startupGate.cjs');
+const { shouldReloadAfter, createRateLimiter, describeError } = require('./lib/crashGuard.cjs');
 const { startStaticServer } = require('./lib/staticServer.cjs');
 const { createSystemAudio } = require('./lib/systemAudio.cjs');
 const { createScreenPicker } = require('./lib/screenPicker.cjs');
@@ -73,7 +76,33 @@ app.setPath('userData', browserDataDir());
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 // Screen sharing on Wayland goes through the desktop portal (PipeWire).
 const isWayland = process.env.XDG_SESSION_TYPE === 'wayland' || !!process.env.WAYLAND_DISPLAY;
-app.commandLine.appendSwitch(isWayland ? 'enable-features' : 'disable-features', 'WebRTCPipeWireCapturer');
+// Merged, not appended: a wrapper may already pass --enable-features (NixOS: WaylandWindowDecorations).
+addFeatureSwitch(app.commandLine, isWayland ? 'enable-features' : 'disable-features', 'WebRTCPipeWireCapturer');
+
+// ---- crash handling ---------------------------------------------------------------------------
+
+// Errors that nobody caught are written to the log (like the panic hook on macOS). The app keeps
+// running: a stray rejection in a helper must not kill an ongoing call, and without a handler
+// Electron would show an error dialog. A burst (more than 10 in 10 s) means the main process is
+// stuck in a loop, then it exits instead of spinning.
+const uncaughtLimiter = createRateLimiter({ max: 10, windowMs: 10000 });
+const logUncaught = (kind, error) => {
+  diag.writeLine(`main: ${kind}: ${describeError(error)}`);
+  if (!uncaughtLimiter.allow()) {
+    diag.writeLine('main: too many uncaught errors, exiting');
+    app.exit(1);
+  }
+};
+process.on('uncaughtException', (error) => logUncaught('uncaughtException', error));
+process.on('unhandledRejection', (reason) => logUncaught('unhandledRejection', reason));
+// GPU, network and utility processes: Chromium restarts them, the log shows why a call froze.
+app.on('child-process-gone', (_event, details) => {
+  diag.writeLine(`child process gone: type=${details.type} reason=${details.reason} code=${details.exitCode} name=${details.name ?? ''}`);
+});
+let quitting = false;
+app.on('before-quit', () => { quitting = true; });
+/** At most 3 renderer reloads per window and minute, so a page that dies on load does not loop. */
+const reloadLimiters = new WeakMap();
 
 /** label ("main" or "connection-<id>") -> BrowserWindow */
 const windows = new Map();
@@ -204,7 +233,7 @@ const createClientWindow = (label, profile) => {
     width: bounds.width,
     height: bounds.height,
     minWidth: 480,
-    minHeight: 400,
+    minHeight: 360,
     show: false,
     backgroundColor: '#140812',
     icon: iconImage(savedIconId() ?? 'pink'),
@@ -251,6 +280,18 @@ const createClientWindow = (label, profile) => {
   });
   win.webContents.on('render-process-gone', (_event, details) => {
     diag.writeLine(`window: renderer gone label=${label} reason=${details.reason} code=${details.exitCode}`);
+    if (quitting || win.isDestroyed() || !shouldReloadAfter(details.reason)) return;
+    if (!reloadLimiters.has(win)) reloadLimiters.set(win, createRateLimiter({ max: 3, windowMs: 60000 }));
+    if (!reloadLimiters.get(win).allow()) {
+      diag.writeLine(`window: renderer keeps crashing, not reloading label=${label}`);
+      return;
+    }
+    setTimeout(() => {
+      if (win.isDestroyed()) return;
+      diag.writeLine(`window: reloading after crash label=${label}`);
+      win.webContents.reload();
+      revealWindow(win);
+    }, 500);
   });
 
   win.loadURL(appUrl).catch((error) => diag.writeLine(`window: load failed label=${label}: ${error.message}`));
@@ -267,6 +308,34 @@ const focusOrReopenMain = () => {
   const main = windows.get('main');
   if (main) focusWindow(main);
   else createClientWindow('main');
+};
+
+// ---- window guard (#143 on macOS) -------------------------------------------------------------
+
+// Unplugging a display or changing its resolution can leave a window outside every screen. Windows
+// are fitted at creation only otherwise. On Wayland a client can neither read nor set its position
+// (the compositor places it), so there only the size is limited.
+const guardWindows = () => {
+  const primary = screen.getPrimaryDisplay();
+  const areas = [primary, ...screen.getAllDisplays().filter((display) => display.id !== primary.id)].map((display) => display.workArea);
+  windows.forEach((win, label) => {
+    if (win.isDestroyed() || win.isMaximized() || win.isFullScreen() || win.isMinimized()) return;
+    const fixed = guardWindowBounds(win.getBounds(), areas, { positionReliable: !isWayland });
+    if (!fixed) return;
+    diag.writeLine(`window: ${label} no longer on a screen, now ${JSON.stringify(fixed)}`);
+    win.setBounds(fixed);
+  });
+};
+
+const watchDisplays = () => {
+  let timer;
+  // Display events come in bursts while a monitor is (un)plugged; wait until they settle.
+  const schedule = () => {
+    clearTimeout(timer);
+    timer = setTimeout(guardWindows, 500);
+  };
+  screen.on('display-removed', schedule);
+  screen.on('display-metrics-changed', schedule);
 };
 
 // ---- separate logins (connection profiles) --------------------------------------------------
@@ -379,6 +448,8 @@ const commands = {
   remove_connection_profile: (args) => removeConnectionProfile(args),
   set_app_icon: ({ id }) => setAppIcon(String(id), true),
   agent_voice_state: () => agentVoice.state(),
+  // The update check belongs to the macOS shell; Linux has no native updater (the UI still sends this).
+  updater_set_config: () => null,
 };
 
 const audioCaptures = new Map();
@@ -432,10 +503,19 @@ if (!app.requestSingleInstanceLock()) {
   // Another Diddy runs: it receives our arguments through 'second-instance'.
   app.quit();
 } else {
+  // A second launch can arrive before startup (ready, local server) is done; windows are only
+  // opened for it once the main window exists.
+  const launches = createStartupGate(
+    (argv) => {
+      if (!handleLaunch(argv)) focusOrReopenMain();
+    },
+    { onError: (error) => diag.writeLine(`second launch failed: ${error.message}`) }
+  );
   app.on('second-instance', (_event, argv) => {
-    // Agent-voice triggers come in while the user dictates elsewhere: never focus Diddy.
+    // Agent-voice triggers come in while the user dictates elsewhere: never focus Diddy. They only
+    // flip a flag, so they apply at once, also during startup.
     if (handleAgentVoiceLaunch(argv)) return;
-    if (!handleLaunch(argv)) focusOrReopenMain();
+    launches.submit(argv);
   });
 
   app.whenReady().then(async () => {
@@ -461,8 +541,12 @@ if (!app.requestSingleInstanceLock()) {
         return;
       }
     }
+    // `diddy --agent-voice start` as the first launch: the page reads the flag once it has loaded.
+    handleAgentVoiceLaunch(process.argv);
     createClientWindow('main');
     handleLaunch(process.argv);
+    launches.open();
+    watchDisplays();
   });
 
   app.on('window-all-closed', () => app.quit());
