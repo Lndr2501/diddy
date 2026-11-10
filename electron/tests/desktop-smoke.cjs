@@ -45,8 +45,23 @@ const ts = require('../../cinny/node_modules/typescript');
     await page.waitForLoadState('domcontentloaded');
     page.on('console', (message) => { if (message.text().startsWith('getDisplayMedia')) console.log(message.text()); });
     await page.waitForFunction(() => !!window.__DIDDY_SYS_AUDIO__ && !!document.getElementById('root')?.childElementCount);
-    const compiled = ts.transpileModule(fs.readFileSync(path.join(__dirname, '../../cinny/src/app/plugins/call/screenShareAudio.ts'), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
-    await page.addScriptTag({ content: `(() => { const exports = {}; const require = (id) => id === 'react' ? {} : id === '../diagnostics' ? {diag:(line)=>console.log(line)} : {trackPeerConnections:()=>{},startStatsLogging:()=>()=>{}}; ${compiled}\nwindow.testShare = exports; exports.installScreenShareAudio(window); })();` });
+    // Load the real TS sources (screenShareAudio and its sibling codecPreference) as CommonJS with the app-only
+    // modules stubbed. Unknown module ids throw, so a new import in screenShareAudio.ts fails loudly here.
+    const callDir = path.join(__dirname, '../../cinny/src/app/plugins/call');
+    const compile = (file) => ts.transpileModule(fs.readFileSync(path.join(callDir, file), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
+    const share = compile('screenShareAudio.ts');
+    const codecPreference = compile('codecPreference.ts');
+    // Inline each module in its own function scope (no eval: the app's CSP may forbid it).
+    await page.addScriptTag({ content: `(() => {
+      const stubs = { react: {}, '../diagnostics': { diag: (line) => console.log(line) }, './streamStats': { trackPeerConnections() {}, startStatsLogging: () => () => {} } };
+      const makeRequire = (extra) => (id) => { if (id in extra) return extra[id]; if (id in stubs) return stubs[id]; throw new Error('desktop-smoke: unstubbed import ' + id); };
+      const codecPreference = {};
+      ((exports, require) => { ${codecPreference}\n})(codecPreference, makeRequire({}));
+      const testShare = {};
+      ((exports, require) => { ${share}\n})(testShare, makeRequire({ './codecPreference': codecPreference }));
+      window.testShare = testShare;
+      testShare.installScreenShareAudio(window);
+    })();` });
     // Desktop capture must wait for a deliberate source choice, then attach native system audio.
     await page.evaluate(() => {
       const button = document.createElement('button'); button.id = 'test-start-share'; button.textContent = 'Test screen share';

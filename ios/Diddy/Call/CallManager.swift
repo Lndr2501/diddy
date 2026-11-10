@@ -328,7 +328,6 @@ final class CallSession: NSObject, ObservableObject {
             e2eeOptions: encrypted ? LiveKit.E2EEOptions(keyProvider: keyProvider) : nil
         )
         state = "Connecting…"
-        try configureAudioSession()
         NoiseSuppression.apply()
         try await liveKitRoom.connect(url: sfu.url, token: sfu.jwt, roomOptions: roomOptions)
         // Left while still connecting: disconnect() already ran, so undo the late connect and stop.
