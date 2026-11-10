@@ -34,14 +34,14 @@ jobs:
       - name: Install native capture and sound-server test dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y rpm libpulse-dev pulseaudio pulseaudio-utils pipewire pipewire-pulse wireplumber dbus-x11 openbox xvfb xauth libgtk-3-0 libgbm1 libasound2 libasound2-plugins libnss3
+          sudo apt-get install -y rpm libglib2.0-dev libpulse-dev pulseaudio pulseaudio-utils pipewire pipewire-pulse wireplumber dbus-x11 openbox xvfb xauth libgtk-3-0 libgbm1 libasound2 libasound2-plugins libnss3
       - name: Install frontend and packaging dependencies
         run: |
           (cd cinny && npm ci --no-audit --no-fund)
           (cd electron && npm ci --no-audit --no-fund)
       - name: Compile and test native application audio
         run: |
-          (cd electron && npm run build:audio && npm test)
+          (cd electron && npm run build:audio && npm run build:shortcut && npm test)
           python3 electron/tests/native-audio.py pulse
           dbus-run-session -- python3 electron/tests/native-audio.py pipewire
       - name: Show the tag version in the app

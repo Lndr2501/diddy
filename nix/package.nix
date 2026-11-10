@@ -3,6 +3,7 @@
   stdenv,
   pkg-config,
   libpulseaudio,
+  glib,
   buildNpmPackage,
   importNpmLock,
   nodejs_24,
@@ -101,12 +102,15 @@ stdenv.mkDerivation {
     nodejs_24
     pkg-config
   ];
-  buildInputs = [ libpulseaudio ];
+  buildInputs = [ libpulseaudio glib ];
 
   buildPhase = ''
     runHook preBuild
     $CC -std=c11 -O2 -Wall -Wextra -Werror electron/native/system-audio.c \
       -o diddy-system-audio $(pkg-config --cflags --libs libpulse) -lm
+    # Portal helper for the global agent-voice hotkey (#135): GIO only, no extra daemon.
+    $CC -std=c11 -O2 -Wall -Wextra -Werror electron/native/global-shortcut.c \
+      -o diddy-global-shortcut $(pkg-config --cflags --libs gio-2.0)
     runHook postBuild
   '';
 
@@ -137,6 +141,7 @@ stdenv.mkDerivation {
     mkdir -p $share/electron $share/app-icons
     cp -r electron/lib electron/main.cjs electron/preload.cjs electron/pickerPreload.cjs electron/picker.html $share/electron/
     install -Dm755 diddy-system-audio $out/libexec/diddy-system-audio
+    install -Dm755 diddy-global-shortcut $out/libexec/diddy-global-shortcut
     jq --arg version "${version}" '.version = $version | del(.scripts)' electron/package.json \
       > $share/electron/package.json
     ln -s ${frontend} $share/frontend
@@ -152,6 +157,7 @@ stdenv.mkDerivation {
     makeWrapper ${lib.getExe electron} $out/bin/diddy \
       --add-flags $share/electron \
       --set DIDDY_AUDIO_HELPER $out/libexec/diddy-system-audio \
+      --set DIDDY_SHORTCUT_HELPER $out/libexec/diddy-global-shortcut \
       --prefix LD_LIBRARY_PATH : ${lib.makeLibraryPath [ alsa-lib ]}
 
     runHook postInstall

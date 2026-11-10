@@ -1,12 +1,17 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Button, Switch, Text } from 'folds';
 import { InsetGroup, InsetRow, InsetSection, SegmentedControl } from '../inset-list';
-import { updateAgentVoicePrefs, useAgentVoicePrefs } from '../../../state/agentVoice';
+import {
+  updateAgentVoicePrefs,
+  useAgentVoicePrefs,
+  useGlobalHotkeyInfo,
+} from '../../../state/agentVoice';
 import {
   AgentHotkeyMode,
   canReadNatively,
   FN_KEY,
   formatHotkey,
+  globalHotkeyReach,
   hotkeyFromEvent,
   isModifierCode,
 } from '../../../plugins/agentVoice/hotkey';
@@ -80,12 +85,16 @@ export function AgentVoiceSettings() {
   const mac = isMacOS();
   const desktop = canInvoke();
   const fnPossible = mac && desktop;
+  const linuxDesktop = desktop && !mac;
+  const globalInfo = useGlobalHotkeyInfo();
 
   let reach = 'Only while the Diddy window is focused.';
   if (desktop && mac && canReadNatively(prefs.hotkey)) {
     reach = 'Also while Diddy is in the background (macOS reads the key from the system).';
   } else if (prefs.hotkey?.code === FN_KEY && !fnPossible) {
     reach = 'Fn / Globe can only be read by the Diddy app on macOS.';
+  } else if (linuxDesktop && prefs.global) {
+    reach = globalHotkeyReach(globalInfo);
   }
 
   return (
@@ -166,6 +175,19 @@ export function AgentVoiceSettings() {
                 </>
               }
             />
+            {linuxDesktop && (
+              <InsetRow
+                title="Also in the background"
+                description="Reserves the key for Diddy system-wide (desktop shortcut portal on Wayland, global shortcut on X11). Other apps, such as a dictation tool using the same key, then no longer get it; use a key of its own, or leave this off and let the tool run diddy --agent-voice."
+                after={
+                  <Switch
+                    variant="Primary"
+                    value={prefs.global}
+                    onChange={(global) => updateAgentVoicePrefs({ global })}
+                  />
+                }
+              />
+            )}
             <InsetRow
               title="Hotkey works like"
               after={
