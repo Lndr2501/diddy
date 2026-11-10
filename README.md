@@ -77,6 +77,8 @@ More details:
 - **Connection profiles:** if a homeserver is down, open another one in its own window with a separate login and data store. Your existing account and keys stay untouched.
 - **No auto-update:** Diddy only changes when you install a new version.
 
+Linux voice-message validation and the remaining X11/Wayland device checks are documented in [the test checklist](docs/linux-sprachnachrichten.md).
+
 ## Themes
 
 Ten built-in themes, from light to dark (*Settings → Appearance*):

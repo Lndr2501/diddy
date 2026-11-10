@@ -2,6 +2,8 @@
 
 The Test workflow installs Cinny once, runs type checking and both JavaScript test suites,
 builds the production frontend once and smoke-tests that exact bundle with Playwright.
+Playwright also checks the voice-recorder hook using synthetic audio and Chromium’s real
+WebM encoder, decoder, playback and seeking; this does not replace Linux device tests.
 Rust tests run in parallel on macOS. No checks were removed.
 
 ## Caches

@@ -54,7 +54,7 @@ jobs:
       - name: Install browser
         run: cd cinny && npx playwright install --with-deps chromium
 
-      - name: Smoke test the login screen
+      - name: Test login screen and voice recording in Chromium
         run: cd cinny && npm run test:e2e
 
   native:

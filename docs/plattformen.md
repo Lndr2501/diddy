@@ -22,7 +22,7 @@ Stand 2026-11-09, aus dem Code abgeleitet (`src-tauri/`, `electron/`, `ios/`, `c
 | Call-Töne und Soundpack | ✅ | ✅ | ✅ |
 | Calls wie bei Discord (Kacheln, großer Stream) | ✅ | ✅ | ❌ |
 | Soundboard, MyInstants-Import | ✅ | ✅ | ❌ |
-| Sprachnachrichten | ✅ | 🧪 | ❌ |
+| Sprachnachrichten | ✅ | 🧪 ([Prüfstand](linux-sprachnachrichten.md)) | ❌ |
 | Bot-Karten (`dev.diddy.card`) und Befehlsvorschläge | ✅ | ✅ | ❌ |
 | Diddy-Profile, Badges, Namensschilder | ✅ | ✅ | ❌ |
 | Themes | 9 | 9 | nur Diddy |
