@@ -114,7 +114,16 @@ const releaseVideos = (keep: Set<string>) => {
   });
 };
 
-function StageVideo({ stream, fit }: { stream: MediaStream; fit: 'cover' | 'contain' }) {
+function StageVideo({
+  stream,
+  fit,
+  mirror,
+}: {
+  stream: MediaStream;
+  fit: 'cover' | 'contain';
+  /** your own camera is shown as in a mirror, like in Element and Discord */
+  mirror?: boolean;
+}) {
   const hostRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const host = hostRef.current;
@@ -125,7 +134,14 @@ function StageVideo({ stream, fit }: { stream: MediaStream; fit: 'cover' | 'cont
     // a media element is paused while it is out of the document
     video.play().catch(() => undefined);
   }, [stream]);
-  return <div ref={hostRef} className={css.StageVideo} data-fit={fit} />;
+  return (
+    <div
+      ref={hostRef}
+      className={css.StageVideo}
+      data-fit={fit}
+      data-mirror={mirror || undefined}
+    />
+  );
 }
 
 const ICON_MIC =
@@ -199,7 +215,7 @@ export function PersonTileView({
         </span>
       )}
       {person.video ? (
-        <StageVideo stream={person.video} fit="cover" />
+        <StageVideo stream={person.video} fit="cover" mirror={person.userId === mx.getUserId()} />
       ) : (
         <Avatar className={css.StageAvatar} radii="Pill">
           <UserAvatar

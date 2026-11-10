@@ -535,6 +535,9 @@ globalStyle(`${StageVideo} > video`, {
   height: '100%',
   objectFit: 'cover',
 });
+globalStyle(`${StageVideo}[data-mirror] > video`, {
+  transform: 'scaleX(-1)',
+});
 globalStyle(`${StageVideo}[data-fit=contain] > video`, {
   objectFit: 'contain',
 });
