@@ -7,7 +7,10 @@ const path = require('node:path');
 const test = require('node:test');
 
 const root = path.join(__dirname, '..', '..');
-const libRs = fs.readFileSync(path.join(root, 'src-tauri', 'src', 'lib.rs'), 'utf8');
+const libRsPath = path.join(root, 'src-tauri', 'src', 'lib.rs');
+// The Nix build only copies electron/ (nix/package.nix shellSrc), so the Rust side is not there.
+const libRs = fs.existsSync(libRsPath) ? fs.readFileSync(libRsPath, 'utf8') : undefined;
+const skip = libRs === undefined && 'src-tauri/src/lib.rs not in this source tree';
 const mainCjs = fs.readFileSync(path.join(__dirname, '..', 'main.cjs'), 'utf8');
 
 // Only the macOS updater window (cinny/public/updater.html) calls these; Linux has no native updater.
@@ -29,18 +32,18 @@ const electronCommands = () => {
   return [...block[1].matchAll(/^ {2}(\w+):/gm)].map((match) => match[1]);
 };
 
-test('the parsers find the command lists', () => {
+test('the parsers find the command lists', { skip }, () => {
   assert.ok(tauriCommands().length >= 10);
   assert.ok(electronCommands().includes('diag_log'));
 });
 
-test('every Tauri command exists in the Electron shell, except the macOS-only updater ones', () => {
+test('every Tauri command exists in the Electron shell, except the macOS-only updater ones', { skip }, () => {
   const linux = new Set(electronCommands());
   const missing = tauriCommands().filter((name) => !linux.has(name) && !MACOS_ONLY.has(name));
   assert.deepEqual(missing, [], `missing in electron/main.cjs commands: ${missing.join(', ')}`);
 });
 
-test('the macOS-only allow-list only names real Tauri commands, and Linux does not fake them', () => {
+test('the macOS-only allow-list only names real Tauri commands, and Linux does not fake them', { skip }, () => {
   const tauri = new Set(tauriCommands());
   const linux = new Set(electronCommands());
   for (const name of MACOS_ONLY) {
@@ -49,7 +52,7 @@ test('the macOS-only allow-list only names real Tauri commands, and Linux does n
   }
 });
 
-test('Electron does not offer commands that Tauri lacks', () => {
+test('Electron does not offer commands that Tauri lacks', { skip }, () => {
   const tauri = new Set(tauriCommands());
   const extra = electronCommands().filter((name) => !tauri.has(name));
   assert.deepEqual(extra, []);
