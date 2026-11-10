@@ -102,7 +102,7 @@ export function AgentVoiceSettings() {
       title="Talking to an agent"
       footer={
         <>
-          Works with any dictation tool (OpenWhispr, Wispr Flow, ...): set the same key here.
+          Works with any dictation tool (OpenWhispr, Wispr Flow, ...): set the same key here. Needs &quot;Detect dictation hotkey&quot; below to be on, also for the commands.
           {desktop && (
             <>
               {' '}

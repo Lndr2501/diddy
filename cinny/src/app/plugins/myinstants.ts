@@ -57,6 +57,23 @@ const searchUrl = (name: string, page: number) =>
 
 const cleanName = (name: string) => name.replace(/\s+/g, ' ').trim();
 
+/** A normal results page has at least this many sounds (36 today); a shorter one is the last. */
+export const FULL_PAGE = 20;
+
+/**
+ * Whether another results page may follow. myinstants.com loads further pages by infinite
+ * scroll and no longer has a `rel="next"` link, so a full page counts as "there is more".
+ * The link is still honoured in case it comes back.
+ */
+export const hasNextPage = (html: string, itemCount: number): boolean =>
+  /rel=["']?next\b/i.test(html) || itemCount >= FULL_PAGE;
+
+/** The site answers 404 for a page past the last one. */
+export const isMissingPage = (error: unknown): boolean => {
+  const text = error instanceof Error ? error.message : String(error);
+  return /answered 404\b/.test(text);
+};
+
 const parseSearch = (html: string): SearchPage => {
   const doc = new DOMParser().parseFromString(html, 'text/html');
   const items: MyInstant[] = [];
@@ -70,11 +87,18 @@ const parseSearch = (html: string): SearchPage => {
     }
   });
 
-  return { items, hasNext: doc.querySelector('a.page-link[rel="next"]') !== null };
+  return { items, hasNext: hasNextPage(html, items.length) };
 };
 
 export const searchMyInstants = async (name: string, page: number): Promise<SearchPage> => {
-  const html = await invoke<string>('myinstants_fetch_text', { url: searchUrl(name, page) });
+  let html: string;
+  try {
+    html = await invoke<string>('myinstants_fetch_text', { url: searchUrl(name, page) });
+  } catch (e) {
+    // When the previous page was exactly full, the next one does not exist.
+    if (page > 1 && isMissingPage(e)) return { items: [], hasNext: false };
+    throw e;
+  }
   return parseSearch(html);
 };
 

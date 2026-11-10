@@ -56,8 +56,9 @@
         "rpm"
       ],
       "category": "Network",
-      "icon": "../src-tauri/icons/128x128.png",
+      "icon": "../src-tauri/icons/icon.png",
       "executableName": "diddy",
+      "syncDesktopName": true,
       "artifactName": "Diddy_${version}_${arch}.${ext}",
       "desktop": {
         "entry": {

@@ -135,7 +135,12 @@ pub(crate) fn launch_main(app: &tauri::AppHandle) {
     }
     app_icon::apply_saved(app);
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
-    connections::handle_launch(app, &std::env::args().collect::<Vec<_>>());
+    {
+        let args = std::env::args().collect::<Vec<_>>();
+        // `--agent-voice` on a cold start (no running instance to forward to) must count too.
+        agent_voice::handle_launch(&args);
+        connections::handle_launch(app, &args);
+    }
 }
 
 pub(crate) fn build_client_window(

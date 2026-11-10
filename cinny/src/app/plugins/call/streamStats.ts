@@ -78,6 +78,21 @@ export const pruneConnections = <T extends { connectionState: string }>(list: T[
   if (list.length > max) list.splice(0, list.length - max);
 };
 
+/**
+ * Forgets the closed connections of a Set (a reconnect replaces them with new ones; kept, they
+ * would pile up for the whole call). `onForget` runs for each one removed. In place.
+ */
+export const forgetClosed = <T extends { connectionState: string }>(
+  set: Set<T>,
+  onForget?: (item: T) => void
+): void => {
+  set.forEach((item) => {
+    if (item.connectionState !== 'closed') return;
+    set.delete(item);
+    onForget?.(item);
+  });
+};
+
 export type FrameDims = {
   width?: number;
   height?: number;

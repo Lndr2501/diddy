@@ -16,7 +16,7 @@ import { getCallPrefs } from '../../state/callPrefs';
 import { getAudioPrefs, registerInputGain } from './audioDevices';
 import { applyAudioProcessingPolicy } from './audioConstraints';
 import { getSharedAudioContext } from './sharedAudio';
-import { createNoiseSuppressor } from './noiseSuppression';
+import { createNoiseSuppressor, releaseNoiseSuppressor } from './noiseSuppression';
 import { isNativeMic, nativeMicAvailable, openNativeMic, preferredNativeMic } from './nativeMic';
 
 export type Clip = {
@@ -400,7 +400,7 @@ class Soundboard {
         currentMic.removeEventListener('ended', onMicEnded);
         unregisterGain();
         source.disconnect();
-        suppressor?.disconnect();
+        releaseNoiseSuppressor(suppressor);
         micGain.disconnect();
         bus.disconnect();
         this.mixes.delete(mix);

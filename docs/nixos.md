@@ -1,7 +1,7 @@
 # Diddy auf NixOS
 
 Diddy lässt sich als natives Nix-Paket bauen und starten. Unterstützte Ziele:
-`x86_64-linux` und `aarch64-linux` (jeweils nativ bauen, kein Cross-Compile).
+`x86_64-linux` und `aarch64-linux` (jeweils nativ bauen, kein Cross-Compile). Die Flake und `nix/package.nix` führen beide Systeme. Gebaut und getestet wird in der CI (`.github/workflows/nix.yml`, `ubuntu-24.04`) aber nur auf `x86_64-linux`; `aarch64-linux` ist ungeprüft.
 Die Flake enthält den aktuellen lokalen Quellstand, nicht das alte Release-Paket.
 
 Unter Linux läuft Diddy in **Electron (Chromium)**, auf macOS weiter in Tauri. Das Frontend ist gemeinsam; die native Medienintegration ist plattformspezifisch. Warum, steht unter

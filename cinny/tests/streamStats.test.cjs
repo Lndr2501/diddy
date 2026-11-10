@@ -148,6 +148,18 @@ test('pruneConnections drops closed connections and caps the list, oldest first'
   assert.deepEqual(list.map((p) => p.id), [3, 4]);
 });
 
+test('forgetClosed drops only the closed connections and reports each one (#144)', () => {
+  const a = { connectionState: 'connected' };
+  const b = { connectionState: 'closed' };
+  const c = { connectionState: 'failed' };
+  const d = { connectionState: 'closed' };
+  const set = new Set([a, b, c, d]);
+  const forgotten = [];
+  exported.forgetClosed(set, (item) => forgotten.push(item));
+  assert.deepEqual([...set], [a, c]);
+  assert.deepEqual(forgotten, [b, d]);
+});
+
 test('withTimeout rejects a promise that never settles and passes through fast ones', async () => {
   await assert.rejects(exported.withTimeout(new Promise(() => {}), 10), /timeout/);
   assert.equal(await exported.withTimeout(Promise.resolve(7), 1000), 7);

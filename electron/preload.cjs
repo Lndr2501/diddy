@@ -29,3 +29,11 @@ contextBridge.exposeInMainWorld('__DIDDY_SYS_AUDIO__', {
     return () => ipcRenderer.removeListener('diddy:audio-data', receive);
   },
 });
+
+// Mouse side buttons (back = 3, forward = 4): Electron on Linux does not map them to history.
+// main.cjs checks that there is a page to go to (lib/shellInput.cjs).
+window.addEventListener('mouseup', (event) => {
+  if (event.button !== 3 && event.button !== 4) return;
+  event.preventDefault();
+  ipcRenderer.send('diddy:nav', event.button === 3 ? 'back' : 'forward');
+});

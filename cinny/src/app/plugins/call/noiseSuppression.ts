@@ -42,6 +42,21 @@ const setup = async (ctx: AudioContext): Promise<AudioNode> => {
 };
 
 /**
+ * Disconnects a noise-suppression node and frees its RNNoise state in the worklet. The worklet
+ * keeps the wasm state until it is told to destroy itself, so a node that is only disconnected
+ * leaks it for the rest of the app's life (one per microphone that was opened).
+ */
+export const releaseNoiseSuppressor = (node: AudioNode | undefined): void => {
+  if (!node) return;
+  try {
+    node.disconnect();
+  } catch {
+    // not connected
+  }
+  (node as Partial<RnnoiseWorkletNode>).destroy?.();
+};
+
+/**
  * Creates the noise-suppression node for the audio context, or undefined (with a log line) when it
  * cannot be used: wrong sample rate, no worklet support, or setup took too long.
  */
@@ -55,14 +70,21 @@ export const createNoiseSuppressor = async (ctx: AudioContext): Promise<AudioNod
     return undefined;
   }
   try {
+    const setupDone = setup(ctx);
     const node = await Promise.race([
-      setup(ctx),
+      setupDone,
       new Promise<undefined>((resolve) => {
         setTimeout(resolve, SETUP_TIMEOUT_MS);
       }),
     ]);
-    if (!node) diag('noise suppression skipped: setup timed out');
-    else diag('noise suppression on (RNNoise)');
+    if (!node) {
+      diag('noise suppression skipped: setup timed out');
+      // the node that finishes late is never used: release it instead of keeping it alive
+      setupDone.then(
+        (late) => releaseNoiseSuppressor(late),
+        () => undefined
+      );
+    } else diag('noise suppression on (RNNoise)');
     return node;
   } catch (e) {
     diag(`noise suppression failed: ${e instanceof Error ? e.message : String(e)}`);

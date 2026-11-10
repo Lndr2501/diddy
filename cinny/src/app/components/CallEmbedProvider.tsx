@@ -52,7 +52,11 @@ import {
   RINGBACK_MAX_MS,
   RINGBACK_START_DELAY_MS,
 } from '../plugins/soundLogic';
-import { getTrackedPeerConnections, onPeerConnectionCreated } from '../plugins/call/streamStats';
+import {
+  forgetClosed,
+  getTrackedPeerConnections,
+  onPeerConnectionCreated,
+} from '../plugins/call/streamStats';
 import { useCallSpeakers } from '../hooks/useCallSpeakers';
 import { speakingUsersAtom } from '../state/speakingUsers';
 import { useCallMembersChange, useCallSession } from '../hooks/useCall';
@@ -502,6 +506,8 @@ function CallConnectionSounds({ embed }: { embed: CallEmbed }) {
     };
     const watch = (pc: RTCPeerConnection) => {
       if (watched.has(pc)) return;
+      // a reconnect creates new connections: the closed ones are no longer needed
+      forgetClosed(watched, (old) => old.removeEventListener('connectionstatechange', checkMedia));
       watched.add(pc);
       pc.addEventListener('connectionstatechange', checkMedia);
     };
