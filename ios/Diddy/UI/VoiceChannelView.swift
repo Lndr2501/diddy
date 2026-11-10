@@ -125,8 +125,6 @@ private struct ConnectedVoiceView: View {
     /// The login that joined this call: member avatars are that account's media.
     private var callAccount: MatrixAccount? { app.accounts.first { $0.id == session.accountId } }
 
-    private var columns: [GridItem] { [GridItem(.adaptive(minimum: 150), spacing: 10)] }
-
     private var statusLine: String {
         switch session.outgoing {
         case .ringing: return "Ringing…"
@@ -146,23 +144,8 @@ private struct ConnectedVoiceView: View {
             }
             .padding(.horizontal, 14)
             .padding(.top, 10)
-            ScrollView {
-                VStack(spacing: 10) {
-                    // Screen shares get the full width, like Discord's stream view.
-                    ForEach(session.members.filter { $0.screenShare != nil }) { member in
-                        if let track = member.screenShare {
-                            VideoTile(track: track, label: "\(member.name)'s screen", isScreen: true)
-                        }
-                    }
-                    LazyVGrid(columns: columns, spacing: 10) {
-                        ForEach(session.members) { member in
-                            Button { showProfile(member.userId) } label: { ParticipantTile(member: member, account: callAccount) }
-                                .buttonStyle(.plain)
-                        }
-                    }
-                }
-                .padding(12)
-            }
+            // One tile per person and per screen share; a tap focuses one (CallStageView.swift).
+            CallStageView(session: session, account: callAccount, showProfile: showProfile)
             if session.screenSharing && !CallSession.sharesWholeScreen {
                 Text("Sharing Diddy only. Sharing other apps needs iOS 27.")
                     .font(.footnote).foregroundStyle(Theme.muted).padding(.horizontal)
@@ -220,80 +203,6 @@ private struct ControlButton: View {
                 .background(Circle().fill(destructive ? Theme.danger : (highlight ? Theme.accent : Theme.elevated)))
         }
         .accessibilityLabel(label)
-    }
-}
-
-private struct ParticipantTile: View {
-    let member: CallMember
-    let account: MatrixAccount?
-
-    var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 12).fill(Theme.elevated)
-            if let camera = member.camera {
-                SwiftUIVideoView(camera, layoutMode: .fill)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-            } else {
-                // Sits a little high so the name pill below never covers it.
-                AvatarView(url: member.avatarUrl, name: member.name, size: 52, account: account)
-                    .offset(y: -12)
-            }
-        }
-        .aspectRatio(16 / 10, contentMode: .fit)
-        .opacity(member.isConnecting ? 0.55 : 1)
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(member.isSpeaking && member.microphoneOn ? Theme.online : .clear, lineWidth: 3)
-        )
-        .overlay(alignment: .bottomLeading) {
-            HStack(spacing: 4) {
-                if member.isConnecting {
-                    ProgressView().scaleEffect(0.6).frame(width: 12, height: 12)
-                } else if !member.microphoneOn {
-                    Image(systemName: "mic.slash.fill").foregroundStyle(Theme.danger)
-                }
-                Text(member.isLocal ? "\(member.name) (you)" : member.name).lineLimit(1)
-            }
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(.white)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(Capsule().fill(.black.opacity(0.55)))
-            .padding(8)
-        }
-    }
-}
-
-private struct VideoTile: View {
-    let track: LiveKit.VideoTrack
-    let label: String
-    let isScreen: Bool
-    @State private var fullscreen = false
-
-    var body: some View {
-        SwiftUIVideoView(track, layoutMode: .fit)
-            .aspectRatio(16 / 9, contentMode: .fit)
-            .background(Color.black)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .overlay(alignment: .topLeading) {
-                Label(label, systemImage: "display")
-                    .font(.caption.weight(.semibold))
-                    .padding(.horizontal, 8).padding(.vertical, 4)
-                    .background(Capsule().fill(Theme.danger))
-                    .padding(8)
-            }
-            .onTapGesture { fullscreen = true }
-            .fullScreenCover(isPresented: $fullscreen) {
-                ZStack(alignment: .topTrailing) {
-                    Color.black.ignoresSafeArea()
-                    SwiftUIVideoView(track, layoutMode: .fit, pinchToZoomOptions: [.zoomIn, .resetOnRelease])
-                        .ignoresSafeArea()
-                    Button { fullscreen = false } label: {
-                        Image(systemName: "xmark.circle.fill").font(.title).foregroundStyle(.white)
-                    }
-                    .padding()
-                }
-            }
     }
 }
 
