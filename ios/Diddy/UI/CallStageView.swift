@@ -184,6 +184,9 @@ private struct PersonTile: View {
                 .stroke(speaking ? Theme.online : .clear, lineWidth: role == .thumb ? 2 : 3)
         )
         .overlay(alignment: .bottomLeading) { nameTag }
+        .overlay(alignment: .topLeading) {
+            if member.talkingToAgent { AgentTalkingBadge(compact: role != .focus).padding(role == .thumb ? 4 : 8) }
+        }
         .overlay(alignment: .topTrailing) {
             if role == .focus { StageIconButton(icon: "square.grid.2x2", label: "Back to grid", action: onBack) }
         }

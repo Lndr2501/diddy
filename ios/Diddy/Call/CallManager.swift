@@ -19,6 +19,8 @@ struct CallMember: Identifiable {
     var camera: LiveKit.VideoTrack?
     /// In the call according to Matrix, but not connected to the media server (yet).
     var isConnecting = false
+    /// Dictating to an AI agent right now (#131): shown as "Redet mit Agent" on any tile.
+    var talkingToAgent = false
 }
 
 @MainActor
@@ -26,6 +28,7 @@ final class CallManager: ObservableObject {
     @Published private(set) var current: CallSession? {
         didSet {
             Sounds.shared.inCall = current != nil
+            AgentVoiceControl.shared.session = current
             // The call takes the audio session over and keeps the app running itself.
             if current != nil { BackgroundKeepAlive.shared.stop(deactivate: false) }
         }
@@ -187,6 +190,10 @@ final class CallSession: NSObject, ObservableObject {
     @Published private(set) var screenSharing = false
     @Published private(set) var speakerOn = true
     @Published private(set) var outgoing: OutgoingRing = .none
+    /// You dictate to an AI agent: the microphone is muted and the others see "Redet mit Agent".
+    @Published private(set) var talkingToAgent = false
+    /// Others in the call who told us they talk to an agent (their user ids).
+    @Published private(set) var agentTalkingUsers: Set<String> = []
     /// A hint under the tiles that clears itself, so an old problem does not look like a current one.
     @Published var lastError: String? {
         didSet {
@@ -218,6 +225,21 @@ final class CallSession: NSObject, ObservableObject {
     private var ownKey = Data()
     private let ownKeyIndex: Int32 = 0
     private var toDeviceHandle: TaskHandle?
+    private var agentVoiceHandle: TaskHandle?
+    private lazy var agentVoice: AgentVoiceCoordinator = AgentVoiceCoordinator(hooks: .init(
+        roomId: roomId,
+        microphoneOn: { [weak self] in self?.microphoneOn ?? false },
+        deafened: { [weak self] in self?.deafened ?? false },
+        setMicrophone: { [weak self] on in await self?.setMicrophoneQuietly(on) },
+        broadcast: { [weak self] payload, identities in self?.sendAgentVoice(payload, to: identities) },
+        otherMembers: { [weak self] in Set((self?.members ?? []).filter { !$0.isLocal }.map(\.userId)) },
+        changed: { [weak self] in
+            guard let self else { return }
+            self.talkingToAgent = self.agentVoice.talking
+            self.agentTalkingUsers = self.agentVoice.remote
+            self.refreshMembers()
+        }
+    ))
     private var membershipRefresh: Task<Void, Never>?
     private var membershipCreatedTs: UInt64?
     private var transport: (serviceUrl: String, alias: String)?
@@ -260,6 +282,7 @@ final class CallSession: NSObject, ObservableObject {
         refreshMembers()
     }
 
+    var ownUserIdForUI: String { account.userId }
     private var ownUserId: String { account.userId }
     private var ownDeviceId: String { account.deviceId }
     private var ownIdentity: String { "\(ownUserId):\(ownDeviceId)" }
@@ -274,6 +297,15 @@ final class CallSession: NSObject, ObservableObject {
         state = "Getting voice server access…"
         let sfu = try await requestSFUConfig(serviceUrl: transport.serviceUrl)
 
+        agentVoiceHandle = account.client.subscribeToCustomToDeviceMessages(
+            eventTypes: [AgentVoice.eventType],
+            listener: ToDeviceListener { [weak self] message in
+                Task { @MainActor in
+                    guard let self, !self.closed, message.eventType == AgentVoice.eventType else { return }
+                    self.agentVoice.receive(message: message.content, sender: message.senderId)
+                }
+            }
+        )
         if encrypted {
             ownKey = try Self.randomKey()
             toDeviceHandle = account.client.subscribeToCustomToDeviceMessages(
@@ -340,6 +372,8 @@ final class CallSession: NSObject, ObservableObject {
         errorDismissal?.cancel()
         observers.removeAll()
         guard !closed else { return }
+        // The others hear that the dictation ended with us (computed now, sent in the background).
+        agentVoice.leave()
         closed = true
         let wasConnected = connected
         // Drop every video track from the UI first, so no SwiftUIVideoView renders a track of a room
@@ -353,6 +387,8 @@ final class CallSession: NSObject, ObservableObject {
         membershipRefresh?.cancel()
         toDeviceHandle?.cancel()
         toDeviceHandle = nil
+        agentVoiceHandle?.cancel()
+        agentVoiceHandle = nil
         if wasConnected || membershipCreatedTs != nil {
             // An empty content ends our membership for everyone else.
             _ = try? await matrixRoom.sendStateEventRaw(eventType: Self.memberEventType, stateKey: stateKey, content: "{}", requestConfigOverride: nil)
@@ -370,6 +406,7 @@ final class CallSession: NSObject, ObservableObject {
     // MARK: Controls
 
     func toggleMicrophone() async {
+        agentVoice.userChangedMicrophone()
         let enable = !microphoneOn
         if enable {
             guard await AVCaptureDevice.requestAccess(for: .audio) else {
@@ -389,6 +426,7 @@ final class CallSession: NSObject, ObservableObject {
     /// Discord semantics: deafen silences everyone and mutes the microphone; undeafen restores
     /// both, but stays muted if you had muted yourself before.
     func toggleDeafen() async {
+        agentVoice.userChangedMicrophone()
         if !deafened { mutedBeforeDeafen = !microphoneOn }
         deafened.toggle()
         applyDeafen()
@@ -399,6 +437,41 @@ final class CallSession: NSObject, ObservableObject {
             microphoneOn = enable
         } catch { lastError = error.friendlyMessage }
         refreshMembers()
+    }
+
+    /// "Mit Agent reden" (#131): mutes the microphone while you dictate to an AI agent, tells the
+    /// others in the call, and undoes both when switched off or when you leave.
+    func setTalkingToAgent(_ on: Bool) async {
+        guard connected, !closed else { return }
+        DiagLog.shared.write("agentVoice: \(on ? "started" : "ended")")
+        await agentVoice.set(talking: on)
+    }
+
+    private func setMicrophoneQuietly(_ enable: Bool) async {
+        do {
+            _ = try await liveKitRoom.localParticipant.setMicrophone(enabled: enable)
+            microphoneOn = enable
+        } catch { lastError = error.friendlyMessage }
+        refreshMembers()
+    }
+
+    /// Ephemeral to-device message to the other devices in the call, like the desktop sends it.
+    /// `identities`: LiveKit identities to tell; `nil` means every participant.
+    fileprivate func sendAgentVoice(_ payload: AgentVoicePayload, to identities: [String]? = nil) {
+        let participants = liveKitRoom.remoteParticipants.values.filter {
+            identities?.contains($0.identity?.stringValue ?? "") ?? true
+        }
+        let recipients = Self.deviceRecipients(of: Array(participants))
+        guard !recipients.isEmpty else { return }
+        let json = payload.json()
+        let client = account.client
+        Task {
+            do {
+                _ = try await client.sendEncryptedToDeviceMessage(eventType: AgentVoice.eventType, recipients: recipients, content: json)
+            } catch {
+                DiagLog.shared.write("agentVoice: could not tell the call: \(error.friendlyMessage)")
+            }
+        }
     }
 
     func toggleSpeaker() {
@@ -629,13 +702,19 @@ final class CallSession: NSObject, ObservableObject {
         return (userId, deviceId)
     }
 
-    private func distributeKey(to participants: [LiveKit.RemoteParticipant]) async {
-        guard encrypted, !ownKey.isEmpty else { return }
+    /// User id -> device ids of the given participants, the shape to-device sending wants.
+    private static func deviceRecipients(of participants: [LiveKit.RemoteParticipant]) -> [String: [String]] {
         var recipients: [String: [String]] = [:]
         for participant in participants {
-            guard let identity = participant.identity?.stringValue, let parts = Self.split(identity: identity) else { continue }
+            guard let identity = participant.identity?.stringValue, let parts = split(identity: identity) else { continue }
             recipients[parts.userId, default: []].append(parts.deviceId)
         }
+        return recipients
+    }
+
+    private func distributeKey(to participants: [LiveKit.RemoteParticipant]) async {
+        guard encrypted, !ownKey.isEmpty else { return }
+        let recipients = Self.deviceRecipients(of: participants)
         guard !recipients.isEmpty else { return }
         let content: [String: Any] = [
             "keys": ["index": ownKeyIndex, "key": ownKey.base64EncodedString()],
@@ -712,7 +791,8 @@ final class CallSession: NSObject, ObservableObject {
                 result.append(CallMember(
                     id: "matrix:\(userId)", userId: userId,
                     name: account.name(of: userId), avatarUrl: profile?.avatarUrl,
-                    isLocal: false, isSpeaking: false, microphoneOn: true, isConnecting: true
+                    isLocal: false, isSpeaking: false, microphoneOn: true, isConnecting: true,
+                    talkingToAgent: agentTalkingUsers.contains(userId)
                 ))
             }
         }
@@ -741,7 +821,8 @@ final class CallSession: NSObject, ObservableObject {
             isSpeaking: participant.isSpeaking,
             microphoneOn: isLocal ? microphoneOn : participant.isMicrophoneEnabled(),
             screenShare: screen,
-            camera: camera
+            camera: camera,
+            talkingToAgent: isLocal ? talkingToAgent : agentTalkingUsers.contains(userId)
         )
     }
 }
@@ -751,6 +832,7 @@ extension CallSession: LiveKit.RoomDelegate {
         Task { @MainActor in
             guard !self.closed else { return }
             await self.distributeKey(to: [participant])
+            if let identity = participant.identity?.stringValue { self.agentVoice.tellNewcomer(deviceIdentity: identity) }
             self.refreshMembers()
             self.playForOthers(.userJoined)
         }
