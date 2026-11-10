@@ -26,7 +26,8 @@ struct DiddyBanner: View {
         let from = Color(diddyHex: profile?.cardFrom)
         let to = Color(diddyHex: profile?.cardTo)
         if let from, let to {
-            LinearGradient(colors: [from, to], startPoint: .topLeading, endPoint: .bottomTrailing)
+            let points = UnitPoint.cssGradient(angle: profile?.cardAngle ?? 135)
+            LinearGradient(colors: [from, to], startPoint: points.start, endPoint: points.end)
         } else {
             from ?? to ?? Theme.color(for: seed).opacity(0.7)
         }
@@ -228,7 +229,7 @@ struct DiddyProfileEditor: View {
                 Section {
                     Text(account.diddyPrimaryRoom == nil
                          ? "No Diddy Options room was found on your servers. Diddy desktop sets one up under Settings > Diddy; your profile can be edited here afterwards."
-                         : "Your Diddy Options room is encrypted and this app cannot read your current profile from it yet. Edit your profile in Diddy desktop.")
+                         : "This app could not read your current profile from your encrypted Diddy Options room yet (the message keys are missing). Verify this device in Settings, then try again, or edit your profile in Diddy desktop.")
                         .foregroundStyle(Theme.muted)
                 }
             } else {

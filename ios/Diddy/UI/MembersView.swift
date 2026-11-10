@@ -212,15 +212,8 @@ struct PersonRow: View {
             if let trailing { Image(systemName: trailing).foregroundStyle(Theme.online).font(.caption) }
         }
         .contentShape(Rectangle())
-        // Diddy's nameplate: a wash of the colour the person chose, fading out to the right.
-        .background {
-            if let plate = Color(diddyHex: diddy?.nameplateColor) {
-                LinearGradient(colors: [plate.opacity(0.35), .clear], startPoint: .leading, endPoint: .trailing)
-                    .padding(.horizontal, -8)
-                    .padding(.vertical, -4)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-            }
-        }
+        // Diddy's nameplate (colour, gradient, picture or loop) behind the row.
+        .diddyNameplate(diddy?.nameplate, account: account)
     }
 }
 
@@ -268,7 +261,7 @@ struct UserProfileSheet: View {
                     }
                     VStack(spacing: 4) {
                         HStack(spacing: 6) {
-                            DiddyName(name: name, profile: diddy, font: .title2.bold())
+                            DiddyName(name: name, profile: diddy, font: .title2.bold(), size: 22)
                             if !badges.isEmpty { DiddyBadges(badges: badges, size: 20, account: account) }
                         }
                         .multilineTextAlignment(.center)
