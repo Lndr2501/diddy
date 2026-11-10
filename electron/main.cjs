@@ -30,6 +30,7 @@ const { startStaticServer } = require('./lib/staticServer.cjs');
 const { createSystemAudio } = require('./lib/systemAudio.cjs');
 const { createScreenPicker } = require('./lib/screenPicker.cjs');
 const { parseAgentVoiceLaunch, createAgentVoiceTrigger } = require('./lib/agentVoice.cjs');
+const { installShellInput } = require('./lib/shellInput.cjs');
 
 const APP_PORT = 44548;
 const VERSION = (() => {
@@ -242,6 +243,7 @@ const createClientWindow = (label, profile) => {
     if (/^(https?|mailto):/i.test(url)) shell.openExternal(url).catch(() => undefined);
     return { action: 'deny' };
   });
+  installShellInput(win, { appOrigin, originOf });
   win.webContents.on('will-navigate', (event, url) => {
     if (originOf(url) === appOrigin) return;
     event.preventDefault();
