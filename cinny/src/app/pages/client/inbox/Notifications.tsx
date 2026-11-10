@@ -97,6 +97,7 @@ import {
 } from '../../../hooks/useMemberPowerTag';
 import { useRoomCreatorsTag } from '../../../hooks/useRoomCreatorsTag';
 import { useRoomCreators } from '../../../hooks/useRoomCreators';
+import { RoomProvider } from '../../../hooks/useRoom';
 
 type RoomNotificationsGroup = {
   roomId: string;
@@ -723,19 +724,21 @@ export function Notifications() {
                         ref={virtualizer.measureElement}
                         key={vItem.index}
                       >
-                        <RoomNotificationsGroupComp
-                          room={groupRoom}
-                          notifications={group.notifications}
-                          mediaAutoLoad={mediaAutoLoad}
-                          urlPreview={urlPreview}
-                          hideActivity={hideActivity}
-                          onOpen={navigateRoom}
-                          legacyUsernameColor={
-                            legacyUsernameColor || mDirects.has(groupRoom.roomId)
-                          }
-                          hour24Clock={hour24Clock}
-                          dateFormatString={dateFormatString}
-                        />
+                        <RoomProvider key={groupRoom.roomId} value={groupRoom}>
+                          <RoomNotificationsGroupComp
+                            room={groupRoom}
+                            notifications={group.notifications}
+                            mediaAutoLoad={mediaAutoLoad}
+                            urlPreview={urlPreview}
+                            hideActivity={hideActivity}
+                            onOpen={navigateRoom}
+                            legacyUsernameColor={
+                              legacyUsernameColor || mDirects.has(groupRoom.roomId)
+                            }
+                            hour24Clock={hour24Clock}
+                            dateFormatString={dateFormatString}
+                          />
+                        </RoomProvider>
                       </VirtualTile>
                     );
                   })}
