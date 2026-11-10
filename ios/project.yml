@@ -72,8 +72,7 @@ targets:
           - UIInterfaceOrientationPortraitUpsideDown
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
-        UIStatusBarStyle: UIStatusBarStyleLightContent
-        UIUserInterfaceStyle: Dark
+        # No fixed light/dark style: the app follows the chosen theme (DiddyApp, preferredColorScheme).
         # Voice channels keep running with the screen locked or another app in front. No `voip`:
         # the app uses neither PushKit nor CallKit.
         UIBackgroundModes:

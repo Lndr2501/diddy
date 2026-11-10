@@ -205,7 +205,7 @@ private struct ControlButton: View {
         Button(action: action) {
             Image(systemName: icon)
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(warn ? Theme.danger : .white)
+                .foregroundStyle(warn ? Theme.danger : (destructive ? Color.white : (highlight ? Theme.onAccent : Theme.text)))
                 .frame(width: 50, height: 50)
                 .background(Circle().fill(destructive ? Theme.danger : (highlight ? Theme.accent : Theme.elevated)))
         }

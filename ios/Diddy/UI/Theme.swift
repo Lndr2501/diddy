@@ -1,19 +1,21 @@
 import SwiftUI
 
-/// Discord's layout and density with Diddy's colours: deep violet surfaces and the pink accent of
-/// the desktop "Diddy" theme.
+/// Discord's layout and density with Diddy's colours, switchable to the desktop's other themes
+/// (see `DiddyTheme`). The roles keep their names; each reads the theme that is current.
 enum Theme {
-    static let rail = Color(red: 0x0F / 255, green: 0x07 / 255, blue: 0x11 / 255)
-    static let sidebar = Color(red: 0x18 / 255, green: 0x0B / 255, blue: 0x1B / 255)
-    static let chat = Color(red: 0x20 / 255, green: 0x0F / 255, blue: 0x23 / 255)
-    static let elevated = Color(red: 0x2B / 255, green: 0x16 / 255, blue: 0x2F / 255)
-    static let input = Color(red: 0x2F / 255, green: 0x1A / 255, blue: 0x33 / 255)
-    static let accent = Color(red: 0xE5 / 255, green: 0x51 / 255, blue: 0x7C / 255)
-    static let online = Color(red: 0x23 / 255, green: 0xA5 / 255, blue: 0x5A / 255)
-    static let danger = Color(red: 0xF2 / 255, green: 0x3F / 255, blue: 0x43 / 255)
-    static let text = Color(white: 0.95)
-    static let muted = Color(white: 0.68)
-    static let faint = Color(white: 0.45)
+    static var rail: Color { DiddyTheme.current.rail }
+    static var sidebar: Color { DiddyTheme.current.sidebar }
+    static var chat: Color { DiddyTheme.current.chat }
+    static var elevated: Color { DiddyTheme.current.elevated }
+    static var input: Color { DiddyTheme.current.input }
+    static var accent: Color { DiddyTheme.current.accent }
+    static var online: Color { DiddyTheme.current.online }
+    static var danger: Color { DiddyTheme.current.danger }
+    static var text: Color { DiddyTheme.current.text }
+    static var muted: Color { DiddyTheme.current.muted }
+    static var faint: Color { DiddyTheme.current.faint }
+    /// Text and icons on an `accent` fill.
+    static var onAccent: Color { DiddyTheme.current.onAccent }
 
     private static let palette: [Color] = [
         Color(red: 0.89, green: 0.32, blue: 0.49), Color(red: 0.35, green: 0.40, blue: 0.95),
