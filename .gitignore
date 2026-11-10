@@ -7,3 +7,6 @@ result-*
 
 /electron/native/bin/
 /electron/dist/
+
+/branding/logo/png/
+__pycache__/
