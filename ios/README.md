@@ -1,6 +1,6 @@
 # Diddy für iPhone und iPad
 
-Eigene, native App (SwiftUI), keine Web-Ansicht: [matrix-rust-sdk](https://github.com/matrix-org/matrix-rust-sdk) (Swift-Paket `MatrixRustSDK` 26.10.27) für Chat und Verschlüsselung, [LiveKit](https://github.com/livekit/client-sdk-swift) 2.18 für Sprachkanäle und Bildschirmübertragung. Aufbau wie die Discord-App, Farben wie das Diddy-Theme.
+Eigene, native App (SwiftUI), keine Web-Ansicht: [matrix-rust-sdk](https://github.com/matrix-org/matrix-rust-sdk) (Swift-Paket `MatrixRustSDK` 26.10.27) für Chat und Verschlüsselung, [LiveKit](https://github.com/livekit/client-sdk-swift) 2.18 für Sprachkanäle und Bildschirmübertragung. Aufbau wie die Discord-App, Farben aus den Desktop-Themes (Standard: Diddy).
 
 Die App ist Beta: Alles in der Tabelle ist gebaut und läuft bei den ersten Testern, ist aber noch nicht im Alltag geprüft.
 
@@ -13,7 +13,11 @@ Die App ist Beta: Alles in der Tabelle ist gebaut und läuft bei den ersten Test
 | Live sehen, wer im Sprachkanal ist, mit Namen und Profilbild, auch in der Kanalliste | 🧪 |
 | Antworten, Reaktionen, Bearbeiten, Löschen, @-Erwähnungen, Tippanzeige, Bilder senden und ansehen, Dateien öffnen | 🧪 |
 | Eigenen Namen und Profilbild ändern | 🧪 |
-| Diddy-Profile vom Desktop (Namensfarbe, Banner, Status, Badges, Über mich, Infos, Aktivität, Interessen, Links) auf der Profilkarte, in der Mitgliederliste und im Chat; eigenes Profil bearbeiten (Status, Namensfarbe, Über mich, Infos, Aktivität) | 🧪 gelesen werden State-Events und unverschlüsselte Räume; Daten, die nur als verschlüsselte Nachricht im Options-Raum liegen, fehlen noch |
+| Diddy-Profile vom Desktop (Namensfarbe mit Verlauf, Schrift und Effekt, Banner, Status, Badges, Über mich, Infos, Aktivität, Interessen, Links) auf der Profilkarte, in Mitglieder- und DM-Liste und im Chat; Namensschilder (Farbe, Verläufe, Bild, GIF, Video) hinter Mitglieder- und DM-Zeilen; eigenes Profil bearbeiten (Status, Namensfarbe, Über mich, Infos, Aktivität) | 🧪 State-Events und Nachrichtenmodus, auch in verschlüsselten Options-Räumen; Profileffekte und Rahmen fehlen, Badges erstellen nur am Desktop |
+| Sprachnachrichten aufnehmen (Mikrofon im Eingabefeld, Dauer und Wellenform wie am Desktop) und abspielen, auch normale Audiodateien | 🧪 Aufnahme als AAC/m4a; Ogg/Opus vom Linux-Desktop spielt iOS nicht ab |
+| Bot-Karten (`dev.diddy.card`: Titel mit Fortschritt, Warteschlange, Listen, Hilfe, Statistik, Hinweise) mit Knöpfen und Zeitleiste, Befehlsvorschläge beim Tippen (`dev.diddy.commands`) | 🧪 |
+| Themes wie am Desktop (Diddy, Light, Silver, Dark, Butter, Red, Green, Purple, Amber, DAAARK) unter Einstellungen > Theme, sofort aktiv | 🧪 nur auf dem Gerät gespeichert, kein eigenes Theme |
+| Plugins wie am Desktop: 8 mitgelieferte, eigene per https-Adresse, Code, Datei oder GitHub-/Gist-Link; Einstellungen > Plugins, Anzeige über den Puzzle-Knopf neben dem Zahnrad | 🧪 abgeschottet wie am Desktop (iframe-Sandbox ohne Origin, eigener Speicher, nur https); kein Seitenleisten-Dock |
 | Einstellungen: Chat (Zeitformat, Beitritte anzeigen, Bilder automatisch laden, Tipp- und Lesestatus teilen), Geräte (umbenennen), blockierte Nutzer, Über Diddy | 🧪 |
 | Ende-zu-Ende-Verschlüsselung, Gerät mit Wiederherstellungsschlüssel bestätigen | 🧪 |
 | Mehrere Konten auf verschiedenen Servern, jedes mit eigenem Speicher | 🧪 |
@@ -21,7 +25,9 @@ Die App ist Beta: Alles in der Tabelle ist gebaut und läuft bei den ersten Test
 | Sprachkanäle mit Desktop-Diddy und Element Call (gleiches MatrixRTC, gleiche Medien-Verschlüsselung) | 🧪 |
 | Bildschirmübertragung | 🧪 ab iOS 27 ganzer Bildschirm, davor nur Diddy selbst |
 | Stummschalten, Taubschalten, Kamera | 🧪 |
-| Soundboard im Sprachkanal: eigene Clips (bis 20 s) importieren, alle im Call hören sie über dein Mikrofon | 🧪 ein Clip gleichzeitig; bei stummem Mikrofon hört ihn niemand (wie am Desktop) |
+| Call-Kacheln wie am Desktop: eine Kachel pro Person und pro Bildschirmübertragung (Avatar oder Kamera, Sprechring, Stumm-Symbol), Tippen holt eine Kachel groß nach vorn, der Rest als Vorschauleiste | 🧪 |
+| Redet mit Agent: „Mit Agent reden“ schaltet das Mikro stumm und zeigt es den anderen (`app.diddy.agent_voice`), Anzeige der anderen auf Kachel und Profilkarte, Kurzbefehle-Aktion statt globalem Hotkey | 🧪 kein Schalter für den Mute-Modus |
+| Soundboard im Sprachkanal: eigene Clips (bis 20 s) aus Dateien oder per MyInstants-Suche (Vorhören, Mehrfachauswahl) importieren, alle im Call hören sie über dein Mikrofon | 🧪 ein Clip gleichzeitig; Clips bleiben auf dem Gerät; bei stummem Mikrofon hört ihn niemand (wie am Desktop) |
 | Klingeln in Direktnachrichten mit Annehmen und Ablehnen, kompatibel zu Desktop-Diddy und Element Call | 🧪 nur solange die App geöffnet ist |
 | Sounds aus Diddys Soundpack (wie am Desktop) für Anrufe, Bildschirmübertragung, Nachrichten, Erwähnungen und Einladungen, unter Einstellungen > Sounds abschaltbar und anhörbar | 🧪 |
 | Offline-Bildschirm: Sitzung bleibt erhalten, wenn der Server nicht erreichbar ist, und verbindet sich von selbst wieder | 🧪 |

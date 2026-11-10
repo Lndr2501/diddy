@@ -1,6 +1,6 @@
 # Features pro Plattform
 
-Stand 2026-11-09, aus dem Code abgeleitet (`src-tauri/`, `electron/`, `ios/`, `cinny/src/app`), README und CHANGELOG. Nicht auf Geräten geprüft.
+Stand 2026-11-10, aus dem Code abgeleitet (`src-tauri/`, `electron/`, `ios/`, `cinny/src/app`), README und CHANGELOG. Nicht auf Geräten geprüft.
 
 - **macOS:** Tauri mit der Cinny-Oberfläche.
 - **Linux:** Electron mit derselben Oberfläche.
@@ -20,18 +20,18 @@ Stand 2026-11-09, aus dem Code abgeleitet (`src-tauri/`, `electron/`, `ios/`, `c
 | Mikrofon ohne Apples Voice-Processing | ✅ | – | – |
 | Klingeln in Direktnachrichten | ✅ | ✅ | ✅ (nur bei geöffneter App) |
 | Call-Töne und Soundpack | ✅ | ✅ | ✅ |
-| Calls wie bei Discord (Kacheln, großer Stream) | ✅ | ✅ | ❌ |
-| Soundboard, MyInstants-Import | ✅ | ✅ | ❌ |
-| Sprachnachrichten | ✅ | 🧪 | ❌ |
-| Bot-Karten (`dev.diddy.card`) und Befehlsvorschläge | ✅ | ✅ | ❌ |
-| Diddy-Profile, Badges, Namensschilder | ✅ | ✅ | ❌ |
-| Themes | 9 | 9 | nur Diddy |
-| Plugins und Plugin-Galerie | ✅ | ✅ | ❌ |
-| Redet mit Agent (Agent Voice) | ✅ | ✅ | ❌ |
+| Calls wie bei Discord (Kacheln, großer Stream) | ✅ | ✅ | 🧪 |
+| Soundboard, MyInstants-Import | ✅ | ✅ | 🧪 |
+| Sprachnachrichten | ✅ | 🧪 | 🧪 (Ogg/Opus vom Linux-Desktop spielt iOS nicht ab) |
+| Bot-Karten (`dev.diddy.card`) und Befehlsvorschläge | ✅ | ✅ | 🧪 |
+| Diddy-Profile, Badges, Namensschilder | ✅ | ✅ | 🧪 (anzeigen; Badges erstellen nur am Desktop) |
+| Themes | 9 | 9 | 🧪 9 |
+| Plugins und Plugin-Galerie | ✅ | ✅ | 🧪 (ohne Seitenleisten-Dock) |
+| Redet mit Agent (Agent Voice) | ✅ | ✅ | 🧪 (Button und Kurzbefehl) |
 | Globaler Hotkey für Agent Voice | ✅ | ❌ | – |
 | Mehrere Verbindungsprofile / Konten | ✅ (ab macOS 14) | 🧪 | ✅ |
 | App-Icon wechseln | ✅ | 🧪 | ✅ |
-| Logdatei und Diagnose | ✅ | ✅ | ❌ |
+| Logdatei und Diagnose | ✅ | ✅ | 🧪 (Export über das Teilen-Menü) |
 | Hintergrund-Benachrichtigungen | ✅ | ✅ | 🧪 |
 | Push bei geschlossener App | – | – | ❌ |
 | Online-Status (Presence) | ✅ | ✅ | ❌ (Sliding Sync liefert ihn nicht) |
