@@ -140,6 +140,7 @@ private struct ChatContent: View {
             if Sounds.shared.openRoomId == roomId { Sounds.shared.openRoomId = nil }
         }
         .task {
+            await account.loadDiddyProfiles()
             await memberStore.load(account: account, roomId: roomId)
             if let levels = try? await controller.room.getPowerLevels() {
                 canSend = levels.canOwnUserSendMessage(message: .roomMessage)
@@ -598,6 +599,7 @@ struct MessageRowView: View {
                                     name: row.senderName,
                                     profile: account.diddyProfiles[row.sender],
                                     font: .subheadline.weight(.semibold),
+                                    size: 15,
                                     fallback: Theme.color(for: row.sender)
                                 )
                             }

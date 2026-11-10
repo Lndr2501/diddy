@@ -22,6 +22,8 @@ struct RoomSummary: Identifiable, Hashable {
     var inviterName: String?
     var lastMessage: String?
     var isVoiceRoom = false
+    /// The other person of a direct message, when the room has exactly one other member.
+    var dmUserId: String?
 
     var isJoined: Bool { membership == .joined }
     var isInvite: Bool { membership == .invited }
@@ -110,6 +112,8 @@ final class MatrixAccount: ObservableObject, Identifiable {
     var diddyOwnProfileRaw: [String: Any]?
     var diddyLoading = false
     var diddyLoadedAt: Date?
+    /// Decrypting readers of the encrypted options rooms, by room id (see DiddyOptionsFeed.swift).
+    var diddyFeeds: [String: DiddyOptionsFeed] = [:]
 
     private var syncService: SyncService?
     private var roomList: RoomList?
@@ -291,7 +295,8 @@ final class MatrixAccount: ObservableObject, Identifiable {
             memberCount: info.joinedMembersCount,
             inviterName: info.inviter.map { $0.displayName ?? $0.userId },
             lastMessage: lastMessage,
-            isVoiceRoom: isVoiceChannel(info.id)
+            isVoiceRoom: isVoiceChannel(info.id),
+            dmUserId: info.isDirect && info.heroes.count == 1 ? info.heroes.first?.userId : nil
         )
     }
 
