@@ -46,6 +46,7 @@ private struct ChatContent: View {
     @State private var replyTo: MessageRow?
     @State private var editing: MessageRow?
     @State private var photo: PhotosPickerItem?
+    @StateObject private var recorder = VoiceRecorder()
     @State private var showMembers = false
     @State private var showInfo = false
     @State private var profile: ProfileTarget?
@@ -363,12 +364,22 @@ private struct ChatContent: View {
                             .background(Circle().fill(Theme.accent))
                     }
                     .accessibilityLabel(editing == nil ? "Send" : "Save edit")
+                } else if editing == nil {
+                    VoiceMicButton(recorder: recorder)
                 }
             }
+            .overlay { if recorder.isActive { VoiceRecordingBar(recorder: recorder, onSend: sendVoice) } }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
         }
         .background(Theme.chat)
+    }
+
+    private func sendVoice() async {
+        guard let recording = recorder.stop() else { return }
+        let reply = replyTo?.eventId
+        replyTo = nil
+        if !(await controller.sendVoice(recording, inReplyTo: reply)) { recorder.restore(recording) }
     }
 
     private func composerContext(_ text: Text, cancel: @escaping () -> Void) -> some View {
@@ -625,6 +636,8 @@ struct MessageRowView: View {
                 }
         case .image(let source, _, let width, let height):
             ChatImage(source: source, account: account, aspect: (width ?? 4) / max(height ?? 3, 1), onTap: onImage)
+        case .audio(let audio):
+            VoiceMessageView(id: row.id, audio: audio, account: account)
         case .file(let name, let source, _):
             FileAttachment(name: name, source: source, client: account.client, onOpen: onFile)
         case .undecryptable:

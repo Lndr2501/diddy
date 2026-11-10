@@ -155,7 +155,7 @@ final class Sounds {
 
     @discardableResult
     private func start(_ sound: Sound, loops: Int) -> AVAudioPlayer? {
-        if !inCall && !BackgroundKeepAlive.shared.isRunning {
+        if !inCall && !BackgroundKeepAlive.shared.isRunning && !VoiceAudioSession.isBusy {
             // Ambient mixes with the user's music and stays quiet on the silent switch.
             let session = AVAudioSession.sharedInstance()
             try? session.setCategory(.ambient)

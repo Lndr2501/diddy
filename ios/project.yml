@@ -78,7 +78,7 @@ targets:
         # the app uses neither PushKit nor CallKit.
         UIBackgroundModes:
           - audio
-        NSMicrophoneUsageDescription: Diddy needs the microphone for voice channels.
+        NSMicrophoneUsageDescription: Diddy needs the microphone for voice channels and voice messages.
         NSCameraUsageDescription: Diddy needs the camera for video in voice channels.
         # No photo library keys: PhotosPicker runs out of process and hands over only the picked
         # item, and nothing is saved to the library.
