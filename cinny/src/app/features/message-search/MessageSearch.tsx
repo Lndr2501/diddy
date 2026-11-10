@@ -20,6 +20,7 @@ import { allRoomsAtom } from '../../state/room-list/roomList';
 import { mDirectAtom } from '../../state/mDirectList';
 import { groupSearchPages, MessageSearchParams, useMessageSearch } from './useMessageSearch';
 import { SearchResultGroup } from './SearchResultGroup';
+import { RoomProvider } from '../../hooks/useRoom';
 import { SearchInput } from './SearchInput';
 import { SearchFilters } from './SearchFilters';
 import { VirtualTile } from '../../components/virtualizer';
@@ -285,17 +286,19 @@ export function MessageSearch({
                   ref={virtualizer.measureElement}
                   key={vItem.index}
                 >
-                  <SearchResultGroup
-                    room={groupRoom}
-                    highlights={highlights}
-                    items={group.items}
-                    mediaAutoLoad={mediaAutoLoad}
-                    urlPreview={urlPreview}
-                    onOpen={navigateRoom}
-                    legacyUsernameColor={legacyUsernameColor || mDirects.has(groupRoom.roomId)}
-                    hour24Clock={hour24Clock}
-                    dateFormatString={dateFormatString}
-                  />
+                  <RoomProvider key={groupRoom.roomId} value={groupRoom}>
+                    <SearchResultGroup
+                      room={groupRoom}
+                      highlights={highlights}
+                      items={group.items}
+                      mediaAutoLoad={mediaAutoLoad}
+                      urlPreview={urlPreview}
+                      onOpen={navigateRoom}
+                      legacyUsernameColor={legacyUsernameColor || mDirects.has(groupRoom.roomId)}
+                      hour24Clock={hour24Clock}
+                      dateFormatString={dateFormatString}
+                    />
+                  </RoomProvider>
                 </VirtualTile>
               );
             })}
