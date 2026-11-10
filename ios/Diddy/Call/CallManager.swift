@@ -515,11 +515,6 @@ final class CallSession: NSObject, ObservableObject {
         }
     }
 
-    private func configureAudioSession() throws {
-        let session = AVAudioSession.sharedInstance()
-        try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetooth, .allowBluetoothA2DP, .defaultToSpeaker])
-    }
-
     // MARK: MatrixRTC
 
     /// Element Call's "oldest_membership" focus selection: everybody uses the LiveKit service of
