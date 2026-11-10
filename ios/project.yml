@@ -35,6 +35,11 @@ targets:
       # The desktop sound pack, shared so both apps sound the same (see Diddy/App/Sounds.swift).
       - path: ../cinny/public/sound/diddy
         buildPhase: resources
+      # The built-in plugin pages, shared with the desktop (see Diddy/Plugins/PluginStore.swift).
+      # A folder reference, so they land in the app as `builtin/<name>.html`.
+      - path: ../cinny/src/app/plugins/builtin
+        type: folder
+        buildPhase: resources
       # RNNoise, optimized in every configuration: it runs on the audio thread during calls.
       - path: Vendor/rnnoise
         excludes:

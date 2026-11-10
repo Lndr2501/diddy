@@ -664,6 +664,7 @@ struct UserPanel: View {
                 Text(account.record.serverName).font(.caption2).foregroundStyle(Theme.faint).lineLimit(1)
             }
             Spacer()
+            PluginsPanelButton()
             Button { showSettings = true } label: {
                 Image(systemName: "gearshape.fill").foregroundStyle(Theme.muted)
                     .frame(width: 44, height: 44)
