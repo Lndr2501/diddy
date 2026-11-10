@@ -15,6 +15,8 @@ Alle Punkte gebaut, aber noch nicht auf einem Gerät geprüft (🧪).
 - **Redet mit Agent (#131):** Button und Kurzbefehl, Anzeige der anderen auf Kachel und Profilkarte.
 - **Plugins (#132):** Plugin-Host mit derselben Sandbox und Schnittstelle wie am Desktop, 8 mitgelieferte Plugins.
 - **Logdatei und Diagnose (#138):** `app.log`, Absturzberichte über MetricKit, Export über das Teilen-Menü.
+- **Linux: globaler Hotkey für Agent Voice (#135):** Über das XDG-Portal `GlobalShortcuts` mit Halten und Loslassen, ohne Portal unter X11 als Umschalter, sonst Rückfall auf Fenster-Hotkey und `diddy --agent-voice`. Opt-in unter „Also in the background“. Kleiner GIO-Helfer `diddy-global-shortcut`, in Electron-Paket und Nix enthalten. Nur gegen einen Portal-Nachbau getestet.
+- **Linux: Tests für Sprachnachrichten, Verbindungsprofile und App-Icon (#137):** Logik aus `main.cjs` in testbare Module verschoben, Tests mit simuliertem Electron; Prüfliste für echtes X11/Wayland in [docs/linux-checkliste.md](docs/linux-checkliste.md).
 - **Build-Fix:** `configureAudioSession` war beim Merge von 1.5.1 verloren gegangen, die iOS-App baute nicht mehr.
 
 ## 1.5.1 (2026-11-09)

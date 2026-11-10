@@ -28,7 +28,7 @@ Stand 2026-11-10, aus dem Code abgeleitet (`src-tauri/`, `electron/`, `ios/`, `c
 | Themes | 9 | 9 | 🧪 9 |
 | Plugins und Plugin-Galerie | ✅ | ✅ | 🧪 (ohne Seitenleisten-Dock) |
 | Redet mit Agent (Agent Voice) | ✅ | ✅ | 🧪 (Button und Kurzbefehl) |
-| Globaler Hotkey für Agent Voice | ✅ | ❌ | – |
+| Globaler Hotkey für Agent Voice | ✅ | 🧪 (XDG-Portal, X11-Rückfall nur Umschalten) | – |
 | Mehrere Verbindungsprofile / Konten | ✅ (ab macOS 14) | 🧪 | ✅ |
 | App-Icon wechseln | ✅ | 🧪 | ✅ |
 | Logdatei und Diagnose | ✅ | ✅ | 🧪 (Export über das Teilen-Menü) |
@@ -38,5 +38,5 @@ Stand 2026-11-10, aus dem Code abgeleitet (`src-tauri/`, `electron/`, `ios/`, `c
 
 Anmerkungen:
 - macOS und Linux teilen die Oberfläche. Unterschiede liegen im nativen Teil (Mikrofon, System-Ton, Hotkey).
-- Der globale Agent-Voice-Hotkey geht unter Wayland nicht. Ersatz: `diddy --agent-voice start|stop|toggle`.
+- Der globale Agent-Voice-Hotkey läuft unter Linux über das XDG-Portal `GlobalShortcuts` (Halten geht), ohne Portal unter X11 als Umschalter; sonst bleibt `diddy --agent-voice start|stop|toggle`. Einschalten unter Einstellungen > „Also in the background“. Prüfliste: [linux-checkliste.md](linux-checkliste.md).
 - iOS braucht einen Server mit Simplified Sliding Sync (MSC4186).
