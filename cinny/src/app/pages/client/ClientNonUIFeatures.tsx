@@ -176,6 +176,7 @@ function InviteNotifications() {
       });
 
       noti.onclick = () => {
+        window.focus();
         if (!window.closed) navigate(getInboxInvitesPath());
         noti.close();
       };
@@ -240,6 +241,7 @@ function MessageNotifications() {
       });
 
       noti.onclick = () => {
+        window.focus();
         if (!window.closed) navigate(getInboxNotificationsPath());
         noti.close();
         notifRef.current = undefined;
