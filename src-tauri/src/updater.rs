@@ -486,6 +486,8 @@ async fn download(app: &AppHandle, asset: &Asset, dest: &Path) -> Result<(), Str
     let client = reqwest::Client::builder()
         .user_agent(format!("Diddy/{} (update)", env!("CARGO_PKG_VERSION")))
         .connect_timeout(Duration::from_secs(15))
+        // A stalled transfer must fail: the main window only opens after the updater returns.
+        .read_timeout(Duration::from_secs(30))
         .redirect(reqwest::redirect::Policy::custom(|attempt| {
             if attempt.previous().len() < 8 && is_github_url(attempt.url().as_str()) {
                 attempt.follow()
