@@ -5,11 +5,13 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 /// Soundboard, like the desktop's (`cinny/src/app/plugins/call/soundboard.ts`): short audio clips
-/// you import yourself; tapping one plays it for you and, in a call, for everybody.
+/// you import yourself; tapping one plays it for you and, in a call, for everybody. Clips stay on
+/// this device (the desktop does not sync them through Matrix either).
 ///
 /// Into the call it goes through the microphone: `ClipMixer` adds the clip to each captured frame
 /// after noise suppression (see `NoiseSuppressor.swift`). As on the desktop, nobody hears clips
-/// while your microphone is muted. One clip plays at a time; a new one replaces it.
+/// while your microphone is muted (muting, and deafening which also mutes, stop it for the call).
+/// One clip plays at a time on iOS; a new one replaces it.
 @MainActor
 final class Soundboard: ObservableObject {
     static let shared = Soundboard()
@@ -23,8 +25,14 @@ final class Soundboard: ObservableObject {
 
     @Published private(set) var clips: [Clip] = []
     @Published private(set) var playing: String?
+    /// The MyInstants result (its path) that is being previewed, if any.
+    @Published private(set) var previewing: String?
     @Published var volume: Double {
-        didSet { UserDefaults.standard.set(volume, forKey: Self.volumeKey) }
+        didSet {
+            UserDefaults.standard.set(volume, forKey: Self.volumeKey)
+            player?.volume = Float(volume)
+            ClipMixer.shared.gain = Float(volume)
+        }
     }
 
     static let maxSeconds: Double = 20
@@ -34,6 +42,12 @@ final class Soundboard: ObservableObject {
     private let folder: URL
     private var player: AVAudioPlayer?
     private var finished: Task<Void, Never>?
+    /// Bumped whenever playback starts or stops, so a slow decode never starts a stale clip.
+    private var generation = 0
+    /// Decoded clips at the call's sample rate, so a repeated tap starts at once.
+    private var decoded: [String: [Float]] = [:]
+    private var decodedOrder: [String] = []
+    private var decodedRate = 0
 
     private init() {
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
@@ -41,20 +55,48 @@ final class Soundboard: ObservableObject {
         folder = support.appendingPathComponent("Soundboard", isDirectory: true)
         let stored = UserDefaults.standard.object(forKey: Self.volumeKey) as? Double
         volume = min(max(stored ?? 0.8, 0), 1)
+        ClipMixer.shared.gain = Float(volume)
         if let data = UserDefaults.standard.data(forKey: Self.clipsKey),
-           let decoded = try? JSONDecoder().decode([Clip].self, from: data) {
-            clips = decoded
+           let stored = try? JSONDecoder().decode([Clip].self, from: data) {
+            // A clip whose file is gone (restored backup, cleared storage) would only fail when tapped.
+            let present = stored.filter { FileManager.default.fileExists(atPath: folder.appendingPathComponent($0.file).path) }
+            clips = present
+            if present.count != stored.count { save() }
         }
     }
 
     // MARK: Clips
 
-    /// Copies an audio file in. Throws a message for the user if it is not audio or too long.
+    /// Copies an audio file in (from the Files picker). Throws a message for the user if it is not
+    /// audio or too long.
     func add(from url: URL) throws {
         let scoped = url.startAccessingSecurityScopedResource()
         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        let ext = url.pathExtension.lowercased()
+        try register(source: url, ext: ext, title: MyInstantsParser.clipTitle(url.deletingPathExtension().lastPathComponent))
+    }
+
+    /// Adds downloaded audio (MyInstants). Returns false if a clip with that name exists already.
+    @discardableResult
+    func add(data: Data, name: String, ext: String = "mp3") throws -> Bool {
+        let title = MyInstantsParser.clipTitle(name)
+        if hasClip(named: title) { return false }
+        let temp = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString).\(ext)")
+        try data.write(to: temp)
+        defer { try? FileManager.default.removeItem(at: temp) }
+        try register(source: temp, ext: ext, title: title)
+        return true
+    }
+
+    func hasClip(named name: String) -> Bool {
+        let wanted = MyInstantsParser.clipTitle(name).lowercased()
+        return clips.contains { $0.name.lowercased() == wanted }
+    }
+
+    /// Checks the file is audio of an allowed length, copies it into the soundboard folder.
+    private func register(source: URL, ext rawExt: String, title: String) throws {
         let file: AVAudioFile
-        do { file = try AVAudioFile(forReading: url) } catch {
+        do { file = try AVAudioFile(forReading: source) } catch {
             throw DiddyError("Choose an audio file (mp3, wav, m4a …).")
         }
         let seconds = Double(file.length) / file.processingFormat.sampleRate
@@ -63,17 +105,18 @@ final class Soundboard: ObservableObject {
         }
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let id = UUID().uuidString
-        let ext = url.pathExtension.isEmpty ? "audio" : url.pathExtension.lowercased()
+        let ext = rawExt.isEmpty || rawExt.count > 5 || !rawExt.allSatisfy({ $0.isLetter || $0.isNumber }) ? "audio" : rawExt
         let name = "\(id).\(ext)"
-        try FileManager.default.copyItem(at: url, to: folder.appendingPathComponent(name))
-        let title = String(url.deletingPathExtension().lastPathComponent.prefix(40))
-        clips.append(Clip(id: id, name: title.isEmpty ? "Clip" : title, file: name))
+        try FileManager.default.copyItem(at: source, to: folder.appendingPathComponent(name))
+        clips.append(Clip(id: id, name: title, file: name))
         save()
     }
 
     func remove(_ clip: Clip) {
         if playing == clip.id { stop() }
         try? FileManager.default.removeItem(at: folder.appendingPathComponent(clip.file))
+        decoded[clip.id] = nil
+        decodedOrder.removeAll { $0 == clip.id }
         clips.removeAll { $0.id == clip.id }
         save()
     }
@@ -89,44 +132,110 @@ final class Soundboard: ObservableObject {
     /// Plays for you, and into the call while one is running.
     func play(_ clip: Clip) {
         stop()
+        generation += 1
+        let current = generation
         let url = folder.appendingPathComponent(clip.file)
-        if !Sounds.shared.inCall && !BackgroundKeepAlive.shared.isRunning {
-            // Outside a call, like the other app sounds: mixes with music, quiet on the silent switch.
-            let session = AVAudioSession.sharedInstance()
-            try? session.setCategory(.ambient)
-            try? session.setActive(true)
-        }
-        guard let player = try? AVAudioPlayer(contentsOf: url) else { return }
-        player.volume = Float(volume)
-        player.play()
-        self.player = player
         playing = clip.id
-        let duration = player.duration
-        finished = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: UInt64((duration + 0.1) * 1_000_000_000))
-            guard !Task.isCancelled, let self, self.playing == clip.id else { return }
-            self.playing = nil
-            self.player = nil
-        }
 
         let rate = ClipMixer.shared.sampleRate
-        guard rate > 0, Sounds.shared.inCall else { return }
-        let gain = Float(volume)
+        guard rate > 0, Sounds.shared.inCall else {
+            startLocal(url, clip: clip)
+            return
+        }
+        // In a call: decode first (cached after the first tap), then start both together.
+        if decodedRate != rate {
+            decoded = [:]
+            decodedOrder = []
+            decodedRate = rate
+        }
+        if let samples = decoded[clip.id] {
+            startLocal(url, clip: clip)
+            ClipMixer.shared.start(samples)
+            return
+        }
         Task.detached(priority: .userInitiated) {
-            guard let samples = ClipMixer.decode(url, sampleRate: rate, gain: gain) else { return }
+            let samples = ClipMixer.decode(url, sampleRate: rate)
             await MainActor.run {
+                let board = Soundboard.shared
                 // Still the clip that should play (not stopped or replaced while decoding).
-                guard Soundboard.shared.playing == clip.id else { return }
+                guard board.generation == current else { return }
+                board.startLocal(url, clip: clip)
+                guard let samples, ClipMixer.shared.sampleRate == rate else { return }
+                board.cache(samples, for: clip.id)
                 ClipMixer.shared.start(samples)
             }
         }
     }
 
+    private func cache(_ samples: [Float], for id: String) {
+        decoded[id] = samples
+        decodedOrder.removeAll { $0 == id }
+        decodedOrder.append(id)
+        while decodedOrder.count > 6 { decoded[decodedOrder.removeFirst()] = nil }
+    }
+
+    private func startLocal(_ url: URL, clip: Clip) {
+        prepareLocalPlayback()
+        guard let player = try? AVAudioPlayer(contentsOf: url) else {
+            playing = nil
+            ClipMixer.shared.stop()
+            return
+        }
+        player.volume = Float(volume)
+        player.play()
+        self.player = player
+        watchEnd(of: player) { [weak self] in
+            guard let self, self.playing == clip.id else { return }
+            self.playing = nil
+            // The call part must end with the local part, even if the capture pipeline paused
+            // while the microphone was muted and would otherwise resume the clip on unmute.
+            ClipMixer.shared.stop()
+        }
+    }
+
+    /// Plays downloaded audio for you only (MyInstants preview). `id` tells the UI what plays.
+    func preview(data: Data, id: String) throws {
+        stop()
+        prepareLocalPlayback()
+        guard let player = try? AVAudioPlayer(data: data) else {
+            throw DiddyError("This sound could not be played.")
+        }
+        player.volume = Float(volume)
+        player.play()
+        self.player = player
+        previewing = id
+        watchEnd(of: player) { [weak self] in
+            guard let self, self.previewing == id else { return }
+            self.previewing = nil
+        }
+    }
+
+    private func watchEnd(of player: AVAudioPlayer, _ done: @escaping @MainActor () -> Void) {
+        let duration = player.duration
+        finished = Task {
+            try? await Task.sleep(nanoseconds: UInt64((duration + 0.1) * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+            self.player = nil
+            done()
+        }
+    }
+
+    private func prepareLocalPlayback() {
+        guard !Sounds.shared.inCall && !BackgroundKeepAlive.shared.isRunning else { return }
+        // Outside a call, like the other app sounds: mixes with music, quiet on the silent switch.
+        let session = AVAudioSession.sharedInstance()
+        try? session.setCategory(.ambient)
+        try? session.setActive(true)
+    }
+
+    /// Stops the clip (or preview), for you and for the call.
     func stop() {
+        generation += 1
         finished?.cancel()
         player?.stop()
         player = nil
         playing = nil
+        previewing = nil
         ClipMixer.shared.stop()
     }
 }
@@ -140,12 +249,19 @@ final class ClipMixer: @unchecked Sendable {
     private var rate = 0
     private var samples: [Float] = []
     private var position = 0
+    private var _gain: Float = 0.8
 
     /// 0 while no call captures audio.
     var sampleRate: Int {
         lock.lock()
         defer { lock.unlock() }
         return rate
+    }
+
+    /// Soundboard volume, applies to the clip that is playing too.
+    var gain: Float {
+        get { lock.lock(); defer { lock.unlock() }; return _gain }
+        set { lock.lock(); _gain = newValue; lock.unlock() }
     }
 
     func configure(sampleRate: Int) {
@@ -184,14 +300,14 @@ final class ClipMixer: @unchecked Sendable {
         for channel in 0..<buffer.channels {
             let out = buffer.rawBuffer(forChannel: channel)
             for index in 0..<count {
-                out[index] = min(max(out[index] + samples[position + index], -32768), 32767)
+                out[index] = min(max(out[index] + samples[position + index] * _gain, -32768), 32767)
             }
         }
         position += count
     }
 
-    /// The clip as mono samples in 16-bit range at `sampleRate`, scaled by `gain`.
-    static func decode(_ url: URL, sampleRate: Int, gain: Float) -> [Float]? {
+    /// The clip as mono samples in 16-bit range at `sampleRate` (not yet scaled by the volume).
+    static func decode(_ url: URL, sampleRate: Int) -> [Float]? {
         guard let file = try? AVAudioFile(forReading: url),
               let target = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: Double(sampleRate), channels: 1, interleaved: false),
               let converter = AVAudioConverter(from: file.processingFormat, to: target)
@@ -216,8 +332,7 @@ final class ClipMixer: @unchecked Sendable {
             return input
         }
         guard status != .error, let channel = output.floatChannelData?[0] else { return nil }
-        let scale = gain * 32767
-        return (0..<Int(output.frameLength)).map { channel[$0] * scale }
+        return (0..<Int(output.frameLength)).map { channel[$0] * 32767 }
     }
 }
 
@@ -226,7 +341,9 @@ struct SoundboardSheet: View {
     @ObservedObject private var board = Soundboard.shared
     @Environment(\.dismiss) private var dismiss
     @State private var importing = false
+    @State private var showMyInstants = false
     @State private var error: String?
+    @State private var filter = ""
 
     private let columns = [GridItem(.adaptive(minimum: 140), spacing: 10)]
 
@@ -241,7 +358,7 @@ struct SoundboardSheet: View {
                             .padding(.top, 40)
                     } else {
                         LazyVGrid(columns: columns, spacing: 10) {
-                            ForEach(board.clips) { clip in clipButton(clip) }
+                            ForEach(visibleClips) { clip in clipButton(clip) }
                         }
                     }
                     HStack {
@@ -269,10 +386,14 @@ struct SoundboardSheet: View {
                         Button { board.stop() } label: { Image(systemName: "stop.fill") }
                             .accessibilityLabel("Stop clip")
                     }
-                    Button { importing = true } label: { Image(systemName: "plus") }
+                    Menu {
+                        Button { importing = true } label: { Label("Add from Files", systemImage: "folder") }
+                        Button { showMyInstants = true } label: { Label("Import from MyInstants", systemImage: "magnifyingglass") }
+                    } label: { Image(systemName: "plus") }
                         .accessibilityLabel("Add clip")
                 }
             }
+            .modifier(ClipSearch(active: board.clips.count > 8, text: $filter))
             .fileImporter(isPresented: $importing, allowedContentTypes: [.audio], allowsMultipleSelection: true) { result in
                 error = nil
                 switch result {
@@ -285,7 +406,14 @@ struct SoundboardSheet: View {
                 }
             }
         }
+        .sheet(isPresented: $showMyInstants) { MyInstantsSheet() }
         .presentationDetents([.medium, .large])
+    }
+
+    private var visibleClips: [Soundboard.Clip] {
+        let wanted = filter.trimmingCharacters(in: .whitespaces)
+        guard !wanted.isEmpty else { return board.clips }
+        return board.clips.filter { $0.name.localizedCaseInsensitiveContains(wanted) }
     }
 
     private func clipButton(_ clip: Soundboard.Clip) -> some View {
@@ -306,6 +434,20 @@ struct SoundboardSheet: View {
         .buttonStyle(.plain)
         .contextMenu {
             Button(role: .destructive) { board.remove(clip) } label: { Label("Delete", systemImage: "trash") }
+        }
+    }
+}
+
+/// A search field above the clips once there are many (the desktop does the same above 8).
+private struct ClipSearch: ViewModifier {
+    let active: Bool
+    @Binding var text: String
+
+    func body(content: Content) -> some View {
+        if active {
+            content.searchable(text: $text, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search clips")
+        } else {
+            content
         }
     }
 }
