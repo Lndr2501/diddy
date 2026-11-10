@@ -160,7 +160,7 @@ jobs:
           | Platform | Package | Install |
           |---|---|---|
           | macOS (Apple Silicon) | \`Diddy_${version}_aarch64.dmg\` | Open the DMG and $mac |
-          | Linux x86_64, any distribution | \`Diddy_${version}_x86_64.AppImage\` | \`chmod +x Diddy_*.AppImage && ./Diddy_*.AppImage\` |
+          | Linux x86_64, most distributions (needs FUSE 2; on Ubuntu 24.04+ prefer the .deb) | \`Diddy_${version}_x86_64.AppImage\` | \`chmod +x Diddy_*.AppImage && ./Diddy_*.AppImage\` |
           | Debian / Ubuntu | \`Diddy_${version}_amd64.deb\` | \`sudo apt install ./Diddy_*.deb\` |
           | Fedora / openSUSE | \`Diddy_${version}_x86_64.rpm\` | \`sudo dnf install ./Diddy_*.rpm\` |
           | iPhone / iPad | \`Diddy_${version}_iOS_unsigned.ipa\` | Sideload with AltStore, SideStore or Sideloadly (see ios/README.md) |
