@@ -42,6 +42,7 @@ private struct ChatContent: View {
     let isVoiceChat: Bool
     @EnvironmentObject private var calls: CallManager
     @StateObject private var memberStore = MemberStore()
+    @StateObject private var botCommands = BotCommandStore()
     @State private var draft = ""
     @State private var replyTo: MessageRow?
     @State private var editing: MessageRow?
@@ -171,7 +172,8 @@ private struct ChatContent: View {
                             onMention: { profile = ProfileTarget(userId: $0) },
                             onReact: { key in Task { await controller.toggleReaction(key, on: row) } },
                             onImage: { viewedImage = ViewedImage(image: $0) },
-                            onFile: { openedFile = $0 }
+                            onFile: { openedFile = $0 },
+                            onCardCommand: { command in Task { await controller.sendCardAction(command) } }
                         )
                         .id(row.id)
                         .contextMenu { menu(for: row) }
@@ -315,6 +317,7 @@ private struct ChatContent: View {
 
     private var composer: some View {
         VStack(spacing: 0) {
+            BotCommandSuggestions(store: botCommands, draft: $draft, room: controller.room, account: account, enabled: editing == nil)
             if !mentionSuggestions.isEmpty {
                 VStack(spacing: 0) {
                     ForEach(mentionSuggestions) { member in
@@ -529,6 +532,7 @@ struct MessageRowView: View {
     var onReact: (String) -> Void = { _ in }
     var onImage: (UIImage) -> Void = { _ in }
     var onFile: (URL) -> Void = { _ in }
+    var onCardCommand: (String) -> Void = { _ in }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -610,6 +614,8 @@ struct MessageRowView: View {
     @ViewBuilder
     private var content: some View {
         switch row.body {
+        case .text where row.card != nil:
+            if let card = row.card { BotCardView(card: card, account: account, onCommand: onCardCommand) }
         case .text(let text):
             (Text(rendered(text)) + Text(row.isEdited ? " (edited)" : "").font(.caption2).foregroundColor(Theme.faint))
                 .foregroundStyle(Theme.text)
