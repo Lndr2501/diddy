@@ -94,6 +94,7 @@ struct SettingsView: View {
                     NavigationLink { ChatSettingsView() } label: { Label("Chat", systemImage: "bubble.left.and.bubble.right.fill") }
                     NavigationLink { SoundSettingsView() } label: { Label("Sounds", systemImage: "speaker.wave.2.fill") }
                     NavigationLink { CallAlertSettingsView() } label: { Label("Call Alerts", systemImage: "phone.fill") }
+                    NavigationLink { PluginSettingsView() } label: { Label("Plugins", systemImage: "puzzlepiece.extension.fill") }
                 }
 
                 Section {
