@@ -101,8 +101,8 @@ verwenden.
 ```sh
 nix develop
 (cd cinny && npm ci && npm run build)
-(cd electron && npm run build:audio)
-DIDDY_AUDIO_HELPER="$PWD/electron/native/bin/diddy-system-audio" DIDDY_FRONTEND_DIR="$PWD/cinny/dist" electron electron
+(cd electron && npm run build:audio && npm run build:shortcut)
+DIDDY_AUDIO_HELPER="$PWD/electron/native/bin/diddy-system-audio" DIDDY_SHORTCUT_HELPER="$PWD/electron/native/bin/diddy-global-shortcut" DIDDY_FRONTEND_DIR="$PWD/cinny/dist" electron electron
 ```
 
 Mit Hot Reload: in einem Terminal `cd cinny && npm start` (Vite auf Port 8080), im
@@ -198,7 +198,7 @@ Automatisierbare Medienprüfung in einer isolierten Umgebung (Compiler/libpulse,
 PulseAudio/PipeWire/WirePlumber und `pactl`/`pacat` erforderlich):
 
 ```sh
-(cd electron && npm run build:audio && npm test)
+(cd electron && npm run build:audio && npm run build:shortcut && npm test)
 python3 electron/tests/native-audio.py pulse
 dbus-run-session -- python3 electron/tests/native-audio.py pipewire
 ```

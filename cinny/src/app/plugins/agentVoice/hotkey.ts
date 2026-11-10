@@ -216,3 +216,61 @@ export class HotkeyGate {
     return this.on;
   }
 }
+
+// --- global hotkey on Linux (#135) -------------------------------------------------------------
+
+/**
+ * What the Linux shell (Electron) reports after binding the hotkey system-wide:
+ * portal = XDG Desktop Portal (Wayland, KDE, newer GNOME): press and release, so holding works;
+ * x11 = X11 global shortcut: presses only, every press starts / stops;
+ * window = no global shortcut, only the focused window and `diddy --agent-voice`.
+ */
+export type GlobalHotkeyInfo = {
+  path: 'portal' | 'x11' | 'window';
+  /** the shortcut as the desktop reports it */
+  trigger?: string;
+  /** why there is no global shortcut (path "window") */
+  reason?: string;
+};
+
+export const parseGlobalHotkeyInfo = (value: unknown): GlobalHotkeyInfo | undefined => {
+  if (!value || typeof value !== 'object') return undefined;
+  const v = value as Record<string, unknown>;
+  if (v.path !== 'portal' && v.path !== 'x11' && v.path !== 'window') return undefined;
+  return {
+    path: v.path,
+    trigger: typeof v.trigger === 'string' ? v.trigger.slice(0, 64) : undefined,
+    reason: typeof v.reason === 'string' ? v.reason.slice(0, 32) : undefined,
+  };
+};
+
+const GLOBAL_REASONS: Record<string, string> = {
+  none: 'No hotkey set.',
+  'modifier-only':
+    'A lone modifier key cannot be a global shortcut on Linux. Pick an F13-F24 key or a combination such as Ctrl + Alt + Space.',
+  'needs-modifier':
+    'A typing key alone cannot be a global shortcut. Add Ctrl, Alt or Meta, or pick F13-F24 or Pause.',
+  'unknown-key': 'This key cannot be used as a global shortcut.',
+  'no-helper': 'The shortcut helper is missing in this installation.',
+  'no-bus': 'No desktop session bus was found.',
+  'no-portal': 'Your desktop offers no global shortcut portal (GNOME before 48, or no portal installed).',
+  denied: 'The desktop refused the shortcut.',
+  timeout: 'The desktop did not answer in time.',
+  closed: 'The desktop ended the shortcut.',
+  'register-failed': 'Another application already uses this key.',
+};
+
+/** One sentence for the settings: how far the hotkey reaches on Linux. */
+export const globalHotkeyReach = (info: GlobalHotkeyInfo | undefined): string => {
+  if (!info) return 'Only while the Diddy window is focused.';
+  if (info.path === 'portal') {
+    return `Also while Diddy is in the background: global shortcut through the desktop${
+      info.trigger ? ` (${info.trigger})` : ''
+    }. Holding works. The key is reserved for Diddy.`;
+  }
+  if (info.path === 'x11') {
+    return 'Also while Diddy is in the background (X11 global shortcut). Every press starts or stops; holding is not possible here. The key is reserved for Diddy.';
+  }
+  const why = info.reason ? GLOBAL_REASONS[info.reason] : undefined;
+  return `Only while the Diddy window is focused${why ? `. ${why}` : ''}`;
+};

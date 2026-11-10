@@ -63,6 +63,7 @@
               electron
               pkg-config
               libpulseaudio
+              glib
             ];
             HUSKY = "0";
             shellHook = ''
