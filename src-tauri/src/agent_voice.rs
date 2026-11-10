@@ -94,6 +94,15 @@ pub(crate) fn mac_keycode(code: &str) -> Option<u16> {
     })
 }
 
+/// Keys for which macOS sets the Fn flag itself while they are held (arrows, Home/End, Page Up/Down,
+/// forward delete, F1-F20). Without this list every arrow press counted as the Fn key (#152).
+pub(crate) const FN_IMPLIED_KEYCODES: &[u16] = &[
+    0x7B, 0x7C, 0x7D, 0x7E, // arrows
+    0x73, 0x77, 0x74, 0x79, 0x75, // Home, End, Page Up, Page Down, forward delete
+    0x7A, 0x78, 0x63, 0x76, 0x60, 0x61, 0x62, 0x64, 0x65, 0x6D, 0x67, 0x6F, // F1-F12
+    0x69, 0x6B, 0x71, 0x6A, 0x40, 0x4F, 0x50, 0x5A, // F13-F20
+];
+
 #[cfg(target_os = "macos")]
 mod native {
     #[link(name = "CoreGraphics", kind = "framework")]
@@ -110,7 +119,15 @@ mod native {
         if code == "Fn" {
             // SAFETY: plain CoreGraphics query without pointers.
             let flags = unsafe { CGEventSourceFlagsState(HID_SYSTEM_STATE) };
-            return Some(flags & FLAG_SECONDARY_FN != 0);
+            if flags & FLAG_SECONDARY_FN == 0 {
+                return Some(false);
+            }
+            // The flag is also set by arrow keys and the like: that is not the Fn key being held.
+            let implied = super::FN_IMPLIED_KEYCODES.iter().any(|k| {
+                // SAFETY: plain CoreGraphics query without pointers.
+                unsafe { CGEventSourceKeyState(HID_SYSTEM_STATE, *k) }
+            });
+            return Some(!implied);
         }
         let keycode = super::mac_keycode(code)?;
         // SAFETY: plain CoreGraphics query without pointers.
@@ -152,6 +169,17 @@ mod tests {
         assert!(apply(TriggerCommand::Toggle));
         assert!(!apply(TriggerCommand::Stop));
         assert!(!apply(TriggerCommand::Stop));
+    }
+
+    #[test]
+    fn arrow_keys_are_not_the_fn_key() {
+        // #152: arrows set the Fn flag on MacBook keyboards
+        for arrow in [0x7B, 0x7C, 0x7D, 0x7E] {
+            assert!(FN_IMPLIED_KEYCODES.contains(&arrow));
+        }
+        // the Fn key itself and the modifiers are never in the list
+        assert!(!FN_IMPLIED_KEYCODES.contains(&0x3F));
+        assert!(!FN_IMPLIED_KEYCODES.contains(&0x3A));
     }
 
     #[test]
