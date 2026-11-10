@@ -276,6 +276,7 @@ struct UserProfileSheet: View {
                         if let status = diddy?.status, status != .invisible {
                             Text(status.title).font(.caption).foregroundStyle(Theme.muted)
                         }
+                        AgentTalkingProfileBadge(userId: userId)
                         if let group = member?.group, group != .member {
                             Text(group == .owner ? "Owner" : String(group.title.dropLast()))
                                 .font(.caption.weight(.semibold))

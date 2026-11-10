@@ -176,6 +176,16 @@ private struct ConnectedVoiceView: View {
     }
 
     private var controls: some View {
+        VStack(spacing: 12) {
+            AgentVoiceButton(session: session)
+            controlRow
+        }
+        .padding(.vertical, 14)
+        .frame(maxWidth: .infinity)
+        .background(Theme.sidebar)
+    }
+
+    private var controlRow: some View {
         HStack(spacing: 10) {
             ControlButton(icon: session.speakerOn ? "speaker.wave.2.fill" : "speaker.fill", label: session.speakerOn ? "Use earpiece" : "Use speaker", active: session.speakerOn) {
                 session.toggleSpeaker()
@@ -196,9 +206,6 @@ private struct ConnectedVoiceView: View {
                 Task { await calls.leave() }
             }
         }
-        .padding(.vertical, 14)
-        .frame(maxWidth: .infinity)
-        .background(Theme.sidebar)
     }
 }
 
@@ -245,6 +252,9 @@ private struct ParticipantTile: View {
             RoundedRectangle(cornerRadius: 12)
                 .stroke(member.isSpeaking && member.microphoneOn ? Theme.online : .clear, lineWidth: 3)
         )
+        .overlay(alignment: .topLeading) {
+            if member.talkingToAgent { AgentTalkingBadge(compact: true).padding(8) }
+        }
         .overlay(alignment: .bottomLeading) {
             HStack(spacing: 4) {
                 if member.isConnecting {
