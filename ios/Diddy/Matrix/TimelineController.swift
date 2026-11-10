@@ -35,6 +35,8 @@ struct MessageRow: Identifiable {
     var showsHeader: Bool
     var dayDivider: Date?
     let isPending: Bool
+    /// Structured card of a bot message (`dev.diddy.card`); the plain text stays in `body`.
+    var card: BotCard? = nil
 }
 
 @MainActor
@@ -260,6 +262,7 @@ final class TimelineController: ObservableObject {
         let body: MessageRow.Body
         var edited = false
         var reply: (sender: String, text: String)?
+        var card: BotCard?
         switch event.content {
         case .msgLike(let content):
             if let details = content.inReplyTo, case .ready(let replied, let sender, let profile, _, _) = details.event() {
@@ -271,6 +274,9 @@ final class TimelineController: ObservableObject {
             case .message(let message):
                 edited = message.isEdited
                 body = Self.body(of: message)
+                let inspection = BotCardLookup.inspect(event, id: id, message: message)
+                if inspection.hidden { return nil }
+                card = inspection.card
             case .sticker(let text, let info, let source):
                 body = .image(source, filename: text, width: info.width.map { CGFloat($0) }, height: info.height.map { CGFloat($0) })
             case .redacted:
@@ -309,7 +315,8 @@ final class TimelineController: ObservableObject {
             reactions: reactions,
             showsHeader: true,
             dayDivider: nil,
-            isPending: !event.isRemote
+            isPending: !event.isRemote,
+            card: card
         )
     }
 
