@@ -20,8 +20,10 @@ struct DiddyNameplateBackdrop: View {
     @State private var picture: UIImage?
     @State private var videoURL: URL?
     @State private var flowing = false
+    /// Settings > Chat > Nameplates; off shows a still picture.
+    @AppStorage(AvatarPrefs.nameplatesKey) private var nameplatesMove = true
 
-    private var animate: Bool { !reduceMotion && !ProcessInfo.processInfo.isLowPowerModeEnabled }
+    private var animate: Bool { nameplatesMove && !reduceMotion && !ProcessInfo.processInfo.isLowPowerModeEnabled }
 
     var body: some View {
         ZStack {
@@ -43,6 +45,7 @@ struct DiddyNameplateBackdrop: View {
         .allowsHitTesting(false)
         .accessibilityHidden(true)
         .task(id: plate) { await loadMedia() }
+        .onChange(of: nameplatesMove) { _ in Task { await loadMedia() } }
     }
 
     @ViewBuilder

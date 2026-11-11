@@ -212,10 +212,12 @@ struct DiddyProfileEffectOverlay: View {
     let effect: DiddyProfileEffect
     let account: MatrixAccount
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Settings > Chat > Profile effects; off shows the still picture.
+    @AppStorage(AvatarPrefs.profileEffectsKey) private var effectsMove = true
 
     var body: some View {
         GeometryReader { proxy in
-            switch effect.resolved(animate: diddyMayAnimate(reduceMotion: reduceMotion)) {
+            switch effect.resolved(animate: effectsMove && diddyMayAnimate(reduceMotion: reduceMotion)) {
             case let .preset(id, moving)?:
                 DiddyEffectParticles(id: id, animate: moving)
             case let .layers(layers)?:
@@ -529,6 +531,8 @@ struct DiddyProfileFrameBox<Content: View>: View {
     let available: CGFloat
     var cornerRadius: CGFloat = 16
     let content: Content
+    /// Settings > Chat > Profile frames; off draws none.
+    @AppStorage(AvatarPrefs.profileFramesKey) private var showFrames = true
 
     init(frame: DiddyProfileFrame?, account: MatrixAccount, available: CGFloat, cornerRadius: CGFloat = 16,
          @ViewBuilder content: () -> Content) {
@@ -540,7 +544,7 @@ struct DiddyProfileFrameBox<Content: View>: View {
     }
 
     var body: some View {
-        let resolved = frame?.resolved
+        let resolved = showFrames ? frame?.resolved : nil
         let geometry = resolved?.geometry ?? DiddyProfileFrame.Geometry()
         let factors = DiddyProfileFrame.factors(geometry)
         let width = CGFloat(DiddyProfileFrame.cardWidth(available: Double(max(0, available)), geometry: geometry))
