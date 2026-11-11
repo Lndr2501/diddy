@@ -19,6 +19,9 @@ struct PluginCardView: View {
     let plugin: UserPlugin?
     var previewHtml: String?
     var showsTitle = true
+    var compact = false
+    var dockHeight = 96.0
+    var dockZoom = 1.0
     @Environment(\.colorScheme) private var scheme
     @ObservedObject private var store = PluginStore.shared
     @StateObject private var host = PluginHost()
@@ -39,8 +42,13 @@ struct PluginCardView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Reload")
             }
-            PluginWebContainer(webView: host.webView)
-                .frame(height: host.height)
+            GeometryReader { geometry in
+                PluginWebContainer(webView: host.webView)
+                    .frame(width: geometry.size.width / (compact ? dockZoom : 1), height: host.height)
+                    .scaleEffect(compact ? dockZoom : 1, anchor: .topLeading)
+            }
+                .frame(height: compact ? min(host.height, dockHeight) * dockZoom : host.height)
+                .clipped()
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .overlay(alignment: .topTrailing) {
                     if !host.isReady && !host.isSilent && !host.crashed { ProgressView().padding(8) }
@@ -64,6 +72,7 @@ struct PluginCardView: View {
         guard !started else { return }
         started = true
         host.theme = themeName
+        host.compact = compact
         host.customCss = plugin?.customCss
         host.log = { DiagLog.shared.write("plugin: \($0)") }
         host.openLink = { UIApplication.shared.open($0) }
@@ -91,6 +100,7 @@ struct PluginsPanelView: View {
                 VStack(spacing: 12) {
                     ForEach(store.activePlugins) { plugin in
                         PluginCardView(plugin: plugin)
+                        PluginDockControls(plugin: plugin)
                     }
                     if store.activePlugins.isEmpty {
                         Text("No plugins are turned on. Add some in Settings > Plugins.")

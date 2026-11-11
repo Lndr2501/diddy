@@ -56,6 +56,8 @@ struct SettingsView: View {
                     }
                 }
 
+                Section { NavigationLink("Welcome guide") { DiddyWelcomeView(account: account, onFinish: { dismiss() }) } }
+
                 ThemeSection()
 
                 Section {

@@ -736,6 +736,7 @@ private struct ImageViewer: View {
                 }
                 .accessibilityLabel("Close")
                 Spacer()
+                SaveImageButton(image: image)
                 ShareLink(item: Image(uiImage: image), preview: SharePreview("Image", image: Image(uiImage: image))) {
                     Image(systemName: "square.and.arrow.up").font(.headline).frame(width: 44, height: 44)
                 }
@@ -779,6 +780,7 @@ private struct ChannelIntro: View {
 }
 
 struct MessageRowView: View {
+    @EnvironmentObject private var navigator: AppNavigator
     let row: MessageRow
     /// The account this timeline belongs to; its client loads the avatars and images.
     let account: MatrixAccount
@@ -906,6 +908,15 @@ struct MessageRowView: View {
                 .foregroundStyle(Theme.text)
                 .textSelection(.enabled)
                 .environment(\.openURL, OpenURLAction { url in
+                    switch MatrixToLink.parse(url.absoluteString) {
+                    case .room(let address, let via):
+                        navigator.shellLink = ShellRoomLink(address: address, via: via)
+                        return .handled
+                    case .event(let address, let eventId, let via):
+                        navigator.shellLink = ShellRoomLink(address: address, via: via, eventId: eventId)
+                        return .handled
+                    default: break
+                    }
                     guard let userId = MentionText.userId(in: url) else { return .systemAction }
                     onMention(userId)
                     return .handled

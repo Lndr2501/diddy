@@ -14,6 +14,7 @@ final class AppNavigator: ObservableObject {
         didSet { UserDefaults.standard.set(server, forKey: "diddy.lastServer") }
     }
     @Published var destination: Destination?
+    @Published var shellLink: ShellRoomLink?
     @Published var searchTarget: SearchEventTarget?
 
     init() { server = UserDefaults.standard.string(forKey: "diddy.lastServer") }
@@ -33,6 +34,8 @@ struct MainView: View {
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var navigator = AppNavigator()
     @State private var showSettings = false
+    @State private var showQuickSwitch = false
+    @State private var showWelcome = false
     @ObservedObject private var themes = ThemeStore.shared
 
     var body: some View {
@@ -80,7 +83,10 @@ struct MainView: View {
         } message: {
             Text(calls.error ?? "")
         }
-        .task { await account.loadAllChannels() }
+        .task {
+            account.diddyOptionsRooms.formUnion(UserDefaults.standard.stringArray(forKey: "diddy.lightOptionsRooms.\(account.id)") ?? [])
+            await account.loadAllChannels()
+        }
         // Nameplates, name styles and badges of everyone; again once the room list has arrived.
         .task(id: account.rooms.isEmpty) { await account.loadDiddyProfiles() }
         .onChange(of: account.spaces.map(\.roomId)) { ids in
@@ -95,10 +101,42 @@ struct MainView: View {
         }
         // Online status of DM partners and others, and your own (PresenceViews.swift).
         .presenceUpdates(account: account)
+        .background(shortcuts)
+        .sheet(isPresented: $showQuickSwitch) { QuickSwitchView(account: account).environmentObject(navigator) }
+        .sheet(isPresented: $showWelcome, onDismiss: finishWelcome) { DiddyWelcomeView(account: account, onFinish: { finishWelcome(); showWelcome = false }) }
+        .sheet(item: $navigator.shellLink) { ShellJoinRoomView(account: account, link: $0).environmentObject(navigator) }
+        .task(id: account.id) { showWelcome = !UserDefaults.standard.bool(forKey: "diddy.welcome.done.\(account.id)") }
     }
 }
 
 extension MainView {
+    private func finishWelcome() { UserDefaults.standard.set(true, forKey: "diddy.welcome.done.\(account.id)") }
+    private var shortcuts: some View {
+        Group {
+            Button("Close sheet") {
+                showSettings = false; showQuickSwitch = false; showWelcome = false
+                navigator.shellLink = nil
+                let scene = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first { $0.activationState == .foregroundActive }
+                var controller = scene?.windows.first { $0.isKeyWindow }?.rootViewController
+                while let presented = controller?.presentedViewController { controller = presented }
+                if controller?.presentingViewController != nil { controller?.dismiss(animated: true) }
+            }.keyboardShortcut(.cancelAction)
+            Button("Quick switcher") { showQuickSwitch = true }.keyboardShortcut("k", modifiers: .command)
+            Button("Settings") { showSettings = true }.keyboardShortcut(",", modifiers: .command)
+            Button("Previous room") { moveRoom(-1) }.keyboardShortcut(.upArrow, modifiers: .command)
+            Button("Next room") { moveRoom(1) }.keyboardShortcut(.downArrow, modifiers: .command)
+        }.hidden()
+    }
+    private func moveRoom(_ step: Int) {
+        let ids: [String]
+        if let server = navigator.server {
+            ids = (account.categories[server] ?? []).flatMap { $0.channels }.filter { account.isJoined($0) }.map(\.roomId)
+        } else { ids = (account.directMessages + account.roomsOutsideServers).map(\.id) }
+        let current: String?
+        switch navigator.destination { case .text(let id)?, .voice(let id)?: current = id; case nil: current = nil }
+        if let next = ShellNavigation.neighbor(of: current, in: ids, step: step) { navigator.open(next, account: account) }
+    }
+
     /// A tapped notification for this account.
     private func openRequestedRoom() {
         guard let request = app.openRequest, request.accountId == account.id else { return }
@@ -229,14 +267,8 @@ struct ChannelSidebar: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            if account.syncState == .error || account.syncState == .offline {
-                Label("Reconnecting…", systemImage: "wifi.exclamationmark")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 5)
-                    .background(Theme.danger)
-            }
+            ShellSyncBanner(account: account)
+            ShellUpdateNotice()
             if account.needsRecovery {
                 Button { showRecovery = true } label: {
                     Label("Verify this device to read encrypted messages", systemImage: "lock.shield")
@@ -270,6 +302,8 @@ struct ChannelSidebar: View {
             if let call = calls.current {
                 VoiceStatusBar(session: call)
             }
+            DiddyServerNotice(account: account)
+            PluginDockView()
             UserPanel(account: account, showSettings: $showSettings)
         }
         .background(Theme.sidebar)
@@ -677,15 +711,10 @@ struct UserPanel: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            AvatarView(url: account.avatarUrl, name: account.title, size: 34, account: account)
-                .overlay(alignment: .bottomTrailing) {
-                    Circle().fill(account.syncState == .running ? Theme.online : Theme.faint)
-                        .frame(width: 11, height: 11)
-                        .overlay(Circle().stroke(Theme.rail, lineWidth: 2))
-                }
+            OwnStatusMenu(account: account)
             VStack(alignment: .leading, spacing: 1) {
                 Text(account.title).font(.subheadline.weight(.semibold)).foregroundStyle(Theme.text).lineLimit(1)
-                Text(account.record.serverName).font(.caption2).foregroundStyle(Theme.faint).lineLimit(1)
+                Text(OwnStatusOptions.info(account.diddyProfiles[account.userId]?.status?.rawValue).shownLabel).font(.caption2).foregroundStyle(Theme.faint).lineLimit(1)
             }
             Spacer()
             PluginsPanelButton()
