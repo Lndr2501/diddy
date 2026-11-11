@@ -12,6 +12,7 @@ import { EventType } from 'matrix-js-sdk';
 import classNames from 'classnames';
 import { Avatar, Box, Button, Icon, IconButton, Icons, Scroll, Switch, Text, toRem } from 'folds';
 import { Page } from '../../../components/page';
+import { canInvoke, saveTextFileAs } from '../../../plugins/tauri';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { useUserProfile } from '../../../hooks/useUserProfile';
 import { useUserPresence } from '../../../hooks/useUserPresence';
@@ -655,15 +656,27 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
   // export / import of the customization as a file (#157)
   const importInput = useRef<HTMLInputElement>(null);
   const [transfer, setTransfer] = useState<{ tone: 'error' | 'success'; text: string }>();
-  const handleExport = () => {
-    FileSaver.saveAs(
-      new Blob([exportProfile(draft)], { type: 'application/json' }),
-      PROFILE_FILE_NAME
-    );
-    setTransfer({
-      tone: 'success',
-      text: `Saved ${PROFILE_FILE_NAME} with your current editor settings.`,
-    });
+  const handleExport = async () => {
+    const text = exportProfile(draft);
+    try {
+      if (!canInvoke()) {
+        // plain browser: the browser's own download
+        FileSaver.saveAs(new Blob([text], { type: 'application/json' }), PROFILE_FILE_NAME);
+        setTransfer({ tone: 'success', text: `Saved ${PROFILE_FILE_NAME}.` });
+        return;
+      }
+      // desktop app: the user picks the folder and the name
+      const path = await saveTextFileAs(PROFILE_FILE_NAME, text, {
+        name: 'Diddy profile',
+        extensions: ['json'],
+      });
+      if (path) setTransfer({ tone: 'success', text: `Saved to ${path}` });
+    } catch (e) {
+      setTransfer({
+        tone: 'error',
+        text: e instanceof Error ? e.message : 'The file could not be saved.',
+      });
+    }
   };
   const handleImportFile = async (file: File | undefined) => {
     if (!file) return;
@@ -1454,7 +1467,9 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
                       radii="300"
                       before={<Icon size="100" src={Icons.Download} />}
                       disabled={saving}
-                      onClick={handleExport}
+                      onClick={() => {
+                        handleExport();
+                      }}
                     >
                       <Text size="B400">Export</Text>
                     </Button>

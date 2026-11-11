@@ -71,7 +71,17 @@ export const visibleHomeserver = (value: string): string => {
   }
 };
 
-export type ConnectionRow = { id: string; title: string; hint: string; current: boolean };
+export type ConnectionRow = {
+  id: string;
+  title: string;
+  hint: string;
+  current: boolean;
+  /** Matrix ID signed in in that window, once the window has told the app (#156) */
+  user?: string;
+};
+
+/** Window id (`main` or a profile id) -> the Matrix ID signed in there. */
+export type AccountLabels = Record<string, string>;
 
 /**
  * The windows that can be opened: the original login first, then every saved connection.
@@ -79,21 +89,42 @@ export type ConnectionRow = { id: string; title: string; hint: string; current: 
  */
 export const buildConnectionRows = (
   profiles: ConnectionProfile[],
-  currentId: string | undefined
-): ConnectionRow[] => [
-  {
-    id: 'main',
-    title: 'Ursprüngliches Fenster',
-    hint: 'Deine bisherige Anmeldung',
-    current: currentId === undefined,
-  },
-  ...profiles.map((profile) => ({
-    id: profile.id,
-    title: visibleHomeserver(profile.server),
-    hint: `Eigene Anmeldung · ${profile.id.slice(0, 6)}`,
-    current: profile.id === currentId,
-  })),
-];
+  currentId: string | undefined,
+  labels: AccountLabels = {}
+): ConnectionRow[] => {
+  const rows: ConnectionRow[] = [
+    {
+      id: 'main',
+      title: 'Ursprüngliches Fenster',
+      hint: 'Deine bisherige Anmeldung',
+      current: currentId === undefined,
+    },
+    ...profiles.map((profile) => ({
+      id: profile.id,
+      title: visibleHomeserver(profile.server),
+      hint: `Eigene Anmeldung · ${profile.id.slice(0, 6)}`,
+      current: profile.id === currentId,
+    })),
+  ];
+  return rows.map((row) => (labels[row.id] ? { ...row, user: labels[row.id] } : row));
+};
+
+export const listAccountLabels = (): Promise<AccountLabels> => invoke('account_labels');
+
+let recordedAccount: string | undefined;
+/**
+ * Tells the app who is signed in in this window (#156), so the settings list of accounts can name
+ * the login of every window. Sent once per user id; does nothing outside the desktop app.
+ */
+export const recordAccount = (userId: string): void => {
+  if (recordedAccount === userId) return;
+  recordedAccount = userId;
+  invoke('set_account_label', { id: getConnectionProfile()?.id ?? 'main', user: userId }).catch(
+    () => {
+      recordedAccount = undefined; // try again at the next opportunity
+    }
+  );
+};
 
 export const listConnections = (): Promise<ConnectionProfile[]> => invoke('connection_profiles');
 export const openConnection = (id: string): Promise<void> =>

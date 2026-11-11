@@ -473,6 +473,8 @@ pub fn run() {
             connections::connection_profiles,
             connections::open_connection_profile,
             connections::remove_connection_profile,
+            connections::account_labels,
+            connections::set_account_label,
             agent_voice::agent_voice_state,
             updater::updater_state,
             updater::updater_action,

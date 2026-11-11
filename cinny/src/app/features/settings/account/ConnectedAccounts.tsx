@@ -1,10 +1,13 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Button, Text } from 'folds';
 import { canInvoke } from '../../../plugins/tauri';
+import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import {
+  AccountLabels,
   buildConnectionRows,
   ConnectionRow,
   getConnectionProfile,
+  listAccountLabels,
   listConnections,
   openConnection,
   removeConnection,
@@ -25,24 +28,42 @@ const errorText = (err: unknown, fallback: string): string => {
  */
 export function ConnectedAccounts() {
   const desktop = canInvoke();
+  const mx = useMatrixClient();
+  const myId = mx.getUserId() ?? undefined;
+  // this window's own account is known right here; the others were reported by their windows
+  const withMe = useCallback(
+    (labels: AccountLabels): AccountLabels => {
+      const me = getConnectionProfile()?.id ?? 'main';
+      return myId ? { ...labels, [me]: myId } : labels;
+    },
+    [myId]
+  );
   const [rows, setRows] = useState<ConnectionRow[]>(() =>
-    buildConnectionRows([], getConnectionProfile()?.id)
+    buildConnectionRows([], getConnectionProfile()?.id, withMe({}))
   );
   const [error, setError] = useState<string>();
   const [armed, setArmed] = useState<string>();
   const [add, setAdd] = useState(false);
   const busy = useRef(false);
 
+  const load = useCallback(async () => {
+    const [profiles, labels] = await Promise.all([
+      listConnections(),
+      listAccountLabels().catch((): AccountLabels => ({})),
+    ]);
+    return buildConnectionRows(profiles, getConnectionProfile()?.id, withMe(labels));
+  }, [withMe]);
+
   const reload = useCallback(async () => {
-    setRows(buildConnectionRows(await listConnections(), getConnectionProfile()?.id));
-  }, []);
+    setRows(await load());
+  }, [load]);
 
   useEffect(() => {
     if (!desktop) return undefined;
     let active = true;
-    listConnections().then(
-      (profiles) => {
-        if (active) setRows(buildConnectionRows(profiles, getConnectionProfile()?.id));
+    load().then(
+      (next) => {
+        if (active) setRows(next);
       },
       () => {
         if (active) setError('The account list could not be loaded. Your account is unchanged.');
@@ -51,7 +72,7 @@ export function ConnectedAccounts() {
     return () => {
       active = false;
     };
-  }, [desktop]);
+  }, [desktop, load]);
 
   const run = async (operation: () => Promise<void>, fallback: string) => {
     if (busy.current) return;
@@ -98,8 +119,10 @@ export function ConnectedAccounts() {
         {rows.map((row) => (
           <InsetRow
             key={row.id}
-            title={row.title}
-            description={row.current ? 'This window' : row.hint}
+            title={row.user ?? row.title}
+            description={[row.user ? row.title : undefined, row.current ? 'This window' : row.hint]
+              .filter(Boolean)
+              .join(' · ')}
             after={
               desktop && !row.current ? (
                 <>

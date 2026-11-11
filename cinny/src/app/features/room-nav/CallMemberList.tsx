@@ -14,6 +14,7 @@ import { openCallUserMenu } from '../../plugins/callFrameMenu';
 import { readCallStage } from '../../plugins/call/callStage';
 import { CallControlEvent } from '../../plugins/call/CallControl';
 import { callEmbedAtom } from '../../state/callEmbed';
+import { speakingUsersAtom } from '../../state/speakingUsers';
 import * as css from './styles.css';
 
 type CallMemberListProps = {
@@ -89,6 +90,8 @@ export function CallMemberList({ room, members }: CallMemberListProps) {
   const openUserProfile = useOpenUserRoomProfile();
   const { muted: mutedUsers, deafened } = useCallAudioState(room.roomId);
   const myId = mx.getUserId();
+  // who talks right now (held briefly, so the ring does not flicker between words)
+  const speakingUsers = useAtomValue(speakingUsersAtom);
 
   const shown = members.filter((m) => !!m.userId);
   if (shown.length === 0) return null;
@@ -121,7 +124,12 @@ export function CallMemberList({ room, members }: CallMemberListProps) {
               )
             }
           >
-            <Avatar size="200" radii="Pill" className={css.CallMemberRowAvatar}>
+            <Avatar
+              size="200"
+              radii="Pill"
+              className={css.CallMemberRowAvatar}
+              data-speaking={speakingUsers.has(userId)}
+            >
               <UserAvatar
                 surface="call"
                 userId={userId}
