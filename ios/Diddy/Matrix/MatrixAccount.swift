@@ -101,6 +101,10 @@ final class MatrixAccount: ObservableObject, Identifiable {
     @Published private(set) var categories: [String: [ChannelCategory]] = [:]
     /// Rooms with their own notification setting (RoomPrefs.swift); the others follow the default.
     @Published var roomNotifyLevels: [String: RoomNotifyLevel] = [:]
+    /// The server rail in the order of the account data `in.cinny.spaces` (ServerManagement.swift).
+    @Published var railEntries: [RailEntry] = []
+    /// That account data as stored, so writing keeps what only desktop knows.
+    var railContent: [String: Any] = [:]
     @Published private(set) var syncState: SyncServiceState = .idle
     @Published private(set) var recoveryState: RecoveryState = .unknown
     @Published private(set) var verificationState: VerificationState = .unknown
@@ -217,6 +221,7 @@ final class MatrixAccount: ObservableObject, Identifiable {
         if syncState != .running { await syncService?.start() }
         await reloadSpaces()
         await loadAllChannels()
+        await refreshRail()
     }
 
     private func syncStateChanged(_ state: SyncServiceState) {
@@ -475,7 +480,7 @@ final class MatrixAccount: ObservableObject, Identifiable {
 
     // MARK: - Spaces ("servers")
 
-    private func reloadSpaces() async {
+    func reloadSpaces() async {
         guard let spaceService else { return }
         spaces = await spaceService.topLevelJoinedSpaces()
     }
@@ -715,11 +720,13 @@ final class MatrixAccount: ObservableObject, Identifiable {
         throw DiddyError("The room did not arrive from the server in time.")
     }
 
-    /// Leaving a server leaves its channels too, as on Discord.
-    func leaveServer(_ spaceId: String) async throws {
+    /// Leaves a server, and its channels too as on Discord unless `withChannels` is off (desktop
+    /// leaves only the server).
+    func leaveServer(_ spaceId: String, withChannels: Bool = true) async throws {
         guard let spaceService else { return }
         let handle = try await spaceService.leaveSpace(spaceId: spaceId)
-        try await handle.leave(roomIds: handle.rooms().map(\.spaceRoom.roomId))
+        let everything = handle.rooms().map(\.spaceRoom.roomId)
+        try await handle.leave(roomIds: withChannels ? (everything.contains(spaceId) ? everything : everything + [spaceId]) : [spaceId])
         categories[spaceId] = nil
         loadedServers.remove(spaceId)
         await reloadSpaces()
