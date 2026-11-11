@@ -92,6 +92,8 @@ struct MainView: View {
         .onChange(of: scenePhase) { phase in
             if phase == .active { Task { await account.resume() } }
         }
+        // Online status of DM partners and others, and your own (PresenceViews.swift).
+        .presenceUpdates(account: account)
     }
 }
 
@@ -631,6 +633,7 @@ struct RoomRow: View {
                 Image(systemName: icon).foregroundStyle(Theme.faint).frame(width: 20)
             } else {
                 AvatarView(url: room.avatarUrl, name: room.name, size: 32, account: account)
+                    .overlay(alignment: .bottomTrailing) { PresenceDot(userId: room.dmUserId, account: account, size: 10).offset(x: 2, y: 2) }
             }
             VStack(alignment: .leading, spacing: 1) {
                 HStack(spacing: 4) {

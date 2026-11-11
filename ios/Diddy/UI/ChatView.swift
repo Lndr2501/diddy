@@ -93,6 +93,7 @@ private struct ChatContent: View {
                 Button { showInfo = true } label: {
                     HStack(spacing: 6) {
                         Image(systemName: summary?.isDirect == true ? "at" : "number").foregroundStyle(Theme.faint)
+                            .overlay(alignment: .bottomTrailing) { PresenceDot(userId: summary?.dmUserId, account: account, size: 8, ring: Theme.chat, onDemand: true).offset(x: 3, y: 3) }
                         Text(title).font(.headline).foregroundStyle(Theme.text).lineLimit(1)
                         if summary?.isEncrypted == true {
                             Image(systemName: "lock.fill").font(.caption2).foregroundStyle(Theme.faint)

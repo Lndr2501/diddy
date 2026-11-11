@@ -200,7 +200,7 @@ struct PersonRow: View {
     var body: some View {
         HStack(spacing: 12) {
             AvatarView(url: avatarUrl, name: name, size: 36, account: account)
-                .overlay(alignment: .bottomTrailing) { DiddyStatusDot(status: diddy?.status, size: 11) }
+                .overlay(alignment: .bottomTrailing) { PresenceDot(userId: userId, account: account, size: 11).offset(x: 2, y: 2) }
             VStack(alignment: .leading, spacing: 1) {
                 HStack(spacing: 4) {
                     DiddyName(name: name, profile: diddy).lineLimit(1)
@@ -256,7 +256,7 @@ struct UserProfileSheet: View {
                             .clipShape(RoundedRectangle(cornerRadius: 14))
                         AvatarView(url: avatar, name: name, size: 96, account: account)
                             .overlay(Circle().stroke(Theme.sidebar, lineWidth: 5))
-                            .overlay(alignment: .bottomTrailing) { DiddyStatusDot(status: diddy?.status, size: 24) }
+                            .overlay(alignment: .bottomTrailing) { PresenceDot(userId: userId, account: account, size: 22, onDemand: true) }
                             .padding(.top, -48)
                     }
                     VStack(spacing: 4) {
@@ -266,9 +266,7 @@ struct UserProfileSheet: View {
                         }
                         .multilineTextAlignment(.center)
                         Text(userId).font(.footnote).foregroundStyle(Theme.muted).textSelection(.enabled)
-                        if let status = diddy?.status, status != .invisible {
-                            Text(status.title).font(.caption).foregroundStyle(Theme.muted)
-                        }
+                        PresenceLabel(userId: userId, account: account)
                         AgentTalkingProfileBadge(userId: userId)
                         if let group = member?.group, group != .member {
                             Text(group == .owner ? "Owner" : String(group.title.dropLast()))
