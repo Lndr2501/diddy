@@ -154,6 +154,81 @@ final class TimelineController: ObservableObject {
         }
     }
 
+    @Published private(set) var uploadingAttachment = false
+    private var attachmentHandle: SendAttachmentJoinHandle?
+    private var attachmentCancelled = false
+
+    func cancelAttachment() {
+        attachmentCancelled = true
+        attachmentHandle?.cancel()
+    }
+
+    /// Attachment APIs encrypt both the media and the event in encrypted rooms.
+    func sendAttachment(data: Data, filename: String, mime: String, caption: String, replyTo: EventOrTransactionId?) async -> Bool {
+        guard let timeline, !uploadingAttachment else { return false }
+        uploadingAttachment = true
+        attachmentCancelled = false
+        defer { uploadingAttachment = false; attachmentHandle = nil }
+        var replyId: String?
+        if case .eventId(let id)? = replyTo { replyId = id }
+        let params = UploadParameters(source: .data(bytes: data, filename: filename),
+                                      caption: caption.isEmpty ? nil : caption,
+                                      formattedCaption: nil, mentions: nil, inReplyTo: replyId, extraContentJson: nil)
+        do {
+            let handle: SendAttachmentJoinHandle
+            if mime.hasPrefix("image/"), let image = UIImage(data: data) {
+                let info = ImageInfo(height: UInt64(image.size.height * image.scale), width: UInt64(image.size.width * image.scale),
+                                     mimetype: mime, size: UInt64(data.count), thumbnailInfo: nil, thumbnailSource: nil,
+                                     blurhash: nil, isAnimated: mime == "image/gif")
+                handle = try timeline.sendImage(params: params, thumbnailSource: nil, imageInfo: info)
+            } else if mime.hasPrefix("video/") {
+                let info = VideoInfo(duration: nil, height: nil, width: nil, mimetype: mime, size: UInt64(data.count),
+                                     thumbnailInfo: nil, thumbnailSource: nil, blurhash: nil)
+                handle = try timeline.sendVideo(params: params, thumbnailSource: nil, videoInfo: info)
+            } else {
+                handle = try timeline.sendFile(params: params, fileInfo: FileInfo(mimetype: mime, size: UInt64(data.count), thumbnailInfo: nil, thumbnailSource: nil))
+            }
+            attachmentHandle = handle
+            try await handle.join()
+            return !attachmentCancelled
+        } catch {
+            if !attachmentCancelled { sendError = error.friendlyMessage }
+            return false
+        }
+    }
+
+    func editComposed(_ row: MessageRow, message: ComposedMessage) async -> Bool {
+        guard let timeline, let id = row.eventId else { return false }
+        let content = messageEventContentFromHtml(body: message.body, htmlBody: message.html ?? DesktopMarkdown.escapeHTML(message.body))
+            .withMentions(mentions: Mentions(userIds: message.mentionedUserIds, room: false))
+        do {
+            try await timeline.edit(eventOrTransactionId: id, newContent: .roomMessage(content: content))
+            return true
+        } catch { sendError = error.friendlyMessage; return false }
+    }
+
+    func sendComposed(_ message: ComposedMessage, command: SlashCommand?, replyTo: EventOrTransactionId?) async -> Bool {
+        guard let timeline else { return false }
+        do {
+            var content: RoomMessageEventContentWithoutRelation
+            if command == .notice {
+                let formatted = message.html.map { FormattedBody(format: .html, body: $0) }
+                content = try messageEventContentNew(msgtype: .notice(content: NoticeMessageContent(body: message.body, formatted: formatted)))
+            } else if command == .me {
+                let formatted = message.html.map { FormattedBody(format: .html, body: $0) }
+                content = try messageEventContentNew(msgtype: .emote(content: EmoteMessageContent(body: message.body, formatted: formatted)))
+            } else {
+                let formatted = message.html.map { FormattedBody(format: .html, body: $0) }
+                content = try messageEventContentNew(msgtype: .text(content: TextMessageContent(body: message.body, formatted: formatted)))
+            }
+            content = content.withMentions(mentions: Mentions(userIds: message.mentionedUserIds, room: false))
+            setTyping(false)
+            if case .eventId(let id)? = replyTo { _ = try await timeline.sendReply(msg: content, eventId: id) }
+            else { _ = try await timeline.send(msg: content) }
+            return true
+        } catch { sendError = error.friendlyMessage; return false }
+    }
+
     func sendImage(_ image: UIImage) async {
         guard let timeline, let data = image.jpegData(compressionQuality: 0.85) else { return }
         let info = ImageInfo(

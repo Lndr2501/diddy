@@ -2,6 +2,7 @@ import MatrixRustSDK
 import PhotosUI
 import QuickLook
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct ChatView: View {
     @ObservedObject var account: MatrixAccount
@@ -47,7 +48,19 @@ private struct ChatContent: View {
     @State private var draft = ""
     @State private var replyTo: MessageRow?
     @State private var editing: MessageRow?
-    @State private var photo: PhotosPickerItem?
+    @State private var photos: [PhotosPickerItem] = []
+    @State private var showPhotos = false
+    @State private var showFiles = false
+    @State private var showCamera = false
+    @State private var showEmoji = false
+    @State private var packs: [ImagePack] = []
+    @State private var tokens: [String: ComposerToken] = [:]
+    @State private var selection = NSRange(location: 0, length: 0)
+    @State private var restoredReplyId: String?
+    @State private var pendingFiles: [ComposerPendingFile] = []
+    @State private var attachmentCaption = ""
+    @State private var sending = false
+    @State private var draftLoaded = false
     @StateObject private var recorder = VoiceRecorder()
     @State private var showMembers = false
     @State private var showInfo = false
@@ -139,23 +152,66 @@ private struct ChatContent: View {
         .alert("Message", isPresented: Binding(get: { controller.sendError != nil }, set: { if !$0 { controller.sendError = nil } })) {
             Button("OK", role: .cancel) {}
         } message: { Text(controller.sendError ?? "") }
-        .onChange(of: photo) { item in
-            guard let item else { return }
-            Task {
-                if let data = try? await item.loadTransferable(type: Data.self), let image = UIImage(data: data) {
-                    await controller.sendImage(image)
+        .photosPicker(isPresented: $showPhotos, selection: $photos, maxSelectionCount: 20, matching: .any(of: [.images, .videos]))
+        .fileImporter(isPresented: $showFiles, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
+            switch result {
+            case .success(let urls): Task { await addFiles(urls, images: []) }
+            case .failure(let error): controller.sendError = error.localizedDescription
+            }
+        }
+        .sheet(isPresented: $showCamera) { ComposerCamera { image in Task { await addFiles([], images: [image]) } } }
+        .sheet(isPresented: $showEmoji) {
+            ComposerEmojiPicker(account: account, packs: packs, onEmoji: { emoji in insertText(emoji); showEmoji = false }, onCustom: { image, sticker in
+                showEmoji = false
+                if sticker {
+                    Task {
+                        do {
+                            let content: [String: Any] = ["body": image.body ?? image.shortcode, "url": image.url,
+                                "info": ["w": image.width ?? 256, "h": image.height ?? 256, "mimetype": image.mimetype ?? "image/png"]]
+                            let data = try JSONSerialization.data(withJSONObject: content)
+                            _ = try await controller.room.sendRaw(eventType: "m.sticker", content: String(decoding: data, as: UTF8.self))
+                        } catch { controller.sendError = error.friendlyMessage }
+                    }
+                } else {
+                    let key = ":" + image.shortcode + ":"
+                    tokens[key] = .emoticon(mxc: image.url, shortcode: image.shortcode)
+                    insertText(key)
                 }
-                photo = nil
+            })
+        }
+        .onChange(of: photos) { items in
+            Task {
+                for item in items {
+                    do {
+                        guard let data = try await item.loadTransferable(type: Data.self) else { continue }
+                        let type = item.supportedContentTypes.first ?? .data
+                        await addData(data, name: "attachment." + (type.preferredFilenameExtension ?? "bin"), mime: type.preferredMIMEType ?? "application/octet-stream")
+                    } catch { controller.sendError = error.friendlyMessage }
+                }
+                photos = []
             }
         }
         .onChange(of: draft) { text in
             controller.setTyping(!text.isEmpty && editing == nil)
+            saveDraft()
         }
-        .onAppear { Sounds.shared.openRoomId = roomId }
+        .onChange(of: replyTo?.id) { _ in saveDraft() }
+        .onAppear {
+            Sounds.shared.openRoomId = roomId
+            if !draftLoaded {
+                if let saved = ComposerDraftStore.load(accountId: account.id, roomId: roomId) {
+                    draft = saved.text; tokens = saved.tokens; restoredReplyId = saved.replyEventId
+                    selection = NSRange(location: (draft as NSString).length, length: 0)
+                }
+                draftLoaded = true
+            }
+        }
         .onDisappear {
+            saveDraft()
             controller.setTyping(false)
             if Sounds.shared.openRoomId == roomId { Sounds.shared.openRoomId = nil }
         }
+        .task { packs = await ComposerServices.packs(account: account, roomId: roomId) }
         .task {
             await account.loadDiddyProfiles()
             await memberStore.load(account: account, roomId: roomId)
@@ -284,6 +340,7 @@ private struct ChatContent: View {
 
     private func reply(to row: MessageRow) {
         replyTo = row
+        restoredReplyId = nil
         editing = nil
         composerFocused = true
     }
@@ -356,6 +413,8 @@ private struct ChatContent: View {
         guard let at = draft.lastIndex(of: "@") else { return }
         draft = String(draft[..<at]) + "@\(member.name) "
         mentions[member.name] = member.userId
+        selection = NSRange(location: (draft as NSString).length, length: 0)
+        saveDraft()
     }
 
     private var composer: some View {
@@ -374,6 +433,37 @@ private struct ChatContent: View {
                 }
                 .background(Theme.elevated)
             }
+            composerSuggestions
+            if !pendingFiles.isEmpty {
+                VStack(alignment: .leading) {
+                    ForEach(pendingFiles) { file in
+                        HStack {
+                            Text(file.name).lineLimit(1)
+                            Text(ComposerSize.text(Int64(file.data.count))).font(.caption)
+                            Button { pendingFiles.removeAll { $0.id == file.id } } label: { Image(systemName: "xmark.circle") }.disabled(sending)
+                        }
+                    }
+                    TextField("Caption (optional)", text: $attachmentCaption)
+                    if controller.uploadingAttachment {
+                        HStack { ProgressView(); Text("Uploading…"); Button("Cancel") { controller.cancelAttachment() } }
+                    }
+                }.padding(12)
+            }
+            if ChatSettings.editorToolbar {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack {
+                        ForEach(ComposerFormat.allCases) { format in
+                            Button(format.title) {
+                                let result = format.apply(to: draft, selection: selection)
+                                draft = result.text; selection = result.selection
+                            }.font(.caption).padding(6)
+                        }
+                    }.padding(.horizontal, 12)
+                }
+            }
+            if replyTo == nil, restoredReplyId != nil {
+                composerContext(Text("Replying to saved message")) { restoredReplyId = nil; saveDraft() }
+            }
             if let replyTo {
                 composerContext(Text("Replying to ").foregroundColor(Theme.muted) + Text(replyTo.senderName).bold().foregroundColor(Theme.text)) {
                     self.replyTo = nil
@@ -387,27 +477,33 @@ private struct ChatContent: View {
             }
             HStack(alignment: .bottom, spacing: 10) {
                 if editing == nil {
-                    PhotosPicker(selection: $photo, matching: .images) {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 26))
-                            .foregroundStyle(Theme.muted)
-                            .frame(width: 36, height: 36)
+                    Menu {
+                        Button("Photos and videos") { showPhotos = true }
+                        Button("Files") { showFiles = true }
+                        if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                            Button("Camera") { showCamera = true }
+                        }
+                    } label: {
+                        Image(systemName: "plus.circle.fill").font(.system(size: 26)).foregroundStyle(Theme.muted)
                     }
-                    .accessibilityLabel("Send a photo")
+                    Button { showEmoji = true } label: { Image(systemName: "face.smiling").font(.system(size: 22)) }
                 }
-                TextField("Message \(summary?.isDirect == true ? "@" : "#")\(title)", text: $draft, axis: .vertical)
-                    .lineLimit(1...6)
-                    .focused($composerFocused)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 9)
+                ComposerEditor(text: $draft, selection: $selection, isFocused: composerFocused, onFocus: { composerFocused = $0 }, onSend: send, onFiles: { urls, images in
+                    Task { await addFiles(urls, images: images) }
+                })
+                    .frame(height: min(140, max(38, CGFloat(draft.components(separatedBy: "\n").count) * 22 + 16)))
+                    .overlay(alignment: .leading) {
+                        if draft.isEmpty { Text("Message \(title)").foregroundStyle(Theme.muted).padding(.leading, 10).allowsHitTesting(false) }
+                    }
                     .background(RoundedRectangle(cornerRadius: 20).fill(Theme.input))
-                if !trimmedDraft.isEmpty {
+                if !trimmedDraft.isEmpty || !pendingFiles.isEmpty {
                     Button(action: send) {
                         Image(systemName: editing == nil ? "paperplane.fill" : "checkmark")
                             .foregroundStyle(Theme.onAccent)
                             .frame(width: 36, height: 36)
                             .background(Circle().fill(Theme.accent))
                     }
+                    .disabled(sending)
                     .accessibilityLabel(editing == nil ? "Send" : "Save edit")
                 } else if editing == nil {
                     VoiceMicButton(recorder: recorder)
@@ -422,9 +518,11 @@ private struct ChatContent: View {
 
     private func sendVoice() async {
         guard let recording = recorder.stop() else { return }
-        let reply = replyTo?.eventId
-        replyTo = nil
-        if !(await controller.sendVoice(recording, inReplyTo: reply)) { recorder.restore(recording) }
+        var reply = replyTo?.eventId
+        if reply == nil, let id = restoredReplyId { reply = .eventId(eventId: id) }
+        if await controller.sendVoice(recording, inReplyTo: reply) {
+            replyTo = nil; restoredReplyId = nil; saveDraft()
+        } else { recorder.restore(recording) }
     }
 
     private func composerContext(_ text: Text, cancel: @escaping () -> Void) -> some View {
@@ -442,26 +540,121 @@ private struct ChatContent: View {
     }
 
     private func send() {
-        var text = draft
-        // Picked mentions become real links, so they highlight and notify the person.
-        // Longest names first, so "@Lu" does not eat the start of "@Luis".
-        var mentioned: [String] = []
-        for (name, userId) in mentions.sorted(by: { $0.key.count > $1.key.count }) where text.contains("@\(name)") {
-            text = text.replacingOccurrences(of: "@\(name)", with: "[\(MentionText.escaped(name))](\(MentionText.link(to: userId)))")
-            if !mentioned.contains(userId) { mentioned.append(userId) }
-        }
-        let reply = replyTo?.eventId
+        guard !sending, !trimmedDraft.isEmpty || !pendingFiles.isEmpty else { return }
+        let original = draft
+        var allTokens = tokens
+        for (name, id) in mentions { allTokens["@" + name] = .user(id: id) }
+        let command = editing == nil ? SlashCommand.command(in: draft) : nil
+        var reply = replyTo?.eventId
+        if reply == nil, let id = restoredReplyId { reply = .eventId(eventId: id) }
         let edited = editing
-        draft = ""
-        replyTo = nil
-        editing = nil
-        mentions = [:]
+        let message = ComposerFormatter.message(from: draft, tokens: allTokens, markdown: ChatSettings.markdown,
+            command: command?.sendsMessage == true ? command : nil, isReply: reply != nil,
+            replyUserId: replyTo?.sender, ownUserId: account.userId)
+        let files = pendingFiles
+        let caption = attachmentCaption.isEmpty ? original : attachmentCaption
+        sending = true
         Task {
-            if let edited {
-                await controller.edit(edited, text: text, mentions: mentioned)
-            } else {
-                await controller.send(text: text, replyTo: reply, mentions: mentioned)
+            var success = true
+            if !files.isEmpty {
+                for file in files {
+                    if await controller.sendAttachment(data: file.data, filename: file.name, mime: file.mime, caption: caption, replyTo: reply) {
+                        pendingFiles.removeAll { $0.id == file.id }
+                    } else { success = false; break }
+                }
+            } else if let command, !command.sendsMessage {
+                do { try await ComposerServices.run(command, draft: original, account: account, roomId: roomId) }
+                catch { controller.sendError = error.friendlyMessage; success = false }
+            } else if let edited {
+                if let message { success = await controller.editComposed(edited, message: message) }
+            } else if let message {
+                success = await controller.sendComposed(message, command: command, replyTo: reply)
             }
+            if success, draft == original {
+                draft = ""; mentions = [:]; tokens = [:]; replyTo = nil; restoredReplyId = nil; editing = nil
+                attachmentCaption = ""; selection = NSRange(location: 0, length: 0)
+                saveDraft()
+            }
+            sending = false
+        }
+    }
+
+    private func saveDraft() {
+        guard draftLoaded, editing == nil else { return }
+        var replyId = restoredReplyId
+        if case .eventId(let id)? = replyTo?.eventId { replyId = id }
+        var savedTokens = tokens
+        for (name, id) in mentions { savedTokens["@" + name] = .user(id: id) }
+        ComposerDraftStore.save(ComposerDraft(text: draft, tokens: savedTokens, replyEventId: replyId), accountId: account.id, roomId: roomId)
+    }
+
+    private func insertText(_ text: String) {
+        let ns = draft as NSString
+        let start = min(selection.location, ns.length)
+        let length = min(selection.length, ns.length - start)
+        draft = ns.replacingCharacters(in: NSRange(location: start, length: length), with: text)
+        selection = NSRange(location: start + (text as NSString).length, length: 0)
+    }
+
+    private var composerSuggestions: some View {
+        VStack(alignment: .leading) {
+            if editing == nil {
+                ForEach(SlashCommand.suggestions(for: draft).prefix(6)) { command in
+                    Button("/" + command.rawValue + " — " + command.description) { draft = "/" + command.rawValue + " "; selection = NSRange(location: (draft as NSString).length, length: 0) }
+                        .font(.caption).lineLimit(2)
+                }
+            }
+            if case .room(let query) = ComposerQuery.current(in: draft) {
+                ForEach(account.rooms.filter { $0.isJoined && !$0.isSpace && (query.isEmpty || $0.name.localizedCaseInsensitiveContains(query)) }.prefix(6)) { room in
+                    Button("#" + room.name) {
+                        let key = "#" + room.name
+                        tokens[key] = .room(id: room.canonicalAlias ?? room.id, via: [])
+                        draft = ComposerQuery.replacingWord(in: draft, with: key + " ")
+                        selection = NSRange(location: (draft as NSString).length, length: 0)
+                    }
+                }
+            }
+            if case .emoticon(let query) = ComposerQuery.current(in: draft) {
+                ForEach(EmojiCatalog.search(query, limit: 5)) { emoji in
+                    Button(emoji.unicode + " :" + emoji.shortcode + ":") {
+                        draft = ComposerQuery.replacingWord(in: draft, with: emoji.unicode + " ")
+                        selection = NSRange(location: (draft as NSString).length, length: 0)
+                    }
+                }
+                ForEach(Array(packs.flatMap { $0.images(for: ImagePack.emoticon) }.filter { ImagePack.matches($0, query) }.prefix(5).enumerated()), id: \.offset) { _, image in
+                    Button(":" + image.shortcode + ":") {
+                        let key = ":" + image.shortcode + ":"
+                        tokens[key] = .emoticon(mxc: image.url, shortcode: image.shortcode)
+                        draft = ComposerQuery.replacingWord(in: draft, with: key + " ")
+                        selection = NSRange(location: (draft as NSString).length, length: 0)
+                    }
+                }
+            }
+        }.padding(.horizontal, 12)
+    }
+
+    private func addData(_ data: Data, name: String, mime: String) async {
+        do {
+            let config = try await account.clientRequest("/_matrix/media/v3/config")
+            guard !ComposerSize.exceeds(Int64(data.count), limit: ComposerSize.uploadLimit(from: config)) else {
+                throw DiddyError("File exceeds the server upload limit.")
+            }
+            pendingFiles.append(ComposerPendingFile(name: name, mime: mime, data: data))
+        } catch { controller.sendError = error.friendlyMessage }
+    }
+
+    private func addFiles(_ urls: [URL], images: [UIImage]) async {
+        for url in urls {
+            let scoped = url.startAccessingSecurityScopedResource()
+            defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+            do {
+                let data = try Data(contentsOf: url)
+                let mime = UTType(filenameExtension: url.pathExtension)?.preferredMIMEType ?? "application/octet-stream"
+                await addData(data, name: url.lastPathComponent, mime: mime)
+            } catch { controller.sendError = error.friendlyMessage }
+        }
+        for image in images {
+            if let data = image.jpegData(compressionQuality: 0.85) { await addData(data, name: "image.jpg", mime: "image/jpeg") }
         }
     }
 
@@ -912,4 +1105,11 @@ private struct FileAttachment: View {
             onOpen(url)
         } catch { failed = true }
     }
+}
+
+private struct ComposerPendingFile: Identifiable {
+    let id = UUID()
+    let name: String
+    let mime: String
+    let data: Data
 }
