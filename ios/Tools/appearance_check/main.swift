@@ -22,13 +22,13 @@ check(AppearanceLogic.hexString(0xFFFFFF) == "#FFFFFF", "white")
 // Custom theme storage, same keys as desktop
 check(CustomThemeConfig.decode(nil) == CustomThemeConfig.defaults, "nothing stored")
 check(CustomThemeConfig.decode("not json") == CustomThemeConfig.defaults, "broken json")
-let desktop = #"{"accent":"#112233","background":"#000000","text":"#ffffff","gradient":true,"gradientFrom":"#1B0B2E","surfaceOpacity":0.8}"#
+let desktop = ##"{"accent":"#112233","background":"#000000","text":"#ffffff","gradient":true,"gradientFrom":"#1B0B2E","surfaceOpacity":0.8}"##
 let parsed = CustomThemeConfig.decode(desktop)
 check(parsed.accent == "#112233" && parsed.background == "#000000" && parsed.text == "#FFFFFF", "desktop JSON: \(parsed)")
-let partial = CustomThemeConfig.decode(#"{"accent":"nope","text":"#ABCDEF"}"#)
+let partial = CustomThemeConfig.decode(##"{"accent":"nope","text":"#ABCDEF"}"##)
 check(partial.accent == CustomThemeConfig.defaults.accent && partial.text == "#ABCDEF", "bad colour falls back, good one kept")
 check(CustomThemeConfig.decode(parsed.encoded()) == parsed, "round trip")
-check(parsed.encoded() == #"{"accent":"#112233","background":"#000000","text":"#FFFFFF"}"#, "encoded: \(parsed.encoded())")
+check(parsed.encoded() == ##"{"accent":"#112233","background":"#000000","text":"#FFFFFF"}"##, "encoded: \(parsed.encoded())")
 
 // Active theme
 check(AppearanceLogic.activeThemeId(useSystem: false, systemIsLight: true, themeId: "dark-theme", lightId: "light-theme", darkId: "diddy-theme") == "dark-theme", "fixed theme")

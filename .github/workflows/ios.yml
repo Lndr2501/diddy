@@ -134,6 +134,86 @@ jobs:
           swiftc -swift-version 5 Diddy/Matrix/DiddyProfileDecor.swift Diddy/Matrix/DiddyProfileDraft.swift Tools/profile_editor_check/main.swift -o "$RUNNER_TEMP/diddy-profile-editor-check"
           "$RUNNER_TEMP/diddy-profile-editor-check"
 
+      - name: Check appearance rules
+        run: |
+          swiftc -swift-version 5 Diddy/App/AppearanceLogic.swift Tools/appearance_check/main.swift -o "$RUNNER_TEMP/diddy-appearance-check"
+          "$RUNNER_TEMP/diddy-appearance-check"
+
+      - name: Check bot card rules
+        run: |
+          swiftc -swift-version 5 Diddy/Matrix/BotCard.swift Tools/botcard_check/main.swift -o "$RUNNER_TEMP/diddy-botcard-check"
+          "$RUNNER_TEMP/diddy-botcard-check"
+
+      - name: Check composer rules
+        run: |
+          swiftc -swift-version 5 Diddy/Matrix/DesktopMarkdown.swift Diddy/Matrix/EmojiData.swift Diddy/Matrix/ComposerLogic.swift Tools/composer_check/main.swift -o "$RUNNER_TEMP/diddy-composer-check"
+          "$RUNNER_TEMP/diddy-composer-check"
+
+      - name: Check date format rules
+        run: |
+          swiftc -swift-version 5 Diddy/App/DateFormatRules.swift Tools/dateformat_check/main.swift -o "$RUNNER_TEMP/diddy-dateformat-check"
+          "$RUNNER_TEMP/diddy-dateformat-check"
+
+      - name: Check Do Not Disturb rules
+        run: |
+          swiftc -swift-version 5 Diddy/Matrix/DoNotDisturb.swift Tools/dnd_check/main.swift -o "$RUNNER_TEMP/diddy-dnd-check"
+          "$RUNNER_TEMP/diddy-dnd-check"
+
+      - name: Check message search rules
+        run: |
+          swiftc -swift-version 5 Diddy/Matrix/MessageSearchLogic.swift Tools/messagesearch_check/main.swift -o "$RUNNER_TEMP/diddy-messagesearch-check"
+          "$RUNNER_TEMP/diddy-messagesearch-check"
+
+      - name: Check Ogg/Opus voice message decoding
+        run: |
+          swiftc -swift-version 5 Diddy/Matrix/OpusContainer.swift Diddy/Matrix/OpusCAFWriter.swift Tools/oggopus_check/main.swift -o "$RUNNER_TEMP/diddy-oggopus-check"
+          "$RUNNER_TEMP/diddy-oggopus-check"
+
+      - name: Check notification rule logic
+        run: |
+          swiftc -swift-version 5 Diddy/Matrix/PushRuleLogic.swift Tools/pushrules_check/main.swift -o "$RUNNER_TEMP/diddy-pushrules-check"
+          "$RUNNER_TEMP/diddy-pushrules-check"
+
+      - name: Check quick switcher rules
+        run: |
+          swiftc -swift-version 5 Diddy/Matrix/QuickSwitchLogic.swift Tools/quickswitch_check/main.swift -o "$RUNNER_TEMP/diddy-quickswitch-check"
+          "$RUNNER_TEMP/diddy-quickswitch-check"
+
+      - name: Check room list and server rail rules
+        run: |
+          swiftc -swift-version 5 Diddy/Matrix/RoomListLogic.swift Tools/roomlist_check/main.swift -o "$RUNNER_TEMP/diddy-roomlist-check"
+          "$RUNNER_TEMP/diddy-roomlist-check"
+
+      - name: Check room settings rules
+        run: |
+          swiftc -swift-version 5 Diddy/Matrix/RoomSettingsLogic.swift Tools/roomsettings_check/main.swift -o "$RUNNER_TEMP/diddy-roomsettings-check"
+          "$RUNNER_TEMP/diddy-roomsettings-check"
+
+      - name: Check security and device rules
+        run: |
+          swiftc -swift-version 5 Diddy/Matrix/SecurityLogic.swift Tools/security_check/main.swift -o "$RUNNER_TEMP/diddy-security-check"
+          "$RUNNER_TEMP/diddy-security-check"
+
+      - name: Check app shell rules
+        run: |
+          swiftc -swift-version 5 Diddy/App/ShellLogic.swift Tools/shell_check/main.swift -o "$RUNNER_TEMP/diddy-shell-check"
+          "$RUNNER_TEMP/diddy-shell-check"
+
+      - name: Check timeline navigation rules
+        run: |
+          swiftc -swift-version 5 Diddy/Matrix/TimelineNavLogic.swift Tools/timelinenav_check/main.swift -o "$RUNNER_TEMP/diddy-timelinenav-check"
+          "$RUNNER_TEMP/diddy-timelinenav-check"
+
+      - name: Check homeserver timeout rules
+        run: |
+          swiftc -swift-version 5 Diddy/Matrix/HomeserverTimeout.swift Tools/timeout_check/main.swift -o "$RUNNER_TEMP/diddy-timeout-check"
+          "$RUNNER_TEMP/diddy-timeout-check"
+
+      - name: Check watch together rules
+        run: |
+          swiftc -swift-version 5 Diddy/Call/WatchTogetherLogic.swift Tools/watchtogether_check/main.swift -o "$RUNNER_TEMP/diddy-watchtogether-check"
+          "$RUNNER_TEMP/diddy-watchtogether-check"
+
       - name: Install XcodeGen
         run: command -v xcodegen || brew install xcodegen
 
