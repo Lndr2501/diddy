@@ -364,6 +364,7 @@ struct RecoveryView: View {
     @ObservedObject var account: MatrixAccount
     @Environment(\.dismiss) private var dismiss
     @State private var key = ""
+    @State private var reveal = false
     @State private var busy = false
     @State private var error: String?
 
@@ -371,14 +372,27 @@ struct RecoveryView: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("EsTc 1234 …", text: $key, axis: .vertical)
+                    HStack {
+                        Group {
+                            if reveal {
+                                TextField("EsTc 1234 …", text: $key)
+                            } else {
+                                SecureField("EsTc 1234 …", text: $key)
+                            }
+                        }
                         .font(.system(.body, design: .monospaced))
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
+                        Button { reveal.toggle() } label: {
+                            Image(systemName: reveal ? "eye.slash" : "eye").foregroundStyle(Theme.muted)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(reveal ? "Hide recovery key" : "Show recovery key")
+                    }
                 } header: {
-                    Text("Recovery key")
+                    Text("Recovery key or passphrase")
                 } footer: {
-                    Text("The recovery key (or security key) you saved when you set up encryption, for example in Diddy desktop or Element. It unlocks your message history on this device.")
+                    Text("The recovery key (or security key) or passphrase you saved when you set up encryption, for example in Diddy desktop or Element. It unlocks your message history on this device.")
                 }
                 if let error { Text(error).foregroundStyle(Theme.danger) }
                 Button {
@@ -386,6 +400,7 @@ struct RecoveryView: View {
                     Task {
                         do {
                             try await account.recover(with: key)
+                            key = ""
                             dismiss()
                         } catch { self.error = error.friendlyMessage }
                         busy = false

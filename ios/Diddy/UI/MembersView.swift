@@ -262,6 +262,9 @@ struct UserProfileSheet: View {
                         VStack(spacing: 0) {
                             actionRow("Copy User ID", icon: "doc.on.doc") { UIPasteboard.general.string = userId }
                             if !isSelf {
+                                actionRow("Verify", icon: "checkmark.shield.fill") {
+                                    Task { await VerificationCenter.of(account).requestUserVerification(userId: userId) }
+                                }
                                 actionRow(ignored ? "Unblock" : "Block", icon: "hand.raised.fill", role: ignored ? nil : .destructive) {
                                     Task { await toggleIgnore() }
                                 }
@@ -277,6 +280,7 @@ struct UserProfileSheet: View {
                 .background(Theme.sidebar.ignoresSafeArea())
             }
             .navigationBarTitleDisplayMode(.inline)
+            .verificationSheet(account: account)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
             .confirmationDialog(
                 "\(confirm?.title ?? "") \(name)?",
