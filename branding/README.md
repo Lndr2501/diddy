@@ -35,5 +35,5 @@ liegt nicht im Repo.
 
 ## Stand
 
-Das Logo ist ein Entwurf. Die App-Icons in `src-tauri/`, `cinny/public/` und `ios/` zeigen noch das alte
-Motiv.
+Die App-Icons in `src-tauri/icons`, `src-tauri/app-icons` (macOS-Dock, Linux/Electron) und `cinny/public/`
+(App-Icon-Auswahl, Favicon, Web) zeigen das neue Logo. `ios/` zeigt noch das alte Motiv.

@@ -2,6 +2,7 @@
 
 ## Unveröffentlicht
 
+- **Neues Logo:** Das Vektor-Logo aus `branding/` (kleines „d“ mit Sprechblase) ist jetzt App-Icon auf macOS und Linux, in der App-Icon-Auswahl (alle fünf Farben), als Favicon und als Web-Icon. iOS zeigt noch das alte Motiv.
 - **Kopfhörer aus in der Call-Liste (#160):** Unter dem Call-Raum zeigt deine Zeile jetzt auch das durchgestrichene Kopfhörer-Symbol, wenn du taub geschaltet bist (bisher nur das Mikrofon). Bei den anderen bleibt nur das Mikrofon sichtbar: Ob jemand seine Kopfhörer aus hat, überträgt Matrix nicht.
 - **Konten in den Einstellungen (#156):** Einstellungen > Account hat den Abschnitt „Accounts“: alle getrennten Anmeldungen mit Matrix-ID (Benutzername) des jeweiligen Kontos, Öffnen und Entfernen (zweimal tippen) sowie „Add“ für ein weiteres Konto oder einen weiteren Server. Jedes Fenster meldet seine Matrix-ID beim Start (`account-labels.json`, nur die öffentliche ID); ein Fenster, das noch nicht in dieser Version lief, zeigt sie erst nach einmaligem Öffnen.
 - **Profil exportieren und importieren (#157):** Im Profil-Editor speichert „Export“ die Anpassung (Namensstil, Karte, Namensfeld, Effekt, Rahmen, Texte, Layout) als `diddy-profile.json`. „Export“ öffnet das Speichern-Fenster von macOS, du wählst Ordner und Namen. „Import“ füllt den Editor damit; gespeichert wird erst mit „Save changes“. Status und Diddy-Version reisen nicht mit, die Datei läuft durch denselben Prüfer wie fremde Profile. Bilder bleiben Verweise auf den Server, auf dem sie liegen.
