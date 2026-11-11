@@ -145,7 +145,7 @@ extension MatrixAccount {
     /// The room versions the server offers and its default, for the creation sheets.
     func roomVersionChoices() async -> (defaultVersion: String?, available: [String]) {
         guard let json = try? await clientRequest("/_matrix/client/v3/capabilities") else { return (nil, []) }
-        return (RoomVersionSupport.defaultVersion(fromCapabilities: json), RoomVersionSupport.availableVersions(fromCapabilities: json))
+        return (NewRoomVersionSupport.defaultVersion(fromCapabilities: json), NewRoomVersionSupport.availableVersions(fromCapabilities: json))
     }
 
     /// Creates a room or server like desktop's create dialogs. With a parent it is also listed as
@@ -158,7 +158,7 @@ extension MatrixAccount {
         }
         let json = try await clientRequest("/_matrix/client/v3/createRoom", body: request.body())
         guard let id = json["room_id"] as? String else { throw DiddyError("The server could not create the room.") }
-        if request.isVoice { voiceRoomIds.insert(id) }
+        if request.isVoice { markVoiceRoom(id) }
         if let parentId = request.parentId {
             try await putSpaceChild(parent: parentId, child: id, content: NewRoomRequest.childContent(via: request.parentVia))
         }

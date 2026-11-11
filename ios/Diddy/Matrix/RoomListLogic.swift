@@ -292,7 +292,7 @@ enum NewRoomAccess: String, CaseIterable, Identifiable {
 }
 
 /// Which join rules a room version allows (utils/matrix.ts). An unknown version counts as new.
-enum RoomVersionSupport {
+enum NewRoomVersionSupport {
     private static func number(_ version: String?) -> Int? {
         guard let version else { return nil }
         return Int(version)
@@ -353,13 +353,13 @@ struct NewRoomRequest {
 
     /// What is really sent: encryption and knocking only where desktop allows them.
     var effectiveAccess: NewRoomAccess {
-        access == .restricted && (parentId == nil || !RoomVersionSupport.restricted(roomVersion)) ? .private : access
+        access == .restricted && (parentId == nil || !NewRoomVersionSupport.restricted(roomVersion)) ? .private : access
     }
 
     var effectiveKnock: Bool {
         switch effectiveAccess {
-        case .private: return knock && RoomVersionSupport.knock(roomVersion)
-        case .restricted: return knock && RoomVersionSupport.knockRestricted(roomVersion)
+        case .private: return knock && NewRoomVersionSupport.knock(roomVersion)
+        case .restricted: return knock && NewRoomVersionSupport.knockRestricted(roomVersion)
         case .public: return false
         }
     }

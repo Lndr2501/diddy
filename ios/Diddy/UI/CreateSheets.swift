@@ -60,7 +60,7 @@ private struct NewRoomForm: View {
     }
 
     private var accessChoices: [NewRoomAccess] {
-        let canRestrict = parentId != nil && RoomVersionSupport.restricted(version)
+        let canRestrict = parentId != nil && NewRoomVersionSupport.restricted(version)
         return NewRoomAccess.allCases.filter { $0 != .restricted || canRestrict }
     }
 
@@ -114,7 +114,7 @@ private struct NewRoomForm: View {
                 }
                 Section {
                     DisclosureGroup("Advanced Options", isExpanded: $advanced) {
-                        if request.effectiveAccess != .public && (RoomVersionSupport.knock(version)) {
+                        if request.effectiveAccess != .public && (NewRoomVersionSupport.knock(version)) {
                             Toggle("Knock to Join", isOn: $knock)
                             Text("Anyone can send request to join this \(noun.lowercased()).")
                                 .font(.footnote).foregroundStyle(Theme.muted)

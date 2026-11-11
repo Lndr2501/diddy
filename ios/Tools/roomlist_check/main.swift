@@ -158,7 +158,7 @@ privateKnock.knock = true
 check(privateKnock.joinRuleContent()["join_rule"] as? String == "knock", "private with knock")
 privateKnock.roomVersion = "6"
 check(privateKnock.joinRuleContent()["join_rule"] as? String == "invite", "no knock before v7")
-check(RoomVersionSupport.defaultVersion(fromCapabilities: ["capabilities": ["m.room_versions": ["default": "10"]]]) == "10", "capabilities default version")
+check(NewRoomVersionSupport.defaultVersion(fromCapabilities: ["capabilities": ["m.room_versions": ["default": "10"]]]) == "10", "capabilities default version")
 
 let child = NewRoomRequest.childContent(via: ["x"])
 check(child["auto_join"] as? Bool == false && child["suggested"] as? Bool == false && child["via"] as? [String] == ["x"], "space child content as desktop")
@@ -266,7 +266,7 @@ check(rows[3].name == "#late:x" && rows[3].isVoice, "empty name falls back to th
 check(rows[1].parentId == "!sub:x", "parent of nested row")
 check(ServerHierarchy.addable(["!a", "!b", "!root"], alreadyInside: ["!a"], serverId: "!root") == ["!b"], "addable rooms")
 
-check(RoomVersionSupport.availableVersions(fromCapabilities: ["capabilities": ["m.room_versions": ["default": "10", "available": ["1": "stable", "10": "stable", "9": "stable", "org.example": "unstable"]]]]) == ["10", "9", "1", "org.example"], "available versions sorted")
+check(NewRoomVersionSupport.availableVersions(fromCapabilities: ["capabilities": ["m.room_versions": ["default": "10", "available": ["1": "stable", "10": "stable", "9": "stable", "org.example": "unstable"]]]]) == ["10", "9", "1", "org.example"], "available versions sorted")
 
 // MARK: Rail editing helpers
 let railBase: [RailEntry] = [.space("!a"), .folder(RailFolder(id: "F1", name: "Games", content: ["!b", "!c"])), .space("!d")]

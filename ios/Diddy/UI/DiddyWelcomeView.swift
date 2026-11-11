@@ -63,10 +63,20 @@ struct DiddyServerNotice: View {
     @AppStorage("diddy.onboarding.dismissedRooms") private var dismissedJSON = "[]"
     private var pending: [String] {
         let dismissed = (try? JSONDecoder().decode([String].self, from: Data(dismissedJSON.utf8))) ?? []
-        return account.categories.values.flatMap { $0 }.flatMap { $0.channels }.filter {
-            OnboardingLogic.isDiddyRoom(name: $0.displayName, topic: $0.topic, tag: DiddyEvents.topicTag)
-                && !account.isJoined($0) && !dismissed.contains(account.id + "|" + $0.roomId)
-        }.map { account.id + "|" + $0.roomId }
+        let prefix: String = account.id + "|"
+        var keys: [String] = []
+        for group in account.categories.values {
+            for category in group {
+                for channel in category.channels {
+                    let key: String = prefix + channel.roomId
+                    if dismissed.contains(key) { continue }
+                    if account.isJoined(channel) { continue }
+                    let isDiddy: Bool = OnboardingLogic.isDiddyRoom(name: channel.displayName, topic: channel.topic, tag: DiddyEvents.topicTag)
+                    if isDiddy { keys.append(key) }
+                }
+            }
+        }
+        return keys
     }
     var body: some View {
         if !pending.isEmpty {

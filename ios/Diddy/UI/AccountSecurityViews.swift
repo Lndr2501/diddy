@@ -74,7 +74,7 @@ struct DeveloperToolsView: View {
                             )
                             copied = true
                         }
-                        Button("Hide") { token = nil; copied = false }
+                        Button("Hide") { self.token = nil; copied = false }
                     } else {
                         Button("Reveal Access Token…") { askToken = true }
                     }

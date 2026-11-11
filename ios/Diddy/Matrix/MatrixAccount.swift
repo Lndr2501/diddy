@@ -402,6 +402,8 @@ final class MatrixAccount: ObservableObject, Identifiable {
     }
 
     func isVoiceChannel(_ roomId: String) -> Bool { voiceRoomIds.contains(roomId) }
+    /// For extensions in other files: `voiceRoomIds` can only be set in this file.
+    func markVoiceRoom(_ roomId: String) { voiceRoomIds.insert(roomId) }
 
     func destination(for roomId: String) -> Destination {
         isVoiceChannel(roomId) ? .voice(roomId) : .text(roomId)
