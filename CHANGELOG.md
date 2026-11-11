@@ -1,6 +1,6 @@
 # Changelog
 
-## Unveröffentlicht
+## 1.6.0 (2026-11-11)
 
 - **Nutzer-Lautstärke bis 200 %:** Leise Stimmen lassen sich im Call-Menü auf bis zu doppelte Lautstärke verstärken. Der Wert bleibt pro Person gespeichert, auch nach Stummschalten und erneutem Beitritt.
 
