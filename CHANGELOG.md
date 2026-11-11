@@ -1,6 +1,8 @@
 # Changelog
 
-## Unveröffentlicht
+## 1.5.2 (2026-11-11)
+
+- **Neues Logo:** Das Diddy-Zeichen ist jetzt ein fettes kleines „d“, dessen Innenraum eine Sprechblase ist; die Flasche ist überall ersetzt. Es gilt für alle fünf Farbtöne (Pink, Blue, Purple, Black, Magenta) auf macOS (Dock, App, DMG), Linux (Fenster, Pakete), Web (Favicon, Apple- und Android-Symbole, App-Icon-Auswahl, Logos in der Oberfläche) und iOS (App-Icon, alternative Icons, Anmeldebild). Die Vorlagen liegen als Vektorgrafik in `branding/`, `python3 branding/export.py` erzeugt daraus alle Bilder. Keine neue Funktion, nur das Bild. Nicht auf einem echten Mac, Linux-Desktop und iPhone angesehen: Dock, `icon.icns` und iOS-Icons bitte beim ersten Start prüfen.
 
 - **Linux: Kontenliste zeigt Matrix-Kennungen:** Die Oberfläche meldete die Konten bereits an die App, aber Electron fehlten die beiden zugehörigen Kommandos. Es speichert die öffentlichen Matrix-IDs jetzt getrennt von den Anmeldedaten, validiert sie und entfernt Einträge gelöschter Verbindungen. Der Plattform-Vertragstest und neue Persistenztests prüfen den zuvor fehlenden Pfad.
 - **Kopfhörer aus in der Call-Liste (#160):** Unter dem Call-Raum zeigt deine Zeile jetzt auch das durchgestrichene Kopfhörer-Symbol, wenn du taub geschaltet bist (bisher nur das Mikrofon). Bei den anderen bleibt nur das Mikrofon sichtbar: Ob jemand seine Kopfhörer aus hat, überträgt Matrix nicht.
