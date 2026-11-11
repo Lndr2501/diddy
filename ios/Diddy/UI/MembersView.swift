@@ -226,18 +226,9 @@ struct UserProfileSheet: View {
     @EnvironmentObject private var navigator: AppNavigator
     @Environment(\.dismiss) private var dismiss
     @State private var member: MemberEntry?
-    @State private var canKick = false
-    @State private var canBan = false
     @State private var ignored = false
     @State private var busy = false
     @State private var error: String?
-    @State private var confirm: ModerationAction?
-
-    private enum ModerationAction: Identifiable {
-        case kick, ban
-        var id: Self { self }
-        var title: String { self == .kick ? "Remove from room" : "Ban" }
-    }
 
     private var isSelf: Bool { userId == account.userId }
     private var profile: UserSummary? { account.profiles[userId] }
@@ -268,8 +259,10 @@ struct UserProfileSheet: View {
                                 actionRow(ignored ? "Unblock" : "Block", icon: "hand.raised.fill", role: ignored ? nil : .destructive) {
                                     Task { await toggleIgnore() }
                                 }
-                                if canKick { actionRow("Remove from room", icon: "person.fill.xmark", role: .destructive) { confirm = .kick } }
-                                if canBan { actionRow("Ban", icon: "nosign", role: .destructive) { confirm = .ban } }
+                            }
+                            // Role, invite, kick and ban (with a reason), unban: RoomSettings/RoomModerationViews.swift
+                            if let roomId {
+                                RoomModerationRows(account: account, userId: userId, roomId: roomId, name: name, onRemoved: { dismiss() })
                             }
                         }
                         .background(RoundedRectangle(cornerRadius: 10).fill(Theme.elevated))
@@ -282,15 +275,6 @@ struct UserProfileSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .verificationSheet(account: account)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
-            .confirmationDialog(
-                "\(confirm?.title ?? "") \(name)?",
-                isPresented: Binding(get: { confirm != nil }, set: { if !$0 { confirm = nil } }),
-                titleVisibility: .visible
-            ) {
-                if let action = confirm {
-                    Button(action.title, role: .destructive) { Task { await moderate(action) } }
-                }
-            }
             .task {
                 await load()
                 await account.loadDiddyProfiles()
@@ -387,15 +371,7 @@ struct UserProfileSheet: View {
         account.resolveProfiles([userId], in: roomId ?? "")
         ignored = ((try? await account.client.ignoredUsers()) ?? []).contains(userId)
         guard let roomId, let room = account.room(roomId), let found = try? await room.member(userId: userId) else { return }
-        let entry = MemberEntry(found)
-        member = entry
-        guard !isSelf, let levels = try? await room.getPowerLevels(),
-              let own = try? await room.member(userId: account.userId) else { return }
-        let ownEntry = MemberEntry(own)
-        // Moderation only ever works downwards: you cannot remove someone at or above your level.
-        let outranks = ownEntry.powerLevel > entry.powerLevel && !entry.isOwner
-        canKick = outranks && levels.canOwnUserKick()
-        canBan = outranks && levels.canOwnUserBan()
+        member = MemberEntry(found)
     }
 
     private func openChat() async {
@@ -414,17 +390,6 @@ struct UserProfileSheet: View {
         do {
             if ignored { try await account.client.unignoreUser(userId: userId) } else { try await account.client.ignoreUser(userId: userId) }
             ignored.toggle()
-        } catch { self.error = error.friendlyMessage }
-    }
-
-    private func moderate(_ action: ModerationAction) async {
-        guard let roomId, let room = account.room(roomId) else { return }
-        do {
-            switch action {
-            case .kick: try await room.kickUser(userId: userId, reason: nil)
-            case .ban: try await room.banUser(userId: userId, reason: nil)
-            }
-            dismiss()
         } catch { self.error = error.friendlyMessage }
     }
 }

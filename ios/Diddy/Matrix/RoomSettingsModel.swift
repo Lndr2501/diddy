@@ -169,3 +169,12 @@ extension MatrixAccount {
         )
     }
 }
+
+extension MatrixAccount {
+    /// The content of one state event of a room (nil when the room has none or the server refuses).
+    func roomStateContent(_ roomId: String, type: String, key: String = "") async -> [String: Any]? {
+        var path = RoomSettingsAPI.rooms(roomId, "/state/\(RoomSettingsAPI.enc(type))")
+        if !key.isEmpty { path += "/" + RoomSettingsAPI.enc(key) }
+        return try? await clientRequest(path)
+    }
+}
