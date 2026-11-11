@@ -184,6 +184,11 @@ private struct ChatContent: View {
                             onCardCommand: { command in Task { await controller.sendCardAction(command) } }
                         )
                         .id(row.id)
+                        .swipeToReply {
+                            // The swipe is also a drag of the chat; at the end it must keep following.
+                            if bottomVisible { userScrolled = false }
+                            reply(to: row)
+                        }
                         .contextMenu { menu(for: row) }
                     }
                     Color.clear.frame(height: 8).id("bottom")
@@ -255,9 +260,15 @@ private struct ChatContent: View {
         }
     }
 
+    private func reply(to row: MessageRow) {
+        replyTo = row
+        editing = nil
+        composerFocused = true
+    }
+
     @ViewBuilder
     private func menu(for row: MessageRow) -> some View {
-        Button { replyTo = row; editing = nil; composerFocused = true } label: { Label("Reply", systemImage: "arrowshape.turn.up.left") }
+        Button { reply(to: row) } label: { Label("Reply", systemImage: "arrowshape.turn.up.left") }
         Menu {
             ForEach(ReactionEmoji.quick, id: \.self) { emoji in
                 Button(emoji) { Task { await controller.toggleReaction(emoji, on: row) } }
