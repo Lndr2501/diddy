@@ -5,8 +5,11 @@
  * the log instead of guessed.
  */
 export type JoinTimer = {
-  /** Logs `step` the first time it is seen; later calls with the same name are ignored. */
-  mark: (step: string) => void;
+  /**
+   * Logs `step` the first time it is seen; later calls with the same name are ignored. `detail`
+   * is appended to the line (for example how long a request took) and not part of the name.
+   */
+  mark: (step: string, detail?: string) => void;
 };
 
 export const createJoinTimer = (
@@ -17,14 +20,31 @@ export const createJoinTimer = (
   let last = start;
   const seen = new Set<string>();
   return {
-    mark: (step) => {
+    mark: (step, detail) => {
       if (seen.has(step)) return;
       seen.add(step);
       const t = now();
-      log(`call join: ${step} +${Math.round(t - last)} ms (${Math.round(t - start)} ms)`);
+      log(
+        `call join: ${step} +${Math.round(t - last)} ms (${Math.round(t - start)} ms)${
+          detail ? `, ${detail}` : ''
+        }`
+      );
       last = t;
     },
   };
+};
+
+/**
+ * The call page asks the LiveKit authorisation service (lk-jwt-service) for its access token at
+ * `<service>/sfu/get` (legacy) or `<service>/get_token`. Without that token it cannot connect, so
+ * nobody else is shown yet: the time of this request is the server part of a slow join.
+ */
+export const isLivekitTokenRequest = (url: string): boolean => {
+  try {
+    return /\/(sfu\/get|get_token)$/.test(new URL(url).pathname);
+  } catch {
+    return false;
+  }
 };
 
 /**

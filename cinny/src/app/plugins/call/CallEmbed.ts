@@ -13,6 +13,7 @@ import {
   IRoomEvent,
   IWidget,
   Widget,
+  WidgetApiFromWidgetAction,
   WidgetApiToWidgetAction,
   WidgetDriver,
 } from 'matrix-widget-api';
@@ -34,9 +35,21 @@ import { installLocalSpeaking, stopLocalSpeaking } from './localSpeaking';
 import { installCallTheme } from './callTheme';
 import { installScreenShareGrid } from './screenShareGrid';
 import { installUserVolumeMemory } from './userVolume';
-import { startReceiveWatch, startVideoReceiveWatch, trackPeerConnections } from './streamStats';
+import {
+  onPeerConnectionCreated,
+  startReceiveWatch,
+  startVideoReceiveWatch,
+  trackPeerConnections,
+} from './streamStats';
 import { installE2eeWatch } from './e2eeWatch';
-import { countTiles, createJoinTimer, JoinTimer, TO_DEVICE_RETRY_MS } from './joinTiming';
+import {
+  countTiles,
+  createJoinTimer,
+  isLivekitTokenRequest,
+  JoinTimer,
+  TO_DEVICE_RETRY_MS,
+} from './joinTiming';
+import { createThemeSync, ThemeSync } from './callThemeSync';
 import { diag } from '../diagnostics';
 
 export class CallEmbed {
@@ -64,6 +77,12 @@ export class CallEmbed {
 
   /** Log of the time from the join click to the first tiles (#161). */
   private readonly joinTimer: JoinTimer = createJoinTimer(diag);
+
+  /** The call window whose LiveKit token request is being timed. */
+  private tokenWatchWindow?: Window;
+
+  /** Theme changes, held until the call page answers widget messages (#161). */
+  private readonly themeSync: ThemeSync<ElementCallThemeKind>;
 
   // Bound once: dispose() must pass the same functions to off(), otherwise every finished call
   // kept receiving (and decrypting) events and to-device messages for its stopped widget.
@@ -210,6 +229,13 @@ export class CallEmbed {
     this.iframe = iframe;
     this.container = container;
 
+    this.themeSync = createThemeSync<ElementCallThemeKind>(
+      CallEmbed.initialTheme(iframe.src),
+      (name) => call.transport.send(WidgetApiToWidgetAction.ThemeChange, { name }),
+      diag
+    );
+    this.disposables.push(this.listenEvent('ready', () => this.themeSync.ready()));
+
     const controlState = initialControlState ?? new CallControlState(true, false, true);
     this.control = new CallControl(controlState, call, iframe);
     this.control.startObserving();
@@ -247,6 +273,7 @@ export class CallEmbed {
       installScreenShareGrid(iframe.contentWindow);
       // #103: the volume / mute-for-me you give a person comes back in the next call
       installUserVolumeMemory(iframe.contentWindow);
+      this.watchLivekitToken(iframe.contentWindow);
     };
     const earlyInstall = window.setInterval(() => {
       const target = iframe.contentWindow;
@@ -261,6 +288,7 @@ export class CallEmbed {
       this.joinTimer.mark('call page loaded');
       this.control.startObserving();
       installMediaPatches();
+      this.watchLivekitToken(iframe.contentWindow);
     };
     this.joinTimer.mark('widget created');
     this.watchJoin();
@@ -297,10 +325,18 @@ export class CallEmbed {
     return this.iframe.contentDocument ?? this.iframe.contentWindow?.document;
   }
 
-  public setTheme(theme: ElementCallThemeKind) {
-    return this.call.transport.send(WidgetApiToWidgetAction.ThemeChange, {
-      name: theme,
-    });
+  /** The theme of the call page (sent once the page answers widget messages, see callThemeSync). */
+  public setTheme(theme: ElementCallThemeKind): void {
+    this.themeSync.set(theme);
+  }
+
+  /** The theme the call page starts with: it is part of the widget URL. */
+  private static initialTheme(url: string): ElementCallThemeKind {
+    try {
+      return new URL(url).searchParams.get('theme') === 'light' ? 'light' : 'dark';
+    } catch {
+      return 'dark';
+    }
   }
 
   public hangup() {
@@ -330,7 +366,16 @@ export class CallEmbed {
       this.listenEvent('preparing', () => timer.mark('widget preparing')),
       this.listenEvent('ready', () => timer.mark('widget ready')),
       this.listenEvent('capabilitiesNotified', () => timer.mark('capabilities granted')),
-      this.listenAction(ElementWidgetActions.JoinCall, () => timer.mark('call joined'))
+      this.listenAction(ElementWidgetActions.JoinCall, () => timer.mark('call joined')),
+      // the start of the LiveKit leg: OpenID token -> LiveKit token -> media connection
+      this.listenAction(WidgetApiFromWidgetAction.GetOpenIDCredentials, () =>
+        timer.mark('OpenID requested')
+      ),
+      onPeerConnectionCreated((pc) => {
+        pc.addEventListener('connectionstatechange', () => {
+          if (pc.connectionState === 'connected') timer.mark('media connected');
+        });
+      })
     );
     const poll = window.setInterval(() => {
       const tiles = countTiles(this.document);
@@ -345,6 +390,36 @@ export class CallEmbed {
       window.clearInterval(poll);
       window.clearTimeout(giveUp);
     });
+  }
+
+  /**
+   * Marks when the call page's first LiveKit token request finished, with how long it took and its
+   * HTTP status where the web view reports it (0 or missing: unknown).
+   */
+  private watchLivekitToken(win: Window | null) {
+    if (!win || win === this.tokenWatchWindow) return;
+    const Observer = (win as unknown as { PerformanceObserver?: typeof PerformanceObserver })
+      .PerformanceObserver;
+    if (!Observer) return;
+    try {
+      const observer = new Observer((list) => {
+        list.getEntries().forEach((entry) => {
+          if (!isLivekitTokenRequest(entry.name)) return;
+          const { responseStatus } = entry as PerformanceEntry & { responseStatus?: number };
+          this.joinTimer.mark(
+            'LiveKit token request done',
+            `took ${Math.round(entry.duration)} ms${
+              responseStatus ? `, HTTP ${responseStatus}` : ''
+            }`
+          );
+        });
+      });
+      observer.observe({ type: 'resource', buffered: true });
+      this.tokenWatchWindow = win;
+      this.disposables.push(() => observer.disconnect());
+    } catch (e) {
+      diag(`call join: LiveKit token timing unavailable (${String(e)})`);
+    }
   }
 
   private start() {
@@ -379,6 +454,7 @@ export class CallEmbed {
    */
   public dispose(): void {
     this.disposed = true;
+    this.themeSync.stop();
     this.disposables.forEach((disposable) => {
       disposable();
     });
@@ -438,8 +514,9 @@ export class CallEmbed {
       await this.call?.feedToDevice(raw, ev.isEncrypted());
     } catch (e) {
       // The call page did not answer in time (it is still starting, or busy), so a call key may not
-      // have arrived. Say so in the log (this used to be an unhandled "Request timed out") and
-      // hand the message over once more; a key that did arrive is simply set again.
+      // have arrived. Say so in the log (unhandled before) and hand the message over once more; a
+      // key that did arrive is simply set again. The "Request timed out" in the #161 log was the
+      // theme message sent before the page listened (see callThemeSync), not necessarily this.
       diag(
         `call to-device ${ev.getType()} not acknowledged by the call page (${String(e)}), retrying`
       );
