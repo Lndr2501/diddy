@@ -27,6 +27,14 @@ enum DiddyEvents {
     /// Desktop adds this to the topic of the options room so clients can find it in a server.
     static let topicTag = "[diddy-options]"
     static let maxContentBytes = 4096
+
+    /// The length desktop compares with the limit: `JSON.stringify(content).length`, so UTF-16
+    /// units and no escaped slashes. (UTF-8 bytes with `\/` made profiles with many mxc:// links,
+    /// umlauts or emoji fail here although desktop accepts them.)
+    static func jsonLength(_ content: [String: Any]) -> Int? {
+        guard let data = try? JSONSerialization.data(withJSONObject: content, options: [.withoutEscapingSlashes]) else { return nil }
+        return String(decoding: data, as: UTF8.self).utf16.count
+    }
 }
 
 struct DiddyBadge: Hashable, Identifiable {
@@ -64,7 +72,15 @@ struct DiddyProfile: Equatable {
     var cardAngle = 135.0
     var cardAccent: String?
     var bannerMxc: String?
+    /// `card.bannerPos`: the visible part of the banner (only with a banner).
+    var bannerPos: DiddyImagePos?
     var nameplate: DiddyNameplate?
+    /// `effect`: the animated overlay over the profile card (#86), see DiddyProfileDecor.swift.
+    var effect: DiddyProfileEffect?
+    /// `frame`: the decorative frame around the profile card (#87).
+    var frame: DiddyProfileFrame?
+    /// `clientVersion`: the Diddy version the owner runs, shown on the card.
+    var clientVersion: String?
     var status: Status?
     var shownBadges: [String] = []
     var bio: String?
@@ -122,8 +138,12 @@ struct DiddyProfile: Equatable {
             cardAngle = Self.angle(card["angle"], fallback: 135)
             cardAccent = Self.color(card["accent"])
             bannerMxc = Self.mxc(card["bannerMxc"])
+            if bannerMxc != nil { bannerPos = DiddyImagePos(card["bannerPos"]) }
         }
         if let plate = raw["nameplate"] as? [String: Any] { nameplate = DiddyNameplate(plate) }
+        effect = DiddyProfileEffect(raw["effect"])
+        frame = DiddyProfileFrame(raw["frame"])
+        clientVersion = DiddySanitize.version(raw["clientVersion"])
         status = (raw["status"] as? String).flatMap(Status.init(rawValue:))
         if let ids = raw["shownBadges"] as? [Any] {
             shownBadges = Array(ids.prefix(64).compactMap { $0 as? String }.filter { !$0.isEmpty && $0.count <= 64 }.prefix(4))
@@ -225,6 +245,8 @@ struct DiddyNameplate: Equatable {
     var flow = false
     var imageMxc: String?
     var videoMxc: String?
+    /// The visible part of the picture or video (only with one of them).
+    var imagePos: DiddyImagePos?
     /// "fade" (default) shows it on the right and fades it out towards the name; "full" covers the row.
     var fitsFullRow = false
 
@@ -249,6 +271,7 @@ struct DiddyNameplate: Equatable {
         flow = preset != nil && raw["flow"] as? Bool == true
         imageMxc = DiddyProfile.mxc(raw["imageMxc"])
         videoMxc = DiddyProfile.mxc(raw["videoMxc"])
+        if imageMxc != nil || videoMxc != nil { imagePos = DiddyImagePos(raw["imagePos"]) }
         fitsFullRow = raw["fit"] as? String == "full"
         guard color != nil || preset != nil || imageMxc != nil || videoMxc != nil else { return nil }
     }
@@ -487,7 +510,7 @@ extension MatrixAccount {
                   let sender, joined.contains(sender),
                   let ts, ts <= now + 86_400_000,
                   var content = content,
-                  let size = try? JSONSerialization.data(withJSONObject: content).count, size <= DiddyEvents.maxContentBytes
+                  let size = DiddyEvents.jsonLength(content), size <= DiddyEvents.maxContentBytes
             else { return nil }
             // A profile only ever belongs to the person who sent it, an award needs `badge|user`.
             if type == DiddyEvents.profile && key != sender { return nil }
