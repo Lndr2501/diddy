@@ -12,25 +12,26 @@ struct DiddyRoomChoice: Identifiable, Hashable {
     let via: [String]
 }
 
-/// Rooms used as options room in message mode only ("Use without admin rights"). Desktop keeps
-/// this list in `localStorage` (`diddyLightRooms`); here it is per account in the app's defaults.
+/// Rooms used as options room in message mode ("Use without admin rights", and the room you joined
+/// from the welcome guide). Desktop keeps this list in `localStorage` (`diddyLightRooms`); here it
+/// is per account in the app's defaults, the same list the welcome guide writes.
 enum DiddyLightRooms {
-    private static func key(_ userId: String) -> String { "diddyLightRooms.\(userId)" }
+    private static func key(_ accountId: String) -> String { "diddy.lightOptionsRooms.\(accountId)" }
 
-    static func ids(for userId: String) -> Set<String> {
-        Set(UserDefaults.standard.stringArray(forKey: key(userId)) ?? [])
+    static func ids(for accountId: String) -> Set<String> {
+        Set(UserDefaults.standard.stringArray(forKey: key(accountId)) ?? [])
     }
 
-    static func add(_ roomId: String, for userId: String) {
-        var all = ids(for: userId)
+    static func add(_ roomId: String, for accountId: String) {
+        var all = ids(for: accountId)
         all.insert(roomId)
-        UserDefaults.standard.set(all.sorted(), forKey: key(userId))
+        UserDefaults.standard.set(all.sorted(), forKey: key(accountId))
     }
 
-    static func remove(_ roomId: String, for userId: String) {
-        var all = ids(for: userId)
+    static func remove(_ roomId: String, for accountId: String) {
+        var all = ids(for: accountId)
         all.remove(roomId)
-        UserDefaults.standard.set(all.sorted(), forKey: key(userId))
+        UserDefaults.standard.set(all.sorted(), forKey: key(accountId))
     }
 }
 
@@ -43,7 +44,7 @@ extension MatrixAccount {
     }
 
     /// Rooms used in message mode only on this device.
-    var diddyLightRoomIds: Set<String> { DiddyLightRooms.ids(for: userId) }
+    var diddyLightRoomIds: Set<String> { DiddyLightRooms.ids(for: id) }
 
     private var homeServerName: String { (try? client.userIdServerName()) ?? record.serverName }
 
@@ -154,7 +155,7 @@ extension MatrixAccount {
                 _ = try? await clientRequest(base + "/state/m.room.topic", body: ["topic": tagged], method: "PUT")
             }
         }
-        DiddyLightRooms.remove(roomId, for: userId)
+        DiddyLightRooms.remove(roomId, for: id)
         await registerDiddyRoom(roomId)
     }
 
@@ -162,7 +163,7 @@ extension MatrixAccount {
     /// room themselves. The profile is stored as hidden messages in it.
     func useDiddyRoomWithoutAdmin(roomId: String, via: [String] = []) async throws {
         try await joinForDiddy(roomId, via: via)
-        DiddyLightRooms.add(roomId, for: userId)
+        DiddyLightRooms.add(roomId, for: id)
         await registerDiddyRoom(roomId)
     }
 
@@ -180,7 +181,7 @@ extension MatrixAccount {
         do {
             try await adoptRoomAsDiddyOptions(roomId: roomId, tagTopic: false)
         } catch {
-            DiddyLightRooms.add(roomId, for: userId)
+            DiddyLightRooms.add(roomId, for: id)
             await registerDiddyRoom(roomId)
         }
     }
@@ -247,7 +248,7 @@ extension MatrixAccount {
             if rooms.contains(where: { $0.id == roomId && $0.isJoined }) { break }
             try? await Task.sleep(nanoseconds: 250_000_000)
         }
-        if !DiddyLightRooms.ids(for: userId).contains(roomId) { diddyOptionsRooms.insert(roomId) }
+        if !DiddyLightRooms.ids(for: id).contains(roomId) { diddyOptionsRooms.insert(roomId) }
         diddyCheckedRooms.insert(roomId)
         await reloadDiddyProfilesForWrite()
     }
