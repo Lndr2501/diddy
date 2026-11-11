@@ -1,6 +1,6 @@
 # Changelog
 
-## Unveröffentlicht
+## 1.5.3 (2026-11-11)
 
 - **macOS: Dateien herunterladen (#176):** Downloads (Dateien aus Nachrichten, Bilder, Wiederherstellungsschlüssel) passierten in der Mac-App gar nicht, weil WebKit ohne Download-Handler jeden Download verwirft. Sie landen jetzt im Ordner „Downloads“; eine vorhandene Datei bekommt eine Nummer angehängt statt überschrieben zu werden. Das Log nennt Ziel und Erfolg.
 - **Profil exportieren (#175, #179):** Auf macOS war das Datei-Plugin nie gestartet, deshalb meldete der Export „The file could not be saved.“ und das Einfügen kopierter Dateien scheiterte. Auf Linux fehlten Speichern-Fenster und Datei-Plugin ganz; dort nimmt der Export jetzt den normalen Download mit eigenem Speichern-Fenster. Unbenutzte Dateirechte (Ordner lesen, kopieren, löschen, umbenennen) sind entfernt.
