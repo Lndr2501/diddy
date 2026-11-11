@@ -11,7 +11,7 @@ Die App ist Beta: Alles in der Tabelle ist gebaut und läuft bei den ersten Test
 | Server beitreten und erstellen, Kanäle erstellen, Einladungen annehmen, „Alle Kanäle beitreten“, Server verlassen | 🧪 |
 | Mitgliederliste nach Rollen mit Suche, Profilkarte (Nachricht, Blockieren, Entfernen, Bannen) | 🧪 |
 | Live sehen, wer im Sprachkanal ist, mit Namen und Profilbild, auch in der Kanalliste | 🧪 |
-| Antworten, Reaktionen, Bearbeiten, Löschen, @-Erwähnungen, Tippanzeige, Bilder senden und ansehen, Dateien öffnen | 🧪 |
+| Antworten, Reaktionen (8 schnelle im Menü, jedes andere Emoji über „More Emoji…“ und die Emoji-Tastatur), Bearbeiten, Löschen, @-Erwähnungen, Tippanzeige, Bilder senden und ansehen, Dateien öffnen | 🧪 |
 | Eigenen Namen und Profilbild ändern | 🧪 |
 | Diddy-Profile vom Desktop (Namensfarbe mit Verlauf, Schrift und Effekt, Banner, Status, Badges, Über mich, Infos, Aktivität, Interessen, Links) auf der Profilkarte, in Mitglieder- und DM-Liste und im Chat; Namensschilder (Farbe, Verläufe, Bild, GIF, Video) hinter Mitglieder- und DM-Zeilen; eigenes Profil bearbeiten (Status, Namensfarbe, Über mich, Infos, Aktivität) | 🧪 State-Events und Nachrichtenmodus, auch in verschlüsselten Options-Räumen; Profileffekte und Rahmen fehlen, Badges erstellen nur am Desktop |
 | Sprachnachrichten aufnehmen (Mikrofon im Eingabefeld, Dauer und Wellenform wie am Desktop) und abspielen, auch normale Audiodateien | 🧪 Aufnahme als AAC/m4a; Ogg/Opus vom Linux-Desktop spielt iOS nicht ab |
