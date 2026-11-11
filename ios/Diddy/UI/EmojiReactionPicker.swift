@@ -17,7 +17,7 @@ struct EmojiReactionPicker: View {
                 }
                 .frame(height: 52)
                 .background(RoundedRectangle(cornerRadius: 10).fill(Theme.input))
-                Text("Tap any emoji on the keyboard to react. Hold an emoji for other skin tones. If letters show up, switch to the emoji keyboard with the globe or emoji key.")
+                Text("Tap any emoji on the keyboard to react. Hold an emoji for other skin tones. If letters show up, switch with the globe or emoji key. If Emoji is missing, add it in iOS Settings > General > Keyboard > Keyboards.")
                     .font(.footnote)
                     .foregroundStyle(Theme.muted)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -86,7 +86,8 @@ private struct EmojiInputField: UIViewRepresentable {
 
 final class EmojiTextField: UITextField {
     /// Opens straight on the emoji keyboard when the user has it enabled (it is by default);
-    /// otherwise the usual keyboard, where the globe key gets there.
+    /// otherwise the usual keyboard. An unavailable emoji keyboard must be added in Settings.
+    /// activeInputModes is declared under reason 54BD.1 in PrivacyInfo.xcprivacy.
     override var textInputMode: UITextInputMode? {
         UITextInputMode.activeInputModes.first { $0.primaryLanguage == "emoji" } ?? super.textInputMode
     }

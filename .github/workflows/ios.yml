@@ -94,6 +94,11 @@ jobs:
             echo "::warning::iOS SDK $sdk: screen sharing will only cover the Diddy app itself, even on iOS 27 devices. Needs Xcode 27."
           fi
 
+      - name: Check emoji reaction rules
+        run: |
+          swiftc -swift-version 5 Diddy/Matrix/ReactionEmoji.swift Tools/reaction_check/main.swift -o "$RUNNER_TEMP/diddy-reaction-check"
+          "$RUNNER_TEMP/diddy-reaction-check"
+
       - name: Install XcodeGen
         run: command -v xcodegen || brew install xcodegen
 
@@ -191,6 +196,7 @@ jobs:
           ls -la dist
           rm -rf build/check && mkdir -p build/check && unzip -q dist/*.ipa -d build/check
           app=build/check/Payload/Diddy.app
+          plutil -lint "$app/PrivacyInfo.xcprivacy"
           ls "$app/Frameworks"
           # Every extension would need its own App ID when sideloading.
           if [ -d "$app/PlugIns" ] || [ -d "$app/Extensions" ]; then
