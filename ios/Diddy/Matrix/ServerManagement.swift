@@ -152,7 +152,10 @@ extension MatrixAccount {
     /// that server's child, as desktop does after creating.
     func createRoom(_ request: NewRoomRequest) async throws -> String {
         var request = request
-        if request.parentId != nil, request.parentVia.isEmpty { request.parentVia = [ownServerName] }
+        if let parentId = request.parentId, request.parentVia.isEmpty {
+            let via = await viaServers(for: parentId)
+            request.parentVia = via.isEmpty ? [ownServerName] : via
+        }
         let json = try await clientRequest("/_matrix/client/v3/createRoom", body: request.body())
         guard let id = json["room_id"] as? String else { throw DiddyError("The server could not create the room.") }
         if request.isVoice { voiceRoomIds.insert(id) }

@@ -159,78 +159,6 @@ struct EmptyChannelView: View {
     }
 }
 
-// MARK: - Server rail
-
-struct ServerRail: View {
-    @ObservedObject var account: MatrixAccount
-    @Binding var selection: String?
-    @State private var addingServer = false
-
-    var body: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(spacing: 8) {
-                railButton(
-                    id: nil,
-                    unread: account.directMessages.contains { $0.badge > 0 },
-                    badge: account.directMessages.reduce(UInt64(account.invites.count)) { $0 + $1.badge }
-                ) {
-                    Image("DiddyLogo").resizable().scaledToFill()
-                }
-                .accessibilityLabel("Direct Messages")
-                Capsule().fill(Theme.elevated).frame(width: 32, height: 2).padding(.vertical, 2)
-                ForEach(account.spaces) { space in
-                    railButton(
-                        id: space.roomId,
-                        unread: account.unreadCount(inSpace: space.roomId) > 0,
-                        badge: account.mentionCount(inSpace: space.roomId)
-                    ) {
-                        AvatarView(url: space.avatarUrl, name: space.displayName, size: 48, cornerRadius: 0, account: account)
-                    }
-                    .accessibilityLabel(space.displayName)
-                }
-                Button {
-                    addingServer = true
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.title3.weight(.semibold))
-                        .foregroundStyle(Theme.online)
-                        .frame(width: 48, height: 48)
-                        .background(Circle().fill(Theme.elevated))
-                }
-                .accessibilityLabel("Add a server")
-            }
-            .padding(.vertical, 12)
-        }
-        .frame(width: 72)
-        .background(Theme.rail)
-        .sheet(isPresented: $addingServer) { AddServerView(account: account) }
-    }
-
-    /// Discord's rail: a white pip for anything unread, a red number only for what is really for you.
-    private func railButton<Icon: View>(id: String?, unread: Bool, badge: UInt64, @ViewBuilder icon: () -> Icon) -> some View {
-        let selected = selection == id
-        return Button {
-            selection = id
-        } label: {
-            icon()
-                .frame(width: 48, height: 48)
-                .clipShape(RoundedRectangle(cornerRadius: selected ? 16 : 24, style: .continuous))
-                .overlay(alignment: .bottomTrailing) {
-                    if badge > 0 { UnreadBadge(count: badge).offset(x: 4, y: 4) }
-                }
-        }
-        .buttonStyle(.plain)
-        .frame(maxWidth: .infinity)
-        .overlay(alignment: .leading) {
-            Capsule()
-                .fill(Theme.text)
-                .frame(width: 4, height: selected ? 40 : (unread ? 8 : 0))
-                .offset(x: -2)
-        }
-        .animation(.spring(response: 0.25), value: selected)
-    }
-}
-
 // MARK: - Channel list
 
 struct ChannelSidebar: View {
@@ -245,12 +173,13 @@ struct ChannelSidebar: View {
     @State private var showSearch = false
     @State private var joining: Set<String> = []
     @State private var sheet: SidebarSheet?
-    @State private var confirmLeave = false
+    @State private var leavingServer: String?
     @State private var joiningAll = false
     @State private var leaveRequest: LeaveRequest?
 
     private enum SidebarSheet: Identifiable {
         case members(String), invite(String), createChannel(String), newMessage, roomSettings(String)
+        case manage(String), createRoom, explore, preview(PublicRoomEntry, [String])
         var id: String {
             switch self {
             case .members(let id): return "members\(id)"
@@ -258,6 +187,10 @@ struct ChannelSidebar: View {
             case .createChannel(let id): return "create\(id)"
             case .newMessage: return "new"
             case .roomSettings(let id): return "settings\(id)"
+            case .manage(let id): return "manage\(id)"
+            case .createRoom: return "createRoom"
+            case .explore: return "explore"
+            case .preview(let entry, _): return "preview\(entry.roomId)"
             }
         }
     }
@@ -321,26 +254,21 @@ struct ChannelSidebar: View {
         .alert("Could not join", isPresented: Binding(get: { joinError != nil }, set: { if !$0 { joinError = nil } })) {
             Button("OK", role: .cancel) {}
         } message: { Text(joinError ?? "") }
-        .confirmationDialog("Leave \(serverName)?", isPresented: $confirmLeave, titleVisibility: .visible) {
-            Button("Leave Server", role: .destructive) {
-                guard let server else { return }
-                Task {
-                    do { try await account.leaveServer(server) } catch { joinError = error.friendlyMessage }
-                }
-            }
-        } message: {
-            Text("You also leave all of its channels. You need a new invite to come back if the server is private.")
-        }
+        .leaveServerDialog(account: account, serverId: $leavingServer) { joinError = $0 }
         .sheet(isPresented: $showSearch) { QuickSwitchView(account: account) }
         .sheet(isPresented: $showRecovery) { RecoveryView(account: account) }
         .sheet(item: $sheet) { sheet in
             switch sheet {
             case .members(let id): MembersView(account: account, roomId: id, title: serverName)
             case .invite(let id): InviteView(account: account, roomId: id)
-            case .createChannel(let id): CreateChannelView(account: account, spaceId: id)
+            case .createChannel(let id): CreateRoomView(account: account, parentId: id)
             case .newMessage: NewMessageView(account: account)
             case .roomSettings(let id):
                 RoomSettingsView(roomId: id, account: account, onOpenRoom: { destination = account.destination(for: $0) })
+            case .manage(let id): ManageServerView(account: account, serverId: id)
+            case .createRoom: CreateRoomView(account: account)
+            case .explore: ExploreView(account: account)
+            case .preview(let entry, let via): PublicRoomPreviewSheet(account: account, entry: entry, via: via)
             }
         }
         .confirmationDialog(
@@ -394,12 +322,13 @@ struct ChannelSidebar: View {
                     Button { sheet = .members(server) } label: { Label("Members", systemImage: "person.2.fill") }
                     Button { sheet = .invite(server) } label: { Label("Invite People", systemImage: "person.badge.plus") }
                     Button { sheet = .createChannel(server) } label: { Label("Create Channel", systemImage: "plus.bubble") }
+                    Button { sheet = .manage(server) } label: { Label("Manage Channels", systemImage: "list.bullet.indent") }
                     Button { sheet = .roomSettings(server) } label: { Label("Server Settings", systemImage: "gearshape") }
                     if !account.unjoinedChannels(inSpace: server).isEmpty {
                         Button { joinAll(server) } label: { Label("Join All Channels", systemImage: "arrow.right.circle") }
                     }
                     Divider()
-                    Button(role: .destructive) { confirmLeave = true } label: {
+                    Button(role: .destructive) { leavingServer = server } label: {
                         Label("Leave Server", systemImage: "rectangle.portrait.and.arrow.right")
                     }
                 } label: {
@@ -416,7 +345,11 @@ struct ChannelSidebar: View {
             } else {
                 Text(serverName).font(.headline).foregroundStyle(Theme.text).lineLimit(1)
                 Spacer()
-                Button { sheet = .newMessage } label: {
+                Menu {
+                    Button { sheet = .newMessage } label: { Label("New Message", systemImage: "square.and.pencil") }
+                    Button { sheet = .createRoom } label: { Label("Create Room", systemImage: "plus.bubble") }
+                    Button { sheet = .explore } label: { Label("Explore", systemImage: "safari") }
+                } label: {
                     Image(systemName: "square.and.pencil").foregroundStyle(Theme.muted)
                 }
                 .accessibilityLabel("New Message")
@@ -561,14 +494,7 @@ struct ChannelSidebar: View {
                 .contextMenu { roomMenu(channel.roomId) }
         } else {
             Button {
-                joining.insert(channel.roomId)
-                Task {
-                    do {
-                        try await account.join(channel)
-                        self.destination = destination
-                    } catch { joinError = error.friendlyMessage }
-                    joining.remove(channel.roomId)
-                }
+                sheet = .preview(PublicRoomEntry(spaceRoom: channel), channel.via)
             } label: {
                 ChannelRow(account: account, channel: channel, isJoining: joining.contains(channel.roomId))
                     .opacity(0.55)

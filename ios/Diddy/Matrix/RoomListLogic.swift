@@ -58,6 +58,15 @@ enum RailEntry: Equatable {
     }
 }
 
+extension RailEntry: Identifiable {
+    var id: String {
+        switch self {
+        case .space(let id): return id
+        case .folder(let folder): return "folder-" + folder.id
+        }
+    }
+}
+
 /// Reads and writes the rail layout desktop keeps in the account data `in.cinny.spaces`
 /// (hooks/useSidebarItems.ts), so reordering on one device shows on the other.
 enum ServerRailLayout {

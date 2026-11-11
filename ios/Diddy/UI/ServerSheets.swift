@@ -6,9 +6,8 @@ struct AddServerView: View {
     @ObservedObject var account: MatrixAccount
     @EnvironmentObject private var navigator: AppNavigator
     @Environment(\.dismiss) private var dismiss
-    @State private var name = ""
-    @State private var topic = ""
-    @State private var isPublic = false
+    @State private var creating = false
+    @State private var serverBeforeCreating: String?
     @State private var address = ""
     @State private var busy = false
     @State private var error: String?
@@ -28,15 +27,11 @@ struct AddServerView: View {
                     Text("For example #community:matrix.org or a matrix.to link.")
                 }
                 Section {
-                    TextField("Server name", text: $name)
-                    TextField("What is it about? (optional)", text: $topic)
-                    Toggle("Anyone with the address can join", isOn: $isPublic)
-                    Button("Create Server") { run { try await create() } }
-                        .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || busy)
+                    Button("Create a Server") { serverBeforeCreating = navigator.server; creating = true }
                 } header: {
                     Text("Create your own")
                 } footer: {
-                    Text(isPublic ? "Channels are not encrypted, so new members can read the history." : "Only people you invite can join. Text channels are end-to-end encrypted.")
+                    Text("Choose who can join, the address, encryption and more.")
                 }
                 if let error { Text(error).foregroundStyle(Theme.danger) }
                 if busy { HStack { Spacer(); ProgressView(); Spacer() } }
@@ -47,6 +42,9 @@ struct AddServerView: View {
             .navigationBarTitleDisplayMode(.inline)
             .tint(Theme.accent)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+            .sheet(isPresented: $creating, onDismiss: { if navigator.server != serverBeforeCreating { dismiss() } }) {
+                CreateSpaceView(account: account)
+            }
         }
     }
 
@@ -66,87 +64,6 @@ struct AddServerView: View {
             navigator.server = id
         } else {
             navigator.open(id, account: account)
-        }
-    }
-
-    private func create() async throws {
-        let id = try await account.createServer(
-            name: name.trimmingCharacters(in: .whitespaces),
-            topic: topic.trimmingCharacters(in: .whitespaces),
-            isPublic: isPublic
-        )
-        navigator.server = id
-        dismiss()
-    }
-}
-
-struct CreateChannelView: View {
-    @ObservedObject var account: MatrixAccount
-    let spaceId: String
-    @EnvironmentObject private var navigator: AppNavigator
-    @Environment(\.dismiss) private var dismiss
-    @State private var name = ""
-    @State private var topic = ""
-    @State private var isVoice = false
-    @State private var encrypted = true
-    @State private var busy = false
-    @State private var error: String?
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section("Channel type") {
-                    Picker("Type", selection: $isVoice) {
-                        Label("Text", systemImage: "number").tag(false)
-                        Label("Voice", systemImage: "speaker.wave.2.fill").tag(true)
-                    }
-                    .pickerStyle(.inline)
-                    .labelsHidden()
-                }
-                Section("Channel name") {
-                    TextField(isVoice ? "Lounge" : "new-channel", text: $name)
-                    TextField("Topic (optional)", text: $topic)
-                }
-                Section {
-                    Toggle("End-to-end encrypted", isOn: $encrypted)
-                } footer: {
-                    Text("Every member of this server can join the channel. This cannot be turned off later.")
-                }
-                if let error { Text(error).foregroundStyle(Theme.danger) }
-            }
-            .scrollContentBackground(.hidden)
-            .background(Theme.sidebar.ignoresSafeArea())
-            .navigationTitle("Create Channel")
-            .navigationBarTitleDisplayMode(.inline)
-            .tint(Theme.accent)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    if busy { ProgressView() } else {
-                        Button("Create") { create() }
-                            .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
-                    }
-                }
-            }
-        }
-    }
-
-    private func create() {
-        busy = true
-        error = nil
-        Task {
-            do {
-                let id = try await account.createChannel(
-                    in: spaceId,
-                    name: name.trimmingCharacters(in: .whitespaces),
-                    topic: topic.trimmingCharacters(in: .whitespaces),
-                    isVoice: isVoice,
-                    encrypted: encrypted
-                )
-                dismiss()
-                navigator.open(id, account: account)
-            } catch { self.error = error.friendlyMessage }
-            busy = false
         }
     }
 }
