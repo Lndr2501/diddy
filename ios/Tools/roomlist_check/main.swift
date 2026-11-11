@@ -266,6 +266,26 @@ check(rows[3].name == "#late:x" && rows[3].isVoice, "empty name falls back to th
 check(rows[1].parentId == "!sub:x", "parent of nested row")
 check(ServerHierarchy.addable(["!a", "!b", "!root"], alreadyInside: ["!a"], serverId: "!root") == ["!b"], "addable rooms")
 
+check(RoomVersionSupport.availableVersions(fromCapabilities: ["capabilities": ["m.room_versions": ["default": "10", "available": ["1": "stable", "10": "stable", "9": "stable", "org.example": "unstable"]]]]) == ["10", "9", "1", "org.example"], "available versions sorted")
+
+// MARK: Rail editing helpers
+let railBase: [RailEntry] = [.space("!a"), .folder(RailFolder(id: "F1", name: "Games", content: ["!b", "!c"])), .space("!d")]
+check(ServerRailLayout.json(ServerRailLayout.renamed("F1", to: " Fun ", in: railBase)).count == 3, "rename keeps the entries")
+if case .folder(let renamedFolder) = ServerRailLayout.renamed("F1", to: " Fun ", in: railBase)[1] { check(renamedFolder.name == "Fun", "rename trims") } else { check(false, "rename keeps the folder") }
+if case .folder(let unnamedFolder) = ServerRailLayout.renamed("F1", to: "  ", in: railBase)[1] { check(unnamedFolder.name == nil, "empty name removes the name") } else { check(false, "rename keeps the folder") }
+check(ServerRailLayout.dissolved("F1", in: railBase) == [.space("!a"), .space("!b"), .space("!c"), .space("!d")], "dissolve puts the servers in place")
+let foldered = ServerRailLayout.foldered("!a", in: railBase)
+check(foldered.count == 3, "foldered keeps the count")
+if case .folder(let newFolder) = foldered[0] { check(newFolder.content == ["!a"] && newFolder.id.count == 12, "foldered makes a folder at the same place") } else { check(false, "foldered first entry is a folder") }
+let intoFolder = ServerRailLayout.put("!d", intoFolder: "F1", of: railBase)
+check(intoFolder.count == 2, "put into folder removes the server from the rail")
+if case .folder(let grown) = intoFolder[1] { check(grown.content == ["!b", "!c", "!d"], "put into folder appends") } else { check(false, "folder stays") }
+check(ServerRailLayout.put("!zzz", intoFolder: "nope", of: railBase) == railBase, "unknown folder changes nothing")
+
+let folderedFromFolder = ServerRailLayout.foldered("!b", in: railBase)
+check(folderedFromFolder.count == 4, "foldered out of a folder keeps the server: \(folderedFromFolder.count)")
+check(folderedFromFolder.flatMap(\.spaceIds) == ["!a", "!c", "!b", "!d"], "foldered out of a folder order")
+
 if failures == 0 {
     print("roomlist_check: all checks passed")
 } else {

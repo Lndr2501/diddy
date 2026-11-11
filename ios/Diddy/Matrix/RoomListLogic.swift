@@ -185,6 +185,59 @@ enum ServerRailLayout {
         }
     }
 
+    /// Renames a folder; an empty name removes the name, as desktop does.
+    static func renamed(_ folderId: String, to name: String, in entries: [RailEntry]) -> [RailEntry] {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        return entries.map { entry in
+            guard case .folder(var folder) = entry, folder.id == folderId else { return entry }
+            folder.name = trimmed.isEmpty ? nil : trimmed
+            return .folder(folder)
+        }
+    }
+
+    /// Replaces a folder by its servers, in place.
+    static func dissolved(_ folderId: String, in entries: [RailEntry]) -> [RailEntry] {
+        var result: [RailEntry] = []
+        for entry in entries {
+            if case .folder(let folder) = entry, folder.id == folderId {
+                result += folder.content.map { RailEntry.space($0) }
+            } else {
+                result.append(entry)
+            }
+        }
+        return result
+    }
+
+    /// A new folder holding one server, put where that server was (after its old folder, if any).
+    static func foldered(_ spaceId: String, in entries: [RailEntry]) -> [RailEntry] {
+        var result: [RailEntry] = []
+        for entry in entries {
+            switch entry {
+            case .space(let id):
+                if id == spaceId {
+                    result.append(.folder(RailFolder(id: newFolderId(), name: nil, content: [spaceId])))
+                } else {
+                    result.append(entry)
+                }
+            case .folder(var folder):
+                if folder.content.contains(spaceId) {
+                    folder.content.removeAll { $0 == spaceId }
+                    if !folder.content.isEmpty { result.append(.folder(folder)) }
+                    result.append(.folder(RailFolder(id: newFolderId(), name: nil, content: [spaceId])))
+                } else {
+                    result.append(entry)
+                }
+            }
+        }
+        return result
+    }
+
+    /// Puts a server into an existing folder (by id), out of wherever it was.
+    static func put(_ spaceId: String, intoFolder folderId: String, of entries: [RailEntry]) -> [RailEntry] {
+        guard let index = entries.firstIndex(where: { if case .folder(let f) = $0 { return f.id == folderId } else { return false } }) else { return entries }
+        return put(spaceId, into: index, of: entries)
+    }
+
     /// Desktop's `sidebarItemWithout`.
     static func without(_ spaceId: String, in entries: [RailEntry]) -> [RailEntry] {
         entries.compactMap { removing(spaceId, from: $0) }
@@ -246,6 +299,21 @@ enum RoomVersionSupport {
     static func restricted(_ version: String?) -> Bool { atLeast(version, 8) }
     static func knock(_ version: String?) -> Bool { atLeast(version, 7) }
     static func knockRestricted(_ version: String?) -> Bool { atLeast(version, 10) }
+
+    /// The versions the server lists as available, newest number first (desktop's version picker).
+    static func availableVersions(fromCapabilities json: [String: Any]) -> [String] {
+        let capabilities = json["capabilities"] as? [String: Any]
+        let versions = capabilities?["m.room_versions"] as? [String: Any]
+        let available = (versions?["available"] as? [String: Any]).map { Array($0.keys) } ?? []
+        return available.sorted { lhs, rhs in
+            switch (Int(lhs), Int(rhs)) {
+            case let (x?, y?): return x > y
+            case (_?, nil): return true
+            case (nil, _?): return false
+            default: return lhs < rhs
+            }
+        }
+    }
 
     /// `m.room_versions.default` from the client API's capabilities answer.
     static func defaultVersion(fromCapabilities json: [String: Any]) -> String? {
