@@ -37,6 +37,13 @@ struct MessageRow: Identifiable {
     let isPending: Bool
     /// Structured card of a bot message (`dev.diddy.card`); the plain text stays in `body`.
     var card: BotCard? = nil
+    /// The change a membership line is about, for its symbol.
+    var membership: TimelineLayout.Membership? = nil
+
+    var layoutKind: TimelineLayout.Kind {
+        if case .notice = body { return .notice }
+        return .message
+    }
 }
 
 @MainActor
@@ -49,15 +56,18 @@ final class TimelineController: ObservableObject {
 
     let room: Room
     let ownUserId: String
+    /// A direct message leaves out the joins and invites that set it up.
+    let isDirect: Bool
     private var timeline: Timeline?
     private var items: [TimelineItem] = []
     private var listener: TaskHandle?
     private var typingListener: TaskHandle?
     private var isTyping = false
 
-    init(room: Room, ownUserId: String) {
+    init(room: Room, ownUserId: String, isDirect: Bool = false) {
         self.room = room
         self.ownUserId = ownUserId
+        self.isDirect = isDirect
     }
 
     deinit {
@@ -92,7 +102,11 @@ final class TimelineController: ObservableObject {
         guard let timeline, !loading, !reachedStart else { return }
         loading = true
         defer { loading = false }
-        if let end = try? await timeline.paginateBackwards(numEvents: 40) { reachedStart = end }
+        if let end = try? await timeline.paginateBackwards(numEvents: 40), end != reachedStart {
+            reachedStart = end
+            // Knowing where the room starts can hide the setup lines of a direct message.
+            rebuild()
+        }
     }
 
     /// A page can hold nothing the chat shows (state changes only), so keep going until something
@@ -233,8 +247,10 @@ final class TimelineController: ObservableObject {
     }
 
     private func rebuild() {
-        var result: [MessageRow] = []
+        var built: [MessageRow] = []
         var pendingDay: Date?
+        var createdAt: Date?
+        var firstEventDate: Date?
         for item in items {
             if let virtual = item.asVirtual() {
                 if case .dateDivider(let ts) = virtual {
@@ -242,15 +258,41 @@ final class TimelineController: ObservableObject {
                 }
                 continue
             }
-            guard let event = item.asEvent(), var row = Self.row(for: event, id: item.uniqueId().id, me: ownUserId) else { continue }
-            if let previous = result.last, pendingDay == nil,
-               previous.sender == row.sender,
-               row.date.timeIntervalSince(previous.date) < 7 * 60,
-               row.reply == nil {
-                row.showsHeader = false
+            guard let event = item.asEvent() else { continue }
+            let date = Date(timeIntervalSince1970: TimeInterval(event.timestamp) / 1000)
+            if firstEventDate == nil { firstEventDate = date }
+            if createdAt == nil, case .state(_, let content) = event.content, case .roomCreate = content {
+                createdAt = date
             }
+            guard var row = Self.row(for: event, id: item.uniqueId().id, me: ownUserId) else { continue }
             row.dayDivider = pendingDay
             pendingDay = nil
+            built.append(row)
+        }
+        // The creation event may be filtered out; the first event of a fully loaded room is as good.
+        if createdAt == nil, reachedStart { createdAt = firstEventDate }
+
+        let hidden = TimelineLayout.hiddenSetupLines(built.map { row -> TimelineLayout.Item in
+            if let change = row.membership { return .membership(change, row.date) }
+            return row.layoutKind == .message ? .message(row.date) : .other(row.date)
+        }, isDirect: isDirect, createdAt: createdAt)
+
+        var result: [MessageRow] = []
+        var carriedDay: Date?
+        var previous: TimelineLayout.Entry?
+        for (index, original) in built.enumerated() {
+            var row = original
+            if hidden.contains(index) {
+                // The day above a hidden line still belongs above the next row shown.
+                carriedDay = row.dayDivider ?? carriedDay
+                continue
+            }
+            row.dayDivider = row.dayDivider ?? carriedDay
+            carriedDay = nil
+            let entry = TimelineLayout.Entry(sender: row.sender, date: row.date, kind: row.layoutKind,
+                                             isReply: row.reply != nil, hasDayDivider: row.dayDivider != nil)
+            row.showsHeader = !TimelineLayout.continuesGroup(entry, after: previous)
+            previous = entry
             result.append(row)
         }
         rows = result
@@ -267,6 +309,7 @@ final class TimelineController: ObservableObject {
         var edited = false
         var reply: (sender: String, text: String)?
         var card: BotCard?
+        var membership: TimelineLayout.Membership?
         switch event.content {
         case .msgLike(let content):
             if let details = content.inReplyTo, case .ready(let replied, let sender, let profile, _, _) = details.event() {
@@ -294,9 +337,9 @@ final class TimelineController: ObservableObject {
             }
         case .roomMembership(let userId, let displayName, let change, _):
             // Profile edits and other no-ops are noise in a channel; Discord does not show them either.
-            guard ChatSettings.showMembership,
-                  let text = Self.membershipText(name: displayName ?? userId, change: change) else { return nil }
-            body = .notice(text)
+            guard ChatSettings.showMembership, let kind = Self.membership(change) else { return nil }
+            membership = kind
+            body = .notice(kind.text(name: displayName ?? userId))
         case .rtcNotification, .callInvite:
             body = .notice("\(name) started a call")
         default:
@@ -320,7 +363,8 @@ final class TimelineController: ObservableObject {
             showsHeader: true,
             dayDivider: nil,
             isPending: !event.isRemote,
-            card: card
+            card: card,
+            membership: membership
         )
     }
 
@@ -364,15 +408,15 @@ final class TimelineController: ObservableObject {
         }
     }
 
-    private static func membershipText(name: String, change: MembershipChange?) -> String? {
+    private static func membership(_ change: MembershipChange?) -> TimelineLayout.Membership? {
         switch change {
-        case .joined?, .invitationAccepted?, .knockAccepted?: return "\(name) joined"
-        case .left?: return "\(name) left"
-        case .invited?: return "\(name) was invited"
-        case .banned?, .kickedAndBanned?: return "\(name) was banned"
-        case .unbanned?: return "\(name) was unbanned"
-        case .kicked?: return "\(name) was removed"
-        case .invitationRejected?: return "\(name) declined the invite"
+        case .joined?, .invitationAccepted?, .knockAccepted?: return .joined
+        case .left?: return .left
+        case .invited?: return .invited
+        case .banned?, .kickedAndBanned?: return .banned
+        case .unbanned?: return .unbanned
+        case .kicked?: return .removed
+        case .invitationRejected?: return .declined
         default: return nil
         }
     }

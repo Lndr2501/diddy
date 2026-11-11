@@ -23,7 +23,8 @@ struct ChatView: View {
             // A channel joined a moment ago may still be on its way from the server.
             try? await account.waitForRoom(roomId)
             guard let room = account.room(roomId) else { return }
-            let controller = TimelineController(room: room, ownUserId: account.userId)
+            let controller = TimelineController(room: room, ownUserId: account.userId,
+                                                isDirect: account.summary(for: roomId)?.isDirect == true)
             holder.controller = controller
             await controller.start()
         }
@@ -91,13 +92,16 @@ private struct ChatContent: View {
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Button { showInfo = true } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: summary?.isDirect == true ? "at" : "number").foregroundStyle(Theme.faint)
-                            .overlay(alignment: .bottomTrailing) { PresenceDot(userId: summary?.dmUserId, account: account, size: 8, ring: Theme.chat, onDemand: true).offset(x: 3, y: 3) }
-                        Text(title).font(.headline).foregroundStyle(Theme.text).lineLimit(1)
-                        if summary?.isEncrypted == true {
-                            Image(systemName: "lock.fill").font(.caption2).foregroundStyle(Theme.faint)
+                    // Like desktop: the other person's picture in a DM and no lock (the channel
+                    // details opened from here say whether the room is encrypted).
+                    HStack(spacing: 8) {
+                        if let summary, summary.isDirect {
+                            AvatarView(url: summary.avatarUrl, name: title, size: 24, account: account)
+                                .overlay(alignment: .bottomTrailing) { PresenceDot(userId: summary.dmUserId, account: account, size: 8, ring: Theme.chat, onDemand: true).offset(x: 2, y: 2) }
+                        } else {
+                            Image(systemName: "number").foregroundStyle(Theme.faint)
                         }
+                        Text(title).font(.headline).foregroundStyle(Theme.text).lineLimit(1)
                     }
                 }
                 .accessibilityLabel("\(title), channel details")
@@ -159,7 +163,7 @@ private struct ChatContent: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     if controller.reachedStart {
-                        ChannelIntro(title: title, isDirect: summary?.isDirect == true)
+                        ChannelIntro(title: title, summary: summary, account: account)
                     } else {
                         ProgressView()
                             .frame(maxWidth: .infinity)
@@ -534,21 +538,32 @@ private struct ImageViewer: View {
 
 private struct ChannelIntro: View {
     let title: String
-    let isDirect: Bool
+    let summary: RoomSummary?
+    let account: MatrixAccount
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Image(systemName: isDirect ? "at" : "number")
-                .font(.system(size: 34, weight: .bold))
-                .foregroundStyle(Theme.text)
-                .frame(width: 68, height: 68)
-                .background(Circle().fill(Theme.elevated))
-            Text(isDirect ? title : "Welcome to #\(title)!").font(.title2.bold()).foregroundStyle(Theme.text)
-            Text(isDirect ? "This is the beginning of your direct message history." : "This is the start of the #\(title) channel.")
-                .foregroundStyle(Theme.muted)
+            if let summary, summary.isDirect {
+                // Discord's start of a DM: the other person's big picture, then the name.
+                AvatarView(url: summary.avatarUrl, name: title, size: 80, account: account)
+                    .padding(.bottom, 4)
+                Text(title).font(.title2.bold()).foregroundStyle(Theme.text)
+                Text("This is the beginning of your direct message history with \(title).")
+                    .foregroundStyle(Theme.muted)
+            } else {
+                Image(systemName: "number")
+                    .font(.system(size: 34, weight: .bold))
+                    .foregroundStyle(Theme.text)
+                    .frame(width: 68, height: 68)
+                    .background(Circle().fill(Theme.elevated))
+                Text("Welcome to #\(title)!").font(.title2.bold()).foregroundStyle(Theme.text)
+                Text("This is the start of the #\(title) channel.")
+                    .foregroundStyle(Theme.muted)
+            }
         }
-        .padding(16)
-        .padding(.top, 24)
+        .padding(.horizontal, 16)
+        .padding(.top, 40)
+        .padding(.bottom, 8)
     }
 }
 
@@ -564,6 +579,8 @@ struct MessageRowView: View {
     var onImage: (UIImage) -> Void = { _ in }
     var onFile: (URL) -> Void = { _ in }
     var onCardCommand: (String) -> Void = { _ in }
+    /// Badges grow with the name next to them when the text size changes.
+    @ScaledMetric(relativeTo: .subheadline) private var badgeSize: CGFloat = 13
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -574,19 +591,44 @@ struct MessageRowView: View {
                     Rectangle().fill(Theme.elevated).frame(height: 1)
                 }
                 .padding(.horizontal, 16)
-                .padding(.vertical, 10)
+                .padding(.top, 14)
+                .padding(.bottom, 4)
             }
             if case .notice(let text) = row.body {
-                HStack(spacing: 8) {
-                    Image(systemName: "arrow.right").foregroundStyle(Theme.online).font(.caption)
-                    Text(text).font(.footnote).foregroundStyle(Theme.muted)
-                    Text(row.date.chatTimestamp).font(.caption2).foregroundStyle(Theme.faint)
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 4)
+                notice(text)
             } else {
                 message
             }
+        }
+    }
+
+    /// A quiet line about the room. The day is in the divider above, so the time is enough.
+    private func notice(_ text: String) -> some View {
+        let symbol = noticeSymbol
+        return HStack(alignment: .firstTextBaseline, spacing: 12) {
+            // In the avatar column, so the text lines up with the messages.
+            Image(systemName: symbol.name).font(.caption).foregroundStyle(symbol.color)
+                .frame(width: 40)
+                .accessibilityHidden(true)
+            Text(text).font(.footnote).foregroundStyle(Theme.muted)
+            Text(ChatSettings.time(row.date)).font(.caption2).foregroundStyle(Theme.faint)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 6)
+        .padding(.bottom, 2)
+    }
+
+    /// Discord's green arrow for joins only; every other change gets a neutral symbol of its own.
+    private var noticeSymbol: (name: String, color: Color) {
+        switch row.membership {
+        case .joined?: return ("arrow.right", Theme.online)
+        case .invited?: return ("person.badge.plus", Theme.faint)
+        case .left?, .removed?: return ("arrow.left", Theme.faint)
+        case .banned?: return ("nosign", Theme.faint)
+        case .unbanned?: return ("arrow.uturn.backward", Theme.faint)
+        case .declined?: return ("xmark", Theme.faint)
+        case nil: return ("phone.fill", Theme.faint)
         }
     }
 
@@ -623,7 +665,7 @@ struct MessageRowView: View {
                                 )
                             }
                             .buttonStyle(.plain)
-                            if let badges = account.diddyBadges[row.sender] { DiddyBadges(badges: badges, size: 13, account: account) }
+                            if let badges = account.diddyBadges[row.sender] { DiddyBadges(badges: badges, size: badgeSize, account: account) }
                             Text(row.date.chatTimestamp).font(.caption2).foregroundStyle(Theme.faint)
                         }
                     }
