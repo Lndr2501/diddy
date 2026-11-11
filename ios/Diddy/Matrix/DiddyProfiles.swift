@@ -430,6 +430,12 @@ extension MatrixAccount {
 
         if diddyProfiles != profiles { diddyProfiles = profiles }
         if diddyBadges != badges { diddyBadges = badges }
+        // Every badge you were given, for the editor's "shown badges" (built-in ones first).
+        let ownBadges = (owned[self.userId] ?? []).compactMap { definitions[$0] }.sorted { a, b in
+            if a.id.hasPrefix("g.") != b.id.hasPrefix("g.") { return a.id.hasPrefix("g.") }
+            return a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
+        }
+        if diddyOwnBadges != ownBadges { diddyOwnBadges = ownBadges }
         diddyOwnProfileRaw = ownRaw
     }
 
@@ -445,14 +451,31 @@ extension MatrixAccount {
     /// Changes some fields of your Diddy profile and keeps all others, including ones this app does
     /// not know. `nil` removes a field.
     func updateDiddyProfile(_ changes: [String: Any?]) async throws {
-        await loadDiddyProfiles(force: true)
+        try await updateDiddyProfile(build: { stored in
+            var content = stored
+            for (key, value) in changes { content[key] = value }
+            return content
+        })
+    }
+
+    /// Writes your profile as `build` makes it from the stored one, which is read again right
+    /// before (after any load still running), so nothing written elsewhere meanwhile is lost.
+    /// Refuses to write while your stored profile is not known, and content that readers would
+    /// drop for its size (desktop's limit and message, see `DiddyProfileDraft.encodedSize`).
+    func updateDiddyProfile(build: ([String: Any]) -> [String: Any]) async throws {
+        await reloadDiddyProfilesForWrite()
         guard let primary = diddyPrimaryRoom, canEditDiddyProfile else {
             throw DiddyError("No Diddy Options room was found. Set one up in Diddy desktop first.")
         }
-        var content = diddyOwnProfileRaw ?? [:]
-        for (key, value) in changes { content[key] = value }
+        var content = build(diddyOwnProfileRaw ?? [:])
         content["v"] = 1
         content[DiddyEvents.keyField] = nil
+        guard let size = DiddyProfileDraft.encodedSize(content, key: userId) else {
+            throw DiddyError("Your profile could not be saved: it contains a value that is not valid JSON.")
+        }
+        if size > DiddyEvents.maxContentBytes {
+            throw DiddyError("Too much data to save (\(size) of \(DiddyEvents.maxContentBytes) characters). Shorten links or texts.")
+        }
         let path = "/_matrix/client/v3/rooms/\(Self.pathComponent(primary.id))/state/\(DiddyEvents.profile)/\(Self.pathComponent(userId))"
         // State events are never encrypted, so desktop only uses them in unencrypted rooms.
         var asState = !primary.encrypted
