@@ -27,6 +27,7 @@ struct DiddyProfileEditor: View {
     @State private var error: String?
     @State private var bannerItem: PhotosPickerItem?
     @State private var plateItem: PhotosPickerItem?
+    @State private var previewWidth: CGFloat = 0
 
     private enum Tab: String, CaseIterable {
         case name = "Name", card = "Card", look = "Look", status = "Status", layout = "Layout"
@@ -109,38 +110,12 @@ struct DiddyProfileEditor: View {
 
     private func preview(_ shown: DiddyProfile?) -> some View {
         Section {
-            VStack(alignment: .leading, spacing: 10) {
-                ZStack(alignment: .bottomLeading) {
-                    VStack(spacing: 0) {
-                        DiddyBanner(profile: shown, seed: account.userId, account: account)
-                            .frame(height: 90)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                        Color.clear.frame(height: 34)
-                    }
-                    AvatarView(url: account.avatarUrl, name: account.title, size: 68, account: account)
-                        .overlay(Circle().stroke(Theme.elevated, lineWidth: 4))
-                        .overlay(alignment: .bottomTrailing) { DiddyStatusDot(status: shown?.status, size: 18, ring: Theme.elevated) }
-                        .padding(.leading, 12)
+            VStack(alignment: .leading, spacing: 14) {
+                // The card with its frame around it and the effect over it, like the profile card.
+                DiddyProfileFrameBox(frame: shown?.frame, account: account, available: previewWidth > 0 ? previewWidth : 280) {
+                    previewCard(shown)
                 }
-                HStack(spacing: 6) {
-                    DiddyName(name: account.title, profile: shown, font: .title3.bold(), size: 20)
-                    if !shownBadges.isEmpty { DiddyBadges(badges: shownBadges, size: 16, account: account) }
-                }
-                if let status = shown?.status, status != .invisible {
-                    Text(status.title).font(.caption).foregroundStyle(Theme.muted)
-                }
-                if let shown, shown.hasCardContent, tab == .card || tab == .layout {
-                    DiddyCardModules(profile: shown)
-                } else if let bio = shown?.bio {
-                    Text(bio).font(.subheadline).foregroundStyle(Theme.text).lineLimit(3)
-                }
-                let accent = Color(diddyHex: shown?.cardAccent)
-                Label("Message", systemImage: "bubble.left.fill")
-                    .font(.footnote.bold())
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 7)
-                    .background(Capsule().fill(accent ?? Theme.accent))
-                    .foregroundStyle(accent == nil ? Theme.onAccent : .white)
+                .frame(maxWidth: .infinity)
                 // A row of the member list, with the nameplate behind it.
                 HStack(spacing: 10) {
                     AvatarView(url: account.avatarUrl, name: account.title, size: 32, account: account)
@@ -154,10 +129,62 @@ struct DiddyProfileEditor: View {
                 .diddyNameplate(shown?.nameplate, account: account, bleed: EdgeInsets())
             }
             .padding(.vertical, 4)
+            .frame(maxWidth: .infinity)
+            .background {
+                GeometryReader { proxy in
+                    Color.clear
+                        .onAppear { previewWidth = proxy.size.width }
+                        .onChange(of: proxy.size.width) { previewWidth = $0 }
+                }
+            }
         } header: {
             Text("Preview")
         } footer: {
             Text("Your unsaved changes, the way other Diddy users will see them.")
+        }
+    }
+
+    private func previewCard(_ shown: DiddyProfile?) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            ZStack(alignment: .bottomLeading) {
+                VStack(spacing: 0) {
+                    DiddyBanner(profile: shown, seed: account.userId, account: account)
+                        .frame(height: 90)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    Color.clear.frame(height: 34)
+                }
+                AvatarView(url: account.avatarUrl, name: account.title, size: 68, account: account)
+                    .overlay(Circle().stroke(Theme.sidebar, lineWidth: 4))
+                    .overlay(alignment: .bottomTrailing) { DiddyStatusDot(status: shown?.status, size: 18) }
+                    .padding(.leading, 12)
+            }
+            HStack(spacing: 6) {
+                DiddyName(name: account.title, profile: shown, font: .title3.bold(), size: 20)
+                if !shownBadges.isEmpty { DiddyBadges(badges: shownBadges, size: 16, account: account) }
+            }
+            if let status = shown?.status, status != .invisible {
+                Text(status.title).font(.caption).foregroundStyle(Theme.muted)
+            }
+            if let shown, shown.hasCardContent, tab == .card || tab == .layout {
+                DiddyCardModules(profile: shown)
+            } else if let bio = shown?.bio {
+                Text(bio).font(.subheadline).foregroundStyle(Theme.text).lineLimit(3)
+            }
+            let accent = Color(diddyHex: shown?.cardAccent)
+            Label("Message", systemImage: "bubble.left.fill")
+                .font(.footnote.bold())
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+                .background(RoundedRectangle(cornerRadius: 10).fill(accent ?? Theme.accent))
+                .foregroundStyle(accent == nil ? Theme.onAccent : .white)
+        }
+        .padding(10)
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.sidebar))
+        .overlay {
+            if let effect = shown?.effect {
+                DiddyProfileEffectOverlay(effect: effect, account: account)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
         }
     }
 
