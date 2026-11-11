@@ -26,7 +26,7 @@ import { RoomAvatar } from '../../components/room-avatar';
 import { nameInitials } from '../../utils/common';
 import { LocalRoomSummaryLoader } from '../../components/RoomSummaryLoader';
 import { getRoomAvatarUrl } from '../../utils/room';
-import { AsyncStatus, useAsyncCallback } from '../../hooks/useAsyncCallback';
+import { AsyncStatus, useAsyncCallback, ignoreRejection } from '../../hooks/useAsyncCallback';
 import * as css from './SpaceItem.css';
 import * as styleCss from './style.css';
 import { useDraggableItem } from './DnD';
@@ -122,7 +122,7 @@ function UnjoinedSpaceProfile({
       className={css.HeaderChip}
       variant="Surface"
       size="500"
-      onClick={join}
+      onClick={ignoreRejection(join)}
       disabled={!canJoin}
       before={
         <Avatar size="200" radii="300">

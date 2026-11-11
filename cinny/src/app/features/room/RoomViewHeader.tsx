@@ -491,7 +491,7 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
       outlined={false}
       balance={screenSize === ScreenSize.Mobile}
     >
-      <Box grow="Yes" gap="300">
+      <Box grow="Yes" gap="300" className={css.HeaderShrink}>
         {screenSize === ScreenSize.Mobile && (
           <BackRouteHandler>
             {(onBack) => (
@@ -503,7 +503,7 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
             )}
           </BackRouteHandler>
         )}
-        <Box grow="Yes" alignItems="Center" gap="300">
+        <Box grow="Yes" alignItems="Center" gap="300" className={css.HeaderShrink}>
           {screenSize !== ScreenSize.Mobile && (
             <AvatarPresence
               badge={
@@ -542,7 +542,7 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
             </AvatarPresence>
           )}
           <Box className={css.HeaderTitle} direction="Column">
-            <Box alignItems="Baseline" gap="200">
+            <Box alignItems="Baseline" gap="200" className={css.HeaderShrink}>
               <Text className={css.HeaderName} size="H5" truncate>
                 {name}
               </Text>

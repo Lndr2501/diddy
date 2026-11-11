@@ -33,7 +33,7 @@ import { onEnterOrSpace, stopPropagation } from '../../utils/keyboard';
 import { Membership } from '../../../types/matrix/room';
 import * as css from './RoomItem.css';
 import * as styleCss from './style.css';
-import { AsyncStatus, useAsyncCallback } from '../../hooks/useAsyncCallback';
+import { AsyncStatus, useAsyncCallback, ignoreRejection } from '../../hooks/useAsyncCallback';
 import { getDirectRoomAvatarUrl, getRoomAvatarUrl } from '../../utils/room';
 import { ItemDraggableTarget, useDraggableItem } from './DnD';
 import { mxcUrlToHttp } from '../../utils/matrix';
@@ -88,7 +88,7 @@ function RoomJoinButton({ roomId, via }: RoomJoinButtonProps) {
         before={
           canJoin ? <Icon src={Icons.Plus} size="50" /> : <Spinner variant="Secondary" size="100" />
         }
-        onClick={join}
+        onClick={ignoreRejection(join)}
         disabled={!canJoin}
       >
         <Text size="B300">Join</Text>

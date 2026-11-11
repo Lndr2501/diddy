@@ -18,7 +18,7 @@ import { imageViewerAtom } from '../../../state/imageViewer';
 import { BlurhashCanvas } from 'react-blurhash';
 import { EncryptedAttachmentInfo } from 'browser-encrypt-attachment';
 import { IImageInfo, MATRIX_BLUR_HASH_PROPERTY_NAME } from '../../../../types/matrix/common';
-import { AsyncStatus, useAsyncCallback } from '../../../hooks/useAsyncCallback';
+import { AsyncStatus, useAsyncCallback, ignoreRejection } from '../../../hooks/useAsyncCallback';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import * as css from './style.css';
 import { bytesToSize } from '../../../utils/common';
@@ -131,7 +131,7 @@ export const ImageContent = as<'div', ImageContentProps>(
               fill="Solid"
               radii="300"
               size="300"
-              onClick={loadSrc}
+              onClick={ignoreRejection(loadSrc)}
               before={<Icon size="Inherit" src={Icons.Photo} filled />}
             >
               <Text size="B300">View</Text>

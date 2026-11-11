@@ -7,6 +7,10 @@
 - **macOS: Verbindungen entfernen und Konto-Labels (#178):** Drei Befehle hatten keine Freigabe und wurden abgelehnt. Ein neuer Vertragstest (`cinny/tests/tauriAcl.test.cjs`) prüft für jeden Befehl Manifest und Freigabe und dass jedes genutzte Plugin gestartet ist.
 - **macOS: nur Web- und Mail-Links öffnen das System (#180):** `ftp:`, `magnet:` und andere Schemata aus Nachrichten werden nicht mehr ans System weitergereicht, wie schon unter Linux.
 - **Rust-Mindestversion (#181):** `rust-version` ist jetzt 1.89, die tatsächlich nötige Version.
+- **Watch together kam beim Gegenüber nicht an (#171):** Die verschlüsselte Zustellung überspringt Geräte, deren Schlüssel der Client nicht kennt, ohne Fehler. In Call-Räumen ohne Verschlüsselung ging dadurch gar nichts raus. Diese Geräte bekommen die Nachricht jetzt unverschlüsselt, wie schon beim bisherigen Fallback; bekannte Geräte weiter verschlüsselt. Ohne Ziel steht `watchTogether: no other call device` im Log. Nicht mit zwei echten Clients geprüft.
+- **Keine unbehandelten Fehler mehr nach Knöpfen (#174):** „Join“, „Retry“, Einladungen annehmen/ablehnen und rund 30 weitere Knöpfe zeigten Fehler (z. B. 403 bei Invite-only-Räumen) korrekt an, warfen sie aber zusätzlich als unbehandelte Ausnahme. Ein Test verhindert, dass solche Knöpfe wieder direkt gebunden werden.
+- **Einstellungen bei kleinem Fenster (#172):** Bis 760 px Fensterhöhe scrollt die ganze Seitenleiste, „Logout“ folgt der Liste statt „About“ zu verdecken.
+- **Raumkopf bei schmalem Fenster (#170):** Raumname und Mitgliederzahl schrumpfen jetzt innerhalb ihres Bereichs: zuerst wird die Zahl gekürzt, der Name behält ein paar Buchstaben, nichts rutscht mehr über die Knöpfe. Nur am Code geprüft, nicht in Chromium bei 800×600.
 
 - **Linux-CI: Audiotest stabilisiert:** Wartet auf Server, Spielerstreams und vollständige PCM-Messfenster mit begrenzten Zeitbudgets; synthetische Spieler haben mehr Puffer. PulseAudio und PipeWire erscheinen getrennt in CI. Fehler zeigen Server-/Helferlogs und Streamzustand; Grenzwerte und Ausschlussprüfung bleiben erhalten.
 

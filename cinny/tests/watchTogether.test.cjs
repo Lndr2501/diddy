@@ -475,3 +475,23 @@ test('the controller skips a segment as a seek for everybody', () => {
   c.setShared(shared({ ts: 20_000, position: 90, seq: 2 }));
   assert.equal(c.tick(sample(91, P.Playing, 21_000), 21_000, segs).skipped, undefined);
 });
+
+// #171: encrypting skips devices without known keys silently; those must get the plain message.
+test('call devices without known keys are sent plain, known ones encrypted', () => {
+  const { splitByKnownDevices } = load('protocol');
+  const devices = [
+    { userId: '@b:x', deviceId: 'B1' },
+    { userId: '@b:x', deviceId: 'B2' },
+    { userId: '@c:x', deviceId: 'C1' },
+  ];
+  const known = new Map([['@b:x', new Map([['B1', {}]])]]);
+  const { encrypted, plain } = splitByKnownDevices(devices, known);
+  assert.deepEqual(JSON.parse(JSON.stringify(encrypted)), [{ userId: '@b:x', deviceId: 'B1' }]);
+  assert.deepEqual(JSON.parse(JSON.stringify(plain)), [
+    { userId: '@b:x', deviceId: 'B2' },
+    { userId: '@c:x', deviceId: 'C1' },
+  ]);
+  const none = splitByKnownDevices(devices, new Map());
+  assert.equal(none.encrypted.length, 0);
+  assert.equal(none.plain.length, 3);
+});

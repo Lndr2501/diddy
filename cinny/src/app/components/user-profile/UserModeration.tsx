@@ -18,7 +18,7 @@ import * as sheetCss from '../sheet/Sheet.css';
 import { useRoom } from '../../hooks/useRoom';
 import { CutoutCard } from '../cutout-card';
 import { SettingTile } from '../setting-tile';
-import { AsyncStatus, useAsyncCallback } from '../../hooks/useAsyncCallback';
+import { AsyncStatus, useAsyncCallback, ignoreRejection } from '../../hooks/useAsyncCallback';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { BreakWord } from '../../styles/Text.css';
 import { useSetting } from '../../state/hooks/settings';
@@ -133,7 +133,7 @@ export function UserBanAlert({ userId, reason, canUnban, bannedBy, ts }: UserBan
               size="300"
               variant="Critical"
               radii="400"
-              onClick={unban}
+              onClick={ignoreRejection(unban)}
               before={banning && <Spinner size="100" variant="Critical" fill="Solid" />}
               disabled={banning}
             >
@@ -210,7 +210,7 @@ export function UserInviteAlert({ userId, reason, canKick, invitedBy, ts }: User
               fill="Soft"
               outlined
               radii="400"
-              onClick={kick}
+              onClick={ignoreRejection(kick)}
               before={kicking && <Spinner size="100" variant="Success" fill="Soft" />}
               disabled={kicking}
             >

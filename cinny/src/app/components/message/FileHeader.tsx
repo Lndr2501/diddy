@@ -5,7 +5,7 @@ import FileSaver from 'file-saver';
 import { mimeTypeToExt } from '../../utils/mimeTypes';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
-import { AsyncStatus, useAsyncCallback } from '../../hooks/useAsyncCallback';
+import { AsyncStatus, useAsyncCallback, ignoreRejection } from '../../hooks/useAsyncCallback';
 import {
   decryptFile,
   downloadEncryptedMedia,
@@ -44,7 +44,7 @@ export function FileDownloadButton({ filename, url, mimeType, encInfo }: FileDow
   return (
     <IconButton
       disabled={downloading}
-      onClick={download}
+      onClick={ignoreRejection(download)}
       variant={hasError ? 'Critical' : 'SurfaceVariant'}
       size="300"
       radii="300"

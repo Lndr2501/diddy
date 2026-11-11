@@ -22,7 +22,7 @@ import {
 } from '../../../../types/matrix/common';
 import * as css from './style.css';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
-import { AsyncStatus, useAsyncCallback } from '../../../hooks/useAsyncCallback';
+import { AsyncStatus, useAsyncCallback, ignoreRejection } from '../../../hooks/useAsyncCallback';
 import { bytesToSize, millisecondsToMinutesAndSeconds } from '../../../utils/common';
 import {
   decryptFile,
@@ -134,7 +134,7 @@ export const VideoContent = as<'div', VideoContentProps>(
             className={css.MediaBackdrop}
             alignItems="Center"
             justifyContent="Center"
-            onClick={loadSrc}
+            onClick={ignoreRejection(loadSrc)}
           >
             <div className={css.WatchButton}>
               <Icon style={{ width: '100%', height: '100%' }} size="Inherit" src={Icons.Play} filled />

@@ -43,7 +43,7 @@ import {
 import { LineClamp2 } from '../../../styles/Text.css';
 import { allRoomsAtom } from '../../../state/room-list/roomList';
 import { AccountDataEvent } from '../../../../types/matrix/accountData';
-import { AsyncStatus, useAsyncCallback } from '../../../hooks/useAsyncCallback';
+import { AsyncStatus, useAsyncCallback, ignoreRejection } from '../../../hooks/useAsyncCallback';
 import { stopPropagation } from '../../../utils/keyboard';
 
 function GlobalPackSelector({
@@ -525,7 +525,7 @@ export function GlobalPacks({ onViewPack }: GlobalPacksProps) {
                 radii="Pill"
                 disabled={applyingChanges}
                 before={applyingChanges && <Spinner variant="Success" fill="Solid" size="100" />}
-                onClick={applyChanges}
+                onClick={ignoreRejection(applyChanges)}
               >
                 <Text size="B300">Apply Changes</Text>
               </Button>

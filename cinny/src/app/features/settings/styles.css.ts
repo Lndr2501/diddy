@@ -28,6 +28,9 @@ const SIDEBAR_WIDTH = toRem(270);
  */
 const PAGE_MAX_WIDTH = `var(--settings-page-max-width, ${toRem(1040)})`;
 
+/** Below this height the settings menu and the Logout row do not fit on screen together. */
+const SHORT_WINDOW = 'screen and (max-height: 760px)';
+
 export const SettingsRoot = style([
   DefaultReset,
   {
@@ -60,6 +63,14 @@ export const Sidebar = style([
         borderRight: 'none',
       },
     },
+    // Short windows (800×600 and less): the menu does not fit above the pinned Logout row, and
+    // the last entries (About) slid under it (#172). The whole sidebar scrolls instead, so
+    // Logout simply follows the list.
+    '@media': {
+      [SHORT_WINDOW]: {
+        overflowY: 'auto',
+      },
+    },
   },
 ]);
 
@@ -84,6 +95,13 @@ export const SidebarScroll = style({
   minHeight: 0,
   display: 'flex',
   flexDirection: 'column',
+  '@media': {
+    [SHORT_WINDOW]: {
+      flexGrow: 0,
+      flexShrink: 0,
+      minHeight: 'auto',
+    },
+  },
 });
 
 export const SidebarList = style({

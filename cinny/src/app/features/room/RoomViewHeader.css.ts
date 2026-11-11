@@ -20,6 +20,7 @@ export const RoomHeader = style({
 });
 
 export const HeaderName = style({
+  minWidth: toRem(48),
   selectors: {
     '&&': {
       fontSize: toRem(15),
@@ -74,8 +75,20 @@ export const HeaderTitle = style({
   gap: toRem(1),
 });
 
+/**
+ * Lets the title area shrink below its content. Without it the member count kept its width on
+ * narrow windows, the name shrank to nothing and the count slid over the buttons (#170).
+ */
+export const HeaderShrink = style({
+  minWidth: 0,
+});
+
+// The name keeps a few letters; the count gives way first and is cut with an ellipsis.
 export const HeaderCount = style({
-  flexShrink: 0,
+  flexShrink: 1000,
+  minWidth: 0,
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
   selectors: {
     '&&': {

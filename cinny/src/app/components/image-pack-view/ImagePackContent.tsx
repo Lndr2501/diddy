@@ -23,7 +23,7 @@ import { getImageInfo, TUploadContent } from '../../utils/matrix';
 import { getImageFileUrl, loadImageElement, renameFile } from '../../utils/dom';
 import { replaceSpaceWithDash, suffixRename } from '../../utils/common';
 import { getFileNameWithoutExt } from '../../utils/mimeTypes';
-import { AsyncStatus, useAsyncCallback } from '../../hooks/useAsyncCallback';
+import { AsyncStatus, useAsyncCallback, ignoreRejection } from '../../hooks/useAsyncCallback';
 
 export type ImagePackContentProps = {
   imagePack: ImagePack;
@@ -281,7 +281,7 @@ export const ImagePackContent = as<'div', ImagePackContentProps>(
                   radii="300"
                   disabled={!canApplyChanges || applying}
                   before={applying && <Spinner variant="Success" fill="Solid" size="100" />}
-                  onClick={applyChanges}
+                  onClick={ignoreRejection(applyChanges)}
                 >
                   <Text size="B300">Apply Changes</Text>
                 </Button>

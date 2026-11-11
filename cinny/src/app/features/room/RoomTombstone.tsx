@@ -3,7 +3,7 @@ import { Box, Button, Spinner, Text, color } from 'folds';
 
 import * as css from './RoomTombstone.css';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
-import { AsyncStatus, useAsyncCallback } from '../../hooks/useAsyncCallback';
+import { AsyncStatus, useAsyncCallback, ignoreRejection } from '../../hooks/useAsyncCallback';
 import { Membership } from '../../../types/matrix/room';
 import { RoomInputPlaceholder } from './RoomInputPlaceholder';
 import { useRoomNavigate } from '../../hooks/useRoomNavigate';
@@ -48,7 +48,7 @@ export function RoomTombstone({ roomId, body, replacementRoomId }: RoomTombstone
           </Button>
         ) : (
           <Button
-            onClick={handleJoin}
+            onClick={ignoreRejection(handleJoin)}
             size="300"
             variant="Primary"
             fill="Solid"

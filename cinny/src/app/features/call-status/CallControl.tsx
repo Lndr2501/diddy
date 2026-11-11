@@ -3,7 +3,7 @@ import React, { useCallback } from 'react';
 import { useSetAtom } from 'jotai';
 import { StatusDivider } from './components';
 import { CallEmbed, useCallControlState } from '../../plugins/call';
-import { AsyncStatus, useAsyncCallback } from '../../hooks/useAsyncCallback';
+import { AsyncStatus, useAsyncCallback, ignoreRejection } from '../../hooks/useAsyncCallback';
 import { callEmbedAtom } from '../../state/callEmbed';
 
 type MicrophoneButtonProps = {
@@ -31,7 +31,7 @@ function MicrophoneButton({ enabled, onToggle, disabled }: MicrophoneButtonProps
           fill="Soft"
           radii="Pill"
           size="300"
-          onClick={toggleMic}
+          onClick={ignoreRejection(toggleMic)}
           disabled={disabled || loading}
         >
           <Icon size="100" src={enabled ? Icons.Mic : Icons.MicMute} filled={!enabled} />
@@ -102,7 +102,7 @@ function VideoButton({ enabled, onToggle, disabled }: VideoButtonProps) {
           fill="Soft"
           radii="Pill"
           size="300"
-          onClick={toggleVideo}
+          onClick={ignoreRejection(toggleVideo)}
           disabled={disabled || loading}
         >
           <Icon

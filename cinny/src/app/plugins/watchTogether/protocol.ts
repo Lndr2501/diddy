@@ -178,3 +178,23 @@ export const startWatch = (
   seq: (previous?.seq ?? 0) + 1,
   sender,
 });
+
+export type CallDevice = { userId: string; deviceId: string };
+
+/**
+ * Splits call devices into those the crypto module knows (they get the encrypted message) and the
+ * rest (they get it plain). Encrypting skips unknown devices without an error, so in a call room
+ * whose members' keys are not tracked nothing at all went out (#171).
+ */
+export const splitByKnownDevices = (
+  devices: CallDevice[],
+  known: Map<string, Map<string, unknown>>
+): { encrypted: CallDevice[]; plain: CallDevice[] } => {
+  const encrypted: CallDevice[] = [];
+  const plain: CallDevice[] = [];
+  devices.forEach((device) => {
+    if (known.get(device.userId)?.has(device.deviceId)) encrypted.push(device);
+    else plain.push(device);
+  });
+  return { encrypted, plain };
+};

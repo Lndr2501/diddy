@@ -1,6 +1,6 @@
 import React, { forwardRef, useCallback } from 'react';
 import { Dialog, Text, Button, Spinner, color } from 'folds';
-import { AsyncStatus, useAsyncCallback } from '../hooks/useAsyncCallback';
+import { AsyncStatus, useAsyncCallback, ignoreRejection } from '../hooks/useAsyncCallback';
 import { logoutClient } from '../../client/initMatrix';
 import { useMatrixClient } from '../hooks/useMatrixClient';
 import { useCrossSigningActive } from '../hooks/useCrossSigning';
@@ -73,7 +73,7 @@ export const LogoutDialog = forwardRef<HTMLDivElement, LogoutDialogProps>(
             <Button
               className={sheetCss.Pill}
               variant="Critical"
-              onClick={logout}
+              onClick={ignoreRejection(logout)}
               disabled={ongoingLogout}
               before={ongoingLogout && <Spinner variant="Critical" fill="Solid" size="200" />}
             >

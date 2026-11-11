@@ -24,7 +24,7 @@ import {
   useVerifierCancel,
   useVerifierShowSas,
 } from '../hooks/useVerificationRequest';
-import { AsyncStatus, useAsyncCallback } from '../hooks/useAsyncCallback';
+import { AsyncStatus, useAsyncCallback, ignoreRejection } from '../hooks/useAsyncCallback';
 import { ContainerColor } from '../styles/ContainerColor.css';
 import { SheetHeader } from './sheet';
 import * as sheetCss from './sheet/Sheet.css';
@@ -76,7 +76,7 @@ function VerificationAccept({ onAccept }: VerificationAcceptProps) {
         className={sheetCss.Pill}
         variant="Primary"
         fill="Solid"
-        onClick={accept}
+        onClick={ignoreRejection(accept)}
         before={accepting && <Spinner size="100" variant="Primary" fill="Solid" />}
         disabled={accepting}
       >
@@ -148,7 +148,7 @@ function CompareEmoji({ sasData }: { sasData: ShowSasCallbacks }) {
           className={sheetCss.Pill}
           variant="Primary"
           fill="Soft"
-          onClick={confirm}
+          onClick={ignoreRejection(confirm)}
           disabled={confirming}
           before={confirming && <Spinner size="100" variant="Primary" />}
         >

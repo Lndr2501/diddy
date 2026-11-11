@@ -55,7 +55,7 @@ import { Time } from '../../../components/message';
 import { useElementSizeObserver } from '../../../hooks/useElementSizeObserver';
 import { onEnterOrSpace, stopPropagation } from '../../../utils/keyboard';
 import { RoomTopicViewer } from '../../../components/room-topic-viewer';
-import { AsyncStatus, useAsyncCallback } from '../../../hooks/useAsyncCallback';
+import { AsyncStatus, useAsyncCallback, ignoreRejection } from '../../../hooks/useAsyncCallback';
 import { useRoomNavigate } from '../../../hooks/useRoomNavigate';
 import { ScreenSize, useScreenSizeContext } from '../../../hooks/useScreenSize';
 import { BackRouteHandler } from '../../../components/BackRouteHandler';
@@ -282,7 +282,7 @@ function InviteCard({
           </Box>
           <Box gap="200" shrink="No" alignItems="Center">
             <Button
-              onClick={leave}
+              onClick={ignoreRejection(leave)}
               size="300"
               variant="Secondary"
               radii="300"
@@ -293,7 +293,7 @@ function InviteCard({
               <Text size="B300">Decline</Text>
             </Button>
             <Button
-              onClick={join}
+              onClick={ignoreRejection(join)}
               size="300"
               variant="Success"
               fill="Soft"
@@ -493,7 +493,7 @@ function UnknownInvites({
           {invites.length > 0 && (
             <Chip
               variant="SurfaceVariant"
-              onClick={declineAll}
+              onClick={ignoreRejection(declineAll)}
               before={declining && <Spinner size="50" variant="Secondary" fill="Soft" />}
               disabled={declining}
               radii="Pill"
@@ -606,7 +606,7 @@ function SpamInvites({
                     variant="Critical"
                     fill="Solid"
                     radii="300"
-                    onClick={declineAll}
+                    onClick={ignoreRejection(declineAll)}
                     before={declining && <Spinner size="100" variant="Critical" fill="Solid" />}
                     disabled={loading}
                   >
@@ -620,7 +620,7 @@ function SpamInvites({
                       variant="Secondary"
                       fill="Solid"
                       radii="300"
-                      onClick={reportAll}
+                      onClick={ignoreRejection(reportAll)}
                       before={reporting && <Spinner size="100" variant="Secondary" fill="Solid" />}
                       disabled={loading}
                     >
@@ -636,7 +636,7 @@ function SpamInvites({
                       fill="Solid"
                       radii="300"
                       disabled={loading}
-                      onClick={blockAll}
+                      onClick={ignoreRejection(blockAll)}
                       before={blocking && <Spinner size="100" variant="Secondary" fill="Solid" />}
                     >
                       <Text size="B300" truncate>

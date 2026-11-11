@@ -21,7 +21,7 @@ import { stopPropagation } from '../../utils/keyboard';
 import * as sheetCss from '../../components/sheet/Sheet.css';
 import * as css from './styles.css';
 import { callChatAtom } from '../../state/callEmbed';
-import { AsyncStatus, useAsyncCallback } from '../../hooks/useAsyncCallback';
+import { AsyncStatus, useAsyncCallback, ignoreRejection } from '../../hooks/useAsyncCallback';
 
 export function ControlDivider() {
   return (
@@ -55,7 +55,7 @@ export function MicrophoneButton({ enabled, onToggle }: MicrophoneButtonProps) {
           radii="400"
           size="400"
           className={css.ControlButton}
-          onClick={toggleMic}
+          onClick={ignoreRejection(toggleMic)}
           disabled={loading}
         >
           <Icon size="400" src={enabled ? Icons.Mic : Icons.MicMute} filled={!enabled} />
@@ -127,7 +127,7 @@ export function VideoButton({ enabled, onToggle }: VideoButtonProps) {
           radii="400"
           size="400"
           className={css.ControlButton}
-          onClick={toggleVideo}
+          onClick={ignoreRejection(toggleVideo)}
           disabled={loading}
         >
           <Icon

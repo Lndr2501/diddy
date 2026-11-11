@@ -17,7 +17,7 @@ import {
 } from './Controls';
 import { CallEmbed, useCallControlState, useScreenShareAudio } from '../../plugins/call';
 import { useResizeObserver } from '../../hooks/useResizeObserver';
-import { AsyncStatus, useAsyncCallback } from '../../hooks/useAsyncCallback';
+import { AsyncStatus, useAsyncCallback, ignoreRejection } from '../../hooks/useAsyncCallback';
 
 type CallControlsProps = {
   callEmbed: CallEmbed;
@@ -123,7 +123,7 @@ export function CallControls({ callEmbed }: CallControlsProps) {
           className={css.ControlLeaveButton}
           variant="Critical"
           fill="Solid"
-          onClick={hangup}
+          onClick={ignoreRejection(hangup)}
           aria-label="Leave call"
           before={
             exiting ? (

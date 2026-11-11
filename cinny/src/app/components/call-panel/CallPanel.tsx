@@ -36,7 +36,7 @@ import { useRoomName } from '../../hooks/useRoomMeta';
 import { useRoomNavigate } from '../../hooks/useRoomNavigate';
 import { useSelectedRoom } from '../../hooks/router/useSelectedRoom';
 import { ScreenSize, useScreenSizeContext } from '../../hooks/useScreenSize';
-import { AsyncStatus, useAsyncCallback } from '../../hooks/useAsyncCallback';
+import { AsyncStatus, useAsyncCallback, ignoreRejection } from '../../hooks/useAsyncCallback';
 import { SoundboardMenu } from '../../features/call/Soundboard';
 import { MyInstantsImport } from '../../features/call/MyInstantsImport';
 
@@ -359,7 +359,7 @@ function ActiveCallPanel({ callEmbed }: ActiveCallPanelProps) {
               aria-label={videoLabel}
               aria-pressed={video}
               disabled={videoState.status === AsyncStatus.Loading}
-              onClick={toggleVideo}
+              onClick={ignoreRejection(toggleVideo)}
             >
               <Icon
                 size="100"
@@ -439,7 +439,7 @@ function ActiveCallPanel({ callEmbed }: ActiveCallPanelProps) {
               radii="400"
               aria-label="Leave call"
               disabled={exiting}
-              onClick={hangup}
+              onClick={ignoreRejection(hangup)}
             >
               {exiting ? (
                 <Spinner variant="Critical" fill="Solid" size="100" />

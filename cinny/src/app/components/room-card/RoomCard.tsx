@@ -24,7 +24,7 @@ import { getMxIdLocalPart, mxcUrlToHttp } from '../../utils/matrix';
 import { nameInitials } from '../../utils/common';
 import { millify } from '../../plugins/millify';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
-import { AsyncStatus, useAsyncCallback } from '../../hooks/useAsyncCallback';
+import { AsyncStatus, useAsyncCallback, ignoreRejection } from '../../hooks/useAsyncCallback';
 import { onEnterOrSpace, stopPropagation } from '../../utils/keyboard';
 import { RoomType, StateEvent } from '../../../types/matrix/room';
 import { useJoinedRoomId } from '../../hooks/useJoinedRoomId';
@@ -277,7 +277,7 @@ export const RoomCard = as<'div', RoomCardProps>(
         )}
         {typeof joinedRoomId !== 'string' && joinState.status !== AsyncStatus.Error && (
           <Button
-            onClick={join}
+            onClick={ignoreRejection(join)}
             variant="Secondary"
             size="300"
             disabled={joining}
@@ -291,7 +291,7 @@ export const RoomCard = as<'div', RoomCardProps>(
         {typeof joinedRoomId !== 'string' && joinState.status === AsyncStatus.Error && (
           <Box gap="200">
             <Button
-              onClick={join}
+              onClick={ignoreRejection(join)}
               className={css.ActionButton}
               variant="Critical"
               fill="Solid"

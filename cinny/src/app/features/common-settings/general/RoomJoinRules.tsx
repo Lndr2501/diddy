@@ -17,7 +17,7 @@ import { useRoom } from '../../../hooks/useRoom';
 import { StateEvent } from '../../../../types/matrix/room';
 import { useStateEvent } from '../../../hooks/useStateEvent';
 import { useSpaceOptionally } from '../../../hooks/useSpace';
-import { AsyncStatus, useAsyncCallback } from '../../../hooks/useAsyncCallback';
+import { AsyncStatus, useAsyncCallback, ignoreRejection } from '../../../hooks/useAsyncCallback';
 import { getStateEvents } from '../../../utils/room';
 import {
   useRecursiveChildSpaceScopeFactory,
@@ -139,7 +139,7 @@ export function RoomJoinRules({ permissions }: RoomJoinRulesProps) {
             labels={labels}
             rules={joinRules}
             value={rule}
-            onChange={submit}
+            onChange={ignoreRejection(submit)}
             disabled={!canEdit || submitting}
             changing={submitting}
           />

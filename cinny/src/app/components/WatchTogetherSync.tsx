@@ -9,10 +9,12 @@ import { ClientEvent, ClientEventHandlerMap, MatrixClient } from 'matrix-js-sdk'
 import { CallEmbed } from '../plugins/call';
 import { useMatrixClient } from '../hooks/useMatrixClient';
 import {
+  CallDevice,
   fromMessage,
   parseWatchMessage,
   rebase,
   requestContent,
+  splitByKnownDevices,
   stateContent,
   WATCH_EVENT,
 } from '../plugins/watchTogether/protocol';
@@ -34,16 +36,20 @@ type Content = Record<string, unknown>;
  */
 const sendToCall = (mx: MatrixClient, embed: CallEmbed, content: Content, onlyUser?: string) => {
   const ownId = mx.getSafeUserId();
-  const devices: { userId: string; deviceId: string }[] = [];
+  const devices: CallDevice[] = [];
   mx.matrixRTC.getRoomSession(embed.room).memberships.forEach((m) => {
     if (!m.sender || m.sender === ownId || !m.deviceId) return;
     if (onlyUser && m.sender !== onlyUser) return;
     devices.push({ userId: m.sender, deviceId: m.deviceId });
   });
-  if (devices.length === 0) return;
-  const sendPlain = () => {
+  if (devices.length === 0) {
+    diag('watchTogether: no other call device to send to');
+    return;
+  }
+  const sendPlain = (targets: CallDevice[]) => {
+    if (targets.length === 0) return;
     const contentMap = new Map<string, Map<string, Content>>();
-    devices.forEach(({ userId, deviceId }) => {
+    targets.forEach(({ userId, deviceId }) => {
       const map = contentMap.get(userId) ?? new Map<string, Content>();
       map.set(deviceId, content);
       contentMap.set(userId, map);
@@ -52,14 +58,26 @@ const sendToCall = (mx: MatrixClient, embed: CallEmbed, content: Content, onlyUs
       diag(`watchTogether: send failed: ${String(error)}`);
     });
   };
-  if (!mx.getCrypto()) {
-    sendPlain();
+  const crypto = mx.getCrypto();
+  if (!crypto) {
+    sendPlain(devices);
     return;
   }
-  mx.encryptAndSendToDevice(WATCH_EVENT, devices, content).catch((error) => {
-    diag(`watchTogether: encrypted send failed, sending plain: ${String(error)}`);
-    sendPlain();
-  });
+  const users = Array.from(new Set(devices.map((d) => d.userId)));
+  crypto
+    .getUserDeviceInfo(users)
+    .then(async (known) => {
+      // Devices the crypto module does not know would be skipped silently (#171): they get it plain.
+      const { encrypted, plain } = splitByKnownDevices(devices, known);
+      if (plain.length > 0)
+        diag(`watchTogether: ${plain.length} device(s) without keys, sending plain`);
+      sendPlain(plain);
+      if (encrypted.length > 0) await mx.encryptAndSendToDevice(WATCH_EVENT, encrypted, content);
+    })
+    .catch((error) => {
+      diag(`watchTogether: encrypted send failed, sending plain: ${String(error)}`);
+      sendPlain(devices);
+    });
 };
 
 const displayName = (embed: CallEmbed, userId: string) =>

@@ -82,7 +82,7 @@ import { useRoomNavigate } from '../../../hooks/useRoomNavigate';
 import { useRoomCreators } from '../../../hooks/useRoomCreators';
 import { useRoomPermissions } from '../../../hooks/useRoomPermissions';
 import { ContainerColor } from '../../../styles/ContainerColor.css';
-import { AsyncStatus, useAsyncCallback } from '../../../hooks/useAsyncCallback';
+import { AsyncStatus, useAsyncCallback, ignoreRejection } from '../../../hooks/useAsyncCallback';
 import { BreakWord } from '../../../styles/Text.css';
 import { InviteUserPrompt } from '../../../components/invite-user-prompt';
 import { useCallEmbed } from '../../../hooks/useCallEmbed';
@@ -366,7 +366,7 @@ export function SpaceTombstone({ roomId, replacementRoomId }: SpaceTombstoneProp
           </Button>
         ) : (
           <Button
-            onClick={handleJoin}
+            onClick={ignoreRejection(handleJoin)}
             size="300"
             variant="Primary"
             fill="Solid"

@@ -121,3 +121,14 @@ export const useAsyncCallbackValue = <TData, TError>(
 
   return [state, load];
 };
+
+/**
+ * For event handlers: runs an async callback from `useAsyncCallback` and drops its rejection.
+ * The hook already reports the failure through its state; bound directly to `onClick` the
+ * rethrown error would also end up as an unhandled rejection (#174).
+ */
+export const ignoreRejection =
+  <TArgs extends unknown[]>(callback: (...args: TArgs) => Promise<unknown>) =>
+  (...args: TArgs): void => {
+    callback(...args).catch(() => undefined);
+  };

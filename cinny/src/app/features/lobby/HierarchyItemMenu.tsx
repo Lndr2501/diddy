@@ -18,7 +18,7 @@ import {
 import { HierarchyItem } from '../../hooks/useSpaceHierarchy';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { MSpaceChildContent, StateEvent } from '../../../types/matrix/room';
-import { AsyncStatus, useAsyncCallback } from '../../hooks/useAsyncCallback';
+import { AsyncStatus, useAsyncCallback, ignoreRejection } from '../../hooks/useAsyncCallback';
 import { UseStateProvider } from '../../components/UseStateProvider';
 import { LeaveSpacePrompt } from '../../components/leave-space-prompt';
 import { LeaveRoomPrompt } from '../../components/leave-room-prompt';
@@ -62,7 +62,7 @@ function SuggestMenuItem({
   return (
     <MenuItem
       className={sheetCss.MenuRow}
-      onClick={handleToggleSuggested}
+      onClick={ignoreRejection(handleToggleSuggested)}
       size="300"
       radii="300"
       before={toggleState.status === AsyncStatus.Loading && <Spinner size="100" />}
@@ -101,7 +101,7 @@ function RemoveMenuItem({
   return (
     <MenuItem
       className={sheetCss.MenuRow}
-      onClick={handleRemove}
+      onClick={ignoreRejection(handleRemove)}
       variant="Critical"
       fill="None"
       size="300"

@@ -12,7 +12,7 @@ import {
   useNotificationModeActions,
 } from '../../../hooks/useNotificationMode';
 import { NotificationModeSwitcher } from './NotificationModeSwitcher';
-import { AsyncStatus, useAsyncCallback } from '../../../hooks/useAsyncCallback';
+import { AsyncStatus, useAsyncCallback, ignoreRejection } from '../../../hooks/useAsyncCallback';
 
 const NOTIFY_MODE_OPS: NotificationModeOptions = {
   highlight: true,
@@ -116,7 +116,13 @@ function KeywordCross({ pushRule }: PushRulesProps) {
 
   const removing = removeState.status === AsyncStatus.Loading;
   return (
-    <IconButton onClick={remove} size="300" radii="Pill" variant="Secondary" disabled={removing}>
+    <IconButton
+      onClick={ignoreRejection(remove)}
+      size="300"
+      radii="Pill"
+      variant="Secondary"
+      disabled={removing}
+    >
       {removing ? <Spinner size="100" /> : <Icon src={Icons.Cross} size="100" />}
     </IconButton>
   );

@@ -7,7 +7,7 @@ import { SequenceCardStyle } from '../../room-settings/styles.css';
 import { SettingTile } from '../../../components/setting-tile';
 import { useRoom } from '../../../hooks/useRoom';
 import { useRoomDirectoryVisibility } from '../../../hooks/useRoomDirectoryVisibility';
-import { AsyncStatus, useAsyncCallback } from '../../../hooks/useAsyncCallback';
+import { AsyncStatus, useAsyncCallback, ignoreRejection } from '../../../hooks/useAsyncCallback';
 import { StateEvent } from '../../../../types/matrix/room';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { useStateEvent } from '../../../hooks/useStateEvent';
@@ -58,7 +58,7 @@ export function RoomPublish({ permissions }: RoomPublishProps) {
             {!loading && visibilityState.status === AsyncStatus.Success && (
               <Switch
                 value={visibilityState.data}
-                onChange={toggleVisibility}
+                onChange={ignoreRejection(toggleVisibility)}
                 disabled={!canEditCanonical || !validRule}
               />
             )}
