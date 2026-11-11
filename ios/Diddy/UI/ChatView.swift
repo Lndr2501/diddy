@@ -53,6 +53,8 @@ private struct ChatContent: View {
     @State private var profile: ProfileTarget?
     @State private var viewedImage: ViewedImage?
     @State private var openedFile: URL?
+    /// The message the full emoji picker reacts to.
+    @State private var reactingTo: MessageRow?
     /// Whether the chat follows the newest message. Only the user scrolling up turns this off.
     @State private var atBottom = true
     @State private var bottomVisible = false
@@ -117,6 +119,9 @@ private struct ChatContent: View {
         .sheet(isPresented: $showMembers) { MembersView(account: account, roomId: roomId) }
         .sheet(isPresented: $showInfo) { ChannelInfoView(account: account, roomId: roomId) }
         .sheet(item: $profile) { UserProfileSheet(account: account, userId: $0.userId, roomId: roomId) }
+        .sheet(item: $reactingTo) { row in
+            EmojiReactionPicker { emoji in Task { await controller.toggleReaction(emoji, on: row) } }
+        }
         .fullScreenCover(item: $viewedImage) { ImageViewer(image: $0.image) }
         .quickLookPreview($openedFile)
         .alert("Message", isPresented: Binding(get: { controller.sendError != nil }, set: { if !$0 { controller.sendError = nil } })) {
@@ -253,9 +258,11 @@ private struct ChatContent: View {
     private func menu(for row: MessageRow) -> some View {
         Button { replyTo = row; editing = nil; composerFocused = true } label: { Label("Reply", systemImage: "arrowshape.turn.up.left") }
         Menu {
-            ForEach(["👍", "❤️", "😂", "😮", "😢", "🔥", "👀", "✅"], id: \.self) { emoji in
+            ForEach(ReactionEmoji.quick, id: \.self) { emoji in
                 Button(emoji) { Task { await controller.toggleReaction(emoji, on: row) } }
             }
+            Divider()
+            Button { reactingTo = row } label: { Label("More Emoji…", systemImage: "plus") }
         } label: { Label("Add Reaction", systemImage: "face.smiling") }
         if case .text(let text) = row.body {
             let readable = Self.readableMentions(in: text)
