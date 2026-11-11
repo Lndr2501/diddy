@@ -245,17 +245,26 @@ struct ChannelSidebar: View {
     @State private var sheet: SidebarSheet?
     @State private var confirmLeave = false
     @State private var joiningAll = false
+    @State private var leaveRequest: LeaveRequest?
 
     private enum SidebarSheet: Identifiable {
-        case members(String), invite(String), createChannel(String), newMessage
+        case members(String), invite(String), createChannel(String), newMessage, roomSettings(String)
         var id: String {
             switch self {
             case .members(let id): return "members\(id)"
             case .invite(let id): return "invite\(id)"
             case .createChannel(let id): return "create\(id)"
             case .newMessage: return "new"
+            case .roomSettings(let id): return "settings\(id)"
             }
         }
+    }
+
+    /// A room the long-press menu asked to leave, waiting for the answer.
+    private struct LeaveRequest: Identifiable {
+        let id: String
+        let name: String
+        let isDirect: Bool
     }
 
     private var query: String { filter.trimmingCharacters(in: .whitespaces) }
@@ -328,7 +337,50 @@ struct ChannelSidebar: View {
             case .invite(let id): InviteView(account: account, roomId: id)
             case .createChannel(let id): CreateChannelView(account: account, spaceId: id)
             case .newMessage: NewMessageView(account: account)
+            case .roomSettings(let id): RoomSettingsView(roomId: id, account: account)
             }
+        }
+        .confirmationDialog(
+            leaveRequest.map { $0.isDirect ? "Close \($0.name)?" : "Leave \($0.name)?" } ?? "",
+            isPresented: Binding(get: { leaveRequest != nil }, set: { if !$0 { leaveRequest = nil } }),
+            titleVisibility: .visible,
+            presenting: leaveRequest
+        ) { request in
+            Button(request.isDirect ? "Close Conversation" : "Leave Room", role: .destructive) { leave(request) }
+        } message: { request in
+            Text(request.isDirect ? "The conversation disappears from your list." : "Are you sure you want to leave this room?")
+        }
+        .task { await account.watchNotificationSettings() }
+        .task(id: account.rooms.count) { await account.refreshNotifyLevels() }
+    }
+
+    /// Long press on a room, like desktop's room menu.
+    @ViewBuilder
+    private func roomMenu(_ roomId: String) -> some View {
+        RoomContextMenu(
+            account: account,
+            roomId: roomId,
+            onInvite: { sheet = .invite($0) },
+            onSettings: { sheet = .roomSettings($0) },
+            onLeave: { id in
+                let summary = account.summary(for: id)
+                leaveRequest = LeaveRequest(id: id, name: summary?.name ?? "this room", isDirect: summary?.isDirect == true)
+            },
+            onError: { joinError = $0 }
+        )
+    }
+
+    private func leave(_ request: LeaveRequest) {
+        Task {
+            do {
+                try await account.leave(roomId: request.id)
+                switch destination {
+                case .text(let id)?, .voice(let id)?:
+                    if id == request.id { destination = nil }
+                case nil:
+                    break
+                }
+            } catch { joinError = error.friendlyMessage }
         }
     }
 
@@ -414,12 +466,24 @@ struct ChannelSidebar: View {
                 }
             } header: { sectionHeader("Invites") }
         }
-        let direct = account.directMessages.filter { matches($0.name) }
+        let favourites = (account.directMessages + account.roomsOutsideServers).filter { $0.isFavourite && matches($0.name) }
+        if !favourites.isEmpty {
+            Section {
+                ForEach(favourites) { room in
+                    RoomRow(account: account, room: room, icon: room.isDirect ? nil : "number")
+                        .tag(Destination.text(room.id))
+                        .listRowBackground(rowBackground(.text(room.id)))
+                        .contextMenu { roomMenu(room.id) }
+                }
+            } header: { sectionHeader("Favourites") }
+        }
+        let direct = account.directMessages.filter { !$0.isFavourite && matches($0.name) }
         Section {
             ForEach(direct) { room in
                 RoomRow(account: account, room: room, icon: nil)
                     .tag(Destination.text(room.id))
                     .listRowBackground(rowBackground(.text(room.id)))
+                    .contextMenu { roomMenu(room.id) }
             }
             if direct.isEmpty && query.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
@@ -429,13 +493,14 @@ struct ChannelSidebar: View {
                 .listRowBackground(Color.clear)
             }
         } header: { sectionHeader("Direct Messages") }
-        let others = account.roomsOutsideServers.filter { matches($0.name) }
+        let others = account.roomsOutsideServers.filter { !$0.isFavourite && matches($0.name) }
         if !others.isEmpty {
             Section {
                 ForEach(others) { room in
                     RoomRow(account: account, room: room, icon: "number")
                         .tag(Destination.text(room.id))
                         .listRowBackground(rowBackground(.text(room.id)))
+                        .contextMenu { roomMenu(room.id) }
                 }
             } header: { sectionHeader("Rooms") }
         }
@@ -489,6 +554,7 @@ struct ChannelSidebar: View {
             ChannelRow(account: account, channel: channel)
                 .tag(destination)
                 .listRowBackground(rowBackground(destination))
+                .contextMenu { roomMenu(channel.roomId) }
         } else {
             Button {
                 joining.insert(channel.roomId)
@@ -595,6 +661,9 @@ struct ChannelRow: View {
                     .fontWeight((summary?.unread ?? 0) > 0 ? .semibold : .regular)
                     .lineLimit(1)
                 Spacer()
+                if account.notifyLevel(for: channel.roomId) == .mute {
+                    Image(systemName: "bell.slash.fill").font(.caption2).foregroundStyle(Theme.faint)
+                }
                 if isJoining {
                     ProgressView()
                 } else if !account.isJoined(channel) {
@@ -697,6 +766,9 @@ struct RoomRow: View {
                 }
             }
             Spacer()
+            if account.notifyLevel(for: room.id) == .mute {
+                Image(systemName: "bell.slash.fill").font(.caption2).foregroundStyle(Theme.faint)
+            }
             if room.hasCall { Image(systemName: "speaker.wave.2.fill").foregroundStyle(Theme.online) }
             if room.badge > 0 { UnreadBadge(count: room.badge) }
         }

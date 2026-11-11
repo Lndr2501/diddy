@@ -24,6 +24,8 @@ struct RoomSummary: Identifiable, Hashable {
     var isVoiceRoom = false
     /// The other person of a direct message, when the room has exactly one other member.
     var dmUserId: String?
+    /// Tagged `m.favourite`, shown in the Favourites section of Home.
+    var isFavourite = false
 
     var isJoined: Bool { membership == .joined }
     var isInvite: Bool { membership == .invited }
@@ -97,6 +99,8 @@ final class MatrixAccount: ObservableObject, Identifiable {
     @Published private(set) var voiceRoomIds: Set<String> = []
     @Published private(set) var spaces: [SpaceRoom] = []
     @Published private(set) var categories: [String: [ChannelCategory]] = [:]
+    /// Rooms with their own notification setting (RoomPrefs.swift); the others follow the default.
+    @Published var roomNotifyLevels: [String: RoomNotifyLevel] = [:]
     @Published private(set) var syncState: SyncServiceState = .idle
     @Published private(set) var recoveryState: RecoveryState = .unknown
     @Published private(set) var verificationState: VerificationState = .unknown
@@ -305,7 +309,8 @@ final class MatrixAccount: ObservableObject, Identifiable {
             inviterName: info.inviter.map { $0.displayName ?? $0.userId },
             lastMessage: lastMessage,
             isVoiceRoom: isVoiceChannel(info.id),
-            dmUserId: info.isDirect && info.heroes.count == 1 ? info.heroes.first?.userId : nil
+            dmUserId: info.isDirect && info.heroes.count == 1 ? info.heroes.first?.userId : nil,
+            isFavourite: info.isFavourite
         )
     }
 

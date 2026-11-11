@@ -123,6 +123,7 @@ private struct ChatContent: View {
                 .accessibilityLabel("\(title), channel details")
             }
             ToolbarItemGroup(placement: .navigationBarTrailing) {
+                RoomNotifyMenuButton(account: account, roomId: roomId)
                 Button { showSearch = true } label: { Image(systemName: "magnifyingglass") }
                     .accessibilityLabel("Search messages")
                 if !isVoiceChat {
