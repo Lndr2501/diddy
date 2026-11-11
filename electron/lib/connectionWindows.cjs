@@ -57,6 +57,7 @@ const createConnectionWindows = ({
     if (opening.has(label)) throw new Error('Das Verbindungsfenster wird gerade geöffnet; bitte danach erneut versuchen.');
     windows.get(label)?.destroy();
     connections.saveProfiles(dir, kept);
+    connections.removeAccountLabel(dir, id);
     try {
       const ses = session.fromPartition(partitionOf(id));
       await ses.clearStorageData();

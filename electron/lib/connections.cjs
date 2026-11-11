@@ -95,6 +95,55 @@ const saveProfiles = (dir, profiles) => {
   fs.renameSync(temporary, file);
 };
 
+// Public Matrix IDs for the account list, separate from each window's login/session storage.
+const labelsFile = (dir) => path.join(dir, 'account-labels.json');
+const checkAccountLabel = (id, user) => {
+  if (id !== 'main') checkProfileId(id);
+  if (typeof user !== 'string' || Buffer.byteLength(user, 'utf8') > 256 ||
+      !user.startsWith('@') || !user.includes(':') || /[\s\p{Cc}]/u.test(user)) {
+    throw new Error('Ungültige Matrix-ID.');
+  }
+};
+
+const readAccountLabels = (dir) => {
+  try {
+    const file = labelsFile(dir);
+    if (fs.statSync(file).size > 64 * 1024) return {};
+    const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+    let profiles;
+    try { profiles = readProfiles(dir); } catch { profiles = []; }
+    const known = new Set(['main', ...profiles.map(({ id }) => id)]);
+    return Object.fromEntries(Object.entries(parsed).filter(([id, user]) => {
+      try { checkAccountLabel(id, user); return known.has(id); } catch { return false; }
+    }).slice(0, MAX_PROFILES + 1));
+  } catch { return {}; }
+};
+
+const saveAccountLabels = (dir, labels) => {
+  fs.mkdirSync(dir, { recursive: true });
+  const file = labelsFile(dir);
+  fs.writeFileSync(`${file}.new`, JSON.stringify(labels, null, 2), { mode: 0o600 });
+  fs.renameSync(`${file}.new`, file);
+};
+
+const setAccountLabel = (dir, id, user) => {
+  checkAccountLabel(id, user);
+  if (id !== 'main' && !readProfiles(dir).some((profile) => profile.id === id)) {
+    throw new Error('Diese Verbindung ist nicht gespeichert.');
+  }
+  const labels = readAccountLabels(dir);
+  if (labels[id] === user) return;
+  labels[id] = user;
+  saveAccountLabels(dir, labels);
+};
+
+const removeAccountLabel = (dir, id) => {
+  checkProfileId(id);
+  // readAccountLabels also drops the profile that was just removed from connections.json.
+  if (fs.existsSync(labelsFile(dir))) saveAccountLabels(dir, readAccountLabels(dir));
+};
+
 /** `profiles` without `id`; refuses the original login and unknown ids. */
 const removeProfile = (profiles, id) => {
   if (id === 'main') throw new Error('Die ursprüngliche Anmeldung kann nicht entfernt werden.');
@@ -138,4 +187,7 @@ module.exports = {
   saveProfiles,
   removeProfile,
   parseLaunch,
+  readAccountLabels,
+  setAccountLabel,
+  removeAccountLabel,
 };
