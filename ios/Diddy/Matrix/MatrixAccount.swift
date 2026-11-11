@@ -115,6 +115,8 @@ final class MatrixAccount: ObservableObject, Identifiable {
     @Published var diddyBadges: [String: [DiddyBadge]] = [:]
     /// Every badge you own (given to you), for choosing the shown ones in the profile editor.
     @Published var diddyOwnBadges: [DiddyBadge] = []
+    /// Every badge definition that is known: the built-in ones and the custom ones (badge library).
+    @Published var diddyBadgeLibrary: [DiddyBadge] = []
     var diddyOptionsRooms: Set<String> = []
     var diddyCheckedRooms: Set<String> = []
     var diddyPrimaryRoom: (id: String, encrypted: Bool)?

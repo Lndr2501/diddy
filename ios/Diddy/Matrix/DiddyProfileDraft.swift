@@ -19,12 +19,14 @@ struct DiddyProfileDraft: Equatable {
         var angle: Double
     }
 
-    /// Profile effect or frame: none, a built-in preset, or the own one uploaded in Diddy desktop
-    /// (kept as it is, iOS cannot import those yet).
+    /// Profile effect or frame: none, a built-in preset, the own one that is stored (kept as it is),
+    /// or one imported here from a ZIP, a picture or a profile file (its JSON, see
+    /// `DiddyProfileRules.ownChoice`).
     enum Choice: Hashable {
         case none
         case preset(String)
         case custom
+        case own(String)
     }
 
     /// The top-level keys of the profile the editor writes (desktop's `EDITOR_KEYS` and
@@ -574,7 +576,22 @@ enum DiddyProfileRules {
         case .none: return nil
         case .preset(let id): return ["preset": id]
         case .custom: return old
+        case .own(let json): return (try? JSONSerialization.jsonObject(with: Data(json.utf8))) as? [String: Any]
         }
+    }
+
+    /// An imported effect or frame as a choice (sorted keys, so equal values are equal choices).
+    static func ownChoice(_ value: [String: Any]) -> DiddyProfileDraft.Choice? {
+        guard JSONSerialization.isValidJSONObject(value),
+              let data = try? JSONSerialization.data(withJSONObject: value, options: [.sortedKeys, .withoutEscapingSlashes]) else { return nil }
+        return .own(String(decoding: data, as: UTF8.self))
+    }
+
+    /// The `name` of an imported effect or frame, for the picker.
+    static func ownName(_ choice: DiddyProfileDraft.Choice) -> String? {
+        guard case .own(let json) = choice,
+              let value = (try? JSONSerialization.jsonObject(with: Data(json.utf8))) as? [String: Any] else { return nil }
+        return text(value["name"], max: 48)
     }
 
     /// `old` without the managed keys, plus `values`; nil when nothing is left.

@@ -11,8 +11,9 @@ import UniformTypeIdentifiers
 ///
 /// Saving writes only the parts that changed (`DiddyProfileDraft`) on top of the stored profile,
 /// read again right before, so everything else stays, also what only desktop knows.
-/// Desktop only: creating and giving badges, importing own effects and frames (ZIP packs) and
-/// exporting / importing the profile as a file. An own effect or frame from desktop is kept.
+/// Like desktop: sets up the Diddy Options room when there is none, creates and gives badges (badge
+/// library), imports own effects, frames and nameplates (ZIP packs or pictures), exports / imports
+/// the profile as a file, resets it to the default and shows your Diddy version on the card.
 @MainActor
 struct DiddyProfileEditor: View {
     @ObservedObject var account: MatrixAccount
@@ -28,16 +29,30 @@ struct DiddyProfileEditor: View {
     @State private var bannerItem: PhotosPickerItem?
     @State private var plateItem: PhotosPickerItem?
     @State private var previewWidth: CGFloat = 0
+    @State private var shareVersion = DiddyClientVersion.shares
+    @State private var originalShareVersion = DiddyClientVersion.shares
+    @State private var notice: Notice?
+    @State private var importTarget = ImportTarget.profile
+    @State private var importing = false
+    @State private var exporting = false
+    @State private var exportDocument = DiddyProfileDocument()
 
     private enum Tab: String, CaseIterable {
         case name = "Name", card = "Card", look = "Look", status = "Status", layout = "Layout"
     }
 
-    private enum Upload { case banner, nameplate }
+    private enum Upload { case banner, nameplate, effect, frame }
+
+    private enum ImportTarget { case profile, effect, frame, nameplate }
+
+    private struct Notice {
+        let isError: Bool
+        let text: String
+    }
 
     private typealias Rules = DiddyProfileRules
 
-    private var dirty: Bool { !draft.changedParts(from: original).isEmpty }
+    private var dirty: Bool { !draft.changedParts(from: original).isEmpty || shareVersion != originalShareVersion }
     private var canSave: Bool {
         loaded && account.canEditDiddyProfile && dirty && !saving && uploading == nil && draft.problems.isEmpty
     }
@@ -55,11 +70,13 @@ struct DiddyProfileEditor: View {
             if !loaded {
                 ProgressView().frame(maxWidth: .infinity).listRowBackground(Color.clear)
             } else if !account.canEditDiddyProfile {
-                Section {
-                    Text(account.diddyPrimaryRoom == nil
-                         ? "No Diddy Options room was found on your servers. Diddy desktop sets one up under Settings > Profile; your profile can be edited here afterwards."
-                         : "This app could not read your current profile from your encrypted Diddy Options room yet (the message keys are missing). Verify this device in Settings, then try again, or edit your profile in Diddy desktop.")
-                        .foregroundStyle(Theme.muted)
+                if account.diddyPrimaryRoom == nil {
+                    DiddyOptionsSetupView(account: account) { Task { await reload() } }
+                } else {
+                    Section {
+                        Text("This app could not read your current profile from your encrypted Diddy Options room yet (the message keys are missing). Verify this device in Settings, then try again, or edit your profile in Diddy desktop.")
+                            .foregroundStyle(Theme.muted)
+                    }
                 }
             } else {
                 previewSection
@@ -89,6 +106,22 @@ struct DiddyProfileEditor: View {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save") { Task { await save() } }.disabled(!canSave)
             }
+            if loaded && account.canEditDiddyProfile {
+                ToolbarItem(placement: .navigationBarTrailing) { fileMenu }
+            }
+        }
+        .fileExporter(isPresented: $exporting, document: exportDocument, contentType: .json,
+                      defaultFilename: DiddyProfileTransfer.fileName) { result in
+            switch result {
+            case .success(let url): notice = Notice(isError: false, text: "Saved \(url.lastPathComponent).")
+            case .failure(let error):
+                if (error as? CocoaError)?.code != .userCancelled {
+                    notice = Notice(isError: true, text: "The file could not be saved: \(error.localizedDescription)")
+                }
+            }
+        }
+        .fileImporter(isPresented: $importing, allowedContentTypes: importTypes, allowsMultipleSelection: false) { result in
+            handleImport(result)
         }
         .task { await load() }
         .onChange(of: bannerItem) { item in
@@ -381,6 +414,13 @@ struct DiddyProfileEditor: View {
                 Label(plateMediaTitle, systemImage: "photo.on.rectangle")
             }
             .disabled(uploading != nil)
+            Button {
+                importTarget = .nameplate
+                importing = true
+            } label: {
+                Label("Import ZIP or File…", systemImage: "square.and.arrow.down")
+            }
+            .disabled(uploading != nil)
             if uploading == .nameplate { uploadingRow }
             if let mxc = draft.plateImageMxc {
                 DiddyImagePositionEditor(mxc: mxc, ratio: 560.0 / 80.0, pos: $draft.plateImagePos, account: account)
@@ -395,23 +435,39 @@ struct DiddyProfileEditor: View {
         } header: {
             Text("Nameplate")
         } footer: {
-            Text("The background other Diddy users see behind your row in the member and DM lists: a colour, a gradient, a picture, a GIF or a short video (up to \(Int(DiddyMediaRules.maxVideoSeconds)) seconds, muted).")
+            Text("The background other Diddy users see behind your row in the member and DM lists: a colour, a gradient, a picture, a GIF or a short video (up to \(Int(DiddyMediaRules.maxVideoSeconds)) seconds, muted). A nameplate ZIP with a loop and its colours can be imported too.")
         }
         Section {
             choicePicker("Effect", selection: $draft.effect, presets: Rules.effectPresets,
                          keepsCustom: original.effect == .custom, customName: storedProfile?.effect?.name)
+            Button {
+                importTarget = .effect
+                importing = true
+            } label: {
+                Label("Import Own Effect…", systemImage: "square.and.arrow.down")
+            }
+            .disabled(uploading != nil)
+            if uploading == .effect { uploadingRow }
         } header: {
             Text("Profile Effect")
         } footer: {
-            Text("An animated overlay other Diddy users see over your profile card. Your own effects are imported in Diddy desktop.")
+            Text("An animated overlay other Diddy users see over your profile card. Import your own from a ZIP effect pack or from one animated PNG, WebP or GIF with a transparent background.")
         }
         Section {
             choicePicker("Frame", selection: $draft.frame, presets: Rules.framePresets,
                          keepsCustom: original.frame == .custom, customName: storedProfile?.frame?.name)
+            Button {
+                importTarget = .frame
+                importing = true
+            } label: {
+                Label("Import Own Frame…", systemImage: "square.and.arrow.down")
+            }
+            .disabled(uploading != nil)
+            if uploading == .frame { uploadingRow }
         } header: {
             Text("Profile Frame")
         } footer: {
-            Text("A decorative frame other Diddy users see around your profile card. Your own frames are imported in Diddy desktop.")
+            Text("A decorative frame other Diddy users see around your profile card. Import your own from a ZIP frame pack or from one PNG or WebP with a transparent background.")
         }
     }
 
@@ -459,6 +515,9 @@ struct DiddyProfileEditor: View {
             if keepsCustom {
                 Text("\(customName ?? "Your own") (from desktop)").tag(DiddyProfileDraft.Choice.custom)
             }
+            if case .own = selection.wrappedValue {
+                Text("\(DiddyProfileRules.ownName(selection.wrappedValue) ?? "Your own") (imported)").tag(selection.wrappedValue)
+            }
         }
     }
 
@@ -475,7 +534,7 @@ struct DiddyProfileEditor: View {
         }
         Section {
             if account.diddyOwnBadges.isEmpty {
-                Text("You do not have any badges yet. Badges are created and given in Diddy desktop.")
+                Text("You do not have any badges yet. Take one from the badge library or create your own.")
                     .foregroundStyle(Theme.muted)
             } else {
                 ForEach(account.diddyOwnBadges) { badge in badgeRow(badge) }
@@ -484,6 +543,34 @@ struct DiddyProfileEditor: View {
             Text("Shown Badges")
         } footer: {
             Text("Pick up to \(Rules.maxShownBadges) of your badges to show next to your name. \(draft.shownBadgeIds(owned: ownedIds).count)/\(Rules.maxShownBadges)")
+        }
+        Section {
+            NavigationLink {
+                DiddyBadgeLibraryView(account: account)
+            } label: {
+                Label("Badge Library", systemImage: "star.circle")
+            }
+            NavigationLink {
+                DiddyCreateBadgeView(account: account)
+            } label: {
+                Label("Create a Badge", systemImage: "plus.circle")
+            }
+        } footer: {
+            Text("Taking, creating and deleting badges is saved right away.")
+        }
+        Section {
+            Toggle(isOn: $shareVersion) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Show My Diddy Version")
+                    Text("\(DiddyClientVersion.current ?? "This version"), small on your profile card. Switched off, it is removed from your profile.")
+                        .font(.caption)
+                        .foregroundStyle(Theme.muted)
+                }
+            }
+        } header: {
+            Text("What Others See")
+        } footer: {
+            Text("Your profile card, badges and name style are shared with everyone in the data room who uses Diddy. Fields you leave empty are not shared.")
         }
     }
 
@@ -602,6 +689,7 @@ struct DiddyProfileEditor: View {
                 Text(problem).foregroundStyle(Theme.danger)
             }
             if let error { Text(error).foregroundStyle(Theme.danger) }
+            if let notice { Text(notice.text).foregroundStyle(notice.isError ? Theme.danger : Theme.online) }
             Button {
                 Task { await save() }
             } label: {
@@ -626,13 +714,23 @@ struct DiddyProfileEditor: View {
         draft = stored
         original = stored
         interestsText = stored.interests.joined(separator: ", ")
+        shareVersion = DiddyClientVersion.shares
+        originalShareVersion = shareVersion
         loaded = true
+    }
+
+    /// Reads the profile again, after the data room was set up.
+    private func reload() async {
+        loaded = false
+        await load()
     }
 
     private func revert() {
         draft = original
         interestsText = original.interests.joined(separator: ", ")
+        shareVersion = originalShareVersion
         error = nil
+        notice = nil
     }
 
     private func save() async {
@@ -642,10 +740,18 @@ struct DiddyProfileEditor: View {
         defer { saving = false }
         let edited = draft
         let base = original
+        let share = shareVersion
+        let version = DiddyClientVersion.current
+        notice = nil
         do {
-            // Applied to the stored profile as it is right before writing.
-            try await account.updateDiddyProfile(build: { stored in edited.apply(to: stored, since: base) })
+            // Applied to the stored profile as it is right before writing; your Diddy version is
+            // stamped into it (or removed), like desktop does with every write.
+            try await account.updateDiddyProfile(build: { stored in
+                DiddyProfileTransfer.stampVersion(edited.apply(to: stored, since: base), version: version, share: share)
+            })
             original = edited
+            DiddyClientVersion.shares = share
+            originalShareVersion = share
             saved = true
         } catch {
             self.error = error.friendlyMessage
@@ -697,6 +803,89 @@ struct DiddyProfileEditor: View {
                 draft.plateVideoMxc = nil
             }
             draft.plateImagePos = nil
+        }
+    }
+
+    // MARK: Export, import, reset
+
+    private var fileMenu: some View {
+        Menu {
+            Button {
+                exportDocument = DiddyProfileDocument(text: DiddyProfileTransfer.export(draft, stored: account.diddyOwnProfileRaw ?? [:]))
+                exporting = true
+            } label: {
+                Label("Export Profile…", systemImage: "square.and.arrow.up")
+            }
+            Button {
+                importTarget = .profile
+                importing = true
+            } label: {
+                Label("Import Profile…", systemImage: "square.and.arrow.down")
+            }
+            Button(role: .destructive) {
+                draft = DiddyProfileTransfer.reset(draft)
+                interestsText = ""
+                error = nil
+                notice = nil
+            } label: {
+                Label("Reset to Default", systemImage: "arrow.counterclockwise")
+            }
+            .disabled(!DiddyProfileTransfer.canReset(draft))
+        } label: {
+            Image(systemName: "ellipsis.circle")
+        }
+        .disabled(saving || uploading != nil)
+        .accessibilityLabel("Profile file")
+    }
+
+    private var importTypes: [UTType] {
+        switch importTarget {
+        case .profile: return [.json]
+        case .effect, .frame: return [.zip, .image]
+        case .nameplate: return [.zip, .image, .movie]
+        }
+    }
+
+    private func handleImport(_ result: Result<[URL], Error>) {
+        guard case .success(let urls) = result, let url = urls.first else { return }
+        notice = nil
+        error = nil
+        switch importTarget {
+        case .profile:
+            do {
+                let data = try DiddyDecorImporter.read(url, maxBytes: DiddyProfileTransfer.maxFileBytes, tooLarge: "This file is too big to be a Diddy profile.")
+                switch DiddyProfileTransfer.importProfile(String(decoding: data, as: UTF8.self)) {
+                case .failed(let message):
+                    notice = Notice(isError: true, text: message)
+                case .imported(var imported):
+                    // fills the editor only; your status and shown badges stay, nothing is saved until you press Save
+                    imported.status = draft.status
+                    imported.shownBadges = draft.shownBadges
+                    draft = imported
+                    interestsText = imported.interests.joined(separator: ", ")
+                    notice = Notice(isError: false, text: "Imported. Check the preview, then press Save to keep it.")
+                }
+            } catch {
+                notice = Notice(isError: true, text: error.friendlyMessage)
+            }
+        case .effect:
+            Task {
+                await runUpload(.effect) { draft.effect = try await DiddyDecorImporter.effect(from: url, account: account) }
+            }
+        case .frame:
+            Task {
+                await runUpload(.frame) { draft.frame = try await DiddyDecorImporter.frame(from: url, account: account) }
+            }
+        case .nameplate:
+            Task {
+                await runUpload(.nameplate) {
+                    let plate = try await DiddyDecorImporter.nameplate(from: url, account: account)
+                    draft.plateImageMxc = plate.imageMxc
+                    draft.plateVideoMxc = plate.videoMxc
+                    draft.plateImagePos = nil
+                    if let color = plate.color { draft.plateColor = color }
+                }
+            }
         }
     }
 

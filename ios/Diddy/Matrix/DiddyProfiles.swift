@@ -18,33 +18,6 @@ import SwiftUI
 ///
 /// Everything here is written by other people, so it is checked like desktop does: the sender must
 /// be a joined member, content is small, timestamps are plausible and every value is whitelisted.
-enum DiddyEvents {
-    static let marker = "app.diddy.options"
-    static let profile = "app.diddy.profile"
-    static let badge = "app.diddy.badge"
-    static let award = "app.diddy.badge_award"
-    static let keyField = "app.diddy.key"
-    /// Desktop adds this to the topic of the options room so clients can find it in a server.
-    static let topicTag = "[diddy-options]"
-    static let maxContentBytes = 4096
-
-    /// The length desktop compares with the limit: `JSON.stringify(content).length`, so UTF-16
-    /// units and no escaped slashes. (UTF-8 bytes with `\/` made profiles with many mxc:// links,
-    /// umlauts or emoji fail here although desktop accepts them.)
-    static func jsonLength(_ content: [String: Any]) -> Int? {
-        guard let data = try? JSONSerialization.data(withJSONObject: content, options: [.withoutEscapingSlashes]) else { return nil }
-        return String(decoding: data, as: UTF8.self).utf16.count
-    }
-}
-
-struct DiddyBadge: Hashable, Identifiable {
-    let id: String
-    let name: String
-    var emoji: String?
-    var imageMxc: String?
-    var color: String?
-}
-
 struct DiddyProfile: Equatable {
     enum Status: String { case online, idle, dnd, invisible }
 
@@ -360,7 +333,7 @@ extension MatrixAccount {
             }
         }
         let joined = Set(rooms.filter(\.isJoined).map(\.id))
-        let optionsRooms = diddyOptionsRooms.filter { joined.contains($0) }.sorted()
+        let optionsRooms = diddyOptionsRooms.union(diddyLightRoomIds).filter { joined.contains($0) }.sorted()
 
         var loaded: [(id: String, data: OptionsRoomData, encrypted: Bool)] = []
         for roomId in optionsRooms {
@@ -414,11 +387,13 @@ extension MatrixAccount {
         var slots = DiddyTrust.maxCustomDefs - records.filter { awardedIds.contains($0.badge.id) }.count
         var definitions = Dictionary(uniqueKeysWithValues: DiddyBadge.global.map { ($0.id, $0) })
         for record in records {
-            if awardedIds.contains(record.badge.id) {
-                definitions[record.badge.id] = record.badge
+            var badge = record.badge
+            badge.createdBy = record.sender
+            if awardedIds.contains(badge.id) {
+                definitions[badge.id] = badge
             } else if slots > 0 {
                 slots -= 1
-                definitions[record.badge.id] = record.badge
+                definitions[badge.id] = badge
             }
         }
         var badges: [String: [DiddyBadge]] = [:]
@@ -436,7 +411,17 @@ extension MatrixAccount {
             return a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
         }
         if diddyOwnBadges != ownBadges { diddyOwnBadges = ownBadges }
+        // The whole library for the badge screen: built-in ones first, then the custom ones by name.
+        let library = DiddyBadge.global + definitions.values.filter { !$0.isGlobal }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        if diddyBadgeLibrary != library { diddyBadgeLibrary = library }
         diddyOwnProfileRaw = ownRaw
+        // No options room yet: join the one of your servers, like desktop does after the first sync.
+        if diddyPrimaryRoom == nil {
+            Task { await self.joinDiddyOptionsRoomAutomatically() }
+        } else {
+            Task { await self.hardenDiddyBadgePower() }
+        }
     }
 
     /// Whether your own profile can be changed here without losing what desktop wrote: the
@@ -464,21 +449,34 @@ extension MatrixAccount {
     /// drop for its size (desktop's limit and message, see `DiddyProfileDraft.encodedSize`).
     func updateDiddyProfile(build: ([String: Any]) -> [String: Any]) async throws {
         await reloadDiddyProfilesForWrite()
-        guard let primary = diddyPrimaryRoom, canEditDiddyProfile else {
-            throw DiddyError("No Diddy Options room was found. Set one up in Diddy desktop first.")
+        guard diddyPrimaryRoom != nil, canEditDiddyProfile else {
+            throw DiddyError("No Diddy Options room was found. Set one up in the profile editor first.")
         }
         var content = build(diddyOwnProfileRaw ?? [:])
         content["v"] = 1
+        try await writeDiddyData(type: DiddyEvents.profile, key: userId, content: content)
+        await loadDiddyProfiles(force: true)
+    }
+
+    /// Writes one Diddy event (`writeDiddyData` of desktop): an unencrypted room that carries the
+    /// marker keeps its data in state events, which every member receives when they join. In every
+    /// other case (encrypted room, no permission, a room used without admin rights) the data is
+    /// sent as a normal event with the key in `content["app.diddy.key"]`, encrypted like any message
+    /// when the room is. Refuses content readers would drop for its size.
+    func writeDiddyData(type: String, key: String, content raw: [String: Any]) async throws {
+        guard let primary = diddyPrimaryRoom else { throw DiddyError("No Diddy Options room found.") }
+        var content = raw
         content[DiddyEvents.keyField] = nil
-        guard let size = DiddyProfileDraft.encodedSize(content, key: userId) else {
-            throw DiddyError("Your profile could not be saved: it contains a value that is not valid JSON.")
+        guard let size = DiddyProfileDraft.encodedSize(content, key: key) else {
+            throw DiddyError("Your data could not be saved: it contains a value that is not valid JSON.")
         }
         if size > DiddyEvents.maxContentBytes {
             throw DiddyError("Too much data to save (\(size) of \(DiddyEvents.maxContentBytes) characters). Shorten links or texts.")
         }
-        let path = "/_matrix/client/v3/rooms/\(Self.pathComponent(primary.id))/state/\(DiddyEvents.profile)/\(Self.pathComponent(userId))"
-        // State events are never encrypted, so desktop only uses them in unencrypted rooms.
-        var asState = !primary.encrypted
+        let path = "/_matrix/client/v3/rooms/\(Self.pathComponent(primary.id))/state/\(Self.pathComponent(type))/\(Self.pathComponent(key))"
+        // State events are never encrypted, so desktop only uses them in unencrypted, marked rooms.
+        let messageOnly = diddyLightRoomIds.contains(primary.id) && !diddyOptionsRooms.contains(primary.id)
+        var asState = !primary.encrypted && !messageOnly
         if asState {
             do {
                 _ = try await clientRequest(path, body: content, method: "PUT")
@@ -489,22 +487,21 @@ extension MatrixAccount {
         if !asState {
             // Message mode: a normal event carrying the key, encrypted like any message.
             guard let room = room(primary.id) else { throw DiddyError("The Diddy Options room is not available yet.") }
-            content[DiddyEvents.keyField] = userId
+            content[DiddyEvents.keyField] = key
             let data = try JSONSerialization.data(withJSONObject: content)
             do {
-                _ = try await room.sendRaw(eventType: DiddyEvents.profile, content: String(decoding: data, as: UTF8.self))
+                _ = try await room.sendRaw(eventType: type, content: String(decoding: data, as: UTF8.self))
             } catch {
-                throw DiddyError("Could not send your profile to the Diddy Options room: \(error.friendlyMessage)")
+                throw DiddyError("Could not send your data to the Diddy Options room: \(error.friendlyMessage)")
             }
             // The timeline has no decrypted JSON for a local echo: remember it until it comes back.
-            diddyFeeds[primary.id]?.addLocal(type: DiddyEvents.profile, sender: userId, content: content)
+            diddyFeeds[primary.id]?.addLocal(type: type, sender: userId, content: content)
         }
-        await loadDiddyProfiles(force: true)
     }
 
     /// Hidden from channel lists like on desktop, where it only shows with developer tools on.
     func isDiddyOptionsRoom(_ roomId: String, topic: String? = nil) -> Bool {
-        diddyOptionsRooms.contains(roomId) || topic?.contains(DiddyEvents.topicTag) == true
+        diddyOptionsRooms.contains(roomId) || diddyLightRoomIds.contains(roomId) || topic?.contains(DiddyEvents.topicTag) == true
     }
 
     // MARK: Reading one room
