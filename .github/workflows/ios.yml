@@ -104,6 +104,31 @@ jobs:
           swiftc -swift-version 5 Diddy/Call/StreamZoom.swift Tools/streamzoom_check/main.swift -o "$RUNNER_TEMP/diddy-streamzoom-check"
           "$RUNNER_TEMP/diddy-streamzoom-check"
 
+      - name: Check avatar choice rules
+        run: |
+          swiftc -swift-version 5 Diddy/Matrix/AvatarChoice.swift Tools/avatar_check/main.swift -o "$RUNNER_TEMP/diddy-avatar-check"
+          "$RUNNER_TEMP/diddy-avatar-check"
+
+      - name: Check presence rules
+        run: |
+          swiftc -swift-version 5 Diddy/Matrix/PresenceLogic.swift Tools/presence_check/main.swift -o "$RUNNER_TEMP/diddy-presence-check"
+          "$RUNNER_TEMP/diddy-presence-check"
+
+      - name: Check profile decor rules
+        run: |
+          swiftc -swift-version 5 Diddy/Matrix/DiddyProfileDecor.swift Tools/profiledecor_check/main.swift -o "$RUNNER_TEMP/diddy-profiledecor-check"
+          "$RUNNER_TEMP/diddy-profiledecor-check"
+
+      - name: Check swipe to reply rules
+        run: |
+          swiftc -swift-version 5 Diddy/UI/SwipeReplyMath.swift Tools/swipereply_check/main.swift -o "$RUNNER_TEMP/diddy-swipereply-check"
+          "$RUNNER_TEMP/diddy-swipereply-check"
+
+      - name: Check timeline layout rules
+        run: |
+          swiftc -swift-version 5 Diddy/Matrix/TimelineLayout.swift Tools/timeline_check/main.swift -o "$RUNNER_TEMP/diddy-timeline-check"
+          "$RUNNER_TEMP/diddy-timeline-check"
+
       - name: Install XcodeGen
         run: command -v xcodegen || brew install xcodegen
 
