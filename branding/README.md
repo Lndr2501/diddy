@@ -35,5 +35,6 @@ liegt nicht im Repo.
 
 ## Stand
 
-Die App-Icons in `src-tauri/icons`, `src-tauri/app-icons` (macOS-Dock, Linux/Electron) und `cinny/public/`
-(App-Icon-Auswahl, Favicon, Web) zeigen das neue Logo. `ios/` zeigt noch das alte Motiv.
+Die App-Icons in `src-tauri/icons`, `src-tauri/app-icons` (macOS-Dock, Linux/Electron), `cinny/public/`
+(App-Icon-Auswahl, Favicon, Web) und `ios/Diddy/Resources/Assets.xcassets` (App-Icons aller fünf Farben aus
+`-square`, Vorschauen, `DiddyLogo`) zeigen das neue Logo.
