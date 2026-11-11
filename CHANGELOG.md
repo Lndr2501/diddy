@@ -1,5 +1,9 @@
 # Changelog
 
+## Unveröffentlicht
+
+- **iOS: Quelle für AltStore und SideStore:** `.github/scripts/altstore-source.cjs` erzeugt aus einem Release die Quelldatei `altstore.json` (Bundle-ID `app.diddy.ios`, Version, Größe, Download-Link, Release-Notizen). Sie wird nicht im Release mitgebaut, sondern vom Homelab-Dienst bei jedem neuen Release erzeugt und samt IPA gespiegelt. In AltStore oder SideStore einmal als Quelle eintragen, danach erscheinen neue Versionen unter „Updates“. Keine App-Änderung; getestet mit `cinny/tests/altstoreSource.test.cjs`.
+
 ## 1.5.2 (2026-11-11)
 
 - **Neues Logo:** Das Diddy-Zeichen ist jetzt ein fettes kleines „d“, dessen Innenraum eine Sprechblase ist; die Flasche ist überall ersetzt. Es gilt für alle fünf Farbtöne (Pink, Blue, Purple, Black, Magenta) auf macOS (Dock, App, DMG), Linux (Fenster, Pakete), Web (Favicon, Apple- und Android-Symbole, App-Icon-Auswahl, Logos in der Oberfläche) und iOS (App-Icon, alternative Icons, Anmeldebild). Die Vorlagen liegen als Vektorgrafik in `branding/`, `python3 branding/export.py` erzeugt daraus alle Bilder. Keine neue Funktion, nur das Bild. Nicht auf einem echten Mac, Linux-Desktop und iPhone angesehen: Dock, `icon.icns` und iOS-Icons bitte beim ersten Start prüfen.
