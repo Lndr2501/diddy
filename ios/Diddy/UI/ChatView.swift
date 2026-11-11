@@ -79,6 +79,12 @@ private struct ChatContent: View {
     @State private var userScrolled = false
     @State private var mentions: [String: String] = [:]
     @State private var canSend = true
+    /// Timeline navigation and the extra message actions (TimelineNavViews.swift).
+    @State private var navSheet: TimelineNavSheet?
+    @State private var jumpTarget: TimelineJumpTarget?
+    @State private var highlightedRowId: String?
+    @State private var unreadSeen = false
+    @State private var unreadDismissed = false
     @FocusState private var composerFocused: Bool
 
     private var title: String { summary?.name ?? "Channel" }
@@ -90,6 +96,7 @@ private struct ChatContent: View {
             if !isVoiceChat { CallBanner(account: account, summary: summary, roomId: roomId, title: title) }
             messages
             typingLine
+            followingLine
             if canSend {
                 composer
             } else {
@@ -138,6 +145,17 @@ private struct ChatContent: View {
                     Image(systemName: "person.2.fill")
                 }
                 .accessibilityLabel("Members")
+                Menu {
+                    Button { navSheet = .pinned } label: { Label("Pinned Messages", systemImage: "pin") }
+                    Button { navSheet = .jumpToDate } label: { Label("Jump to Time", systemImage: "calendar") }
+                } label: { Image(systemName: "ellipsis.circle") }
+                    .accessibilityLabel("More")
+            }
+        }
+        .sheet(item: $navSheet) { sheet in
+            TimelineNavSheetView(account: account, controller: controller, sheet: sheet) { eventId in
+                navSheet = nil
+                jumpTarget = TimelineJumpTarget(eventId: eventId)
             }
         }
         .sheet(isPresented: $showSearch) { MessageSearchView(account: account, roomId: roomId) }
@@ -240,6 +258,9 @@ private struct ChatContent: View {
                             }
                     }
                     ForEach(controller.rows) { row in
+                        if !unreadDismissed, dividerRowId == row.id {
+                            NewMessagesDivider().onAppear { unreadSeen = true }
+                        }
                         MessageRowView(
                             row: row,
                             account: account,
@@ -249,15 +270,22 @@ private struct ChatContent: View {
                             onReact: { key in Task { await controller.toggleReaction(key, on: row) } },
                             onImage: { viewedImage = ViewedImage(image: $0) },
                             onFile: { openedFile = $0 },
-                            onCardCommand: { command in Task { await controller.sendCardAction(command) } }
+                            onCardCommand: { command in Task { await controller.sendCardAction(command) } },
+                            onReplyTap: { openReply(of: row) },
+                            onReactionInfo: { key in showReactors(of: row, key: key) }
                         )
                         .id(row.id)
+                        .background(highlightedRowId == row.id ? Theme.accent.opacity(0.18) : Color.clear)
                         .swipeToReply {
                             // The swipe is also a drag of the chat; at the end it must keep following.
                             if bottomVisible { userScrolled = false }
                             reply(to: row)
                         }
                         .contextMenu { menu(for: row) }
+                        if let info = controller.nav.snapshot.threads[row.id], let eventId = row.remoteEventId {
+                            ThreadSummaryButton(info: info) { navSheet = .thread(root: eventId) }
+                        }
+                        if controller.nav.isPinned(row.remoteEventId) { PinnedMarker() }
                     }
                     Color.clear.frame(height: 8).id("bottom")
                         .onAppear {
@@ -320,6 +348,18 @@ private struct ChatContent: View {
                     proxy.scrollTo(row.id, anchor: .center)
                 } else { searchContext = target }
             }
+            .task(id: jumpTarget?.id) {
+                guard let target = jumpTarget else { return }
+                await jump(to: target.eventId, proxy: proxy)
+            }
+            .overlay(alignment: .top) {
+                if showsUnreadPill {
+                    JumpToUnreadPill(
+                        onJump: { Task { await jumpToUnread(proxy: proxy) } },
+                        onMarkRead: { unreadDismissed = true; controller.markRead() }
+                    )
+                }
+            }
             .overlay(alignment: .bottomTrailing) {
                 if !atBottom {
                     Button {
@@ -335,6 +375,100 @@ private struct ChatContent: View {
                     .padding(12)
                     .accessibilityLabel("Jump to latest messages")
                 }
+            }
+        }
+    }
+
+    // MARK: Moving around the chat
+
+    private var dividerRowId: String? { controller.nav.dividerRowId(me: account.userId) }
+
+    private var unread: TimelineNav.Unread {
+        controller.nav.unread(me: account.userId, reachedStart: controller.reachedStart)
+    }
+
+    private var showsUnreadPill: Bool {
+        guard !unreadDismissed, !unreadSeen else { return false }
+        return unread != .none
+    }
+
+    /// Shows a message, loading older ones first when it is further back; the sheet of the
+    /// surrounding messages is the way out for a message that cannot be reached.
+    private func jump(to eventId: String, proxy: ScrollViewProxy) async {
+        guard let rowId = await controller.loadRowId(forEvent: eventId) else {
+            searchContext = SearchEventTarget(roomId: roomId, eventId: eventId)
+            return
+        }
+        userScrolled = true
+        atBottom = false
+        proxy.scrollTo(rowId, anchor: .center)
+        highlightedRowId = rowId
+        // The lazy list only estimates the height of rows it has not drawn yet.
+        try? await Task.sleep(nanoseconds: 300_000_000)
+        proxy.scrollTo(rowId, anchor: .center)
+        try? await Task.sleep(nanoseconds: 1_700_000_000)
+        if highlightedRowId == rowId { highlightedRowId = nil }
+    }
+
+    private func jumpToUnread(proxy: ScrollViewProxy) async {
+        if unread == .notLoaded, let readUpTo = controller.nav.readUpTo {
+            _ = await controller.loadRowId(forEvent: readUpTo)
+        }
+        guard case .divider(let rowId) = unread else { return }
+        userScrolled = true
+        atBottom = false
+        proxy.scrollTo(rowId, anchor: .top)
+        try? await Task.sleep(nanoseconds: 300_000_000)
+        proxy.scrollTo(rowId, anchor: .top)
+    }
+
+    private func openReply(of row: MessageRow) {
+        guard let target = controller.nav.snapshot.replyTargets[row.id] else { return }
+        jumpTarget = TimelineJumpTarget(eventId: target)
+    }
+
+    private func showReactors(of row: MessageRow, key: String) {
+        navSheet = .reactions(key: key, senders: controller.nav.snapshot.reactionSenders[row.id]?[key] ?? [])
+    }
+
+    /// Who has read the newest message, under the chat.
+    @ViewBuilder
+    private var followingLine: some View {
+        let readers = controller.nav.latestReaders
+        if !readers.isEmpty {
+            TimelineFollowingLine(names: readers.map { account.name(of: $0) }) {
+                if let latest = controller.nav.latestShownEventId { navSheet = .readers(eventId: latest) }
+            }
+            .onAppear { account.resolveProfiles(readers, in: roomId) }
+        }
+    }
+
+    /// The desktop's extra message actions: thread, read receipts, pin, link, source, history, report.
+    @ViewBuilder
+    private func navMenu(for row: MessageRow) -> some View {
+        if row.layoutKind == .message, !row.isRedactedMessage, let eventId = row.remoteEventId {
+            Button {
+                let root = controller.nav.snapshot.entries.first(where: { $0.eventId == eventId })?.threadRoot
+                navSheet = .thread(root: root ?? eventId)
+            } label: { Label("Reply in Thread", systemImage: "bubble.left.and.bubble.right") }
+            if !controller.nav.readers(of: eventId).isEmpty {
+                Button { navSheet = .readers(eventId: eventId) } label: { Label("Read Receipts", systemImage: "checkmark.circle") }
+            }
+            if controller.nav.canPin {
+                let pinned = controller.nav.isPinned(eventId)
+                Button {
+                    Task { await controller.setPinned(eventId: eventId, pinned: !pinned) }
+                } label: { Label(pinned ? "Unpin Message" : "Pin Message", systemImage: pinned ? "pin.slash" : "pin") }
+            }
+            Button {
+                Task { if let link = await controller.permalink(of: eventId) { UIPasteboard.general.string = link } }
+            } label: { Label("Copy Link", systemImage: "link") }
+            if row.isEdited {
+                Button { navSheet = .history(row) } label: { Label("Edit History", systemImage: "clock.arrow.circlepath") }
+            }
+            Button { navSheet = .source(row) } label: { Label("View Source", systemImage: "curlybraces") }
+            if !row.isOwn {
+                Button(role: .destructive) { navSheet = .report(eventId: eventId) } label: { Label("Report", systemImage: "exclamationmark.bubble") }
             }
         }
     }
@@ -369,9 +503,12 @@ private struct ChatContent: View {
                 } label: { Label("Edit Message", systemImage: "pencil") }
             }
         }
+        navMenu(for: row)
         Button { profile = ProfileTarget(userId: row.sender) } label: { Label("View Profile", systemImage: "person.crop.circle") }
-        if row.isOwn {
-            Button(role: .destructive) { Task { await controller.redact(row) } } label: {
+        if row.layoutKind == .message, row.eventId != nil,
+           TimelineNav.canDelete(isOwn: row.isOwn, isRedacted: row.isRedactedMessage,
+                                 canRedactOwn: controller.nav.canRedactOwn, canRedactOther: controller.nav.canRedactOther) {
+            Button(role: .destructive) { navSheet = .delete(row) } label: {
                 Label("Delete Message", systemImage: "trash")
             }
         }
@@ -793,6 +930,10 @@ struct MessageRowView: View {
     var onImage: (UIImage) -> Void = { _ in }
     var onFile: (URL) -> Void = { _ in }
     var onCardCommand: (String) -> Void = { _ in }
+    /// Tapping the quote of a reply shows the message it answers.
+    var onReplyTap: () -> Void = {}
+    /// Long-pressing a reaction asks who reacted.
+    var onReactionInfo: (String) -> Void = { _ in }
     /// Badges grow with the name next to them when the text size changes.
     @ScaledMetric(relativeTo: .subheadline) private var badgeSize: CGFloat = 13
 
@@ -855,6 +996,8 @@ struct MessageRowView: View {
                     Text(MentionText.readable(reply.text) { account.name(of: $0) }).font(.caption).foregroundStyle(Theme.faint).lineLimit(1)
                 }
                 .padding(.leading, 64)
+                .contentShape(Rectangle())
+                .onTapGesture(perform: onReplyTap)
             }
             HStack(alignment: .top, spacing: 12) {
                 if row.showsHeader {
@@ -956,6 +1099,9 @@ struct MessageRowView: View {
                     .overlay(RoundedRectangle(cornerRadius: 8).stroke(reaction.mine ? Theme.accent : .clear, lineWidth: 1))
                 }
                 .buttonStyle(.plain)
+                .contextMenu {
+                    Button { onReactionInfo(reaction.key) } label: { Label("Who Reacted", systemImage: "person.2") }
+                }
                 .accessibilityLabel("\(reaction.key), \(reaction.count), \(reaction.mine ? "remove your reaction" : "add your reaction")")
             }
         }

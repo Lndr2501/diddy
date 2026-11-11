@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import MatrixRustSDK
 import UIKit
@@ -58,16 +59,23 @@ final class TimelineController: ObservableObject {
     let ownUserId: String
     /// A direct message leaves out the joins and invites that set it up.
     let isDirect: Bool
-    private var timeline: Timeline?
-    private var items: [TimelineItem] = []
+    /// Not the live chat but one thread or the pinned messages, when set.
+    let focus: TimelineFocus?
+    /// Read receipts, threads, pins and the other things the chat shows beside its rows.
+    let nav = TimelineNavModel()
+    private var navObserver: AnyCancellable?
+    private(set) var timeline: Timeline?
+    private(set) var items: [TimelineItem] = []
     private var listener: TaskHandle?
     private var typingListener: TaskHandle?
     private var isTyping = false
 
-    init(room: Room, ownUserId: String, isDirect: Bool = false) {
+    init(room: Room, ownUserId: String, isDirect: Bool = false, focus: TimelineFocus? = nil) {
         self.room = room
         self.ownUserId = ownUserId
         self.isDirect = isDirect
+        self.focus = focus
+        navObserver = nav.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }
     }
 
     deinit {
@@ -78,12 +86,20 @@ final class TimelineController: ObservableObject {
     func start() async {
         guard timeline == nil else { return }
         do {
-            let timeline = try await room.timeline()
+            let timeline: Timeline
+            if let focus {
+                timeline = try await room.timelineWithConfiguration(configuration: TimelineConfiguration(
+                    focus: focus, filter: .all, internalIdPrefix: "diddy-focus", dateDividerMode: .daily,
+                    trackReadReceipts: .disabled, reportUtds: false))
+            } else {
+                timeline = try await room.timeline()
+            }
             self.timeline = timeline
             listener = await timeline.addListener(listener: TimelineUpdates { [weak self] diffs in
                 Task { @MainActor in self?.apply(diffs) }
             })
             let me = ownUserId
+            if focus == nil { await nav.start(room: room) }
             typingListener = room.subscribeToTypingNotifications(listener: TypingUpdates { [weak self] ids in
                 Task { @MainActor in self?.typingUserIds = ids.filter { $0 != me } }
             })
@@ -92,7 +108,7 @@ final class TimelineController: ObservableObject {
             // the timeline then updates those items itself. Element X does the same on open.
             Task { await timeline.fetchMembers() }
             await paginate()
-            try? await timeline.markAsRead(receiptType: Self.receiptType)
+            if focus == nil { try? await timeline.markAsRead(receiptType: Self.receiptType) }
         } catch {
             sendError = error.friendlyMessage
         }
@@ -371,6 +387,7 @@ final class TimelineController: ObservableObject {
             result.append(row)
         }
         rows = result
+        nav.update(items: items, rowIds: Set(result.map { $0.id }), me: ownUserId)
     }
 
     private static func row(for event: EventTimelineItem, id: String, me: String) -> MessageRow? {
