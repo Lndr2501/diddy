@@ -11,7 +11,7 @@ const utf8Bytes = (value: string) => new TextEncoder().encode(value).length;
 const WHITESPACE =
   '\\u0009-\\u000d\\u0020\\u0085\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000';
 const trimLikeHost = (value: string): string =>
-  value.replace(new RegExp(`[${WHITESPACE}]+`), '').replace(new RegExp(`[${WHITESPACE}]+$`), '');
+  value.replace(new RegExp(`^[${WHITESPACE}]+`), '').replace(new RegExp(`[${WHITESPACE}]+$`), '');
 
 /** Only metadata supplied by the native host, never a session or access token. */
 export const getConnectionProfile = (): ConnectionProfile | undefined => {

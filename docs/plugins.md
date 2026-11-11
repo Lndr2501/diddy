@@ -139,7 +139,7 @@ Jedes Plugin sieht nur seine eigenen Daten, sie bleiben auf diesem Gerät.
 | Plugin → Diddy | `{ type: 'diddy:open', url: 'https://…' }`                       | Link im Browser öffnen (nur `https://`, keine Zugangsdaten).      |
 
 Grenzen: Schlüssel `[a-z0-9_.-]`, 1–40 Zeichen (nicht `__proto__`, `constructor`, `prototype`);
-Werte bis 20 000 Zeichen; höchstens 50 Schlüssel pro Plugin. Antwortet Diddy nicht (alte Version),
+Werte bis 20 000 Zeichen; höchstens 50 Schlüssel und 256 KB (als JSON gespeichert) pro Plugin. Antwortet Diddy nicht (alte Version),
 muss das Plugin mit Standardwerten weiterarbeiten. Werte aus dem Speicher sind Fremddaten wie jede
 andere Eingabe: nie als HTML einsetzen.
 

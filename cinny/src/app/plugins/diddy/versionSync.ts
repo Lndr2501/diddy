@@ -4,7 +4,7 @@ import { APP_VERSION } from '../../appInfo';
 import { useShareVersion } from '../../state/versionShare';
 import { clientVersionOutdated } from './clientVersion';
 import { getPrimaryOptionsRoom } from './optionsRoom';
-import { patchMyProfile, readProfile, useDiddyProfile } from './profiles';
+import { ownProfileKnown, patchMyProfile, readProfile, useDiddyProfile } from './profiles';
 
 /**
  * Keeps the Diddy version in your profile up to date (#75): after an update, and when you switch
@@ -24,8 +24,9 @@ export const useClientVersionSync = (): void => {
     let timer: number | undefined;
     const tryWrite = () => {
       if (disposed) return;
-      // the stored profile is only known once the first sync is through
-      if (!mx.isInitialSyncComplete()) {
+      // the stored profile is only known once the first sync and the history of message-mode
+      // options rooms are through; writing earlier would wipe it
+      if (!ownProfileKnown(mx)) {
         timer = window.setTimeout(tryWrite, 2000);
         return;
       }

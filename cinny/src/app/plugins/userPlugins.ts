@@ -33,6 +33,12 @@ export const LOCAL_URL_PREFIX = 'diddy:local/';
 const PLUGIN_ID_PATTERN = /^[A-Za-z0-9-]{1,64}$/;
 export const MAX_STORAGE_KEYS = 50;
 export const MAX_STORAGE_VALUE_LENGTH = 20000;
+/**
+ * All data of one plugin, measured as stored (JSON). The per-value limit alone is not enough:
+ * JSON writes control characters as six, so 50 values could fill the whole localStorage of the
+ * app and break login and settings.
+ */
+export const MAX_STORAGE_BYTES = 256 * 1024;
 export const STORAGE_KEY_PATTERN = /^[a-z0-9_.-]{1,40}$/;
 const RESERVED_KEYS = ['__proto__', 'constructor', 'prototype'];
 /** A key a plugin may use for its own data (never a name that could reach object internals). */
@@ -457,7 +463,9 @@ export const applyStorageSet = (
   if (!(key in data) && Object.keys(data).length >= MAX_STORAGE_KEYS) {
     return fail('Too many keys.');
   }
-  return ok({ ...data, [key]: value });
+  const next = { ...data, [key]: value };
+  if (JSON.stringify(next).length > MAX_STORAGE_BYTES) return fail('Plugin storage full.');
+  return ok(next);
 };
 
 export const normalizeLocale = (locale: string | undefined): string => {

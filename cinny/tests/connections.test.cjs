@@ -207,3 +207,14 @@ test('a window reports its account once, under main or its profile id (#156)', a
     },
   ]);
 });
+test('whitespace inside the address is not removed (only at the ends)', () => {
+  const env = setup();
+  // removing it would silently connect to a different host ("my server.org" -> "myserver.org")
+  let result;
+  try {
+    result = env.normalizeHomeserver('https://my server.org');
+  } catch {
+    result = undefined;
+  }
+  assert.notEqual(result, 'https://myserver.org');
+});

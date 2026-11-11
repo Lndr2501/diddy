@@ -353,6 +353,16 @@ test('plugin storage enforces the key, size and count limits', () => {
   assert.equal(P.applyStorageSet(data, 'k3', 'new').ok, true);
   assert.equal(P.applyStorageSet({}, 'Bad', 'v').ok, false);
   assert.equal(P.applyStorageSet({}, 'k', 'x'.repeat(20001)).ok, false);
+  // the stored JSON of one plugin is capped: control characters take six characters each
+  let filled = {};
+  let refused = false;
+  for (let i = 0; i < 50 && !refused; i += 1) {
+    const result = P.applyStorageSet(filled, `k${i}`, '\u0001'.repeat(20000));
+    if (result.ok) filled = result.value;
+    else refused = true;
+  }
+  assert.equal(refused, true);
+  assert.ok(JSON.stringify(filled).length <= 256 * 1024);
   // the input object is never mutated
   const before = { a: '1' };
   P.applyStorageSet(before, 'b', '2');

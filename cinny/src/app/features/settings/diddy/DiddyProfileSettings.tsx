@@ -19,7 +19,12 @@ import { useUserPresence } from '../../../hooks/useUserPresence';
 import { useMediaAuthentication } from '../../../hooks/useMediaAuthentication';
 import { getMxIdLocalPart, mxcUrlToHttp } from '../../../utils/matrix';
 import { nameInitials } from '../../../utils/common';
-import { useDiddyProfile, setMyProfile, getDiddyDebugInfo } from '../../../plugins/diddy/profiles';
+import {
+  useDiddyProfile,
+  setMyProfile,
+  getDiddyDebugInfo,
+  useOwnProfileKnown,
+} from '../../../plugins/diddy/profiles';
 import {
   DiscoveredRoom,
   discoverSpaceRooms,
@@ -382,6 +387,8 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
   const hasOptionsRoom = optionsRooms.length > 0;
   const lightRooms = optionsRooms.filter((room) => isLightOptionsRoom(room));
   const stored = useDiddyProfile(mx, myId);
+  // saving before the stored profile has loaded would replace it with the editor's empty start
+  const profileKnown = useOwnProfileKnown(mx);
   const shareVersion = useShareVersion();
 
   const storedBase = useMemo(() => toDraft(stored), [stored]);
@@ -651,7 +658,7 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
     setDraft(base);
     setSaveError(undefined);
   };
-  const saveDisabled = saving || !dirty || busyKey !== undefined;
+  const saveDisabled = saving || !dirty || busyKey !== undefined || !profileKnown;
 
   // export / import of the customization as a file (#157)
   const importInput = useRef<HTMLInputElement>(null);
@@ -1503,7 +1510,7 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
                       variant="Secondary"
                       fill="Soft"
                       radii="300"
-                      disabled={saving || !dirty}
+                      disabled={saving || !dirty || !profileKnown}
                       onClick={resetDraft}
                     >
                       <Text size="B400">Cancel</Text>

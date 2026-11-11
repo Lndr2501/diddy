@@ -141,6 +141,8 @@ const forEachMessage = (
 const backfilled = new Set<string>();
 const backfillTries = new Map<string, number>();
 const membersRequested = new Set<string>();
+/** Rooms whose message-mode history was read (or could not be read after every retry). */
+const scannedRooms = new Set<string>();
 
 /** Keeps the cache of one room small: per-sender quota first, then the oldest entries go. */
 const trimRoomCache = (roomId: string) => {
@@ -381,10 +383,12 @@ const backfillRoom = (mx: MatrixClient, room: Room) => {
   (encrypted ? backfillEncrypted(mx, room) : backfillFiltered(mx, room))
     .then(({ fetched, ingested }) => {
       recentOwn.markScanned(room.roomId);
+      scannedRooms.add(room.roomId);
       diag(
         `diddy: backfill done room=${room.roomId} encrypted=${encrypted} fetched=${fetched} ingested=${ingested}`
       );
-      if (ingested > 0) notify();
+      // also without new data: waiting profile writes may go ahead now
+      notify();
     })
     .catch((e) => {
       diag(
@@ -395,6 +399,11 @@ const backfillRoom = (mx: MatrixClient, room: Room) => {
       // retry on a later sync, but never more than MAX_BACKFILL_TRIES times per session
       if ((backfillTries.get(room.roomId) ?? 0) < MAX_BACKFILL_TRIES)
         backfilled.delete(room.roomId);
+      else {
+        // nothing more to learn this session; do not block profile writes forever
+        scannedRooms.add(room.roomId);
+        notify();
+      }
     });
 };
 
@@ -533,15 +542,31 @@ type OwnEntry = { type: string; key: string; content: Record<string, unknown>; t
 
 /** Our own definitions and awards in a room that new members would not receive as state. */
 const ownBadgeEntries = (room: Room, me: string): OwnEntry[] => {
+  // only our own state version counts: someone else's newer state in that slot does not carry
+  // our data to new members
   const notInState = (type: string, key: string, ts: number): boolean => {
     const st = room.currentState.getStateEvents(type, key);
-    return !st || st.getTs() < ts;
+    return !st || st.getSender() !== me || st.getTs() < ts;
   };
+  // A deletion (empty content) sent as a message must be repeated while an older state version
+  // of that slot exists, otherwise the old version comes back once the deletion leaves the history
+  // that clients read (members can no longer overwrite badge state, #168).
+  const olderStateExists = (type: string, key: string, ts: number): boolean => {
+    const st = room.currentState.getStateEvents(type, key);
+    return !!st && st.getTs() < ts && Object.keys(st.getContent() ?? {}).length > 0;
+  };
+  const isDeletion = (c: Candidate) => Object.keys(c.content).length === 0;
   const defs: OwnEntry[] = [];
   dataKeys(room, BADGE_DEF_EVENT).forEach((key) => {
     if (key.length > 64 || GLOBAL_BADGES.some((g) => g.id === key)) return;
     const data = readData(room, BADGE_DEF_EVENT, key, me);
-    if (!data || !sanitizeBadgeDef(data.content, key)) return;
+    if (!data) return;
+    if (isDeletion(data)) {
+      if (olderStateExists(BADGE_DEF_EVENT, key, data.ts))
+        defs.push({ type: BADGE_DEF_EVENT, key, content: {}, ts: data.ts });
+      return;
+    }
+    if (!sanitizeBadgeDef(data.content, key)) return;
     if (notInState(BADGE_DEF_EVENT, key, data.ts))
       defs.push({ type: BADGE_DEF_EVENT, key, content: data.content, ts: data.ts });
   });
@@ -549,11 +574,18 @@ const ownBadgeEntries = (room: Room, me: string): OwnEntry[] => {
   dataKeys(room, BADGE_AWARD_EVENT).forEach((key) => {
     const parsed = parseAwardStateKey(key);
     if (!parsed) return;
+    const newestOwn = readData(room, BADGE_AWARD_EVENT, key, me);
+    if (newestOwn && isDeletion(newestOwn)) {
+      // our revocation (as giver) or removal (as recipient)
+      if (olderStateExists(BADGE_AWARD_EVENT, key, newestOwn.ts))
+        awards.push({ type: BADGE_AWARD_EVENT, key, content: {}, ts: newestOwn.ts });
+      return;
+    }
     // only an award that is still in force (not removed by the recipient) is handed on
     const mine = resolveAwards(parsed.userId, readCandidates(room, BADGE_AWARD_EVENT, key)).some(
       (r) => r.by === me
     );
-    const data = mine ? readData(room, BADGE_AWARD_EVENT, key, me) : undefined;
+    const data = mine ? newestOwn : undefined;
     if (data && notInState(BADGE_AWARD_EVENT, key, data.ts))
       awards.push({ type: BADGE_AWARD_EVENT, key, content: data.content, ts: data.ts });
   });
@@ -679,6 +711,7 @@ const attach = (mx: MatrixClient) => {
     recentOwn.clear();
     stateWritesRejected.clear();
     badgePowerChecked.clear();
+    scannedRooms.clear();
   }
   attachedTo = mx;
   mx.on(RoomStateEvent.Events, onStateEvent);
@@ -710,8 +743,11 @@ function onStateEvent(event: MatrixEvent) {
       notify();
       // a member who joins later cannot read the old events: answer the join with our own profile
       const membership = (event.getContent() as { membership?: string } | undefined)?.membership;
+      // a name or avatar change is a join -> join member event too; only a real join counts
+      const before = (event.getPrevContent() as { membership?: string } | undefined)?.membership;
       if (
         membership === 'join' &&
+        before !== 'join' &&
         event.getStateKey() &&
         event.getStateKey() !== attachedTo.getSafeUserId() &&
         badgesAsMessages(room)
@@ -757,6 +793,11 @@ function onMyMembership(room: Room, membership: string) {
     announcer.forget(room.roomId);
     badgeAnnouncer.forget(room.roomId);
     recentOwn.forget(room.roomId);
+    // a later rejoin reads what was sent meanwhile
+    backfilled.delete(room.roomId);
+    backfillTries.delete(room.roomId);
+    membersRequested.delete(room.roomId);
+    scannedRooms.delete(room.roomId);
   }
   onRoomChange();
 }
@@ -828,6 +869,13 @@ export const writeDiddyData = async (
   content: object,
   key: string
 ): Promise<void> => {
+  // every reader drops larger events (isSmallContent); the server would accept them, so the
+  // write would look fine and then vanish. Measured with the key field of message mode.
+  const size = JSON.stringify({ ...content, [KEY_FIELD]: key }).length;
+  if (size > MAX_CONTENT_CHARS)
+    throw new Error(
+      `Too much data to save (${size} of ${MAX_CONTENT_CHARS} characters). Shorten links or texts.`
+    );
   if (stateTransport(room, eventType)) {
     try {
       await mx.sendStateEvent(room.roomId, eventType as never, content as never, key);
@@ -890,7 +938,37 @@ export const useDiddyProfile = (
   return override ? override.profile : stored;
 };
 
+/**
+ * Whether your own stored profile is fully known. Profiles in message-mode (and encrypted) options
+ * rooms only arrive with the history read after the first sync; writing before that would
+ * replace the real profile with an empty one for everyone.
+ */
+export const ownProfileKnown = (mx: MatrixClient): boolean =>
+  mx.isInitialSyncComplete() &&
+  getOptionsRooms(mx).every((room) => roomMode(room) === 'state' || scannedRooms.has(room.roomId));
+
+/** Re-renders when ownProfileKnown changes. */
+export const useOwnProfileKnown = (mx: MatrixClient): boolean => {
+  const v = useDiddyVersion(mx);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  return useMemo(() => ownProfileKnown(mx), [mx, v]);
+};
+
+const PROFILE_LOADING = 'Your Diddy profile is still loading. Try again in a moment.';
+
+const waitForOwnProfile = (mx: MatrixClient, timeoutMs: number): Promise<boolean> =>
+  new Promise((resolve) => {
+    const started = Date.now();
+    const check = () => {
+      if (ownProfileKnown(mx)) resolve(true);
+      else if (Date.now() - started >= timeoutMs) resolve(false);
+      else window.setTimeout(check, 500);
+    };
+    check();
+  });
+
 export const setMyProfile = async (mx: MatrixClient, profile: DiddyProfile): Promise<void> => {
+  if (!ownProfileKnown(mx)) throw new Error(PROFILE_LOADING);
   const room = getPrimaryOptionsRoom(mx);
   if (!room) throw new Error('No Diddy Options room found.');
   // every write carries this client's version (#75), or none when you do not share it
@@ -905,6 +983,8 @@ export const patchMyProfile = async (
   mx: MatrixClient,
   patch: Partial<DiddyProfile>
 ): Promise<void> => {
+  // the patch is applied to the stored profile, so that must be known first
+  if (!(await waitForOwnProfile(mx, 20000))) throw new Error(PROFILE_LOADING);
   const current = readProfile(mx, mx.getSafeUserId()) ?? { v: 1 as const };
   await setMyProfile(mx, { ...current, ...patch, v: 1 });
 };

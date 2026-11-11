@@ -1,5 +1,15 @@
 # Changelog
 
+## Unveröffentlicht
+
+- **Profil wurde beim Start überschrieben:** In Optionsräumen im Nachrichtenmodus oder mit Verschlüsselung kommt das eigene Profil erst mit dem Nachladen des Verlaufs. Die automatische Versionsangabe, der Status, die Einführung und der Profil-Editor konnten vorher speichern und so ein leeres Profil für alle schreiben. Schreiben wartet jetzt, bis das Profil geladen ist; „Save changes“ ist bis dahin gesperrt.
+- **Gelöschte Badges kamen zurück:** Seit Badge-Zustand nur noch Admins gehört (#168), ist das Löschen oder Zurückziehen eines Mitglieds nur noch eine Nachricht, während die alte Version im Raumzustand bleibt. Solche Löschungen werden jetzt wie eigene Badges an später Beitretende wiederholt. Eigene Badges in einem Platz, den ein anderer im Zustand belegt, werden ebenfalls wieder weitergegeben.
+- **Keine Badge-Flut mehr bei Namens- oder Bildänderungen:** Eine Änderung von Anzeigename oder Avatar zählte als neuer Beitritt, und jeder Client schickte daraufhin alle eigenen Badges erneut. Nur echte Beitritte lösen das jetzt aus.
+- **Zu große Profile:** Daten über 4096 Zeichen nahm der Server an, aber jeder Leser verwarf sie, das Speichern sah erfolgreich aus. Jetzt erscheint ein Fehler mit der Größe.
+- **Optionsraum erneut betreten:** Nach Verlassen und erneutem Beitreten in derselben Sitzung wurde der Verlauf nicht nachgeladen.
+- **Plugin-Speicher begrenzt:** Ein Plugin konnte mit 50 Werten aus Steuerzeichen den ganzen Speicher der App füllen; danach scheiterten Anmeldung und Einstellungen. Pro Plugin gelten jetzt höchstens 256 KB.
+- **Server-Adresse mit Leerzeichen:** Bei neuen Verbindungen wurde das erste Leerzeichen irgendwo in der Adresse entfernt statt nur am Anfang („my server.org“ wurde zu „myserver.org“).
+
 ## 1.5.3 (2026-11-11)
 
 - **macOS: Dateien herunterladen (#176):** Downloads (Dateien aus Nachrichten, Bilder, Wiederherstellungsschlüssel) passierten in der Mac-App gar nicht, weil WebKit ohne Download-Handler jeden Download verwirft. Sie landen jetzt im Ordner „Downloads“; eine vorhandene Datei bekommt eine Nummer angehängt statt überschrieben zu werden. Das Log nennt Ziel und Erfolg.
