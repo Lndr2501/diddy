@@ -48,6 +48,17 @@ private final class CaptureProcessor: NSObject, AudioCustomProcessingDelegate, @
             }
         }
         lock.unlock()
+        // Your voice, after RNNoise and before any soundboard clip: the level meter and the speaking
+        // ring of your own tile (desktop voiceActivity.ts) read it.
+        if audioBuffer.channels > 0, audioBuffer.frames > 0 {
+            let samples = audioBuffer.rawBuffer(forChannel: 0)
+            var sum: Float = 0
+            for index in 0..<audioBuffer.frames {
+                let value = samples[index] / 32768
+                sum += value * value
+            }
+            MicLevel.shared.report(rms: Double((sum / Float(audioBuffer.frames)).squareRoot()))
+        }
         ClipMixer.shared.mix(into: audioBuffer)
     }
 
@@ -56,5 +67,31 @@ private final class CaptureProcessor: NSObject, AudioCustomProcessingDelegate, @
         filters = []
         lock.unlock()
         ClipMixer.shared.release()
+    }
+}
+
+/// The newest level of your microphone (RMS, 0...1), written on WebRTC's audio thread and read on
+/// the main thread. Stale readings (the microphone stopped) count as silence.
+final class MicLevel: @unchecked Sendable {
+    static let shared = MicLevel()
+
+    private let lock = NSLock()
+    private var rms: Double = 0
+    private var at: TimeInterval = 0
+
+    func report(rms value: Double) {
+        let now = ProcessInfo.processInfo.systemUptime
+        lock.lock()
+        rms = value
+        at = now
+        lock.unlock()
+    }
+
+    /// The level, or 0 when nothing was captured during the last 0.3 seconds.
+    var current: Double {
+        let now = ProcessInfo.processInfo.systemUptime
+        lock.lock()
+        defer { lock.unlock() }
+        return now - at < 0.3 ? rms : 0
     }
 }

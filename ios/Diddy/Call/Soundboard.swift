@@ -11,7 +11,7 @@ import UniformTypeIdentifiers
 /// Into the call it goes through the microphone: `ClipMixer` adds the clip to each captured frame
 /// after noise suppression (see `NoiseSuppressor.swift`). As on the desktop, nobody hears clips
 /// while your microphone is muted (muting, and deafening which also mutes, stop it for the call).
-/// One clip plays at a time on iOS; a new one replaces it.
+/// Several clips can play at once, like on the desktop; "Stop" ends all of them.
 @MainActor
 final class Soundboard: ObservableObject {
     static let shared = Soundboard()
@@ -31,6 +31,7 @@ final class Soundboard: ObservableObject {
         didSet {
             UserDefaults.standard.set(volume, forKey: Self.volumeKey)
             player?.volume = Float(volume)
+            for entry in clipPlayers.values { entry.player.volume = Float(volume) }
             ClipMixer.shared.gain = Float(volume)
         }
     }
@@ -40,8 +41,11 @@ final class Soundboard: ObservableObject {
     private static let volumeKey = "soundboardVolume"
 
     private let folder: URL
+    /// The preview of a MyInstants result.
     private var player: AVAudioPlayer?
     private var finished: Task<Void, Never>?
+    /// Clips playing for you right now, each with the task that notices its end.
+    private var clipPlayers: [UUID: (player: AVAudioPlayer, end: Task<Void, Never>)] = [:]
     /// Bumped whenever playback starts or stops, so a slow decode never starts a stale clip.
     private var generation = 0
     /// Decoded clips at the call's sample rate, so a repeated tap starts at once.
@@ -113,7 +117,7 @@ final class Soundboard: ObservableObject {
     }
 
     func remove(_ clip: Clip) {
-        if playing == clip.id { stop() }
+        if playing == clip.id { stopAll() }
         try? FileManager.default.removeItem(at: folder.appendingPathComponent(clip.file))
         decoded[clip.id] = nil
         decodedOrder.removeAll { $0 == clip.id }
@@ -129,10 +133,9 @@ final class Soundboard: ObservableObject {
 
     // MARK: Playing
 
-    /// Plays for you, and into the call while one is running.
+    /// Plays for you, and into the call while one is running. Clips that already play go on.
     func play(_ clip: Clip) {
-        stop()
-        generation += 1
+        stopPreview()
         let current = generation
         let url = folder.appendingPathComponent(clip.file)
         playing = clip.id
@@ -157,7 +160,7 @@ final class Soundboard: ObservableObject {
             let samples = ClipMixer.decode(url, sampleRate: rate)
             await MainActor.run {
                 let board = Soundboard.shared
-                // Still the clip that should play (not stopped or replaced while decoding).
+                // Still wanted (not stopped while decoding).
                 guard board.generation == current else { return }
                 board.startLocal(url, clip: clip)
                 guard let samples, ClipMixer.shared.sampleRate == rate else { return }
@@ -177,25 +180,33 @@ final class Soundboard: ObservableObject {
     private func startLocal(_ url: URL, clip: Clip) {
         prepareLocalPlayback()
         guard let player = try? AVAudioPlayer(contentsOf: url) else {
-            playing = nil
-            ClipMixer.shared.stop()
+            if clipPlayers.isEmpty { playing = nil }
             return
         }
         player.volume = Float(volume)
         player.play()
-        self.player = player
-        watchEnd(of: player) { [weak self] in
-            guard let self, self.playing == clip.id else { return }
-            self.playing = nil
-            // The call part must end with the local part, even if the capture pipeline paused
-            // while the microphone was muted and would otherwise resume the clip on unmute.
-            ClipMixer.shared.stop()
+        let key = UUID()
+        let duration = player.duration
+        let end = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64((duration + 0.1) * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+            self?.clipEnded(key)
         }
+        clipPlayers[key] = (player, end)
+    }
+
+    private func clipEnded(_ key: UUID) {
+        clipPlayers[key] = nil
+        guard clipPlayers.isEmpty else { return }
+        playing = nil
+        // The call part must end with the local part, even if the capture pipeline paused
+        // while the microphone was muted and would otherwise resume the clips on unmute.
+        ClipMixer.shared.stop()
     }
 
     /// Plays downloaded audio for you only (MyInstants preview). `id` tells the UI what plays.
     func preview(data: Data, id: String) throws {
-        stop()
+        stopAll()
         prepareLocalPlayback()
         guard let player = try? AVAudioPlayer(data: data) else {
             throw DiddyError("This sound could not be played.")
@@ -228,28 +239,48 @@ final class Soundboard: ObservableObject {
         try? session.setActive(true)
     }
 
-    /// Stops the clip (or preview), for you and for the call.
-    func stop() {
-        generation += 1
+    private func stopPreview() {
+        guard previewing != nil || player != nil else { return }
         finished?.cancel()
         player?.stop()
         player = nil
-        playing = nil
         previewing = nil
+    }
+
+    /// Stops every clip that is playing right now (and the preview), for you and for the call.
+    func stopAll() {
+        generation += 1
+        stopPreview()
+        for entry in clipPlayers.values {
+            entry.end.cancel()
+            entry.player.stop()
+        }
+        clipPlayers = [:]
+        playing = nil
         ClipMixer.shared.stop()
     }
+
+    /// Same as `stopAll()`; kept for the callers that end a call.
+    func stop() { stopAll() }
 }
 
-/// Mixes the playing clip into the microphone, on WebRTC's audio thread. Samples are mono, in
-/// 16-bit range, at the rate the capture pipeline runs at.
+/// Mixes the playing clips into the microphone, on WebRTC's audio thread. Samples are mono, in
+/// 16-bit range, at the rate the capture pipeline runs at. Several clips play at once.
 final class ClipMixer: @unchecked Sendable {
     static let shared = ClipMixer()
 
     private let lock = NSLock()
     private var rate = 0
-    private var samples: [Float] = []
-    private var position = 0
+    private var voices: [Voice] = []
     private var _gain: Float = 0.8
+
+    private struct Voice {
+        let samples: [Float]
+        var position: Int
+    }
+
+    /// More at once only gets louder and costs the audio thread time; the oldest stops first.
+    private static let maxVoices = 8
 
     /// 0 while no call captures audio.
     var sampleRate: Int {
@@ -273,37 +304,54 @@ final class ClipMixer: @unchecked Sendable {
     func release() {
         lock.lock()
         rate = 0
-        let old = samples
-        samples = []
-        position = 0
+        let old = voices
+        voices = []
         lock.unlock()
         _ = old
     }
 
+    /// Adds a clip; clips already playing go on.
     func start(_ clip: [Float]) {
+        guard !clip.isEmpty else { return }
         lock.lock()
-        let old = samples
-        samples = clip
-        position = 0
+        var old: [Voice] = []
+        if voices.count >= Self.maxVoices {
+            old = Array(voices.prefix(voices.count - Self.maxVoices + 1))
+            voices.removeFirst(old.count)
+        }
+        voices.append(Voice(samples: clip, position: 0))
         lock.unlock()
-        // The old buffer is freed here, not on the audio thread.
+        // Old buffers are freed here, not on the audio thread.
         _ = old
     }
 
-    func stop() { start([]) }
+    /// Ends every clip.
+    func stop() {
+        lock.lock()
+        let old = voices
+        voices = []
+        lock.unlock()
+        _ = old
+    }
 
     func mix(into buffer: LKAudioBuffer) {
         guard lock.try() else { return }
         defer { lock.unlock() }
-        guard position < samples.count else { return }
-        let count = min(buffer.frames, samples.count - position)
+        guard !voices.isEmpty else { return }
+        let frames = buffer.frames
         for channel in 0..<buffer.channels {
             let out = buffer.rawBuffer(forChannel: channel)
-            for index in 0..<count {
-                out[index] = min(max(out[index] + samples[position + index] * _gain, -32768), 32767)
+            for voice in voices where voice.position < voice.samples.count {
+                let count = min(frames, voice.samples.count - voice.position)
+                for index in 0..<count {
+                    out[index] = min(max(out[index] + voice.samples[voice.position + index] * _gain, -32768), 32767)
+                }
             }
         }
-        position += count
+        // Finished voices are dropped on the next start()/stop(), never freed here.
+        for index in voices.indices {
+            voices[index].position = min(voices[index].samples.count, voices[index].position + frames)
+        }
     }
 
     /// The clip as mono samples in 16-bit range at `sampleRate` (not yet scaled by the volume).
@@ -383,8 +431,8 @@ struct SoundboardSheet: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } }
                 ToolbarItemGroup(placement: .primaryAction) {
                     if board.playing != nil {
-                        Button { board.stop() } label: { Image(systemName: "stop.fill") }
-                            .accessibilityLabel("Stop clip")
+                        Button { board.stopAll() } label: { Image(systemName: "stop.fill") }
+                            .accessibilityLabel("Stop all clips")
                     }
                     Menu {
                         Button { importing = true } label: { Label("Add from Files", systemImage: "folder") }
@@ -419,7 +467,7 @@ struct SoundboardSheet: View {
     private func clipButton(_ clip: Soundboard.Clip) -> some View {
         let isPlaying = board.playing == clip.id
         return Button {
-            if isPlaying { board.stop() } else { board.play(clip) }
+            if isPlaying { board.stopAll() } else { board.play(clip) }
         } label: {
             HStack(spacing: 8) {
                 Image(systemName: isPlaying ? "stop.circle.fill" : "play.circle.fill")

@@ -233,6 +233,7 @@ final class CallSession: NSObject, ObservableObject {
         microphoneOn: { [weak self] in self?.microphoneOn ?? false },
         deafened: { [weak self] in self?.deafened ?? false },
         setMicrophone: { [weak self] on in await self?.setMicrophoneQuietly(on) },
+        setDeafened: { [weak self] on in await self?.setDeafenedQuietly(on) },
         broadcast: { [weak self] payload, identities in self?.sendAgentVoice(payload, to: identities) },
         otherMembers: { [weak self] in Set((self?.members ?? []).filter { !$0.isLocal }.map(\.userId)) },
         changed: { [weak self] in
@@ -449,6 +450,20 @@ final class CallSession: NSObject, ObservableObject {
     }
 
     private func setMicrophoneQuietly(_ enable: Bool) async {
+        do {
+            _ = try await liveKitRoom.localParticipant.setMicrophone(enabled: enable)
+            microphoneOn = enable
+        } catch { lastError = error.friendlyMessage }
+        refreshMembers()
+    }
+
+    /// Deafens or undeafens for the agent's "full mute": no sound, and not a change by hand.
+    private func setDeafenedQuietly(_ on: Bool) async {
+        guard deafened != on else { return }
+        if on { mutedBeforeDeafen = !microphoneOn }
+        deafened = on
+        applyDeafen()
+        let enable = !deafened && !mutedBeforeDeafen
         do {
             _ = try await liveKitRoom.localParticipant.setMicrophone(enabled: enable)
             microphoneOn = enable

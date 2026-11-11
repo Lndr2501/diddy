@@ -77,25 +77,103 @@ struct RemoteAgentVoices {
     }
 }
 
-/// Mutes the microphone when talking to the agent starts and undoes that afterwards, but only when
-/// Diddy did it and nothing was changed by hand in between (the same rule as the desktop).
+/// What happens in the call while you talk to the agent (desktop "Mute in the call meanwhile",
+/// `plugins/agentVoice/session.ts`). Default: mute the microphone.
+enum AgentMuteMode: String, CaseIterable, Identifiable {
+    case off, mute, full
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .off: return "Off"
+        case .mute: return "Mute"
+        case .full: return "Full mute"
+        }
+    }
+
+    var hint: String {
+        switch self {
+        case .off: return "The call stays as it is while you talk to the agent."
+        case .mute: return "Mutes your microphone while you talk to the agent and unmutes you afterwards."
+        case .full: return "Mutes your microphone and the sound of the call while you talk to the agent, and restores both afterwards."
+        }
+    }
+}
+
+/// How the "Mit Agent reden" button reacts (desktop "Hotkey works like").
+enum AgentButtonMode: String, CaseIterable, Identifiable {
+    case hold, toggle
+
+    var id: String { rawValue }
+
+    var title: String { self == .hold ? "Hold" : "Press to start / stop" }
+}
+
+/// The agent voice settings, kept on this device like the desktop's `diddyAgentVoice` prefs.
+enum AgentVoicePrefs {
+    static let muteModeKey = "diddy.agentVoice.muteMode"
+    static let buttonModeKey = "diddy.agentVoice.buttonMode"
+    static let shareKey = "diddy.agentVoice.share"
+
+    static var muteMode: AgentMuteMode {
+        UserDefaults.standard.string(forKey: muteModeKey).flatMap(AgentMuteMode.init(rawValue:)) ?? .mute
+    }
+
+    static var buttonMode: AgentButtonMode {
+        UserDefaults.standard.string(forKey: buttonModeKey).flatMap(AgentButtonMode.init(rawValue:)) ?? .toggle
+    }
+
+    /// "Show the others in the call".
+    static var share: Bool { UserDefaults.standard.object(forKey: shareKey) as? Bool ?? true }
+
+    /// The desktop's `RELEASE_DELAY_MS`: letting go of a held button ends the session this much later.
+    static let releaseDelay: TimeInterval = 0.35
+}
+
+/// Mutes the microphone (or deafens) when talking to the agent starts and undoes that afterwards,
+/// but only when Diddy did it and nothing was changed by hand in between (the same rule as the desktop).
 struct AgentMuteTracker {
+    enum StartAction: Equatable { case none, muteMicrophone, deafen }
+    enum EndAction: Equatable { case none, unmuteMicrophone, undeafen }
+
     private var mutedByAgent = false
+    private var deafenedByAgent = false
 
-    /// True when the microphone has to be switched off now.
-    mutating func begin(microphoneOn: Bool) -> Bool {
-        mutedByAgent = microphoneOn
-        return microphoneOn
+    /// What has to be switched now that the session starts.
+    mutating func begin(mode: AgentMuteMode, microphoneOn: Bool, deafened: Bool) -> StartAction {
+        mutedByAgent = false
+        deafenedByAgent = false
+        switch mode {
+        case .off:
+            return .none
+        case .mute:
+            guard microphoneOn else { return .none }
+            mutedByAgent = true
+            return .muteMicrophone
+        case .full:
+            guard !deafened else { return .none }
+            deafenedByAgent = true
+            return .deafen
+        }
     }
 
-    /// True when the microphone has to be switched back on now.
-    mutating func end(microphoneOn: Bool, deafened: Bool) -> Bool {
-        defer { mutedByAgent = false }
-        return mutedByAgent && !microphoneOn && !deafened
+    /// What has to be switched back now that the session ends.
+    mutating func end(microphoneOn: Bool, deafened: Bool) -> EndAction {
+        defer {
+            mutedByAgent = false
+            deafenedByAgent = false
+        }
+        if deafenedByAgent && deafened { return .undeafen }
+        if mutedByAgent && !microphoneOn && !deafened { return .unmuteMicrophone }
+        return .none
     }
 
-    /// The person muted, unmuted or deafened by hand: that choice wins.
-    mutating func userChangedMicrophone() { mutedByAgent = false }
+    /// The person muted, unmuted, deafened or undeafened by hand: that choice wins.
+    mutating func userChangedMicrophone() {
+        mutedByAgent = false
+        deafenedByAgent = false
+    }
 }
 
 /// The state machine behind the "Mit Agent reden" button, kept apart from the call so it does not
@@ -108,6 +186,8 @@ final class AgentVoiceCoordinator {
         let deafened: () -> Bool
         /// Switches the microphone without any sound (a mute tone would end up in the dictation).
         let setMicrophone: (Bool) async -> Void
+        /// Deafens or undeafens without any sound and without counting as a change by hand.
+        let setDeafened: (Bool) async -> Void
         /// Tells the other call devices (`nil`: everyone in the call).
         let broadcast: (AgentVoicePayload, [String]?) -> Void
         /// Members that are in the call besides us.
@@ -149,13 +229,21 @@ final class AgentVoiceCoordinator {
                 guard !Task.isCancelled else { return }
                 await self?.set(talking: false)
             }
-            if tracker.begin(microphoneOn: hooks.microphoneOn()) { await hooks.setMicrophone(false) }
+            switch tracker.begin(mode: AgentVoicePrefs.muteMode, microphoneOn: hooks.microphoneOn(), deafened: hooks.deafened()) {
+            case .none: break
+            case .muteMicrophone: await hooks.setMicrophone(false)
+            case .deafen: await hooks.setDeafened(true)
+            }
         } else {
             safetyTimer = nil
-            if tracker.end(microphoneOn: hooks.microphoneOn(), deafened: hooks.deafened()) {
-                await hooks.setMicrophone(true)
+            switch tracker.end(microphoneOn: hooks.microphoneOn(), deafened: hooks.deafened()) {
+            case .none: break
+            case .unmuteMicrophone: await hooks.setMicrophone(true)
+            case .undeafen: await hooks.setDeafened(false)
             }
         }
+        // "Show the others in the call" off: nobody is told (an end is still sent, in case they were).
+        if on && !AgentVoicePrefs.share { return }
         hooks.broadcast(makePayload(active: on), nil)
     }
 
@@ -163,7 +251,7 @@ final class AgentVoiceCoordinator {
 
     /// Someone joined the call late: they learn that we are still talking to the agent.
     func tellNewcomer(deviceIdentity: String) {
-        guard talking else { return }
+        guard talking, AgentVoicePrefs.share else { return }
         hooks.broadcast(makePayload(active: true), [deviceIdentity])
     }
 
