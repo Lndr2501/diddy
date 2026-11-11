@@ -240,8 +240,11 @@ final class MatrixAccount: ObservableObject, Identifiable {
     }
 
     func refreshProfile() async {
-        displayName = try? await client.displayName()
-        avatarUrl = try? await client.avatarUrl()
+        // A failed request (no connection yet at start) keeps what is known instead of wiping it;
+        // the SDK's cached avatar shows until the server answers.
+        if avatarUrl == nil, let cached = try? await client.cachedAvatarUrl() { avatarUrl = cached }
+        if let name = try? await client.displayName() { displayName = name }
+        do { avatarUrl = try await client.avatarUrl() } catch {}
     }
 
     // MARK: - Rooms
@@ -277,10 +280,14 @@ final class MatrixAccount: ObservableObject, Identifiable {
         for userId in info.activeRoomCallParticipants where !participants.contains(userId) {
             participants.append(userId) // one entry per user, however many devices are in the call
         }
+        // A direct message has no room avatar as a rule: it shows the other person's picture, from
+        // the room's heroes (an invite has none yet, then the inviter is that person).
+        var people: [String?] = info.heroes.map { AvatarChoice.usable($0.avatarUrl) ?? profiles[$0.userId]?.avatarUrl }
+        if people.isEmpty, info.membership == .invited, let inviter = info.inviter { people = [inviter.avatarUrl] }
         return RoomSummary(
             id: info.id,
             name: info.displayName ?? info.rawName ?? info.canonicalAlias ?? info.id,
-            avatarUrl: info.avatarUrl,
+            avatarUrl: AvatarChoice.room(roomAvatar: info.avatarUrl, isDirect: info.isDirect, otherPeople: people),
             isDirect: info.isDirect,
             isSpace: info.isSpace,
             unread: info.numUnreadMessages,

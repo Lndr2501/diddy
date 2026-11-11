@@ -12,7 +12,7 @@ actor MediaLoader {
     static let shared = MediaLoader()
 
     private let cache = NSCache<NSString, UIImage>()
-    private var inFlight: [String: Task<UIImage?, Never>] = [:]
+    private var inFlight: [String: Task<Fetched, Never>] = [:]
     private var audioInFlight: [String: Task<URL?, Never>] = [:]
 
     init() { cache.countLimit = 400 }
@@ -74,25 +74,48 @@ actor MediaLoader {
 
     private func image(key: String, source: MediaSource, size: Int?, client: Client) async -> UIImage? {
         if let cached = cache.object(forKey: key as NSString) { return cached }
-        if let running = inFlight[key] { return await running.value }
-        let task = Task<UIImage?, Never> {
-            let data: Data?
+        if let running = inFlight[key] { return await running.value.image }
+        let task = Task<Fetched, Never> {
+            var failure = ""
             if let size {
-                data = try? await client.getMediaThumbnail(mediaSource: source, width: UInt64(size), height: UInt64(size))
-            } else {
-                data = try? await client.getMediaContent(mediaSource: source)
+                do {
+                    let data = try await client.getMediaThumbnail(mediaSource: source, width: UInt64(size), height: UInt64(size))
+                    if let image = UIImage(data: data) { return Fetched(image: image, failure: nil) }
+                    failure = "thumbnail not an image (\(data.count) bytes); "
+                } catch {
+                    failure = "thumbnail: \(error.friendlyMessage); "
+                }
             }
             // Servers without thumbnails (and encrypted media) fall back to the full file.
-            if let data, let image = UIImage(data: data) { return image }
-            if size != nil, let full = try? await client.getMediaContent(mediaSource: source) { return UIImage(data: full) }
-            return nil
+            do {
+                let data = try await client.getMediaContent(mediaSource: source)
+                if let image = UIImage(data: data) { return Fetched(image: image, failure: nil) }
+                failure += "content not an image (\(data.count) bytes)"
+            } catch {
+                failure += "content: \(error.friendlyMessage)"
+            }
+            return Fetched(image: nil, failure: failure)
         }
         inFlight[key] = task
-        let image = await task.value
+        let fetched = await task.value
         inFlight[key] = nil
-        if let image { cache.setObject(image, forKey: key as NSString) }
-        return image
+        if let image = fetched.image {
+            cache.setObject(image, forKey: key as NSString)
+        } else if let failure = fetched.failure, loggedFailures < Self.maxLoggedFailures {
+            // Without this a missing picture leaves no trace in the diagnostics.
+            loggedFailures += 1
+            DiagLog.shared.write("media: image load failed size=\(size.map { "\($0)" } ?? "full") \(failure)")
+        }
+        return fetched.image
     }
+
+    private struct Fetched {
+        let image: UIImage?
+        let failure: String?
+    }
+
+    private var loggedFailures = 0
+    private static let maxLoggedFailures = 30
 }
 
 /// Round avatar with the Discord fallback: coloured circle with the first letter.
@@ -105,6 +128,10 @@ struct AvatarView: View {
     var cornerRadius: CGFloat? = nil
     var account: MatrixAccount? = nil
     @State private var image: UIImage?
+    /// Account and URL the shown picture belongs to.
+    @State private var loadedKey: String?
+
+    private var key: String { "\(account?.id ?? "")|\(url ?? "")" }
 
     var body: some View {
         ZStack {
@@ -117,9 +144,28 @@ struct AvatarView: View {
         }
         .frame(width: size, height: size)
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius ?? size / 2, style: .continuous))
-        .task(id: "\(account?.id ?? "")|\(url ?? "")") {
-            guard let url, let account else { image = nil; return }
-            image = await MediaLoader.shared.thumbnail(url: url, size: Int(size * 3), accountId: account.id, client: account.client)
+        .task(id: key) {
+            let key = self.key
+            guard let url = AvatarChoice.usable(self.url), let account = self.account else {
+                image = nil
+                loadedKey = nil
+                return
+            }
+            // The picture of a previous URL must not stay up when the new one fails to load.
+            if loadedKey != key { image = nil }
+            // A failed download is tried again a few times: a view drawn before the connection
+            // was up (app start, back from background) otherwise kept its initials until redrawn.
+            var attempt = 1
+            while !Task.isCancelled {
+                if let loaded = await MediaLoader.shared.thumbnail(url: url, size: Int(size * 3), accountId: account.id, client: account.client) {
+                    image = loaded
+                    loadedKey = key
+                    return
+                }
+                guard let delay = AvatarChoice.retryDelay(afterAttempt: attempt) else { return }
+                try? await Task.sleep(nanoseconds: delay * 1_000_000_000)
+                attempt += 1
+            }
         }
     }
 

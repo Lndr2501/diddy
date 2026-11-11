@@ -77,6 +77,10 @@ final class TimelineController: ObservableObject {
             typingListener = room.subscribeToTypingNotifications(listener: TypingUpdates { [weak self] ids in
                 Task { @MainActor in self?.typingUserIds = ids.filter { $0 != me } }
             })
+            // Sync only brings the members of recent senders (lazy loading), so older messages had
+            // no sender profile: no name and no avatar. Loading the member list fills them in;
+            // the timeline then updates those items itself. Element X does the same on open.
+            Task { await timeline.fetchMembers() }
             await paginate()
             try? await timeline.markAsRead(receiptType: Self.receiptType)
         } catch {
