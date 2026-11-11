@@ -425,7 +425,6 @@ final class CallSession: NSObject, ObservableObject {
         errorDismissal?.cancel()
         observers.removeAll()
         guard !closed else { return }
-        // The others hear that the dictation ended with us (computed now, sent in the background).
         agentVoice.leave()
         closed = true
         let wasConnected = connected

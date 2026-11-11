@@ -91,7 +91,7 @@ struct VoiceChannelView: View {
             Button {
                 joining = true
                 Task {
-                    await calls.join(account: account, roomId: roomId, roomName: title)
+                    await calls.requestJoin(account: account, roomId: roomId, roomName: title)
                     joining = false
                 }
             } label: {
@@ -118,9 +118,18 @@ struct ProfileTarget: Identifiable {
 
 private struct ConnectedVoiceView: View {
     @ObservedObject var session: CallSession
+    @ObservedObject private var extras: CallLiveExtras
     let showProfile: (String) -> Void
     @EnvironmentObject private var calls: CallManager
     @EnvironmentObject private var app: AppModel
+    @State private var showReactions = false
+    @State private var showDevices = false
+
+    init(session: CallSession, showProfile: @escaping (String) -> Void) {
+        self.session = session
+        self.showProfile = showProfile
+        _extras = ObservedObject(wrappedValue: session.extras)
+    }
 
     /// The login that joined this call: member avatars are that account's media.
     private var callAccount: MatrixAccount? { app.accounts.first { $0.id == session.accountId } }
@@ -141,6 +150,7 @@ private struct ConnectedVoiceView: View {
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(session.connected && session.outgoing != .noAnswer ? Theme.online : Theme.muted)
                 Spacer()
+                if session.connected { PingBadge(extras: extras) }
                 if session.connected { WatchTogetherButton(watch: session.watchTogether) }
             }
             .padding(.horizontal, 14)
@@ -162,11 +172,25 @@ private struct ConnectedVoiceView: View {
 
     private var controls: some View {
         VStack(spacing: 12) {
+            extraRow
             controlRow
         }
         .padding(.vertical, 14)
         .frame(maxWidth: .infinity)
         .background(Theme.sidebar)
+    }
+
+    /// Reactions and the devices menu.
+    private var extraRow: some View {
+        HStack(spacing: 10) {
+            Button { showReactions = true } label: { CallBarIcon(icon: "face.smiling") }
+                .accessibilityLabel("Reactions")
+                .disabled(!session.connected)
+            Button { showDevices = true } label: { CallBarIcon(icon: "slider.horizontal.3") }
+                .accessibilityLabel("Input and output devices")
+        }
+        .sheet(isPresented: $showReactions) { CallReactionsSheet(session: session) }
+        .sheet(isPresented: $showDevices) { CallDevicesSheet(session: session, extras: extras) }
     }
 
     private var controlRow: some View {
@@ -183,9 +207,7 @@ private struct ConnectedVoiceView: View {
             ControlButton(icon: session.deafened ? "speaker.slash.fill" : "headphones", label: session.deafened ? "Undeafen" : "Deafen", active: !session.deafened, warn: session.deafened) {
                 Task { await session.toggleDeafen() }
             }
-            ControlButton(icon: "rectangle.on.rectangle", label: session.screenSharing ? "Stop sharing screen" : "Share screen", active: session.screenSharing, highlight: session.screenSharing) {
-                Task { await session.toggleScreenShare() }
-            }
+            ShareControl(session: session, extras: extras)
             ControlButton(icon: "phone.down.fill", label: "Leave call", active: true, destructive: true) {
                 Task { await calls.leave() }
             }
@@ -273,7 +295,7 @@ struct CallBanner: View {
             OngoingCallBanner(session: session)
         } else if let participants = summary?.callParticipants, !participants.isEmpty {
             Button {
-                Task { await calls.join(account: account, roomId: roomId, roomName: title, showCallScreen: true) }
+                Task { await calls.requestJoin(account: account, roomId: roomId, roomName: title, showCallScreen: true) }
             } label: {
                 HStack(spacing: 8) {
                     HStack(spacing: -6) {

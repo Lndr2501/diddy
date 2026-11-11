@@ -138,7 +138,7 @@ private struct ChatContent: View {
                     .accessibilityLabel("Search messages")
                 if !isVoiceChat {
                     Button {
-                        Task { await calls.join(account: account, roomId: roomId, roomName: title, showCallScreen: true) }
+                        Task { await calls.requestJoin(account: account, roomId: roomId, roomName: title, showCallScreen: true) }
                     } label: {
                         Image(systemName: "phone.fill")
                     }

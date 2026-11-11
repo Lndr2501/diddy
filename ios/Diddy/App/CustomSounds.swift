@@ -38,7 +38,7 @@ enum CustomSounds {
         }
         if let problem = CustomSoundRules.problem(byteCount: data.count) { throw DiddyError(problem) }
         guard (try? AVAudioPlayer(data: data)) != nil else {
-            throw DiddyError("Please choose an audio file (MP3, WAV, OGG, M4A).")
+            throw DiddyError("Please choose an audio file (MP3, WAV, M4A).")
         }
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let rawExt = source.pathExtension.lowercased()

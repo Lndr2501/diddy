@@ -55,11 +55,30 @@ struct StageGridLayout: Equatable {
 
 // MARK: Stage
 
+/// Whose volume the sheet sets.
+private struct VolumeTarget: Identifiable {
+    let userId: String
+    let name: String
+    let kind: CallVolumeKind
+    var id: String { kind.rawValue + userId }
+}
+
 struct CallStageView: View {
     @ObservedObject var session: CallSession
+    @ObservedObject private var extras: CallLiveExtras
     let account: MatrixAccount?
     let showProfile: (String) -> Void
+    @EnvironmentObject private var navigator: AppNavigator
+    @EnvironmentObject private var calls: CallManager
     @State private var focusKey: String?
+    @State private var volumeTarget: VolumeTarget?
+
+    init(session: CallSession, account: MatrixAccount?, showProfile: @escaping (String) -> Void) {
+        self.session = session
+        self.account = account
+        self.showProfile = showProfile
+        _extras = ObservedObject(wrappedValue: session.extras)
+    }
 
     private let spacing: CGFloat = 8
 
@@ -79,6 +98,9 @@ struct CallStageView: View {
             .frame(width: geo.size.width, height: geo.size.height)
         }
         .padding(12)
+        .sheet(item: $volumeTarget) { target in
+            PersonVolumeSheet(extras: extras, userId: target.userId, name: target.name, kind: target.kind)
+        }
         // The focused tile left the call or stopped sharing: back to the grid.
         .onChange(of: focused == nil && focusKey != nil) { gone in
             if gone { focusKey = nil }
@@ -134,15 +156,65 @@ struct CallStageView: View {
     private func tile(_ item: StageItem, size: CGSize, role: StageTileRole) -> some View {
         switch item.kind {
         case .person:
-            PersonTile(member: item.member, account: account, size: size, role: role, onBack: { select(item) })
+            PersonTile(member: item.member, account: account, size: size, role: role, reaction: extras.reaction(for: item.member.userId), onBack: { select(item) })
                 .onTapGesture { select(item) }
-                .contextMenu {
-                    if !item.member.isConnecting {
-                        Button { showProfile(item.member.userId) } label: { Label("Show Profile", systemImage: "person.crop.circle") }
-                    }
-                }
+                .contextMenu { personMenu(item.member) }
         case .share:
             ShareTile(member: item.member, size: size, role: role, onSelect: { select(item) }, onBack: { select(item) })
+                .contextMenu { shareMenu(item.member) }
+        }
+    }
+
+    // MARK: Menus
+
+    /// Profile, message, mute for me, volume and copy (desktop `CallUserMenu`).
+    @ViewBuilder
+    private func personMenu(_ member: CallMember) -> some View {
+        if !member.isConnecting {
+            Button { showProfile(member.userId) } label: { Label("Show Profile", systemImage: "person.crop.circle") }
+            if !member.isLocal {
+                Button { message(member.userId) } label: { Label("Message", systemImage: "bubble.left") }
+                let muted = extras.isMuted(member.userId, kind: .voice)
+                Button { extras.toggleMuted(member.userId, kind: .voice) } label: {
+                    Label(muted ? "Unmute for me" : "Mute for me", systemImage: muted ? "speaker.wave.2" : "speaker.slash")
+                }
+                Button { volumeTarget = VolumeTarget(userId: member.userId, name: member.name, kind: .voice) } label: {
+                    Label("Volume\u{2026}", systemImage: "slider.horizontal.3")
+                }
+            }
+        }
+        Button { UIPasteboard.general.string = member.name } label: { Label("Copy Name", systemImage: "doc.on.doc") }
+        Button { UIPasteboard.general.string = member.userId } label: { Label("Copy ID", systemImage: "number") }
+    }
+
+    /// The sound of somebody's screen share, for you only.
+    @ViewBuilder
+    private func shareMenu(_ member: CallMember) -> some View {
+        if !member.isLocal {
+            if member.shareHasAudio {
+                let muted = extras.isMuted(member.userId, kind: .stream)
+                Button { extras.toggleMuted(member.userId, kind: .stream) } label: {
+                    Label(muted ? "Unmute stream for me" : "Mute stream for me", systemImage: muted ? "speaker.wave.2" : "speaker.slash")
+                }
+                Button { volumeTarget = VolumeTarget(userId: member.userId, name: member.name, kind: .stream) } label: {
+                    Label("Stream volume\u{2026}", systemImage: "slider.horizontal.3")
+                }
+            } else {
+                Button {} label: { Label("This stream has no sound", systemImage: "speaker.slash") }.disabled(true)
+            }
+        }
+    }
+
+    /// Opens (or creates) the direct message with this person and leaves the call screen for it.
+    private func message(_ userId: String) {
+        guard let account else { return }
+        Task {
+            do {
+                let id = try await account.directMessage(with: userId)
+                try await account.waitForRoom(id)
+                calls.showCallScreen = false
+                navigator.open(id, account: account)
+            } catch { session.lastError = error.friendlyMessage }
         }
     }
 }
@@ -156,6 +228,7 @@ private struct PersonTile: View {
     let account: MatrixAccount?
     let size: CGSize
     let role: StageTileRole
+    var reaction: String?
     let onBack: () -> Void
 
     private var speaking: Bool { member.isSpeaking && member.microphoneOn && !member.isConnecting }
@@ -189,6 +262,12 @@ private struct PersonTile: View {
         .overlay(alignment: .topTrailing) {
             if role == .focus { StageIconButton(icon: "square.grid.2x2", label: "Back to grid", action: onBack) }
         }
+        .overlay {
+            if let reaction {
+                CallReactionBubble(emoji: reaction, size: min(max(min(size.width, size.height) * 0.4, 28), 72))
+            }
+        }
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: reaction)
         .animation(.easeOut(duration: 0.12), value: speaking)
         .contentShape(RoundedRectangle(cornerRadius: 12))
         .accessibilityElement(children: .combine)

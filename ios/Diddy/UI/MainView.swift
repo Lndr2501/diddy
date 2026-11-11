@@ -78,6 +78,7 @@ struct MainView: View {
                 .environmentObject(navigator)
             }
         }
+        .callSwitchAlert(calls)
         .alert("Voice", isPresented: Binding(get: { calls.error != nil }, set: { if !$0 { calls.error = nil } })) {
             Button("OK", role: .cancel) {}
         } message: {
