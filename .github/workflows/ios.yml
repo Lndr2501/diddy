@@ -129,6 +129,11 @@ jobs:
           swiftc -swift-version 5 Diddy/Matrix/TimelineLayout.swift Tools/timeline_check/main.swift -o "$RUNNER_TEMP/diddy-timeline-check"
           "$RUNNER_TEMP/diddy-timeline-check"
 
+      - name: Check profile editor rules
+        run: |
+          swiftc -swift-version 5 Diddy/Matrix/DiddyProfileDecor.swift Diddy/Matrix/DiddyProfileDraft.swift Tools/profile_editor_check/main.swift -o "$RUNNER_TEMP/diddy-profile-editor-check"
+          "$RUNNER_TEMP/diddy-profile-editor-check"
+
       - name: Install XcodeGen
         run: command -v xcodegen || brew install xcodegen
 

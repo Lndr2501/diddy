@@ -11,9 +11,9 @@ Die App ist Beta: Alles in der Tabelle ist gebaut und läuft bei den ersten Test
 | Server beitreten und erstellen, Kanäle erstellen, Einladungen annehmen, „Alle Kanäle beitreten“, Server verlassen | 🧪 |
 | Mitgliederliste nach Rollen mit Suche, Profilkarte (Nachricht, Blockieren, Entfernen, Bannen) | 🧪 |
 | Live sehen, wer im Sprachkanal ist, mit Namen und Profilbild, auch in der Kanalliste | 🧪 |
-| Antworten, Reaktionen (8 schnelle im Menü, jedes andere Emoji über „More Emoji…“ und die Emoji-Tastatur), Bearbeiten, Löschen, @-Erwähnungen, Tippanzeige, Bilder senden und ansehen, Dateien öffnen | 🧪 |
+| Antworten, Reaktionen (8 schnelle im Menü, jedes andere Emoji über „More Emoji…“ und die Emoji-Tastatur), Bearbeiten, Löschen, @-Erwähnungen, Tippanzeige, Bilder senden und ansehen, Dateien öffnen; Nachricht nach links wischen zum Antworten | 🧪 Wischen erst ab iOS 18, davor langes Drücken |
 | Eigenen Namen und Profilbild ändern | 🧪 |
-| Diddy-Profile vom Desktop (Namensfarbe mit Verlauf, Schrift und Effekt, Banner, Status, Badges, Über mich, Infos, Aktivität, Interessen, Links) auf der Profilkarte, in Mitglieder- und DM-Liste und im Chat; Namensschilder (Farbe, Verläufe, Bild, GIF, Video) hinter Mitglieder- und DM-Zeilen; eigenes Profil bearbeiten (Status, Namensfarbe, Über mich, Infos, Aktivität) | 🧪 State-Events und Nachrichtenmodus, auch in verschlüsselten Options-Räumen; Profileffekte und Rahmen fehlen, Badges erstellen nur am Desktop |
+| Diddy-Profile vom Desktop (Namensfarbe mit Verlauf, Schrift und Effekt, Banner mit Ausschnitt, Status, Badges, Über mich, Infos, Aktivität, Interessen, Links, Profileffekt und Profilrahmen, Diddy-Version) auf der Profilkarte, in Mitglieder- und DM-Liste und im Chat; Namensschilder (Farbe, Verläufe, Bild, GIF, Video) hinter Mitglieder- und DM-Zeilen; eigenes Profil bearbeiten wie am Desktop (alle Felder oben, Namensschild, gezeigte Badges, Kartenlayout, Effekt und Rahmen aus den Vorlagen) mit Vorschau | 🧪 State-Events und Nachrichtenmodus, auch in verschlüsselten Options-Räumen; eigene Effekt-/Rahmen-Dateien hochladen, Badges erstellen und Options-Raum einrichten nur am Desktop; Effekte und Rahmen nur auf der Profilkarte (wie am Desktop) |
 | Sprachnachrichten aufnehmen (Mikrofon im Eingabefeld, Dauer und Wellenform wie am Desktop) und abspielen, auch normale Audiodateien | 🧪 Aufnahme als AAC/m4a; Ogg/Opus vom Linux-Desktop spielt iOS nicht ab |
 | Bot-Karten (`dev.diddy.card`: Titel mit Fortschritt, Warteschlange, Listen, Hilfe, Statistik, Hinweise) mit Knöpfen und Zeitleiste, Befehlsvorschläge beim Tippen (`dev.diddy.commands`) | 🧪 |
 | Themes wie am Desktop (Diddy, Light, Silver, Dark, Butter, Red, Green, Purple, Amber, DAAARK) unter Einstellungen > Theme, sofort aktiv | 🧪 nur auf dem Gerät gespeichert, kein eigenes Theme |
@@ -36,7 +36,7 @@ Die App ist Beta: Alles in der Tabelle ist gebaut und läuft bei den ersten Test
 | Benachrichtigungen im Hintergrund (Nachrichten, Erwähnungen, Einladungen, Anrufe) | 🧪 Einstellung, aus ab Werk: die App läuft dafür im Hintergrund weiter (stilles Audio, kostet Akku). Ohne bezahltes Apple-Konto gibt es keinen Push-Dienst; nach einem Neustart des iPhones oder wenn iOS die App beendet, kommt bis zum nächsten Öffnen nichts |
 | Anruf-Alarm bei geschlossener App über die ntfy-App („Name is calling you“), Einstellungen > Call Alerts | 🧪 nur bei Anrufen aus Diddy (Desktop oder iOS) |
 | Echte Push-Benachrichtigungen bei geschlossener App | ❌ (braucht einen Push-Gateway und ein bezahltes Apple-Konto) |
-| Online-Status | ❌ (Sliding Sync liefert keine Presence) |
+| Online-Status (online, abwesend, nicht stören, offline) in DM-Liste, Chat-Kopf, Mitgliederliste und Profilkarte, eigener Status wird gesendet | 🧪 wird alle 60 s beim Server abgefragt (Sliding Sync liefert keine Presence); Server ohne Presence: nur der in Diddy gewählte Status |
 
 🧪 Beta: gebaut, läuft bei Testern, noch nicht im Alltag geprüft · ❌ fehlt noch
 
