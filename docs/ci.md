@@ -65,3 +65,31 @@ Before this change, two successful runs per workflow on 2026-11-07 showed:
 macOS package 552–569 s; Linux packages 384–565 s; iOS 280–307 s; Nix 153–165 s;
 Rust tests 122–154 s; separate frontend 54–62 s plus browser smoke 90–99 s.
 Those are observed job durations, not promised savings. Runner queue time is separate.
+
+## Native audio regression tests
+
+Linux reports compilation/Electron tests, PulseAudio and PipeWire as separate steps.
+`electron/tests/native-audio.py` starts private sound servers with per-run XDG and
+Pulse/PipeWire sockets. It polls server and player discovery and the helper READY
+handshake (30 s), then measures a full second of newly received PCM after discarding
+half a second of frames. Tone discovery has a 60 s budget; individual PCM waits are
+bounded to 30 s. Synthetic players use 200 ms playback latency to allow scheduling
+headroom on CI runners. Tone thresholds and the Diddy exclusion check are unchanged.
+Sink moves must be observed, and removal must leave the other player audible.
+Any failure prints server/player logs, helper stderr, child exit codes and `pactl`
+state before cleanup. Hardware-free Python wait/PCM tests also run in the Cinny suite.
+
+On 2026-11-11, release run 43015204159 attempt 1 passed PulseAudio but timed out
+waiting for PipeWire's second tone (660 Hz amplitude 0.028, required >0.05) after
+8 s; attempt 2 passed unchanged. The logs show monitoring began, but lack server
+state to distinguish policy settling from playback underruns. Previous failures
+on 5e27b80 and 868a594 were deterministic Electron command-parity failures
+(`account_labels`, `set_account_label`), before either sound-server test ran.
+
+Validation for this fix: TypeScript, 544 Cinny tests (including six hardware-free
+Python cases), 84 Electron tests, native helper compilation, and real PulseAudio /
+PipeWire runs in an isolated Debian 12 container passed. Both servers also passed
+concurrently with a shared inherited runtime path and a two-CPU container limit.
+An injected helper failure verified the diagnostic output. The original eight-second
+failure was not reproduced locally; exact Ubuntu 22.04 runner validation remains open
+(the additional container's package installation did not complete).

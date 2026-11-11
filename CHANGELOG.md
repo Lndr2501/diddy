@@ -2,6 +2,8 @@
 
 ## Unveröffentlicht
 
+- **Linux-CI: Audiotest stabilisiert:** Wartet auf Server, Spielerstreams und vollständige PCM-Messfenster mit begrenzten Zeitbudgets; synthetische Spieler haben mehr Puffer. PulseAudio und PipeWire erscheinen getrennt in CI. Fehler zeigen Server-/Helferlogs und Streamzustand; Grenzwerte und Ausschlussprüfung bleiben erhalten.
+
 - **iOS: Quelle für AltStore und SideStore:** `.github/scripts/altstore-source.cjs` erzeugt aus einem Release die Quelldatei `altstore.json` (Bundle-ID `app.diddy.ios`, Version, Größe, Download-Link, Release-Notizen). Sie wird nicht im Release mitgebaut, sondern vom Homelab-Dienst bei jedem neuen Release erzeugt und samt IPA gespiegelt. In AltStore oder SideStore einmal als Quelle eintragen, danach erscheinen neue Versionen unter „Updates“. Keine App-Änderung; getestet mit `cinny/tests/altstoreSource.test.cjs`.
 
 ## 1.5.2 (2026-11-11)

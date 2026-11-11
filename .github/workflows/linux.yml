@@ -39,11 +39,14 @@ jobs:
         run: |
           (cd cinny && npm ci --no-audit --no-fund)
           (cd electron && npm ci --no-audit --no-fund)
-      - name: Compile and test native application audio
-        run: |
-          (cd electron && npm run build:audio && npm run build:shortcut && npm test)
-          python3 electron/tests/native-audio.py pulse
-          dbus-run-session -- python3 electron/tests/native-audio.py pipewire
+      - name: Compile native helpers and run Electron tests
+        run: (cd electron && npm run build:audio && npm run build:shortcut && npm test)
+      - name: Test native application audio with PulseAudio
+        timeout-minutes: 10
+        run: python3 electron/tests/native-audio.py pulse
+      - name: Test native application audio with PipeWire
+        timeout-minutes: 10
+        run: dbus-run-session -- python3 electron/tests/native-audio.py pipewire
       - name: Show the tag version in the app
         run: .github/scripts/stamp-version.sh
       - name: Build frontend and Linux packages
