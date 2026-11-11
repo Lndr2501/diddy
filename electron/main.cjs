@@ -34,6 +34,7 @@ const { addFeatureSwitch } = require('./lib/commandLine.cjs');
 const { createStartupGate } = require('./lib/startupGate.cjs');
 const { shouldReloadAfter, createRateLimiter, describeError } = require('./lib/crashGuard.cjs');
 const { startStaticServer } = require('./lib/staticServer.cjs');
+const { isSsoStart, openSsoWindow } = require('./lib/ssoWindow.cjs');
 const { createSystemAudio } = require('./lib/systemAudio.cjs');
 const { createScreenPicker } = require('./lib/screenPicker.cjs');
 const { parseAgentVoiceLaunch, createAgentVoiceTrigger } = require('./lib/agentVoice.cjs');
@@ -245,6 +246,11 @@ const createClientWindow = (label, profile) => {
   win.webContents.on('will-navigate', (event, url) => {
     if (originOf(url) === appOrigin) return;
     event.preventDefault();
+    // single sign-on must finish inside the app, the system browser would log in itself
+    if (isSsoStart(url)) {
+      openSsoWindow({ BrowserWindow, shell, parent: win, url, appOrigin, originOf, log: (l) => diag.writeLine(l) });
+      return;
+    }
     if (/^https?:/i.test(url)) shell.openExternal(url).catch(() => undefined);
   });
   win.webContents.on('render-process-gone', (_event, details) => {

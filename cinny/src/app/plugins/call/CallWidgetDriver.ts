@@ -26,6 +26,7 @@ import {
 import { getCallCapabilities } from './utils';
 import { downloadMedia, mxcUrlToHttp } from '../../utils/matrix';
 import { sendCallPush } from '../diddy/callPush';
+import { diag } from '../diagnostics';
 
 export class CallWidgetDriver extends WidgetDriver {
   private allowedCapabilities: Set<Capability>;
@@ -230,10 +231,17 @@ export class CallWidgetDriver extends WidgetDriver {
   }
 
   public async askOpenID(observer: SimpleObservable<IOpenIDUpdate>): Promise<void> {
-    return observer.update({
-      state: OpenIDRequestState.Allowed,
-      token: await this.mx.getOpenIdToken(),
-    });
+    // The widget API does not await this: a failed token request would be an unhandled
+    // rejection and the call page would wait 10 s for an answer. Tell it at once.
+    try {
+      observer.update({
+        state: OpenIDRequestState.Allowed,
+        token: await this.mx.getOpenIdToken(),
+      });
+    } catch (e) {
+      diag(`call: OpenID token failed: ${e instanceof Error ? e.message : String(e)}`);
+      observer.update({ state: OpenIDRequestState.Blocked });
+    }
   }
 
   public async readRoomState(

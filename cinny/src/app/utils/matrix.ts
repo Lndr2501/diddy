@@ -299,6 +299,8 @@ export const mxcUrlToHttp = (
 export const downloadMedia = async (src: string): Promise<Blob> => {
   // this request is authenticated by service worker
   const res = await fetch(src, { method: 'GET' });
+  // an error page (404, 403, 429) must not be saved or shown as the file
+  if (!res.ok) throw new Error(`Download failed (HTTP ${res.status}).`);
   const blob = await res.blob();
   return blob;
 };

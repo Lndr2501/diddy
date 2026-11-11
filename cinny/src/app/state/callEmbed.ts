@@ -10,7 +10,8 @@ export const callEmbedAtom = atom<CallEmbed | undefined, [CallEmbed | undefined]
     if (callEmbed === prevCallEmbed) return;
 
     if (prevCallEmbed) {
-      prevCallEmbed.dispose();
+      // lets the call page send its leave event before it goes
+      prevCallEmbed.disposeAfterLeave();
     }
 
     set(baseCallEmbedAtom, callEmbed);

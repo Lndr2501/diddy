@@ -621,7 +621,36 @@ export const installSoundboard = (win: Window | null | undefined) => {
       return stream;
     }
   };
+  // Remember the microphone tracks handed to this call page, so leaving the call can release them
+  // even when the page is removed before it stops them itself (native microphone, mixer, RNNoise).
+  const wrapped = devices.getUserMedia;
+  devices.getUserMedia = async (constraints?: MediaStreamConstraints) => {
+    const stream = await wrapped(constraints);
+    if (win) {
+      const tracks = callMicTracks.get(win) ?? new Set<MediaStreamTrack>();
+      stream.getAudioTracks().forEach((track) => tracks.add(track));
+      callMicTracks.set(win, tracks);
+    }
+    return stream;
+  };
   devices.__cinnySoundboard = true;
+};
+
+const callMicTracks = new WeakMap<Window, Set<MediaStreamTrack>>();
+
+/** Stops every microphone track this call page got (stopping a mixed track also ends its mixer). */
+export const releaseCallMicrophones = (win: Window | null | undefined): void => {
+  if (!win) return;
+  const tracks = callMicTracks.get(win);
+  if (!tracks) return;
+  callMicTracks.delete(win);
+  tracks.forEach((track) => {
+    try {
+      track.stop();
+    } catch {
+      // already gone
+    }
+  });
 };
 
 export const useSoundboard = (): Snapshot =>

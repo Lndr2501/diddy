@@ -30,7 +30,7 @@ import { CallControlState } from './CallControlState';
 import { installScreenShareAudio, screenShareAudio } from './screenShareAudio';
 import { installContextMenuGuard } from '../contextMenu';
 import { installCallFrameMenu } from '../callFrameMenu';
-import { installSoundboard } from './soundboard';
+import { installSoundboard, releaseCallMicrophones } from './soundboard';
 import { installLocalSpeaking, stopLocalSpeaking } from './localSpeaking';
 import { installCallTheme } from './callTheme';
 import { installScreenShareGrid } from './screenShareGrid';
@@ -53,6 +53,9 @@ import {
 import { createThemeSync, ThemeSync } from './callThemeSync';
 import { diag } from '../diagnostics';
 
+/** How long a hung-up call page may take to send its leave event before it is removed. */
+const LEAVE_GRACE_MS = 5000;
+
 export class CallEmbed {
   private mx: MatrixClient;
 
@@ -65,6 +68,9 @@ export class CallEmbed {
   public joined = false;
 
   private disposed = false;
+
+  /** Hung up, waiting for the call page to finish leaving (see disposeAfterLeave). */
+  private leaving = false;
 
   public readonly control: CallControl;
 
@@ -447,11 +453,41 @@ export class CallEmbed {
   }
 
   /**
+   * Ends the call from Diddy's side without cutting off the call page. Element Call reports the
+   * hangup first and only then sends its leave event and disconnects; removing the page at once
+   * left you in the call for others until the server's delayed leave (review, ~18 s). The page is
+   * hidden and the microphone released now; the rest goes when it says Close, or after a grace time.
+   */
+  public disposeAfterLeave(): void {
+    if (this.disposed || this.leaving) return;
+    if (!this.joined) {
+      this.dispose();
+      return;
+    }
+    this.leaving = true;
+    this.iframe.style.visibility = 'hidden';
+    this.iframe.style.pointerEvents = 'none';
+    releaseCallMicrophones(this.iframe.contentWindow);
+    // now, not later: a new call may start sharing within the grace time
+    screenShareAudio.stop();
+    const closeAction = `action:${ElementWidgetActions.Close}`;
+    let timer: number | undefined;
+    const finish = () => {
+      window.clearTimeout(timer);
+      this.call.off(closeAction, finish);
+      if (!this.disposed) this.dispose();
+    };
+    timer = window.setTimeout(finish, LEAVE_GRACE_MS);
+    this.call.on(closeAction, finish);
+  }
+
+  /**
    * Stops the widget messaging for if it is started. Skips stopping if it is an active
    * widget.
    * @param opts
    */
   public dispose(): void {
+    if (this.disposed) return;
     this.disposed = true;
     this.themeSync.stop();
     this.disposables.forEach((disposable) => {
@@ -460,10 +496,13 @@ export class CallEmbed {
     this.call.stop();
     // before the iframe goes: its window tells whether the measured microphone is this call's
     stopLocalSpeaking(this.iframe.contentWindow);
+    // the microphone (native capture, mixer, noise filter) runs in this window, not in the page
+    releaseCallMicrophones(this.iframe.contentWindow);
     this.container.removeChild(this.iframe);
     this.control.dispose();
-    // Release the screen-share audio session (AudioContext, WebSocket, native capture).
-    screenShareAudio.stop();
+    // Release the screen-share audio session (AudioContext, WebSocket, native capture). After a
+    // hangup this already happened; a later stop could end a new call's session.
+    if (!this.leaving) screenShareAudio.stop();
 
     this.mx.off(ClientEvent.Event, this.boundOnEvent);
     this.mx.off(MatrixEventEvent.Decrypted, this.boundOnEventDecrypted);

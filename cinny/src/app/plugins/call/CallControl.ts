@@ -11,6 +11,9 @@ export enum CallControlEvent {
   StateUpdate = 'state_update',
 }
 
+/** How long a media change waits for Element Call's echo before it counts as done. */
+const MEDIA_STATE_ECHO_MS = 1500;
+
 export class CallControl extends EventEmitter implements CallControlState {
   private state: CallControlState;
 
@@ -198,7 +201,17 @@ export class CallControl extends EventEmitter implements CallControlState {
       if (this.mediaStatePromiseResolver) {
         this.mediaStatePromiseResolver();
       }
-      this.mediaStatePromiseResolver = () => resolve(data);
+      // Element Call only echoes a DeviceMute when the state really changed. Without a camera
+      // or permission nothing changes, and the button stayed busy forever (review).
+      const timer = window.setTimeout(() => {
+        if (this.mediaStatePromiseResolver === done) this.mediaStatePromiseResolver = undefined;
+        resolve(data);
+      }, MEDIA_STATE_ECHO_MS);
+      const done = () => {
+        window.clearTimeout(timer);
+        resolve(data);
+      };
+      this.mediaStatePromiseResolver = done;
     });
   }
 

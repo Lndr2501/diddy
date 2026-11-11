@@ -240,3 +240,42 @@ test('agent voice trigger (#57): launch options and state', () => {
   assert.equal(trigger.apply('stop'), false);
   assert.deepEqual(trigger.state(), { key: null, trigger: false });
 });
+
+// Single sign-on (review): the flow runs in a child window and comes back into the main window.
+test('single sign-on start addresses are recognised, other links are not', () => {
+  const { isSsoStart } = require('../lib/ssoWindow.cjs');
+  assert.equal(isSsoStart('https://matrix.example.org/_matrix/client/v3/login/sso/redirect?redirectUrl=x'), true);
+  assert.equal(isSsoStart('https://matrix.example.org/_matrix/client/r0/login/sso/redirect/oidc-google?redirectUrl=x'), true);
+  assert.equal(isSsoStart('https://example.org/some/page'), false);
+  assert.equal(isSsoStart('file:///_matrix/client/v3/login/sso/redirect'), false);
+  assert.equal(isSsoStart('not a url'), false);
+});
+
+test('the sign-on window hands the first app address to the main window and closes', () => {
+  const { openSsoWindow } = require('../lib/ssoWindow.cjs');
+  const handlers = {};
+  let closed = false;
+  let loaded;
+  class FakeWindow {
+    constructor() {
+      this.webContents = {
+        on: (name, fn) => { handlers[name] = fn; },
+        setWindowOpenHandler: () => undefined,
+      };
+    }
+    loadURL() { return Promise.resolve(); }
+    isDestroyed() { return false; }
+    close() { closed = true; }
+  }
+  const parent = { webContents: { session: {} }, isDestroyed: () => false, loadURL: (u) => { loaded = u; return Promise.resolve(); } };
+  const appOrigin = 'http://localhost:44548';
+  const originOf = (u) => { try { return new URL(u).origin; } catch { return ''; } };
+  openSsoWindow({ BrowserWindow: FakeWindow, shell: {}, parent, url: 'https://hs/_matrix/client/v3/login/sso/redirect', appOrigin, originOf });
+  let prevented = false;
+  handlers['will-redirect']({ preventDefault: () => { prevented = true; } }, 'https://idp.example/login');
+  assert.equal(prevented, false);
+  handlers['will-redirect']({ preventDefault: () => { prevented = true; } }, `${appOrigin}/?loginToken=abc`);
+  assert.equal(prevented, true);
+  assert.equal(loaded, `${appOrigin}/?loginToken=abc`);
+  assert.equal(closed, true);
+});

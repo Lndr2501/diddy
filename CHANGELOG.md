@@ -9,6 +9,14 @@
 - **Optionsraum erneut betreten:** Nach Verlassen und erneutem Beitreten in derselben Sitzung wurde der Verlauf nicht nachgeladen.
 - **Plugin-Speicher begrenzt:** Ein Plugin konnte mit 50 Werten aus Steuerzeichen den ganzen Speicher der App füllen; danach scheiterten Anmeldung und Einstellungen. Pro Plugin gelten jetzt höchstens 256 KB.
 - **Server-Adresse mit Leerzeichen:** Bei neuen Verbindungen wurde das erste Leerzeichen irgendwo in der Adresse entfernt statt nur am Anfang („my server.org“ wurde zu „myserver.org“).
+- **Linux: Anmeldung per SSO:** Die Linux-App schickte die Anmeldung beim Identitätsanbieter in den System-Browser; angemeldet war danach der Browser, nicht die App. Die Anmeldung läuft jetzt in einem eigenen Fenster und kehrt in die App zurück.
+- **Call verlassen:** Nach dem Auflegen entfernte Diddy die Call-Seite sofort, bevor sie das Verlassen melden konnte; andere sahen dich noch bis zu ~18 s im Call. Die Seite darf sich jetzt bis zu 5 s abmelden. Das Mikrofon (natives Mikrofon, Mischer, Rauschfilter) wird beim Auflegen sofort freigegeben; vorher konnte es offen bleiben.
+- **Kamera-/Mikrofon-Knopf blieb gesperrt:** Ohne Kamera oder ohne Berechtigung wartete der Knopf ewig auf eine Antwort des Calls. Nach 1,5 s ist er wieder frei.
+- **Anruf klingelte weiter:** Ein eingehender Anruf hört jetzt nach seiner Laufzeit auf, wenn du auf einem anderen Gerät annimmst, und taucht nicht mehr veraltet auf, nachdem du einen anderen Call beendet hast.
+- **Downloads:** Eine Fehlerseite des Servers (404, 403, 429) wurde als die heruntergeladene Datei gespeichert. Jetzt gibt es einen Fehler.
+- **Kleinere Call-Fehler:** Ein fehlgeschlagenes OpenID-Token meldet der Call sofort statt nach 10 s; ein nicht gesendetes Ablehnen steht im Log; der Hinweis „kein WebRTC“ erscheint wieder.
+- **macOS: Update-Fenster schließen:** Der rote Knopf beendete Diddy, statt „Nicht jetzt“ zu bedeuten. Konnte das Update-Fenster nicht geöffnet werden, öffnete sich nie ein Hauptfenster.
+- **macOS: Dock-Symbol:** Ein Klick auf das Dock-Symbol öffnet das Hauptfenster wieder, wenn es geschlossen wurde und nur noch ein Verbindungsfenster offen war.
 
 ## 1.5.3 (2026-11-11)
 

@@ -128,7 +128,11 @@ fn keep_window_on_screen(window: &tauri::WebviewWindow) {
 }
 
 /// Opens the main window (after the update check, or at once when it is off or offline).
+/// Set once the start (audio wait, update check) has handed over to the main window.
+static MAIN_LAUNCHED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
 pub(crate) fn launch_main(app: &tauri::AppHandle) {
+    MAIN_LAUNCHED.store(true, std::sync::atomic::Ordering::SeqCst);
     if let Err(message) = build_client_window(app, "main", None) {
         diag::diag_log(format!("main window failed: {message}"));
         return;
@@ -573,8 +577,20 @@ pub fn run() {
             updater::start(app.handle().clone());
             Ok(())
         })
-        .run(context)
-        .expect("error while building tauri application");
+        .build(context)
+        .expect("error while building tauri application")
+        .run(|_app, _event| {
+            // Clicking the Dock icon after the main window was closed (a connection window still
+            // open) brings it back; macOS starts no new process for that, so nothing else does.
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Reopen { .. } = _event {
+                if MAIN_LAUNCHED.load(std::sync::atomic::Ordering::SeqCst)
+                    && _app.get_webview_window("main").is_none()
+                {
+                    connections::focus_or_reopen_main(_app);
+                }
+            }
+        });
 }
 
 #[cfg(test)]

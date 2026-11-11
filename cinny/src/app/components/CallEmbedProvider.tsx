@@ -76,6 +76,7 @@ import { CallAvatarAnimation } from '../styles/Animations.css';
 import { webRTCSupported } from '../utils/rtc';
 import { AgentVoiceSync } from './AgentVoiceSync';
 import { WatchTogetherSync } from './WatchTogetherSync';
+import { diag } from '../plugins/diagnostics';
 
 type IncomingCallInfo = {
   room: Room;
@@ -114,11 +115,12 @@ function IncomingCall({ dm, info, onIgnore, onAnswer, onReject }: IncomingCallPr
     session,
     useCallback(
       (members) => {
-        if (members.length === 0) {
+        // over, or you answered on another device: stop ringing here
+        if (members.length === 0 || members.some((m) => m.sender === mx.getSafeUserId())) {
           onIgnore();
         }
       },
-      [onIgnore]
+      [onIgnore, mx]
     )
   );
 
@@ -189,7 +191,7 @@ function IncomingCall({ dm, info, onIgnore, onAnswer, onReject }: IncomingCallPr
                     Your homeserver does not support calling.
                   </Text>
                 )}
-                {!webRTCSupported && (
+                {!rtcSupported && (
                   <Text
                     style={{ margin: 'auto', color: color.Critical.Main }}
                     size="L400"
@@ -342,6 +344,8 @@ function IncomingCallListener({ callEmbed, joined }: IncomingCallListenerProps) 
           rel_type: RelationType.Reference,
           event_id: eventId,
         },
+      }).catch((e) => {
+        diag(`call: decline not sent: ${e instanceof Error ? e.message : String(e)}`);
       });
       setCallInfo(undefined);
     },
@@ -356,6 +360,21 @@ function IncomingCallListener({ callEmbed, joined }: IncomingCallListenerProps) 
     },
     [startCall, navigateRoom]
   );
+
+  // The ring ends with its lifetime; it never comes back later as a stale dialog (review).
+  useEffect(() => {
+    if (!callInfo) return undefined;
+    const timer = window.setTimeout(
+      () => setCallInfo((current) => (current === callInfo ? undefined : current)),
+      Math.max(0, callInfo.senderTs + callInfo.lifetime - Date.now())
+    );
+    return () => window.clearTimeout(timer);
+  }, [callInfo]);
+
+  // While you are in a call the ring is not shown; it must not pop up after you hang up.
+  useEffect(() => {
+    if (callInfo && (joined || callEmbed)) setCallInfo(undefined);
+  }, [callInfo, joined, callEmbed]);
 
   if (callInfo && callEmbed?.roomId === callInfo.room.roomId) {
     return null;

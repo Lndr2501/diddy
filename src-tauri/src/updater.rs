@@ -315,22 +315,31 @@ fn build_window(app: &AppHandle) {
         .build();
     match built {
         Ok(window) => {
-            // Closing the window with the red button means "Not now".
+            // Closing the window with the red button means "Not now". The window must stay until
+            // finish() has opened the main window: it is the only window, and closing the last
+            // window ends the app.
             let handle = app.clone();
             window.on_window_event(move |event| {
-                if matches!(event, tauri::WindowEvent::CloseRequested { .. }) {
-                    if let Some(state) = handle.try_state::<UpdaterState>() {
-                        if let Ok(tx) = state.tx.lock() {
-                            if let Some(tx) = tx.as_ref() {
-                                let _ = tx.send(Action::Later);
-                            }
-                        }
+                if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                    if send_action(&handle, Action::Later) {
+                        api.prevent_close();
                     }
                 }
             });
         }
-        Err(e) => crate::diag::diag_log(format!("updater: window failed: {e}")),
+        Err(e) => {
+            crate::diag::diag_log(format!("updater: window failed: {e}"));
+            // Nobody could answer the update question: go on as with "Not now".
+            send_action(app, Action::Later);
+        }
     }
+}
+
+/// Hands a choice to the waiting update check; false when none is waiting any more.
+fn send_action(app: &AppHandle, action: Action) -> bool {
+    let Some(state) = app.try_state::<UpdaterState>() else { return false };
+    let Ok(tx) = state.tx.lock() else { return false };
+    tx.as_ref().is_some_and(|tx| tx.send(action).is_ok())
 }
 
 async fn fetch_latest(repo: &str) -> Result<Option<Release>, String> {
