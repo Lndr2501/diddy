@@ -531,7 +531,11 @@ export function Space() {
               }
 
               return (
-                <VirtualTile virtualItem={vItem} key={vItem.index} ref={virtualizer.measureElement}>
+                <VirtualTile
+                  virtualItem={vItem}
+                  key={`${vItem.index}:${roomId}`}
+                  ref={virtualizer.measureElement}
+                >
                   <RoomNavItem
                     room={room}
                     selected={selectedRoomId === roomId}

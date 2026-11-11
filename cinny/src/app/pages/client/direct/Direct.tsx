@@ -315,7 +315,7 @@ export function Direct() {
                 return (
                   <VirtualTile
                     virtualItem={vItem}
-                    key={vItem.index}
+                    key={`${vItem.index}:${item.roomId}`}
                     ref={virtualizer.measureElement}
                   >
                     <RoomNavItem
