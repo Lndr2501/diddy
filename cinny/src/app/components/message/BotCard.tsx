@@ -1,7 +1,7 @@
 import React, { KeyboardEvent, MouseEvent, useCallback, useEffect, useState } from 'react';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
-import { useRoom } from '../../hooks/useRoom';
+import { useOptionalRoom } from '../../hooks/useRoom';
 import { mxcUrlToHttp } from '../../utils/matrix';
 import {
   BotCard,
@@ -25,14 +25,18 @@ const STATE_LABEL: Record<TrackState, string> = {
   error: 'Fehler',
 };
 
-/** Types a bot command into the chat as you (nothing is sent without a click or key press). */
-function useBotCommand(): { send: (command: string) => void; busy: boolean } {
+/**
+ * Types a bot command into the chat as you (nothing is sent without a click or key press).
+ * Outside of a room view (inbox notifications, search results) there is no chat to type into:
+ * `enabled` is false and the card is shown without its buttons (#125).
+ */
+function useBotCommand(): { send: (command: string) => void; busy: boolean; enabled: boolean } {
   const mx = useMatrixClient();
-  const room = useRoom();
+  const room = useOptionalRoom();
   const [busy, setBusy] = useState(false);
   const send = useCallback(
     (command: string) => {
-      if (busy) return;
+      if (busy || !room) return;
       setBusy(true);
       mx.sendMessage(room.roomId, {
         msgtype: 'm.text',
@@ -44,12 +48,12 @@ function useBotCommand(): { send: (command: string) => void; busy: boolean } {
     },
     [mx, room, busy]
   );
-  return { send, busy };
+  return { send, busy, enabled: !!room };
 }
 
 function CardActions({ actions }: { actions: CardAction[] }) {
-  const { send, busy } = useBotCommand();
-  if (actions.length === 0) return null;
+  const { send, busy, enabled } = useBotCommand();
+  if (!enabled || actions.length === 0) return null;
   return (
     <div className={css.Actions}>
       {actions.map((a) => (
@@ -82,7 +86,7 @@ function useNow(active: boolean): number {
 function TrackCard({ card }: { card: Extract<BotCard, { kind: 'track' }> }) {
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
-  const { send, busy } = useBotCommand();
+  const { send, busy, enabled } = useBotCommand();
   const [hover, setHover] = useState<number>();
   const busyState = card.state === 'searching' || card.state === 'downloading';
   const now = useNow(card.state === 'playing' && card.duration !== undefined);
@@ -90,6 +94,7 @@ function TrackCard({ card }: { card: Extract<BotCard, { kind: 'track' }> }) {
   const { duration } = card;
   const ratio = position !== undefined && duration ? Math.min(1, position / duration) : undefined;
   const seekable =
+    enabled &&
     !!card.seek &&
     duration !== undefined &&
     position !== undefined &&
