@@ -111,7 +111,10 @@ final class AppModel: ObservableObject {
                 }
             }
         }
-        if let sound { Sounds.shared.playAlert(sound) }
+        // Do not disturb: no sound for new messages, mentions or invites (desktop #71).
+        if let sound, !DoNotDisturb.silencesSound(sound.alert, status: PresenceStore.of(account).ownStatus) {
+            Sounds.shared.playAlert(sound)
+        }
     }
 
     func add(record: AccountRecord, client: Client) async {

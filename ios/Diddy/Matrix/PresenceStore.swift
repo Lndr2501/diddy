@@ -135,7 +135,8 @@ final class PresenceStore: ObservableObject {
 
     /// The status you picked in Diddy. Nil while it cannot be known yet, so somebody who is
     /// invisible is never announced as online just because their profile has not loaded.
-    private var ownStatus: String? {
+    /// Do Not Disturb reads it too (DoNotDisturb.swift).
+    var ownStatus: String? {
         guard let account else { return nil }
         if let status = account.diddyProfiles[account.userId]?.status?.rawValue { return status }
         let cached = UserDefaults.standard.string(forKey: ownStatusKey)

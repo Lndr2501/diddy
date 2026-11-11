@@ -136,7 +136,9 @@ final class CallManager: ObservableObject {
         }
         incoming = call
         // In the background a notification rings instead: it follows the silent switch.
-        if !LocalNotifications.shared.announceCall(account: account, roomId: roomId, name: call.name) {
+        let announced = LocalNotifications.shared.announceCall(account: account, roomId: roomId, name: call.name)
+        // Do not disturb: the call stays on screen, but nothing rings (desktop #71).
+        if !announced && !DoNotDisturb.silencesSound(.incomingCall, status: PresenceStore.of(account).ownStatus) {
             Sounds.shared.startRinging()
         }
         incomingWindow.show(call, manager: self)

@@ -70,6 +70,17 @@ enum Sound: String, CaseIterable, Identifiable {
         default: return .calls
         }
     }
+
+    /// What the sound announces, for Do Not Disturb (Matrix/DoNotDisturb.swift).
+    var alert: DoNotDisturb.Alert {
+        switch self {
+        case .message: return .message
+        case .mention: return .mention
+        case .invite: return .invite
+        case .ringtone: return .incomingCall
+        default: return .other
+        }
+    }
 }
 
 /// The switches under Settings > Sounds. All are on by default.

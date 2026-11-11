@@ -56,7 +56,9 @@ final class LocalNotifications: NSObject, UNUserNotificationCenterDelegate {
         }
         if Self.isEnabled { setBadge(Int(new.filter(\.isJoined).reduce(0) { $0 + $1.badge })) }
 
-        guard canPost, account.canRing else { return }
+        // Do not disturb: no message or invite notification. The badge above still counts them.
+        let silenced = DoNotDisturb.silencesNotification(.message, status: PresenceStore.of(account).ownStatus)
+        guard canPost, account.canRing, !silenced else { return }
         // A call in a direct message mentions the room; the call notification already says it all.
         for room in new where !room.isSpace && !(room.isDirect && !room.callParticipants.isEmpty) {
             guard let before = old[room.id] else {
@@ -103,7 +105,9 @@ final class LocalNotifications: NSObject, UNUserNotificationCenterDelegate {
         let content = UNMutableNotificationContent()
         content.title = name
         content.body = "Incoming call"
-        if Sound.ringtone.setting.isOn { content.sound = Self.notificationSound("notification_ringtone.caf") }
+        // Do not disturb: the call stays visible, without the ring.
+        let ringSilenced = DoNotDisturb.silencesSound(.incomingCall, status: PresenceStore.of(account).ownStatus)
+        if Sound.ringtone.setting.isOn && !ringSilenced { content.sound = Self.notificationSound("notification_ringtone.caf") }
         post(content, id: "call|" + Self.identifier(account, roomId), account: account, roomId: roomId)
         return true
     }
