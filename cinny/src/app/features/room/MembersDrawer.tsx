@@ -69,7 +69,8 @@ import { InviteUserPrompt } from '../../components/invite-user-prompt';
 import { useRoomPermissions } from '../../hooks/useRoomPermissions';
 import { useOpenRoomSettings } from '../../state/hooks/roomSettings';
 import { DiddyName } from '../../components/diddy/DiddyName';
-import { useDiddyProfile } from '../../plugins/diddy/profiles';
+import { readProfile, useDiddyProfile } from '../../plugins/diddy/profiles';
+import { useMyStatus } from '../../plugins/diddy/status';
 import {
   NameplateBackdrop,
   NameplateHost,
@@ -176,7 +177,7 @@ export function MemberRowView({
       className={classNames(
         css.MemberRow,
         offline && css.MemberRowOffline,
-        withNameplate && NameplateHost
+        withNameplate && NameplateHost,
       )}
       style={{
         padding: `0 ${config.space.S200}`,
@@ -276,8 +277,15 @@ const isPresent = (mx: MatrixClient, userId: string): boolean => {
   // grouping only needs connected or not, which the Matrix presence alone decides
   return isPresentState(
     resolvePresenceState(
-      user ? { presence: user.presence, lastActiveTs: user.getLastActiveTs() } : undefined
-    )
+      user
+        ? {
+            presence: user.presence,
+            lastActiveTs: user.getLastActiveTs(),
+            // invisible counts as offline for everyone, also for yourself while you sync
+            chosen: readProfile(mx, userId)?.status === 'invisible' ? 'invisible' : undefined,
+          }
+        : undefined,
+    ),
   );
 };
 
@@ -310,11 +318,11 @@ const usePresenceVersion = (mx: MatrixClient): number => {
 const groupMembersByPresence = (
   mx: MatrixClient,
   members: RoomMember[],
-  getTag: GetMemberPowerTag
+  getTag: GetMemberPowerTag,
 ): { items: Array<MemberGroupLabel | RoomMember>; offline: ReadonlySet<string> } => {
   const myUserId = mx.getUserId();
   const hasPresence = members.some(
-    (m) => m.userId !== myUserId && mx.getUser(m.userId)?.events.presence !== undefined
+    (m) => m.userId !== myUserId && mx.getUser(m.userId)?.events.presence !== undefined,
   );
   const present = hasPresence ? members.filter((m) => isPresent(mx, m.userId)) : members;
   const absent = hasPresence ? members.filter((m) => !isPresent(mx, m.userId)) : [];
@@ -387,24 +395,26 @@ export function MembersDrawer({ room, members }: MembersDrawerProps) {
 
   const filteredMembers = useMemo(
     () => members.filter(membershipFilter.filterFn).sort(memberSort.sortFn).sort(memberPowerSort),
-    [members, membershipFilter, memberSort, memberPowerSort]
+    [members, membershipFilter, memberSort, memberPowerSort],
   );
 
   const [result, search, resetSearch] = useAsyncSearch(
     filteredMembers,
     getRoomMemberStr,
-    SEARCH_OPTIONS
+    SEARCH_OPTIONS,
   );
   if (!result && searchInputRef.current?.value) search(searchInputRef.current.value);
 
   const processMembers = result ? result.items : filteredMembers;
 
   const presenceVersion = usePresenceVersion(mx);
+  // going invisible must regroup you at once, without waiting for a presence event
+  const myStatus = useMyStatus(mx);
   const { items: PLTagOrRoomMember, offline: offlineIds } = useMemo(
     () => groupMembersByPresence(mx, processMembers, getPowerTag),
     // presenceVersion changes whenever someone goes online/offline
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [mx, processMembers, getPowerTag, presenceVersion]
+    [mx, processMembers, getPowerTag, presenceVersion, myStatus],
   );
 
   const virtualizer = useVirtualizer({
@@ -420,9 +430,9 @@ export function MembersDrawer({ room, members }: MembersDrawerProps) {
         if (evt.target.value) search(evt.target.value);
         else resetSearch();
       },
-      [search, resetSearch]
+      [search, resetSearch],
     ),
-    { wait: 200 }
+    { wait: 200 },
   );
 
   const handleMemberClick: MouseEventHandler<HTMLButtonElement> = (evt) => {
@@ -463,7 +473,7 @@ export function MembersDrawer({ room, members }: MembersDrawerProps) {
                         onClick={
                           ((evt) =>
                             setAnchor(
-                              evt.currentTarget.getBoundingClientRect()
+                              evt.currentTarget.getBoundingClientRect(),
                             )) as MouseEventHandler<HTMLButtonElement>
                         }
                         variant="Surface"
@@ -495,7 +505,7 @@ export function MembersDrawer({ room, members }: MembersDrawerProps) {
                         onClick={
                           ((evt) =>
                             setAnchor(
-                              evt.currentTarget.getBoundingClientRect()
+                              evt.currentTarget.getBoundingClientRect(),
                             )) as MouseEventHandler<HTMLButtonElement>
                         }
                         variant="Surface"
@@ -613,7 +623,7 @@ export function MembersDrawer({ room, members }: MembersDrawerProps) {
                         }
                         offline={offlineIds.has(tagOrMember.userId)}
                         typing={typingMembers.some(
-                          (receipt) => receipt.userId === tagOrMember.userId
+                          (receipt) => receipt.userId === tagOrMember.userId,
                         )}
                       />
                     </div>
