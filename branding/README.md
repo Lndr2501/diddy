@@ -33,7 +33,18 @@ Form und Farben stehen oben in `build.py`. Die SVG-Dateien nie von Hand ändern,
 Mit `rsvg-convert` (librsvg) entstehen zusätzlich PNG-Bilder mit 1024 px in `logo/png/`. Dieser Ordner
 liegt nicht im Repo.
 
+## Einbauen
+
+```
+python3 branding/build.py && python3 branding/export.py
+```
+
+`export.py` rendert aus den SVG-Dateien alle Bilder der Apps: `src-tauri/app-icons` und `src-tauri/icons`
+(Dock, Fenster, `icon.icns`, `icon.ico`), `cinny/public` (App-Icon-Auswahl, Favicon, Apple- und Android-Symbole)
+und die iOS-Asset-Kataloge (App-Icons, Vorschauen, `DiddyLogo`). Die Bilder liegen im Repo, damit Builds
+weder `rsvg-convert` noch Python brauchen.
+
 ## Stand
 
-Das Logo ist ein Entwurf. Die App-Icons in `src-tauri/`, `cinny/public/` und `ios/` zeigen noch das alte
-Motiv.
+Das Logo ist überall eingebaut (1.5.2). Auf iOS gilt der Farbton-Wechsel weiter über die alternativen
+App-Icons.

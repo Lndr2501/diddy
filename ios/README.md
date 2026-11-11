@@ -86,7 +86,7 @@ open Diddy.xcodeproj
 
 Das Xcode-Projekt und die `Info.plist` entstehen aus `project.yml` und sind nicht eingecheckt. Entitlements hat die App keine.
 
-Die App-Icons kommen aus `src-tauri/app-icons`. Neu erzeugen: `python3 ios/Tools/make_icons.py` (braucht Pillow und NumPy).
+Die App-Icons kommen aus dem Logo in `branding/`. Neu erzeugen: `python3 branding/export.py` (braucht `rsvg-convert` und Pillow).
 
 ## Aufbau
 
