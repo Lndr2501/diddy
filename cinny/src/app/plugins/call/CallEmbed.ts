@@ -48,6 +48,7 @@ import {
   isLivekitTokenRequest,
   JoinTimer,
   TO_DEVICE_RETRY_MS,
+  watchMediaConnected,
 } from './joinTiming';
 import { createThemeSync, ThemeSync } from './callThemeSync';
 import { diag } from '../diagnostics';
@@ -372,9 +373,7 @@ export class CallEmbed {
         timer.mark('OpenID requested')
       ),
       onPeerConnectionCreated((pc) => {
-        pc.addEventListener('connectionstatechange', () => {
-          if (pc.connectionState === 'connected') timer.mark('media connected');
-        });
+        this.disposables.push(watchMediaConnected(pc, () => timer.mark('media connected')));
       })
     );
     const poll = window.setInterval(() => {
@@ -515,8 +514,8 @@ export class CallEmbed {
     } catch (e) {
       // The call page did not answer in time (it is still starting, or busy), so a call key may not
       // have arrived. Say so in the log (unhandled before) and hand the message over once more; a
-      // key that did arrive is simply set again. The "Request timed out" in the #161 log was the
-      // theme message sent before the page listened (see callThemeSync), not necessarily this.
+      // key that did arrive is simply set again. A startup "Request timed out" was reproduced with a
+      // theme message sent before the page listened (see callThemeSync), independently of this.
       diag(
         `call to-device ${ev.getType()} not acknowledged by the call page (${String(e)}), retrying`
       );

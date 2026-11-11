@@ -14,12 +14,15 @@ vm.runInNewContext(
   }).outputText,
   { exports: mod, performance, URL }
 );
-const { createJoinTimer, countTiles, isLivekitTokenRequest } = mod;
+const { createJoinTimer, countTiles, isLivekitTokenRequest, watchMediaConnected } = mod;
 
 test('each step is logged once, with the time since the last step and since the start', () => {
   const lines = [];
   let t = 1000;
-  const timer = createJoinTimer((l) => lines.push(l), () => t);
+  const timer = createJoinTimer(
+    (l) => lines.push(l),
+    () => t
+  );
   t = 1100;
   timer.mark('call page loaded');
   t = 1100;
@@ -54,7 +57,10 @@ test('tiles are counted from the call document, a missing or broken document cou
 test('a detail is appended to the line but does not make a step new', () => {
   const lines = [];
   let t = 0;
-  const timer = createJoinTimer((l) => lines.push(l), () => t);
+  const timer = createJoinTimer(
+    (l) => lines.push(l),
+    () => t
+  );
   t = 1500;
   timer.mark('LiveKit token request done', 'took 1200 ms, HTTP 200');
   t = 1600;
@@ -74,4 +80,60 @@ test('the LiveKit token request of the call page is recognised (legacy and new e
   );
   assert.equal(isLivekitTokenRequest('https://x.example/sfu/get/extra'), false);
   assert.equal(isLivekitTokenRequest('not a url'), false);
+});
+
+const connection = () => {
+  const listeners = new Set();
+  return {
+    connectionState: 'new',
+    addEventListener: (_event, fn) => listeners.add(fn),
+    removeEventListener: (_event, fn) => listeners.delete(fn),
+    change(state) {
+      this.connectionState = state;
+      [...listeners].forEach((fn) => fn());
+    },
+    get listenerCount() {
+      return listeners.size;
+    },
+  };
+};
+
+test('media connection is reported once and releases its event listener', () => {
+  const pc = connection();
+  let calls = 0;
+  const stop = watchMediaConnected(pc, () => {
+    calls += 1;
+  });
+  pc.change('connecting');
+  assert.equal(calls, 0);
+  pc.change('connected');
+  assert.equal(calls, 1);
+  assert.equal(pc.listenerCount, 0);
+  pc.change('disconnected');
+  pc.change('connected');
+  assert.equal(calls, 1);
+  stop();
+});
+
+test('call disposal removes media listeners and prevents late timing messages', () => {
+  const pc = connection();
+  let calls = 0;
+  const stop = watchMediaConnected(pc, () => {
+    calls += 1;
+  });
+  stop();
+  assert.equal(pc.listenerCount, 0);
+  pc.change('connected');
+  assert.equal(calls, 0);
+});
+
+test('an already connected peer is reported immediately without keeping a listener', () => {
+  const pc = connection();
+  pc.connectionState = 'connected';
+  let calls = 0;
+  watchMediaConnected(pc, () => {
+    calls += 1;
+  });
+  assert.equal(calls, 1);
+  assert.equal(pc.listenerCount, 0);
 });

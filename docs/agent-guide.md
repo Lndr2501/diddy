@@ -95,7 +95,9 @@ Logs der laufenden App: `~/Library/Logs/Diddy/app.log` (z. B. `noise suppression
 Langsamer Call-Beitritt (#161): `grep 'call join:' ~/Library/Logs/Diddy/app.log`. Ungefähre Reihenfolge: `widget created`,
 `call page loaded`, `widget ready`, `OpenID requested` und `call joined` (Element Call ist bereit, noch ohne LiveKit),
 `LiveKit token request done` (Dauer des JWT-Abrufs), `media connected`, `first tile shown`, `another person shown`.
-Der größte `+ms`-Wert zeigt den langsamen Abschnitt.
+Große `+ms`-Werte grenzen auffällige Lücken ein; mehrere Schritte können parallel laufen.
+Die Ressourcendauer beim Token-Abruf kann bei fehlenden Cross-Origin-Timingrechten eingeschränkt sein.
+Die ursprüngliche Verzögerung auf macOS bleibt ohne eine solche Messung ungeklärt.
 
 ## 6. Linux / Electron
 

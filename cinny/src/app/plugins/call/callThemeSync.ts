@@ -3,7 +3,7 @@
  *
  * The call page (Element Call) only answers widget messages once its widget API runs. A message
  * sent earlier is lost: the app then waits 10 s for an answer and fails with "Request timed out"
- * (the unhandled rejection in the #161 log, on every call start), or with "Transport stopped" when
+ * (reproduced in the #161 Chromium test setup), or with "Transport stopped" when
  * the call ends within those 10 s. The theme used to be sent as soon as the call was created.
  *
  * So a change waits until the widget is ready, a theme the page already has (it gets the theme in

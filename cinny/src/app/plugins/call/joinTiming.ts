@@ -61,3 +61,15 @@ export const countTiles = (doc: Document | undefined | null): number => {
 
 /** How long a to-device message that the call page did not answer is retried once, in ms. */
 export const TO_DEVICE_RETRY_MS = 2000;
+
+/** Report the first media connection and detach the listener on connection or call disposal. */
+export const watchMediaConnected = (pc: RTCPeerConnection, connected: () => void): (() => void) => {
+  const onChange = () => {
+    if (pc.connectionState !== 'connected') return;
+    pc.removeEventListener('connectionstatechange', onChange);
+    connected();
+  };
+  pc.addEventListener('connectionstatechange', onChange);
+  onChange();
+  return () => pc.removeEventListener('connectionstatechange', onChange);
+};
