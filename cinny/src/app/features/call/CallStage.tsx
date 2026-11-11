@@ -1,5 +1,5 @@
 import React, { MouseEvent, useEffect, useMemo, useRef, useState } from 'react';
-import { Avatar, Icon, IconButton, Icons, Text, toRem } from 'folds';
+import { Avatar, Text, toRem } from 'folds';
 import { CallEmbed, useCallControlState } from '../../plugins/call';
 import {
   EMPTY_STAGE,
@@ -22,6 +22,14 @@ import { useLocalSpeaking } from '../../plugins/call/localSpeaking';
 import { initialsFromName } from './CallMemberCard';
 import { useAgentTalking } from '../../state/agentVoice';
 import { useShareVolume } from './useShareVolume';
+import {
+  isAnyFullscreen,
+  STREAM_CONTROLS_ATTR,
+  useElementFullscreen,
+  useIdle,
+  useStreamZoom,
+} from './useStreamView';
+import { isZoomed, ZOOM_MAX, zoomPercent, zoomTransform } from '../../plugins/call/streamZoom';
 import * as css from './styles.css';
 
 /** Who is on the call, read from Element Call and kept up to date (cheap: only on change). */
@@ -118,9 +126,12 @@ function StageVideo({
   stream,
   fit,
   mirror,
+  transform,
 }: {
   stream: MediaStream;
   fit: 'cover' | 'contain';
+  /** zoom of a stream (streamZoom.ts) */
+  transform?: string;
   /** your own camera is shown as in a mirror, like in Element and Discord */
   mirror?: boolean;
 }) {
@@ -140,6 +151,7 @@ function StageVideo({
       className={css.StageVideo}
       data-fit={fit}
       data-mirror={mirror || undefined}
+      style={transform ? { transform } : undefined}
     />
   );
 }
@@ -265,6 +277,19 @@ export function PersonTile({
   );
 }
 
+const ICON_ZOOM_IN = 'M10.5 4a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13z M15.2 15.2L20 20 M10.5 7.5v6 M7.5 10.5h6';
+const ICON_ZOOM_OUT = 'M10.5 4a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13z M15.2 15.2L20 20 M7.5 10.5h6';
+const ICON_FULLSCREEN = 'M4 9V4h5 M15 4h5v5 M20 15v5h-5 M9 20H4v-5';
+const ICON_FULLSCREEN_EXIT = 'M9 4v5H4 M20 9h-5V4 M15 20v-5h5 M4 15h5v5';
+
+function ToolIcon({ d }: { d: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={css.StageToolIcon} aria-hidden="true">
+      <path d={d} />
+    </svg>
+  );
+}
+
 export function ShareTile({
   share,
   doc,
@@ -273,6 +298,11 @@ export function ShareTile({
   onSelect,
 }: TileProps & { share: StageShare; doc: Document | undefined }) {
   const tileRef = useRef<HTMLDivElement>(null);
+  const { fullscreen, toggleFullscreen } = useElementFullscreen(tileRef);
+  const large = !!focused || fullscreen;
+  const { zoom, dragging, zoomIn, zoomOut, resetZoom, wasDrag } = useStreamZoom(tileRef, large);
+  const zoomed = isZoomed(zoom);
+  const idle = useIdle(tileRef, fullscreen);
   // turned down to nothing for you (right-click > Stream Volume): shown on the name tag
   const volume = useShareVolume(doc, share.id, share.userId);
   const mutedForMe = !!volume?.hasAudio && volume.volume === 0;
@@ -284,6 +314,34 @@ export function ShareTile({
     evt.preventDefault();
     openCallUserMenu(share.userId, evt.clientX, evt.clientY, share.id);
   };
+  // a click ends a drag of the zoomed picture, or would close the large view: in full screen
+  // and while zoomed in it does nothing (zoom back out or leave full screen first)
+  const handleClick = () => {
+    if (wasDrag()) return;
+    if (fullscreen || zoomed) return;
+    onSelect();
+  };
+
+  // keys while the stream fills the screen: + and - zoom, 0 resets, F leaves full screen
+  useEffect(() => {
+    if (!fullscreen) return undefined;
+    const onKeyDown = (evt: KeyboardEvent) => {
+      if (evt.metaKey || evt.ctrlKey || evt.altKey) return;
+      if (evt.key === '+' || evt.key === '=') zoomIn();
+      else if (evt.key === '-') zoomOut();
+      else if (evt.key === '0') resetZoom();
+      else if (evt.key === 'f' || evt.key === 'F') toggleFullscreen();
+      else return;
+      evt.preventDefault();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [fullscreen, zoomIn, zoomOut, resetZoom, toggleFullscreen]);
+
+  let hitLabel = `Watch ${label}`;
+  if (fullscreen) hitLabel = label;
+  else if (focused) hitLabel = `Stop watching ${label} large`;
+
   return (
     <div
       ref={tileRef}
@@ -291,36 +349,75 @@ export function ShareTile({
       data-kind="stream"
       data-focused={focused || undefined}
       data-small={small || undefined}
+      data-zoomed={zoomed || undefined}
+      data-dragging={dragging || undefined}
+      data-fullscreen={fullscreen || undefined}
+      data-idle={idle || undefined}
       style={{ ['--stage-ratio' as string]: ratio.toFixed(4) }}
     >
       <button
         type="button"
         className={css.StageTileHit}
-        onClick={onSelect}
+        onClick={handleClick}
+        onDoubleClick={fullscreen ? toggleFullscreen : undefined}
         onContextMenu={handleContextMenu}
-        aria-label={focused ? `Stop watching ${label} large` : `Watch ${label}`}
+        aria-label={hitLabel}
       />
       {share.video ? (
-        <StageVideo stream={share.video} fit="contain" />
+        <StageVideo stream={share.video} fit="contain" transform={zoomTransform(zoom)} />
       ) : (
         <Text size="T300" priority="300" className={css.StageWaiting}>
           Waiting for the stream…
         </Text>
       )}
       <span className={css.StageLive}>LIVE</span>
-      {focused && (
-        <IconButton
-          className={css.StageCorner}
-          variant="Surface"
-          fill="None"
-          size="300"
-          radii="300"
-          aria-label="Full screen"
-          title="Full screen"
-          onClick={() => tileRef.current?.requestFullscreen?.().catch(() => undefined)}
+      {large && (
+        <div
+          className={css.StageToolbar}
+          {...{ [STREAM_CONTROLS_ATTR]: true }}
+          role="toolbar"
+          aria-label="Stream view"
         >
-          <Icon size="100" src={Icons.External} />
-        </IconButton>
+          <button
+            type="button"
+            className={css.StageToolButton}
+            onClick={zoomOut}
+            disabled={!zoomed}
+            aria-label="Zoom out"
+            title="Zoom out"
+          >
+            <ToolIcon d={ICON_ZOOM_OUT} />
+          </button>
+          <button
+            type="button"
+            className={css.StageToolZoom}
+            onClick={resetZoom}
+            disabled={!zoomed}
+            aria-label={zoomed ? `Zoom ${zoomPercent(zoom)} %, reset` : 'Not zoomed'}
+            title={zoomed ? 'Reset zoom' : 'Scroll or pinch to zoom'}
+          >
+            {zoomPercent(zoom)}%
+          </button>
+          <button
+            type="button"
+            className={css.StageToolButton}
+            onClick={zoomIn}
+            disabled={zoom.scale >= ZOOM_MAX}
+            aria-label="Zoom in"
+            title="Zoom in"
+          >
+            <ToolIcon d={ICON_ZOOM_IN} />
+          </button>
+          <button
+            type="button"
+            className={css.StageToolButton}
+            onClick={toggleFullscreen}
+            aria-label={fullscreen ? 'Exit full screen' : 'Full screen'}
+            title={fullscreen ? 'Exit full screen (Esc)' : 'Full screen'}
+          >
+            <ToolIcon d={fullscreen ? ICON_FULLSCREEN_EXIT : ICON_FULLSCREEN} />
+          </button>
+        </div>
       )}
       <span className={css.StageTag}>
         <TagIcon d={ICON_SCREEN} />
@@ -389,7 +486,8 @@ export function CallStage({ callEmbed }: { callEmbed: CallEmbed }) {
   useEffect(() => {
     if (!focusKey) return undefined;
     const onKeyDown = (evt: KeyboardEvent) => {
-      if (evt.key === 'Escape') setFocusKey(undefined);
+      // in full screen Escape only leaves full screen (useElementFullscreen)
+      if (evt.key === 'Escape' && !isAnyFullscreen()) setFocusKey(undefined);
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);

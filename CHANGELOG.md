@@ -1,5 +1,9 @@
 # Changelog
 
+## Unveröffentlicht
+
+- **Stream zoomen und Vollbild:** Im großen Stream-Fenster eines Calls zoomen Mausrad und Trackpad-Pinch zur Mausposition (bis 800 %), der gezoomte Ausschnitt lässt sich mit der Maus verschieben. Oben rechts sitzt eine Leiste mit −, Zoomstufe (Klick setzt zurück), + und Vollbild. Im Vollbild füllt der Stream den ganzen Bildschirm ohne Rahmen; Leiste, Name und Mauszeiger blenden sich nach 2,5 s Ruhe aus. Tasten im Vollbild: `+`/`-` zoomen, `0` setzt zurück, `F`, `Esc` oder Doppelklick verlassen es. Solange gezoomt oder im Vollbild, schließt ein Klick die große Ansicht nicht mehr versehentlich.
+
 ## 1.5.4 (2026-11-11)
 
 - **Profil wurde beim Start überschrieben:** In Optionsräumen im Nachrichtenmodus oder mit Verschlüsselung kommt das eigene Profil erst mit dem Nachladen des Verlaufs. Die automatische Versionsangabe, der Status, die Einführung und der Profil-Editor konnten vorher speichern und so ein leeres Profil für alle schreiben. Schreiben wartet jetzt, bis das Profil geladen ist; „Save changes“ ist bis dahin gesperrt.

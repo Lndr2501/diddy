@@ -655,17 +655,110 @@ export const StageLive = style({
   letterSpacing: '0.05em',
 });
 
-export const StageCorner = style({
+// Zoom and full screen of the large stream (CallStage.tsx, streamZoom.ts)
+export const StageToolbar = style({
   position: 'absolute',
   zIndex: 2,
   top: toRem(8),
   right: toRem(8),
+  display: 'flex',
+  alignItems: 'center',
+  gap: toRem(2),
+  padding: toRem(3),
+  borderRadius: toRem(10),
+  backgroundColor: 'rgba(18, 18, 18, 0.66)',
+  color: '#F2F2F2',
+  transition: 'opacity 200ms ease',
   selectors: {
-    '&[class]': {
-      backgroundColor: 'rgba(18, 18, 18, 0.66)',
-      color: '#F2F2F2',
+    [`${StageTile}[data-fullscreen] &`]: {
+      top: toRem(16),
+      right: toRem(16),
     },
   },
+  '@media': {
+    [REDUCED_MOTION]: { transition: 'none' },
+  },
+});
+
+const toolButton = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  height: toRem(28),
+  margin: 0,
+  border: 'none',
+  borderRadius: toRem(7),
+  background: 'transparent',
+  color: 'inherit',
+  font: 'inherit',
+  cursor: 'pointer',
+} as const;
+
+export const StageToolButton = style({
+  ...toolButton,
+  width: toRem(28),
+  padding: 0,
+  selectors: {
+    '&:hover:not(:disabled)': { backgroundColor: 'rgba(255, 255, 255, 0.14)' },
+    '&:disabled': { opacity: 0.4, cursor: 'default' },
+    '&:focus-visible': t.focusOutline,
+  },
+});
+
+export const StageToolZoom = style({
+  ...toolButton,
+  minWidth: toRem(46),
+  padding: `0 ${toRem(4)}`,
+  fontSize: toRem(12),
+  fontWeight: 600,
+  fontVariantNumeric: 'tabular-nums',
+  selectors: {
+    '&:hover:not(:disabled)': { backgroundColor: 'rgba(255, 255, 255, 0.14)' },
+    '&:disabled': { opacity: 0.6, cursor: 'default' },
+    '&:focus-visible': t.focusOutline,
+  },
+});
+
+export const StageToolIcon = style({
+  width: toRem(17),
+  height: toRem(17),
+  fill: 'none',
+  stroke: 'currentColor',
+  strokeWidth: 1.9,
+  strokeLinecap: 'round',
+  strokeLinejoin: 'round',
+});
+
+// the zoomed picture can be dragged around
+globalStyle(`${StageTile}[data-zoomed] > ${StageTileHit}`, { cursor: 'grab' });
+globalStyle(`${StageTile}[data-dragging], ${StageTile}[data-dragging] > ${StageTileHit}`, {
+  cursor: 'grabbing',
+});
+globalStyle(`${StageTile}[data-zoomed] > ${StageVideo}`, { transformOrigin: '0 0' });
+
+// full screen: the stream fills the whole screen, without frame or rounded corners. Two rules,
+// because a selector list with a pseudo-class the engine does not know is dropped as a whole.
+const fullscreenTile = {
+  width: '100vw',
+  height: '100vh',
+  maxWidth: 'none',
+  maxHeight: 'none',
+  border: 'none',
+  borderRadius: 0,
+  boxShadow: 'none',
+  backgroundColor: '#000',
+} as const;
+globalStyle(`${StageTile}:fullscreen`, fullscreenTile);
+globalStyle(`${StageTile}:-webkit-full-screen`, fullscreenTile);
+globalStyle(`${StageTile}::backdrop`, { backgroundColor: '#000' });
+
+// in full screen the controls, name tag and pointer fade out while the pointer rests
+globalStyle(
+  `${StageTile}[data-idle] > ${StageToolbar}, ${StageTile}[data-idle] > ${StageTag}, ${StageTile}[data-idle] > ${StageLive}`,
+  { opacity: 0, pointerEvents: 'none' }
+);
+globalStyle(`${StageTile}[data-idle], ${StageTile}[data-idle] > ${StageTileHit}`, {
+  cursor: 'none',
 });
 
 // Watch together (#83): the YouTube panel above the call stage.
