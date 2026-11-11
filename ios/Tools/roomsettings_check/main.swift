@@ -238,6 +238,30 @@ check(RoomUpgradeRequest.body(version: "11", additionalCreators: ["@a:s"], me: "
 
 check(RoomEncryptionRule.content["algorithm"] as? String == "m.megolm.v1.aes-sha2", "megolm")
 
+// MARK: Moderation
+
+check(RoomModerationAction.kick.title == "Kick" && RoomModerationAction.ban.text.contains("cannot rejoin until unbanned"), "moderation texts")
+check(RoomModerationAction.kick.endpoint == "kick" && RoomModerationAction.unban.endpoint == "unban", "moderation endpoints")
+check(RoomModerationAction.kick.asksForReason && RoomModerationAction.ban.asksForReason && !RoomModerationAction.unban.asksForReason, "reason asked for kick and ban only")
+let kickBody = RoomModerationAction.kick.body(userId: "@a:s", reason: "  spam  ")
+check(kickBody["user_id"] as? String == "@a:s" && kickBody["reason"] as? String == "spam", "reason trimmed")
+check(RoomModerationAction.ban.body(userId: "@a:s", reason: "   ")["reason"] == nil, "empty reason left out")
+check(RoomModerationAction.ban.body(userId: "@a:s", reason: nil)["reason"] == nil, "no reason left out")
+
+// MARK: Roles
+
+let roleLevels = RoomPowerLevelsModel(content: json(##"{"users":{"@me:s":100,"@mod:s":50,"@low:s":0},"state_default":50}"##))
+let rolePerms = RoomPermissionsModel(creators: [], levels: roleLevels)
+check(RoomRoleChange.outcome(power: 50, target: "@low:s", me: "@me:s", permissions: rolePerms) == .apply, "promote a lower member")
+check(RoomRoleChange.outcome(power: 100, target: "@low:s", me: "@me:s", permissions: rolePerms) == .confirmSharedPower, "same power as yourself asks first")
+check(RoomRoleChange.outcome(power: 50, target: "@me:s", me: "@me:s", permissions: rolePerms) == .confirmSelfDemote, "demoting yourself asks first")
+check(RoomRoleChange.outcome(power: 100, target: "@me:s", me: "@me:s", permissions: rolePerms) == .unchanged, "same power is unchanged")
+check(RoomRoleChange.outcome(power: 0, target: "@mod:s", me: "@low:s", permissions: rolePerms) == .refused, "no power to change roles")
+check(RoomRoleChange.outcome(power: 150, target: "@low:s", me: "@me:s", permissions: rolePerms) == .refused, "cannot hand out more than your own power")
+check(RoomRoleChange.outcome(power: 100, target: "@low:s", me: "@me:s", permissions: RoomPermissionsModel(creators: ["@me:s"], levels: roleLevels)) == .apply, "creators share power without asking")
+let roleContent = roundTrip(RoomRoleChange.content(levels: roleLevels, userId: "@low:s", power: 50))
+check((roleContent["users"] as? [String: Any])?["@low:s"] as? Int == 50 && (roleContent["users"] as? [String: Any])?["@me:s"] as? Int == 100, "power set, others kept")
+
 if failures == 0 {
     print("roomsettings_check: all checks passed")
 } else {

@@ -791,3 +791,85 @@ enum RoomUpgradeRequest {
         return body
     }
 }
+
+// MARK: - Moderation requests
+
+/// The four membership requests of the profile card and the member lists
+/// (`POST /rooms/{id}/invite|kick|ban|unban`). The texts are desktop's `ACTION_TEXT`.
+enum RoomModerationAction: String, Identifiable {
+    case invite, kick, ban, unban
+    var id: String { rawValue }
+
+    /// The path segment after `/rooms/{id}/`.
+    var endpoint: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .invite: return "Invite"
+        case .kick: return "Kick"
+        case .ban: return "Ban"
+        case .unban: return "Unban"
+        }
+    }
+
+    var text: String {
+        switch self {
+        case .invite: return "will be invited back to this room."
+        case .kick: return "will be removed from this room. They can rejoin if the room allows it."
+        case .ban: return "will be removed from this room and cannot rejoin until unbanned."
+        case .unban: return "will be able to join this room again."
+        }
+    }
+
+    /// Kick and ban ask for a reason first; inviting back and unbanning go straight through.
+    var asksForReason: Bool { self == .kick || self == .ban || self == .invite }
+
+    /// `reason` is optional: trimmed, and left out when empty (desktop `value.trim() || undefined`).
+    func body(userId: String, reason: String?) -> [String: Any] {
+        var body: [String: Any] = ["user_id": userId]
+        if let reason = reason?.trimmingCharacters(in: .whitespacesAndNewlines), !reason.isEmpty {
+            body["reason"] = reason
+        }
+        return body
+    }
+}
+
+// MARK: - Changing someone's role
+
+/// Desktop `PowerChip`: what changing the power of a member needs.
+enum RoomRoleChange {
+    enum Outcome: Equatable {
+        /// You may not change this member's power.
+        case refused
+        /// Already at this power.
+        case unchanged
+        /// Demoting yourself: asks first, "You will not be able to regain this power yourself".
+        case confirmSelfDemote
+        /// Giving someone your own power: asks first, you cannot change theirs afterwards.
+        case confirmSharedPower
+        case apply
+    }
+
+    static let powerLevelsType = "m.room.power_levels"
+
+    static func canChange(me: String, target: String, permissions: RoomPermissionsModel) -> Bool {
+        permissions.stateEvent(powerLevelsType, me) && (me == target ? true : permissions.hasMorePower(me, than: target))
+    }
+
+    static func outcome(power: Int, target: String, me: String, permissions: RoomPermissionsModel) -> Outcome {
+        guard canChange(me: me, target: target, permissions: permissions) else { return .refused }
+        guard permissions.canAssign(power, by: me) else { return .refused }
+        let levels = permissions.levels
+        if power == levels.user(target) { return .unchanged }
+        if target == me { return .confirmSelfDemote }
+        if !permissions.creators.contains(me) && power == levels.user(me) { return .confirmSharedPower }
+        return .apply
+    }
+
+    /// The `m.room.power_levels` content with the member's power set (js-sdk `setPowerLevel`).
+    static func content(levels: RoomPowerLevelsModel, userId: String, power: Int) -> [String: Any] {
+        var edited = levels
+        edited.apply(power, at: .user(userId))
+        return edited.content
+    }
+}
