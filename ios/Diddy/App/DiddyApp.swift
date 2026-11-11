@@ -3,7 +3,6 @@ import SwiftUI
 @main
 struct DiddyApp: App {
     @StateObject private var app = AppModel()
-    @ObservedObject private var themes = ThemeStore.shared
 
     init() {
         DiagLog.shared.setUp()
@@ -16,8 +15,7 @@ struct DiddyApp: App {
             RootView()
                 .environmentObject(app)
                 .environmentObject(app.calls)
-                .preferredColorScheme(themes.theme.isLight ? .light : .dark)
-                .tint(themes.theme.accent)
+                .diddyAppearance()
                 .task { await app.restore() }
         }
     }

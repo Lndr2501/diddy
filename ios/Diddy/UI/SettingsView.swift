@@ -41,6 +41,8 @@ struct SettingsView: View {
 
                 ThemeSection()
 
+                DisplaySection()
+
                 Section {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 64), spacing: 14)], spacing: 14) {
                         ForEach(AppIconChoice.allCases) { choice in
@@ -114,6 +116,7 @@ struct SettingsView: View {
             .scrollContentBackground(.hidden)
             .background(Theme.sidebar)
             .navigationTitle("Settings")
+            .diddyMonochrome()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }

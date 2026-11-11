@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// One of the desktop app's colour themes, mapped to the iOS colour roles (see `Theme`).
 ///
@@ -39,7 +40,17 @@ struct DiddyTheme: Identifiable, Equatable {
     ]
 
     static func named(_ id: String?) -> DiddyTheme {
-        all.first { $0.id == id } ?? .diddy
+        if id == AppearanceLogic.customThemeId { return custom(ThemeStore.savedCustomConfig()) }
+        return all.first { $0.id == id } ?? .diddy
+    }
+
+    /// Desktop's "Custom" theme: the dark palette built from three colours (`darkPalette()`).
+    static func custom(_ config: CustomThemeConfig) -> DiddyTheme {
+        accentOnBlack(
+            id: AppearanceLogic.customThemeId, name: "Custom",
+            background: AppearanceLogic.parseHex(config.background) ?? 0x0E0E12,
+            accent: AppearanceLogic.parseHex(config.accent) ?? 0xFF4FA3,
+            text: AppearanceLogic.parseHex(config.text) ?? 0xF2F2F5)
     }
 
     // MARK: Building
@@ -146,46 +157,159 @@ extension Color {
 
 /// The chosen theme, stored on this device. Changing it rebuilds the UI (`DiddyApp` and `MainView`
 /// watch `id`), because the `Theme` colours are plain values and not observed by single views.
+///
+/// Like desktop: one fixed theme, or "Match System Appearance" with a light and a dark choice, and
+/// a custom theme made of three colours.
 @MainActor
 final class ThemeStore: ObservableObject {
     static let shared = ThemeStore()
     static let key = "diddy.theme"
+    static let useSystemKey = "diddy.theme.useSystem"
+    static let lightKey = "diddy.theme.light"
+    static let darkKey = "diddy.theme.dark"
+    static let systemLightKey = "diddy.theme.systemIsLight"
+    static let customKey = "customTheme"
+    static let monochromeKey = "diddy.monochrome"
+    static let zoomKey = "diddy.pageZoom"
 
+    static let defaultLightID = "light-theme"
+
+    /// Identity of what is on screen: the active theme, and for the custom theme its colours too.
+    /// Views use it with `.id(...)` to rebuild when it changes.
     @Published private(set) var id: String
+    /// The fixed theme (used while "Match System Appearance" is off).
+    @Published private(set) var selectedId: String
+    @Published private(set) var useSystem: Bool
+    @Published private(set) var lightId: String
+    @Published private(set) var darkId: String
+    @Published private(set) var custom: CustomThemeConfig
+    @Published private(set) var systemIsLight: Bool
 
-    var theme: DiddyTheme { DiddyTheme.named(id) }
+    /// The theme in use.
+    var theme: DiddyTheme { DiddyTheme.current }
 
     private init() {
-        id = DiddyTheme.current.id
+        let defaults = UserDefaults.standard
+        let config = Self.savedCustomConfig()
+        useSystem = defaults.bool(forKey: Self.useSystemKey)
+        selectedId = defaults.string(forKey: Self.key) ?? DiddyTheme.defaultID
+        lightId = defaults.string(forKey: Self.lightKey) ?? Self.defaultLightID
+        darkId = defaults.string(forKey: Self.darkKey) ?? DiddyTheme.defaultID
+        systemIsLight = defaults.object(forKey: Self.systemLightKey) as? Bool ?? false
+        custom = config
+        id = Self.token(for: DiddyTheme.current.id, custom: config)
+    }
+
+    nonisolated static func savedCustomConfig() -> CustomThemeConfig {
+        CustomThemeConfig.decode(UserDefaults.standard.string(forKey: customKey))
+    }
+
+    nonisolated static func savedActiveId() -> String {
+        let defaults = UserDefaults.standard
+        return AppearanceLogic.activeThemeId(
+            useSystem: defaults.bool(forKey: useSystemKey),
+            systemIsLight: defaults.object(forKey: systemLightKey) as? Bool ?? false,
+            themeId: defaults.string(forKey: key) ?? DiddyTheme.defaultID,
+            lightId: defaults.string(forKey: lightKey) ?? defaultLightID,
+            darkId: defaults.string(forKey: darkKey) ?? DiddyTheme.defaultID)
     }
 
     nonisolated static func savedTheme() -> DiddyTheme {
-        DiddyTheme.named(UserDefaults.standard.string(forKey: key))
+        DiddyTheme.named(savedActiveId())
     }
 
+    private static func token(for themeId: String, custom: CustomThemeConfig) -> String {
+        themeId == AppearanceLogic.customThemeId ? themeId + custom.encoded() : themeId
+    }
+
+    /// A fixed theme.
     func select(_ theme: DiddyTheme) {
-        guard theme.id != id else { return }
         UserDefaults.standard.set(theme.id, forKey: Self.key)
-        DiddyTheme.current = theme
-        id = theme.id
+        selectedId = theme.id
+        refresh()
+    }
+
+    func setUseSystem(_ isOn: Bool) {
+        guard isOn != useSystem else { return }
+        UserDefaults.standard.set(isOn, forKey: Self.useSystemKey)
+        useSystem = isOn
+        if isOn { setSystemIsLight(UIScreen.main.traitCollection.userInterfaceStyle != .dark) }
+        refresh()
+    }
+
+    func setLight(_ theme: DiddyTheme) {
+        UserDefaults.standard.set(theme.id, forKey: Self.lightKey)
+        lightId = theme.id
+        refresh()
+    }
+
+    func setDark(_ theme: DiddyTheme) {
+        UserDefaults.standard.set(theme.id, forKey: Self.darkKey)
+        darkId = theme.id
+        refresh()
+    }
+
+    func setCustom(_ config: CustomThemeConfig) {
+        guard config != custom else { return }
+        UserDefaults.standard.set(config.encoded(), forKey: Self.customKey)
+        custom = config
+        refresh()
+    }
+
+    /// The system went light or dark (read where the app is shown, while the theme follows it).
+    func systemAppearanceChanged(isLight: Bool) {
+        guard useSystem, isLight != systemIsLight else { return }
+        setSystemIsLight(isLight)
+        refresh()
+    }
+
+    private func setSystemIsLight(_ isLight: Bool) {
+        UserDefaults.standard.set(isLight, forKey: Self.systemLightKey)
+        systemIsLight = isLight
+    }
+
+    private func refresh() {
+        let activeId = AppearanceLogic.activeThemeId(
+            useSystem: useSystem, systemIsLight: systemIsLight,
+            themeId: selectedId, lightId: lightId, darkId: darkId)
+        let token = Self.token(for: activeId, custom: custom)
+        guard token != id else { return }
+        DiddyTheme.current = DiddyTheme.named(activeId)
+        id = token
     }
 }
 
-/// Settings > Theme: a tile per theme, drawn with the theme's own surfaces like the desktop's.
+/// Settings > Theme: a tile per theme, drawn with the theme's own surfaces like the desktop's. With
+/// "Match System Appearance" a light and a dark choice, like desktop.
 struct ThemeSection: View {
     @ObservedObject private var store = ThemeStore.shared
 
+    private var lightThemes: [DiddyTheme] { DiddyTheme.all.filter { $0.isLight } }
+    private var darkThemes: [DiddyTheme] { DiddyTheme.all.filter { !$0.isLight } + [DiddyTheme.custom(store.custom)] }
+    private var allThemes: [DiddyTheme] { DiddyTheme.all + [DiddyTheme.custom(store.custom)] }
+
     var body: some View {
         Section {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 92), spacing: 12)], spacing: 14) {
-                ForEach(DiddyTheme.all) { theme in
-                    Button { store.select(theme) } label: { tile(theme) }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(theme.name)
-                        .accessibilityAddTraits(store.id == theme.id ? .isSelected : [])
+            Toggle(isOn: Binding(get: { store.useSystem }, set: { store.setUseSystem($0) })) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Match System Appearance")
+                    Text("Switch between a light and a dark theme together with your system.")
+                        .font(.caption).foregroundStyle(Theme.muted)
                 }
             }
-            .padding(.vertical, 6)
+            if store.useSystem {
+                group(
+                    title: "Light Appearance",
+                    note: store.systemIsLight ? "In use now." : "Used when your system is in light mode.",
+                    themes: lightThemes, selected: store.lightId, onSelect: { store.setLight($0) })
+                group(
+                    title: "Dark Appearance",
+                    note: store.systemIsLight ? "Used when your system is in dark mode." : "In use now.",
+                    themes: darkThemes, selected: store.darkId, onSelect: { store.setDark($0) })
+            } else {
+                grid(allThemes, selected: store.selectedId, onSelect: { store.select($0) })
+            }
+            NavigationLink { CustomThemeView() } label: { Label("Custom Theme Colors", systemImage: "paintpalette.fill") }
         } header: {
             Text("Theme")
         } footer: {
@@ -193,7 +317,34 @@ struct ThemeSection: View {
         }
     }
 
-    private func tile(_ theme: DiddyTheme) -> some View {
+    private func group(title: String, note: String, themes: [DiddyTheme], selected: String, onSelect: @escaping (DiddyTheme) -> Void) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title).font(.subheadline.weight(.semibold))
+            Text(note).font(.caption).foregroundStyle(Theme.muted)
+            grid(themes, selected: selected, onSelect: onSelect)
+        }
+        .padding(.vertical, 4)
+    }
+
+    private func grid(_ themes: [DiddyTheme], selected: String, onSelect: @escaping (DiddyTheme) -> Void) -> some View {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 92), spacing: 12)], spacing: 14) {
+            ForEach(themes) { theme in
+                Button { onSelect(theme) } label: { DiddyThemeTile(theme: theme, isSelected: selected == theme.id) }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(theme.name)
+                    .accessibilityAddTraits(selected == theme.id ? .isSelected : [])
+            }
+        }
+        .padding(.vertical, 6)
+    }
+}
+
+/// A miniature of a theme: the server rail, the sidebar and a chat with an input and the accent.
+struct DiddyThemeTile: View {
+    let theme: DiddyTheme
+    let isSelected: Bool
+
+    var body: some View {
         VStack(spacing: 6) {
             HStack(spacing: 0) {
                 theme.rail.frame(width: 10)
@@ -216,13 +367,13 @@ struct ThemeSection: View {
             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .stroke(store.id == theme.id ? Theme.accent : Color.gray.opacity(0.35), lineWidth: store.id == theme.id ? 3 : 1)
+                    .stroke(isSelected ? Theme.accent : Color.gray.opacity(0.35), lineWidth: isSelected ? 3 : 1)
             )
             Text(theme.name)
                 .font(.caption)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
-                .foregroundStyle(store.id == theme.id ? Theme.text : Theme.muted)
+                .foregroundStyle(isSelected ? Theme.text : Theme.muted)
         }
     }
 }
