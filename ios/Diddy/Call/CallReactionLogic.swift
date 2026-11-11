@@ -55,21 +55,32 @@ enum CallReactions {
         let ts: Double
     }
 
-    /// Reads a whole event (the decrypted JSON the SDK keeps). Remote content is hostile: anything
-    /// that is not a reaction to a membership event with an emoji is ignored. Like Element Call,
-    /// only the first character counts, and a known name shows its own emoji.
+    /// Reads a whole event (JSON with type, sender and content).
     static func parse(eventJson json: String) -> Received? {
         guard let data = json.data(using: .utf8),
               let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
               object["type"] as? String == eventType,
-              let sender = object["sender"] as? String, sender.hasPrefix("@"),
+              let sender = object["sender"] as? String,
               let content = object["content"] as? [String: Any],
+              let contentData = try? JSONSerialization.data(withJSONObject: content),
+              let contentJson = String(data: contentData, encoding: .utf8)
+        else { return nil }
+        let ts = (object["origin_server_ts"] as? NSNumber)?.doubleValue ?? 0
+        return parse(sender: sender, contentJson: contentJson, ts: ts)
+    }
+
+    /// Reads the content of a reaction event. Remote content is hostile: anything that is not a
+    /// reaction to a membership event with an emoji is ignored. Like Element Call, only the first
+    /// character counts, and a known name shows its own emoji.
+    static func parse(sender: String, contentJson: String, ts: Double) -> Received? {
+        guard sender.hasPrefix("@"),
+              let data = contentJson.data(using: .utf8),
+              let content = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
               let relation = content["m.relates_to"] as? [String: Any],
               relation["rel_type"] as? String == "m.reference",
               let target = relation["event_id"] as? String, target.hasPrefix("$"),
               let raw = content["emoji"] as? String
         else { return nil }
-        let ts = (object["origin_server_ts"] as? NSNumber)?.doubleValue ?? 0
         if let name = content["name"] as? String, let known = options.first(where: { $0.name == name }) {
             return Received(sender: sender, emoji: known.emoji, ts: ts)
         }

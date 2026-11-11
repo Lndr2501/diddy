@@ -48,6 +48,14 @@ private final class CaptureProcessor: NSObject, AudioCustomProcessingDelegate, @
             }
         }
         lock.unlock()
+        // "Input volume" of the call devices menu: turns the microphone down (never up).
+        let gain = MicGain.shared.gain
+        if gain < 0.999 {
+            for channel in 0..<audioBuffer.channels {
+                let samples = audioBuffer.rawBuffer(forChannel: channel)
+                for index in 0..<audioBuffer.frames { samples[index] *= gain }
+            }
+        }
         // Your voice, after RNNoise and before any soundboard clip: the level meter and the speaking
         // ring of your own tile (desktop voiceActivity.ts) read it.
         if audioBuffer.channels > 0, audioBuffer.frames > 0 {
