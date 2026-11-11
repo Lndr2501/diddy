@@ -51,6 +51,9 @@ private struct ChatContent: View {
     @StateObject private var recorder = VoiceRecorder()
     @State private var showMembers = false
     @State private var showInfo = false
+    @State private var showSearch = false
+    @State private var searchContext: SearchEventTarget?
+    @EnvironmentObject private var navigator: AppNavigator
     @State private var profile: ProfileTarget?
     @State private var viewedImage: ViewedImage?
     @State private var openedFile: URL?
@@ -107,6 +110,8 @@ private struct ChatContent: View {
                 .accessibilityLabel("\(title), channel details")
             }
             ToolbarItemGroup(placement: .navigationBarTrailing) {
+                Button { showSearch = true } label: { Image(systemName: "magnifyingglass") }
+                    .accessibilityLabel("Search messages")
                 if !isVoiceChat {
                     Button {
                         Task { await calls.join(account: account, roomId: roomId, roomName: title, showCallScreen: true) }
@@ -121,6 +126,8 @@ private struct ChatContent: View {
                 .accessibilityLabel("Members")
             }
         }
+        .sheet(isPresented: $showSearch) { MessageSearchView(account: account, roomId: roomId) }
+        .sheet(item: $searchContext) { SearchContextView(account: account, target: $0) }
         .sheet(isPresented: $showMembers) { MembersView(account: account, roomId: roomId) }
         .sheet(isPresented: $showInfo) { ChannelInfoView(account: account, roomId: roomId) }
         .sheet(item: $profile) { UserProfileSheet(account: account, userId: $0.userId, roomId: roomId) }
@@ -245,6 +252,17 @@ private struct ChatContent: View {
                 withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo("bottom", anchor: .bottom) }
             }
             .onAppear { proxy.scrollTo("bottom", anchor: .bottom) }
+            .task(id: "\(navigator.searchTarget?.id ?? "")|\(showSearch)") {
+                guard !showSearch, let target = navigator.searchTarget, target.roomId == roomId else { return }
+                navigator.searchTarget = nil
+                if let row = controller.rows.first(where: {
+                    if case .eventId(let id)? = $0.eventId { return id == target.eventId }
+                    return false
+                }) {
+                    atBottom = false
+                    proxy.scrollTo(row.id, anchor: .center)
+                } else { searchContext = target }
+            }
             .overlay(alignment: .bottomTrailing) {
                 if !atBottom {
                     Button {

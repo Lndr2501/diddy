@@ -14,6 +14,7 @@ final class AppNavigator: ObservableObject {
         didSet { UserDefaults.standard.set(server, forKey: "diddy.lastServer") }
     }
     @Published var destination: Destination?
+    @Published var searchTarget: SearchEventTarget?
 
     init() { server = UserDefaults.standard.string(forKey: "diddy.lastServer") }
 
@@ -201,6 +202,7 @@ struct ChannelSidebar: View {
     @State private var joinError: String?
     @State private var showRecovery = false
     @State private var filter = ""
+    @State private var showSearch = false
     @State private var joining: Set<String> = []
     @State private var sheet: SidebarSheet?
     @State private var confirmLeave = false
@@ -247,6 +249,11 @@ struct ChannelSidebar: View {
                 .padding(.horizontal, 8)
                 .padding(.bottom, 6)
             }
+            Button { showSearch = true } label: {
+                Label("Search rooms, people and messages", systemImage: "magnifyingglass")
+                    .font(.subheadline).padding(10)
+            }
+            .keyboardShortcut("k", modifiers: .command)
             searchField
             List(selection: $destination) {
                 if let server {
@@ -279,6 +286,7 @@ struct ChannelSidebar: View {
         } message: {
             Text("You also leave all of its channels. You need a new invite to come back if the server is private.")
         }
+        .sheet(isPresented: $showSearch) { QuickSwitchView(account: account) }
         .sheet(isPresented: $showRecovery) { RecoveryView(account: account) }
         .sheet(item: $sheet) { sheet in
             switch sheet {
