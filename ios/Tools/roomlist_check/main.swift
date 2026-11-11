@@ -235,6 +235,37 @@ if let data = FileManager.default.contents(atPath: "../config.json"),
     print("config.json not found, featured lists not compared")
 }
 
+
+// MARK: Via servers (desktop getViaServers)
+check(ViaServers.pick(memberIds: ["@a:one.org", "@b:two.org", "@c:two.org", "@d:three.org", "@e:four.org"], fallback: ["own.org"]) == ["two.org", "one.org", "three.org"], "via: most populous first, at most three")
+check(ViaServers.pick(memberIds: [], fallback: ["a.org", "b.org"]) == ["a.org", "b.org"], "via: fallback without members")
+check(ViaServers.pick(memberIds: ["@a:one.org"], fallback: ["one.org", "own.org"]) == ["one.org", "own.org"], "via: no duplicates from the fallback")
+
+// MARK: Server tree
+let treeRooms: [[String: Any]] = [
+    ["room_id": "!root:x", "name": "Root", "room_type": "m.space", "children_state": [
+        ["type": "m.space.child", "state_key": "!late:x", "origin_server_ts": 20, "content": ["via": ["x"]]],
+        ["type": "m.space.child", "state_key": "!sub:x", "origin_server_ts": 30, "content": ["via": ["x"], "order": "a"]],
+        ["type": "m.space.child", "state_key": "!early:x", "origin_server_ts": 10, "content": ["via": ["x"], "suggested": true]],
+        ["type": "m.space.child", "state_key": "!gone:x", "origin_server_ts": 5, "content": [String: Any]()],
+    ]],
+    ["room_id": "!sub:x", "name": "Sub", "room_type": "m.space", "children_state": [
+        ["type": "m.space.child", "state_key": "!inner:x", "content": ["via": ["x"]]],
+        ["type": "m.space.child", "state_key": "!root:x", "content": ["via": ["x"]]],
+    ]],
+    ["room_id": "!early:x", "name": "early", "num_joined_members": 4],
+    ["room_id": "!late:x", "name": "", "canonical_alias": "#late:x", "room_type": "org.matrix.msc3417.call"],
+    ["room_id": "!inner:x", "name": "inner"],
+    ["room_id": "!gone:x", "name": "gone"],
+]
+let rows = ServerHierarchy.flatten(hierarchyRooms: treeRooms, rootId: "!root:x")
+check(rows.map(\.roomId) == ["!sub:x", "!inner:x", "!early:x", "!late:x"], "tree order: order string first, then age; nested; loop and removed child skipped; got \(rows.map(\.roomId))")
+check(rows.map(\.depth) == [0, 1, 0, 0], "tree depth")
+check(rows[2].suggested && rows[2].memberCount == 4, "suggested flag and member count")
+check(rows[3].name == "#late:x" && rows[3].isVoice, "empty name falls back to the alias; voice type")
+check(rows[1].parentId == "!sub:x", "parent of nested row")
+check(ServerHierarchy.addable(["!a", "!b", "!root"], alreadyInside: ["!a"], serverId: "!root") == ["!b"], "addable rooms")
+
 if failures == 0 {
     print("roomlist_check: all checks passed")
 } else {

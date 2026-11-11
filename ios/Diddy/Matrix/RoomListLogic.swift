@@ -538,3 +538,125 @@ enum RoomDirectory {
         return value
     }
 }
+
+// MARK: - Via servers and the server tree
+
+enum ViaServers {
+    /// Desktop's `getViaServers` without the creator: the servers most of the members are on, at
+    /// most three. `fallback` (the room's own server, yours) fills in when the member list is unknown.
+    static func pick(memberIds: [String], fallback: [String]) -> [String] {
+        var population: [String: Int] = [:]
+        var firstSeen: [String: Int] = [:]
+        for (index, member) in memberIds.enumerated() {
+            guard let server = SpaceChildLinks.serverName(of: member) else { continue }
+            population[server, default: 0] += 1
+            if firstSeen[server] == nil { firstSeen[server] = index }
+        }
+        let sorted = population.keys.sorted { lhs, rhs in
+            let a = population[lhs] ?? 0
+            let b = population[rhs] ?? 0
+            if a != b { return a > b }
+            return (firstSeen[lhs] ?? 0) < (firstSeen[rhs] ?? 0)
+        }
+        var result = Array(sorted.prefix(3))
+        for server in fallback where result.count < 3 && !result.contains(server) { result.append(server) }
+        return result
+    }
+}
+
+/// One row of a server's tree as the manage screen lists it.
+struct HierarchyRow: Identifiable, Equatable {
+    let roomId: String
+    let parentId: String
+    let depth: Int
+    var name: String
+    var isSpace: Bool
+    var isVoice: Bool
+    var suggested: Bool
+    var via: [String]
+    var memberCount: Int
+    /// The `m.space.child` content as stored, so toggling `suggested` keeps `order` and the rest.
+    var childContent: [String: Any]
+
+    var id: String { parentId + "|" + roomId }
+
+    static func == (lhs: HierarchyRow, rhs: HierarchyRow) -> Bool {
+        lhs.id == rhs.id && lhs.depth == rhs.depth && lhs.name == rhs.name && lhs.isSpace == rhs.isSpace
+            && lhs.isVoice == rhs.isVoice && lhs.suggested == rhs.suggested && lhs.via == rhs.via
+            && lhs.memberCount == rhs.memberCount
+    }
+}
+
+enum ServerHierarchy {
+    static let voiceRoomType = "org.matrix.msc3417.call"
+
+    /// The rows below `rootId` in the order the spec gives children: `order` strings first, then
+    /// the age of the link, then the room id. Rooms not listed by the server are skipped; a room that
+    /// is a child of two servers of the tree shows under both. Loops stop at the first repeat.
+    static func flatten(hierarchyRooms rooms: [[String: Any]], rootId: String) -> [HierarchyRow] {
+        var byId: [String: [String: Any]] = [:]
+        for room in rooms {
+            if let id = room["room_id"] as? String { byId[id] = room }
+        }
+        var rows: [HierarchyRow] = []
+        func visit(_ spaceId: String, depth: Int, path: Set<String>) {
+            guard let space = byId[spaceId] else { return }
+            let events = (space["children_state"] as? [[String: Any]] ?? []).filter { event in
+                guard event["type"] as? String == "m.space.child",
+                      let content = event["content"] as? [String: Any],
+                      let via = content["via"] as? [String], !via.isEmpty else { return false }
+                return true
+            }
+            for event in events.sorted(by: childBefore) {
+                guard let childId = event["state_key"] as? String,
+                      let child = byId[childId],
+                      let content = event["content"] as? [String: Any],
+                      !path.contains(childId) else { continue }
+                let type = child["room_type"] as? String
+                let isSpace = type == "m.space"
+                rows.append(HierarchyRow(
+                    roomId: childId,
+                    parentId: spaceId,
+                    depth: depth,
+                    name: (child["name"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+                        ?? (child["canonical_alias"] as? String) ?? childId,
+                    isSpace: isSpace,
+                    isVoice: type == voiceRoomType,
+                    suggested: content["suggested"] as? Bool ?? false,
+                    via: content["via"] as? [String] ?? [],
+                    memberCount: (child["num_joined_members"] as? NSNumber)?.intValue ?? 0,
+                    childContent: content
+                ))
+                if isSpace { visit(childId, depth: depth + 1, path: path.union([childId])) }
+            }
+        }
+        visit(rootId, depth: 0, path: [rootId])
+        return rows
+    }
+
+    private static func childBefore(_ a: [String: Any], _ b: [String: Any]) -> Bool {
+        func order(_ event: [String: Any]) -> String? {
+            guard let content = event["content"] as? [String: Any], let order = content["order"] as? String,
+                  !order.isEmpty, order.count <= 50,
+                  order.unicodeScalars.allSatisfy({ $0.value >= 0x20 && $0.value <= 0x7E }) else { return nil }
+            return order
+        }
+        func timestamp(_ event: [String: Any]) -> Int {
+            (event["origin_server_ts"] as? NSNumber)?.intValue ?? 0
+        }
+        let oa = order(a), ob = order(b)
+        switch (oa, ob) {
+        case let (x?, y?) where x != y: return x < y
+        case (_?, nil): return true
+        case (nil, _?): return false
+        default: break
+        }
+        if timestamp(a) != timestamp(b) { return timestamp(a) < timestamp(b) }
+        return (a["state_key"] as? String ?? "") < (b["state_key"] as? String ?? "")
+    }
+
+    /// Rooms of a list that are not yet below the server, for "Add Existing".
+    static func addable(_ candidates: [String], alreadyInside: Set<String>, serverId: String) -> [String] {
+        candidates.filter { $0 != serverId && !alreadyInside.contains($0) }
+    }
+}
