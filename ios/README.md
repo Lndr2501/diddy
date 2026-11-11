@@ -25,7 +25,7 @@ Die App ist Beta: Alles in der Tabelle ist gebaut und läuft bei den ersten Test
 | Sprachkanäle mit Desktop-Diddy und Element Call (gleiches MatrixRTC, gleiche Medien-Verschlüsselung) | 🧪 |
 | Bildschirmübertragung | 🧪 ab iOS 27 ganzer Bildschirm, davor nur Diddy selbst |
 | Stummschalten, Taubschalten, Kamera | 🧪 |
-| Call-Kacheln wie am Desktop: eine Kachel pro Person und pro Bildschirmübertragung (Avatar oder Kamera, Sprechring, Stumm-Symbol), Tippen holt eine Kachel groß nach vorn, der Rest als Vorschauleiste | 🧪 |
+| Call-Kacheln wie am Desktop: eine Kachel pro Person und pro Bildschirmübertragung (Avatar oder Kamera, Sprechring, Stumm-Symbol), Tippen holt eine Kachel groß nach vorn, der Rest als Vorschauleiste; Bildschirmübertragungen groß und im Vollbild zoombar (Pinch, Doppeltippen, gezoomt verschieben) | 🧪 |
 | Redet mit Agent: „Mit Agent reden“ schaltet das Mikro stumm und zeigt es den anderen (`app.diddy.agent_voice`), Anzeige der anderen auf Kachel und Profilkarte, Kurzbefehle-Aktion statt globalem Hotkey | 🧪 kein Schalter für den Mute-Modus |
 | Soundboard im Sprachkanal: eigene Clips (bis 20 s) aus Dateien oder per MyInstants-Suche (Vorhören, Mehrfachauswahl) importieren, alle im Call hören sie über dein Mikrofon | 🧪 ein Clip gleichzeitig; Clips bleiben auf dem Gerät; bei stummem Mikrofon hört ihn niemand (wie am Desktop) |
 | Klingeln in Direktnachrichten mit Annehmen und Ablehnen, kompatibel zu Desktop-Diddy und Element Call | 🧪 nur solange die App geöffnet ist |

@@ -99,6 +99,11 @@ jobs:
           swiftc -swift-version 5 Diddy/Matrix/ReactionEmoji.swift Tools/reaction_check/main.swift -o "$RUNNER_TEMP/diddy-reaction-check"
           "$RUNNER_TEMP/diddy-reaction-check"
 
+      - name: Check stream zoom rules
+        run: |
+          swiftc -swift-version 5 Diddy/Call/StreamZoom.swift Tools/streamzoom_check/main.swift -o "$RUNNER_TEMP/diddy-streamzoom-check"
+          "$RUNNER_TEMP/diddy-streamzoom-check"
+
       - name: Install XcodeGen
         run: command -v xcodegen || brew install xcodegen
 

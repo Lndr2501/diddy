@@ -34,8 +34,8 @@ struct StageGridLayout: Equatable {
 
     static func make(count: Int, size: CGSize, spacing: CGFloat, minCellHeight: CGFloat) -> StageGridLayout {
         let count = max(count, 1)
-        let width = max(size.width, 1)
-        let height = max(size.height, 1)
+        let width = Double(max(size.width, 1))
+        let height = Double(max(size.height, 1))
         var best = StageGridLayout(columns: 1, cellWidth: width, cellHeight: max(minCellHeight, height), rows: count)
         var bestArea: CGFloat = -1
         for columns in 1...count {
@@ -142,8 +142,7 @@ struct CallStageView: View {
                     }
                 }
         case .share:
-            ShareTile(member: item.member, size: size, role: role, onBack: { select(item) })
-                .onTapGesture { select(item) }
+            ShareTile(member: item.member, size: size, role: role, onSelect: { select(item) }, onBack: { select(item) })
         }
     }
 }
@@ -229,16 +228,26 @@ private struct ShareTile: View {
     let member: CallMember
     let size: CGSize
     let role: StageTileRole
+    /// Tap on the tile: show it large, or back to the grid when it already is.
+    let onSelect: () -> Void
     let onBack: () -> Void
     @State private var fullscreen = false
+    @State private var zoom = StreamZoom.none
 
     var body: some View {
         ZStack {
             Color.black
             if let track = member.screenShare {
-                SwiftUIVideoView(track, layoutMode: .fit, pinchToZoomOptions: role == .focus ? [.zoomIn, .resetOnRelease] : [])
-                    .id(ObjectIdentifier(track))
-                    .frame(width: size.width, height: size.height)
+                if role == .focus {
+                    ZoomableShareVideo(track: track, size: size, zoom: $zoom, onSingleTap: {
+                        // while zoomed a tap must not throw the large view away
+                        if !zoom.isZoomed { onSelect() }
+                    })
+                } else {
+                    SwiftUIVideoView(track, layoutMode: .fit)
+                        .id(ObjectIdentifier(track))
+                        .frame(width: size.width, height: size.height)
+                }
             }
         }
         .frame(width: size.width, height: size.height)
@@ -257,34 +266,154 @@ private struct ShareTile: View {
         .overlay(alignment: .topTrailing) {
             if role == .focus {
                 HStack(spacing: 6) {
+                    if zoom.isZoomed {
+                        ZoomResetButton(zoom: $zoom)
+                    }
                     StageIconButton(icon: "arrow.up.left.and.arrow.down.right", label: "Full screen") { fullscreen = true }
                     StageIconButton(icon: "square.grid.2x2", label: "Back to grid", action: onBack)
                 }
             }
         }
         .contentShape(RoundedRectangle(cornerRadius: 12))
+        .onTapGesture {
+            // the large stream handles its own taps (ZoomableShareVideo)
+            if role != .focus { onSelect() }
+        }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(member.name)'s screen")
         .accessibilityAddTraits(.isButton)
-        .accessibilityHint(role == .focus ? "Back to the grid" : "Show large")
+        .accessibilityHint(role == .focus ? "Back to the grid. Pinch or double tap to zoom." : "Show large")
         .fullScreenCover(isPresented: $fullscreen) {
-            ZStack(alignment: .topTrailing) {
-                Color.black.ignoresSafeArea()
-                // The share can end while this is open: close instead of showing a frozen frame.
-                if let track = member.screenShare {
-                    SwiftUIVideoView(track, layoutMode: .fit, pinchToZoomOptions: [.zoomIn, .resetOnRelease])
-                        .id(ObjectIdentifier(track))
-                        .ignoresSafeArea()
+            FullscreenShare(member: member, isPresented: $fullscreen)
+        }
+    }
+}
+
+/// The large stream of the call stage, or the stream in full screen: pinch zooms towards the
+/// fingers and stays zoomed, a drag moves the zoomed picture, a double tap zooms in 2.5x at that
+/// point or back out (StreamZoom, same rules as the desktop).
+private struct ZoomableShareVideo: View {
+    let track: LiveKit.VideoTrack
+    let size: CGSize
+    @Binding var zoom: StreamZoom
+    var onSingleTap: () -> Void = {}
+    @State private var pinchStart: StreamZoom?
+    @State private var dragStart: StreamZoom?
+
+    var body: some View {
+        let width = Double(max(size.width, 1))
+        let height = Double(max(size.height, 1))
+        let picture = SwiftUIVideoView(track, layoutMode: .fit)
+            .id(ObjectIdentifier(track))
+            .frame(width: size.width, height: size.height)
+            .scaleEffect(CGFloat(zoom.scale), anchor: .topLeading)
+            .offset(x: CGFloat(zoom.x * width), y: CGFloat(zoom.y * height))
+            .frame(width: size.width, height: size.height, alignment: .topLeading)
+            .clipped()
+            .contentShape(Rectangle())
+            .gesture(
+                SpatialTapGesture(count: 2)
+                    .onEnded { tap in
+                        withAnimation(.easeOut(duration: 0.2)) {
+                            zoom = zoom.doubleTapped(px: Double(tap.location.x) / width, py: Double(tap.location.y) / height)
+                        }
+                    }
+                    .exclusively(before: TapGesture().onEnded { onSingleTap() })
+            )
+            // only while zoomed: otherwise a swipe stays free for the views around
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 4)
+                    .onChanged { drag in
+                        let start = dragStart ?? zoom
+                        dragStart = start
+                        zoom = start.panned(dx: Double(drag.translation.width) / width, dy: Double(drag.translation.height) / height)
+                    }
+                    .onEnded { _ in dragStart = nil },
+                including: zoom.isZoomed ? .all : .subviews
+            )
+        return pinchable(picture)
+    }
+
+    /// iOS 17 knows where the fingers are; before that the pinch zooms towards the middle.
+    @ViewBuilder
+    private func pinchable<Content: View>(_ content: Content) -> some View {
+        if #available(iOS 17.0, *) {
+            content.simultaneousGesture(
+                MagnifyGesture()
+                    .onChanged { pinch in
+                        applyPinch(Double(pinch.magnification), px: Double(pinch.startAnchor.x), py: Double(pinch.startAnchor.y))
+                    }
+                    .onEnded { _ in pinchStart = nil }
+            )
+        } else {
+            content.simultaneousGesture(
+                MagnificationGesture()
+                    .onChanged { magnification in applyPinch(Double(magnification), px: 0.5, py: 0.5) }
+                    .onEnded { _ in pinchStart = nil }
+            )
+        }
+    }
+
+    private func applyPinch(_ magnification: Double, px: Double, py: Double) {
+        let start = pinchStart ?? zoom
+        pinchStart = start
+        zoom = start.zoomed(by: magnification, px: px, py: py)
+    }
+}
+
+/// Shows the zoom level; a tap goes back to the whole picture.
+private struct ZoomResetButton: View {
+    @Binding var zoom: StreamZoom
+
+    var body: some View {
+        Button {
+            withAnimation(.easeOut(duration: 0.2)) { zoom = .none }
+        } label: {
+            Text(verbatim: "\(zoom.percent)%")
+                .font(.system(size: 12, weight: .semibold).monospacedDigit())
+                .foregroundStyle(.white)
+                .padding(.horizontal, 10)
+                .frame(height: 32)
+                .background(Capsule().fill(.black.opacity(0.55)))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Zoom \(zoom.percent) percent, reset")
+        .padding(.vertical, 8)
+    }
+}
+
+/// A screen share on the whole screen, zoomable like the large tile, with its own zoom.
+private struct FullscreenShare: View {
+    let member: CallMember
+    @Binding var isPresented: Bool
+    @State private var zoom = StreamZoom.none
+
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+            // The share can end while this is open: close instead of showing a frozen frame.
+            if let track = member.screenShare {
+                GeometryReader { geo in
+                    ZoomableShareVideo(track: track, size: geo.size, zoom: $zoom)
                 }
-                Button { fullscreen = false } label: {
+                .ignoresSafeArea()
+            }
+        }
+        .overlay(alignment: .topTrailing) {
+            HStack(spacing: 6) {
+                if zoom.isZoomed {
+                    ZoomResetButton(zoom: $zoom)
+                }
+                Button { isPresented = false } label: {
                     Image(systemName: "xmark.circle.fill").font(.title).foregroundStyle(.white)
                 }
                 .accessibilityLabel("Close")
-                .padding()
             }
-            .onChange(of: member.screenShare == nil) { gone in
-                if gone { fullscreen = false }
-            }
+            .padding()
+        }
+        .statusBarHidden(true)
+        .onChange(of: member.screenShare == nil) { gone in
+            if gone { isPresented = false }
         }
     }
 }
