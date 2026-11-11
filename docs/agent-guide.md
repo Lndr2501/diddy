@@ -84,6 +84,13 @@ DMG: `.app` nach `~/dmg-stage` kopieren (zusammen mit Link auf `/Applications`),
 `shasum -a 256` an den Nutzer melden. Öffnen nur auf Bitte: `hdiutil attach`, vorher laufende Diddy-App beenden lassen.
 Die App wird nach dem Signieren nicht mehr verändert; installiert wird sie nicht ungefragt.
 
+Dev-DMG (Variante "Diddy Dev", ändert nichts an der installierten Diddy-App): im Build-Ordner auf dem Mac vor dem Build
+`cinny/src/app/appInfo.ts` auf `APP_VERSION = '<version>-dev'` und `DEV_BUILD_LABEL = '<branch> · <commit> · <zeit>'` setzen
+(wie `.github/workflows/build.yml`, Schritt "Dev variant") und den Build mit
+`--config '{"productName":"Diddy Dev","mainBinaryName":"diddy-dev","identifier":"app.diddy.desktop.dev","bundle":{"createUpdaterArtifacts":false}}'`
+starten. Danach wie oben mit "Diddy Signing" signieren, sonst fragt macOS bei jedem Build nach "Diddy Dev WebCrypto Master Key" (#164):
+ad-hoc signierte Builds (CI) haben bei jedem Build eine andere Signatur. Mit stabiler Signatur genügt einmal "Immer erlauben".
+
 Logs der laufenden App: `~/Library/Logs/Diddy/app.log` (z. B. `noise suppression on (RNNoise)`).
 
 ## 6. Linux / Electron

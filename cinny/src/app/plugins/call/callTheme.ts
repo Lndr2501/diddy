@@ -105,6 +105,14 @@ ${TILE} > div:first-child [class*="_avatar_"] {
   overflow: hidden;
   box-shadow: 0 0 0 1px var(--diddy-tile-line), var(--diddy-avatar-shadow);
 }
+/* #155: the picture followed a fixed size, so it was a small dot in a tall tile and spilled out of
+   (was cut by) a short one. It is half of the tile's smaller side, like Element Call intends
+   (its own rule on the media container), but pinned here so no inline size can override it. */
+html body ${TILE} > div:first-child [class*="_avatar_"] {
+  --cpd-avatar-size: clamp(36px, 50cqmin, 360px) !important;
+  inline-size: var(--cpd-avatar-size) !important;
+  block-size: var(--cpd-avatar-size) !important;
+}
 ${TILE} > div:first-child [class*="_translucent_"] {
   mix-blend-mode: normal;
 }

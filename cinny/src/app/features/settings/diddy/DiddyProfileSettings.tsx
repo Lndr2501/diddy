@@ -1,3 +1,4 @@
+import FileSaver from 'file-saver';
 import React, {
   PointerEvent,
   useCallback,
@@ -111,6 +112,12 @@ import {
   stableKey,
   toDraft,
 } from '../../../plugins/diddy/profilePreview';
+import {
+  exportProfile,
+  importProfile,
+  MAX_PROFILE_FILE_BYTES,
+  PROFILE_FILE_NAME,
+} from '../../../plugins/diddy/profileTransfer';
 import { ProfilePreviewPanel } from './ProfilePreviews';
 import { EditorLayout, stickyEditorLayout } from './editorLayout';
 import { STATUS_OPTIONS } from '../../../components/user-panel/UserPanelFace';
@@ -644,6 +651,39 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
     setSaveError(undefined);
   };
   const saveDisabled = saving || !dirty || busyKey !== undefined;
+
+  // export / import of the customization as a file (#157)
+  const importInput = useRef<HTMLInputElement>(null);
+  const [transfer, setTransfer] = useState<{ tone: 'error' | 'success'; text: string }>();
+  const handleExport = () => {
+    FileSaver.saveAs(
+      new Blob([exportProfile(draft)], { type: 'application/json' }),
+      PROFILE_FILE_NAME
+    );
+    setTransfer({
+      tone: 'success',
+      text: `Saved ${PROFILE_FILE_NAME} with your current editor settings.`,
+    });
+  };
+  const handleImportFile = async (file: File | undefined) => {
+    if (!file) return;
+    if (file.size > MAX_PROFILE_FILE_BYTES) {
+      setTransfer({ tone: 'error', text: 'This file is too big to be a Diddy profile.' });
+      return;
+    }
+    const result = importProfile(await file.text());
+    if (!result.ok) {
+      setTransfer({ tone: 'error', text: result.error });
+      return;
+    }
+    // fills the editor only; your status stays, nothing is saved until you press Save
+    setDraft((d) => ({ ...result.draft, ...(d.status ? { status: d.status } : {}) }));
+    setSaveError(undefined);
+    setTransfer({
+      tone: 'success',
+      text: 'Imported. Check the preview, then press Save changes to keep it.',
+    });
+  };
   let setupLabel = 'Create Diddy Options room';
   if (setupMode === 'existing') setupLabel = selectedUnjoined ? 'Join and use' : 'Use this room';
 
@@ -1392,6 +1432,43 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
               <div className={css.HeadActions}>
                 {hasOptionsRoom && (
                   <>
+                    <input
+                      ref={importInput}
+                      type="file"
+                      accept=".json,application/json"
+                      hidden
+                      data-testid="profile-import-input"
+                      onChange={(evt) => {
+                        const file = evt.target.files?.[0];
+                        // the same file can be picked again
+                        evt.target.value = '';
+                        handleImportFile(file).catch(() =>
+                          setTransfer({ tone: 'error', text: 'The file could not be read.' })
+                        );
+                      }}
+                    />
+                    <Button
+                      size="400"
+                      variant="Secondary"
+                      fill="None"
+                      radii="300"
+                      before={<Icon size="100" src={Icons.Download} />}
+                      disabled={saving}
+                      onClick={handleExport}
+                    >
+                      <Text size="B400">Export</Text>
+                    </Button>
+                    <Button
+                      size="400"
+                      variant="Secondary"
+                      fill="None"
+                      radii="300"
+                      before={<Icon size="100" src={Icons.ArrowTop} />}
+                      disabled={saving}
+                      onClick={() => importInput.current?.click()}
+                    >
+                      <Text size="B400">Import</Text>
+                    </Button>
                     <Button
                       size="400"
                       variant="Secondary"
@@ -1451,6 +1528,7 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
                   hide={hasOptionsRoom ? undefined : ['privacy']}
                 />
                 {uploadError && <Hint tone="error">{uploadError}</Hint>}
+                {transfer && <Hint tone={transfer.tone}>{transfer.text}</Hint>}
                 <div className={css.Panel} role="tabpanel">
                   {tabContent[tab]}
                 </div>

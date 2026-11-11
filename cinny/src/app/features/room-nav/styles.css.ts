@@ -107,9 +107,16 @@ export const CallMemberRowAvatar = style({
   flexShrink: 0,
 });
 
-export const CallMemberRowMuted = style({
+export const CallMemberRowIcons = style({
+  display: 'flex',
+  alignItems: 'center',
+  gap: config.space.S100,
   flexShrink: 0,
   marginLeft: 'auto',
+});
+
+export const CallMemberRowMuted = style({
+  flexShrink: 0,
   color: color.Critical.Main,
 });
 
