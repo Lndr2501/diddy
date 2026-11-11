@@ -22,6 +22,7 @@ import {
   PROFILE_EVENT,
 } from './types';
 import { diag } from '../diagnostics';
+import { BADGE_STATE_LEVEL } from './badgePower';
 
 /** Synchronous read of the "Developer Tools" setting (it lives in localStorage). */
 export const isDeveloperToolsOn = (): boolean => {
@@ -156,13 +157,17 @@ export const useOptionsRooms = (mx: MatrixClient): Room[] => {
 /** Added to the topic so other clients can find the room in a space's hierarchy (any room name). */
 export const TOPIC_TAG = '[diddy-options]';
 
-/** Power levels that let every member write the Diddy event types (each user only their own key). */
+/**
+ * Power levels of the options room. Every member writes their profile as state (the state key is
+ * their user id, so the homeserver protects it). Badge state is admin-only: its keys are badge ids,
+ * which anyone could overwrite; members send badges as messages instead (#168, badgePower.ts).
+ */
 export const optionsRoomPowerLevels = (creatorId: string) => ({
   users: { [creatorId]: 100 },
   events: {
     [PROFILE_EVENT]: 0,
-    [BADGE_DEF_EVENT]: 0,
-    [BADGE_AWARD_EVENT]: 0,
+    [BADGE_DEF_EVENT]: BADGE_STATE_LEVEL,
+    [BADGE_AWARD_EVENT]: BADGE_STATE_LEVEL,
     [OPTIONS_MARKER_EVENT]: 100,
     [EventType.RoomName]: 100,
   },
@@ -230,8 +235,8 @@ export const createOptionsRoom = async (
 };
 
 /**
- * Turns an existing room into the options room: adds the marker event and lets everyone write the
- * Diddy event types. Needs permission to change power levels / state in that room.
+ * Turns an existing room into the options room: adds the marker event and lets everyone write their
+ * profile (badge state stays admin-only, see optionsRoomPowerLevels). Needs permission to change power levels / state in that room.
  */
 export const adoptRoomAsOptionsRoom = async (
   mx: MatrixClient,
@@ -248,8 +253,8 @@ export const adoptRoomAsOptionsRoom = async (
   const events = {
     ...(powerLevels.events ?? {}),
     [PROFILE_EVENT]: 0,
-    [BADGE_DEF_EVENT]: 0,
-    [BADGE_AWARD_EVENT]: 0,
+    [BADGE_DEF_EVENT]: BADGE_STATE_LEVEL,
+    [BADGE_AWARD_EVENT]: BADGE_STATE_LEVEL,
   };
   try {
     await mx.sendStateEvent(roomId, EventType.RoomPowerLevels as never, { ...powerLevels, events } as never, '');

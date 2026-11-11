@@ -66,6 +66,7 @@ import { ReAnnouncer } from './reannounce';
 import { RecentOwnData, RECENT_WINDOW_EVENTS } from './recentOwn';
 import { makeBadgeId, pickDefinition, resolveAwards } from './trust';
 import { diag } from '../diagnostics';
+import { badgeStateOpenToMembers, hardenBadgePowerLevels } from './badgePower';
 
 // --- change tracking ---------------------------------------------------------------------------
 
@@ -418,15 +419,58 @@ const roomMode = (room: Room): 'state' | 'message' | 'both' => {
 };
 const announcedRooms = new Set<string>();
 
+/**
+ * Whether badge data in this room travels (also) as messages: in message-mode rooms, and in
+ * state-mode rooms where members may not write badge state (#168). Then the timeline has to be
+ * read and our own badges re-sent to members who join later.
+ */
+const badgesAsMessages = (room: Room): boolean => {
+  if (roomMode(room) !== 'state') return true;
+  const pl = room.currentState.getStateEvents(EventType.RoomPowerLevels, '')?.getContent() ?? {};
+  return !badgeStateOpenToMembers(pl);
+};
+
+/** Rooms whose badge power levels were checked this session. */
+const badgePowerChecked = new Set<string>();
+
+/**
+ * Older options rooms let every member write badge state, so anyone could replace or empty other
+ * people's badges (#168). A client that may change the room's power levels limits it to admins once.
+ */
+const hardenBadgePower = (mx: MatrixClient, room: Room) => {
+  if (badgePowerChecked.has(room.roomId)) return;
+  if (!room.currentState.getStateEvents(OPTIONS_MARKER_EVENT, '')) return;
+  const event = room.currentState.getStateEvents(EventType.RoomPowerLevels, '');
+  if (!event) return;
+  badgePowerChecked.add(room.roomId);
+  const next = hardenBadgePowerLevels(event.getContent() ?? {});
+  if (!next || !room.currentState.maySendStateEvent(EventType.RoomPowerLevels, mx.getSafeUserId()))
+    return;
+  mx.sendStateEvent(room.roomId, EventType.RoomPowerLevels as never, next as never, '')
+    .then(() => diag(`diddy: badge state limited to admins room=${room.roomId}`))
+    .catch((e) =>
+      diag(
+        `diddy: could not limit badge state room=${room.roomId}: ${
+          e instanceof Error ? e.message : String(e)
+        }`
+      )
+    );
+};
+
 // --- profiles for members who join later -------------------------------------------------------
 // Timeline events of a message-mode options room are invisible to anyone who joins afterwards, so
 // the profile is sent again when we join and whenever other members join. State-mode rooms need
 // none of this: Matrix delivers their state to every new member automatically.
-const announceableRoom = (roomId: string): { mx: MatrixClient; room: Room } | undefined => {
+const announceableRoom = (
+  roomId: string,
+  kind: 'profile' | 'badges'
+): { mx: MatrixClient; room: Room } | undefined => {
   const mx = attachedTo;
   const room = mx?.getRoom(roomId);
   if (!mx || !room || !isOptionsRoom(room) || room.getMyMembership() !== 'join') return undefined;
-  if (roomMode(room) === 'state') return undefined;
+  // data we write as state reaches every member by itself
+  if (kind === 'profile' && roomMode(room) === 'state') return undefined;
+  if (kind === 'badges' && stateTransport(room, BADGE_DEF_EVENT)) return undefined;
   return { mx, room };
 };
 
@@ -443,7 +487,7 @@ const lastOtherJoinTs = (room: Room, me: string): number => {
 
 const announceProfile = async (roomId: string): Promise<void> => {
   const onlineOnly = recentOwn.takeOnlineOnly(roomId, 'profile');
-  const target = announceableRoom(roomId);
+  const target = announceableRoom(roomId, 'profile');
   if (!target) return;
   const { mx, room } = target;
   const me = mx.getSafeUserId();
@@ -519,7 +563,7 @@ const ownBadgeEntries = (room: Room, me: string): OwnEntry[] => {
 
 const announceBadges = async (roomId: string): Promise<void> => {
   const onlineOnly = recentOwn.takeOnlineOnly(roomId, 'badges');
-  const target = announceableRoom(roomId);
+  const target = announceableRoom(roomId, 'badges');
   if (!target || badgeAnnouncing.has(roomId)) return;
   const { mx, room } = target;
   const me = mx.getSafeUserId();
@@ -601,7 +645,7 @@ const syncRooms = (mx: MatrixClient) => {
         )} encrypted=${mx.isRoomEncrypted(room.roomId)}`
       );
       // coming online in a message-mode room: tell the members what is already known here
-      if (roomMode(room) !== 'state') {
+      if (badgesAsMessages(room)) {
         if (!joinedRecently(mx, room)) recentOwn.comingOnline(room.roomId);
         scheduleAnnounce(room.roomId, { force: true });
       }
@@ -614,8 +658,9 @@ const syncRooms = (mx: MatrixClient) => {
         .then(() => notify())
         .catch(() => {});
     }
+    hardenBadgePower(mx, room);
     if (ingestRoomTimeline(mx, room)) changed = true;
-    if (roomMode(room) !== 'state') backfillRoom(mx, room);
+    if (badgesAsMessages(room)) backfillRoom(mx, room);
   });
   if (changed) notify();
 };
@@ -633,6 +678,7 @@ const attach = (mx: MatrixClient) => {
     badgeAnnouncer.close();
     recentOwn.clear();
     stateWritesRejected.clear();
+    badgePowerChecked.clear();
   }
   attachedTo = mx;
   mx.on(RoomStateEvent.Events, onStateEvent);
@@ -668,7 +714,7 @@ function onStateEvent(event: MatrixEvent) {
         membership === 'join' &&
         event.getStateKey() &&
         event.getStateKey() !== attachedTo.getSafeUserId() &&
-        roomMode(room) !== 'state'
+        badgesAsMessages(room)
       ) {
         recentOwn.needEverything(roomId);
         scheduleAnnounce(roomId, { joinTs: event.getTs() });
@@ -704,7 +750,7 @@ function onRoomChange() {
   notify();
 }
 function onMyMembership(room: Room, membership: string) {
-  if (membership === 'join' && isOptionsRoom(room) && roomMode(room) !== 'state') {
+  if (membership === 'join' && isOptionsRoom(room) && badgesAsMessages(room)) {
     if (attachedTo && joinedRecently(attachedTo, room)) recentOwn.needEverything(room.roomId);
     scheduleAnnounce(room.roomId, { force: true });
   } else if (membership === 'leave' || membership === 'ban' || membership === 'forget') {
