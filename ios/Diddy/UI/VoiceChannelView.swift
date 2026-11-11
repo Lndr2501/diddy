@@ -162,7 +162,6 @@ private struct ConnectedVoiceView: View {
 
     private var controls: some View {
         VStack(spacing: 12) {
-            AgentVoiceButton(session: session)
             controlRow
         }
         .padding(.vertical, 14)

@@ -1,5 +1,5 @@
 // Checks for the call audio rules (Diddy/Call/CallAudioLogic.swift, CallVolumeMemory.swift,
-// CallReactionLogic.swift and the agent mute rules in AgentVoice.swift). Foundation only.
+// CallReactionLogic.swift and the receive side of AgentVoice.swift). Foundation only.
 // Run from the ios folder:
 //   swiftc -swift-version 5 Diddy/Call/CallAudioLogic.swift Diddy/Call/CallVolumeMemory.swift Diddy/Call/CallReactionLogic.swift Diddy/Call/AgentVoice.swift Tools/call_audio_check/main.swift -o /tmp/call_audio_check && /tmp/call_audio_check
 import Foundation
@@ -160,23 +160,25 @@ check(shown.add(sender: "@a:x", emoji: "\u{1F389}", now: 13.6), "shows again aft
 _ = shown.prune(now: 100)
 check(shown.isEmpty, "all gone")
 
-// MARK: Agent mute modes
+// MARK: Desktop agent talkers (receive side only)
 
-var tracker = AgentMuteTracker()
-check(tracker.begin(mode: .off, microphoneOn: true, deafened: false) == .none, "off does nothing")
-check(tracker.end(microphoneOn: true, deafened: false) == .none, "off ends with nothing")
-check(tracker.begin(mode: .mute, microphoneOn: true, deafened: false) == .muteMicrophone, "mute mutes")
-check(tracker.end(microphoneOn: false, deafened: false) == .unmuteMicrophone, "mute unmutes after")
-check(tracker.begin(mode: .mute, microphoneOn: false, deafened: false) == .none, "already muted: leave it")
-check(tracker.end(microphoneOn: false, deafened: false) == .none, "stays muted afterwards")
-_ = tracker.begin(mode: .mute, microphoneOn: true, deafened: false)
-tracker.userChangedMicrophone()
-check(tracker.end(microphoneOn: false, deafened: false) == .none, "a change by hand wins")
-check(tracker.begin(mode: .full, microphoneOn: true, deafened: false) == .deafen, "full mute deafens")
-check(tracker.end(microphoneOn: false, deafened: true) == .undeafen, "full mute undeafens after")
-check(tracker.begin(mode: .full, microphoneOn: true, deafened: true) == .none, "already deafened: leave it")
-_ = tracker.begin(mode: .full, microphoneOn: true, deafened: false)
-tracker.userChangedMicrophone()
-check(tracker.end(microphoneOn: false, deafened: true) == .none, "undeafened by hand wins")
+check(AgentVoicePayload.parse(#"{"room_id":"!r:x","active":true,"ts":1000}"#) == AgentVoicePayload(roomId: "!r:x", active: true, ts: 1000), "parse a payload")
+check(AgentVoicePayload.parse(#"{"room_id":"r:x","active":true,"ts":1000}"#) == nil, "room id must start with !")
+check(AgentVoicePayload.parse(#"{"room_id":"!r:x","active":1,"ts":1000}"#) == nil, "active must be a boolean")
+check(AgentVoicePayload.parse(#"{"room_id":"!r:x","active":true,"ts":true}"#) == nil, "ts must not be a boolean")
+check(AgentVoicePayload.parse("nope") == nil, "not json")
+var talkers = RemoteAgentVoices()
+let start = Date()
+check(talkers.receive(sender: "@a:x", payload: AgentVoicePayload(roomId: "!r:x", active: true, ts: 10), roomId: "!r:x", now: start), "a starts")
+check(talkers.users == ["@a:x"], "a is talking")
+check(!talkers.receive(sender: "@a:x", payload: AgentVoicePayload(roomId: "!r:x", active: false, ts: 5), roomId: "!r:x", now: start), "an older message is ignored")
+check(!talkers.receive(sender: "@b:x", payload: AgentVoicePayload(roomId: "!other:x", active: true, ts: 10), roomId: "!r:x", now: start), "another room is ignored")
+check(talkers.receive(sender: "@a:x", payload: AgentVoicePayload(roomId: "!r:x", active: false, ts: 20), roomId: "!r:x", now: start), "a stops")
+check(talkers.users.isEmpty, "nobody talks")
+_ = talkers.receive(sender: "@a:x", payload: AgentVoicePayload(roomId: "!r:x", active: true, ts: 30), roomId: "!r:x", now: start)
+check(!talkers.prune(members: ["@a:x"], now: start.addingTimeInterval(60)), "still talking after a minute")
+check(talkers.prune(members: ["@a:x"], now: start.addingTimeInterval(AgentVoice.maxActive + 1)) && talkers.users.isEmpty, "expires after 5 minutes")
+_ = talkers.receive(sender: "@a:x", payload: AgentVoicePayload(roomId: "!r:x", active: true, ts: 40), roomId: "!r:x", now: start)
+check(talkers.prune(members: [], now: start) && talkers.users.isEmpty, "someone who left the call stops talking")
 
 if failures == 0 { print("call audio checks passed") } else { print("\(failures) check(s) failed"); exit(1) }
