@@ -192,12 +192,12 @@ extension MatrixAccount {
         let left = Set(UserDefaults.standard.stringArray(forKey: "diddyLeftOptionsRooms") ?? [])
         let found = await hierarchyRooms(of: spaceId)
         let joined = Set(rooms.filter(\.isJoined).map(\.id))
-        let pick = DiddyOptionsRoomLogic.joinCandidate(
+        let candidate = DiddyOptionsRoomLogic.joinCandidate(
             in: found.map { $0.room }, spaceId: spaceId,
             membership: { joined.contains($0) ? "join" : nil },
             leftOnPurpose: { left.contains($0) }
         )
-        guard let pick, let entry = found.first(where: { $0.room.roomId == pick.roomId }) else { return nil }
+        guard let pick = candidate, let entry = found.first(where: { $0.room.roomId == pick.roomId }) else { return nil }
         return DiddyRoomChoice(id: pick.roomId, name: pick.name ?? pick.roomId, joined: false,
                                spaceName: spaces.first { $0.roomId == spaceId }?.displayName, looksLikeDiddy: true, via: entry.via)
     }

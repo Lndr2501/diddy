@@ -365,9 +365,9 @@ enum DiddyEffectImport {
 
     /// One picture on its own, as a single looping layer (`readProfileEffectImage`).
     static func readImage(name: String, data: Data) throws -> DiddyImportedEffect {
-        let info = DiddyImageSniffer.info(data)
-        if let error = checkLayer(info, bytes: data.count) { throw DiddyZipError(error) }
-        guard let info else { throw DiddyZipError("Please choose an animated PNG, WebP or GIF with a transparent background.") }
+        let sniffed = DiddyImageSniffer.info(data)
+        if let error = checkLayer(sniffed, bytes: data.count) { throw DiddyZipError(error) }
+        guard let info = sniffed else { throw DiddyZipError("Please choose an animated PNG, WebP or GIF with a transparent background.") }
         var title = Zip.baseName(name)
         if let dot = title.lastIndex(of: "."), title.index(after: dot) != title.endIndex { title = String(title[..<dot]) }
         let cleaned = String(title.unicodeScalars.prefix(48))
@@ -503,13 +503,13 @@ enum DiddyFrameImport {
     private static let idCharacters = Set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-")
 
     private static func layerId(_ value: Any?) -> String? {
-        var text: String?
+        var candidate: String?
         if let number = DiddySanitize.number(value) {
-            text = number == number.rounded() && abs(number) < 1e15 ? String(Int64(number)) : String(number)
+            candidate = number == number.rounded() && abs(number) < 1e15 ? String(Int64(number)) : String(number)
         } else {
-            text = value as? String
+            candidate = value as? String
         }
-        guard let text, (3...64).contains(text.count), text.allSatisfy({ idCharacters.contains($0) }) else { return nil }
+        guard let text = candidate, (3...64).contains(text.count), text.allSatisfy({ idCharacters.contains($0) }) else { return nil }
         return text
     }
 
@@ -597,9 +597,9 @@ enum DiddyFrameImport {
     }
 
     private static func layer(_ name: String, _ data: Data, order: String, anchor: String) throws -> DiddyImportedFrame.Layer {
-        let type = DiddyImageSniffer.info(data)?.type
-        if let error = checkLayer(type: type, bytes: data.count) { throw DiddyZipError(error) }
-        guard let type else { throw DiddyZipError("Please choose a PNG or WebP with a transparent background.") }
+        let sniffed = DiddyImageSniffer.info(data)?.type
+        if let error = checkLayer(type: sniffed, bytes: data.count) { throw DiddyZipError(error) }
+        guard let type = sniffed else { throw DiddyZipError("Please choose a PNG or WebP with a transparent background.") }
         return .init(file: DiddyImportedFile(name: Zip.baseName(name), type: type, data: data), order: order, anchor: anchor)
     }
 
