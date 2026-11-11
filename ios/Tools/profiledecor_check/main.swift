@@ -149,19 +149,20 @@ check(DiddyProfileEffect.coverScale(width: 450, height: 440) == 1 && DiddyProfil
 
 // MARK: effect: preset particles, the same numbers as desktop's presetParticles()
 
-let expectedParticles: [String: (count: Int, first: DiddyProfileEffect.Particle, last: DiddyProfileEffect.Particle)] = [
-    "sparkles": (16, .init(x: 21.3, y: 51, size: 15, delay: -0.8, duration: 3.14, drift: -20, spin: 63, tone: 0.76),
-                 .init(x: 91.5, y: 85.3, size: 18, delay: -2.53, duration: 2.83, drift: 19, spin: 37, tone: 0.3)),
-    "petals": (12, .init(x: 76, y: 26.3, size: 11, delay: -9.11, duration: 11.68, drift: -5, spin: -52, tone: 0.96),
-               .init(x: 61.9, y: 60.1, size: 12, delay: -4.82, duration: 11.15, drift: -3, spin: -111, tone: 0.91)),
-    "embers": (16, .init(x: 30.6, y: 73.2, size: 4, delay: -5.53, duration: 7.69, drift: 1, spin: 14, tone: 0.79),
-               .init(x: 93.9, y: 51.1, size: 2, delay: -2.13, duration: 4.07, drift: 15, spin: 81, tone: 0.33)),
-    "snow": (22, .init(x: 93.3, y: 89.6, size: 3, delay: -0.64, duration: 10.9, drift: -28, spin: -118, tone: 0.09),
-             .init(x: 72.4, y: 43.7, size: 5, delay: -5.21, duration: 13.93, drift: 26, spin: -15, tone: 0.21)),
-    "hearts": (10, .init(x: 55, y: 12.9, size: 13, delay: -2.27, duration: 8.96, drift: 2, spin: -12, tone: 0.69),
-               .init(x: 51.3, y: 38.8, size: 9, delay: -6.48, duration: 9.62, drift: -19, spin: -254, tone: 0.93)),
-    "aurora": (3, .init(x: 4.5, y: 32.2, size: 81, delay: -2.67, duration: 10.04, drift: -10, spin: -29, tone: 0.1),
-               .init(x: 72.2, y: 92.1, size: 83, delay: -8.53, duration: 14.74, drift: -4, spin: -240, tone: 0.9)),
+typealias P = DiddyProfileEffect.Particle
+let expectedParticles: [String: (count: Int, first: P, last: P)] = [
+    "sparkles": (16, P(x: 21.3, y: 51, size: 15, delay: -0.8, duration: 3.14, drift: -20, spin: 63, tone: 0.76),
+                 P(x: 91.5, y: 85.3, size: 18, delay: -2.53, duration: 2.83, drift: 19, spin: 37, tone: 0.3)),
+    "petals": (12, P(x: 76, y: 26.3, size: 11, delay: -9.11, duration: 11.68, drift: -5, spin: -52, tone: 0.96),
+               P(x: 61.9, y: 60.1, size: 12, delay: -4.82, duration: 11.15, drift: -3, spin: -111, tone: 0.91)),
+    "embers": (16, P(x: 30.6, y: 73.2, size: 4, delay: -5.53, duration: 7.69, drift: 1, spin: 14, tone: 0.79),
+               P(x: 93.9, y: 51.1, size: 2, delay: -2.13, duration: 4.07, drift: 15, spin: 81, tone: 0.33)),
+    "snow": (22, P(x: 93.3, y: 89.6, size: 3, delay: -0.64, duration: 10.9, drift: -28, spin: -118, tone: 0.09),
+             P(x: 72.4, y: 43.7, size: 5, delay: -5.21, duration: 13.93, drift: 26, spin: -15, tone: 0.21)),
+    "hearts": (10, P(x: 55, y: 12.9, size: 13, delay: -2.27, duration: 8.96, drift: 2, spin: -12, tone: 0.69),
+               P(x: 51.3, y: 38.8, size: 9, delay: -6.48, duration: 9.62, drift: -19, spin: -254, tone: 0.93)),
+    "aurora": (3, P(x: 4.5, y: 32.2, size: 81, delay: -2.67, duration: 10.04, drift: -10, spin: -29, tone: 0.1),
+               P(x: 72.2, y: 92.1, size: 83, delay: -8.53, duration: 14.74, drift: -4, spin: -240, tone: 0.9)),
 ]
 func close(_ p: DiddyProfileEffect.Particle, _ q: DiddyProfileEffect.Particle) -> Bool {
     let pairs = [(p.x, q.x), (p.y, q.y), (p.size, q.size), (p.delay, q.delay), (p.duration, q.duration), (p.drift, q.drift), (p.spin, q.spin), (p.tone, q.tone)]
@@ -221,11 +222,11 @@ check(Set(DiddyProfileFrame.presets) == Set(DiddyProfileFrame.presetGeometry.key
 
 // MARK: picture sniffing
 
-check(DiddyImageSniff.type(of: Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A] + [UInt8](repeating: 0, count: 8))) == "image/png", "PNG")
-check(DiddyImageSniff.type(of: Data(Array("GIF89a".utf8) + [UInt8](repeating: 0, count: 10))) == "image/gif", "GIF")
-check(DiddyImageSniff.type(of: Data(Array("RIFF".utf8) + [0, 0, 0, 0] + Array("WEBPVP8 ".utf8))) == "image/webp", "WebP")
-check(DiddyImageSniff.type(of: Data(Array("<svg onload=alert(1)>".utf8))) == nil, "SVG refused")
-check(DiddyImageSniff.type(of: Data([0x89, 0x50])) == nil, "too short")
+check(DiddyImageSniff.mimeType(of: Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A] + [UInt8](repeating: 0, count: 8))) == "image/png", "PNG")
+check(DiddyImageSniff.mimeType(of: Data(Array("GIF89a".utf8) + [UInt8](repeating: 0, count: 10))) == "image/gif", "GIF")
+check(DiddyImageSniff.mimeType(of: Data(Array("RIFF".utf8) + [0, 0, 0, 0] + Array("WEBPVP8 ".utf8))) == "image/webp", "WebP")
+check(DiddyImageSniff.mimeType(of: Data(Array("<svg onload=alert(1)>".utf8))) == nil, "SVG refused")
+check(DiddyImageSniff.mimeType(of: Data([0x89, 0x50])) == nil, "too short")
 
 if failures > 0 {
     print("\(failures) check(s) failed")

@@ -493,7 +493,7 @@ struct DiddyProfileFrame: Equatable {
 /// The type of a picture from its first bytes (`imageInfo` of desktop, without the animation
 /// details), never from its name or what a server says.
 enum DiddyImageSniff {
-    static func type(of data: Data) -> String? {
+    static func mimeType(of data: Data) -> String? {
         guard data.count >= 16 else { return nil }
         let b = [UInt8](data.prefix(16))
         if b.starts(with: [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]) { return "image/png" }

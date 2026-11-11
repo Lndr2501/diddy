@@ -246,76 +246,36 @@ struct UserProfileSheet: View {
     private var diddy: DiddyProfile? { account.diddyProfiles[userId] }
     private var badges: [DiddyBadge] { account.diddyBadges[userId] ?? [] }
 
+    /// A frame or effect needs a visible card to sit on.
+    private var decorated: Bool { diddy?.frame?.resolved != nil || diddy?.effect != nil }
+
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 16) {
-                    VStack(spacing: 0) {
-                        DiddyBanner(profile: diddy, seed: userId, account: account)
-                            .frame(height: 100)
-                            .clipShape(RoundedRectangle(cornerRadius: 14))
-                        AvatarView(url: avatar, name: name, size: 96, account: account)
-                            .overlay(Circle().stroke(Theme.sidebar, lineWidth: 5))
-                            .overlay(alignment: .bottomTrailing) { PresenceDot(userId: userId, account: account, size: 22, onDemand: true) }
-                            .padding(.top, -48)
-                    }
-                    VStack(spacing: 4) {
-                        HStack(spacing: 6) {
-                            DiddyName(name: name, profile: diddy, font: .title2.bold(), size: 22)
-                            if !badges.isEmpty { DiddyBadges(badges: badges, size: 20, account: account) }
+            GeometryReader { proxy in
+                ScrollView {
+                    VStack(spacing: 16) {
+                        // The card with the owner's profile frame around it and their effect over it,
+                        // like the desktop profile card.
+                        DiddyProfileFrameBox(frame: diddy?.frame, account: account, available: max(0, proxy.size.width - 40)) {
+                            card
                         }
-                        .multilineTextAlignment(.center)
-                        Text(userId).font(.footnote).foregroundStyle(Theme.muted).textSelection(.enabled)
-                        PresenceLabel(userId: userId, account: account)
-                        AgentTalkingProfileBadge(userId: userId)
-                        if let group = member?.group, group != .member {
-                            Text(group == .owner ? "Owner" : String(group.title.dropLast()))
-                                .font(.caption.weight(.semibold))
-                                .padding(.horizontal, 10).padding(.vertical, 3)
-                                .background(Capsule().fill(Theme.elevated))
-                                .foregroundStyle(Theme.accent)
-                                .padding(.top, 4)
-                        }
-                    }
-                    if !isSelf {
-                        Button { Task { await openChat() } } label: {
-                            HStack {
-                                if busy { ProgressView().tint(Color(diddyHex: diddy?.cardAccent) == nil ? Theme.onAccent : .white) }
-                                Label("Message", systemImage: "bubble.left.fill").bold()
+                        VStack(spacing: 0) {
+                            actionRow("Copy User ID", icon: "doc.on.doc") { UIPasteboard.general.string = userId }
+                            if !isSelf {
+                                actionRow(ignored ? "Unblock" : "Block", icon: "hand.raised.fill", role: ignored ? nil : .destructive) {
+                                    Task { await toggleIgnore() }
+                                }
+                                if canKick { actionRow("Remove from room", icon: "person.fill.xmark", role: .destructive) { confirm = .kick } }
+                                if canBan { actionRow("Ban", icon: "nosign", role: .destructive) { confirm = .ban } }
                             }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(RoundedRectangle(cornerRadius: 10).fill(Color(diddyHex: diddy?.cardAccent) ?? Theme.accent))
-                            .foregroundStyle(Color(diddyHex: diddy?.cardAccent) == nil ? Theme.onAccent : .white)
                         }
-                        .disabled(busy)
+                        .background(RoundedRectangle(cornerRadius: 10).fill(Theme.elevated))
+                        if let error { Text(error).font(.footnote).foregroundStyle(Theme.danger) }
                     }
-                    if isSelf {
-                        NavigationLink { DiddyProfileEditor(account: account) } label: {
-                            Label("Edit Diddy Profile", systemImage: "paintbrush.fill").bold()
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 12)
-                                .background(RoundedRectangle(cornerRadius: 10).fill(Theme.elevated))
-                                .foregroundStyle(Theme.text)
-                        }
-                    }
-                    if let diddy, diddy.hasCardContent { DiddyCardModules(profile: diddy) }
-                    VStack(spacing: 0) {
-                        actionRow("Copy User ID", icon: "doc.on.doc") { UIPasteboard.general.string = userId }
-                        if !isSelf {
-                            actionRow(ignored ? "Unblock" : "Block", icon: "hand.raised.fill", role: ignored ? nil : .destructive) {
-                                Task { await toggleIgnore() }
-                            }
-                            if canKick { actionRow("Remove from room", icon: "person.fill.xmark", role: .destructive) { confirm = .kick } }
-                            if canBan { actionRow("Ban", icon: "nosign", role: .destructive) { confirm = .ban } }
-                        }
-                    }
-                    .background(RoundedRectangle(cornerRadius: 10).fill(Theme.elevated))
-                    if let error { Text(error).font(.footnote).foregroundStyle(Theme.danger) }
+                    .padding(20)
                 }
-                .padding(20)
+                .background(Theme.sidebar.ignoresSafeArea())
             }
-            .background(Theme.sidebar.ignoresSafeArea())
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
             .confirmationDialog(
@@ -333,6 +293,78 @@ struct UserProfileSheet: View {
             }
         }
         .presentationDetents([.medium, .large])
+    }
+
+    private var card: some View {
+        VStack(spacing: 16) {
+            VStack(spacing: 0) {
+                DiddyBanner(profile: diddy, seed: userId, account: account)
+                    .frame(height: 100)
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                AvatarView(url: avatar, name: name, size: 96, account: account)
+                    .overlay(Circle().stroke(Theme.sidebar, lineWidth: 5))
+                    .overlay(alignment: .bottomTrailing) { PresenceDot(userId: userId, account: account, size: 22, onDemand: true) }
+                    .padding(.top, -48)
+            }
+            VStack(spacing: 4) {
+                HStack(spacing: 6) {
+                    DiddyName(name: name, profile: diddy, font: .title2.bold(), size: 22)
+                    if !badges.isEmpty { DiddyBadges(badges: badges, size: 20, account: account) }
+                }
+                .multilineTextAlignment(.center)
+                Text(userId).font(.footnote).foregroundStyle(Theme.muted).textSelection(.enabled)
+                PresenceLabel(userId: userId, account: account)
+                AgentTalkingProfileBadge(userId: userId)
+                if let group = member?.group, group != .member {
+                    Text(group == .owner ? "Owner" : String(group.title.dropLast()))
+                        .font(.caption.weight(.semibold))
+                        .padding(.horizontal, 10).padding(.vertical, 3)
+                        .background(Capsule().fill(Theme.elevated))
+                        .foregroundStyle(Theme.accent)
+                        .padding(.top, 4)
+                }
+            }
+            if !isSelf {
+                Button { Task { await openChat() } } label: {
+                    HStack {
+                        if busy { ProgressView().tint(Color(diddyHex: diddy?.cardAccent) == nil ? Theme.onAccent : .white) }
+                        Label("Message", systemImage: "bubble.left.fill").bold()
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(RoundedRectangle(cornerRadius: 10).fill(Color(diddyHex: diddy?.cardAccent) ?? Theme.accent))
+                    .foregroundStyle(Color(diddyHex: diddy?.cardAccent) == nil ? Theme.onAccent : .white)
+                }
+                .disabled(busy)
+            }
+            if isSelf {
+                NavigationLink { DiddyProfileEditor(account: account) } label: {
+                    Label("Edit Diddy Profile", systemImage: "paintbrush.fill").bold()
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(RoundedRectangle(cornerRadius: 10).fill(Theme.elevated))
+                        .foregroundStyle(Theme.text)
+                }
+            }
+            if let diddy, diddy.hasCardContent { DiddyCardModules(profile: diddy) }
+            if let version = diddy?.clientVersion {
+                Text("Diddy \(version)")
+                    .font(.caption)
+                    .foregroundStyle(Theme.faint)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .accessibilityLabel("Uses Diddy \(version)")
+            }
+        }
+        .padding(decorated ? 10 : 0)
+        .background {
+            if decorated { RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.sidebar) }
+        }
+        .overlay {
+            if let effect = diddy?.effect {
+                DiddyProfileEffectOverlay(effect: effect, account: account)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+        }
     }
 
     private func actionRow(_ title: String, icon: String, role: ButtonRole? = nil, action: @escaping () -> Void) -> some View {

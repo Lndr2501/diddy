@@ -11,7 +11,20 @@ struct DiddyBanner: View {
     var body: some View {
         ZStack {
             background
-            if let image { Image(uiImage: image).resizable().scaledToFill() }
+            if let image {
+                if let pos = profile?.bannerPos {
+                    // the part of the banner the owner chose (focal point and zoom)
+                    GeometryReader { proxy in
+                        let place = pos.placement(imageWidth: image.size.width, imageHeight: image.size.height,
+                                                  boxWidth: proxy.size.width, boxHeight: proxy.size.height)
+                        Image(uiImage: image).resizable()
+                            .frame(width: place.width, height: place.height)
+                            .position(x: place.x + place.width / 2, y: place.y + place.height / 2)
+                    }
+                } else {
+                    Image(uiImage: image).resizable().scaledToFill()
+                }
+            }
         }
         .frame(maxWidth: .infinity)
         .clipped()

@@ -66,7 +66,18 @@ struct DiddyNameplateBackdrop: View {
             if let videoURL, animate {
                 NameplateVideo(url: videoURL)
             } else if let picture {
-                NameplatePicture(image: picture)
+                if let pos = plate.imagePos {
+                    // the part of the picture the owner chose (focal point and zoom)
+                    GeometryReader { proxy in
+                        let place = pos.placement(imageWidth: picture.size.width, imageHeight: picture.size.height,
+                                                  boxWidth: proxy.size.width, boxHeight: proxy.size.height)
+                        NameplatePicture(image: picture)
+                            .frame(width: place.width, height: place.height)
+                            .position(x: place.x + place.width / 2, y: place.y + place.height / 2)
+                    }
+                } else {
+                    NameplatePicture(image: picture)
+                }
             }
         }
         .clipped()
