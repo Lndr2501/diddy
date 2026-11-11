@@ -12,7 +12,7 @@
  */
 
 export type RememberedVolume = {
-  /** the level the slider stands at, also while muted (unmute returns to it); 0 < volume <= 1 */
+  /** Level restored on unmute: 0 < volume <= 2 for voices, <= 1 for streams. */
   volume: number;
   muted: boolean;
 };
@@ -31,14 +31,14 @@ export const USER_VOLUMES_KEY = 'diddyUserVolumes';
 /** At most this many people are remembered per kind; the least recently used go first. */
 export const MAX_REMEMBERED = 500;
 
-/** A usable level: 0 < level <= 1 (Element Call's slider goes from 0 to 1 in 0.01 steps). */
-export const validLevel = (value: unknown): number | undefined => {
+/** A usable level: 0 < level <= max, rounded to slider steps. */
+export const validLevel = (value: unknown, max = 1): number | undefined => {
   if (value === null || value === undefined || value === '' || typeof value === 'boolean') {
     return undefined;
   }
   const n = Number(value);
   if (!Number.isFinite(n) || n <= 0) return undefined;
-  return Math.min(1, Math.max(0.01, Math.round(n * 100) / 100));
+  return Math.min(max, Math.max(0.01, Math.round(n * 100) / 100));
 };
 
 /** Everything remembered under `key`, oldest use first; broken or foreign entries are left out. */
@@ -51,7 +51,7 @@ export const readVolumes = (
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
     const result: Record<string, RememberedVolume> = {};
     Object.entries(raw as Record<string, Partial<RememberedVolume>>).forEach(([userId, entry]) => {
-      const volume = validLevel(entry?.volume);
+      const volume = validLevel(entry?.volume, key === USER_VOLUMES_KEY ? 2 : 1);
       if (userId.startsWith('@') && volume !== undefined) {
         result[userId] = { volume, muted: entry?.muted === true };
       }
@@ -95,7 +95,7 @@ export const rememberVolume = (
 ): void => {
   if (!storage || !userId || !userId.startsWith('@')) return;
   const all = readVolumes(storage, key);
-  const volume = validLevel(entry.volume) ?? 1;
+  const volume = validLevel(entry.volume, key === USER_VOLUMES_KEY ? 2 : 1) ?? 1;
   const muted = entry.muted === true;
   const before = all[userId];
   if (volume === 1 && !muted) {

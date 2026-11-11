@@ -159,7 +159,7 @@ export const trackUserVolume = (vm: UserVolumeVm, options: TrackOptions = {}): v
   let beforeZero = last > 0 ? last : level;
   const save = () => {
     timer = undefined;
-    const volume = Math.min(1, Math.max(0, Number(vm.playbackVolume$.value) || 0));
+    const volume = Math.min(2, Math.max(0, Number(vm.playbackVolume$.value) || 0));
     if (volume > 0) {
       level = volume;
       rememberVolume(storage, USER_VOLUMES_KEY, userId, { volume, muted: false });

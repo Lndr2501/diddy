@@ -12,6 +12,7 @@ import { playCallSound } from './callSounds';
 import { applyAudioProcessingPolicy } from './audioConstraints';
 import { setSharedAudioSink } from './sharedAudio';
 import { listNativeInputs, nativeMicAvailable, NATIVE_DEVICE_PREFIX } from './nativeMic';
+import { applyBoostOutput } from './voiceBoost';
 import { nextElementVolume, OutputVolumeRecord } from './outputVolume';
 
 const INPUT_KEY = 'diddyAudioInput';
@@ -148,8 +149,9 @@ const appliedSinks = new WeakMap<HTMLMediaElement, { sink: string }>();
 const appliedVolumes = new WeakMap<HTMLMediaElement, OutputVolumeRecord>();
 
 /** Applies the output device and output volume to one media element of the call. */
-export const applyAudioOutput = (el: HTMLMediaElement): void => {
+export const applyAudioOutput = (el: HTMLMediaElement, deafened = false): void => {
   const { output, outputVolume } = current;
+  if (applyBoostOutput(el, outputVolume, deafened)) return;
   // The per-person volume of the call (slider, remembered volume) must survive: the output
   // volume only scales it, and is not written at all while it is 100 % and unchanged (#38, #142).
   const step = nextElementVolume(appliedVolumes.get(el), el.volume, outputVolume);

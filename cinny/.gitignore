@@ -7,3 +7,6 @@ devAssets
 .ideatest-results
 playwright-report
 preview/local
+
+# Patched copy of pinned Element Call, generated before start/build
+.element-call/

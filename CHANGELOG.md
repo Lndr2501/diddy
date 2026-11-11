@@ -2,6 +2,8 @@
 
 ## Unveröffentlicht
 
+- **Nutzer-Lautstärke bis 200 %:** Leise Stimmen lassen sich im Call-Menü auf bis zu doppelte Lautstärke verstärken. Der Wert bleibt pro Person gespeichert, auch nach Stummschalten und erneutem Beitritt.
+
 - **Stream zoomen und Vollbild:** Im großen Stream-Fenster eines Calls zoomen Mausrad und Trackpad-Pinch zur Mausposition (bis 800 %), der gezoomte Ausschnitt lässt sich mit der Maus verschieben. Oben rechts sitzt eine Leiste mit −, Zoomstufe (Klick setzt zurück), + und Vollbild. Im Vollbild füllt der Stream den ganzen Bildschirm ohne Rahmen; Leiste, Name und Mauszeiger blenden sich nach 2,5 s Ruhe aus. Tasten im Vollbild: `+`/`-` zoomen, `0` setzt zurück, `F`, `Esc` oder Doppelklick verlassen es. Solange gezoomt oder im Vollbild, schließt ein Klick die große Ansicht nicht mehr versehentlich.
 - **iOS: Stream zoomen:** Der Pinch-Zoom in Bildschirmübertragungen sprang beim Loslassen zurück. Jetzt bleibt der Zoom (bis 800 %, ab iOS 17 zu den Fingern hin, davor zur Mitte), gezoomt verschiebt ein Wischen den Ausschnitt, Doppeltippen zoomt an der Stelle auf 250 % oder wieder heraus, ein Knopf mit der Zoomstufe setzt zurück. Gilt für den großen Stream und das Vollbild. Solange gezoomt, schließt Tippen die große Ansicht nicht. Gleiche Regeln wie am Desktop (`ios/Diddy/Call/StreamZoom.swift`, geprüft von `ios/Tools/streamzoom_check`).
 

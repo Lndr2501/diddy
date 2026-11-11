@@ -102,3 +102,15 @@ concurrently with a shared inherited runtime path and a two-CPU container limit.
 An injected helper failure verified the diagnostic output. The original eight-second
 failure was not reproduced locally; exact Ubuntu 22.04 runner validation remains open
 (the additional container's package installation did not complete).
+
+## Per-person voice boost
+
+`npm start` and `npm run build` generate `.element-call/`, a disposable copy of the
+pinned Element Call distribution. `scripts/patch-element-call.cjs` extends only the
+remote voice slider to 200 % and adds a checked hook to LiveKit's audio volume setter.
+Upstream hook changes stop the build. The dependency itself stays unchanged.
+`voiceBoost.ts` uses LiveKit's existing Web Audio graph and the app's shared output
+context when a voice first exceeds 100 %. Subsequent levels, mute, deafen and output
+volume all scale that graph; the original audio element stays silent to avoid echo.
+Screen-share volume retains its existing range. Regression tests cover the shipped
+setter, gain scaling, replacement elements, persistence, mute and rejoin.

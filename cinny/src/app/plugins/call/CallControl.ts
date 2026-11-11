@@ -266,7 +266,7 @@ export class CallControl extends EventEmitter implements CallControlState {
         this.deafMutedVideos.delete(target);
         target.muted = false;
       }
-      applyAudioOutput(target);
+      applyAudioOutput(target, deafened);
     });
   }
 

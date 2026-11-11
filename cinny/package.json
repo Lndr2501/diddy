@@ -8,7 +8,9 @@
     "node": ">=16.0.0"
   },
   "scripts": {
+    "prestart": "node scripts/patch-element-call.cjs",
     "start": "vite",
+    "prebuild": "node scripts/patch-element-call.cjs",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "npm run check:eslint && npm run check:prettier",

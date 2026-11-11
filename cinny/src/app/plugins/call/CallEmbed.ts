@@ -34,6 +34,8 @@ import { installSoundboard, releaseCallMicrophones } from './soundboard';
 import { installLocalSpeaking, stopLocalSpeaking } from './localSpeaking';
 import { installCallTheme } from './callTheme';
 import { installScreenShareGrid } from './screenShareGrid';
+import { installVoiceBoost } from './voiceBoost';
+import { getAudioPrefs } from './audioDevices';
 import { installUserVolumeMemory } from './userVolume';
 import {
   onPeerConnectionCreated,
@@ -279,6 +281,7 @@ export class CallEmbed {
       // Show all screen shares at once instead of Element Call's one-at-a-time carousel (#66).
       installScreenShareGrid(iframe.contentWindow);
       // #103: the volume / mute-for-me you give a person comes back in the next call
+      installVoiceBoost(iframe.contentWindow, getAudioPrefs, () => !this.control.sound);
       installUserVolumeMemory(iframe.contentWindow);
       this.watchLivekitToken(iframe.contentWindow);
     };

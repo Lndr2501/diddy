@@ -69,7 +69,7 @@ test('100 % and not muted is the default and is not stored', () => {
 test('levels are clamped to Element Call slider range', () => {
   const s = memoryStorage();
   memory.rememberVolume(s, KEY, '@a:x.org', { volume: 7, muted: true });
-  assert.deepEqual(s.saved()['@a:x.org'], { volume: 1, muted: true });
+  assert.deepEqual(s.saved()['@a:x.org'], { volume: 2, muted: true });
   memory.rememberVolume(s, KEY, '@a:x.org', { volume: 0.123456, muted: false });
   assert.deepEqual(s.saved()['@a:x.org'], { volume: 0.12, muted: false });
   memory.rememberVolume(s, KEY, '@a:x.org', { volume: 0.001, muted: false });
@@ -87,7 +87,7 @@ test('levels are clamped to Element Call slider range', () => {
     '@b:x.org': { volume: 3, muted: 'yes' },
     nobody: { volume: 0.5 },
   });
-  assert.deepEqual(plain(memory.readVolumes(odd, KEY)), { '@b:x.org': { volume: 1, muted: false } });
+  assert.deepEqual(plain(memory.readVolumes(odd, KEY)), { '@b:x.org': { volume: 2, muted: false } });
   // not a Matrix id: never stored
   memory.rememberVolume(s, KEY, 'nobody', { volume: 0.5, muted: false });
   assert.equal(s.raw(), undefined);
@@ -369,4 +369,25 @@ test('the shipped Element Call still has the per-person volume hooks', () => {
   }
   assert.ok(js.includes('"data-testid":`videoTile`'), 'tile');
   assert.ok(js.includes('__reactFiber$'), 'React fiber key changed');
+});
+
+test('boosted voice level survives save, mute, rejoin and unmute; streams stay at 100 %', () => {
+  const storage = memoryStorage();
+  const timers = fakeTimers();
+  const first = userVm();
+  mod.trackUserVolume(first, { storage, ...timers });
+  first.adjustPlaybackVolume(2);
+  first.commitPlaybackVolume();
+  timers.flush();
+  assert.equal(storage.saved()['@gho:x.org'].volume, 2);
+  first.togglePlaybackMuted();
+  timers.flush();
+  assert.deepEqual(storage.saved()['@gho:x.org'], { volume: 2, muted: true });
+  const again = userVm();
+  mod.trackUserVolume(again, { storage, ...fakeTimers() });
+  assert.equal(again.playbackVolume$.value, 0);
+  again.togglePlaybackMuted();
+  assert.equal(again.playbackVolume$.value, 2);
+  memory.rememberVolume(storage, memory.STREAM_VOLUMES_KEY, '@gho:x.org', { volume: 2, muted: false });
+  assert.equal(memory.rememberedVolume(storage, memory.STREAM_VOLUMES_KEY, '@gho:x.org'), undefined);
 });

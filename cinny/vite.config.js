@@ -14,7 +14,7 @@ import buildConfig from './build.config';
 const copyFiles = {
   targets: [
     {
-      src: 'node_modules/@element-hq/element-call-embedded/dist/*',
+      src: '.element-call/*',
       dest: 'public/element-call',
     },
     {
