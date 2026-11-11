@@ -59,10 +59,13 @@ final class LoginService: ObservableObject {
         record?.removeDirectories()
         let fresh = AccountRecord(id: UUID().uuidString.lowercased(), userId: "", homeserver: input, displayName: nil)
         do {
-            let client = try await ClientFactory.builder(for: fresh)
-                .serverNameOrHomeserverUrl(serverNameOrUrl: input)
-                .build()
-            let details = await client.homeserverLoginDetails()
+            // Discovery (.well-known, versions) gives up after 8 s, like desktop (HomeserverTimeout.swift).
+            let client = try await HomeserverTimeout.run {
+                try await ClientFactory.builder(for: fresh)
+                    .serverNameOrHomeserverUrl(serverNameOrUrl: input)
+                    .build()
+            }
+            let details = try await HomeserverTimeout.run { await client.homeserverLoginDetails() }
             // .well-known may point somewhere else; that address has to be HTTPS as well.
             if let problem = Self.insecureServerProblem(details.url()) {
                 fresh.removeDirectories()
