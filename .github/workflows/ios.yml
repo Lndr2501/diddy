@@ -214,6 +214,16 @@ jobs:
           swiftc -swift-version 5 Diddy/Call/WatchTogetherLogic.swift Tools/watchtogether_check/main.swift -o "$RUNNER_TEMP/diddy-watchtogether-check"
           "$RUNNER_TEMP/diddy-watchtogether-check"
 
+      - name: Check call audio rules
+        run: |
+          swiftc -swift-version 5 Diddy/Call/CallAudioLogic.swift Diddy/Call/CallVolumeMemory.swift Diddy/Call/CallReactionLogic.swift Diddy/Call/AgentVoice.swift Tools/call_audio_check/main.swift -o "$RUNNER_TEMP/diddy-call-audio-check"
+          "$RUNNER_TEMP/diddy-call-audio-check"
+
+      - name: Check rich text and message embed rules
+        run: |
+          swiftc -swift-version 5 Diddy/Matrix/RichText.swift Diddy/Matrix/MessageEmbeds.swift Tools/richtext_check/main.swift -o "$RUNNER_TEMP/diddy-richtext-check"
+          "$RUNNER_TEMP/diddy-richtext-check"
+
       - name: Install XcodeGen
         run: command -v xcodegen || brew install xcodegen
 

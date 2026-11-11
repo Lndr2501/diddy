@@ -148,8 +148,8 @@ check(CallReactions.parse(eventJson: event(content: #"{"m.relates_to":{"rel_type
 check(CallReactions.parse(eventJson: event(content: #"{"m.relates_to":{"rel_type":"m.reference","event_id":"$m"},"emoji":"  "}"#)) == nil, "blank emoji")
 check(CallReactions.parse(eventJson: event(sender: "bad", content: #"{"m.relates_to":{"rel_type":"m.reference","event_id":"$m"},"emoji":"\#u{1F44D}"}"#)) == nil, "bad sender")
 check(CallReactions.parse(eventJson: "not json") == nil, "not json")
-check(CallReactions.parse(sender: "@a:x", contentJson: #"{"m.relates_to":{"rel_type":"m.reference","event_id":"$m"},"emoji":"\#u{1F44D}","name":"thumbsup"}"#)?.emoji == "\u{1F44D}", "parse the content only")
-check(CallReactions.parse(sender: "@a:x", contentJson: "{}") == nil, "empty content")
+check(CallReactions.parse(sender: "@a:x", contentJson: #"{"m.relates_to":{"rel_type":"m.reference","event_id":"$m"},"emoji":"\#u{1F44D}","name":"thumbsup"}"#, ts: 0)?.emoji == "\u{1F44D}", "parse the content only")
+check(CallReactions.parse(sender: "@a:x", contentJson: "{}", ts: 0) == nil, "empty content")
 
 var shown = ActiveCallReactions()
 check(shown.add(sender: "@a:x", emoji: "\u{1F44D}", now: 10), "first reaction shows")
