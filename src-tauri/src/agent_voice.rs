@@ -94,40 +94,24 @@ pub(crate) fn mac_keycode(code: &str) -> Option<u16> {
     })
 }
 
-/// Keys for which macOS sets the Fn flag itself while they are held (arrows, Home/End, Page Up/Down,
-/// forward delete, F1-F20). Without this list every arrow press counted as the Fn key (#152).
-pub(crate) const FN_IMPLIED_KEYCODES: &[u16] = &[
-    0x7B, 0x7C, 0x7D, 0x7E, // arrows
-    0x73, 0x77, 0x74, 0x79, 0x75, // Home, End, Page Up, Page Down, forward delete
-    0x7A, 0x78, 0x63, 0x76, 0x60, 0x61, 0x62, 0x64, 0x65, 0x6D, 0x67, 0x6F, // F1-F12
-    0x69, 0x6B, 0x71, 0x6A, 0x40, 0x4F, 0x50, 0x5A, // F13-F20
-];
+/// macOS virtual key code of the Fn / Globe key (kVK_Function). The "secondary Fn" modifier flag is
+/// not usable: macOS also sets it, and keeps it set between presses, for arrow keys, Home/End, Page
+/// Up/Down and the F-keys (#152). The key state of this code is true only while Fn itself is held.
+pub(crate) const FN_KEYCODE: u16 = 0x3F;
 
 #[cfg(target_os = "macos")]
 mod native {
     #[link(name = "CoreGraphics", kind = "framework")]
     extern "C" {
-        fn CGEventSourceFlagsState(state_id: i32) -> u64;
         fn CGEventSourceKeyState(state_id: i32, key: u16) -> bool;
     }
     /// kCGEventSourceStateHIDSystemState: the hardware state, independent of the focused app.
     const HID_SYSTEM_STATE: i32 = 1;
-    /// kCGEventFlagMaskSecondaryFn: the Fn / Globe key.
-    const FLAG_SECONDARY_FN: u64 = 0x0080_0000;
 
     pub fn key_down(code: &str) -> Option<bool> {
         if code == "Fn" {
             // SAFETY: plain CoreGraphics query without pointers.
-            let flags = unsafe { CGEventSourceFlagsState(HID_SYSTEM_STATE) };
-            if flags & FLAG_SECONDARY_FN == 0 {
-                return Some(false);
-            }
-            // The flag is also set by arrow keys and the like: that is not the Fn key being held.
-            let implied = super::FN_IMPLIED_KEYCODES.iter().any(|k| {
-                // SAFETY: plain CoreGraphics query without pointers.
-                unsafe { CGEventSourceKeyState(HID_SYSTEM_STATE, *k) }
-            });
-            return Some(!implied);
+            return Some(unsafe { CGEventSourceKeyState(HID_SYSTEM_STATE, super::FN_KEYCODE) });
         }
         let keycode = super::mac_keycode(code)?;
         // SAFETY: plain CoreGraphics query without pointers.
@@ -172,14 +156,10 @@ mod tests {
     }
 
     #[test]
-    fn arrow_keys_are_not_the_fn_key() {
-        // #152: arrows set the Fn flag on MacBook keyboards
-        for arrow in [0x7B, 0x7C, 0x7D, 0x7E] {
-            assert!(FN_IMPLIED_KEYCODES.contains(&arrow));
-        }
-        // the Fn key itself and the modifiers are never in the list
-        assert!(!FN_IMPLIED_KEYCODES.contains(&0x3F));
-        assert!(!FN_IMPLIED_KEYCODES.contains(&0x3A));
+    fn fn_is_read_from_its_own_key_not_from_the_modifier_flag() {
+        // #152: arrows keep the Fn flag set; only kVK_Function means the Fn key is held
+        assert_eq!(FN_KEYCODE, 0x3F);
+        assert_ne!(Some(FN_KEYCODE), mac_keycode("AltLeft"));
     }
 
     #[test]
