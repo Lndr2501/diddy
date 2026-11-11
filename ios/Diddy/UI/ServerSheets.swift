@@ -322,6 +322,7 @@ struct ChannelInfoView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var showMembers = false
     @State private var showInvite = false
+    @State private var showSettings = false
     @State private var confirmLeave = false
     @State private var canEdit = false
     @State private var name = ""
@@ -366,6 +367,7 @@ struct ChannelInfoView: View {
                     }
                     if summary?.isDirect != true {
                         Button { showInvite = true } label: { Label("Invite People", systemImage: "person.badge.plus") }
+                        Button { showSettings = true } label: { Label("Channel Settings", systemImage: "gearshape") }
                     }
                 }
                 if let error { Text(error).foregroundStyle(Theme.danger) }
@@ -383,6 +385,12 @@ struct ChannelInfoView: View {
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
             .sheet(isPresented: $showMembers) { MembersView(account: account, roomId: roomId) }
             .sheet(isPresented: $showInvite) { InviteView(account: account, roomId: roomId) }
+            .sheet(isPresented: $showSettings) {
+                RoomSettingsView(roomId: roomId, account: account, onOpenRoom: { id in
+                    dismiss()
+                    navigator.open(id, account: account)
+                })
+            }
             .confirmationDialog("Leave \(summary?.name ?? "this channel")?", isPresented: $confirmLeave, titleVisibility: .visible) {
                 Button("Leave", role: .destructive) { leave() }
             }

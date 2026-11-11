@@ -97,14 +97,17 @@ private struct ChatContent: View {
             messages
             typingLine
             followingLine
-            if canSend {
-                composer
-            } else {
-                Text("You do not have permission to send messages here.")
-                    .font(.footnote).foregroundStyle(Theme.muted)
-                    .frame(maxWidth: .infinity)
-                    .padding(14)
-                    .background(Theme.chat)
+            // A replaced (upgraded) room shows "This room has been replaced" instead (RoomSettings/RoomTombstoneViews.swift).
+            RoomTombstoneGate(account: account, roomId: roomId, onOpen: { navigator.open($0, account: account) }) {
+                if canSend {
+                    composer
+                } else {
+                    Text("You do not have permission to send messages here.")
+                        .font(.footnote).foregroundStyle(Theme.muted)
+                        .frame(maxWidth: .infinity)
+                        .padding(14)
+                        .background(Theme.chat)
+                }
             }
         }
         .background(Theme.chat.ignoresSafeArea())

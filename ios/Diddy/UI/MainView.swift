@@ -339,7 +339,8 @@ struct ChannelSidebar: View {
             case .invite(let id): InviteView(account: account, roomId: id)
             case .createChannel(let id): CreateChannelView(account: account, spaceId: id)
             case .newMessage: NewMessageView(account: account)
-            case .roomSettings(let id): RoomSettingsView(roomId: id, account: account)
+            case .roomSettings(let id):
+                RoomSettingsView(roomId: id, account: account, onOpenRoom: { destination = account.destination(for: $0) })
             }
         }
         .confirmationDialog(
@@ -393,6 +394,7 @@ struct ChannelSidebar: View {
                     Button { sheet = .members(server) } label: { Label("Members", systemImage: "person.2.fill") }
                     Button { sheet = .invite(server) } label: { Label("Invite People", systemImage: "person.badge.plus") }
                     Button { sheet = .createChannel(server) } label: { Label("Create Channel", systemImage: "plus.bubble") }
+                    Button { sheet = .roomSettings(server) } label: { Label("Server Settings", systemImage: "gearshape") }
                     if !account.unjoinedChannels(inSpace: server).isEmpty {
                         Button { joinAll(server) } label: { Label("Join All Channels", systemImage: "arrow.right.circle") }
                     }
