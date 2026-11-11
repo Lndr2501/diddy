@@ -708,6 +708,16 @@ struct RoomStateSnapshot {
 
     func event(_ type: String, _ key: String = "") -> [String: Any]? { events[type]?[key] }
 
+    /// The state after a successful `PUT /rooms/{id}/state/{type}/{key}`, so the screens do not have
+    /// to read a big room's whole state again after every change.
+    mutating func setting(_ type: String, key: String = "", content: [String: Any], sender: String) {
+        var event = events[type]?[key] ?? ["type": type, "state_key": key]
+        event["content"] = content
+        event["sender"] = sender
+        event["origin_server_ts"] = Int(Date().timeIntervalSince1970 * 1000)
+        events[type, default: [:]][key] = event
+    }
+
     /// The content, or nil when the event is missing or emptied (redacted or removed).
     func content(_ type: String, _ key: String = "") -> [String: Any]? {
         guard let content = event(type, key)?["content"] as? [String: Any], !content.isEmpty else { return nil }

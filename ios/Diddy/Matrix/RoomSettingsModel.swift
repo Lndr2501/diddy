@@ -111,7 +111,11 @@ final class RoomSettingsModel: ObservableObject {
         var path = RoomSettingsAPI.rooms(roomId, "/state/\(RoomSettingsAPI.enc(type))")
         if !key.isEmpty { path += "/" + RoomSettingsAPI.enc(key) }
         _ = try await account.clientRequest(path, body: content, method: "PUT")
-        await load()
+        if state != nil {
+            state?.setting(type, key: key, content: content, sender: me)
+        } else {
+            await load()
+        }
     }
 
     /// Name, topic and picture show up in the room lists a moment later; this asks them to refresh.

@@ -262,6 +262,16 @@ check(RoomRoleChange.outcome(power: 100, target: "@low:s", me: "@me:s", permissi
 let roleContent = roundTrip(RoomRoleChange.content(levels: roleLevels, userId: "@low:s", power: 50))
 check((roleContent["users"] as? [String: Any])?["@low:s"] as? Int == 50 && (roleContent["users"] as? [String: Any])?["@me:s"] as? Int == 100, "power set, others kept")
 
+// MARK: Local state change
+
+var changing = RoomStateSnapshot(events: jsonArray(##"[{"type":"m.room.name","state_key":"","sender":"@a:s","content":{"name":"Old"}},{"type":"m.room.avatar","state_key":"","sender":"@a:s","content":{"url":"mxc://s/x"}}]"##))
+changing.setting("m.room.name", content: ["name": "New"], sender: "@me:s")
+check(changing.name == "New" && changing.event("m.room.name")?["sender"] as? String == "@me:s", "name replaced locally")
+changing.setting("m.room.avatar", content: [:], sender: "@me:s")
+check(changing.avatarUrl == nil, "emptied avatar reads as none")
+changing.setting("m.room.topic", content: ["topic": "Hi"], sender: "@me:s")
+check(changing.topic == "Hi" && changing.event("m.room.topic")?["state_key"] as? String == "", "new event added locally")
+
 if failures == 0 {
     print("roomsettings_check: all checks passed")
 } else {
