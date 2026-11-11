@@ -1,45 +1,5 @@
 import SwiftUI
 
-/// Settings > Chat: how messages look and what others see of you, like the desktop app's General
-/// settings. Stored on this device.
-struct ChatSettingsView: View {
-    @AppStorage(ChatSettings.timeFormatKey) private var timeFormat = ChatSettings.TimeFormat.system.rawValue
-    @AppStorage(ChatSettings.showMembershipKey) private var showMembership = true
-    @AppStorage(ChatSettings.shareActivityKey) private var shareActivity = true
-    @AppStorage(ChatSettings.autoLoadMediaKey) private var autoLoadMedia = true
-
-    var body: some View {
-        List {
-            Section {
-                Picker("Time format", selection: $timeFormat) {
-                    ForEach(ChatSettings.TimeFormat.allCases) { Text($0.title).tag($0.rawValue) }
-                }
-            } footer: {
-                Text("Example: \(Date().chatTimestamp)")
-            }
-            Section {
-                Toggle("Show join and leave messages", isOn: $showMembership)
-            } footer: {
-                Text("Takes effect the next time you open a chat.")
-            }
-            Section {
-                Toggle("Load pictures automatically", isOn: $autoLoadMedia)
-            } footer: {
-                Text("When off, pictures in chats load only when you tap them. Saves mobile data.")
-            }
-            Section {
-                Toggle("Share typing and read status", isOn: $shareActivity)
-            } footer: {
-                Text("When off, others do not see when you are typing or how far you have read. Your own unread counts still clear.")
-            }
-        }
-        .scrollContentBackground(.hidden)
-        .background(Theme.sidebar)
-        .navigationTitle("Chat")
-        .navigationBarTitleDisplayMode(.inline)
-    }
-}
-
 /// People you blocked, with a way to unblock them.
 struct BlockedUsersView: View {
     @ObservedObject var account: MatrixAccount
