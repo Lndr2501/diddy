@@ -36,7 +36,7 @@ extension Date {
         let time = ChatSettings.time(self)
         if calendar.isDateInToday(self) { return "Today at \(time)" }
         if calendar.isDateInYesterday(self) { return "Yesterday at \(time)" }
-        return "\(formatted(date: .numeric, time: .omitted)) \(time)"
+        return "\(ChatSettings.date(self)) \(time)"
     }
 }
 
