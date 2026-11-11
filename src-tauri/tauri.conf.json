@@ -47,7 +47,7 @@
   },
   "productName": "Diddy",
   "mainBinaryName": "diddy",
-  "version": "1.5.3",
+  "version": "1.5.4",
   "identifier": "app.diddy.desktop",
   "app": {
     "security": {

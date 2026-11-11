@@ -1,6 +1,6 @@
 # Changelog
 
-## Unveröffentlicht
+## 1.5.4 (2026-11-11)
 
 - **Profil wurde beim Start überschrieben:** In Optionsräumen im Nachrichtenmodus oder mit Verschlüsselung kommt das eigene Profil erst mit dem Nachladen des Verlaufs. Die automatische Versionsangabe, der Status, die Einführung und der Profil-Editor konnten vorher speichern und so ein leeres Profil für alle schreiben. Schreiben wartet jetzt, bis das Profil geladen ist; „Save changes“ ist bis dahin gesperrt.
 - **Gelöschte Badges kamen zurück:** Seit Badge-Zustand nur noch Admins gehört (#168), ist das Löschen oder Zurückziehen eines Mitglieds nur noch eine Nachricht, während die alte Version im Raumzustand bleibt. Solche Löschungen werden jetzt wie eigene Badges an später Beitretende wiederholt. Eigene Badges in einem Platz, den ein anderer im Zustand belegt, werden ebenfalls wieder weitergegeben.
