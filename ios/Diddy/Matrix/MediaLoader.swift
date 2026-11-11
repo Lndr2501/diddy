@@ -32,13 +32,31 @@ actor MediaLoader {
         let key = "\(accountId)|\(source.url())"
         let name = SHA256.hash(data: Data(key.utf8)).prefix(16).map { String(format: "%02x", $0) }.joined()
         let url = Self.audioFolder.appendingPathComponent("\(name).\(Self.audioExtension(mimeType))")
-        if FileManager.default.fileExists(atPath: url.path) { return url }
+        let decoded = Self.audioFolder.appendingPathComponent("\(name)-opus-v1.caf")
+        if FileManager.default.fileExists(atPath: decoded.path) { return decoded }
+        if let handle = try? FileHandle(forReadingFrom: url) {
+            let prefix = try? handle.read(upToCount: 4)
+            try? handle.close()
+            if let prefix, OpusContainer.kind(ofPrefix: Array(prefix)) == nil { return url }
+        }
         if let running = audioInFlight[key] { return await running.value }
         let task = Task<URL?, Never> {
-            guard let data = try? await client.getMediaContent(mediaSource: source),
-                  data.count <= Self.maxAudioBytes else { return nil }
+            let data: Data
+            if let cached = try? Data(contentsOf: url), cached.count <= Self.maxAudioBytes {
+                data = cached
+            } else {
+                guard let fetched = try? await client.getMediaContent(mediaSource: source),
+                      fetched.count <= Self.maxAudioBytes else { return nil }
+                data = fetched
+            }
             do {
                 try FileManager.default.createDirectory(at: Self.audioFolder, withIntermediateDirectories: true)
+                if OpusContainer.kind(ofPrefix: Array(data.prefix(4))) != nil {
+                    return try await Task.detached(priority: .userInitiated) {
+                        try OpusTranscoder.convert(data, to: decoded)
+                        return decoded
+                    }.value
+                }
                 try data.write(to: url, options: .atomic)
                 return url
             } catch { return nil }

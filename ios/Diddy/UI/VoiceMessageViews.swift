@@ -138,7 +138,13 @@ final class VoicePlayer: NSObject, ObservableObject, AVAudioPlayerDelegate {
     }
 
     private func resume() {
-        guard let player, player.play() else { return }
+        guard let player else { return }
+        guard player.play() else {
+            let failed = currentId
+            stop()
+            failedId = failed
+            return
+        }
         isPlaying = true
         startTimer()
     }
@@ -158,7 +164,18 @@ final class VoicePlayer: NSObject, ObservableObject, AVAudioPlayerDelegate {
     nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         Task { @MainActor in
             guard self.player === player else { return }
+            let failed = self.currentId
             self.stop()
+            if !flag { self.failedId = failed }
+        }
+    }
+
+    nonisolated func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
+        Task { @MainActor in
+            guard self.player === player else { return }
+            let failed = self.currentId
+            self.stop()
+            self.failedId = failed
         }
     }
 }
