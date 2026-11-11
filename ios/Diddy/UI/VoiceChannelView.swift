@@ -141,9 +141,11 @@ private struct ConnectedVoiceView: View {
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(session.connected && session.outgoing != .noAnswer ? Theme.online : Theme.muted)
                 Spacer()
+                if session.connected { WatchTogetherButton(watch: session.watchTogether) }
             }
             .padding(.horizontal, 14)
             .padding(.top, 10)
+            WatchTogetherPanel(watch: session.watchTogether)
             // One tile per person and per screen share; a tap focuses one (CallStageView.swift).
             CallStageView(session: session, account: callAccount, showProfile: showProfile)
             if session.screenSharing && !CallSession.sharesWholeScreen {

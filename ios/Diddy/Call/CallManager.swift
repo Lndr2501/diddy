@@ -243,6 +243,14 @@ final class CallSession: NSObject, ObservableObject {
             self.refreshMembers()
         }
     ))
+    /// Watch together (#83): the shared YouTube video of this call (WatchTogether.swift).
+    private(set) lazy var watchTogether: WatchTogetherSession = WatchTogetherSession(
+        account: account,
+        roomId: roomId,
+        devices: { [weak self] in self?.watchDevices() ?? [] },
+        isMember: { [weak self] userId in self?.members.contains(where: { $0.userId == userId }) ?? false },
+        displayName: { [weak self] userId in self?.account.name(of: userId) ?? userId }
+    )
     private var membershipRefresh: Task<Void, Never>?
     private var membershipCreatedTs: UInt64?
     private var transport: (serviceUrl: String, alias: String)?
@@ -364,6 +372,7 @@ final class CallSession: NSObject, ObservableObject {
         }
         connected = true
         state = "Voice connected"
+        watchTogether.start()
         scheduleMembershipRefresh()
         refreshMembers()
     }
@@ -391,6 +400,7 @@ final class CallSession: NSObject, ObservableObject {
         toDeviceHandle = nil
         agentVoiceHandle?.cancel()
         agentVoiceHandle = nil
+        watchTogether.stop()
         if wasConnected || membershipCreatedTs != nil {
             // An empty content ends our membership for everyone else.
             _ = try? await matrixRoom.sendStateEventRaw(eventType: Self.memberEventType, stateKey: stateKey, content: "{}", requestConfigOverride: nil)
@@ -721,6 +731,16 @@ final class CallSession: NSObject, ObservableObject {
             recipients[parts.userId, default: []].append(parts.deviceId)
         }
         return recipients
+    }
+
+    /// The devices in the call except ours, from the LiveKit identities ("@user:server:DEVICE").
+    private func watchDevices() -> [WatchDevice] {
+        var devices: [WatchDevice] = []
+        for participant in liveKitRoom.remoteParticipants.values {
+            guard let identity = participant.identity?.stringValue, let parts = Self.split(identity: identity) else { continue }
+            devices.append(WatchDevice(userId: parts.userId, deviceId: parts.deviceId))
+        }
+        return devices
     }
 
     private func distributeKey(to participants: [LiveKit.RemoteParticipant]) async {

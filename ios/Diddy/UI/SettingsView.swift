@@ -83,6 +83,7 @@ struct SettingsView: View {
                     NavigationLink { SoundSettingsView() } label: { Label("Sounds", systemImage: "speaker.wave.2.fill") }
                     NavigationLink { CallAlertSettingsView() } label: { Label("Call Alerts", systemImage: "phone.fill") }
                     NavigationLink { PluginSettingsView() } label: { Label("Plugins", systemImage: "puzzlepiece.extension.fill") }
+                    NavigationLink { WatchTogetherSettingsView() } label: { Label("Watch together", systemImage: "play.rectangle.fill") }
                 }
 
                 Section {
