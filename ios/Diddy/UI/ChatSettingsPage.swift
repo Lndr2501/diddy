@@ -1,16 +1,12 @@
 import SwiftUI
 
-/// Settings > Chat: the options of desktop's Settings > General (Messages, Timeline, Media &
-/// Previews, Date & Time, Editor, privacy and the profile decorations of others), with the same
-/// names. Stored on this device.
+/// Settings > Chat: the options of desktop's Settings > General (Timeline, Media & Previews,
+/// Date & Time, Editor, privacy and the profile decorations of others), with the same names.
+/// Stored on this device. Desktop's message layouts and spacing, legacy username colours, profile
+/// change and hidden event switches are left out: the iOS timeline has one layout, always hides
+/// profile changes and has no view for hidden events, so those switches would do nothing.
 struct ChatSettingsView: View {
-    @AppStorage(ChatSettings.messageLayoutKey) private var layout = ChatSettings.MessageLayout.modern.rawValue
-    @AppStorage(ChatSettings.messageSpacingKey) private var spacing = ChatSettings.MessageSpacing.normal.rawValue
-    @AppStorage(ChatSettings.legacyUsernameColorKey) private var legacyUsernameColor = false
-
     @AppStorage(ChatSettings.showMembershipKey) private var showMembership = true
-    @AppStorage(ChatSettings.hideProfileChangesKey) private var hideProfileChanges = true
-    @AppStorage(ChatSettings.showHiddenEventsKey) private var showHiddenEvents = false
 
     @AppStorage(ChatSettings.autoLoadMediaKey) private var autoLoadMedia = true
     @AppStorage(ChatSettings.urlPreviewsKey) private var urlPreviews = true
@@ -31,20 +27,8 @@ struct ChatSettingsView: View {
 
     var body: some View {
         List {
-            Section("Messages") {
-                Picker("Message Layout", selection: $layout) {
-                    ForEach(ChatSettings.MessageLayout.allCases) { Text($0.title).tag($0.rawValue) }
-                }
-                Picker("Message Spacing", selection: $spacing) {
-                    ForEach(ChatSettings.MessageSpacing.allCases) { Text($0.title).tag($0.rawValue) }
-                }
-                Toggle("Legacy Username Color", isOn: $legacyUsernameColor)
-            }
-
             Section("Timeline") {
                 Toggle("Hide Membership Change", isOn: Binding(get: { !showMembership }, set: { showMembership = !$0 }))
-                Toggle("Hide Profile Change", isOn: $hideProfileChanges)
-                Toggle("Show Hidden Events", isOn: $showHiddenEvents)
             }
 
             Section("Media & Previews") {

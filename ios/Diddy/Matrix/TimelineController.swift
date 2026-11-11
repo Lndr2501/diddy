@@ -113,7 +113,7 @@ final class TimelineController: ObservableObject {
             let me = ownUserId
             if focus == nil { await nav.start(room: room) }
             typingListener = room.subscribeToTypingNotifications(listener: TypingUpdates { [weak self] ids in
-                Task { @MainActor in self?.typingUserIds = ids.filter { $0 != me } }
+                Task { @MainActor in self?.typingUserIds = ChatSettings.shareActivity ? ids.filter { $0 != me } : [] }
             })
             // Sync only brings the members of recent senders (lazy loading), so older messages had
             // no sender profile: no name and no avatar. Loading the member list fills them in;
