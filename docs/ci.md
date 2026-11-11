@@ -31,6 +31,15 @@ Rust tests run in parallel on macOS. No checks were removed.
 A cache miss always performs a full build. Cache entries are an optimization, not the
 source of version selection. New actions are pinned by commit SHA.
 
+## Nix source trees
+
+The Nix build runs the unit tests of `cinny/` and `electron/` in source trees that contain only
+the paths listed in `nix/package.nix` (`frontendSrc`, `shellSrc`). A test that reads a file
+outside its tree (for example `.github/scripts` or `electron/` from a cinny test) passes in the
+normal checkout and only breaks Nix. Nix runs on `main` only for dependency changes, so the Test
+workflow repeats those trees on every push: `node .github/scripts/nix-tree-tests.cjs`. Such a
+test must skip itself when the file is missing (see `cinny/tests/altstoreSource.test.cjs`).
+
 ## Superseded revisions
 
 Test and Nix runs cancel older runs for the same PR or branch. iOS cancels older PR

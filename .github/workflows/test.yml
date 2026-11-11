@@ -46,6 +46,11 @@ jobs:
       - name: Linux shell tests (Electron main process helpers, no Electron needed)
         run: cd electron && npm test
 
+      # The Nix build runs the same tests in a tree with only the paths nix/package.nix copies.
+      # Nix itself runs on main only for dependency changes, so check that tree on every push.
+      - name: Tests in the Nix source trees
+        run: node .github/scripts/nix-tree-tests.cjs
+
       - name: Build web app
         env:
           NODE_OPTIONS: "--max_old_space_size=4096"

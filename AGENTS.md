@@ -26,8 +26,9 @@ folds, jotai). Dazu `electron/` (Linux) und `ios/` (Swift). Repo: Lndr2501/diddy
 | macOS-UI-Tests (WebKit) | `npm run test:ui:mac`, nur auf dem Mac, siehe Guide |
 | README-Screenshots | `npm run shots` (Mac oder Linux mit `DIDDY_SHOTS_CHROME`), nur Beispieldaten, siehe `docs/screenshots/README.md` |
 | Linux/Electron-Tests | `cd electron && npm test` |
+| Tests wie im Nix-Build (nur `cinny/` bzw. `electron/`) | `node .github/scripts/nix-tree-tests.cjs` (im Repo-Root) |
 
-Vor jedem Commit: `tsc` und `npm test` grün. Neue Logik bekommt einen Test in `cinny/tests/`.
+Vor jedem Commit: `tsc` und `npm test` grün. Tests, die Dateien außerhalb von `cinny/` lesen, müssen sich überspringen, wenn die Datei fehlt (Nix-Build kopiert nur `cinny/`). Neue Logik bekommt einen Test in `cinny/tests/`.
 ESLint hat viele Altlasten; neue Dateien trotzdem sauber halten (`npx eslint <datei>`).
 
 ## Regeln
