@@ -40,6 +40,15 @@ struct MessageRow: Identifiable {
     var card: BotCard? = nil
     /// The change a membership line is about, for its symbol.
     var membership: TimelineLayout.Membership? = nil
+    /// Formatted text (HTML or Markdown block syntax); nil keeps the plain rendering of `body`.
+    var rich: RichSource? = nil
+    var richItalic = false
+    /// Web links to preview under the message (empty when previews are off).
+    var previewURLs: [String] = []
+    /// A video message; `body` is its file line, which a client without a player shows.
+    var video: VideoAttachment? = nil
+    var location: LocationAttachment? = nil
+    var isSticker = false
 
     var layoutKind: TimelineLayout.Kind {
         if case .notice = body { return .notice }
@@ -69,6 +78,8 @@ final class TimelineController: ObservableObject {
     private var listener: TaskHandle?
     private var typingListener: TaskHandle?
     private var isTyping = false
+    /// Whether the room is encrypted: link previews follow a separate setting there.
+    private var roomEncrypted = false
 
     init(room: Room, ownUserId: String, isDirect: Bool = false, focus: TimelineFocus? = nil) {
         self.room = room
@@ -95,6 +106,7 @@ final class TimelineController: ObservableObject {
                 timeline = try await room.timeline()
             }
             self.timeline = timeline
+            roomEncrypted = await room.isEncrypted()
             listener = await timeline.addListener(listener: TimelineUpdates { [weak self] diffs in
                 Task { @MainActor in self?.apply(diffs) }
             })
@@ -342,6 +354,7 @@ final class TimelineController: ObservableObject {
         var pendingDay: Date?
         var createdAt: Date?
         var firstEventDate: Date?
+        let previews = ChatSettings.urlPreviews(encrypted: roomEncrypted)
         for item in items {
             if let virtual = item.asVirtual() {
                 if case .dateDivider(let ts) = virtual {
@@ -355,7 +368,7 @@ final class TimelineController: ObservableObject {
             if createdAt == nil, case .state(_, let content) = event.content, case .roomCreate = content {
                 createdAt = date
             }
-            guard var row = Self.row(for: event, id: item.uniqueId().id, me: ownUserId) else { continue }
+            guard var row = Self.row(for: event, id: item.uniqueId().id, me: ownUserId, previews: previews) else { continue }
             row.dayDivider = pendingDay
             pendingDay = nil
             built.append(row)
@@ -390,7 +403,7 @@ final class TimelineController: ObservableObject {
         nav.update(items: items, rowIds: Set(result.map { $0.id }), me: ownUserId)
     }
 
-    private static func row(for event: EventTimelineItem, id: String, me: String) -> MessageRow? {
+    private static func row(for event: EventTimelineItem, id: String, me: String, previews: Bool = false) -> MessageRow? {
         let (name, avatar): (String, String?) = {
             if case .ready(let displayName, _, let avatarUrl, _, _) = event.senderProfile {
                 return (displayName ?? event.sender, avatarUrl)
@@ -402,6 +415,8 @@ final class TimelineController: ObservableObject {
         var reply: (sender: String, text: String)?
         var card: BotCard?
         var membership: TimelineLayout.Membership?
+        var extras = MessageExtras()
+        var isSticker = false
         switch event.content {
         case .msgLike(let content):
             if let details = content.inReplyTo, case .ready(let replied, let sender, let profile, _, _) = details.event() {
@@ -413,10 +428,12 @@ final class TimelineController: ObservableObject {
             case .message(let message):
                 edited = message.isEdited
                 body = Self.body(of: message)
+                extras = MessageRendering.extras(of: message)
                 let inspection = BotCardLookup.inspect(event, id: id, message: message)
                 if inspection.hidden { return nil }
                 card = inspection.card
             case .sticker(let text, let info, let source):
+                isSticker = true
                 body = .image(source, filename: text, width: info.width.map { CGFloat($0) }, height: info.height.map { CGFloat($0) })
             case .redacted:
                 body = .redacted
@@ -440,7 +457,7 @@ final class TimelineController: ObservableObject {
         let reactions = event.reactions.map { reaction in
             ReactionChip(key: reaction.key, count: reaction.senders.count, mine: reaction.senders.contains { $0.senderId == me })
         }
-        return MessageRow(
+        var row = MessageRow(
             id: id,
             eventId: event.eventOrTransactionId,
             sender: event.sender,
@@ -458,6 +475,16 @@ final class TimelineController: ObservableObject {
             card: card,
             membership: membership
         )
+        // A bot card keeps its own look; everything else gets the desktop's rendering.
+        if card == nil {
+            row.rich = extras.rich
+            row.richItalic = extras.italic
+            row.video = extras.video
+            row.location = extras.location
+            if previews, let text = extras.previewText { row.previewURLs = LinkPreviewURLs.find(in: text) }
+        }
+        row.isSticker = isSticker
+        return row
     }
 
     private static func body(of message: MessageContent) -> MessageRow.Body {

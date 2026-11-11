@@ -1030,6 +1030,7 @@ struct MessageRowView: View {
                         }
                     }
                     content
+                    if !row.previewURLs.isEmpty { LinkPreviewStrip(urls: row.previewURLs, account: account) }
                     if !row.reactions.isEmpty { reactions }
                 }
                 Spacer(minLength: 0)
@@ -1050,32 +1051,31 @@ struct MessageRowView: View {
         switch row.body {
         case .text where row.card != nil:
             if let card = row.card { BotCardView(card: card, account: account, onCommand: onCardCommand) }
+        case .text where row.location != nil:
+            if let location = row.location { LocationMessageView(location: location) }
         case .text(let text):
-            (Text(rendered(text)) + Text(row.isEdited ? " (edited)" : "").font(.caption2).foregroundColor(Theme.faint))
-                .foregroundStyle(Theme.text)
-                .textSelection(.enabled)
-                .environment(\.openURL, OpenURLAction { url in
-                    switch MatrixToLink.parse(url.absoluteString) {
-                    case .room(let address, let via):
-                        navigator.shellLink = ShellRoomLink(address: address, via: via)
-                        return .handled
-                    case .event(let address, let eventId, let via):
-                        navigator.shellLink = ShellRoomLink(address: address, via: via, eventId: eventId)
-                        return .handled
-                    default: break
-                    }
-                    guard let userId = MentionText.userId(in: url) else { return .systemAction }
-                    onMention(userId)
-                    return .handled
-                })
-                .onAppear {
-                    let unknown = MentionText.userIds(in: text).filter { account.profiles[$0] == nil }
-                    if !unknown.isEmpty { account.resolveProfiles(unknown, in: roomId) }
+            Group {
+                if let rich = row.rich {
+                    RichMessageBody(source: rich, italic: row.richItalic, edited: row.isEdited, account: account, onLink: handleLink)
+                } else {
+                    (Text(rendered(text)) + Text(row.isEdited ? " (edited)" : "").font(.caption2).foregroundColor(Theme.faint))
+                        .foregroundStyle(Theme.text)
+                        .textSelection(.enabled)
+                        .environment(\.openURL, OpenURLAction { handleLink($0) })
                 }
+            }
+            .onAppear {
+                let unknown = MentionText.userIds(in: text).filter { account.profiles[$0] == nil }
+                if !unknown.isEmpty { account.resolveProfiles(unknown, in: roomId) }
+            }
+        case .image(let source, let name, let width, let height) where row.isSticker:
+            StickerView(source: source, name: name, width: width, height: height, account: account)
         case .image(let source, _, let width, let height):
             ChatImage(source: source, account: account, aspect: (width ?? 4) / max(height ?? 3, 1), onTap: onImage)
         case .audio(let audio):
             VoiceMessageView(id: row.id, audio: audio, account: account)
+        case .file where row.video != nil:
+            if let video = row.video { VideoMessageView(video: video, account: account, onFile: onFile) }
         case .file(let name, let source, _):
             FileAttachment(name: name, source: source, client: account.client, onOpen: onFile)
         case .undecryptable:
@@ -1088,12 +1088,29 @@ struct MessageRowView: View {
         }
     }
 
+    /// Taps on links in a message: rooms and events open in the app, people open their profile,
+    /// everything else goes to the system.
+    private func handleLink(_ url: URL) -> OpenURLAction.Result {
+        switch MatrixToLink.parse(url.absoluteString) {
+        case .room(let address, let via):
+            navigator.shellLink = ShellRoomLink(address: address, via: via)
+            return .handled
+        case .event(let address, let eventId, let via):
+            navigator.shellLink = ShellRoomLink(address: address, via: via, eventId: eventId)
+            return .handled
+        default: break
+        }
+        guard let userId = MentionText.userId(in: url) else { return .systemAction }
+        onMention(userId)
+        return .handled
+    }
+
     private var reactions: some View {
         HStack(spacing: 6) {
             ForEach(row.reactions, id: \.key) { reaction in
                 Button { onReact(reaction.key) } label: {
                     HStack(spacing: 4) {
-                        Text(reaction.key)
+                        ReactionKeyView(key: reaction.key, account: account)
                         Text("\(reaction.count)").font(.caption.weight(.semibold))
                     }
                     .padding(.horizontal, 8)
@@ -1105,7 +1122,7 @@ struct MessageRowView: View {
                 .contextMenu {
                     Button { onReactionInfo(reaction.key) } label: { Label("Who Reacted", systemImage: "person.2") }
                 }
-                .accessibilityLabel("\(reaction.key), \(reaction.count), \(reaction.mine ? "remove your reaction" : "add your reaction")")
+                .accessibilityLabel("\(reaction.key.hasPrefix("mxc://") ? "Custom emoji" : reaction.key), \(reaction.count), \(reaction.mine ? "remove your reaction" : "add your reaction")")
             }
         }
         .padding(.top, 2)
