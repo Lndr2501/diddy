@@ -6,9 +6,27 @@ struct BlockedUsersView: View {
     @State private var userIds: [String] = []
     @State private var loading = true
     @State private var error: String?
+    @State private var newUserId = ""
+    @State private var blocking = false
 
     var body: some View {
         List {
+            Section {
+                TextField("@user:server", text: $newUserId)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(.emailAddress)
+                Button {
+                    Task { await block() }
+                } label: {
+                    HStack { Text("Block"); if blocking { Spacer(); ProgressView() } }
+                }
+                .disabled(!AccountInfo.isUserId(newUserId.trimmingCharacters(in: .whitespaces)) || blocking)
+            } header: {
+                Text("Block User")
+            } footer: {
+                Text("Prevent receiving messages or invites from a user by adding their user ID.")
+            }
             if let error { Text(error).foregroundStyle(Theme.danger) }
             if !loading && userIds.isEmpty && error == nil {
                 Text("You have not blocked anyone.").foregroundStyle(Theme.muted)
@@ -39,96 +57,24 @@ struct BlockedUsersView: View {
         } catch { self.error = error.friendlyMessage }
     }
 
-    private func unblock(_ userId: String) async {
+    private func block() async {
+        let userId = newUserId.trimmingCharacters(in: .whitespaces)
+        guard AccountInfo.isUserId(userId) else { return }
+        blocking = true
+        defer { blocking = false }
         do {
-            try await account.client.unignoreUser(userId: userId)
-            userIds.removeAll { $0 == userId }
-        } catch { self.error = error.friendlyMessage }
-    }
-}
-
-/// The sessions of your account, as the server lists them.
-struct DevicesView: View {
-    @ObservedObject var account: MatrixAccount
-    @State private var devices: [Device] = []
-    @State private var loading = true
-    @State private var error: String?
-    @State private var renaming: Device?
-    @State private var newName = ""
-
-    struct Device: Identifiable, Hashable {
-        let id: String
-        let name: String?
-        let lastSeen: Date?
-    }
-
-    private var current: [Device] { devices.filter { $0.id == account.deviceId } }
-    private var others: [Device] { devices.filter { $0.id != account.deviceId } }
-
-    var body: some View {
-        List {
-            if let error { Text(error).foregroundStyle(Theme.danger) }
-            if !current.isEmpty {
-                Section("This Device") { ForEach(current) { row($0) } }
-            }
-            if !others.isEmpty {
-                Section {
-                    ForEach(others) { row($0) }
-                } header: {
-                    Text("Other Devices")
-                } footer: {
-                    Text("Signing out other devices needs your password, which this app does not ask for. Use Diddy desktop for that.")
-                }
-            }
-        }
-        .overlay { if loading { ProgressView() } }
-        .scrollContentBackground(.hidden)
-        .background(Theme.sidebar)
-        .navigationTitle("Devices")
-        .navigationBarTitleDisplayMode(.inline)
-        .task { await load() }
-        .refreshable { await load() }
-        .alert("Rename device", isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
-            TextField("Name", text: $newName)
-            Button("Save") { if let device = renaming { Task { await rename(device) } } }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Other people in encrypted chats can see this name.")
-        }
-    }
-
-    private func row(_ device: Device) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(device.name ?? device.id).foregroundStyle(Theme.text)
-            Text(device.lastSeen.map { "\(device.id) · last seen \($0.formatted(.relative(presentation: .named)))" } ?? device.id)
-                .font(.caption).foregroundStyle(Theme.faint)
-        }
-        .contextMenu {
-            Button { newName = device.name ?? ""; renaming = device } label: { Label("Rename", systemImage: "pencil") }
-            Button { UIPasteboard.general.string = device.id } label: { Label("Copy Device ID", systemImage: "doc.on.doc") }
-        }
-    }
-
-    private func load() async {
-        defer { loading = false }
-        do {
-            let json = try await account.clientRequest("/_matrix/client/v3/devices")
-            devices = (json["devices"] as? [[String: Any]] ?? []).compactMap { item in
-                guard let id = item["device_id"] as? String else { return nil }
-                let seen = (item["last_seen_ts"] as? NSNumber).map { Date(timeIntervalSince1970: $0.doubleValue / 1000) }
-                return Device(id: id, name: item["display_name"] as? String, lastSeen: seen)
-            }
-            .sorted { ($0.lastSeen ?? .distantPast) > ($1.lastSeen ?? .distantPast) }
+            try await account.client.ignoreUser(userId: userId)
+            if !userIds.contains(userId) { userIds = (userIds + [userId]).sorted() }
+            account.resolveProfiles([userId], in: "")
+            newUserId = ""
             error = nil
         } catch { self.error = error.friendlyMessage }
     }
 
-    private func rename(_ device: Device) async {
-        let name = newName.trimmingCharacters(in: .whitespaces)
-        guard !name.isEmpty, let encoded = device.id.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) else { return }
+    private func unblock(_ userId: String) async {
         do {
-            _ = try await account.clientRequest("/_matrix/client/v3/devices/\(encoded)", body: ["display_name": name], method: "PUT")
-            await load()
+            try await account.client.unignoreUser(userId: userId)
+            userIds.removeAll { $0 == userId }
         } catch { self.error = error.friendlyMessage }
     }
 }

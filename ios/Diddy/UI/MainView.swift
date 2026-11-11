@@ -101,6 +101,8 @@ struct MainView: View {
         }
         // Online status of DM partners and others, and your own (PresenceViews.swift).
         .presenceUpdates(account: account)
+        // Verification requests from your other devices and other people (VerificationViews.swift).
+        .verificationRequests(account: account)
         .background(shortcuts)
         .sheet(isPresented: $showQuickSwitch) { QuickSwitchView(account: account).environmentObject(navigator) }
         .sheet(isPresented: $showWelcome, onDismiss: finishWelcome) { DiddyWelcomeView(account: account, onFinish: { finishWelcome(); showWelcome = false }) }

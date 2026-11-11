@@ -103,7 +103,10 @@ struct SettingsView: View {
                     LabeledContent("Device ID", value: account.deviceId)
                     Button("Enter recovery key") { showRecovery = true }
                     NavigationLink("Devices") { DevicesView(account: account) }
+                    NavigationLink("Encryption") { EncryptionSettingsView(account: account) }
+                    NavigationLink("Contact Information") { ContactInfoView(account: account) }
                     NavigationLink("Blocked Users") { BlockedUsersView(account: account) }
+                    NavigationLink("Developer Tools") { DeveloperToolsView(account: account) }
                 }
 
                 Section {
