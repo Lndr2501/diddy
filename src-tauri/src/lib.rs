@@ -5,7 +5,7 @@
 
 // mod menu;
 
-use tauri::{webview::{NewWindowResponse, PageLoadEvent, WebviewWindowBuilder}, Manager, WebviewUrl, TitleBarStyle};
+use tauri::{webview::{DownloadEvent, NewWindowResponse, PageLoadEvent, WebviewWindowBuilder}, Manager, WebviewUrl, TitleBarStyle};
 mod agent_voice;
 mod app_icon;
 mod diag;
@@ -168,8 +168,28 @@ pub(crate) fn build_client_window(
         })
         .background_throttling(BackgroundThrottlingPolicy::Disabled)
         .on_new_window(move |url, _features| {
-            let _ = app_handle.opener().open_url(url.as_str(), None::<&str>);
+            // Links from messages may carry any scheme the sanitizer allows (ftp:, magnet:, ...).
+            // Only web and mail links go to the system, like the Linux shell (#180).
+            if is_external_link(url.as_str()) {
+                let _ = app_handle.opener().open_url(url.as_str(), None::<&str>);
+            } else {
+                diag::write_line(&format!("blocked link with scheme {}", url.scheme()));
+            }
             NewWindowResponse::Deny
+        })
+        // Without a download handler WebKit drops every download (file messages, images,
+        // recovery key) silently (#176). The default target is the Downloads folder; an existing
+        // file gets a number appended instead of being overwritten.
+        .on_download(|_webview, event| {
+            match event {
+                DownloadEvent::Requested { .. } => {}
+                DownloadEvent::Finished { path, success, .. } => {
+                    let target = path.map(|p| p.display().to_string()).unwrap_or_default();
+                    diag::write_line(&format!("download finished: success={success} {target}"));
+                }
+                _ => {}
+            }
+            true
         });
     let window_builder = if let Some(profile) = profile {
         let metadata = serde_json::to_string(profile).map_err(|_| "Verbindung konnte nicht vorbereitet werden.".to_string())?;
@@ -273,6 +293,12 @@ fn fit_window_to_screen(window: &tauri::WebviewWindow) {
 }
 
 /// Shows a finished (or timed-out) client window, after fitting it to the screen, and closes the startup window.
+/// Links that may leave the app: web pages and mail addresses (#180).
+fn is_external_link(url: &str) -> bool {
+    let scheme = url.split(':').next().unwrap_or("").to_ascii_lowercase();
+    matches!(scheme.as_str(), "http" | "https" | "mailto")
+}
+
 fn reveal_window(window: tauri::WebviewWindow) {
     keep_window_on_screen(&window);
     fit_window_to_screen(&window);
@@ -484,6 +510,8 @@ pub fn run() {
         .manage(connections::ConnectionState::default())
         .manage(updater::UpdaterState::default())
         .plugin(tauri_plugin_dialog::init())
+        // Profile export writes the file picked in the save dialog, file paste reads copied files (#179).
+        .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_localhost::Builder::new(app_port()).build())
         // Without VISIBLE: the plugin would show every restored window right away (on window ready),
         // which defeats the hidden-until-loaded start (#25); reveal_window shows it instead.
@@ -582,5 +610,21 @@ mod port_tests {
         assert_eq!(port_for_identifier("app.diddy.desktop"), 44548);
         assert_eq!(port_for_identifier("app.diddy.desktop.dev"), 44549);
         assert_ne!(port_for_identifier("app.diddy.desktop"), port_for_identifier("app.diddy.desktop.dev"));
+    }
+}
+
+#[cfg(test)]
+mod link_tests {
+    use super::is_external_link;
+
+    #[test]
+    fn only_web_and_mail_links_leave_the_app() {
+        assert!(is_external_link("https://example.org/a"));
+        assert!(is_external_link("HTTP://example.org"));
+        assert!(is_external_link("mailto:a@example.org"));
+        assert!(!is_external_link("ftp://example.org/file"));
+        assert!(!is_external_link("magnet:?xt=urn:btih:abc"));
+        assert!(!is_external_link("file:///etc/passwd"));
+        assert!(!is_external_link("javascript:alert(1)"));
     }
 }

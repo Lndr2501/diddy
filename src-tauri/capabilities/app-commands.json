@@ -26,6 +26,9 @@
     "allow-open-log-folder",
     "allow-connection-profiles",
     "allow-open-connection-profile",
+    "allow-remove-connection-profile",
+    "allow-account-labels",
+    "allow-set-account-label",
     "allow-agent-voice-state"
   ]
 }

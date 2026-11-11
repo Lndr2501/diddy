@@ -9,7 +9,7 @@ license = "AGPL-3.0-only"
 repository = "https://github.com/Lndr2501/diddy"
 default-run = "diddy"
 edition = "2021"
-rust-version = "1.61"
+rust-version = "1.89"
 
 [build-dependencies]
 tauri-build = { version = "2.6.2", features = [] }

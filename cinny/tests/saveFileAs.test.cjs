@@ -58,3 +58,21 @@ test('outside the desktop app it refuses instead of writing somewhere', async ()
   vm.runInNewContext(code, { exports, window: {}, TextEncoder });
   await assert.rejects(exports.saveTextFileAs('x.json', '{}', { name: 'x', extensions: ['json'] }));
 });
+
+// #175: the Linux shell has `invoke` but not the dialog/fs plugins; it must use the browser download.
+const shellWith = (platform, tauri) => {
+  const exports = {};
+  vm.runInNewContext(code, {
+    exports,
+    window: tauri ? { __TAURI_INTERNALS__: { invoke: async () => undefined } } : {},
+    navigator: { platform },
+    TextEncoder,
+  });
+  return exports;
+};
+
+test('only the macOS shell saves with the dialog', () => {
+  assert.equal(shellWith('MacIntel', true).canSaveWithDialog(), true);
+  assert.equal(shellWith('Linux x86_64', true).canSaveWithDialog(), false);
+  assert.equal(shellWith('MacIntel', false).canSaveWithDialog(), false);
+});

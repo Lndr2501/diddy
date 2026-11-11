@@ -2,6 +2,12 @@
 
 ## Unveröffentlicht
 
+- **macOS: Dateien herunterladen (#176):** Downloads (Dateien aus Nachrichten, Bilder, Wiederherstellungsschlüssel) passierten in der Mac-App gar nicht, weil WebKit ohne Download-Handler jeden Download verwirft. Sie landen jetzt im Ordner „Downloads“; eine vorhandene Datei bekommt eine Nummer angehängt statt überschrieben zu werden. Das Log nennt Ziel und Erfolg.
+- **Profil exportieren (#175, #179):** Auf macOS war das Datei-Plugin nie gestartet, deshalb meldete der Export „The file could not be saved.“ und das Einfügen kopierter Dateien scheiterte. Auf Linux fehlten Speichern-Fenster und Datei-Plugin ganz; dort nimmt der Export jetzt den normalen Download mit eigenem Speichern-Fenster. Unbenutzte Dateirechte (Ordner lesen, kopieren, löschen, umbenennen) sind entfernt.
+- **macOS: Verbindungen entfernen und Konto-Labels (#178):** Drei Befehle hatten keine Freigabe und wurden abgelehnt. Ein neuer Vertragstest (`cinny/tests/tauriAcl.test.cjs`) prüft für jeden Befehl Manifest und Freigabe und dass jedes genutzte Plugin gestartet ist.
+- **macOS: nur Web- und Mail-Links öffnen das System (#180):** `ftp:`, `magnet:` und andere Schemata aus Nachrichten werden nicht mehr ans System weitergereicht, wie schon unter Linux.
+- **Rust-Mindestversion (#181):** `rust-version` ist jetzt 1.89, die tatsächlich nötige Version.
+
 - **Linux-CI: Audiotest stabilisiert:** Wartet auf Server, Spielerstreams und vollständige PCM-Messfenster mit begrenzten Zeitbudgets; synthetische Spieler haben mehr Puffer. PulseAudio und PipeWire erscheinen getrennt in CI. Fehler zeigen Server-/Helferlogs und Streamzustand; Grenzwerte und Ausschlussprüfung bleiben erhalten.
 
 - **iOS: Quelle für AltStore und SideStore:** `.github/scripts/altstore-source.cjs` erzeugt aus einem Release die Quelldatei `altstore.json` (Bundle-ID `app.diddy.ios`, Version, Größe, Download-Link, Release-Notizen). Sie wird nicht im Release mitgebaut, sondern vom Homelab-Dienst bei jedem neuen Release erzeugt und samt IPA gespiegelt. In AltStore oder SideStore einmal als Quelle eintragen, danach erscheinen neue Versionen unter „Updates“. Keine App-Änderung; getestet mit `cinny/tests/altstoreSource.test.cjs`.

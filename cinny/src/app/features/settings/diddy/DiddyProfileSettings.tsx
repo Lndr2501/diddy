@@ -12,7 +12,7 @@ import { EventType } from 'matrix-js-sdk';
 import classNames from 'classnames';
 import { Avatar, Box, Button, Icon, IconButton, Icons, Scroll, Switch, Text, toRem } from 'folds';
 import { Page } from '../../../components/page';
-import { canInvoke, saveTextFileAs } from '../../../plugins/tauri';
+import { canSaveWithDialog, saveTextFileAs } from '../../../plugins/tauri';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { useUserProfile } from '../../../hooks/useUserProfile';
 import { useUserPresence } from '../../../hooks/useUserPresence';
@@ -659,8 +659,8 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
   const handleExport = async () => {
     const text = exportProfile(draft);
     try {
-      if (!canInvoke()) {
-        // plain browser: the browser's own download
+      if (!canSaveWithDialog()) {
+        // browser and Linux shell: the browser's own download
         FileSaver.saveAs(new Blob([text], { type: 'application/json' }), PROFILE_FILE_NAME);
         setTransfer({ tone: 'success', text: `Saved ${PROFILE_FILE_NAME}.` });
         return;

@@ -12,6 +12,14 @@ const getTauri = (): TauriInternals | undefined =>
 
 export const canInvoke = (): boolean => getTauri() !== undefined;
 
+/**
+ * Whether the shell offers the Tauri dialog and file plugins (macOS). The Linux shell (Electron)
+ * has the same `invoke` but not these plugins; there the browser download with its own save
+ * window is used instead (#175).
+ */
+export const canSaveWithDialog = (): boolean =>
+  canInvoke() && typeof navigator !== 'undefined' && /mac/i.test(navigator.platform);
+
 export const invoke = async <T>(cmd: string, args?: Record<string, unknown>): Promise<T> => {
   const tauri = getTauri();
   if (!tauri) throw new Error('This needs the Diddy desktop app.');
