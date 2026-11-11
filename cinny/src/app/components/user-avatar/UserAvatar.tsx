@@ -1,5 +1,5 @@
 import { AvatarFallback, AvatarImage, color } from 'folds';
-import React, { ReactEventHandler, ReactNode, useState } from 'react';
+import React, { ReactEventHandler, ReactNode, useEffect, useState } from 'react';
 import classNames from 'classnames';
 import { useAtomValue } from 'jotai';
 import * as css from './UserAvatar.css';
@@ -37,6 +37,8 @@ function InitialFallback({ className, userId, renderFallback }: FallbackProps) {
 function PlainUserAvatar(props: UserAvatarProps & { onFail?: () => void }) {
   const { className, src, alt, onFail } = props;
   const [error, setError] = useState(false);
+  // a new picture gets its own chance (the element is no longer recreated for it)
+  useEffect(() => setError(false), [src]);
 
   const handleLoad: ReactEventHandler<HTMLImageElement> = (evt) => {
     evt.currentTarget.setAttribute('data-image-loaded', 'true');
@@ -57,6 +59,41 @@ function PlainUserAvatar(props: UserAvatarProps & { onFail?: () => void }) {
 }
 
 /**
+ * The picture to show while the wanted one loads: the previous picture stays until the new one is
+ * decoded. Swapping a still and an animated thumbnail ("only while speaking") used to put a new
+ * <img> on screen with its empty background first, which flashed on every short word.
+ * `onFail` is called when the wanted picture cannot be loaded (then it is not shown).
+ */
+function useSettledSrc(wanted: string | undefined, onFail?: () => void): string | undefined {
+  const [settled, setSettled] = useState(wanted);
+  useEffect(() => {
+    if (wanted === settled) return undefined;
+    if (!wanted) {
+      setSettled(undefined);
+      return undefined;
+    }
+    let cancelled = false;
+    const probe = new Image();
+    probe.onload = () => {
+      if (!cancelled) setSettled(wanted);
+    };
+    probe.onerror = () => {
+      if (cancelled) return;
+      // without a fallback the picture itself reports the error and shows the initials
+      if (onFail) onFail();
+      else setSettled(wanted);
+    };
+    probe.src = wanted;
+    return () => {
+      cancelled = true;
+    };
+    // onFail only reads state setters
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wanted, settled]);
+  return settled ?? wanted;
+}
+
+/**
  * The Matrix avatar, animated (#35, #37, #93): a GIF / WebP / APNG profile picture is requested as
  * an animated thumbnail, so it moves wherever the settings allow it for this place. Switched off,
  * or paused because the owner is not speaking ("only while speaking"), the plain thumbnail is used,
@@ -74,21 +111,23 @@ function AnimatedUserAvatar(props: UserAvatarProps) {
   const animate = prefs[surface] && !(prefs.speakingOnly && !speaking);
   const animatedSrc = src && animate ? animatedThumbnailUrl(src) : undefined;
 
+  const useAnimated = !!src && !!animatedSrc && animatedSrc !== src && failedSrc !== animatedSrc;
+  const settled = useSettledSrc(
+    useAnimated ? animatedSrc : src,
+    useAnimated ? () => setFailedSrc(animatedSrc) : undefined
+  );
   if (src && !animate && isOriginalMedia(src)) {
     // the original file (e.g. the big profile picture) moves by itself: show its first frame
     return (
       <PositionedImg className={classNames(css.UserAvatar, className)} src={src} alt={alt} paused />
     );
   }
-  if (!src || !animatedSrc || animatedSrc === src || failedSrc === animatedSrc) {
-    return <PlainUserAvatar {...props} />;
-  }
+  if (!src) return <PlainUserAvatar {...props} />;
   return (
     <PlainUserAvatar
-      key={animatedSrc}
       {...props}
-      src={animatedSrc}
-      onFail={() => setFailedSrc(animatedSrc)}
+      src={settled}
+      onFail={settled === animatedSrc && useAnimated ? () => setFailedSrc(animatedSrc) : undefined}
     />
   );
 }

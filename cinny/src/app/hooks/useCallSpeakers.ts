@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { CallEmbed, useCallControlState } from '../plugins/call';
 import { markSpeaking, readCallStage, stageSpeakers } from '../plugins/call/callStage';
 import { useLocalSpeaking } from '../plugins/call/localSpeaking';
+import { createSpeakerHold } from '../plugins/call/speakerHold';
 import { useMatrixClient } from './useMatrixClient';
 import { useCallJoined } from './useCallEmbed';
 
@@ -64,9 +65,23 @@ export const useCallSpeakers = (callEmbed: CallEmbed): Set<string> => {
     () => stageSpeakers(markSpeaking(model, mx.getUserId() ?? undefined, localSpeaking)),
     [model, mx, localSpeaking]
   );
+  // a person stays "speaking" for a moment after the call's flag drops: no flashing between words
+  const holdRef = useRef<ReturnType<typeof createSpeakerHold>>();
+  if (!holdRef.current) holdRef.current = createSpeakerHold();
   // the same Set while nobody starts or stops: consumers re-render only on a real change
   useEffect(() => {
-    setSpeakers((prev) => (sameSet(prev, next) ? prev : next));
+    const hold = holdRef.current;
+    if (!hold) return undefined;
+    let timer: number | undefined;
+    const apply = () => {
+      const now = performance.now();
+      const held = hold.update(next, now);
+      setSpeakers((prev) => (sameSet(prev, held) ? prev : held));
+      const wait = hold.expiresIn(now);
+      if (wait !== undefined) timer = window.setTimeout(apply, wait + 10);
+    };
+    apply();
+    return () => window.clearTimeout(timer);
   }, [next]);
 
   return speakers;

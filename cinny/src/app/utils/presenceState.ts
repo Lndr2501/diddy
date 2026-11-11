@@ -77,7 +77,7 @@ const isDndMessage = (statusMsg: string | undefined): boolean =>
  *   or Matrix "unavailable" as idle.
  */
 export const resolvePresenceState = (
-  input: PresenceInput | undefined
+  input: PresenceInput | undefined,
 ): PresenceState | undefined => {
   if (!input) return undefined;
   const { presence, statusMsg, lastActiveTs, chosen } = input;
@@ -86,7 +86,10 @@ export const resolvePresenceState = (
   }
   if (presence === 'offline') return lastActiveTs ? 'offline' : undefined;
   if (chosen === 'invisible') return 'offline';
-  if (chosen === 'dnd' || isDndMessage(statusMsg)) return 'dnd';
+  // The picked status wins over a leftover status message: after dnd -> idle the server can still
+  // carry "Do not disturb" for a while, and that must not show as dnd.
+  if (chosen === 'dnd') return 'dnd';
+  if (chosen === undefined && isDndMessage(statusMsg)) return 'dnd';
   if (presence === 'unavailable' || chosen === 'idle') return 'idle';
   return 'online';
 };

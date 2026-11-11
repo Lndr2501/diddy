@@ -38,11 +38,11 @@ test('#73: DND is published as Matrix "online" and must not show as online', () 
   // the profile is not readable (no shared options room): the status message still says so
   assert.equal(
     resolve({ presence: 'online', lastActiveTs: SEEN, statusMsg: mod.DND_STATUS_MSG }),
-    'dnd'
+    'dnd',
   );
   assert.equal(
     resolve({ presence: 'online', lastActiveTs: SEEN, statusMsg: ' do not disturb ' }),
-    'dnd'
+    'dnd',
   );
   assert.equal(resolve({ presence: 'unavailable', lastActiveTs: SEEN, chosen: 'dnd' }), 'dnd');
 });
@@ -52,7 +52,7 @@ test('offline Matrix presence wins over an older picked status', () => {
   assert.equal(resolve({ presence: 'offline', lastActiveTs: SEEN, chosen: 'online' }), 'offline');
   assert.equal(
     resolve({ presence: 'offline', lastActiveTs: SEEN, statusMsg: mod.DND_STATUS_MSG }),
-    'offline'
+    'offline',
   );
 });
 
@@ -97,7 +97,7 @@ test('every state has its own fixed icon color and a shape in StatusIcon (#115)'
   assert.equal(new Set(colors).size, states.length);
   const icon = fs.readFileSync(
     path.join(__dirname, '../src/app/components/presence/StatusIcon.tsx'),
-    'utf8'
+    'utf8',
   );
   for (const state of ['idle', 'dnd', 'offline']) assert.ok(icon.includes(`case '${state}'`));
 });
@@ -107,4 +107,28 @@ test('a status picked in Diddy maps to a shown state; invisible looks offline (#
   assert.equal(mod.stateOfChosen('idle'), 'idle');
   assert.equal(mod.stateOfChosen('dnd'), 'dnd');
   assert.equal(mod.stateOfChosen('invisible'), 'offline');
+});
+
+test('the picked status wins over a leftover "Do not disturb" status message', () => {
+  // dnd -> idle: the server can keep the old message for a while
+  assert.equal(
+    resolve({
+      presence: 'unavailable',
+      lastActiveTs: SEEN,
+      chosen: 'idle',
+      statusMsg: mod.DND_STATUS_MSG,
+    }),
+    'idle',
+  );
+  assert.equal(
+    resolve({
+      presence: 'online',
+      lastActiveTs: SEEN,
+      chosen: 'online',
+      statusMsg: mod.DND_STATUS_MSG,
+    }),
+    'online',
+  );
+  // invisible stays offline for a connected user (member list grouping)
+  assert.equal(resolve({ presence: 'online', lastActiveTs: SEEN, chosen: 'invisible' }), 'offline');
 });
