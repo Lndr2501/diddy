@@ -17,6 +17,8 @@ import { stateOfChosen } from '../../utils/presenceState';
 export const STATUS_OPTIONS: {
   status: DiddyStatus;
   label: string;
+  /** For the narrow user panel line, where "Do Not Disturb" was cut to "Do Not Di…" (#155). */
+  short?: string;
   description?: string;
 }[] = [
   { status: 'online', label: 'Online' },
@@ -24,6 +26,7 @@ export const STATUS_OPTIONS: {
   {
     status: 'dnd',
     label: 'Do Not Disturb',
+    short: 'Busy',
     description: 'Mutes sounds and notifications. Unread badges stay.',
   },
   { status: 'invisible', label: 'Invisible' },
@@ -60,8 +63,9 @@ export function UserPanelFace({
   status,
   agentTalking,
 }: UserPanelFaceProps) {
-  const { label: chosenLabel } = statusInfo(status);
+  const { label: chosenLabel, short } = statusInfo(status);
   const statusLabel = agentTalking ? 'Talking to agent' : chosenLabel;
+  const statusShown = agentTalking ? statusLabel : short ?? chosenLabel;
   return (
     <>
       <span className={css.UserPanelAvatarWrap}>
@@ -88,8 +92,8 @@ export function UserPanelFace({
             Agent
           </span>
         ) : (
-          <Text size="T200" priority="300" truncate>
-            {statusLabel}
+          <Text size="T200" priority="300" truncate title={statusLabel}>
+            {statusShown}
           </Text>
         )}
       </div>

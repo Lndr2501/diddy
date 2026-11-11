@@ -105,11 +105,30 @@ export const CallMemberRow = style({
 
 export const CallMemberRowAvatar = style({
   flexShrink: 0,
+  transition: 'box-shadow 120ms ease',
+  selectors: {
+    // somebody talks: the same accent ring as the tiles in the call (#155 follow-up)
+    '&[data-speaking=true]': {
+      boxShadow: `0 0 0 ${config.borderWidth.B600} ${color.Primary.Main}`,
+    },
+  },
+  '@media': {
+    '(prefers-reduced-motion: reduce)': {
+      transition: 'none',
+    },
+  },
+});
+
+export const CallMemberRowIcons = style({
+  display: 'flex',
+  alignItems: 'center',
+  gap: config.space.S100,
+  flexShrink: 0,
+  marginLeft: 'auto',
 });
 
 export const CallMemberRowMuted = style({
   flexShrink: 0,
-  marginLeft: 'auto',
   color: color.Critical.Main,
 });
 

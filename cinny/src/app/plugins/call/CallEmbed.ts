@@ -36,6 +36,7 @@ import { installScreenShareGrid } from './screenShareGrid';
 import { installUserVolumeMemory } from './userVolume';
 import { startReceiveWatch, startVideoReceiveWatch, trackPeerConnections } from './streamStats';
 import { installE2eeWatch } from './e2eeWatch';
+import { countTiles, createJoinTimer, JoinTimer, TO_DEVICE_RETRY_MS } from './joinTiming';
 import { diag } from '../diagnostics';
 
 export class CallEmbed {
@@ -49,6 +50,8 @@ export class CallEmbed {
 
   public joined = false;
 
+  private disposed = false;
+
   public readonly control: CallControl;
 
   private readonly container: HTMLElement;
@@ -58,6 +61,9 @@ export class CallEmbed {
   private eventsToFeed = new WeakSet<MatrixEvent>();
 
   private readonly disposables: Array<() => void> = [];
+
+  /** Log of the time from the join click to the first tiles (#161). */
+  private readonly joinTimer: JoinTimer = createJoinTimer(diag);
 
   // Bound once: dispose() must pass the same functions to off(), otherwise every finished call
   // kept receiving (and decrypting) events and to-device messages for its stopped widget.
@@ -252,9 +258,12 @@ export class CallEmbed {
     window.setTimeout(() => window.clearInterval(earlyInstall), 5000);
 
     iframe.onload = () => {
+      this.joinTimer.mark('call page loaded');
       this.control.startObserving();
       installMediaPatches();
     };
+    this.joinTimer.mark('widget created');
+    this.watchJoin();
 
     let initialMediaEvent = true;
     this.disposables.push(
@@ -314,6 +323,30 @@ export class CallEmbed {
     return this.listenEvent('capabilitiesNotified', callback);
   }
 
+  /** Marks the steps of a join in the log: widget handshake, join, first tiles, other people. */
+  private watchJoin() {
+    const timer = this.joinTimer;
+    this.disposables.push(
+      this.listenEvent('preparing', () => timer.mark('widget preparing')),
+      this.listenEvent('ready', () => timer.mark('widget ready')),
+      this.listenEvent('capabilitiesNotified', () => timer.mark('capabilities granted')),
+      this.listenAction(ElementWidgetActions.JoinCall, () => timer.mark('call joined'))
+    );
+    const poll = window.setInterval(() => {
+      const tiles = countTiles(this.document);
+      if (tiles > 0) timer.mark('first tile shown');
+      if (tiles > 1) timer.mark('another person shown');
+    }, 250);
+    const giveUp = window.setTimeout(() => {
+      window.clearInterval(poll);
+      timer.mark('gave up waiting for tiles (60 s)');
+    }, 60000);
+    this.disposables.push(() => {
+      window.clearInterval(poll);
+      window.clearTimeout(giveUp);
+    });
+  }
+
   private start() {
     // Room widgets get locked to the room they were added in
     this.call.setViewedRoomId(this.roomId);
@@ -345,6 +378,7 @@ export class CallEmbed {
    * @param opts
    */
   public dispose(): void {
+    this.disposed = true;
     this.disposables.forEach((disposable) => {
       disposable();
     });
@@ -399,7 +433,26 @@ export class CallEmbed {
       );
       return;
     }
-    await this.call?.feedToDevice(ev.getEffectiveEvent() as IRoomEvent, ev.isEncrypted());
+    const raw = ev.getEffectiveEvent() as IRoomEvent;
+    try {
+      await this.call?.feedToDevice(raw, ev.isEncrypted());
+    } catch (e) {
+      // The call page did not answer in time (it is still starting, or busy), so a call key may not
+      // have arrived. Say so in the log (this used to be an unhandled "Request timed out") and
+      // hand the message over once more; a key that did arrive is simply set again.
+      diag(
+        `call to-device ${ev.getType()} not acknowledged by the call page (${String(e)}), retrying`
+      );
+      await new Promise((resolve) => {
+        window.setTimeout(resolve, TO_DEVICE_RETRY_MS);
+      });
+      if (this.disposed) return;
+      try {
+        await this.call?.feedToDevice(raw, ev.isEncrypted());
+      } catch (retry) {
+        diag(`call to-device ${ev.getType()} retry failed: ${String(retry)}`);
+      }
+    }
   }
 
   /**

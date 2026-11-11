@@ -435,6 +435,91 @@ fn remove_profile(profiles: &[ConnectionProfile], id: &str) -> Result<Vec<Connec
     Ok(profiles.iter().filter(|profile| profile.id != id).cloned().collect())
 }
 
+// --- who is signed in in which window (#156) -------------------------------------------------------
+//
+// Each window keeps its login in its own WebKit store, so no window can read another one's account.
+// Every window therefore tells the app its Matrix ID once it is signed in; the settings list reads
+// them back. Only the public Matrix ID is kept, never a token. The file is separate from the
+// registry above, whose strict validation stays untouched.
+
+const MAX_LABELS: usize = 21;
+const MAX_LABEL_LEN: usize = 256;
+
+fn labels_path(app: &AppHandle) -> Result<PathBuf, String> {
+    Ok(app.path().app_config_dir().map_err(|_| "Verbindungsverzeichnis nicht verfügbar.")?
+        .join("account-labels.json"))
+}
+
+/// `main` or a profile id; the value must look like a Matrix ID (`@name:server`).
+fn validate_label(id: &str, user: &str) -> Result<(), String> {
+    if id != "main" { profile_identifier(id)?; }
+    let plausible = user.len() <= MAX_LABEL_LEN
+        && user.starts_with('@')
+        && user.contains(':')
+        && !user.chars().any(|c| c.is_control() || c.is_whitespace());
+    if plausible { Ok(()) } else { Err("Ungültige Matrix-ID.".into()) }
+}
+
+fn read_labels_at(path: &Path) -> HashMap<String, String> {
+    let Ok(meta) = fs::metadata(path) else { return HashMap::new() };
+    if meta.len() > 64 * 1024 { return HashMap::new(); }
+    let Ok(raw) = fs::read(path) else { return HashMap::new() };
+    let parsed: HashMap<String, String> = serde_json::from_slice(&raw).unwrap_or_default();
+    // keep only entries that would pass today's validation
+    parsed.into_iter().filter(|(id, user)| validate_label(id, user).is_ok()).take(MAX_LABELS).collect()
+}
+
+fn save_labels_at(path: &Path, labels: &HashMap<String, String>) -> Result<(), String> {
+    let parent = path.parent().ok_or("Verbindungsverzeichnis fehlt.")?;
+    fs::create_dir_all(parent).map_err(|_| "Verbindungsverzeichnis konnte nicht angelegt werden.")?;
+    let temporary = path.with_extension("json.new");
+    let data = serde_json::to_vec_pretty(labels).map_err(|_| "Konten konnten nicht gespeichert werden.")?;
+    let mut options = fs::OpenOptions::new();
+    options.write(true).create(true).truncate(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600);
+    }
+    let mut file = options.open(&temporary).map_err(|_| "Konten konnten nicht gespeichert werden.")?;
+    file.write_all(&data).and_then(|_| file.sync_all())
+        .map_err(|_| "Konten konnten nicht gespeichert werden.")?;
+    drop(file);
+    fs::rename(&temporary, path).map_err(|_| "Konten konnten nicht aktualisiert werden.".to_string())
+}
+
+/// Sets the Matrix ID of window `id`; `None` when nothing has to be written.
+fn with_label(labels: &HashMap<String, String>, id: &str, user: &str) -> Result<Option<HashMap<String, String>>, String> {
+    validate_label(id, user)?;
+    if labels.get(id).map(String::as_str) == Some(user) { return Ok(None); }
+    let mut next = labels.clone();
+    if next.len() >= MAX_LABELS && !next.contains_key(id) { return Err("Zu viele gespeicherte Konten.".into()); }
+    next.insert(id.to_string(), user.to_string());
+    Ok(Some(next))
+}
+
+/// Window id -> Matrix ID of everybody who has signed in, only for windows that still exist.
+#[tauri::command]
+pub fn account_labels(app: AppHandle, state: State<'_, ConnectionState>) -> Result<HashMap<String, String>, String> {
+    let _guard = state.lock.lock().map_err(|_| "Verbindungsliste ist gerade belegt.")?;
+    let profiles = read_profiles(&app).unwrap_or_default();
+    let mut labels = read_labels_at(&labels_path(&app)?);
+    labels.retain(|id, _| id == "main" || profiles.iter().any(|p| &p.id == id));
+    Ok(labels)
+}
+
+/// A window reports who is signed in (`id` is `main` or its profile id).
+#[tauri::command]
+pub fn set_account_label(app: AppHandle, state: State<'_, ConnectionState>, id: String, user: String) -> Result<(), String> {
+    let _guard = state.lock.lock().map_err(|_| "Verbindungsliste ist gerade belegt.")?;
+    let path = labels_path(&app)?;
+    let labels = read_labels_at(&path);
+    match with_label(&labels, &id, &user)? {
+        Some(next) => save_labels_at(&path, &next),
+        None => Ok(()),
+    }
+}
+
 #[tauri::command]
 pub async fn remove_connection_profile(
     app: AppHandle,
@@ -462,6 +547,13 @@ pub async fn remove_connection_profile(
             window.destroy().map_err(|_| "Das Fenster konnte nicht geschlossen werden.".to_string())?;
         }
         save_profiles(&app, &kept)?;
+        // the signed-in account of that window is gone with it (best effort)
+        if let Ok(path) = labels_path(&app) {
+            let mut labels = read_labels_at(&path);
+            if labels.remove(&id).is_some() {
+                let _ = save_labels_at(&path, &labels);
+            }
+        }
     }
     let data = remove_connection_data(&app, &id).await;
     match &data {
@@ -921,5 +1013,46 @@ mod tests {
         for invalid in ["main", "../data", "", "aaaaaaaaaaaa4aaaaaaaaaaaaaaaaaaa/.."] {
             assert!(connection_data_dir(base, invalid).is_err(), "{invalid}");
         }
+    }
+
+    #[test]
+    fn a_label_needs_a_known_window_and_a_matrix_id() {
+        assert!(validate_label("main", "@lndr:matrix.example.org").is_ok());
+        assert!(validate_label(A, "@a:localhost").is_ok());
+        assert!(validate_label("../x", "@a:localhost").is_err());
+        assert!(validate_label("main", "lndr").is_err());
+        assert!(validate_label("main", "@no server").is_err());
+        assert!(validate_label("main", "@a:b\nc").is_err());
+        assert!(validate_label("main", &format!("@{}:x", "a".repeat(300))).is_err());
+    }
+
+    #[test]
+    fn setting_a_label_is_idempotent_and_capped() {
+        let none = HashMap::new();
+        let one = with_label(&none, "main", "@a:b").unwrap().unwrap();
+        assert_eq!(one.get("main").map(String::as_str), Some("@a:b"));
+        assert!(with_label(&one, "main", "@a:b").unwrap().is_none());
+        let changed = with_label(&one, "main", "@c:d").unwrap().unwrap();
+        assert_eq!(changed.get("main").map(String::as_str), Some("@c:d"));
+        let full: HashMap<String, String> = numbered(MAX_LABELS).into_iter().map(|p| (p.id, "@a:b".to_string())).collect();
+        assert!(with_label(&full, "main", "@a:b").is_err());
+    }
+
+    #[test]
+    fn the_labels_file_round_trips_and_drops_bad_entries() {
+        let dir = TempDir::new("labels");
+        let path = dir.0.join("account-labels.json");
+        assert!(read_labels_at(&path).is_empty());
+        let mut labels = HashMap::new();
+        labels.insert("main".to_string(), "@a:b".to_string());
+        labels.insert(A.to_string(), "@c:d".to_string());
+        save_labels_at(&path, &labels).unwrap();
+        assert_eq!(read_labels_at(&path), labels);
+        fs::write(&path, br#"{"main":"@a:b","../evil":"@c:d","bbbbbbbbbbbb4bbbbbbbbbbbbbbbbbbb":"not an id"}"#).unwrap();
+        let read = read_labels_at(&path);
+        assert_eq!(read.len(), 1);
+        assert!(read.contains_key("main"));
+        fs::write(&path, b"{not json").unwrap();
+        assert!(read_labels_at(&path).is_empty());
     }
 }

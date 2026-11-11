@@ -143,12 +143,21 @@ test('connection rows list the original window first and mark the current one', 
     { id: 'bbbbbbbbbbbb4bbbbbbbbbbbbbbbbbbb', server: 'http://127.0.0.1:8008' },
   ];
   const fromMain = [...env.buildConnectionRows(profiles, undefined)];
-  assert.deepEqual(fromMain.map((row) => row.id), ['main', profiles[0].id, profiles[1].id]);
-  assert.deepEqual(fromMain.map((row) => row.current), [true, false, false]);
+  assert.deepEqual(
+    fromMain.map((row) => row.id),
+    ['main', profiles[0].id, profiles[1].id]
+  );
+  assert.deepEqual(
+    fromMain.map((row) => row.current),
+    [true, false, false]
+  );
   assert.equal(fromMain[1].title, 'https://matrix.example.org');
   assert.equal(fromMain[1].hint, 'Eigene Anmeldung · aaaaaa');
   const fromSecond = [...env.buildConnectionRows(profiles, profiles[1].id)];
-  assert.deepEqual(fromSecond.map((row) => row.current), [false, false, true]);
+  assert.deepEqual(
+    fromSecond.map((row) => row.current),
+    [false, false, true]
+  );
   assert.equal([...env.buildConnectionRows([], undefined)].length, 1);
 });
 test('removing a connection refuses the original login and malformed ids before native sees them', async () => {
@@ -162,4 +171,39 @@ test('removing a connection refuses the original login and malformed ids before 
   assert.equal(env.calls[0].command, 'remove_connection_profile');
   assert.deepEqual(Object.keys(env.calls[0].args), ['id']);
   assert.equal(env.calls[0].args.id, '0123456789ab4def8123456789abcdef');
+});
+test('rows carry the Matrix ID each window reported (#156)', () => {
+  const env = setup();
+  const profiles = [
+    { id: 'aaaaaaaaaaaa4aaaaaaaaaaaaaaaaaaa', server: 'https://matrix.example.org' },
+  ];
+  const rows = [
+    ...env.buildConnectionRows(profiles, undefined, {
+      main: '@lndr:matrix.example.org',
+      [profiles[0].id]: '@other:matrix.example.org',
+    }),
+  ];
+  assert.deepEqual(
+    rows.map((row) => row.user),
+    ['@lndr:matrix.example.org', '@other:matrix.example.org']
+  );
+  const unknown = [...env.buildConnectionRows(profiles, undefined)];
+  assert.equal('user' in unknown[0], false, 'no label, no user field');
+});
+test('a window reports its account once, under main or its profile id (#156)', async () => {
+  const main = setup();
+  main.recordAccount('@a:b');
+  main.recordAccount('@a:b');
+  await Promise.resolve();
+  assert.deepEqual(JSON.parse(JSON.stringify(main.calls)), [
+    { command: 'set_account_label', args: { id: 'main', user: '@a:b' } },
+  ]);
+  const second = setup({ id: 'bbbbbbbbbbbb4bbbbbbbbbbbbbbbbbbb', server: 'https://x.example' });
+  second.recordAccount('@c:d');
+  assert.deepEqual(JSON.parse(JSON.stringify(second.calls)), [
+    {
+      command: 'set_account_label',
+      args: { id: 'bbbbbbbbbbbb4bbbbbbbbbbbbbbbbbbb', user: '@c:d' },
+    },
+  ]);
 });

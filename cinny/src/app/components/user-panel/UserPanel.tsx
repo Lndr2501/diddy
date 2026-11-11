@@ -40,7 +40,7 @@ import { nameInitials } from '../../utils/common';
 import { useOwnAgentTalking } from '../../state/agentVoice';
 import { ConnectionsMenu } from '../connection-recovery/AccountSwitcher';
 import { ConnectionOverview } from '../connection-recovery/ConnectionRecovery';
-import { getConnectionProfile, visibleHomeserver } from '../../plugins/connections';
+import { getConnectionProfile, recordAccount, visibleHomeserver } from '../../plugins/connections';
 import { openIntro } from '../../plugins/diddy/intro';
 import { nextMenuIndex } from '../../utils/menuKeys';
 
@@ -205,6 +205,8 @@ export function UserPanel() {
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
   const userId = mx.getUserId()!;
+  // tells the settings list of accounts who is signed in in this window (#156)
+  useEffect(() => recordAccount(userId), [userId]);
   const profile = useUserProfile(userId);
   const callEmbed = useAtomValue(callEmbedAtom);
   const [settings, setSettings] = useState(false);

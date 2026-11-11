@@ -1,5 +1,16 @@
 # Changelog
 
+## Unveröffentlicht
+
+- **Kopfhörer aus in der Call-Liste (#160):** Unter dem Call-Raum zeigt deine Zeile jetzt auch das durchgestrichene Kopfhörer-Symbol, wenn du taub geschaltet bist (bisher nur das Mikrofon). Bei den anderen bleibt nur das Mikrofon sichtbar: Ob jemand seine Kopfhörer aus hat, überträgt Matrix nicht.
+- **Konten in den Einstellungen (#156):** Einstellungen > Account hat den Abschnitt „Accounts“: alle getrennten Anmeldungen mit Matrix-ID (Benutzername) des jeweiligen Kontos, Öffnen und Entfernen (zweimal tippen) sowie „Add“ für ein weiteres Konto oder einen weiteren Server. Jedes Fenster meldet seine Matrix-ID beim Start (`account-labels.json`, nur die öffentliche ID); ein Fenster, das noch nicht in dieser Version lief, zeigt sie erst nach einmaligem Öffnen.
+- **Profil exportieren und importieren (#157):** Im Profil-Editor speichert „Export“ die Anpassung (Namensstil, Karte, Namensfeld, Effekt, Rahmen, Texte, Layout) als `diddy-profile.json`. „Export“ öffnet das Speichern-Fenster von macOS, du wählst Ordner und Namen. „Import“ füllt den Editor damit; gespeichert wird erst mit „Save changes“. Status und Diddy-Version reisen nicht mit, die Datei läuft durch denselben Prüfer wie fremde Profile. Bilder bleiben Verweise auf den Server, auf dem sie liegen.
+- **Wer spricht, auch unter dem Call:** Die Avatare in der Liste unter dem Call-Raum bekommen denselben Akzent-Ring wie die Kacheln, solange die Person spricht.
+- **Call-Kacheln (#155):** Das Bild einer Kachel ohne Kamera ist wieder halb so groß wie die kleinere Kachelseite (vorher ein kleiner Punkt in hohen und abgeschnitten in flachen Kacheln). In der schmalen Nutzerleiste steht „Busy“ statt „Do Not Di…“ (Tooltip: Do Not Disturb). Nicht auf dem echten Call geprüft.
+- **Call-Beitritt messen (#161):** Das Log (`~/Library/Logs/Diddy/app.log`) schreibt jetzt Zeilen `call join: <Schritt> +<ms> (<ms>)` vom Klick bis zur ersten Kachel und zur ersten weiteren Person. Ein nicht beantworteter Schlüssel-Transport (`Request timed out`) ist keine unbehandelte Ausnahme mehr: er steht im Log und wird einmal nach 2 s erneut zugestellt. Ursache der Langsamkeit ist damit noch nicht behoben, sondern messbar.
+- **Schlüsselbund-Dialog in Dev-Builds (#164):** Keine Codeänderung. „Diddy Dev“ ist eine eigene App mit eigenem „WebCrypto Master Key“; die CI signiert Dev-Builds nur ad hoc, deshalb fragt macOS bei jedem neuen Build erneut. Lokal gebaute Dev-DMGs werden mit der festen Identität „Diddy Signing“ signiert (docs/agent-guide.md), dann reicht einmal „Immer erlauben“.
+- #158 und #159 sind bereits mit PR #163 auf `main` (Status-Symbole, Flackern beim Sprechen).
+
 ## 1.5.1 (2026-11-09)
 
 ### Highlights
