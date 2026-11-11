@@ -3,7 +3,12 @@
  * talking to an agent right now (you, and the others in your call who told you so).
  */
 import { useSyncExternalStore } from 'react';
-import { AgentHotkey, AgentHotkeyMode, parseHotkey } from '../plugins/agentVoice/hotkey';
+import {
+  AgentHotkey,
+  AgentHotkeyMode,
+  GlobalHotkeyInfo,
+  parseHotkey,
+} from '../plugins/agentVoice/hotkey';
 import { AgentMuteMode, parseMuteMode } from '../plugins/agentVoice/session';
 
 export type AgentVoicePrefs = {
@@ -14,10 +19,12 @@ export type AgentVoicePrefs = {
   muteMode: AgentMuteMode;
   /** tell the others in the call (they see "Talking to agent" on your picture) */
   share: boolean;
+  /** Linux desktop app: also read the hotkey while Diddy is in the background (reserves the key, so opt-in) */
+  global: boolean;
 };
 
 const KEY = 'diddyAgentVoice';
-const DEFAULTS: AgentVoicePrefs = { enabled: false, mode: 'hold', muteMode: 'mute', share: true };
+const DEFAULTS: AgentVoicePrefs = { enabled: false, mode: 'hold', muteMode: 'mute', share: true, global: false };
 
 const read = (): AgentVoicePrefs => {
   try {
@@ -28,6 +35,7 @@ const read = (): AgentVoicePrefs => {
       mode: stored.mode === 'toggle' ? 'toggle' : 'hold',
       muteMode: parseMuteMode(stored.muteMode, stored.muteMic),
       share: typeof stored.share === 'boolean' ? stored.share : DEFAULTS.share,
+      global: stored.global === true,
     };
   } catch {
     return DEFAULTS;
@@ -95,3 +103,24 @@ export const useAgentTalking = (userId: string, ownUserId?: string): boolean =>
   useSyncExternalStore(subscribeTalk, () =>
     userId === ownUserId ? ownActive : remote.has(userId)
   );
+
+// --- global hotkey of the Linux desktop app (#135) -------------------------------------------
+
+let globalInfo: GlobalHotkeyInfo | undefined;
+const globalListeners = new Set<() => void>();
+
+export const setGlobalHotkeyInfo = (info: GlobalHotkeyInfo | undefined): void => {
+  globalInfo = info;
+  globalListeners.forEach((l) => l());
+};
+
+const subscribeGlobal = (listener: () => void) => {
+  globalListeners.add(listener);
+  return () => {
+    globalListeners.delete(listener);
+  };
+};
+
+/** How the desktop app reads the hotkey system-wide right now (undefined: not bound). */
+export const useGlobalHotkeyInfo = (): GlobalHotkeyInfo | undefined =>
+  useSyncExternalStore(subscribeGlobal, () => globalInfo);

@@ -14,6 +14,7 @@ struct MessageRow: Identifiable {
         case text(String)
         case image(MediaSource, filename: String, width: CGFloat?, height: CGFloat?)
         case file(String, source: MediaSource, mimeType: String?)
+        case audio(AudioAttachment)
         case notice(String)
         case undecryptable
         case redacted
@@ -34,6 +35,8 @@ struct MessageRow: Identifiable {
     var showsHeader: Bool
     var dayDivider: Date?
     let isPending: Bool
+    /// Structured card of a bot message (`dev.diddy.card`); the plain text stays in `body`.
+    var card: BotCard? = nil
 }
 
 @MainActor
@@ -161,6 +164,33 @@ final class TimelineController: ObservableObject {
         }
     }
 
+    /// Sends a recorded voice message the way the desktop does: `m.audio` with the voice flag
+    /// (MSC3245) and duration and waveform (MSC1767), encrypted in encrypted rooms by the SDK.
+    /// Returns false when it failed, so the caller can keep the recording.
+    func sendVoice(_ recording: VoiceRecording, inReplyTo: EventOrTransactionId?) async -> Bool {
+        guard let timeline else { return false }
+        var replyId: String?
+        if case .eventId(let id)? = inReplyTo { replyId = id }
+        let params = UploadParameters(
+            source: .file(filename: recording.url.path),
+            caption: nil,
+            formattedCaption: nil,
+            mentions: nil,
+            inReplyTo: replyId,
+            extraContentJson: VoiceWaveform.contentJSON(duration: recording.duration, wire: recording.waveform)
+        )
+        let info = AudioInfo(duration: recording.duration, size: recording.size, mimetype: "audio/mp4")
+        do {
+            let handle = try timeline.sendAttachment(params: params, attachment: .audio(audioInfo: info))
+            try await handle.join()
+            try? FileManager.default.removeItem(at: recording.url)
+            return true
+        } catch {
+            sendError = error.friendlyMessage
+            return false
+        }
+    }
+
     func edit(_ row: MessageRow, text: String, mentions: [String] = []) async {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let timeline, let id = row.eventId, !trimmed.isEmpty else { return }
@@ -232,6 +262,7 @@ final class TimelineController: ObservableObject {
         let body: MessageRow.Body
         var edited = false
         var reply: (sender: String, text: String)?
+        var card: BotCard?
         switch event.content {
         case .msgLike(let content):
             if let details = content.inReplyTo, case .ready(let replied, let sender, let profile, _, _) = details.event() {
@@ -243,6 +274,9 @@ final class TimelineController: ObservableObject {
             case .message(let message):
                 edited = message.isEdited
                 body = Self.body(of: message)
+                let inspection = BotCardLookup.inspect(event, id: id, message: message)
+                if inspection.hidden { return nil }
+                card = inspection.card
             case .sticker(let text, let info, let source):
                 body = .image(source, filename: text, width: info.width.map { CGFloat($0) }, height: info.height.map { CGFloat($0) })
             case .redacted:
@@ -281,7 +315,8 @@ final class TimelineController: ObservableObject {
             reactions: reactions,
             showsHeader: true,
             dayDivider: nil,
-            isPending: !event.isRemote
+            isPending: !event.isRemote,
+            card: card
         )
     }
 
@@ -294,7 +329,7 @@ final class TimelineController: ObservableObject {
             return .image(image.source, filename: image.filename,
                           width: image.info?.width.map { CGFloat($0) }, height: image.info?.height.map { CGFloat($0) })
         case .video(let video): return .file("🎬 \(video.filename)", source: video.source, mimeType: video.info?.mimetype)
-        case .audio(let audio): return .file("🔊 \(audio.filename)", source: audio.source, mimeType: audio.info?.mimetype)
+        case .audio(let audio): return .audio(AudioAttachment(audio))
         case .file(let file): return .file("📎 \(file.filename)", source: file.source, mimeType: file.info?.mimetype)
         default: return .text(message.body)
         }
@@ -314,7 +349,7 @@ final class TimelineController: ObservableObject {
             switch message.msgType {
             case .image: return "📷 Photo"
             case .video: return "🎬 Video"
-            case .audio: return "🔊 Audio"
+            case .audio(let audio): return audio.voice != nil ? "🎤 Voice message" : "🔊 Audio"
             case .file(let file): return "📎 \(file.filename)"
             default: return message.body
             }

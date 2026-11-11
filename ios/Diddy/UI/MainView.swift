@@ -32,6 +32,7 @@ struct MainView: View {
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var navigator = AppNavigator()
     @State private var showSettings = false
+    @ObservedObject private var themes = ThemeStore.shared
 
     var body: some View {
         NavigationSplitView {
@@ -57,15 +58,19 @@ struct MainView: View {
             }
         }
         .navigationSplitViewStyle(.balanced)
+        // A new theme rebuilds the screens (the Theme colours are plain values); the sheets and
+        // the navigator stay, so Settings remains open while you pick.
+        .id(themes.id)
         .environmentObject(navigator)
         .sheet(isPresented: $showSettings) {
-            SettingsView(account: account)
+            SettingsView(account: account).id(themes.id)
         }
         .fullScreenCover(isPresented: $calls.showCallScreen) {
             if let call = calls.current {
                 NavigationStack {
                     VoiceChannelView(account: account, roomId: call.roomId, showsClose: true)
                 }
+                .id(themes.id)
                 .environmentObject(navigator)
             }
         }
@@ -75,6 +80,8 @@ struct MainView: View {
             Text(calls.error ?? "")
         }
         .task { await account.loadAllChannels() }
+        // Nameplates, name styles and badges of everyone; again once the room list has arrived.
+        .task(id: account.rooms.isEmpty) { await account.loadDiddyProfiles() }
         .onChange(of: account.spaces.map(\.roomId)) { ids in
             // The server you were on may be gone: you left it, or were removed.
             if let server = navigator.server, !ids.contains(server) { navigator.server = nil }
@@ -626,10 +633,20 @@ struct RoomRow: View {
                 AvatarView(url: room.avatarUrl, name: room.name, size: 32, account: account)
             }
             VStack(alignment: .leading, spacing: 1) {
-                Text(room.name)
-                    .foregroundStyle(room.unread > 0 ? Theme.text : Theme.muted)
-                    .fontWeight(room.unread > 0 ? .semibold : .regular)
-                    .lineLimit(1)
+                HStack(spacing: 4) {
+                    if let dm = room.dmUserId, let diddy = account.diddyProfiles[dm] {
+                        // A direct message shows the other person's Diddy name style and badges.
+                        DiddyName(name: room.name, profile: diddy, fallback: room.unread > 0 ? Theme.text : Theme.muted)
+                            .fontWeight(room.unread > 0 ? .semibold : .regular)
+                            .lineLimit(1)
+                        if let badges = account.diddyBadges[dm] { DiddyBadges(badges: badges, size: 12, account: account) }
+                    } else {
+                        Text(room.name)
+                            .foregroundStyle(room.unread > 0 ? Theme.text : Theme.muted)
+                            .fontWeight(room.unread > 0 ? .semibold : .regular)
+                            .lineLimit(1)
+                    }
+                }
                 if let last = room.lastMessage {
                     Text(last).font(.caption).foregroundStyle(Theme.faint).lineLimit(1)
                 }
@@ -638,6 +655,7 @@ struct RoomRow: View {
             if room.hasCall { Image(systemName: "speaker.wave.2.fill").foregroundStyle(Theme.online) }
             if room.badge > 0 { UnreadBadge(count: room.badge) }
         }
+        .diddyNameplate(room.dmUserId.flatMap { account.diddyProfiles[$0]?.nameplate }, account: account)
     }
 }
 
@@ -659,6 +677,7 @@ struct UserPanel: View {
                 Text(account.record.serverName).font(.caption2).foregroundStyle(Theme.faint).lineLimit(1)
             }
             Spacer()
+            PluginsPanelButton()
             Button { showSettings = true } label: {
                 Image(systemName: "gearshape.fill").foregroundStyle(Theme.muted)
                     .frame(width: 44, height: 44)

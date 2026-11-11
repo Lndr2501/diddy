@@ -11,6 +11,7 @@ import { useMatrixClient } from '../hooks/useMatrixClient';
 import { callEmbedAtom } from '../state/callEmbed';
 import { CallEmbed } from '../plugins/call';
 import {
+  setGlobalHotkeyInfo,
   setOwnAgentTalking,
   setRemoteAgentTalking,
   useAgentVoicePrefs,
@@ -21,6 +22,7 @@ import {
   HotkeyGate,
   matchesPress,
   matchesRelease,
+  parseGlobalHotkeyInfo,
 } from '../plugins/agentVoice/hotkey';
 import { AgentMic, AgentVoiceSession } from '../plugins/agentVoice/session';
 import {
@@ -32,6 +34,7 @@ import {
 } from '../plugins/agentVoice/remote';
 import { canInvoke, invoke } from '../plugins/tauri';
 import { diag } from '../plugins/diagnostics';
+import { isMacOS } from '../utils/user-agent';
 
 const NATIVE_POLL_MS = 60;
 const PRUNE_MS = 15_000;
@@ -178,6 +181,32 @@ export function AgentVoiceSync() {
       session.reset();
     };
   }, [enabled, hotkey, mode, session]);
+
+  // --- Linux desktop app: ask the shell to read the hotkey system-wide (#135) -------------------
+  const globalWanted = enabled && prefs.global && !!hotkey;
+  const hotkeyJson = JSON.stringify(hotkey ?? null);
+  useEffect(() => {
+    if (!canInvoke() || isMacOS()) return undefined;
+    let cancelled = false;
+    const bind = async (value: unknown) => {
+      try {
+        const info = parseGlobalHotkeyInfo(await invoke('agent_voice_bind', { hotkey: value }));
+        if (!cancelled) setGlobalHotkeyInfo(info);
+      } catch (error) {
+        // an older Linux app without the command: the page hotkey and the CLI still work
+        diag(`agentVoice: global hotkey unavailable: ${String(error)}`);
+        if (!cancelled) setGlobalHotkeyInfo(undefined);
+      }
+    };
+    if (globalWanted) bind(JSON.parse(hotkeyJson));
+    else setGlobalHotkeyInfo(undefined);
+    return () => {
+      cancelled = true;
+      if (globalWanted) {
+        invoke('agent_voice_bind', { hotkey: null }).catch(() => undefined);
+      }
+    };
+  }, [globalWanted, hotkeyJson]);
 
   // --- the others in the call ------------------------------------------------------------------
   useEffect(() => {

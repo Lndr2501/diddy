@@ -42,10 +42,12 @@ private struct ChatContent: View {
     let isVoiceChat: Bool
     @EnvironmentObject private var calls: CallManager
     @StateObject private var memberStore = MemberStore()
+    @StateObject private var botCommands = BotCommandStore()
     @State private var draft = ""
     @State private var replyTo: MessageRow?
     @State private var editing: MessageRow?
     @State private var photo: PhotosPickerItem?
+    @StateObject private var recorder = VoiceRecorder()
     @State private var showMembers = false
     @State private var showInfo = false
     @State private var profile: ProfileTarget?
@@ -138,6 +140,7 @@ private struct ChatContent: View {
             if Sounds.shared.openRoomId == roomId { Sounds.shared.openRoomId = nil }
         }
         .task {
+            await account.loadDiddyProfiles()
             await memberStore.load(account: account, roomId: roomId)
             if let levels = try? await controller.room.getPowerLevels() {
                 canSend = levels.canOwnUserSendMessage(message: .roomMessage)
@@ -171,7 +174,8 @@ private struct ChatContent: View {
                             onMention: { profile = ProfileTarget(userId: $0) },
                             onReact: { key in Task { await controller.toggleReaction(key, on: row) } },
                             onImage: { viewedImage = ViewedImage(image: $0) },
-                            onFile: { openedFile = $0 }
+                            onFile: { openedFile = $0 },
+                            onCardCommand: { command in Task { await controller.sendCardAction(command) } }
                         )
                         .id(row.id)
                         .contextMenu { menu(for: row) }
@@ -233,7 +237,7 @@ private struct ChatContent: View {
                     } label: {
                         Image(systemName: "chevron.down")
                             .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(Theme.text)
                             .frame(width: 40, height: 40)
                             .background(Circle().fill(Theme.elevated))
                             .overlay(Circle().stroke(Theme.faint.opacity(0.4), lineWidth: 1))
@@ -315,6 +319,7 @@ private struct ChatContent: View {
 
     private var composer: some View {
         VStack(spacing: 0) {
+            BotCommandSuggestions(store: botCommands, draft: $draft, room: controller.room, account: account, enabled: editing == nil)
             if !mentionSuggestions.isEmpty {
                 VStack(spacing: 0) {
                     ForEach(mentionSuggestions) { member in
@@ -358,17 +363,27 @@ private struct ChatContent: View {
                 if !trimmedDraft.isEmpty {
                     Button(action: send) {
                         Image(systemName: editing == nil ? "paperplane.fill" : "checkmark")
-                            .foregroundStyle(.white)
+                            .foregroundStyle(Theme.onAccent)
                             .frame(width: 36, height: 36)
                             .background(Circle().fill(Theme.accent))
                     }
                     .accessibilityLabel(editing == nil ? "Send" : "Save edit")
+                } else if editing == nil {
+                    VoiceMicButton(recorder: recorder)
                 }
             }
+            .overlay { if recorder.isActive { VoiceRecordingBar(recorder: recorder, onSend: sendVoice) } }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
         }
         .background(Theme.chat)
+    }
+
+    private func sendVoice() async {
+        guard let recording = recorder.stop() else { return }
+        let reply = replyTo?.eventId
+        replyTo = nil
+        if !(await controller.sendVoice(recording, inReplyTo: reply)) { recorder.restore(recording) }
     }
 
     private func composerContext(_ text: Text, cancel: @escaping () -> Void) -> some View {
@@ -529,6 +544,7 @@ struct MessageRowView: View {
     var onReact: (String) -> Void = { _ in }
     var onImage: (UIImage) -> Void = { _ in }
     var onFile: (URL) -> Void = { _ in }
+    var onCardCommand: (String) -> Void = { _ in }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -583,6 +599,7 @@ struct MessageRowView: View {
                                     name: row.senderName,
                                     profile: account.diddyProfiles[row.sender],
                                     font: .subheadline.weight(.semibold),
+                                    size: 15,
                                     fallback: Theme.color(for: row.sender)
                                 )
                             }
@@ -610,6 +627,8 @@ struct MessageRowView: View {
     @ViewBuilder
     private var content: some View {
         switch row.body {
+        case .text where row.card != nil:
+            if let card = row.card { BotCardView(card: card, account: account, onCommand: onCardCommand) }
         case .text(let text):
             (Text(rendered(text)) + Text(row.isEdited ? " (edited)" : "").font(.caption2).foregroundColor(Theme.faint))
                 .foregroundStyle(Theme.text)
@@ -625,6 +644,8 @@ struct MessageRowView: View {
                 }
         case .image(let source, _, let width, let height):
             ChatImage(source: source, account: account, aspect: (width ?? 4) / max(height ?? 3, 1), onTap: onImage)
+        case .audio(let audio):
+            VoiceMessageView(id: row.id, audio: audio, account: account)
         case .file(let name, let source, _):
             FileAttachment(name: name, source: source, client: account.client, onOpen: onFile)
         case .undecryptable:

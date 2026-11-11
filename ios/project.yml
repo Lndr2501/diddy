@@ -35,6 +35,11 @@ targets:
       # The desktop sound pack, shared so both apps sound the same (see Diddy/App/Sounds.swift).
       - path: ../cinny/public/sound/diddy
         buildPhase: resources
+      # The built-in plugin pages, shared with the desktop (see Diddy/Plugins/PluginStore.swift).
+      # A folder reference, so they land in the app as `builtin/<name>.html`.
+      - path: ../cinny/src/app/plugins/builtin
+        type: folder
+        buildPhase: resources
       # RNNoise, optimized in every configuration: it runs on the audio thread during calls.
       - path: Vendor/rnnoise
         excludes:
@@ -72,13 +77,12 @@ targets:
           - UIInterfaceOrientationPortraitUpsideDown
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
-        UIStatusBarStyle: UIStatusBarStyleLightContent
-        UIUserInterfaceStyle: Dark
+        # No fixed light/dark style: the app follows the chosen theme (DiddyApp, preferredColorScheme).
         # Voice channels keep running with the screen locked or another app in front. No `voip`:
         # the app uses neither PushKit nor CallKit.
         UIBackgroundModes:
           - audio
-        NSMicrophoneUsageDescription: Diddy needs the microphone for voice channels.
+        NSMicrophoneUsageDescription: Diddy needs the microphone for voice channels and voice messages.
         NSCameraUsageDescription: Diddy needs the camera for video in voice channels.
         # No photo library keys: PhotosPicker runs out of process and hands over only the picked
         # item, and nothing is saved to the library.

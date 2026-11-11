@@ -10,6 +10,21 @@
 - **Call-Beitritt messen (#161):** Das Log (`~/Library/Logs/Diddy/app.log`) schreibt jetzt Zeilen `call join: <Schritt> +<ms> (<ms>)` vom Klick bis zur ersten Kachel und zur ersten weiteren Person. Ein nicht beantworteter Schlüssel-Transport (`Request timed out`) ist keine unbehandelte Ausnahme mehr: er steht im Log und wird einmal nach 2 s erneut zugestellt. Ursache der Langsamkeit ist damit noch nicht behoben, sondern messbar.
 - **Schlüsselbund-Dialog in Dev-Builds (#164):** Keine Codeänderung. „Diddy Dev“ ist eine eigene App mit eigenem „WebCrypto Master Key“; die CI signiert Dev-Builds nur ad hoc, deshalb fragt macOS bei jedem neuen Build erneut. Lokal gebaute Dev-DMGs werden mit der festen Identität „Diddy Signing“ signiert (docs/agent-guide.md), dann reicht einmal „Immer erlauben“.
 - #158 und #159 sind bereits mit PR #163 auf `main` (Status-Symbole, Flackern beim Sprechen).
+### iOS holt auf (#113, #126–#132, #134, #138)
+
+Alle Punkte gebaut, aber noch nicht auf einem Gerät geprüft (🧪).
+
+- **Call-Kacheln (#126):** Eine Kachel pro Person und pro Bildschirmübertragung, Tippen holt eine Kachel groß nach vorn, der Rest als Vorschauleiste.
+- **Soundboard (#113) und MyInstants-Import (#134):** Eigene Clips bis 20 s, alle im Call hören sie über dein Mikrofon; Suche, Vorhören und Mehrfachimport von MyInstants.
+- **Sprachnachrichten (#127):** Aufnehmen im Eingabefeld, Player mit Wellenform im Verlauf; Format wie am Desktop (`org.matrix.msc3245.voice`).
+- **Bot-Karten und Befehlsvorschläge (#128):** `dev.diddy.card` als native Karte mit Knöpfen, Vorschläge aus `dev.diddy.commands`.
+- **Diddy-Profile, Badges, Namensschilder (#129):** Auch aus verschlüsselten Options-Räumen (Nachrichtenmodus), Namensschilder hinter Mitglieder- und DM-Zeilen.
+- **Themes (#130):** Alle Desktop-Themes unter Einstellungen > Theme.
+- **Redet mit Agent (#131):** Button und Kurzbefehl, Anzeige der anderen auf Kachel und Profilkarte.
+- **Plugins (#132):** Plugin-Host mit derselben Sandbox und Schnittstelle wie am Desktop, 8 mitgelieferte Plugins.
+- **Logdatei und Diagnose (#138):** `app.log`, Absturzberichte über MetricKit, Export über das Teilen-Menü.
+- **Linux: globaler Hotkey für Agent Voice (#135):** Über das XDG-Portal `GlobalShortcuts` mit Halten und Loslassen, ohne Portal unter X11 als Umschalter, sonst Rückfall auf Fenster-Hotkey und `diddy --agent-voice`. Opt-in unter „Also in the background“. Kleiner GIO-Helfer `diddy-global-shortcut`, in Electron-Paket und Nix enthalten. Nur gegen einen Portal-Nachbau getestet.
+- **Linux: Tests für Sprachnachrichten, Verbindungsprofile und App-Icon (#137):** Logik aus `main.cjs` in testbare Module verschoben, Tests mit simuliertem Electron; Prüfliste für echtes X11/Wayland in [docs/linux-checkliste.md](docs/linux-checkliste.md).
 
 ## 1.5.1 (2026-11-09)
 

@@ -116,13 +116,13 @@ struct LoginView: View {
             Task { await action() }
         } label: {
             HStack {
-                if login.busy { ProgressView().tint(.white) }
+                if login.busy { ProgressView().tint(Theme.onAccent) }
                 Text(title).bold()
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 13)
             .background(RoundedRectangle(cornerRadius: 8).fill(Theme.accent))
-            .foregroundStyle(.white)
+            .foregroundStyle(Theme.onAccent)
         }
         .disabled(login.busy)
     }

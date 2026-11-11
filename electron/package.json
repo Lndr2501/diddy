@@ -10,7 +10,8 @@
   "scripts": {
     "test": "node --test tests/*.test.cjs",
     "build:audio": "mkdir -p native/bin && cc -std=c11 -O2 -Wall -Wextra -Werror native/system-audio.c -o native/bin/diddy-system-audio $(pkg-config --cflags --libs libpulse) -lm",
-    "dist:linux": "npm run build:audio && electron-builder --linux AppImage deb rpm --publish never"
+    "build:shortcut": "mkdir -p native/bin && cc -std=c11 -O2 -Wall -Wextra -Werror native/global-shortcut.c -o native/bin/diddy-global-shortcut $(pkg-config --cflags --libs gio-2.0)",
+    "dist:linux": "npm run build:audio && npm run build:shortcut && electron-builder --linux AppImage deb rpm --publish never"
   },
   "devDependencies": {
     "electron": "45.2.3",
@@ -42,6 +43,10 @@
       {
         "from": "native/bin/diddy-system-audio",
         "to": "diddy-system-audio"
+      },
+      {
+        "from": "native/bin/diddy-global-shortcut",
+        "to": "diddy-global-shortcut"
       }
     ],
     "linux": {

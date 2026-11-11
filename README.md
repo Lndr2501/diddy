@@ -109,8 +109,10 @@ All images show example data and are generated from the real app, see [docs/scre
 | Screen sharing | ✅ | 🧪 Wayland portal / X11 picker | 🧪 full screen on iOS 27+, otherwise Diddy only |
 | …with system sound | ✅ macOS 14.2+ | 🧪 other apps, not Diddy's own sound | 🧪 app sound |
 | Connection profiles | ✅ macOS 14+ | 🧪 untested | 🧪 multiple accounts |
-| Voice messages | ✅ | 🧪 | ❌ |
+| Voice messages | ✅ | 🧪 | 🧪 m4a, no Ogg/Opus playback |
 | Change app icon | ✅ | 🧪 | 🧪 |
+| Call tiles, soundboard, MyInstants | ✅ | ✅ | 🧪 |
+| Bot cards, profiles and badges, themes, plugins, agent voice | ✅ | ✅ | 🧪 |
 
 ✅ works and is tested · 🧪 built, but not yet tested in daily use · ❌ not supported (yet)
 

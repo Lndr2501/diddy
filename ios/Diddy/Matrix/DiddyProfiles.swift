@@ -10,9 +10,11 @@ import SwiftUI
 /// - `app.diddy.badge` (state key = badge id): a custom badge definition.
 /// - `app.diddy.badge_award` (state key = `badgeId|userId`): a badge given to someone.
 ///
-/// Rooms where members may not write state get the same data as normal events that carry the key
-/// in `content["app.diddy.key"]` ("message mode"). This side reads the state and, in unencrypted
-/// rooms, the newest message-mode events. Message-mode data in encrypted rooms is not read.
+/// Rooms where members may not write state, and every encrypted room (state events are never
+/// encrypted), get the same data as normal events that carry the key in `content["app.diddy.key"]`
+/// ("message mode"). This side reads the state and the newest message-mode events: through the
+/// REST API in unencrypted rooms and through a decrypting timeline in encrypted ones
+/// (`DiddyOptionsFeed`).
 ///
 /// Everything here is written by other people, so it is checked like desktop does: the sender must
 /// be a joined member, content is small, timestamps are plausible and every value is whitelisted.
@@ -51,13 +53,18 @@ struct DiddyProfile: Equatable {
 
     var nameColor: String?
     var nameGradient: [String]?
+    /// CSS angle of the name gradient in degrees (90 = left to right).
+    var nameGradientAngle = 90.0
+    var nameFont = "default"
+    var nameEffect = "none"
     var nameBold = false
     var nameItalic = false
     var cardFrom: String?
     var cardTo: String?
+    var cardAngle = 135.0
     var cardAccent: String?
     var bannerMxc: String?
-    var nameplateColor: String?
+    var nameplate: DiddyNameplate?
     var status: Status?
     var shownBadges: [String] = []
     var bio: String?
@@ -74,6 +81,8 @@ struct DiddyProfile: Equatable {
     /// The card modules the owner shows, in their order.
     var modules: [String] = DiddyProfile.layoutModules["standard"] ?? []
 
+    static let nameFonts = ["default", "serif", "mono", "rounded", "impact", "script", "fantasy", "marker"]
+    static let nameEffects = ["none", "glow", "shadow", "outline"]
     static let aboutFields = ["pronouns", "location", "age", "education", "work"]
     static let modulesAll = ["about", "bio", "activity", "interests", "links", "sharedRooms"]
     static let layoutModules: [String: [String]] = [
@@ -100,17 +109,21 @@ struct DiddyProfile: Equatable {
             if let gradient = style["gradient"] as? [String: Any],
                let from = Self.color(gradient["from"]), let to = Self.color(gradient["to"]) {
                 nameGradient = [from, to]
+                nameGradientAngle = Self.angle(gradient["angle"], fallback: 90)
             }
+            if let font = style["font"] as? String, Self.nameFonts.contains(font) { nameFont = font }
+            if let effect = style["effect"] as? String, Self.nameEffects.contains(effect) { nameEffect = effect }
             nameBold = style["bold"] as? Bool ?? false
             nameItalic = style["italic"] as? Bool ?? false
         }
         if let card = raw["card"] as? [String: Any] {
             cardFrom = Self.color(card["from"])
             cardTo = Self.color(card["to"])
+            cardAngle = Self.angle(card["angle"], fallback: 135)
             cardAccent = Self.color(card["accent"])
             bannerMxc = Self.mxc(card["bannerMxc"])
         }
-        if let plate = raw["nameplate"] as? [String: Any] { nameplateColor = Self.color(plate["color"]) }
+        if let plate = raw["nameplate"] as? [String: Any] { nameplate = DiddyNameplate(plate) }
         status = (raw["status"] as? String).flatMap(Status.init(rawValue:))
         if let ids = raw["shownBadges"] as? [Any] {
             shownBadges = Array(ids.prefix(64).compactMap { $0 as? String }.filter { !$0.isEmpty && $0.count <= 64 }.prefix(4))
@@ -162,6 +175,13 @@ struct DiddyProfile: Equatable {
         return hex
     }
 
+    /// A finite number clamped to 0...360 (`safeAngle`).
+    static func angle(_ value: Any?, fallback: Double) -> Double {
+        guard let raw = value as? NSNumber, CFGetTypeID(raw) != CFBooleanGetTypeID() else { return fallback }
+        let number = raw.doubleValue
+        return number.isFinite ? min(360, max(0, number)) : fallback
+    }
+
     static func mxc(_ value: Any?) -> String? {
         guard let raw = value as? String, raw.count <= 512,
               raw.wholeMatch(of: #/mxc://[A-Za-z0-9.\-:\[\]]+/[A-Za-z0-9_\-]+/#) != nil else { return nil }
@@ -195,6 +215,51 @@ struct DiddyProfile: Equatable {
     }
 }
 
+/// The background someone set for their row in member and DM lists (`sanitizeNameplate` and
+/// `nameplate.ts` of desktop): a colour, one of the preset gradients, a picture (also GIF) or a
+/// short muted video loop.
+struct DiddyNameplate: Equatable {
+    var color: String?
+    var preset: String?
+    /// The preset gradient slowly moves.
+    var flow = false
+    var imageMxc: String?
+    var videoMxc: String?
+    /// "fade" (default) shows it on the right and fades it out towards the name; "full" covers the row.
+    var fitsFullRow = false
+
+    /// The gradient presets, `NAMEPLATE_PRESETS` of nameplate.ts.
+    static let presets: [String: [String]] = [
+        "aurora": ["#1fa2ff", "#12d8fa", "#a6ffcb"],
+        "sunset": ["#ff5f6d", "#ff9966", "#ffc371"],
+        "ocean": ["#1a2a6c", "#2c5fa8", "#3ab0d8"],
+        "forest": ["#134e5e", "#3f8f6b", "#9bd27a"],
+        "ember": ["#8e1b2b", "#e2462f", "#f8b500"],
+        "lavender": ["#6a3fd0", "#b06ee8", "#f0c6ff"],
+        "candy": ["#ff6fd8", "#a259ff", "#4f3ee0"],
+        "mint": ["#00a693", "#4cc9a4", "#b5e88a"],
+        "midnight": ["#1c1d2b", "#3b3f72", "#7b6cf6"],
+        "gold": ["#8a6418", "#d4a537", "#f7e08a"],
+    ]
+
+    /// nil unless there is a colour, a known preset, a picture or a video.
+    init?(_ raw: [String: Any]) {
+        color = DiddyProfile.color(raw["color"])
+        if let id = raw["preset"] as? String, Self.presets[id] != nil { preset = id }
+        flow = preset != nil && raw["flow"] as? Bool == true
+        imageMxc = DiddyProfile.mxc(raw["imageMxc"])
+        videoMxc = DiddyProfile.mxc(raw["videoMxc"])
+        fitsFullRow = raw["fit"] as? String == "full"
+        guard color != nil || preset != nil || imageMxc != nil || videoMxc != nil else { return nil }
+    }
+
+    /// The gradient stops (a preset) or the colour wash (45 % of the chosen colour) under any media.
+    var backgroundColors: [String]? {
+        if let preset { return Self.presets[preset] }
+        return color.map { [$0, $0] }
+    }
+}
+
 extension DiddyBadge {
     /// The badges that ship with Diddy and exist on every server (`GLOBAL_BADGES` in types.ts).
     static let global: [DiddyBadge] = [
@@ -220,28 +285,6 @@ extension DiddyBadge {
         self.init(id: id, name: name, emoji: DiddyProfile.text(content["emoji"], max: 8),
                   imageMxc: DiddyProfile.mxc(content["imageMxc"]), color: DiddyProfile.color(content["color"]))
     }
-
-    /// The 11 character creator tag of owner-bound badge ids (`ownerTag` in trust.ts, cyrb53).
-    static func ownerTag(_ userId: String) -> String {
-        var h1: UInt32 = 0xDEADBEEF
-        var h2: UInt32 = 0x41C6CE57
-        for unit in userId.utf16 {
-            h1 = (h1 ^ UInt32(unit)) &* 2_654_435_761
-            h2 = (h2 ^ UInt32(unit)) &* 1_597_334_677
-        }
-        h1 = ((h1 ^ (h1 >> 16)) &* 2_246_822_507) ^ ((h2 ^ (h2 >> 13)) &* 3_266_489_909)
-        h2 = ((h2 ^ (h2 >> 16)) &* 2_246_822_507) ^ ((h1 ^ (h1 >> 13)) &* 3_266_489_909)
-        let hash = 4_294_967_296 * UInt64(2_097_151 & h2) + UInt64(h1)
-        let text = String(hash, radix: 36)
-        return String(repeating: "0", count: max(0, 11 - text.count)) + text
-    }
-}
-
-/// One version of a key, from a state event or a message-mode event.
-private struct DiddyCandidate {
-    let content: [String: Any]
-    let ts: Int64
-    let sender: String
 }
 
 /// What one options room holds, already reduced to trusted candidates.
@@ -257,19 +300,32 @@ private struct OptionsRoomData {
     }
 }
 
+/// A trusted-so-far message-mode event waiting for the per-room limits.
+private struct PendingMessage {
+    let type: String
+    let key: String
+    let candidate: DiddyCandidate
+}
+
 extension MatrixAccount {
     /// Reads the Diddy profiles of everyone in the options rooms. Cheap to call often: it runs at
     /// most once a minute unless `force` is set.
     func loadDiddyProfiles(force: Bool = false) async {
-        guard !diddyLoading else { return }
+        guard !diddyLoading, !rooms.isEmpty else { return }
         if !force, let last = diddyLoadedAt, Date().timeIntervalSince(last) < 60 { return }
         diddyLoading = true
         defer { diddyLoading = false }
         diddyLoadedAt = Date()
 
-        // The marker is checked once per room and session; most rooms answer "not found".
+        // The marker is checked once per room and session; most rooms answer "not found". Rooms
+        // that desktop tagged in their topic need no question at all.
         let candidates = rooms.filter { $0.isJoined && !$0.isSpace && !$0.isDirect && !diddyCheckedRooms.contains($0.id) }
         for room in candidates.prefix(300) {
+            if room.topic?.contains(DiddyEvents.topicTag) == true {
+                diddyOptionsRooms.insert(room.id)
+                diddyCheckedRooms.insert(room.id)
+                continue
+            }
             do {
                 _ = try await clientRequest("/_matrix/client/v3/rooms/\(Self.pathComponent(room.id))/state/\(DiddyEvents.marker)/")
                 diddyOptionsRooms.insert(room.id)
@@ -301,23 +357,46 @@ extension MatrixAccount {
             }
         }
 
-        // Badges: definitions (global ones cannot be redefined) and the awards still in force.
-        var definitions = Dictionary(uniqueKeysWithValues: DiddyBadge.global.map { ($0.id, $0) })
+        // Awards: one per giver and badge, at most 200 per giver (the newest).
+        struct AwardRecord { let badgeId: String; let userId: String; let by: String; let ts: Int64 }
+        var awards: [AwardRecord] = []
         var defCandidates: [String: [DiddyCandidate]] = [:]
-        var owned: [String: Set<String>] = [:] // user → badge ids
+        let globalIds = Set(DiddyBadge.global.map(\.id))
         for room in loaded {
-            for (id, list) in room.data.byKey[DiddyEvents.badge] ?? [:] where id.count <= 64 && definitions[id] == nil {
+            for (id, list) in room.data.byKey[DiddyEvents.badge] ?? [:] where id.count <= 64 && !globalIds.contains(id) {
                 defCandidates[id, default: []] += list
             }
             for (key, list) in room.data.byKey[DiddyEvents.award] ?? [:] {
-                guard let bar = key.firstIndex(of: "|"), bar != key.startIndex else { continue }
-                let badgeId = String(key[..<bar])
-                let recipient = String(key[key.index(after: bar)...])
-                if Self.awardInForce(recipient: recipient, list) { owned[recipient, default: []].insert(badgeId) }
+                guard let parsed = DiddyTrust.parseAwardKey(key) else { continue }
+                for award in DiddyTrust.resolveAwards(recipient: parsed.userId, list) {
+                    awards.append(AwardRecord(badgeId: parsed.badgeId, userId: parsed.userId, by: award.by, ts: award.ts))
+                }
             }
         }
+        awards = DiddyTrust.capPerSender(awards, sender: \.by, ts: \.ts, max: DiddyTrust.maxAwardsPerSender)
+        var owned: [String: Set<String>] = [:] // user → badge ids
+        for award in awards { owned[award.userId, default: []].insert(award.badgeId) }
+        let awardedIds = Set(awards.map(\.badgeId))
+
+        // Definitions: at most 25 per creator and 300 overall (newest first), but one somebody was
+        // awarded is never dropped.
+        struct DefinitionRecord { let badge: DiddyBadge; let ts: Int64; let sender: String }
+        var records: [DefinitionRecord] = []
         for (id, list) in defCandidates {
-            if let def = Self.pickDefinition(id: id, list) { definitions[id] = def }
+            guard let chosen = Self.pickDefinition(id: id, list), let badge = DiddyBadge(id: id, content: chosen.content) else { continue }
+            records.append(DefinitionRecord(badge: badge, ts: chosen.ts, sender: chosen.sender))
+        }
+        records = DiddyTrust.capPerSender(records, sender: \.sender, ts: \.ts, max: DiddyTrust.maxCustomDefsPerSender)
+            .sorted { $0.ts > $1.ts }
+        var slots = DiddyTrust.maxCustomDefs - records.filter { awardedIds.contains($0.badge.id) }.count
+        var definitions = Dictionary(uniqueKeysWithValues: DiddyBadge.global.map { ($0.id, $0) })
+        for record in records {
+            if awardedIds.contains(record.badge.id) {
+                definitions[record.badge.id] = record.badge
+            } else if slots > 0 {
+                slots -= 1
+                definitions[record.badge.id] = record.badge
+            }
         }
         var badges: [String: [DiddyBadge]] = [:]
         for (userId, profile) in profiles {
@@ -332,10 +411,12 @@ extension MatrixAccount {
     }
 
     /// Whether your own profile can be changed here without losing what desktop wrote: the
-    /// primary options room must be one this side can read completely.
+    /// primary options room must be one this side can read completely. In an encrypted room that
+    /// means the messages were read, and none of yours is still waiting for its key.
     var canEditDiddyProfile: Bool {
         guard let primary = diddyPrimaryRoom else { return false }
-        return !primary.encrypted || diddyOwnProfileRaw != nil
+        if !primary.encrypted || diddyOwnProfileRaw != nil { return true }
+        return diddyFeeds[primary.id]?.isCompleteFor(sender: userId) == true
     }
 
     /// Changes some fields of your Diddy profile and keeps all others, including ones this app does
@@ -364,7 +445,13 @@ extension MatrixAccount {
             guard let room = room(primary.id) else { throw DiddyError("The Diddy Options room is not available yet.") }
             content[DiddyEvents.keyField] = userId
             let data = try JSONSerialization.data(withJSONObject: content)
-            _ = try await room.sendRaw(eventType: DiddyEvents.profile, content: String(decoding: data, as: UTF8.self))
+            do {
+                _ = try await room.sendRaw(eventType: DiddyEvents.profile, content: String(decoding: data, as: UTF8.self))
+            } catch {
+                throw DiddyError("Could not send your profile to the Diddy Options room: \(error.friendlyMessage)")
+            }
+            // The timeline has no decrypted JSON for a local echo: remember it until it comes back.
+            diddyFeeds[primary.id]?.addLocal(type: DiddyEvents.profile, sender: userId, content: content)
         }
         await loadDiddyProfiles(force: true)
     }
@@ -391,61 +478,78 @@ extension MatrixAccount {
         }
         var data = OptionsRoomData()
         let now = Int64(Date().timeIntervalSince1970 * 1000)
-        func ingest(_ event: [String: Any], key: String?) {
-            guard let type = event["type"] as? String, [DiddyEvents.profile, DiddyEvents.badge, DiddyEvents.award].contains(type),
+
+        /// The checks every Diddy event passes, state or message: a known type, a sane key, a
+        /// joined sender, a plausible time, small content. Returns nil when one fails.
+        func trusted(type: String, key: String?, sender: String?, ts: Int64?, content: [String: Any]?) -> PendingMessage? {
+            guard [DiddyEvents.profile, DiddyEvents.badge, DiddyEvents.award].contains(type),
                   let key, !key.isEmpty, key.count <= 300,
-                  let sender = event["sender"] as? String, joined.contains(sender),
-                  let ts = (event["origin_server_ts"] as? NSNumber)?.int64Value, ts <= now + 86_400_000,
-                  var content = event["content"] as? [String: Any],
+                  let sender, joined.contains(sender),
+                  let ts, ts <= now + 86_400_000,
+                  var content = content,
                   let size = try? JSONSerialization.data(withJSONObject: content).count, size <= DiddyEvents.maxContentBytes
-            else { return }
-            // A profile only ever belongs to the person who sent it.
-            if type == DiddyEvents.profile && key != sender { return }
+            else { return nil }
+            // A profile only ever belongs to the person who sent it, an award needs `badge|user`.
+            if type == DiddyEvents.profile && key != sender { return nil }
+            if type == DiddyEvents.award && DiddyTrust.parseAwardKey(key) == nil { return nil }
             content[DiddyEvents.keyField] = nil
-            data.add(type: type, key: key, DiddyCandidate(content: content, ts: ts, sender: sender))
+            return PendingMessage(type: type, key: key, candidate: DiddyCandidate(content: content, ts: ts, sender: sender))
         }
-        for event in state { ingest(event, key: event["state_key"] as? String) }
-        if !encrypted {
+
+        for event in state {
+            guard let type = event["type"] as? String,
+                  let pending = trusted(type: type, key: event["state_key"] as? String, sender: event["sender"] as? String,
+                                        ts: (event["origin_server_ts"] as? NSNumber)?.int64Value, content: event["content"] as? [String: Any])
+            else { continue }
+            data.add(type: pending.type, key: pending.key, pending.candidate)
+        }
+
+        // Message mode: unencrypted rooms are asked for the Diddy types only; an encrypted room's
+        // ciphertext says nothing, so its decrypting timeline is read instead.
+        var messages: [PendingMessage] = []
+        if encrypted {
+            let feed = diddyFeeds[roomId] ?? DiddyOptionsFeed(roomId: roomId)
+            if diddyFeeds[roomId] == nil {
+                feed.onChange = { [weak self] in
+                    guard let self else { return }
+                    Task { await self.loadDiddyProfiles(force: true) }
+                }
+                diddyFeeds[roomId] = feed
+            }
+            if let room = room(roomId) { await feed.start(room: room) }
+            for event in feed.events {
+                if let pending = trusted(type: event.type, key: event.content[DiddyEvents.keyField] as? String, sender: event.sender,
+                                         ts: event.ts, content: event.content) {
+                    messages.append(pending)
+                }
+            }
+        } else {
             let filter = #"{"types":["app.diddy.profile","app.diddy.badge","app.diddy.badge_award"]}"#
             let query = filter.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? ""
             if let page = try? await clientRequest(base + "/messages?dir=b&limit=300&filter=\(query)") {
                 for case let event as [String: Any] in page["chunk"] as? [Any] ?? [] where event["state_key"] == nil {
-                    ingest(event, key: (event["content"] as? [String: Any])?[DiddyEvents.keyField] as? String)
+                    let content = event["content"] as? [String: Any]
+                    if let type = event["type"] as? String,
+                       let pending = trusted(type: type, key: content?[DiddyEvents.keyField] as? String, sender: event["sender"] as? String,
+                                             ts: (event["origin_server_ts"] as? NSNumber)?.int64Value, content: content) {
+                        messages.append(pending)
+                    }
                 }
             }
+        }
+        for pending in DiddyTrust.trimMessages(messages, sender: { $0.candidate.sender }, ts: { $0.candidate.ts }) {
+            data.add(type: pending.type, key: pending.key, pending.candidate)
         }
         return (data, encrypted)
     }
 
-    /// `resolveAwards` of trust.ts: one award per giver; the giver's or the recipient's newer empty
-    /// event takes it back.
-    private static func awardInForce(recipient: String, _ candidates: [DiddyCandidate]) -> Bool {
-        var newest: [String: DiddyCandidate] = [:]
-        for candidate in candidates where (newest[candidate.sender]?.ts ?? .min) < candidate.ts {
-            newest[candidate.sender] = candidate
-        }
-        func isAward(_ candidate: DiddyCandidate) -> Bool { (candidate.content["by"] as? String).map { !$0.isEmpty } ?? false }
-        let removed = newest[recipient].flatMap { isAward($0) ? nil : $0.ts }
-        return newest.values.contains { candidate in
-            guard isAward(candidate) else { return false }
-            let at = (candidate.content["at"] as? NSNumber)?.int64Value ?? candidate.ts
-            return removed.map { $0 <= at } ?? true
-        }
-    }
-
-    /// `pickDefinition` of trust.ts: ids with a creator tag belong to that creator, older ids to
-    /// whoever defined them first. The owner's newest version counts; an empty one deletes it.
-    private static func pickDefinition(id: String, _ candidates: [DiddyCandidate]) -> DiddyBadge? {
-        let tag = id.wholeMatch(of: #/c\.([0-9a-z]{11})\.[0-9a-z]+/#).map { String($0.1) }
-        func isValid(_ candidate: DiddyCandidate) -> Bool {
+    /// `pickDefinition` with desktop's validity check: the content is a badge and the creator it
+    /// names, if any, is the real sender.
+    private static func pickDefinition(id: String, _ candidates: [DiddyCandidate]) -> DiddyCandidate? {
+        DiddyTrust.pickDefinition(id: id, candidates) { candidate in
             DiddyBadge(id: id, content: candidate.content) != nil
                 && (candidate.content["createdBy"] == nil || candidate.content["createdBy"] as? String == candidate.sender)
         }
-        let possible = candidates.filter { tag == nil || DiddyBadge.ownerTag($0.sender) == tag }.sorted { $0.ts < $1.ts }
-        let owner = tag == nil ? possible.first(where: isValid)?.sender : nil
-        let ofOwner = tag == nil ? possible.filter { $0.sender == owner } : possible
-        guard let newest = ofOwner.last, isValid(newest) else { return nil }
-        return DiddyBadge(id: id, content: newest.content)
     }
 
     private static func pathComponent(_ value: String) -> String {
@@ -469,28 +573,77 @@ extension Color {
     }
 }
 
-/// A display name in the colour, gradient and weight the person chose in Diddy.
+extension UnitPoint {
+    /// Start and end of a CSS `linear-gradient(<angle>deg, ...)` (0 = to the top, 90 = to the right).
+    static func cssGradient(angle: Double) -> (start: UnitPoint, end: UnitPoint) {
+        let radians = angle * .pi / 180
+        let dx = sin(radians) / 2
+        let dy = -cos(radians) / 2
+        return (UnitPoint(x: 0.5 - dx, y: 0.5 - dy), UnitPoint(x: 0.5 + dx, y: 0.5 + dy))
+    }
+}
+
+/// A display name in the colour, gradient, font, effect and weight the person chose in Diddy.
 struct DiddyName: View {
     let name: String
     let profile: DiddyProfile?
     var font: Font = .body
+    /// Point size, used by the fonts of the name style that have no system equivalent.
+    var size: CGFloat = 17
     /// Used when there is no Diddy name colour.
     var fallback: Color = Theme.text
 
+    /// The families desktop offers, as fonts iOS ships with (`NAME_FONTS` in types.ts).
+    private static let families: [String: String] = [
+        "serif": "Georgia", "mono": "Menlo", "rounded": "ArialRoundedMTBold", "impact": "AvenirNextCondensed-Heavy",
+        "script": "SnellRoundhand-Bold", "fantasy": "Papyrus", "marker": "MarkerFelt-Wide",
+    ]
+
+    private var resolvedFont: Font {
+        guard let family = profile.flatMap({ Self.families[$0.nameFont] }), UIFont(name: family, size: size) != nil else { return font }
+        return .custom(family, size: size, relativeTo: .body)
+    }
+
+    private var effectColor: Color {
+        if let gradient = profile?.nameGradient, let from = Color(diddyHex: gradient.first) { return from }
+        return Color(diddyHex: profile?.nameColor) ?? fallback
+    }
+
     var body: some View {
         let text = Text(name)
-            .font(font)
+            .font(resolvedFont)
             .fontWeight(profile?.nameBold == true ? .bold : nil)
             .italic(profile?.nameItalic == true)
-        if let gradient = profile?.nameGradient, let from = Color(diddyHex: gradient.first), let to = Color(diddyHex: gradient.last) {
-            text.foregroundStyle(LinearGradient(colors: [from, to], startPoint: .leading, endPoint: .trailing))
+        filled(text).modifier(DiddyNameEffect(effect: profile?.nameEffect ?? "none", color: effectColor))
+    }
+
+    @ViewBuilder
+    private func filled(_ text: Text) -> some View {
+        if let profile, let gradient = profile.nameGradient, let from = Color(diddyHex: gradient.first), let to = Color(diddyHex: gradient.last) {
+            let points = UnitPoint.cssGradient(angle: profile.nameGradientAngle)
+            text.foregroundStyle(LinearGradient(colors: [from, to], startPoint: points.start, endPoint: points.end))
         } else {
             text.foregroundStyle(Color(diddyHex: profile?.nameColor) ?? fallback)
         }
     }
 }
 
-/// The badges someone chose to show next to their name.
+/// Glow, shadow and outline of a name. SwiftUI cannot stroke text, so the outline is a tight halo.
+private struct DiddyNameEffect: ViewModifier {
+    let effect: String
+    let color: Color
+
+    func body(content: Content) -> some View {
+        switch effect {
+        case "glow": content.shadow(color: color.opacity(0.9), radius: 5)
+        case "shadow": content.shadow(color: .black.opacity(0.6), radius: 2, x: 0, y: 2)
+        case "outline": content.shadow(color: color, radius: 0.6).shadow(color: color, radius: 0.6)
+        default: content
+        }
+    }
+}
+
+/// The badges someone chose to show next to their name, as small tinted chips like on desktop.
 struct DiddyBadges: View {
     let badges: [DiddyBadge]
     var size: CGFloat = 14
@@ -499,13 +652,18 @@ struct DiddyBadges: View {
     var body: some View {
         HStack(spacing: 3) {
             ForEach(badges) { badge in
-                Group {
+                let tint = Color(diddyHex: badge.color) ?? Color(diddyHex: "#9b9baa") ?? Theme.muted
+                let side = size * 1.3
+                ZStack {
                     if let mxc = badge.imageMxc {
                         AvatarView(url: mxc, name: badge.name, size: size, cornerRadius: 3, account: account)
                     } else {
-                        Text(badge.emoji ?? String(badge.name.prefix(1))).font(.system(size: size * 0.85))
+                        Text(badge.emoji ?? String(badge.name.prefix(1)).uppercased()).font(.system(size: size * 0.85))
                     }
                 }
+                .frame(width: side, height: side)
+                .background(RoundedRectangle(cornerRadius: side * 0.32).fill(tint.opacity(0.22)))
+                .overlay(RoundedRectangle(cornerRadius: side * 0.32).stroke(tint.opacity(0.45), lineWidth: 1))
                 .accessibilityLabel(badge.name)
             }
         }

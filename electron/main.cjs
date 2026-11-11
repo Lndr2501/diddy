@@ -15,6 +15,7 @@ const {
   Menu,
   desktopCapturer,
   dialog,
+  globalShortcut,
   ipcMain,
   nativeImage,
   screen,
@@ -24,6 +25,9 @@ const {
 const { configDir, browserDataDir } = require('./lib/paths.cjs');
 const diag = require('./lib/diag.cjs');
 const connections = require('./lib/connections.cjs');
+const { createConnectionWindows, partitionOf } = require('./lib/connectionWindows.cjs');
+const { createAppIcons } = require('./lib/appIcon.cjs');
+const { originOf, configurePermissions } = require('./lib/permissions.cjs');
 const myinstants = require('./lib/myinstants.cjs');
 const { fitIntoArea, parseWindowState, guardWindowBounds } = require('./lib/windowFit.cjs');
 const { addFeatureSwitch } = require('./lib/commandLine.cjs');
@@ -33,6 +37,9 @@ const { startStaticServer } = require('./lib/staticServer.cjs');
 const { createSystemAudio } = require('./lib/systemAudio.cjs');
 const { createScreenPicker } = require('./lib/screenPicker.cjs');
 const { parseAgentVoiceLaunch, createAgentVoiceTrigger } = require('./lib/agentVoice.cjs');
+const { createAgentVoiceHotkey } = require('./lib/agentVoiceHotkey.cjs');
+const { sanitizeHotkey } = require('./lib/globalHotkey.cjs');
+const { startPortalShortcut } = require('./lib/portalShortcut.cjs');
 const { installShellInput } = require('./lib/shellInput.cjs');
 
 const APP_PORT = 44548;
@@ -43,15 +50,6 @@ const VERSION = (() => {
     return 'dev';
   }
 })();
-const ICON_IDS = ['pink', 'blue', 'purple', 'black', 'magenta'];
-const MEDIA_PERMISSIONS = new Set([
-  'media',
-  'display-capture',
-  'notifications',
-  'fullscreen',
-  'clipboard-sanitized-write',
-  'speaker-selection',
-]);
 
 const firstExisting = (candidates) => candidates.find((dir) => dir && fs.existsSync(dir));
 const frontendDir = firstExisting([
@@ -111,14 +109,6 @@ const profilesByContents = new Map();
 const configuredSessions = new WeakSet();
 const opening = new Set();
 
-const originOf = (url) => {
-  try {
-    return new URL(url).origin;
-  } catch {
-    return '';
-  }
-};
-
 // ---- window state -------------------------------------------------------------------------
 
 const windowStateFile = () => path.join(configDir(), 'electron-window-state.json');
@@ -156,28 +146,13 @@ const saveWindowState = (label, win) => {
 
 // ---- app icon -------------------------------------------------------------------------------
 
-const iconFile = () => path.join(configDir(), 'app-icon');
-
-const savedIconId = () => {
-  try {
-    const id = fs.readFileSync(iconFile(), 'utf8').trim();
-    return ICON_IDS.includes(id) ? id : undefined;
-  } catch {
-    return undefined;
-  }
-};
-
-const iconImage = (id) => (iconsDir ? nativeImage.createFromPath(path.join(iconsDir, `${id}.png`)) : undefined);
-
-const setAppIcon = (id, persist) => {
-  if (!ICON_IDS.includes(id)) throw new Error(`unknown icon: ${id}`);
-  const image = iconImage(id);
-  if (image && !image.isEmpty()) windows.forEach((win) => win.setIcon(image));
-  if (persist) {
-    fs.mkdirSync(configDir(), { recursive: true });
-    fs.writeFileSync(iconFile(), id);
-  }
-};
+const appIcons = createAppIcons({
+  iconsDir,
+  configDir,
+  nativeImage,
+  windows,
+  log: (line) => diag.writeLine(line),
+});
 
 // ---- sessions: permissions and screen sharing -----------------------------------------------
 
@@ -188,13 +163,7 @@ const configureSession = (ses) => {
   configuredSessions.add(ses);
   // Microphone, camera, screen and notifications only for Diddy's own pages (incl. Element Call,
   // which is served from the same origin); everything else is denied.
-  ses.setPermissionRequestHandler((_contents, permission, callback, details) => {
-    callback(MEDIA_PERMISSIONS.has(permission) && originOf(details.requestingUrl) === appOrigin);
-  });
-  ses.setPermissionCheckHandler(
-    (_contents, permission, requestingOrigin) =>
-      MEDIA_PERMISSIONS.has(permission) && originOf(requestingOrigin) === appOrigin
-  );
+  configurePermissions(ses, appOrigin);
   // PipeWire owns the chooser on Wayland. X11 needs our explicit source picker.
   ses.setDisplayMediaRequestHandler(async (request, callback) => {
     if (picking || originOf(request.securityOrigin ?? request.frame?.url ?? '') !== appOrigin) {
@@ -225,7 +194,7 @@ const revealWindow = (win) => {
 
 const createClientWindow = (label, profile) => {
   const bounds = restoredBounds(label);
-  const partition = profile ? `persist:connection-${profile.id}` : undefined;
+  const partition = profile ? partitionOf(profile.id) : undefined;
   const win = new BrowserWindow({
     title: profile ? `Diddy · ${profile.server}` : 'Diddy',
     x: bounds.x,
@@ -236,7 +205,7 @@ const createClientWindow = (label, profile) => {
     minHeight: 360,
     show: false,
     backgroundColor: '#140812',
-    icon: iconImage(savedIconId() ?? 'pink'),
+    icon: appIcons.forNewWindow(),
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
@@ -340,69 +309,32 @@ const watchDisplays = () => {
 
 // ---- separate logins (connection profiles) --------------------------------------------------
 
-const openConnectionProfile = ({ id, server }) => {
-  if (id === 'main') {
-    if (server !== undefined && server !== null) throw new Error('Die ursprüngliche Anmeldung wird nicht verändert.');
-    focusOrReopenMain();
-    return;
-  }
-  connections.checkProfileId(id);
-  const dir = configDir();
-  const profiles = connections.readProfiles(dir);
-  let profile = profiles.find((saved) => saved.id === id);
-  let isNew = false;
-  if (profile) {
-    if (server !== undefined && server !== null && connections.normalizeServer(server) !== profile.server) {
-      throw new Error('Für einen anderen Server bitte eine neue Verbindung anlegen.');
-    }
-  } else {
-    if (profiles.length >= connections.MAX_PROFILES) throw new Error('Es sind bereits 20 Verbindungen gespeichert.');
-    if (server === undefined || server === null) throw new Error('Diese Verbindung ist nicht gespeichert.');
-    profile = { id, server: connections.normalizeServer(server) };
-    isNew = true;
-  }
-  const label = `connection-${id}`;
-  const existing = windows.get(label);
-  if (existing) {
-    focusWindow(existing);
-    return;
-  }
-  if (opening.has(label)) throw new Error('Das Verbindungsfenster wird gerade geöffnet.');
-  opening.add(label);
-  try {
-    createClientWindow(label, profile);
-  } finally {
-    opening.delete(label);
-  }
-  if (isNew) {
-    const current = connections.readProfiles(dir);
-    if (!current.some((saved) => saved.id === id)) {
-      connections.saveProfiles(dir, [...current, profile]);
-    }
-  }
-  diag.writeLine(`connection: opened profile ${id}`);
-};
-
-const removeConnectionProfile = async ({ id }) => {
-  const dir = configDir();
-  const kept = connections.removeProfile(connections.readProfiles(dir), id);
-  const label = `connection-${id}`;
-  if (opening.has(label)) throw new Error('Das Verbindungsfenster wird gerade geöffnet; bitte danach erneut versuchen.');
-  windows.get(label)?.destroy();
-  connections.saveProfiles(dir, kept);
-  try {
-    const ses = session.fromPartition(`persist:connection-${id}`);
-    await ses.clearStorageData();
-    await ses.clearCache();
-    fs.rmSync(path.join(app.getPath('userData'), 'Partitions', `connection-${id}`), { recursive: true, force: true });
-    diag.writeLine(`connection: removed profile ${id}`);
-  } catch (error) {
-    diag.writeLine(`connection: removed profile ${id} but data cleanup failed: ${error.message}`);
-    throw new Error('Der Datenspeicher der Verbindung konnte nicht gelöscht werden.');
-  }
-};
+const connectionWindows = createConnectionWindows({
+  connections,
+  configDir,
+  windows,
+  opening,
+  createWindow: createClientWindow,
+  focusWindow,
+  focusMain: focusOrReopenMain,
+  session,
+  userDataDir: () => app.getPath('userData'),
+  log: (line) => diag.writeLine(line),
+});
+const openConnectionProfile = (request) => connectionWindows.open(request);
+const removeConnectionProfile = (request) => connectionWindows.remove(request);
 
 const agentVoice = createAgentVoiceTrigger();
+// Global hotkey (#135): portal helper on Wayland / KDE / newer GNOME, Electron globalShortcut on X11.
+const shortcutHelper = process.env.DIDDY_SHORTCUT_HELPER || path.join(process.resourcesPath, 'diddy-global-shortcut');
+const agentVoiceHotkey = createAgentVoiceHotkey({
+  trigger: agentVoice,
+  globalShortcut,
+  helper: shortcutHelper,
+  helperAvailable: () => fs.existsSync(shortcutHelper),
+  startPortal: startPortalShortcut,
+  log: (line) => diag.writeLine(line),
+});
 
 /** `diddy --agent-voice start|stop|toggle` (#57). True when the launch was one of these. */
 const handleAgentVoiceLaunch = (argv) => {
@@ -446,8 +378,11 @@ const commands = {
   connection_profiles: () => connections.readProfiles(configDir()),
   open_connection_profile: (args) => openConnectionProfile(args),
   remove_connection_profile: (args) => removeConnectionProfile(args),
-  set_app_icon: ({ id }) => setAppIcon(String(id), true),
+  set_app_icon: ({ id }) => appIcons.set(String(id), true),
   agent_voice_state: () => agentVoice.state(),
+  // Binds the page's hotkey globally (null: unbind). Answers { path: 'portal' | 'x11' | 'window', trigger?, reason? }.
+  agent_voice_bind: ({ hotkey }) => agentVoiceHotkey.bind(sanitizeHotkey(hotkey)),
+  agent_voice_hotkey_info: () => agentVoiceHotkey.info(),
   // The update check belongs to the macOS shell; Linux has no native updater (the UI still sends this).
   updater_set_config: () => null,
 };
@@ -476,6 +411,7 @@ ipcMain.on('diddy:audio-ack', (event, id) => {
   if (trusted(event)) audioCaptures.get(event.sender.id)?.ack(id);
 });
 app.on('before-quit', () => audioCaptures.forEach((audio) => audio.close()));
+app.on('will-quit', () => agentVoiceHotkey.close());
 
 ipcMain.handle('diddy:invoke', async (event, cmd, args) => {
   // Only Diddy's own top-level page may call these (not Element Call's frame, not other sites).

@@ -56,6 +56,8 @@ struct SettingsView: View {
                     }
                 }
 
+                ThemeSection()
+
                 Section {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 64), spacing: 14)], spacing: 14) {
                         ForEach(AppIconChoice.allCases) { choice in
@@ -94,6 +96,7 @@ struct SettingsView: View {
                     NavigationLink { ChatSettingsView() } label: { Label("Chat", systemImage: "bubble.left.and.bubble.right.fill") }
                     NavigationLink { SoundSettingsView() } label: { Label("Sounds", systemImage: "speaker.wave.2.fill") }
                     NavigationLink { CallAlertSettingsView() } label: { Label("Call Alerts", systemImage: "phone.fill") }
+                    NavigationLink { PluginSettingsView() } label: { Label("Plugins", systemImage: "puzzlepiece.extension.fill") }
                 }
 
                 Section {
@@ -307,7 +310,7 @@ private struct ProfileSection: View {
                     AvatarView(url: account.avatarUrl, name: account.title, size: 60, account: account)
                         .overlay(alignment: .bottomTrailing) {
                             Image(systemName: "pencil.circle.fill")
-                                .foregroundStyle(.white, Theme.accent)
+                                .foregroundStyle(Theme.onAccent, Theme.accent)
                                 .font(.title3)
                         }
                 }

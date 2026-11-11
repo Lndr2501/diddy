@@ -413,3 +413,28 @@ test('payload and native state validation', () => {
   assert.equal(remote.parseNativeState({ key: true }), undefined);
   assert.equal(remote.parseNativeState(undefined), undefined);
 });
+
+test('global hotkey info from the Linux shell (#135) is validated and explained', () => {
+  assert.equal(hotkey.parseGlobalHotkeyInfo(null), undefined);
+  assert.equal(hotkey.parseGlobalHotkeyInfo({ path: 'dbus' }), undefined);
+  assert.deepEqual(
+    { ...hotkey.parseGlobalHotkeyInfo({ path: 'portal', trigger: 'Ctrl+F13', reason: 5 }) },
+    { path: 'portal', trigger: 'Ctrl+F13', reason: undefined }
+  );
+  assert.match(hotkey.globalHotkeyReach(undefined), /only while the Diddy window is focused/i);
+  assert.match(
+    hotkey.globalHotkeyReach({ path: 'portal', trigger: 'Ctrl+F13' }),
+    /background.*Ctrl\+F13.*Holding works/
+  );
+  assert.match(hotkey.globalHotkeyReach({ path: 'x11' }), /Every press starts or stops/);
+  assert.match(
+    hotkey.globalHotkeyReach({ path: 'window', reason: 'modifier-only' }),
+    /focused.*lone modifier/i
+  );
+  assert.match(hotkey.globalHotkeyReach({ path: 'window', reason: 'no-portal' }), /no global shortcut portal/);
+  // unknown reasons add nothing
+  assert.equal(
+    hotkey.globalHotkeyReach({ path: 'window', reason: 'whatever' }),
+    'Only while the Diddy window is focused'
+  );
+});
