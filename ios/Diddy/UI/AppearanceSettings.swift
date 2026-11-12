@@ -76,7 +76,7 @@ private struct AppIconSection: View {
                     Button { select(choice) } label: { tile(choice) }
                         .buttonStyle(.plain)
                         .accessibilityLabel("\(choice.title) icon")
-                        .accessibilityAddTraits(icon == choice ? .isSelected : [])
+                        .accessibilityAddTraits(icon == choice ? AccessibilityTraits.isSelected : AccessibilityTraits())
                 }
             }
             .padding(.vertical, 6)
