@@ -61,6 +61,7 @@ private struct ChatContent: View {
     @State private var attachmentCaption = ""
     @State private var sending = false
     @State private var draftLoaded = false
+    @AppStorage(ChatSettings.editorToolbarKey) private var showFormatToolbar = false
     @StateObject private var recorder = VoiceRecorder()
     @State private var showMembers = false
     @State private var showInfo = false
@@ -628,7 +629,7 @@ private struct ChatContent: View {
             }
             composerSuggestions
             if !pendingFiles.isEmpty { pendingAttachments }
-            if ChatSettings.editorToolbar { formatToolbar }
+            if showFormatToolbar { formatToolbar }
             if replyTo == nil, restoredReplyId != nil {
                 composerContext(Text("Replying to saved message").foregroundColor(Theme.muted), symbol: "arrowshape.turn.up.left") {
                     restoredReplyId = nil; saveDraft()
