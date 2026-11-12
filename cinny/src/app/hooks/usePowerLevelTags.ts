@@ -56,7 +56,7 @@ const DEFAULT_TAGS: PowerLevelTags = {
   },
   101: {
     name: 'Founder',
-    color: '#0000ff',
+    color: '#5b5fe0',
   },
   100: {
     name: 'Admin',
@@ -64,7 +64,7 @@ const DEFAULT_TAGS: PowerLevelTags = {
   },
   50: {
     name: 'Moderator',
-    color: '#1fd81f',
+    color: '#2fb556',
   },
   0: {
     name: 'Member',
