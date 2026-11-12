@@ -2,7 +2,7 @@
 
 [package]
 name = "diddy"
-version = "1.6.1"
+version = "1.7.0"
 description = "Diddy - a Matrix chat client (based on Cinny)"
 authors = ["Lndr2501"]
 license = "AGPL-3.0-only"

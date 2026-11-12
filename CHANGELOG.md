@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.6.2 (unveröffentlicht)
+## 1.7.0 (2026-11-12)
 
 - **Aufgeräumte Oberfläche (macOS, Linux):**
   - **Eigene Icons:** Ein einheitliches Icon-Set (rund 70 Symbole, runde Striche, gefüllte Variante mit ausgestanzten Details) ersetzt die folds-Zeichnungen in der ganzen App (`plugins/diddyIcons.tsx`).
