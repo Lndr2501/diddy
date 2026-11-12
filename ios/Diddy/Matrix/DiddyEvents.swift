@@ -13,11 +13,11 @@ enum DiddyEvents {
     static let maxContentBytes = 4096
 
     /// The length desktop compares with the limit: `JSON.stringify(content).length`, so UTF-16
-    /// units and no escaped slashes. (UTF-8 bytes with `\/` made profiles with many mxc:// links,
-    /// umlauts or emoji fail here although desktop accepts them.)
+    /// units, no escaped slashes and numbers as JavaScript prints them (see DiddyJSONSize.swift).
+    /// (UTF-8 bytes with `\/` made profiles with many mxc:// links, umlauts or emoji fail here
+    /// although desktop accepts them.)
     static func jsonLength(_ content: [String: Any]) -> Int? {
-        guard let data = try? JSONSerialization.data(withJSONObject: content, options: [.withoutEscapingSlashes]) else { return nil }
-        return String(decoding: data, as: UTF8.self).utf16.count
+        DiddyJSONSize.length(content)
     }
 }
 

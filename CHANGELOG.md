@@ -2,6 +2,8 @@
 
 ## Unveröffentlicht
 
+- **iOS: Diddy-Profile wie am Desktop (Effekte, Rahmen, Banner, Namensstil):** Wer in mehreren Diddy-Options-Räumen ist, bekam auf iOS teils ein anderes, älteres Profil angezeigt als am Desktop, oder gar keines. iOS sortierte die Räume nach Codepunkten („!B…“ vor „!a…“), Desktop mit `localeCompare`. Damit gewann ein anderer Raum, und iOS schrieb das eigene Profil auch in einen anderen Raum, als Desktop zuerst liest. iOS sortiert jetzt genau wie Desktop. Ein Raum zählt nur noch mit Marker-Event als Options-Raum, wie am Desktop, nicht schon wegen des Topic-Tags. Die Größengrenze (4096 Zeichen) misst iOS jetzt exakt wie `JSON.stringify` am Desktop. Vorher zählten Kommazahlen wie Bildausschnitte je nach Apple-Foundation mit 17 Stellen, sodass große Profile auf iOS wegfallen konnten. Verworfene Profile stehen im Diagnose-Log (`diddy: profile dropped`).
+
 - **iOS: Theme-Wechsel in den Einstellungen wirkt sofort im ganzen Sheet:** Nach dem Wechsel (z. B. hell → dunkel) blieb das Settings-Sheet halb im alten Theme: heller Hintergrund, dunkle Karten mit dunklem Text, kaum lesbare Abschnittstitel, Done-Knopf und Häkchen in der alten Akzentfarbe. Ursache: Sheets sind eigene Präsentationen; der Neuaufbau, den der Hauptbildschirm für ein neues Theme auslöst, kam im Sheet nicht an, nur der Hell/Dunkel-Modus des Fensters. Jetzt beobachten Einstellungen, Anrufbildschirm, Schnellwechsler, Willkommens-Guide, Raum-Link, Verifizierung und „Add Account“ das Theme selbst und bauen sich mit Farben, Akzentfarbe, Hell/Dunkel und Monochrom neu auf (auch bei „Match System Appearance“). Die Seite „Appearance“ bleibt dabei offen.
 
 ## 1.7.0 (2026-11-12)

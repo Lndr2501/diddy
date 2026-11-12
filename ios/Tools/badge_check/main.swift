@@ -1,7 +1,7 @@
 // Checks for Diddy/Matrix/DiddyBadgeLogic.swift: badge ids, event contents, validity, duplicates and
 // who may delete, like desktop's BadgeEditor.tsx / profiles.ts / trust.ts. Foundation only. Run from
 // the ios folder:
-//   swiftc -swift-version 5 Diddy/Matrix/DiddyEvents.swift Diddy/Matrix/DiddyTrust.swift Diddy/Matrix/DiddyProfileDecor.swift Diddy/Matrix/DiddyProfileDraft.swift Diddy/Matrix/DiddyBadgeLogic.swift Tools/badge_check/main.swift -o /tmp/badge_check && /tmp/badge_check
+//   swiftc -swift-version 5 Diddy/Matrix/DiddyJSONSize.swift Diddy/Matrix/DiddyEvents.swift Diddy/Matrix/DiddyTrust.swift Diddy/Matrix/DiddyProfileDecor.swift Diddy/Matrix/DiddyProfileDraft.swift Diddy/Matrix/DiddyBadgeLogic.swift Tools/badge_check/main.swift -o /tmp/badge_check && /tmp/badge_check
 import Foundation
 
 var failures = 0

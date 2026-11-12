@@ -313,15 +313,11 @@ extension MatrixAccount {
         defer { diddyLoading = false }
         diddyLoadedAt = Date()
 
-        // The marker is checked once per room and session; most rooms answer "not found". Rooms
-        // that desktop tagged in their topic need no question at all.
+        // The marker is checked once per room and session; most rooms answer "not found". Only
+        // the marker counts, like desktop's `isOptionsRoom`: a room that merely carries the topic
+        // tag is no options room there, and reading it here would change which room comes first.
         let candidates = rooms.filter { $0.isJoined && !$0.isSpace && !$0.isDirect && !diddyCheckedRooms.contains($0.id) }
         for room in candidates.prefix(300) {
-            if room.topic?.contains(DiddyEvents.topicTag) == true {
-                diddyOptionsRooms.insert(room.id)
-                diddyCheckedRooms.insert(room.id)
-                continue
-            }
             do {
                 _ = try await clientRequest("/_matrix/client/v3/rooms/\(Self.pathComponent(room.id))/state/\(DiddyEvents.marker)/")
                 diddyOptionsRooms.insert(room.id)
@@ -333,7 +329,8 @@ extension MatrixAccount {
             }
         }
         let joined = Set(rooms.filter(\.isJoined).map(\.id))
-        let optionsRooms = diddyOptionsRooms.union(diddyLightRoomIds).filter { joined.contains($0) }.sorted()
+        // Desktop's order (`localeCompare`), so the same room wins here and gets your writes.
+        let optionsRooms = DiddyOptionsRoomLogic.sortedLikeDesktop(diddyOptionsRooms.union(diddyLightRoomIds).filter { joined.contains($0) })
 
         var loaded: [(id: String, data: OptionsRoomData, encrypted: Bool)] = []
         for roomId in optionsRooms {
@@ -341,7 +338,7 @@ extension MatrixAccount {
         }
         diddyPrimaryRoom = loaded.first.map { (id: $0.id, encrypted: $0.encrypted) }
 
-        // Profiles: the first room (by id, like desktop) with a valid profile of that user wins.
+        // Profiles: the first room (in desktop's order) with a valid profile of that user wins.
         var profiles: [String: DiddyProfile] = [:]
         var ownRaw: [String: Any]?
         for room in loaded {
@@ -529,9 +526,15 @@ extension MatrixAccount {
                   let key, !key.isEmpty, key.count <= 300,
                   let sender, joined.contains(sender),
                   let ts, ts <= now + 86_400_000,
-                  var content = content,
-                  let size = DiddyEvents.jsonLength(content), size <= DiddyEvents.maxContentBytes
+                  var content = content
             else { return nil }
+            let size = DiddyEvents.jsonLength(content)
+            guard let size, size <= DiddyEvents.maxContentBytes else {
+                if type == DiddyEvents.profile {
+                    DiagLog.shared.write("diddy: profile dropped user=\(sender) room=\(roomId) size=\(size.map { String($0) } ?? "invalid")")
+                }
+                return nil
+            }
             // A profile only ever belongs to the person who sent it, an award needs `badge|user`.
             if type == DiddyEvents.profile && key != sender { return nil }
             if type == DiddyEvents.award && DiddyTrust.parseAwardKey(key) == nil { return nil }

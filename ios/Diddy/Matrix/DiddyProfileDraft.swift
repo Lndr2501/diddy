@@ -375,9 +375,8 @@ struct DiddyProfileDraft: Equatable {
     static func encodedSize(_ content: [String: Any], key: String) -> Int? {
         var measured = content
         measured[DiddyProfileRules.messageKeyField] = key
-        guard JSONSerialization.isValidJSONObject(measured),
-              let data = try? JSONSerialization.data(withJSONObject: measured, options: [.withoutEscapingSlashes]) else { return nil }
-        return String(decoding: data, as: UTF8.self).utf16.count
+        guard JSONSerialization.isValidJSONObject(measured) else { return nil }
+        return DiddyJSONSize.length(measured)
     }
 }
 

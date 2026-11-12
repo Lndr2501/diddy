@@ -2,7 +2,7 @@
 // desktop's whitelists, writes the same keys and values as desktop's editor (mergeDraft in
 // profilePreview.ts), keeps everything it did not change, and measures the size like desktop.
 // Foundation only. Run from the ios folder:
-//   swiftc -swift-version 5 Diddy/Matrix/DiddyProfileDecor.swift Diddy/Matrix/DiddyProfileDraft.swift Tools/profile_editor_check/main.swift -o /tmp/profile_editor_check && /tmp/profile_editor_check
+//   swiftc -swift-version 5 Diddy/Matrix/DiddyJSONSize.swift Diddy/Matrix/DiddyProfileDecor.swift Diddy/Matrix/DiddyProfileDraft.swift Tools/profile_editor_check/main.swift -o /tmp/profile_editor_check && /tmp/profile_editor_check
 import Foundation
 
 var failures = 0
@@ -262,6 +262,34 @@ check(DiddyProfileDraft.encodedSize(["v": 1, "bio": "ä😀"], key: "k") == #"{"
 let big: [String: Any] = ["v": 1, "bio": String(repeating: "x", count: 5000)]
 check((DiddyProfileDraft.encodedSize(big, key: key) ?? 0) > DiddyProfileRules.maxContentBytes, "a too large profile is detected")
 check(DiddyProfileDraft.encodedSize(["v": Double.nan], key: key) == nil, "no JSON: nil instead of a crash")
+
+// Numbers count as JavaScript prints them (`JSON.stringify`), never with the 17 digits Apple's
+// JSONSerialization may write: a big profile with picture positions would count as too large.
+// Expected values from Node.
+let jsNumbers: [(Double, String)] = [
+    (37.3, "37.3"), (1.15, "1.15"), (5, "5"), (100, "100"), (0.5, "0.5"), (0.05, "0.05"), (1e-6, "0.000001"), (1e-7, "1e-7"),
+    (1.2345e20, "123450000000000000000"), (1e21, "1e+21"), (123456789012345680000, "123456789012345680000"), (-2.5, "-2.5"),
+    (1_700_000_000_123, "1700000000123"), (33.333333333333336, "33.333333333333336"), (0.1 + 0.2, "0.30000000000000004"),
+    (9007199254740993, "9007199254740992"), (-0.0, "0"), (1e16, "10000000000000000"),
+]
+for (value, expected) in jsNumbers {
+    check(DiddyJSONSize.javaScriptNumber(value) == expected, "JS number \(value): \(DiddyJSONSize.javaScriptNumber(value) ?? "nil") != \(expected)")
+}
+check(DiddyJSONSize.javaScriptNumber(.infinity) == nil && DiddyJSONSize.javaScriptNumber(.nan) == nil, "no JSON numbers")
+let positioned: [String: Any] = [
+    "v": 1,
+    "card": ["bannerMxc": "mxc://matrix.tllx.eu/Banner0123", "bannerPos": ["x": 37.3, "y": 62.7, "zoom": 1.15]],
+    "nameplate": ["preset": "aurora", "flow": true, "imagePos": ["x": 12.1, "y": 0, "zoom": 2.35]],
+    "bio": "Grüße 😀 \"zitat\" \\ a\nb\u{1}",
+    "links": [Any](), "interests": ["a", "b"], "status": NSNull(),
+]
+check(DiddyJSONSize.length(positioned) == 278, "length like JSON.stringify: \(DiddyJSONSize.length(positioned) ?? -1)")
+// (parsed booleans are only told apart from numbers on Apple platforms, so none here)
+let parsedJSON = #"{"v":1,"card":{"bannerPos":{"x":37.3,"y":62.7,"zoom":1.15}},"nameplate":{"imagePos":{"x":0.05,"y":100,"zoom":2.35}}}"#
+let parsedPositioned = (try? JSONSerialization.jsonObject(with: Data(parsedJSON.utf8))) as? [String: Any] ?? [:]
+check(DiddyJSONSize.length(parsedPositioned) == parsedJSON.utf16.count,
+      "parsed JSON keeps its length: \(DiddyJSONSize.length(parsedPositioned) ?? -1)")
+check(DiddyJSONSize.length(["d": Date()]) == nil, "other types are no JSON")
 
 // MARK: Media
 

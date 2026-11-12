@@ -1,7 +1,7 @@
 // Checks for Diddy/Matrix/DiddyProfileTransfer.swift: the profile file (export / import, desktop's
 // profileTransfer.ts and its tests), "Reset to default" and the Diddy version in the profile
 // (clientVersion.ts). Foundation only. Run from the ios folder:
-//   swiftc -swift-version 5 Diddy/Matrix/DiddyProfileDecor.swift Diddy/Matrix/DiddyProfileDraft.swift Diddy/Matrix/DiddyProfileTransfer.swift Tools/profiletransfer_check/main.swift -o /tmp/profiletransfer_check && /tmp/profiletransfer_check
+//   swiftc -swift-version 5 Diddy/Matrix/DiddyJSONSize.swift Diddy/Matrix/DiddyProfileDecor.swift Diddy/Matrix/DiddyProfileDraft.swift Diddy/Matrix/DiddyProfileTransfer.swift Tools/profiletransfer_check/main.swift -o /tmp/profiletransfer_check && /tmp/profiletransfer_check
 import Foundation
 
 var failures = 0

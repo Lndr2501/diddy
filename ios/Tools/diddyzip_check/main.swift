@@ -3,7 +3,7 @@
 // like cinny/tests/effectZip.test.cjs, frameZip.test.cjs and nameplateZip.test.cjs. Only stored
 // entries are real here; deflated ones go through a stand-in inflater (the app uses the Compression
 // framework). Foundation only. Run from the ios folder:
-//   swiftc -swift-version 5 Diddy/Matrix/DiddyProfileDecor.swift Diddy/Matrix/DiddyProfileDraft.swift Diddy/Matrix/DiddyZip.swift Diddy/Matrix/DiddyDecorImport.swift Tools/diddyzip_check/main.swift -o /tmp/diddyzip_check && /tmp/diddyzip_check
+//   swiftc -swift-version 5 Diddy/Matrix/DiddyJSONSize.swift Diddy/Matrix/DiddyProfileDecor.swift Diddy/Matrix/DiddyProfileDraft.swift Diddy/Matrix/DiddyZip.swift Diddy/Matrix/DiddyDecorImport.swift Tools/diddyzip_check/main.swift -o /tmp/diddyzip_check && /tmp/diddyzip_check
 import Foundation
 
 var failures = 0

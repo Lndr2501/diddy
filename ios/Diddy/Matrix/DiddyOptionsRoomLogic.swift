@@ -145,6 +145,54 @@ enum DiddyOptionsRoomLogic {
         }
     }
 
+    // MARK: Order
+
+    /// The order of the options rooms, as desktop sorts them (`getOptionsRooms`:
+    /// `a.roomId.localeCompare(b.roomId)`). The first room with a valid profile of someone is the
+    /// one whose profile everybody shows, and the first room is where your own profile is written.
+    /// Swift's `<` compares code points ("!B" before "!a"), so it picked another room than desktop
+    /// whenever someone is in two options rooms: then iOS showed an older profile and wrote to a
+    /// room desktop does not read first.
+    static func sortedLikeDesktop(_ roomIds: some Sequence<String>) -> [String] {
+        roomIds.sorted(by: isOrderedLikeDesktop)
+    }
+
+    /// `a.localeCompare(b) < 0` of the ICU root collation (also de and en), for the characters of
+    /// room ids: punctuation, then digits, then letters; case only counts when everything else is
+    /// equal, and then lower case comes first. Other characters follow in code point order.
+    static func isOrderedLikeDesktop(_ a: String, _ b: String) -> Bool {
+        let left = Array(a.unicodeScalars), right = Array(b.unicodeScalars)
+        // first pass: letters without case (ICU's primary strength)
+        for (x, y) in zip(left, right) where primaryWeight(x) != primaryWeight(y) {
+            return primaryWeight(x) < primaryWeight(y)
+        }
+        if left.count != right.count { return left.count < right.count }
+        // only the case differs: the first lower case letter goes first (tertiary strength)
+        for (x, y) in zip(left, right) where x != y {
+            return isUpper(y)
+        }
+        return false
+    }
+
+    /// ICU root order of the printable ASCII characters (`localeCompare` with the default locale).
+    private static let asciiOrder: [Unicode.Scalar: Int] = {
+        let punctuation = " _-,;:!?.'\"()[]{}@*/\\&#%`^+<=>|~$"
+        var order: [Unicode.Scalar: Int] = [:]
+        for (index, scalar) in (punctuation + "0123456789").unicodeScalars.enumerated() { order[scalar] = index }
+        let letters = punctuation.unicodeScalars.count + 10
+        for (index, scalar) in "abcdefghijklmnopqrstuvwxyz".unicodeScalars.enumerated() {
+            order[scalar] = letters + index
+            order[Unicode.Scalar(scalar.value - 32)!] = letters + index
+        }
+        return order
+    }()
+
+    private static func primaryWeight(_ scalar: Unicode.Scalar) -> Int {
+        asciiOrder[scalar] ?? 1000 + Int(scalar.value)
+    }
+
+    private static func isUpper(_ scalar: Unicode.Scalar) -> Bool { (0x41...0x5A).contains(scalar.value) }
+
     /// The servers to join through: the `via` of the space's child entry, else the room id's server.
     static func viaServers(roomId: String, childVia: [String]?) -> [String] {
         if let childVia, !childVia.isEmpty { return childVia }

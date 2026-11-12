@@ -1,7 +1,7 @@
 // Checks for Diddy/Matrix/DiddyOptionsRoomLogic.swift: the request that creates the Diddy Options
 // room, the power levels, the topic tag and the room a server's members join, like desktop's
 // optionsRoom.ts / badgePower.ts / discover.ts. Foundation only. Run from the ios folder:
-//   swiftc -swift-version 5 Diddy/Matrix/DiddyEvents.swift Diddy/Matrix/DiddyOptionsRoomLogic.swift Tools/optionsroom_check/main.swift -o /tmp/optionsroom_check && /tmp/optionsroom_check
+//   swiftc -swift-version 5 Diddy/Matrix/DiddyJSONSize.swift Diddy/Matrix/DiddyEvents.swift Diddy/Matrix/DiddyOptionsRoomLogic.swift Tools/optionsroom_check/main.swift -o /tmp/optionsroom_check && /tmp/optionsroom_check
 import Foundation
 
 var failures = 0
@@ -91,5 +91,20 @@ check(L.viaServers(roomId: "!a:matrix.org", childVia: ["b.org"]) == ["b.org"], "
 check(L.viaServers(roomId: "!a:matrix.org", childVia: []) == ["matrix.org"], "server of the room id")
 check(L.viaServers(roomId: "!a:host:8448", childVia: nil) == ["host:8448"], "server with a port")
 check(L.viaServers(roomId: "!nohost", childVia: nil).isEmpty, "no server known")
+
+// Order of the options rooms: the same as desktop's `a.roomId.localeCompare(b.roomId)`. The
+// expected lists come from Node (ICU) with these ids.
+let ids = ["!ZxQ:matrix.tllx.eu", "!abc:matrix.tllx.eu", "!Abc:matrix.tllx.eu", "!aBd:example.org", "!9az:x.y", "!zz-1:a",
+           "!zz.1:a", "!zz:a", "!AAA:b", "!aaa:b", "!mN3pQ:host:8448", "!mn3pq:host"]
+let desktopOrder = ["!9az:x.y", "!aaa:b", "!AAA:b", "!abc:matrix.tllx.eu", "!Abc:matrix.tllx.eu", "!aBd:example.org", "!mn3pq:host",
+                    "!mN3pQ:host:8448", "!ZxQ:matrix.tllx.eu", "!zz-1:a", "!zz:a", "!zz.1:a"]
+check(L.sortedLikeDesktop(ids) == desktopOrder, "rooms sorted like desktop: \(L.sortedLikeDesktop(ids))")
+check(L.sortedLikeDesktop(ids.reversed()) == desktopOrder, "the order does not depend on the input order")
+check(L.isOrderedLikeDesktop("!a:x", "!B:x"), "case does not decide first (code points would put !B first)")
+check(!L.isOrderedLikeDesktop("!B:x", "!a:x"), "and the other way round")
+check(L.isOrderedLikeDesktop("aB", "Ab"), "same letters: the first lower case letter wins")
+check(L.isOrderedLikeDesktop("!a_:x", "!a0:x") && L.isOrderedLikeDesktop("!a1:x", "!aZ:x"), "punctuation, digits, letters")
+check(L.isOrderedLikeDesktop("!ab", "!abc") && L.isOrderedLikeDesktop("!ab:x", "!abc:x"), "a prefix comes first, and punctuation before letters")
+check(!L.isOrderedLikeDesktop("!same:x", "!same:x"), "equal ids")
 
 if failures == 0 { print("optionsroom_check: all checks passed") } else { print("optionsroom_check: \(failures) failure(s)"); exit(1) }
