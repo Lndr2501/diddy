@@ -26,7 +26,7 @@ Die App ist Beta: Alles in der Tabelle ist gebaut und läuft bei den ersten Test
 | Bildschirmübertragung | 🧪 ab iOS 27 ganzer Bildschirm, davor nur Diddy selbst |
 | Stummschalten, Taubschalten, Kamera | 🧪 |
 | Call-Kacheln wie am Desktop: eine Kachel pro Person und pro Bildschirmübertragung (Avatar oder Kamera, Sprechring, Stumm-Symbol), Tippen holt eine Kachel groß nach vorn, der Rest als Vorschauleiste; Bildschirmübertragungen groß und im Vollbild zoombar (Pinch, Doppeltippen, gezoomt verschieben) | 🧪 |
-| Redet mit Agent: „Mit Agent reden“ schaltet das Mikro stumm und zeigt es den anderen (`app.diddy.agent_voice`), Anzeige der anderen auf Kachel und Profilkarte, Kurzbefehle-Aktion statt globalem Hotkey | 🧪 kein Schalter für den Mute-Modus |
+| „Redet mit Agent“ von Desktop-Nutzern als Hinweis auf Kachel und Profilkarte (`app.diddy.agent_voice`, nur empfangen; selbst mit einem Agenten reden gibt es auf dem iPhone nicht) | 🧪 |
 | Soundboard im Sprachkanal: eigene Clips (bis 20 s) aus Dateien oder per MyInstants-Suche (Vorhören, Mehrfachauswahl) importieren, alle im Call hören sie über dein Mikrofon | 🧪 ein Clip gleichzeitig; Clips bleiben auf dem Gerät; bei stummem Mikrofon hört ihn niemand (wie am Desktop) |
 | Klingeln in Direktnachrichten mit Annehmen und Ablehnen, kompatibel zu Desktop-Diddy und Element Call | 🧪 nur solange die App geöffnet ist |
 | Sounds aus Diddys Soundpack (wie am Desktop) für Anrufe, Bildschirmübertragung, Nachrichten, Erwähnungen und Einladungen, unter Einstellungen > Sounds abschaltbar und anhörbar | 🧪 |
@@ -37,6 +37,21 @@ Die App ist Beta: Alles in der Tabelle ist gebaut und läuft bei den ersten Test
 | Anruf-Alarm bei geschlossener App über die ntfy-App („Name is calling you“), Einstellungen > Call Alerts | 🧪 nur bei Anrufen aus Diddy (Desktop oder iOS) |
 | Echte Push-Benachrichtigungen bei geschlossener App | ❌ (braucht einen Push-Gateway und ein bezahltes Apple-Konto) |
 | Online-Status (online, abwesend, nicht stören, offline) in DM-Liste, Chat-Kopf, Mitgliederliste und Profilkarte, eigener Status wird gesendet | 🧪 wird alle 60 s beim Server abgefragt (Sliding Sync liefert keine Presence); Server ohne Presence: nur der in Diddy gewählte Status |
+| Nachrichten wie am Desktop: Spoiler, Code, Zitate, Listen, Überschriften, Link-Vorschauen (bis 2 pro Nachricht), Video im Chat, Standort, eigene Emoji (MSC2545) im Text und als Reaktion, Sticker | 🧪 |
+| Lesebestätigungen („Gesehen von“), Linie „Neue Nachrichten“ mit Springen und Als-gelesen, zum Zitat springen, zu Datum springen, Threads, angeheftete Nachrichten, Link kopieren, Melden, Quelltext, Bearbeitungsverlauf, Löschen mit Grund, „Wer hat reagiert“ | 🧪 |
+| Nachrichtensuche im Raum und überall, Schnellwechsler für Räume, DMs und Server | 🧪 |
+| Eingabefeld: Dateien, Videos, Kamera, Einfügen, Entwürfe pro Raum, `#raum`- und `:emoji:`-Vorschläge, Emoji- und Sticker-Auswahl, Slash-Befehle, Formatierungsleiste | 🧪 |
+| Sprachnachrichten von Linux (Ogg/Opus, WebM/Opus) abspielen | 🧪 |
+| Raumliste: Favoriten, Langdruck-Menü (Favorit, gelesen, Benachrichtigungen, Einladen, Link, Einstellungen, Verlassen), Raumverzeichnis, Vorschau vor dem Beitritt, Server verwalten (Räume hinzufügen, empfohlen, erstellen mit allen Optionen), Server-Reihenfolge und Ordner wie am Desktop | 🧪 Reihenfolge vom Desktop kommt erst beim nächsten Öffnen der App an |
+| Raum- und Server-Einstellungen: Name, Thema, Bild, Beitrittsregel, Verlauf, Verschlüsselung, Verzeichnis, Adressen, Upgrade; Rollen und Rechte bearbeiten; Mitglieder filtern, Rauswerfen und Bannen mit Grund, Entbannen, Einladung zurückziehen | 🧪 Bild-Icons für Rollen nur behalten, nicht neu anlegen |
+| Calls: Lautstärke pro Person (0–200 %) und „Für mich stummschalten“, Stream-Lautstärke, Mikrofon- und Ausgabewahl, Ping, Reaktionen, mehrere Soundboard-Clips gleichzeitig, Abfrage beim Wechsel des Calls, Sounds einzeln an/aus und durch eigene Dateien ersetzen | 🧪 eigene Sounds nur MP3, WAV, M4A |
+| Watch together (YouTube, synchron mit dem Desktop, SponsorBlock), Einstellungen > Watch together | 🧪 |
+| Benachrichtigungen wie am Desktop: Stufen für DMs und Räume, Erwähnungsregeln, Stichwörter, E-Mail | 🧪 |
+| Darstellung: System hell/dunkel, eigenes Theme aus drei Farben, Schwarz-Weiß, Zoom 75–150 % | 🧪 ohne Bild- und Video-Hintergründe |
+| Sicherheit: andere Geräte abmelden, Geräte und Personen per Emoji verifizieren, Wiederherstellung einrichten, ändern und zurücksetzen, Schlüssel-Backup, E-Mail-Adressen, Entwicklerwerkzeuge | 🧪 Raumschlüssel exportieren/importieren nur am Desktop (das SDK gibt die Schlüssel nicht heraus) |
+| Diddy-Profilwerkzeuge: Optionsraum einrichten, Badges erstellen und vergeben, Profil exportieren und importieren, eigene Effekt-, Rahmen- und Namensschild-Dateien | 🧪 |
+| „Bitte nicht stören“ macht Mitteilungen, Töne und Klingeln still | 🧪 |
+| Status-Schnellmenü, Plugin-Dock, Einführung beim ersten Start, Update-Hinweis, Verbindungsanzeige, Raum-Links öffnen in der App, Tastenkürzel auf dem iPad | 🧪 |
 
 🧪 Beta: gebaut, läuft bei Testern, noch nicht im Alltag geprüft · ❌ fehlt noch
 

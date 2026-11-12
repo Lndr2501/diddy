@@ -1,5 +1,19 @@
 # Changelog
 
+## Unveröffentlicht
+
+- **iOS: fast alles vom Desktop:** Die iOS-App kann jetzt den Großteil dessen, was Desktop-Diddy kann. Alles ist gebaut und kompiliert, aber noch nicht auf einem iPhone ausprobiert; die Liste steht in `ios/README.md`. Neu sind unter anderem:
+  - **Nachrichten:** Spoiler, Code, Zitate, Listen, Link-Vorschauen, Video im Chat, Standort, eigene Emoji, Sticker; Sprachnachrichten von Linux (Ogg/Opus) spielen ab.
+  - **Im Chat:** Lesebestätigungen, „Neue Nachrichten“-Linie, zum Zitat und zu einem Datum springen, Threads, Anheften, Melden, Quelltext, Bearbeitungsverlauf, Löschen mit Grund; Nachrichtensuche und Schnellwechsler.
+  - **Eingabefeld:** Dateien, Videos, Kamera, Einfügen, Entwürfe, Vorschläge für `#raum` und `:emoji:`, Emoji- und Sticker-Auswahl, Slash-Befehle, Formatierungsleiste.
+  - **Räume und Server:** Favoriten, Langdruck-Menü, Raumverzeichnis, Vorschau vor dem Beitritt, Server verwalten, Server-Ordner; Raum-Einstellungen mit Rollen, Rechten und Moderation.
+  - **Calls:** Lautstärke pro Person, Geräteauswahl, Ping, Reaktionen, Soundboard mit mehreren Clips, Sounds einzeln und mit eigenen Dateien, Watch together.
+  - **Einstellungen:** Benachrichtigungsregeln, Darstellung (System hell/dunkel, eigenes Theme, Zoom), Geräte abmelden und verifizieren, Wiederherstellung einrichten, Entwicklerwerkzeuge, Diddy-Optionsraum, Badges, Profil-Export und -Import.
+  - **„Bitte nicht stören“** macht auf iOS jetzt wirklich still, die Server-Suche beim Login gibt nach 8 s auf.
+- **iOS: „Mit Agent reden“ entfernt:** Auf dem iPhone ergibt das keinen Sinn. Wer am Desktop mit einem Agenten redet, wird auf iOS weiter als „Redet mit Agent“ angezeigt.
+- **iOS: Löschen fragt nach:** Eigene Nachrichten wurden sofort gelöscht; jetzt kommt wie am Desktop eine Abfrage mit optionalem Grund.
+- **iOS: Einladungs-Sound** ist ab Werk aus, wie am Desktop.
+
 ## 1.6.0 (2026-11-11)
 
 - **Nutzer-Lautstärke bis 200 %:** Leise Stimmen lassen sich im Call-Menü auf bis zu doppelte Lautstärke verstärken. Der Wert bleibt pro Person gespeichert, auch nach Stummschalten und erneutem Beitritt.
