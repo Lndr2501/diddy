@@ -6,6 +6,7 @@ struct RoomAddressesView: View {
     @ObservedObject var model: RoomSettingsModel
     @State private var newAlias = ""
     @State private var selected: Set<String> = []
+    @State private var confirmDelete = false
 
     private var canEditCanonical: Bool { model.canSendState("m.room.canonical_alias") }
     private var canonical: RoomCanonicalAliasModel { model.state?.canonicalAlias ?? RoomCanonicalAliasModel(alias: nil, altAliases: []) }
@@ -17,11 +18,15 @@ struct RoomAddressesView: View {
 
     var body: some View {
         Form {
+            if let error = model.actionError {
+                Section {
+                    Label(error, systemImage: "exclamationmark.triangle.fill")
+                        .font(.footnote)
+                        .foregroundStyle(Theme.danger)
+                }
+            }
             publishedSection
             localSection
-            if let error = model.actionError {
-                Section { Text(error).font(.footnote).foregroundStyle(Theme.danger) }
-            }
         }
         .scrollContentBackground(.hidden)
         .background(Theme.sidebar.ignoresSafeArea())
@@ -69,7 +74,11 @@ struct RoomAddressesView: View {
         } header: {
             Text("Published Addresses")
         } footer: {
-            Text("If access is Public, Published addresses will be used to join by anyone.")
+            if canEditCanonical {
+                Text("If access is Public, published addresses can be used by anyone to join.")
+            } else {
+                Text("If access is Public, published addresses can be used by anyone to join. Your role can't change the published addresses.")
+            }
         }
     }
 
@@ -116,7 +125,7 @@ struct RoomAddressesView: View {
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                 Text(":\(server)").font(.caption).foregroundStyle(Theme.muted).lineLimit(1)
-                Button("Save") { addAlias() }
+                Button("Add") { addAlias() }
                     .buttonStyle(.borderless)
                     .disabled(newAliasFull == nil || model.busy)
             }
@@ -156,15 +165,22 @@ struct RoomAddressesView: View {
                 .disabled(model.busy)
             }
         }
-        Button("Delete", role: .destructive) {
-            Task {
-                await model.perform {
-                    for alias in chosen { try await model.deleteLocalAlias(alias) }
-                }
-                selected = []
-            }
+        Button(chosen.count == 1 ? "Delete Address" : "Delete \(chosen.count) Addresses", role: .destructive) {
+            confirmDelete = true
         }
         .disabled(model.busy)
+        .confirmationDialog("Delete the selected addresses?", isPresented: $confirmDelete, titleVisibility: .visible) {
+            Button("Delete", role: .destructive) {
+                Task {
+                    await model.perform {
+                        for alias in chosen { try await model.deleteLocalAlias(alias) }
+                    }
+                    selected = []
+                }
+            }
+        } message: {
+            Text(chosen.joined(separator: "\n"))
+        }
     }
 
     private func toggle(_ alias: String) {

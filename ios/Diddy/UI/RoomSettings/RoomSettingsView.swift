@@ -33,41 +33,65 @@ struct RoomSettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                if let error = model.actionError {
+                    Section {
+                        Label(error, systemImage: "exclamationmark.triangle.fill")
+                            .font(.footnote)
+                            .foregroundStyle(Theme.danger)
+                    }
+                }
                 if let state = model.state {
                     profileSection(state)
                     optionsSection(state)
-                    Section("Addresses") {
+                    Section {
                         NavigationLink {
                             RoomAddressesView(model: model)
                         } label: {
                             Label("Addresses", systemImage: "number")
                         }
-                    }
-                    Section {
                         NavigationLink {
                             RoomPermissionsView(model: model)
                         } label: {
-                            Label("Permissions", systemImage: "lock.shield")
+                            Label("Roles & Permissions", systemImage: "lock.shield")
                         }
                         NavigationLink {
                             RoomMembersAdminView(model: model)
                         } label: {
                             Label("Members", systemImage: "person.2")
                         }
+                    } header: {
+                        Text("Manage")
+                    } footer: {
+                        Text("Addresses, roles and the members who are invited, banned or have left.")
                     }
-                    Section("Advanced Options") { upgradeRows(state) }
+                    Section("Advanced") { upgradeRows(state) }
                 } else if let error = model.loadError {
                     Section {
-                        Text(error).foregroundStyle(Theme.danger)
-                        Button("Try Again") { Task { await reload() } }
+                        VStack(spacing: 10) {
+                            Image(systemName: "exclamationmark.triangle")
+                                .font(.title2)
+                                .foregroundStyle(Theme.danger)
+                            Text("Couldn't load the settings")
+                                .font(.headline)
+                            Text(error)
+                                .font(.footnote)
+                                .foregroundStyle(Theme.muted)
+                                .multilineTextAlignment(.center)
+                            Button("Try Again") { Task { await reload() } }
+                                .buttonStyle(.borderedProminent)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
                     }
                 } else {
                     Section {
-                        HStack { Spacer(); ProgressView(); Spacer() }
+                        HStack(spacing: 10) {
+                            Spacer()
+                            ProgressView()
+                            Text("Loading settings").foregroundStyle(Theme.muted)
+                            Spacer()
+                        }
                     }
-                }
-                if let error = model.actionError {
-                    Section { Text(error).font(.footnote).foregroundStyle(Theme.danger) }
                 }
             }
             .scrollContentBackground(.hidden)
@@ -121,7 +145,7 @@ struct RoomSettingsView: View {
         let canAvatar = model.canSendState("m.room.avatar")
         let canName = model.canSendState("m.room.name")
         let canTopic = model.canSendState("m.room.topic")
-        Section("Profile") {
+        Section {
             HStack(spacing: 12) {
                 AvatarView(url: state.avatarUrl, name: (state.name ?? summary?.name ?? "?"), size: 64, cornerRadius: 16, account: account)
                 VStack(alignment: .leading, spacing: 2) {
@@ -133,12 +157,14 @@ struct RoomSettingsView: View {
             }
             if canAvatar {
                 PhotosPicker(selection: $photo, matching: .images) {
-                    Label("Upload", systemImage: "photo")
+                    Label(state.avatarUrl == nil ? "Add Picture" : "Change Picture", systemImage: "photo")
                 }
+                .disabled(model.busy)
                 if state.avatarUrl != nil {
                     Button(role: .destructive) { confirmRemoveAvatar = true } label: {
-                        Label("Remove", systemImage: "trash")
+                        Label("Remove Picture", systemImage: "trash")
                     }
+                    .disabled(model.busy)
                 }
             }
             TextField("Name", text: $name).disabled(!canName)
@@ -146,10 +172,19 @@ struct RoomSettingsView: View {
             if profileChanged(state, canName: canName, canTopic: canTopic) {
                 Button("Save") { Task { await saveProfile(state, canName: canName, canTopic: canTopic) } }
                     .disabled(model.busy || (canName && name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty))
-                Button("Cancel", role: .cancel) {
+                Button("Discard Changes", role: .destructive) {
                     name = state.name ?? ""
                     topic = state.topic ?? ""
                 }
+                .disabled(model.busy)
+            }
+        } header: {
+            Text("Profile")
+        } footer: {
+            if !canName || !canTopic || !canAvatar {
+                Text("Some fields are locked because your role can't change them.")
+            } else {
+                Text("Name and topic are saved with Save; the picture changes right away.")
             }
         }
     }
@@ -194,11 +229,22 @@ struct RoomSettingsView: View {
 
     @ViewBuilder
     private func optionsSection(_ state: RoomStateSnapshot) -> some View {
-        Section("Options") {
+        let locked = !model.canSendState("m.room.join_rules")
+            || !model.canSendState("m.room.history_visibility")
+            || (!state.isEncrypted && !model.canSendState("m.room.encryption"))
+        Section {
             joinRuleRow(state)
             historyRow(state)
             encryptionRow(state)
             publishRow(state)
+        } header: {
+            Text("Options")
+        } footer: {
+            if locked {
+                Text("Changes here apply right away. Greyed out options need a higher role.")
+            } else {
+                Text("Changes here apply right away.")
+            }
         }
     }
 
@@ -305,7 +351,7 @@ struct RoomSettingsView: View {
                 .font(.caption).foregroundStyle(Theme.muted)
         }
         if let old = state.predecessor {
-            Button(model.isSpace ? "Old Space" : "Old Room") {
+            Button(model.isSpace ? "Open Previous Space" : "Open Previous Room") {
                 dismiss()
                 onOpenRoom?(old)
             }
