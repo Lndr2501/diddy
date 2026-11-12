@@ -349,7 +349,7 @@ private struct CallStatusHeader: View {
 
 extension CallSession {
     /// LiveKit lost the server and is trying again (`state` is "Reconnecting…" then).
-    fileprivate var isReconnecting: Bool { state.hasPrefix("Reconnecting") }
+    var isReconnecting: Bool { state.hasPrefix("Reconnecting") }
 
     /// The status colour of the call bars: orange while reconnecting, green when connected.
     fileprivate var statusColor: Color {
