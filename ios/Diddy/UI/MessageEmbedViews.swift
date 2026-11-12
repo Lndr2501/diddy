@@ -157,7 +157,7 @@ struct VideoMessageView: View {
                 }
             }
             .aspectRatio(MessageMediaSize.aspect(width: video.width, height: video.height), contentMode: .fit)
-            .frame(maxWidth: 300, maxHeight: 340, alignment: .leading)
+            .frame(maxWidth: 280, maxHeight: 320, alignment: .leading)
             .clipShape(RoundedRectangle(cornerRadius: 8))
             if let caption = video.caption {
                 Text(verbatim: caption).foregroundStyle(Theme.text)

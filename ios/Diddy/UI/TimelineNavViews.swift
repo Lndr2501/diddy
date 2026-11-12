@@ -88,33 +88,39 @@ struct NewMessagesDivider: View {
     }
 }
 
-/// "Jump to Unread" and "Mark as Read" at the top of the chat.
+/// "Jump to Unread" and "Mark as Read" at the top of the chat, as one capsule so it stays small.
 struct JumpToUnreadPill: View {
     let onJump: () -> Void
     let onMarkRead: () -> Void
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 0) {
             Button(action: onJump) {
-                Label("Jump to Unread", systemImage: "envelope.badge")
+                Label("Jump to Unread", systemImage: "arrow.up")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Theme.accent)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 7)
-                    .background(Capsule().fill(Theme.elevated))
-                    .overlay(Capsule().stroke(Theme.accent.opacity(0.6), lineWidth: 1))
+                    .lineLimit(1)
+                    .padding(.leading, 14)
+                    .padding(.trailing, 10)
+                    .padding(.vertical, 8)
+                    .contentShape(Rectangle())
             }
+            Rectangle().fill(Theme.faint.opacity(0.4)).frame(width: 1, height: 18)
             Button(action: onMarkRead) {
-                Label("Mark as Read", systemImage: "checkmark.circle")
-                    .font(.footnote.weight(.semibold))
+                Image(systemName: "checkmark")
+                    .font(.footnote.weight(.bold))
                     .foregroundStyle(Theme.muted)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 7)
-                    .background(Capsule().fill(Theme.elevated))
-                    .overlay(Capsule().stroke(Theme.faint.opacity(0.4), lineWidth: 1))
+                    .padding(.leading, 10)
+                    .padding(.trailing, 14)
+                    .padding(.vertical, 8)
+                    .contentShape(Rectangle())
             }
+            .accessibilityLabel("Mark as Read")
         }
         .buttonStyle(.plain)
+        .background(Capsule().fill(Theme.elevated))
+        .overlay(Capsule().stroke(Theme.accent.opacity(0.5), lineWidth: 1))
+        .shadow(color: Color.black.opacity(0.2), radius: 6, y: 2)
         .padding(.top, 8)
     }
 }

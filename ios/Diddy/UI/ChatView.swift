@@ -354,30 +354,42 @@ private struct ChatContent: View {
                 await jump(to: target.eventId, proxy: proxy)
             }
             .overlay(alignment: .top) {
-                if showsUnreadPill {
-                    JumpToUnreadPill(
-                        onJump: { Task { await jumpToUnread(proxy: proxy) } },
-                        onMarkRead: { unreadDismissed = true; controller.markRead() }
-                    )
+                ZStack {
+                    if showsUnreadPill {
+                        JumpToUnreadPill(
+                            onJump: { Task { await jumpToUnread(proxy: proxy) } },
+                            onMarkRead: { unreadDismissed = true; controller.markRead() }
+                        )
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                    }
                 }
+                .animation(.easeOut(duration: 0.15), value: showsUnreadPill)
             }
             .overlay(alignment: .bottomTrailing) {
-                if !atBottom {
-                    Button {
-                        withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo("bottom", anchor: .bottom) }
-                    } label: {
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(Theme.text)
-                            .frame(width: 40, height: 40)
-                            .background(Circle().fill(Theme.elevated))
-                            .overlay(Circle().stroke(Theme.faint.opacity(0.4), lineWidth: 1))
-                    }
-                    .padding(12)
-                    .accessibilityLabel("Jump to latest messages")
+                ZStack {
+                    if !atBottom { jumpToLatestButton(proxy: proxy) }
                 }
+                .animation(.easeOut(duration: 0.15), value: atBottom)
             }
         }
+    }
+
+    /// Bottom right of the chat, above the composer; the unread pill sits at the top, so they never meet.
+    private func jumpToLatestButton(proxy: ScrollViewProxy) -> some View {
+        Button {
+            withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo("bottom", anchor: .bottom) }
+        } label: {
+            Image(systemName: "chevron.down")
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(Theme.text)
+                .frame(width: 40, height: 40)
+                .background(Circle().fill(Theme.elevated))
+                .overlay(Circle().stroke(Theme.faint.opacity(0.4), lineWidth: 1))
+                .shadow(color: Color.black.opacity(0.2), radius: 6, y: 2)
+        }
+        .padding(12)
+        .transition(.scale(scale: 0.6).combined(with: .opacity))
+        .accessibilityLabel("Jump to latest messages")
     }
 
     /// The header's "More" menu: people, finding things, then the room's notification level.
@@ -1133,9 +1145,13 @@ struct MessageRowView: View {
                     Text("@\(reply.sender)").font(.caption.weight(.semibold)).foregroundStyle(Theme.muted)
                     Text(MentionText.readable(reply.text) { account.name(of: $0) }).font(.caption).foregroundStyle(Theme.faint).lineLimit(1)
                 }
-                .padding(.leading, 64)
+                .padding(.leading, 68)
+                .padding(.trailing, 16)
                 .contentShape(Rectangle())
                 .onTapGesture(perform: onReplyTap)
+                .accessibilityElement(children: .combine)
+                .accessibilityHint("Shows the message this replies to")
+                .accessibilityAddTraits(.isButton)
             }
             HStack(alignment: .top, spacing: 12) {
                 if row.showsHeader {
@@ -1240,8 +1256,9 @@ struct MessageRowView: View {
         return .handled
     }
 
+    /// Wraps onto more lines instead of running off a small screen.
     private var reactions: some View {
-        HStack(spacing: 6) {
+        FlowLayout(spacing: 6) {
             ForEach(row.reactions, id: \.key) { reaction in
                 Button { onReact(reaction.key) } label: {
                     HStack(spacing: 4) {
