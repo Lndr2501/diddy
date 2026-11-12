@@ -19,7 +19,9 @@ struct RoomModerationRows: View {
     @State private var membershipReason: String?
     @State private var options = RoomModerationOptions()
     @State private var prompt: RoomModerationAction?
-    @State private var busy = false
+    @State private var running: RoomModerationAction?
+    @State private var settingRole = false
+    @State private var confirmCancelInvite = false
     @State private var error: String?
     @State private var pendingRole: PendingRole?
 
@@ -33,22 +35,62 @@ struct RoomModerationRows: View {
 
     private var power: Int { permissions?.levels.user(userId) ?? 0 }
 
+    private var showsRole: Bool {
+        guard let permissions else { return false }
+        return !isSelf || RoomRoleChange.canChange(me: account.userId, target: userId, permissions: permissions)
+    }
+
+    private var hasRoomRows: Bool {
+        showsRole || membership == "ban" || membership == "invite" || options.canInvite || options.canUnban
+    }
+
+    private var hasDangerRows: Bool { options.canKick || options.canCancelInvite || options.canBan }
+
     var body: some View {
-        VStack(spacing: 0) {
-            if let permissions, !isSelf || RoomRoleChange.canChange(me: account.userId, target: userId, permissions: permissions) {
-                roleRow(permissions)
+        VStack(spacing: 20) {
+            if hasRoomRows {
+                ProfileRowGroup("In This Room") {
+                    if let permissions, showsRole { roleRow(permissions) }
+                    if membership == "ban" { statusRow("Banned", reason: membershipReason) }
+                    if membership == "invite" { statusRow("Invited", reason: membershipReason) }
+                    if options.canInvite {
+                        ProfileActionRow(title: "Invite to Room", icon: "person.badge.plus") { prompt = .invite }
+                            .disabled(running != nil)
+                    }
+                    if options.canUnban {
+                        ProfileActionRow(title: "Unban", icon: "arrow.uturn.backward", busy: running == .unban) {
+                            Task { await run(.unban) }
+                        }
+                        .disabled(running != nil)
+                    }
+                }
             }
-            if membership == "ban" { statusRow("Banned User", reason: membershipReason) }
-            if membership == "invite" { statusRow("Invited User", reason: membershipReason) }
-            if options.canInvite { actionRow("Invite to Room", icon: "person.badge.plus") { prompt = .invite } }
-            if options.canKick { actionRow("Kick from Room", icon: "person.fill.xmark", role: .destructive) { prompt = .kick } }
-            if options.canCancelInvite {
-                actionRow("Cancel Invite", icon: "person.fill.xmark", role: .destructive) { Task { await run(.kick) } }
+            if hasDangerRows {
+                ProfileRowGroup("Moderation") {
+                    if options.canKick {
+                        ProfileActionRow(title: "Kick from Room", icon: "person.fill.xmark", destructive: true) { prompt = .kick }
+                            .disabled(running != nil)
+                    }
+                    if options.canCancelInvite {
+                        ProfileActionRow(title: "Cancel Invite", icon: "xmark.circle", destructive: true, busy: running == .kick) {
+                            confirmCancelInvite = true
+                        }
+                        .disabled(running != nil)
+                    }
+                    if options.canBan {
+                        ProfileActionRow(title: "Ban from Room", icon: "nosign", destructive: true) { prompt = .ban }
+                            .disabled(running != nil)
+                    }
+                }
+                .confirmationDialog("Cancel the invite for \(name)?", isPresented: $confirmCancelInvite, titleVisibility: .visible) {
+                    Button("Cancel Invite", role: .destructive) { Task { await run(.kick) } }
+                    Button("Keep Invite", role: .cancel) {}
+                }
             }
-            if options.canBan { actionRow("Ban from Room", icon: "nosign", role: .destructive) { prompt = .ban } }
-            if options.canUnban { actionRow("Unban", icon: "arrow.uturn.backward") { Task { await run(.unban) } } }
             if let error {
-                Text(error).font(.footnote).foregroundStyle(Theme.danger).padding(14)
+                Label(error, systemImage: "exclamationmark.triangle.fill")
+                    .font(.footnote)
+                    .foregroundStyle(Theme.danger)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
@@ -79,26 +121,15 @@ struct RoomModerationRows: View {
 
     // MARK: Rows
 
-    private func actionRow(_ title: String, icon: String, role: ButtonRole? = nil, action: @escaping () -> Void) -> some View {
-        Button(role: role, action: action) {
-            HStack {
-                Label(title, systemImage: icon)
-                Spacer()
-                if busy { ProgressView() }
-            }
-            .padding(14)
-            .contentShape(Rectangle())
-            .foregroundStyle(role == .destructive ? Theme.danger : Theme.text)
-        }
-        .disabled(busy)
-    }
-
     private func statusRow(_ title: String, reason: String?) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title).font(.caption.weight(.bold)).foregroundStyle(Theme.danger)
-            Text(reason.map { "Reason: \($0)" } ?? "No Reason Provided.").font(.caption).foregroundStyle(Theme.muted)
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Image(systemName: "info.circle").frame(width: 22).foregroundStyle(Theme.danger)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(Theme.danger)
+                Text(reason.map { "Reason: \($0)" } ?? "No reason given").font(.caption).foregroundStyle(Theme.muted)
+            }
+            Spacer(minLength: 0)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
     }
 
@@ -106,27 +137,33 @@ struct RoomModerationRows: View {
     private func roleRow(_ permissions: RoomPermissionsModel) -> some View {
         let current = RoomPowerTags.tag(for: power, in: tags)
         let canChange = RoomRoleChange.canChange(me: account.userId, target: userId, permissions: permissions)
-        return HStack {
-            Label("Role", systemImage: "shield")
+        return HStack(spacing: 12) {
+            Image(systemName: "shield").frame(width: 22)
+            Text("Role")
             Spacer()
+            if settingRole { ProgressView() }
             Menu {
                 ForEach(RoomPowerTags.powers(tags), id: \.self) { value in
                     let tag = RoomPowerTags.tag(for: value, in: tags)
                     Button {
                         Task { await choose(value) }
                     } label: {
-                        Text(value == power ? "✓ \(tag.name)" : tag.name)
+                        if value == power {
+                            Label(tag.name, systemImage: "checkmark")
+                        } else {
+                            Text(tag.name)
+                        }
                     }
                     .disabled(!permissions.canAssign(value, by: account.userId))
                 }
             } label: {
                 HStack(spacing: 6) {
                     RoleDot(hex: current.color)
-                    Text(current.name)
-                    if canChange { Image(systemName: "chevron.down").font(.caption2) }
+                    Text(current.name).foregroundStyle(canChange ? Theme.accent : Theme.muted)
+                    if canChange { Image(systemName: "chevron.up.chevron.down").font(.caption2).foregroundStyle(Theme.muted) }
                 }
             }
-            .disabled(!canChange || busy)
+            .disabled(!canChange || running != nil || settingRole)
         }
         .padding(14)
         .foregroundStyle(Theme.text)
@@ -158,9 +195,9 @@ struct RoomModerationRows: View {
     }
 
     private func run(_ action: RoomModerationAction) async {
-        busy = true
+        running = action
         error = nil
-        defer { busy = false }
+        defer { running = nil }
         do {
             try await account.moderate(action, userId: userId, in: roomId)
             await load()
@@ -181,9 +218,9 @@ struct RoomModerationRows: View {
 
     private func setRole(_ value: Int) async {
         guard let permissions else { return }
-        busy = true
+        settingRole = true
         error = nil
-        defer { busy = false }
+        defer { settingRole = false }
         do {
             let content = RoomRoleChange.content(levels: permissions.levels, userId: userId, power: value)
             _ = try await account.clientRequest(

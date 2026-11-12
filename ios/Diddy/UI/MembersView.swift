@@ -15,6 +15,17 @@ enum MemberGroup: Int, CaseIterable, Identifiable {
         case .invited: return "Invited"
         }
     }
+
+    /// The label on someone's profile card.
+    var singular: String {
+        switch self {
+        case .owner: return "Owner"
+        case .admin: return "Admin"
+        case .moderator: return "Moderator"
+        case .member: return "Member"
+        case .invited: return "Invited"
+        }
+    }
 }
 
 struct MemberEntry: Identifiable, Hashable {
@@ -136,9 +147,7 @@ struct MembersView: View {
                     }
                 }
                 if !store.loading && filtered.isEmpty {
-                    Text(store.error ?? (search.isEmpty ? "Nobody here yet." : "No one matches “\(search)”."))
-                        .foregroundStyle(Theme.muted)
-                        .listRowBackground(Color.clear)
+                    emptyState.listRowBackground(Color.clear)
                 }
             }
             .listStyle(.plain)
@@ -175,6 +184,32 @@ struct MembersView: View {
             }) {
                 InviteView(account: account, roomId: roomId)
             }
+        }
+    }
+
+    @ViewBuilder
+    private var emptyState: some View {
+        if let error = store.error {
+            VStack(spacing: 10) {
+                Image(systemName: "exclamationmark.triangle").font(.title2).foregroundStyle(Theme.faint)
+                Text(error).font(.subheadline).foregroundStyle(Theme.muted).multilineTextAlignment(.center)
+                Button("Try Again") { Task { await store.load(account: account, roomId: roomId) } }
+                    .buttonStyle(.bordered)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 24)
+        } else if search.isEmpty {
+            Text("Nobody here yet.")
+                .foregroundStyle(Theme.muted)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 24)
+        } else {
+            VStack(spacing: 6) {
+                Image(systemName: "magnifyingglass").font(.title2).foregroundStyle(Theme.faint)
+                Text("No one matches “\(search)”.").foregroundStyle(Theme.muted)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 24)
         }
     }
 
@@ -217,18 +252,25 @@ struct PersonRow: View {
     }
 }
 
-/// The card Discord opens when you tap someone.
+/// The card Discord opens when you tap someone: banner, avatar with presence, name and status,
+/// the main actions (Message, Call, Verify), the Diddy card modules, then the room part (role,
+/// invite, unban; kick and ban in red) and Block at the bottom.
 struct UserProfileSheet: View {
     @ObservedObject var account: MatrixAccount
     let userId: String
     var roomId: String?
     var onOpenedChat: () -> Void = {}
     @EnvironmentObject private var navigator: AppNavigator
+    @EnvironmentObject private var calls: CallManager
     @Environment(\.dismiss) private var dismiss
     @State private var member: MemberEntry?
     @State private var ignored = false
-    @State private var busy = false
+    @State private var busy: Busy?
     @State private var error: String?
+    @State private var confirmBlock = false
+    @State private var copied = false
+
+    private enum Busy { case message, call, block }
 
     private var isSelf: Bool { userId == account.userId }
     private var profile: UserSummary? { account.profiles[userId] }
@@ -244,29 +286,46 @@ struct UserProfileSheet: View {
         NavigationStack {
             GeometryReader { proxy in
                 ScrollView {
-                    VStack(spacing: 16) {
+                    VStack(spacing: 20) {
                         // The card with the owner's profile frame around it and their effect over it,
                         // like the desktop profile card.
                         DiddyProfileFrameBox(frame: diddy?.frame, account: account, available: max(0, proxy.size.width - 40)) {
                             card
                         }
-                        VStack(spacing: 0) {
-                            actionRow("Copy User ID", icon: "doc.on.doc") { UIPasteboard.general.string = userId }
-                            if !isSelf {
-                                actionRow("Verify", icon: "checkmark.shield.fill") {
-                                    Task { await VerificationCenter.of(account).requestUserVerification(userId: userId) }
-                                }
-                                actionRow(ignored ? "Unblock" : "Block", icon: "hand.raised.fill", role: ignored ? nil : .destructive) {
-                                    Task { await toggleIgnore() }
-                                }
-                            }
-                            // Role, invite, kick and ban (with a reason), unban: RoomSettings/RoomModerationViews.swift
-                            if let roomId {
-                                RoomModerationRows(account: account, userId: userId, roomId: roomId, name: name, onRemoved: { dismiss() })
+                        if let error {
+                            Label(error, systemImage: "exclamationmark.triangle.fill")
+                                .font(.footnote)
+                                .foregroundStyle(Theme.danger)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        ProfileRowGroup {
+                            ProfileActionRow(title: copied ? "Copied" : "Copy User ID", icon: copied ? "checkmark" : "doc.on.doc") {
+                                UIPasteboard.general.string = userId
+                                copied = true
                             }
                         }
-                        .background(RoundedRectangle(cornerRadius: 10).fill(Theme.elevated))
-                        if let error { Text(error).font(.footnote).foregroundStyle(Theme.danger) }
+                        // Role, invite, kick and ban (with a reason), unban: RoomSettings/RoomModerationViews.swift
+                        if let roomId {
+                            RoomModerationRows(account: account, userId: userId, roomId: roomId, name: name, onRemoved: { dismiss() })
+                        }
+                        if !isSelf {
+                            ProfileRowGroup {
+                                ProfileActionRow(
+                                    title: ignored ? "Unblock" : "Block",
+                                    icon: "hand.raised.fill",
+                                    destructive: !ignored,
+                                    busy: busy == .block
+                                ) {
+                                    if ignored { Task { await toggleIgnore() } } else { confirmBlock = true }
+                                }
+                                .disabled(busy != nil)
+                            }
+                            .confirmationDialog("Block \(name)?", isPresented: $confirmBlock, titleVisibility: .visible) {
+                                Button("Block", role: .destructive) { Task { await toggleIgnore() } }
+                            } message: {
+                                Text("You will no longer see their messages or invites. You can unblock them later.")
+                            }
+                        }
                     }
                     .padding(20)
                 }
@@ -294,46 +353,8 @@ struct UserProfileSheet: View {
                     .overlay(alignment: .bottomTrailing) { PresenceDot(userId: userId, account: account, size: 22, onDemand: true) }
                     .padding(.top, -48)
             }
-            VStack(spacing: 4) {
-                HStack(spacing: 6) {
-                    DiddyName(name: name, profile: diddy, font: .title2.bold(), size: 22)
-                    if !badges.isEmpty { DiddyBadges(badges: badges, size: 20, account: account) }
-                }
-                .multilineTextAlignment(.center)
-                Text(userId).font(.footnote).foregroundStyle(Theme.muted).textSelection(.enabled)
-                PresenceLabel(userId: userId, account: account)
-                AgentTalkingProfileBadge(userId: userId)
-                if let group = member?.group, group != .member {
-                    Text(group == .owner ? "Owner" : String(group.title.dropLast()))
-                        .font(.caption.weight(.semibold))
-                        .padding(.horizontal, 10).padding(.vertical, 3)
-                        .background(Capsule().fill(Theme.elevated))
-                        .foregroundStyle(Theme.accent)
-                        .padding(.top, 4)
-                }
-            }
-            if !isSelf {
-                Button { Task { await openChat() } } label: {
-                    HStack {
-                        if busy { ProgressView().tint(Color(diddyHex: diddy?.cardAccent) == nil ? Theme.onAccent : .white) }
-                        Label("Message", systemImage: "bubble.left.fill").bold()
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(RoundedRectangle(cornerRadius: 10).fill(Color(diddyHex: diddy?.cardAccent) ?? Theme.accent))
-                    .foregroundStyle(Color(diddyHex: diddy?.cardAccent) == nil ? Theme.onAccent : .white)
-                }
-                .disabled(busy)
-            }
-            if isSelf {
-                NavigationLink { DiddyProfileEditor(account: account) } label: {
-                    Label("Edit Diddy Profile", systemImage: "paintbrush.fill").bold()
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(RoundedRectangle(cornerRadius: 10).fill(Theme.elevated))
-                        .foregroundStyle(Theme.text)
-                }
-            }
+            identity
+            primaryActions
             if let diddy, diddy.hasCardContent { DiddyCardModules(profile: diddy) }
             if let version = diddy?.clientVersion {
                 Text("Diddy \(version)")
@@ -351,19 +372,64 @@ struct UserProfileSheet: View {
             if let effect = diddy?.effect {
                 DiddyProfileEffectOverlay(effect: effect, account: account)
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .allowsHitTesting(false)
             }
         }
     }
 
-    private func actionRow(_ title: String, icon: String, role: ButtonRole? = nil, action: @escaping () -> Void) -> some View {
-        Button(role: role, action: action) {
-            HStack {
-                Label(title, systemImage: icon)
-                Spacer()
+    /// Name with badges, the user ID, presence and the room role.
+    private var identity: some View {
+        VStack(spacing: 4) {
+            HStack(spacing: 6) {
+                DiddyName(name: name, profile: diddy, font: .title2.bold(), size: 22)
+                if !badges.isEmpty { DiddyBadges(badges: badges, size: 20, account: account) }
             }
-            .padding(14)
-            .contentShape(Rectangle())
-            .foregroundStyle(role == .destructive ? Theme.danger : Theme.text)
+            .multilineTextAlignment(.center)
+            Text(userId).font(.footnote).foregroundStyle(Theme.muted).textSelection(.enabled)
+            PresenceLabel(userId: userId, account: account)
+            AgentTalkingProfileBadge(userId: userId)
+            if let group = member?.group, group != .member {
+                Text(group.singular)
+                    .font(.caption.weight(.semibold))
+                    .padding(.horizontal, 10).padding(.vertical, 3)
+                    .background(Capsule().fill(Theme.elevated))
+                    .foregroundStyle(Theme.accent)
+                    .padding(.top, 4)
+            }
+        }
+    }
+
+    /// Message, Call and Verify side by side; your own card has Edit Diddy Profile instead.
+    @ViewBuilder
+    private var primaryActions: some View {
+        if isSelf {
+            NavigationLink { DiddyProfileEditor(account: account) } label: {
+                Label("Edit Diddy Profile", systemImage: "paintbrush.fill").bold()
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(RoundedRectangle(cornerRadius: 10).fill(Theme.elevated))
+                    .foregroundStyle(Theme.text)
+            }
+        } else {
+            let accent = Color(diddyHex: diddy?.cardAccent)
+            HStack(spacing: 8) {
+                ProfileActionButton(
+                    title: "Message", icon: "bubble.left.fill",
+                    fill: accent ?? Theme.accent, foreground: accent == nil ? Theme.onAccent : .white,
+                    busy: busy == .message
+                ) { Task { await openChat(call: false) } }
+                ProfileActionButton(
+                    title: "Call", icon: "phone.fill",
+                    fill: Theme.elevated, foreground: Theme.text,
+                    busy: busy == .call
+                ) { Task { await openChat(call: true) } }
+                ProfileActionButton(
+                    title: "Verify", icon: "checkmark.shield.fill",
+                    fill: Theme.elevated, foreground: Theme.text,
+                    busy: false
+                ) { Task { await VerificationCenter.of(account).requestUserVerification(userId: userId) } }
+            }
+            .disabled(busy != nil)
         }
     }
 
@@ -374,22 +440,111 @@ struct UserProfileSheet: View {
         member = MemberEntry(found)
     }
 
-    private func openChat() async {
-        busy = true
-        defer { busy = false }
+    /// Opens (or starts) the direct message; with `call` it also starts a call there, like the
+    /// phone button in the chat.
+    private func openChat(call: Bool) async {
+        busy = call ? .call : .message
+        error = nil
+        defer { busy = nil }
         do {
             let id = try await account.directMessage(with: userId)
             try await account.waitForRoom(id)
             onOpenedChat()
             dismiss()
             navigator.open(id, account: account)
+            if call {
+                await calls.requestJoin(account: account, roomId: id, roomName: name, showCallScreen: true)
+            }
         } catch { self.error = error.friendlyMessage }
     }
 
     private func toggleIgnore() async {
+        busy = .block
+        error = nil
+        defer { busy = nil }
         do {
             if ignored { try await account.client.unignoreUser(userId: userId) } else { try await account.client.ignoreUser(userId: userId) }
             ignored.toggle()
         } catch { self.error = error.friendlyMessage }
+    }
+}
+
+/// A rounded group of rows on the profile card, with an optional small header (like a List
+/// section, but inside the card's scroll view).
+struct ProfileRowGroup<Content: View>: View {
+    let title: String?
+    let content: Content
+
+    init(_ title: String? = nil, @ViewBuilder content: () -> Content) {
+        self.title = title
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if let title {
+                Text(title.uppercased())
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(Theme.faint)
+                    .padding(.leading, 14)
+            }
+            VStack(spacing: 0) { content }
+                .frame(maxWidth: .infinity)
+                .background(RoundedRectangle(cornerRadius: 10).fill(Theme.elevated))
+        }
+    }
+}
+
+/// One tappable row in a `ProfileRowGroup`; destructive rows are red.
+struct ProfileActionRow: View {
+    let title: String
+    let icon: String
+    var destructive = false
+    var busy = false
+    let action: () -> Void
+
+    var body: some View {
+        Button(role: destructive ? .destructive : nil, action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: icon).frame(width: 22)
+                Text(title)
+                Spacer()
+                if busy { ProgressView() }
+            }
+            .padding(14)
+            .contentShape(Rectangle())
+            .foregroundStyle(destructive ? Theme.danger : Theme.text)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// Message / Call / Verify on the profile card: icon over a short label.
+struct ProfileActionButton: View {
+    let title: String
+    let icon: String
+    let fill: Color
+    let foreground: Color
+    let busy: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 4) {
+                ZStack {
+                    Image(systemName: icon).opacity(busy ? 0 : 1)
+                    if busy { ProgressView().tint(foreground) }
+                }
+                .font(.body.weight(.semibold))
+                .frame(height: 22)
+                Text(title).font(.caption.weight(.semibold))
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
+            .background(RoundedRectangle(cornerRadius: 10).fill(fill))
+            .foregroundStyle(foreground)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 }
