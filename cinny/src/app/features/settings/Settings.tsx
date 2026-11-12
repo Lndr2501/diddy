@@ -34,6 +34,12 @@ import { stopPropagation } from '../../utils/keyboard';
 import { LogoutDialog } from '../../components/LogoutDialog';
 import * as css from './styles.css';
 import { SettingsBreadcrumb } from './inset-list';
+import {
+  SETTINGS_SEARCH_INDEX,
+  SettingsSearchEntry,
+  entryMatches,
+  matchingTitles,
+} from './settingsSearch';
 
 export enum SettingsPages {
   GeneralPage,
@@ -52,8 +58,8 @@ type SettingsMenuItem = {
   page: SettingsPages;
   name: string;
   icon: IconSrc;
-  /** extra words the sidebar search matches */
-  keywords: string;
+  /** what the sidebar search matches: name, keywords and the titles of the page's settings */
+  search: SettingsSearchEntry;
 };
 
 type SettingsMenuGroup = {
@@ -70,19 +76,19 @@ const SETTINGS_MENU: SettingsMenuGroup[] = [
         page: SettingsPages.GeneralPage,
         name: 'General',
         icon: Icons.Setting,
-        keywords: 'language editor messages media links privacy sound voice call',
+        search: SETTINGS_SEARCH_INDEX.general,
       },
       {
         page: SettingsPages.AppearancePage,
         name: 'Appearance',
         icon: Icons.Sun,
-        keywords: 'theme dark light colour color font app icon',
+        search: SETTINGS_SEARCH_INDEX.appearance,
       },
       {
         page: SettingsPages.NotificationPage,
         name: 'Notifications',
         icon: Icons.Bell,
-        keywords: 'sound mention keyword push alert',
+        search: SETTINGS_SEARCH_INDEX.notifications,
       },
     ],
   },
@@ -93,19 +99,19 @@ const SETTINGS_MENU: SettingsMenuGroup[] = [
         page: SettingsPages.ProfilePage,
         name: 'Profile',
         icon: Icons.User,
-        keywords: 'avatar name banner badge card status',
+        search: SETTINGS_SEARCH_INDEX.profile,
       },
       {
         page: SettingsPages.AccountPage,
         name: 'Account',
         icon: Icons.ShieldUser,
-        keywords: 'matrix id email password contact ignored users',
+        search: SETTINGS_SEARCH_INDEX.account,
       },
       {
         page: SettingsPages.DevicesPage,
         name: 'Devices',
         icon: Icons.Monitor,
-        keywords: 'sessions verification encryption backup keys security',
+        search: SETTINGS_SEARCH_INDEX.devices,
       },
     ],
   },
@@ -116,13 +122,13 @@ const SETTINGS_MENU: SettingsMenuGroup[] = [
         page: SettingsPages.EmojisStickersPage,
         name: 'Emojis & Stickers',
         icon: Icons.Smile,
-        keywords: 'emoji sticker pack image',
+        search: SETTINGS_SEARCH_INDEX.emojisStickers,
       },
       {
         page: SettingsPages.PluginsPage,
         name: 'Plugins',
         icon: Icons.Category,
-        keywords: 'plugin widget extension add-on addon weather web page',
+        search: SETTINGS_SEARCH_INDEX.plugins,
       },
     ],
   },
@@ -132,23 +138,20 @@ const SETTINGS_MENU: SettingsMenuGroup[] = [
         page: SettingsPages.DeveloperToolsPage,
         name: 'Developer Tools',
         icon: Icons.Terminal,
-        keywords: 'debug account data developer',
+        search: SETTINGS_SEARCH_INDEX.developerTools,
       },
       {
         page: SettingsPages.AboutPage,
         name: 'About',
         icon: Icons.Info,
-        keywords: 'version cache reload credits source',
+        search: SETTINGS_SEARCH_INDEX.about,
       },
     ],
   },
 ];
 
-const matchesQuery = (item: SettingsMenuItem, query: string): boolean => {
-  const q = query.trim().toLowerCase();
-  if (!q) return true;
-  return `${item.name} ${item.keywords}`.toLowerCase().includes(q);
-};
+const matchesQuery = (item: SettingsMenuItem, query: string): boolean =>
+  entryMatches(item.search, query);
 
 function LogoutRow() {
   const [logout, setLogout] = useState(false);
@@ -326,9 +329,23 @@ export function Settings({ initialPage, requestClose }: SettingsProps) {
                         onClick={() => setActivePage(item.page)}
                       >
                         <Icon className={css.NavIcon} size="100" src={item.icon} />
-                        <Text as="span" size="T300" truncate>
-                          {item.name}
-                        </Text>
+                        <span className={css.NavRowText}>
+                          <Text as="span" size="T300" truncate>
+                            {item.name}
+                          </Text>
+                          {matchingTitles(item.search, query).map((title) => (
+                            <Text
+                              key={title}
+                              as="span"
+                              size="T200"
+                              priority="300"
+                              truncate
+                              className={css.NavRowHint}
+                            >
+                              {title}
+                            </Text>
+                          ))}
+                        </span>
                       </button>
                     ))}
                   </div>

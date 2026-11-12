@@ -227,14 +227,26 @@ export const NavRow = style([
     display: 'flex',
     alignItems: 'center',
     gap: toRem(10),
-    height: toRem(34),
-    padding: `0 ${toRem(10)}`,
+    minHeight: toRem(34),
+    padding: `${toRem(6)} ${toRem(10)}`,
     borderRadius: toRem(8),
     minWidth: 0,
     flexShrink: 0,
     selectors: rowInteraction,
   },
 ]);
+
+/** Page name plus, while searching, the matching settings on that page (#182). */
+export const NavRowText = style({
+  display: 'flex',
+  flexDirection: 'column',
+  minWidth: 0,
+  gap: toRem(1),
+});
+
+export const NavRowHint = style({
+  opacity: 0.8,
+});
 
 export const NavRowCritical = style({
   color: color.Critical.Main,
