@@ -279,15 +279,17 @@ struct CallDevicesSheet: View {
                         }
                     }
                     Button { select(nil) } label: {
-                        Text("System default").foregroundStyle(Theme.text)
+                        Text("System Default").foregroundStyle(Theme.text)
                     }
                     volumeRow("Input volume", value: extras.inputVolume) { extras.setInputVolume($0) }
                 }
                 Section {
                     HStack {
-                        Text("Output").foregroundStyle(Theme.text)
+                        Text("Speaker, Headphones, AirPlay").foregroundStyle(Theme.text)
                         Spacer()
-                        RoutePickerButton().frame(width: 36, height: 36)
+                        RoutePickerButton()
+                            .frame(width: 44, height: 44)
+                            .accessibilityLabel("Choose output")
                     }
                     volumeRow("Output volume", value: extras.outputVolume) { extras.setOutputVolume($0) }
                 } header: {
@@ -299,7 +301,7 @@ struct CallDevicesSheet: View {
             }
             .scrollContentBackground(.hidden)
             .background(Theme.sidebar)
-            .navigationTitle("Devices")
+            .navigationTitle("Audio Devices")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
             .onReceive(NotificationCenter.default.publisher(for: AVAudioSession.routeChangeNotification)) { _ in refresh() }
@@ -366,9 +368,11 @@ struct PersonVolumeSheet: View {
                         } label: {
                             Image(systemName: muted ? "speaker.slash.fill" : "speaker.wave.2.fill")
                                 .foregroundStyle(muted ? Theme.danger : Theme.text)
+                                .frame(width: 44, height: 44)
+                                .contentShape(Rectangle())
                         }
                         .buttonStyle(.borderless)
-                        .accessibilityLabel(muted ? "Unmute for me" : "Mute for me")
+                        .accessibilityLabel(muted ? "Unmute for Me" : "Mute for Me")
                     }
                     Slider(
                         value: Binding(get: { shown }, set: { extras.setLevel($0, of: userId, kind: kind) }),
@@ -392,6 +396,6 @@ struct PersonVolumeSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
-        .presentationDetents([.height(320)])
+        .presentationDetents([.height(320), .medium])
     }
 }

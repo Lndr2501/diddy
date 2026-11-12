@@ -400,10 +400,21 @@ struct SoundboardSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     if board.clips.isEmpty {
-                        Text("No clips yet. Add short audio files (up to \(Int(Soundboard.maxSeconds)) seconds) with +.")
+                        VStack(spacing: 10) {
+                            Image(systemName: "music.note.list")
+                                .font(.system(size: 40))
+                                .foregroundStyle(Theme.faint)
+                            Text("No clips yet. Add short audio files (up to \(Int(Soundboard.maxSeconds)) seconds) with the + button.")
+                                .multilineTextAlignment(.center)
+                                .foregroundStyle(Theme.muted)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 32)
+                    } else if visibleClips.isEmpty {
+                        Text("No clips match \u{201C}\(filter)\u{201D}.")
                             .foregroundStyle(Theme.muted)
-                            .frame(maxWidth: .infinity, alignment: .center)
-                            .padding(.top, 40)
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 24)
                     } else {
                         LazyVGrid(columns: columns, spacing: 10) {
                             ForEach(visibleClips) { clip in clipButton(clip) }
@@ -432,7 +443,7 @@ struct SoundboardSheet: View {
                 ToolbarItemGroup(placement: .primaryAction) {
                     if board.playing != nil {
                         Button { board.stopAll() } label: { Image(systemName: "stop.fill") }
-                            .accessibilityLabel("Stop all clips")
+                            .accessibilityLabel("Stop All Clips")
                     }
                     Menu {
                         Button { importing = true } label: { Label("Add from Files", systemImage: "folder") }
@@ -477,9 +488,12 @@ struct SoundboardSheet: View {
             .padding(12)
             .frame(maxWidth: .infinity, minHeight: 52)
             .background(RoundedRectangle(cornerRadius: 10).fill(isPlaying ? Theme.accent : Theme.elevated))
-            .foregroundStyle(Theme.text)
+            .foregroundStyle(isPlaying ? Theme.onAccent : Theme.text)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(clip.name)
+        .accessibilityValue(isPlaying ? "Playing" : "")
+        .accessibilityHint(isPlaying ? "Stops the clip" : "Plays it for everyone in the call")
         .contextMenu {
             Button(role: .destructive) { board.remove(clip) } label: { Label("Delete", systemImage: "trash") }
         }

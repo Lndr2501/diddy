@@ -176,7 +176,7 @@ struct CallStageView: View {
                 Button { message(member.userId) } label: { Label("Message", systemImage: "bubble.left") }
                 let muted = extras.isMuted(member.userId, kind: .voice)
                 Button { extras.toggleMuted(member.userId, kind: .voice) } label: {
-                    Label(muted ? "Unmute for me" : "Mute for me", systemImage: muted ? "speaker.wave.2" : "speaker.slash")
+                    Label(muted ? "Unmute for Me" : "Mute for Me", systemImage: muted ? "speaker.wave.2" : "speaker.slash")
                 }
                 Button { volumeTarget = VolumeTarget(userId: member.userId, name: member.name, kind: .voice) } label: {
                     Label("Volume\u{2026}", systemImage: "slider.horizontal.3")
@@ -194,13 +194,13 @@ struct CallStageView: View {
             if member.shareHasAudio {
                 let muted = extras.isMuted(member.userId, kind: .stream)
                 Button { extras.toggleMuted(member.userId, kind: .stream) } label: {
-                    Label(muted ? "Unmute stream for me" : "Mute stream for me", systemImage: muted ? "speaker.wave.2" : "speaker.slash")
+                    Label(muted ? "Unmute Stream for Me" : "Mute Stream for Me", systemImage: muted ? "speaker.wave.2" : "speaker.slash")
                 }
                 Button { volumeTarget = VolumeTarget(userId: member.userId, name: member.name, kind: .stream) } label: {
-                    Label("Stream volume\u{2026}", systemImage: "slider.horizontal.3")
+                    Label("Stream Volume\u{2026}", systemImage: "slider.horizontal.3")
                 }
             } else {
-                Button {} label: { Label("This stream has no sound", systemImage: "speaker.slash") }.disabled(true)
+                Button {} label: { Label("This Stream Has No Sound", systemImage: "speaker.slash") }.disabled(true)
             }
         }
     }
@@ -331,20 +331,12 @@ private struct ShareTile: View {
         }
         .frame(width: size.width, height: size.height)
         .clipShape(RoundedRectangle(cornerRadius: 12))
-        .overlay(alignment: .topLeading) {
-            Label(role == .thumb ? member.name : "\(member.name)'s screen", systemImage: "display")
-                .labelStyle(.titleAndIcon)
-                .lineLimit(1)
-                .font((role == .thumb ? Font.caption2 : Font.caption).weight(.semibold))
-                .foregroundStyle(.white)
-                .padding(.horizontal, role == .thumb ? 6 : 8)
-                .padding(.vertical, role == .thumb ? 2 : 4)
-                .background(Capsule().fill(Theme.danger))
-                .padding(role == .thumb ? 5 : 8)
-        }
-        .overlay(alignment: .topTrailing) {
-            if role == .focus {
-                HStack(spacing: 6) {
+        // The name and the buttons share one row, so a long name is cut instead of running under them.
+        .overlay(alignment: .top) {
+            HStack(alignment: .center, spacing: 0) {
+                nameBadge
+                Spacer(minLength: 8)
+                if role == .focus {
                     if zoom.isZoomed {
                         ZoomResetButton(zoom: $zoom)
                     }
@@ -365,6 +357,18 @@ private struct ShareTile: View {
         .fullScreenCover(isPresented: $fullscreen) {
             FullscreenShare(member: member, isPresented: $fullscreen)
         }
+    }
+
+    private var nameBadge: some View {
+        Label(role == .thumb ? member.name : "\(member.name)'s screen", systemImage: "display")
+            .labelStyle(.titleAndIcon)
+            .lineLimit(1)
+            .font((role == .thumb ? Font.caption2 : Font.caption).weight(.semibold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, role == .thumb ? 6 : 8)
+            .padding(.vertical, role == .thumb ? 2 : 4)
+            .background(Capsule().fill(Theme.danger))
+            .padding(role == .thumb ? 5 : 8)
     }
 }
 
@@ -454,10 +458,13 @@ private struct ZoomResetButton: View {
                 .padding(.horizontal, 10)
                 .frame(height: 32)
                 .background(Capsule().fill(.black.opacity(0.55)))
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Zoom \(zoom.percent) percent, reset")
-        .padding(.vertical, 8)
+        .accessibilityLabel("Zoom \(zoom.percent) percent")
+        .accessibilityHint("Shows the whole picture again")
+        .padding(.vertical, 2)
     }
 }
 
@@ -485,6 +492,8 @@ private struct FullscreenShare: View {
                 }
                 Button { isPresented = false } label: {
                     Image(systemName: "xmark.circle.fill").font(.title).foregroundStyle(.white)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
                 }
                 .accessibilityLabel("Close")
             }
@@ -509,9 +518,11 @@ private struct StageIconButton: View {
                 .foregroundStyle(.white)
                 .frame(width: 32, height: 32)
                 .background(Circle().fill(.black.opacity(0.55)))
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)
-        .padding(8)
+        .padding(2)
     }
 }
