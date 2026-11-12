@@ -96,7 +96,7 @@ export function IncomingCall({ dm, info, leaving, onIgnore, onAnswer, onReject }
         <span className={css.TileTrack} aria-hidden>
           <span className={css.Tile}>
             <span className={css.Ripple} />
-            <span className={`${css.TileGlyph} ${css.Draw}`}>
+            <span className={`${css.TileGlyph} ${css.GlyphIn}`}>
               {text.video ? <VideoGlyph /> : <PhoneGlyph />}
             </span>
           </span>

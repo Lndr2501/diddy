@@ -3,7 +3,7 @@ import { color } from 'folds';
 
 /*
  * Incoming call banner at the top of the window, one continuous motion (about 0.9 s):
- *   1. the green phone tile drops in from the top, its handset draws itself (0-650 ms)
+ *   1. the green phone tile drops in from the top, its handset pops in (0-560 ms)
  *   2. the handset rings once (420-880 ms)
  *   3. the card opens around the tile (650-1050 ms); text and buttons arrive (820-1150 ms)
  *   4. while it rings: a short wobble every 2 s and one soft ring around the tile
@@ -102,12 +102,14 @@ export const Tile = style({
   color: '#fff',
 });
 
-/* glyphs draw themselves in */
-const draw = keyframes({ from: { strokeDashoffset: 1 }, to: { strokeDashoffset: 0 } });
-export const Draw = style({});
-globalStyle(`${Draw} path, ${Draw} rect`, {
-  strokeDasharray: '1 1',
-  animation: `${draw} 500ms ${EASE} 150ms both`,
+/* the handset pops into the tile */
+const popIn = keyframes({
+  from: { transform: 'scale(0.4)', opacity: 0 },
+  to: { transform: 'scale(1)', opacity: 1 },
+});
+export const GlyphIn = style({});
+globalStyle(`${GlyphIn} svg`, {
+  animation: `${popIn} 380ms ${SPRING} 180ms both`,
   '@media': { [REDUCED_MOTION]: { animation: 'none' } },
 });
 
