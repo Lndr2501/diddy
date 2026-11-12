@@ -13,42 +13,9 @@ private struct WatchWebContainer: UIViewRepresentable {
     func updateUIView(_ uiView: WKWebView, context: Context) {}
 }
 
-// MARK: - Button and link sheet
+// MARK: - Link sheet
 
-/// Starts a video for the call, or brings back one you closed. Hidden while the feature is off or
-/// the call is not connected.
-struct WatchTogetherButton: View {
-    @ObservedObject var watch: WatchTogetherSession
-    @ObservedObject private var prefsStore = WatchTogetherPrefsStore.shared
-    @State private var asking = false
-
-    private var label: String {
-        if watch.hidden { return "Show the video" }
-        if watch.running { return "Watch another video together" }
-        return "Watch together"
-    }
-
-    var body: some View {
-        if prefsStore.prefs.enabled && watch.available {
-            Button {
-                if watch.hidden { watch.reopen() } else { asking = true }
-            } label: {
-                HStack(spacing: 5) {
-                    Image(systemName: watch.running ? "play.fill" : "play")
-                    Text(watch.hidden ? "Show video" : "Watch together")
-                }
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(watch.running ? Theme.onAccent : Theme.text)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(Capsule().fill(watch.running ? Theme.accent : Theme.elevated))
-            }
-            .accessibilityLabel(label)
-            .sheet(isPresented: $asking) { WatchLinkSheet(watch: watch) }
-        }
-    }
-}
-
+/// Asks for the YouTube link. Opened from the "More" menu of the call bar (CallExtrasViews.swift).
 struct WatchLinkSheet: View {
     @ObservedObject var watch: WatchTogetherSession
     @Environment(\.dismiss) private var dismiss
@@ -117,27 +84,66 @@ private struct WatchToastView: View {
     }
 }
 
-/// The video of the call above the stage. Shows nothing while no video runs (or you closed it),
-/// only the toast ("… started watching together").
-struct WatchTogetherPanel: View {
+/// The call stage with the video of the call: above the stage in portrait, beside it in landscape
+/// (an iPhone in landscape has no room for a 16:9 player above the tiles). Without a video only
+/// the toast ("… started watching together") sits above the stage.
+struct WatchTogetherStage<Stage: View>: View {
     @ObservedObject var watch: WatchTogetherSession
     @ObservedObject private var prefsStore = WatchTogetherPrefsStore.shared
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
+    private let stage: Stage
 
+
+    init(watch: WatchTogetherSession, @ViewBuilder stage: () -> Stage) {
+        self.watch = watch
+        self.stage = stage()
+    }
+
+    private var offered: Bool { prefsStore.prefs.enabled && watch.available }
+
+    /// The shared video, unless it stopped or you closed it for yourself.
+    private var visible: SharedWatch? {
+        guard offered, let shared = watch.shared, shared.state != .stopped,
+              watch.closedSession != shared.session else { return nil }
+        return shared
+    }
+
+    /// iPhone in landscape with a video: the video column beside the stage.
+    private var beside: Bool { visible != nil && verticalSizeClass == .compact }
+
+    private var layout: AnyLayout {
+        beside ? AnyLayout(HStackLayout(alignment: .top, spacing: 0)) : AnyLayout(VStackLayout(spacing: 0))
+    }
+
+    // One layout that switches between row and column, so turning the phone keeps the player
+    // and the focused tile instead of building both again.
     var body: some View {
-        if prefsStore.prefs.enabled && watch.available {
-            VStack(spacing: 8) {
-                if let shared = watch.shared, shared.state != .stopped, watch.closedSession != shared.session {
-                    // one player per session: a new video gets a new page and a new controller
-                    WatchPlayerCard(watch: watch, shared: shared)
-                        .id(shared.session)
-                }
-                if let toast = watch.toast {
-                    WatchToastView(text: toast.text)
-                }
-            }
-            .padding(.horizontal, 12)
-            .padding(.top, 6)
-            .frame(maxWidth: .infinity)
+        layout {
+            accessory
+            stage
+        }
+    }
+
+    private var accessory: some View {
+        VStack(spacing: 8) {
+            if let shared = visible { card(shared) }
+            toastView
+        }
+        .padding(.horizontal, 12)
+        .padding(.top, visible != nil || (offered && watch.toast != nil) ? 6 : 0)
+        .frame(maxWidth: beside ? 300 : .infinity)
+    }
+
+    /// One player per session: a new video gets a new page and a new controller.
+    private func card(_ shared: SharedWatch) -> some View {
+        WatchPlayerCard(watch: watch, shared: shared)
+            .id(shared.session)
+    }
+
+    @ViewBuilder
+    private var toastView: some View {
+        if offered, let toast = watch.toast {
+            WatchToastView(text: toast.text)
         }
     }
 }
@@ -148,6 +154,7 @@ private struct WatchPlayerCard: View {
     @ObservedObject private var prefsStore = WatchTogetherPrefsStore.shared
     @StateObject private var host = WatchPlayerHost()
     @State private var loadedCategories: [String] = []
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     private var prefs: WatchPrefs { prefsStore.prefs }
 
@@ -179,7 +186,10 @@ private struct WatchPlayerCard: View {
             .background(Color.black)
             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             bar
-            Text(footnote).font(.caption2).foregroundStyle(Theme.faint)
+            // no room for the note beside the stage in landscape
+            if verticalSizeClass != .compact {
+                Text(footnote).font(.caption2).foregroundStyle(Theme.faint)
+            }
         }
         .padding(10)
         .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Theme.elevated))
@@ -203,27 +213,36 @@ private struct WatchPlayerCard: View {
         host.start(shared: shared, prefs: prefs)
     }
 
+    /// One row: title, YouTube and a menu with "Close for Me" and "Stop for Everyone".
     private var header: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 6) {
-                Image(systemName: "play.fill").font(.footnote).foregroundStyle(Theme.accent)
-                Text("Watch together").font(.subheadline.weight(.semibold)).foregroundStyle(Theme.text)
-                Spacer()
-                if let url = WatchYouTube.watchURL(shared.videoId) {
-                    Link(destination: url) {
-                        Label("YouTube", systemImage: "arrow.up.right.square").font(.caption.weight(.semibold))
-                    }
+        HStack(spacing: 6) {
+            Image(systemName: "play.fill").font(.footnote).foregroundStyle(Theme.accent)
+            Text("Watch Together").font(.subheadline.weight(.semibold)).foregroundStyle(Theme.text)
+                .lineLimit(1)
+            Spacer(minLength: 4)
+            if let url = WatchYouTube.watchURL(shared.videoId) {
+                Link(destination: url) {
+                    Image(systemName: "arrow.up.right.square")
+                        .font(.body.weight(.semibold))
+                        .frame(width: 44, height: 36)
                 }
+                .accessibilityLabel("Open on YouTube")
             }
-            HStack(spacing: 8) {
-                Button("Close for me") { watch.closeForMe() }
-                    .buttonStyle(.bordered)
-                Button("Stop for everyone", role: .destructive) { watch.stopForEveryone() }
-                    .buttonStyle(.bordered)
-                Spacer()
+            Menu {
+                Button { watch.closeForMe() } label: {
+                    Label("Close for Me", systemImage: "eye.slash")
+                }
+                Button(role: .destructive) { watch.stopForEveryone() } label: {
+                    Label("Stop for Everyone", systemImage: "stop.fill")
+                }
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.title3)
+                    .foregroundStyle(Theme.muted)
+                    .frame(width: 44, height: 36)
             }
-            .font(.caption.weight(.semibold))
-            .controlSize(.small)
+            .accessibilityLabel("Close the video")
+            .accessibilityHint("Close it for you or stop it for everyone")
         }
     }
 
@@ -248,7 +267,8 @@ private struct WatchPlayerCard: View {
             } label: {
                 Image(systemName: prefs.muted ? "speaker.slash.fill" : "speaker.wave.2.fill")
                     .foregroundStyle(Theme.text)
-                    .frame(width: 28, height: 28)
+                    .frame(width: 44, height: 36)
+                    .contentShape(Rectangle())
             }
             .accessibilityLabel(prefs.muted ? "Unmute video" : "Mute video")
             Slider(

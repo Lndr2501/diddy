@@ -106,8 +106,8 @@ struct CallReactionBubble: View {
 
 // MARK: Sharing menu
 
-/// The share button: starts sharing; while sharing it opens a menu with "Share system sound"
-/// and "Stop sharing" (desktop `ShareOptionsButton`).
+/// The share button: starts sharing; while sharing it opens a menu with "Share System Sound"
+/// and "Stop Sharing" (desktop `ShareOptionsButton`).
 struct ShareControl: View {
     @ObservedObject var session: CallSession
     @ObservedObject var extras: CallLiveExtras
@@ -115,40 +115,127 @@ struct ShareControl: View {
     var body: some View {
         if session.screenSharing {
             Menu {
-                Button {
-                    Task { await session.setShareSystemSound(!extras.shareSystemSound) }
-                } label: {
-                    Label("Share system sound", systemImage: extras.shareSystemSound ? "checkmark" : "speaker.slash")
+                Toggle(isOn: Binding(
+                    get: { extras.shareSystemSound },
+                    set: { on in Task { await session.setShareSystemSound(on) } }
+                )) {
+                    Label("Share System Sound", systemImage: "speaker.wave.2")
                 }
                 Button(role: .destructive) {
                     Task { await session.stopScreenShare() }
                 } label: {
-                    Label("Stop sharing", systemImage: "xmark")
+                    Label("Stop Sharing", systemImage: "rectangle.on.rectangle.slash")
                 }
             } label: {
                 CallBarIcon(icon: "rectangle.on.rectangle", highlight: true)
             }
-            .accessibilityLabel("Sharing options")
+            .accessibilityLabel("Sharing your screen")
+            .accessibilityHint("Opens the sharing options")
         } else {
             Button { Task { await session.toggleScreenShare() } } label: {
                 CallBarIcon(icon: "rectangle.on.rectangle")
             }
+            .disabled(!session.connected)
             .accessibilityLabel("Share screen")
         }
     }
 }
 
-/// A round button of the call bar.
+/// A round button of the call bar (50 pt, so the tap target is never under 44 pt).
+/// `warn`: an "off" state that matters (muted, deafened); `destructive`: leave, red.
 struct CallBarIcon: View {
     let icon: String
     var highlight = false
+    var warn = false
+    var destructive = false
+
+    private var foreground: Color {
+        if destructive { return .white }
+        if warn { return Theme.danger }
+        return highlight ? Theme.onAccent : Theme.text
+    }
+
+    private var fill: Color {
+        if destructive { return Theme.danger }
+        return highlight ? Theme.accent : Theme.elevated
+    }
 
     var body: some View {
         Image(systemName: icon)
-            .font(.system(size: 18, weight: .semibold))
-            .foregroundStyle(highlight ? Theme.onAccent : Theme.text)
+            .font(.system(size: 19, weight: .semibold))
+            .foregroundStyle(foreground)
             .frame(width: 50, height: 50)
-            .background(Circle().fill(highlight ? Theme.accent : Theme.elevated))
+            .background(Circle().fill(fill))
+            .contentShape(Circle())
+    }
+}
+
+// MARK: More
+
+/// What the "More" button of the call bar opens.
+private enum CallMoreSheet: String, Identifiable {
+    case reactions, soundboard, devices, watchLink
+    var id: String { rawValue }
+}
+
+/// Everything that is not a core action of the call bar: reactions, soundboard, watch together,
+/// deafen and the devices. One button, so the bar stays at six on the smallest iPhone.
+struct CallMoreButton: View {
+    @ObservedObject var session: CallSession
+    @ObservedObject var extras: CallLiveExtras
+    @ObservedObject var watch: WatchTogetherSession
+    @ObservedObject private var watchPrefs = WatchTogetherPrefsStore.shared
+    @ObservedObject private var board = Soundboard.shared
+    @State private var sheet: CallMoreSheet?
+
+    private var watchOffered: Bool { watchPrefs.prefs.enabled && watch.available }
+
+    var body: some View {
+        Menu {
+            Section {
+                Button { sheet = .reactions } label: { Label("Reactions", systemImage: "face.smiling") }
+                    .disabled(!session.connected)
+                Button { sheet = .soundboard } label: { Label("Soundboard", systemImage: "music.note.list") }
+                if board.playing != nil {
+                    Button { board.stopAll() } label: { Label("Stop All Clips", systemImage: "stop.fill") }
+                }
+                if watchOffered {
+                    watchButton
+                }
+            }
+            Section {
+                Button { Task { await session.toggleDeafen() } } label: {
+                    Label(session.deafened ? "Undeafen" : "Deafen", systemImage: session.deafened ? "headphones" : "speaker.slash")
+                }
+                Button { sheet = .devices } label: { Label("Audio Devices", systemImage: "slider.horizontal.3") }
+            }
+        } label: {
+            CallBarIcon(icon: "ellipsis")
+        }
+        .accessibilityLabel("More")
+        .accessibilityHint("Reactions, soundboard, watch together, deafen and audio devices")
+        .sheet(item: $sheet) { which in sheetContent(which) }
+    }
+
+    @ViewBuilder
+    private var watchButton: some View {
+        if watch.hidden {
+            Button { watch.reopen() } label: { Label("Show the Video", systemImage: "play.rectangle") }
+        } else {
+            Button { sheet = .watchLink } label: {
+                Label(watch.running ? "Watch Another Video" : "Watch Together", systemImage: "play.rectangle")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func sheetContent(_ which: CallMoreSheet) -> some View {
+        switch which {
+        case .reactions: CallReactionsSheet(session: session)
+        case .soundboard: SoundboardSheet()
+        case .devices: CallDevicesSheet(session: session, extras: extras)
+        case .watchLink: WatchLinkSheet(watch: watch)
+        }
     }
 }
 

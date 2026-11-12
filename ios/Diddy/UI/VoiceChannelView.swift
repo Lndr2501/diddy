@@ -10,7 +10,6 @@ struct VoiceChannelView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var showChat = false
     @State private var showMembers = false
-    @State private var showSoundboard = false
     @State private var joining = false
     @State private var profile: ProfileTarget?
 
@@ -38,10 +37,6 @@ struct VoiceChannelView: View {
                 }
             }
             ToolbarItemGroup(placement: .navigationBarTrailing) {
-                if calls.current?.roomId == roomId {
-                    Button { showSoundboard = true } label: { Image(systemName: "music.note.list") }
-                        .accessibilityLabel("Soundboard")
-                }
                 Button { showMembers = true } label: { Image(systemName: "person.2.fill") }
                     .accessibilityLabel("Members")
                 Button { showChat = true } label: { Image(systemName: "bubble.left.fill") }
@@ -57,7 +52,6 @@ struct VoiceChannelView: View {
             }
         }
         .sheet(isPresented: $showMembers) { MembersView(account: account, roomId: roomId) }
-        .sheet(isPresented: $showSoundboard) { SoundboardSheet() }
         .sheet(item: $profile) { UserProfileSheet(account: account, userId: $0.userId, roomId: roomId) }
     }
 
@@ -122,8 +116,6 @@ private struct ConnectedVoiceView: View {
     let showProfile: (String) -> Void
     @EnvironmentObject private var calls: CallManager
     @EnvironmentObject private var app: AppModel
-    @State private var showReactions = false
-    @State private var showDevices = false
 
     init(session: CallSession, showProfile: @escaping (String) -> Void) {
         self.session = session
@@ -134,105 +126,143 @@ private struct ConnectedVoiceView: View {
     /// The login that joined this call: member avatars are that account's media.
     private var callAccount: MatrixAccount? { app.accounts.first { $0.id == session.accountId } }
 
-    private var statusLine: String {
-        switch session.outgoing {
-        case .ringing: return "Ringing…"
-        case .noAnswer: return "No answer"
-        case .none: return session.connected ? "\(session.members.count) in voice" : session.state
-        }
-    }
-
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 6) {
-                if !session.connected { ProgressView().scaleEffect(0.7) }
-                Text(statusLine)
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(session.connected && session.outgoing != .noAnswer ? Theme.online : Theme.muted)
-                Spacer()
-                if session.connected { PingBadge(extras: extras) }
-                if session.connected { WatchTogetherButton(watch: session.watchTogether) }
+            CallStatusHeader(session: session, extras: extras)
+            // The video of Watch together above the stage (beside it in landscape), then one tile
+            // per person and per screen share; a tap focuses one (CallStageView.swift).
+            WatchTogetherStage(watch: session.watchTogether) {
+                CallStageView(session: session, account: callAccount, showProfile: showProfile)
             }
-            .padding(.horizontal, 14)
-            .padding(.top, 10)
-            WatchTogetherPanel(watch: session.watchTogether)
-            // One tile per person and per screen share; a tap focuses one (CallStageView.swift).
-            CallStageView(session: session, account: callAccount, showProfile: showProfile)
-            if session.screenSharing && !CallSession.sharesWholeScreen {
-                Text("Sharing Diddy only. Sharing other apps needs iOS 27.")
-                    .font(.footnote).foregroundStyle(Theme.muted).padding(.horizontal)
-            }
-            if let error = session.lastError {
-                Text(error).font(.footnote).foregroundStyle(Theme.danger).padding(.horizontal).padding(.bottom, 6)
-                    .multilineTextAlignment(.center)
-            }
+            notices
             controls
         }
     }
 
+    @ViewBuilder
+    private var notices: some View {
+        if session.screenSharing && !CallSession.sharesWholeScreen {
+            Label("Sharing Diddy only. Sharing other apps needs iOS 27.", systemImage: "info.circle")
+                .font(.footnote)
+                .foregroundStyle(Theme.muted)
+                .padding(.horizontal)
+                .padding(.bottom, 6)
+        }
+        if let error = session.lastError {
+            Label(error, systemImage: "exclamationmark.triangle.fill")
+                .font(.footnote)
+                .foregroundStyle(Theme.danger)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal)
+                .padding(.bottom, 6)
+        }
+    }
+
+    /// The core actions in one row, like FaceTime: speaker, camera, microphone, share, more, leave.
+    /// Each button gets an equal share of the width, so it fits the iPhone SE and landscape.
     private var controls: some View {
-        VStack(spacing: 12) {
-            extraRow
-            controlRow
-        }
-        .padding(.vertical, 14)
-        .frame(maxWidth: .infinity)
-        .background(Theme.sidebar)
-    }
-
-    /// Reactions and the devices menu.
-    private var extraRow: some View {
-        HStack(spacing: 10) {
-            Button { showReactions = true } label: { CallBarIcon(icon: "face.smiling") }
-                .accessibilityLabel("Reactions")
-                .disabled(!session.connected)
-            Button { showDevices = true } label: { CallBarIcon(icon: "slider.horizontal.3") }
-                .accessibilityLabel("Input and output devices")
-        }
-        .sheet(isPresented: $showReactions) { CallReactionsSheet(session: session) }
-        .sheet(isPresented: $showDevices) { CallDevicesSheet(session: session, extras: extras) }
-    }
-
-    private var controlRow: some View {
-        HStack(spacing: 10) {
-            ControlButton(icon: session.speakerOn ? "speaker.wave.2.fill" : "speaker.fill", label: session.speakerOn ? "Use earpiece" : "Use speaker", active: session.speakerOn) {
-                session.toggleSpeaker()
+        HStack(spacing: 0) {
+            Button { session.toggleSpeaker() } label: {
+                CallBarIcon(icon: session.speakerOn ? "speaker.wave.2.fill" : "speaker.fill", highlight: session.speakerOn)
             }
-            ControlButton(icon: session.cameraOn ? "video.fill" : "video.slash.fill", label: session.cameraOn ? "Turn off camera" : "Turn on camera", active: session.cameraOn) {
-                Task { await session.toggleCamera() }
+            .accessibilityLabel("Speaker")
+            .accessibilityValue(session.speakerOn ? "On" : "Off")
+            .frame(maxWidth: .infinity)
+            Button { Task { await session.toggleCamera() } } label: {
+                CallBarIcon(icon: session.cameraOn ? "video.fill" : "video.slash.fill", highlight: session.cameraOn)
             }
-            ControlButton(icon: session.microphoneOn ? "mic.fill" : "mic.slash.fill", label: session.microphoneOn ? "Mute" : "Unmute", active: session.microphoneOn, warn: !session.microphoneOn) {
-                Task { await session.toggleMicrophone() }
+            .accessibilityLabel("Camera")
+            .accessibilityValue(session.cameraOn ? "On" : "Off")
+            .frame(maxWidth: .infinity)
+            Button { Task { await session.toggleMicrophone() } } label: {
+                CallBarIcon(icon: session.microphoneOn ? "mic.fill" : "mic.slash.fill", warn: !session.microphoneOn)
             }
-            ControlButton(icon: session.deafened ? "speaker.slash.fill" : "headphones", label: session.deafened ? "Undeafen" : "Deafen", active: !session.deafened, warn: session.deafened) {
-                Task { await session.toggleDeafen() }
-            }
+            .accessibilityLabel("Microphone")
+            .accessibilityValue(session.microphoneOn ? "On" : "Muted")
+            .frame(maxWidth: .infinity)
             ShareControl(session: session, extras: extras)
-            ControlButton(icon: "phone.down.fill", label: "Leave call", active: true, destructive: true) {
-                Task { await calls.leave() }
+                .frame(maxWidth: .infinity)
+            CallMoreButton(session: session, extras: extras, watch: session.watchTogether)
+                .frame(maxWidth: .infinity)
+            Button { Task { await calls.leave() } } label: {
+                CallBarIcon(icon: "phone.down.fill", destructive: true)
             }
+            .accessibilityLabel("Leave call")
+            .frame(maxWidth: .infinity)
         }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 8)
+        .padding(.top, 12)
+        .padding(.bottom, 10)
+        .frame(maxWidth: 520)
+        .frame(maxWidth: .infinity)
+        .background(Theme.sidebar.ignoresSafeArea(edges: .bottom))
     }
 }
 
-private struct ControlButton: View {
-    let icon: String
-    let label: String
-    var active = true
-    var warn = false
-    var highlight = false
-    var destructive = false
-    let action: () -> Void
+/// The line above the stage: connecting, ringing, reconnecting or how many are here, a "Deafened"
+/// chip (a tap undeafens) and the ping.
+private struct CallStatusHeader: View {
+    @ObservedObject var session: CallSession
+    @ObservedObject var extras: CallLiveExtras
+
+    private var reconnecting: Bool { session.state.hasPrefix("Reconnecting") }
+
+    /// One lit bar: the round trip is 250 ms or more.
+    private var weakConnection: Bool {
+        guard session.connected, let ms = extras.pingMs else { return false }
+        return CallPing.bars(forMs: ms) == 1
+    }
+
+    private var busy: Bool { !session.connected || reconnecting || session.outgoing == .ringing }
+
+    private var text: String {
+        switch session.outgoing {
+        case .ringing: return "Ringing…"
+        case .noAnswer: return "No answer"
+        case .none: break
+        }
+        if reconnecting { return "Reconnecting…" }
+        guard session.connected else { return session.state }
+        let count = session.members.count
+        let people = count == 1 ? "1 in voice" : "\(count) in voice"
+        return weakConnection ? "\(people) · Weak connection" : people
+    }
+
+    private var color: Color {
+        if reconnecting || weakConnection { return Color.orange }
+        if session.connected && session.outgoing != .noAnswer { return Theme.online }
+        return Theme.muted
+    }
 
     var body: some View {
-        Button(action: action) {
-            Image(systemName: icon)
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(warn ? Theme.danger : (destructive ? Color.white : (highlight ? Theme.onAccent : Theme.text)))
-                .frame(width: 50, height: 50)
-                .background(Circle().fill(destructive ? Theme.danger : (highlight ? Theme.accent : Theme.elevated)))
+        HStack(spacing: 8) {
+            if busy { ProgressView().scaleEffect(0.7).frame(width: 16, height: 16) }
+            Text(text)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(color)
+                .lineLimit(1)
+            Spacer(minLength: 4)
+            if session.deafened {
+                Button { Task { await session.toggleDeafen() } } label: {
+                    Label("Deafened", systemImage: "speaker.slash.fill")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Capsule().fill(Theme.danger))
+                        .frame(minHeight: 36)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Deafened")
+                .accessibilityHint("Undeafens you")
+            }
+            if session.connected { PingBadge(extras: extras) }
         }
-        .accessibilityLabel(label)
+        .padding(.horizontal, 14)
+        .frame(minHeight: 36)
+        .accessibilityElement(children: .contain)
     }
 }
 
