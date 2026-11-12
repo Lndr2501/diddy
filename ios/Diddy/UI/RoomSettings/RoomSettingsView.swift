@@ -19,6 +19,7 @@ struct RoomSettingsView: View {
     @State private var confirmEncryption = false
     @State private var confirmRemoveAvatar = false
     @State private var showUpgrade = false
+    @State private var askDiscard = false
 
     init(roomId: String, account: MatrixAccount, onOpenRoom: ((String) -> Void)? = nil) {
         self.roomId = roomId
@@ -29,6 +30,15 @@ struct RoomSettingsView: View {
 
     private var summary: RoomSummary? { account.summary(for: roomId) }
     private var typeWord: String { model.isSpace ? "space" : "room" }
+    /// Name or topic typed but not saved yet.
+    private var hasProfileChanges: Bool {
+        guard let state = model.state else { return false }
+        return profileChanged(state, canName: model.canSendState("m.room.name"), canTopic: model.canSendState("m.room.topic"))
+    }
+    /// Whether the Save of the profile section would be enabled.
+    private var canSaveProfile: Bool {
+        !model.busy && !(model.canSendState("m.room.name") && name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+    }
 
     var body: some View {
         NavigationStack {
@@ -99,7 +109,18 @@ struct RoomSettingsView: View {
             .navigationTitle(model.isSpace ? "Server Settings" : "Channel Settings")
             .navigationBarTitleDisplayMode(.inline)
             .tint(Theme.accent)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        if hasProfileChanges { askDiscard = true } else { dismiss() }
+                    }
+                }
+            }
+            .interactiveDismissDisabled(hasProfileChanges)
+            .discardChangesDialog(isPresented: $askDiscard, saveTitle: canSaveProfile ? "Save" : nil, onSave: {
+                guard let state = model.state else { return false }
+                return await saveProfile(state, canName: model.canSendState("m.room.name"), canTopic: model.canSendState("m.room.topic"))
+            }, onLeave: { dismiss() })
             .task { await reload() }
             .refreshable { await reload() }
             .onChange(of: photo) { item in
@@ -194,7 +215,8 @@ struct RoomSettingsView: View {
             || (canTopic && topic.trimmingCharacters(in: .whitespacesAndNewlines) != (state.topic ?? ""))
     }
 
-    private func saveProfile(_ state: RoomStateSnapshot, canName: Bool, canTopic: Bool) async {
+    @discardableResult
+    private func saveProfile(_ state: RoomStateSnapshot, canName: Bool, canTopic: Bool) async -> Bool {
         let newName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let newTopic = topic.trimmingCharacters(in: .whitespacesAndNewlines)
         let worked = await model.perform {
@@ -210,6 +232,7 @@ struct RoomSettingsView: View {
             name = model.state?.name ?? newName
             topic = model.state?.topic ?? newTopic
         }
+        return worked
     }
 
     private func uploadAvatar(_ item: PhotosPickerItem) async {

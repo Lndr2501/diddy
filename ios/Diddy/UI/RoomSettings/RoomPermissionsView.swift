@@ -9,6 +9,8 @@ struct RoomPermissionsView: View {
     @State private var changes: [PermissionLocation: Int] = [:]
     @State private var applyFailed = false
     @State private var peek: Int?
+    @State private var askDiscard = false
+    @Environment(\.dismiss) private var dismiss
 
     private var state: RoomStateSnapshot? { model.state }
     private var groups: [PermissionGroupModel] { RoomPermissionGroups.groups(isSpace: model.isSpace) }
@@ -59,6 +61,15 @@ struct RoomPermissionsView: View {
         .sheet(item: Binding(get: { peek.map { PeekedPower(power: $0) } }, set: { peek = $0?.power })) { item in
             PeekPermissionsView(model: model, power: item.power)
         }
+        .discardChangesBackButton(!changes.isEmpty, asking: $askDiscard)
+        .interactiveDismissDisabled(!changes.isEmpty)
+        .discardChangesDialog(isPresented: $askDiscard, saveTitle: "Apply Changes", onSave: {
+            guard let levels = state?.powerLevels else { return false }
+            return await apply(levels: levels)
+        }, onDiscard: {
+            changes = [:]
+            applyFailed = false
+        }, onLeave: { dismiss() })
     }
 
     private struct PeekedPower: Identifiable {
@@ -162,13 +173,15 @@ struct RoomPermissionsView: View {
         }
     }
 
-    private func apply(levels: RoomPowerLevelsModel) async {
+    @discardableResult
+    private func apply(levels: RoomPowerLevelsModel) async -> Bool {
         let content = RoomPermissionGroups.applying(changes, to: levels, groups: groups)
         let worked = await model.perform {
             try await model.sendState(RoomRoleChange.powerLevelsType, content: content)
         }
         applyFailed = !worked
         if worked { changes = [:] }
+        return worked
     }
 
     private func change(_ location: PermissionLocation, to power: Int, from current: Int) {
@@ -265,6 +278,7 @@ struct RoomPowersEditor: View {
     @State private var editing: EditedTag?
     @State private var creating = false
     @State private var applyFailed = false
+    @State private var askDiscard = false
 
     private struct EditedTag: Identifiable {
         let power: Int
@@ -342,6 +356,15 @@ struct RoomPowersEditor: View {
                 deleted.remove(power)
             }
         }
+        .discardChangesBackButton(changed, asking: $askDiscard)
+        .interactiveDismissDisabled(changed)
+        .discardChangesDialog(isPresented: $askDiscard, saveTitle: "Apply Changes", onSave: {
+            await apply()
+        }, onDiscard: {
+            edited = nil
+            deleted = []
+            applyFailed = false
+        }, onLeave: { dismiss() })
     }
 
     private func row(_ power: Int) -> some View {
@@ -385,7 +408,8 @@ struct RoomPowersEditor: View {
         }
     }
 
-    private func apply() async {
+    @discardableResult
+    private func apply() async -> Bool {
         let content = RoomPowerTags.content(shown, deleting: deleted)
         let worked = await model.perform {
             try await model.sendState(RoomPowerTags.eventType, content: content)
@@ -395,6 +419,7 @@ struct RoomPowersEditor: View {
             edited = nil
             deleted = []
         }
+        return worked
     }
 }
 
