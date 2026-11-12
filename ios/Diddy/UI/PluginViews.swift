@@ -139,6 +139,7 @@ struct PluginsPanelButton: View {
 struct PluginSettingsView: View {
     @ObservedObject private var store = PluginStore.shared
     @State private var error: String?
+    @State private var pendingRemoval: UserPlugin?
 
     var body: some View {
         List {
@@ -155,7 +156,7 @@ struct PluginSettingsView: View {
                                 .labelsHidden()
                         }
                     }
-                    .swipeActions { Button("Remove", role: .destructive) { store.remove(plugin.id) } }
+                    .swipeActions { Button("Remove", role: .destructive) { pendingRemoval = plugin } }
                 }
                 NavigationLink { AddPluginView() } label: { Label("Add Plugin", systemImage: "plus.circle.fill") }
                     .disabled(store.plugins.count >= PluginRules.maxPlugins)
@@ -192,6 +193,19 @@ struct PluginSettingsView: View {
         .alert("Plugins", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
             Button("OK", role: .cancel) {}
         } message: { Text(error ?? "") }
+        .confirmationDialog(
+            "Remove \(pendingRemoval?.name ?? "plugin")?",
+            isPresented: Binding(get: { pendingRemoval != nil }, set: { if !$0 { pendingRemoval = nil } }),
+            titleVisibility: .visible
+        ) {
+            Button("Remove Plugin", role: .destructive) {
+                if let plugin = pendingRemoval { store.remove(plugin.id) }
+                pendingRemoval = nil
+            }
+            Button("Cancel", role: .cancel) { pendingRemoval = nil }
+        } message: {
+            Text("The data this plugin saved on this device is deleted too.")
+        }
     }
 
     private func sourceLabel(_ plugin: UserPlugin) -> String {
