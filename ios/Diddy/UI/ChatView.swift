@@ -586,12 +586,17 @@ private struct ChatContent: View {
         }
     }
 
-    /// The `@word` being typed at the end of the message, if any.
+    /// The `@word` being typed at the cursor, if any.
     private var mentionQuery: String? {
-        guard let at = draft.lastIndex(of: "@") else { return nil }
-        if at != draft.startIndex, !draft[draft.index(before: at)].isWhitespace { return nil }
-        let query = draft[draft.index(after: at)...]
-        return query.contains(where: \.isWhitespace) ? nil : String(query)
+        if case .user(let query)? = ComposerQuery.current(in: draft, selection: selection) { return query }
+        return nil
+    }
+
+    /// Replaces the word at the cursor with a picked suggestion and puts the cursor after it.
+    private func replaceWordAtCursor(with replacement: String) {
+        let result = ComposerQuery.replacingWord(in: draft, selection: selection, with: replacement)
+        draft = result.text
+        selection = result.selection
     }
 
     private var mentionSuggestions: [MemberEntry] {
@@ -603,10 +608,9 @@ private struct ChatContent: View {
     }
 
     private func insertMention(_ member: MemberEntry) {
-        guard let at = draft.lastIndex(of: "@") else { return }
-        draft = String(draft[..<at]) + "@\(member.name) "
+        guard mentionQuery != nil else { return }
         mentions[member.name] = member.userId
-        selection = NSRange(location: (draft as NSString).length, length: 0)
+        replaceWordAtCursor(with: "@\(member.name) ")
         saveDraft()
     }
 
@@ -887,29 +891,26 @@ private struct ChatContent: View {
                     }
                 }
             }
-            if case .room(let query) = ComposerQuery.current(in: draft) {
+            if case .room(let query)? = ComposerQuery.current(in: draft, selection: selection) {
                 ForEach(account.rooms.filter { $0.isJoined && !$0.isSpace && (query.isEmpty || $0.name.localizedCaseInsensitiveContains(query)) }.prefix(6)) { room in
                     ComposerSuggestionRow(symbol: "number", title: room.name) {
                         let key = "#" + room.name
                         tokens[key] = .room(id: room.canonicalAlias ?? room.id, via: [])
-                        draft = ComposerQuery.replacingWord(in: draft, with: key + " ")
-                        selection = NSRange(location: (draft as NSString).length, length: 0)
+                        replaceWordAtCursor(with: key + " ")
                     }
                 }
             }
-            if case .emoticon(let query) = ComposerQuery.current(in: draft) {
+            if case .emoticon(let query)? = ComposerQuery.current(in: draft, selection: selection) {
                 ForEach(EmojiCatalog.search(query, limit: 5)) { emoji in
                     ComposerSuggestionRow(glyph: emoji.unicode, title: ":" + emoji.shortcode + ":") {
-                        draft = ComposerQuery.replacingWord(in: draft, with: emoji.unicode + " ")
-                        selection = NSRange(location: (draft as NSString).length, length: 0)
+                        replaceWordAtCursor(with: emoji.unicode + " ")
                     }
                 }
                 ForEach(Array(customEmojiMatches(query).enumerated()), id: \.offset) { _, image in
                     ComposerSuggestionRow(title: ":" + image.shortcode + ":", imageURL: image.url, account: account) {
                         let key = ":" + image.shortcode + ":"
                         tokens[key] = .emoticon(mxc: image.url, shortcode: image.shortcode)
-                        draft = ComposerQuery.replacingWord(in: draft, with: key + " ")
-                        selection = NSRange(location: (draft as NSString).length, length: 0)
+                        replaceWordAtCursor(with: key + " ")
                     }
                 }
             }

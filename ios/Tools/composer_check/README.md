@@ -6,6 +6,7 @@ swiftc -swift-version 5 Diddy/Matrix/DesktopMarkdown.swift Diddy/Matrix/EmojiDat
 ```
 
 Covers draft persistence and account separation, reply restoration data, UTF-16 formatting,
+autocomplete queries and replacement at the cursor (UTF-16),
 mention HTML and notification IDs, room links, Markdown disabled/enabled, emoji data and pack
 usage overrides, slash parsing, DM conversion and upload limits.
 

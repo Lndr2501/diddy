@@ -242,6 +242,59 @@ enum ComposerQuery: Equatable {
         let length = draft.reversed().prefix { !$0.isWhitespace && !$0.isNewline }.count
         return String(draft.dropLast(length)) + replacement
     }
+
+    /// The word at the cursor (a collapsed `selection`, UTF-16 like `UITextView`): `typed` runs
+    /// from the word's start to the cursor, `range` to the word's end, which a suggestion replaces.
+    /// Nil while text is selected or the cursor sits inside a character.
+    static func word(in draft: String, selection: NSRange) -> (typed: String, range: NSRange)? {
+        let ns = draft as NSString
+        guard selection.length == 0, selection.location != NSNotFound else { return nil }
+        let cursor = min(max(selection.location, 0), ns.length)
+        guard let before = Range(NSRange(location: 0, length: cursor), in: draft),
+              let after = Range(NSRange(location: cursor, length: ns.length - cursor), in: draft) else { return nil }
+        let typed = String(draft[before].reversed().prefix { !$0.isWhitespace }.reversed())
+        let rest = draft[after].prefix { !$0.isWhitespace }
+        let typedLength = (typed as NSString).length
+        let restLength = (String(rest) as NSString).length
+        return (typed, NSRange(location: cursor - typedLength, length: typedLength + restLength))
+    }
+
+    /// What the word at the cursor asks for; the same prefixes as `current(in:)`.
+    static func current(in draft: String, selection: NSRange) -> ComposerQuery? {
+        guard let word = word(in: draft, selection: selection), let first = word.typed.first else { return nil }
+        let rest = String(word.typed.dropFirst())
+        switch first {
+        case "@": return .user(rest)
+        case "#": return .room(rest)
+        case ":": return rest.contains(":") ? nil : .emoticon(rest)
+        case "/":
+            let whole = word.range.location == 0 && word.range.length == (draft as NSString).length
+            return whole ? .command(rest) : nil
+        default: return nil
+        }
+    }
+
+    /// The draft with the word at the cursor replaced by `replacement` (inserted at the cursor
+    /// when there is no word), and the cursor after it.
+    static func replacingWord(in draft: String, selection: NSRange, with replacement: String) -> (text: String, selection: NSRange) {
+        let ns = draft as NSString
+        let target: NSRange
+        if let word = word(in: draft, selection: selection) {
+            target = word.range
+        } else {
+            let start = min(max(selection.location == NSNotFound ? ns.length : selection.location, 0), ns.length)
+            target = NSRange(location: start, length: min(max(selection.length, 0), ns.length - start))
+        }
+        // A word in the middle already has a space after it: reuse it instead of doubling it.
+        var inserted = replacement
+        let end = NSMaxRange(target)
+        if inserted.hasSuffix(" "), end < ns.length, ns.character(at: end) == 0x20 {
+            inserted.removeLast()
+        }
+        let text = ns.replacingCharacters(in: target, with: inserted)
+        let skip = inserted.count < replacement.count ? 1 : 0
+        return (text, NSRange(location: target.location + (inserted as NSString).length + skip, length: 0))
+    }
 }
 
 // MARK: - Turning the draft into a message (desktop components/editor/output.ts)
