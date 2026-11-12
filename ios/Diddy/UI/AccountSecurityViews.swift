@@ -12,7 +12,8 @@ struct ContactInfoView: View {
         List {
             Section {
                 if let error {
-                    Text(error).foregroundStyle(Theme.danger)
+                    Text(error).font(.footnote).foregroundStyle(Theme.danger)
+                    Button("Try Again") { Task { await load() } }
                 } else if !loading && emails.isEmpty {
                     Text("No email address").foregroundStyle(Theme.muted)
                 }
@@ -25,7 +26,7 @@ struct ContactInfoView: View {
                 Text("Email address attached to your account. Change it on your server's account page.")
             }
         }
-        .overlay { if loading { ProgressView() } }
+        .overlay { if loading && emails.isEmpty { ProgressView() } }
         .scrollContentBackground(.hidden)
         .background(Theme.sidebar)
         .navigationTitle("Contact Information")
@@ -58,6 +59,8 @@ struct DeveloperToolsView: View {
         List {
             Section {
                 Toggle("Enable Developer Tools", isOn: $enabled)
+            } footer: {
+                Text("For debugging: your access token and the raw account data of your account.")
             }
             if enabled {
                 Section {
@@ -96,7 +99,7 @@ struct DeveloperToolsView: View {
                     TextField("Event type", text: $typeName)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
-                    NavigationLink("Look up") { AccountDataView(account: account, type: typeName.trimmingCharacters(in: .whitespaces)) }
+                    NavigationLink("Look Up") { AccountDataView(account: account, type: typeName.trimmingCharacters(in: .whitespaces)) }
                         .disabled(typeName.trimmingCharacters(in: .whitespaces).isEmpty)
                 } header: {
                     Text("Other Type")

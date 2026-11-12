@@ -36,13 +36,13 @@ struct EncryptionSettingsView: View {
     var body: some View {
         List {
             Section {
-                LabeledContent("This session", value: account.verificationState == .verified ? "Verified" : "Not verified")
+                LabeledContent("This Session", value: account.verificationState == .verified ? "Verified" : "Not Verified")
                 if account.verificationState != .verified {
                     Button { Task { await VerificationCenter.of(account).requestDeviceVerification() } } label: {
-                        Label("Verify with another device", systemImage: "iphone.and.arrow.forward")
+                        Label("Verify with Another Device", systemImage: "iphone.and.arrow.forward")
                     }
                     Button { showRecoveryEntry = true } label: {
-                        Label("Enter recovery key", systemImage: "key.fill")
+                        Label("Enter Recovery Key", systemImage: "key.fill")
                     }
                 }
             } header: {
@@ -57,9 +57,9 @@ struct EncryptionSettingsView: View {
                 LabeledContent("Recovery", value: recoveryText)
                 switch account.recoveryState {
                 case .disabled:
-                    Button { showSetup = true } label: { Label("Set up recovery", systemImage: "key.viewfinder") }
+                    Button { showSetup = true } label: { Label("Set Up Recovery", systemImage: "key.viewfinder") }
                 case .enabled, .incomplete:
-                    Button { showChange = true } label: { Label("Change recovery key", systemImage: "arrow.triangle.2.circlepath") }
+                    Button { showChange = true } label: { Label("Change Recovery Key", systemImage: "arrow.triangle.2.circlepath") }
                 case .unknown:
                     EmptyView()
                 }
@@ -73,16 +73,16 @@ struct EncryptionSettingsView: View {
                 LabeledContent("Backup", value: backupText)
                 if let backupInfo {
                     LabeledContent("Version", value: backupInfo.version)
-                    if let count = backupInfo.count { LabeledContent("Keys on server", value: String(count)) }
+                    if let count = backupInfo.count { LabeledContent("Keys on Server", value: String(count)) }
                 }
                 if let backupError { Text(backupError).font(.footnote).foregroundStyle(Theme.danger) }
                 if backupInfo != nil && account.backupStateNow() != .enabled {
-                    Button { showRecoveryEntry = true } label: { Label("Restore backup", systemImage: "arrow.down.circle") }
+                    Button { showRecoveryEntry = true } label: { Label("Restore Backup", systemImage: "arrow.down.circle") }
                 }
                 if backupChecked && backupInfo == nil && account.backupStateNow() != .enabled {
                     Button { Task { await createBackup() } } label: {
                         HStack {
-                            Label("Create backup", systemImage: "externaldrive.badge.icloud")
+                            Label("Create Backup", systemImage: "externaldrive.badge.icloud")
                             if backupBusy { Spacer(); ProgressView() }
                         }
                     }
@@ -96,7 +96,7 @@ struct EncryptionSettingsView: View {
 
             Section {
                 Button(role: .destructive) { showReset = true } label: {
-                    Label("Reset device verification", systemImage: "exclamationmark.octagon.fill")
+                    Label("Reset Device Verification", systemImage: "exclamationmark.octagon.fill")
                 }
             } footer: {
                 Text("Starts your encryption over. Only do this if you lost your recovery key and every other verified device.")
@@ -212,7 +212,7 @@ struct RecoveryKeySheet: View {
                             if mode == .change { confirmChange = true } else { Task { await run() } }
                         } label: {
                             HStack {
-                                Text(mode == .setup ? "Continue" : "Make new recovery key")
+                                Text(mode == .setup ? "Continue" : "Make New Recovery Key")
                                 if busy { Spacer(); ProgressView() }
                             }
                         }
@@ -223,7 +223,7 @@ struct RecoveryKeySheet: View {
             }
             .scrollContentBackground(.hidden)
             .background(Theme.sidebar)
-            .navigationTitle(mode == .setup ? "Set up recovery" : "Change recovery key")
+            .navigationTitle(mode == .setup ? "Set Up Recovery" : "Change Recovery Key")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -303,7 +303,7 @@ struct ResetIdentitySheet: View {
                         SecureField("Password", text: $password)
                             .textContentType(.password)
                     } header: {
-                        Text("Confirm it is you")
+                        Text("Confirm It\u{2019}s You")
                     } footer: {
                         Text("Your server asks for your account password to reset the keys.")
                     }
@@ -315,14 +315,14 @@ struct ResetIdentitySheet: View {
                 case .approve(let url, let session):
                     Section {
                         if let url {
-                            Link(destination: url) { Label("Approve in your browser", systemImage: "safari") }
+                            Link(destination: url) { Label("Approve in Your Browser", systemImage: "safari") }
                         }
                         Text("Approve the reset on your account page, then come back and continue.")
                             .foregroundStyle(Theme.muted)
                     }
                     if let error { Text(error).foregroundStyle(Theme.danger) }
                     Section {
-                        Button("I approved it") { Task { await finishApproval(session: session) } }
+                        Button("I Approved It") { Task { await finishApproval(session: session) } }
                     }
                 case .done:
                     Section {
@@ -334,7 +334,7 @@ struct ResetIdentitySheet: View {
             }
             .scrollContentBackground(.hidden)
             .background(Theme.sidebar)
-            .navigationTitle("Reset device verification")
+            .navigationTitle("Reset Device Verification")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

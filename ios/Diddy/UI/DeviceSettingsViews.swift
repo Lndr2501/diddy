@@ -36,12 +36,17 @@ struct DevicesView: View {
 
     var body: some View {
         List {
-            if let error { Text(error).foregroundStyle(Theme.danger) }
+            if let error {
+                Section {
+                    Text(error).font(.footnote).foregroundStyle(Theme.danger)
+                    Button("Try Again") { Task { await load() } }
+                }
+            }
             Section {
                 LabeledContent("Device Verification", value: summary)
                 if account.verificationState != .verified {
                     Button { Task { await VerificationCenter.of(account).requestDeviceVerification() } } label: {
-                        Label("Verify with another device", systemImage: "iphone.and.arrow.forward")
+                        Label("Verify with Another Device", systemImage: "iphone.and.arrow.forward")
                     }
                 }
                 NavigationLink { EncryptionSettingsView(account: account) } label: {
@@ -75,7 +80,7 @@ struct DevicesView: View {
                 }
             }
         }
-        .overlay { if loading { ProgressView() } }
+        .overlay { if loading && devices.isEmpty { ProgressView() } }
         .scrollContentBackground(.hidden)
         .background(Theme.sidebar)
         .navigationTitle("Devices")
@@ -83,7 +88,7 @@ struct DevicesView: View {
         .task { await load() }
         .refreshable { await load() }
         .verificationSheet(account: account)
-        .alert("Rename device", isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
+        .alert("Rename Device", isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
             TextField("Name", text: $newName)
             Button("Save") { if let device = renaming { Task { await rename(device) } } }
             Button("Cancel", role: .cancel) {}
@@ -271,7 +276,7 @@ private struct DevicePasswordSheet: View {
             }
             .scrollContentBackground(.hidden)
             .background(Theme.sidebar)
-            .navigationTitle("Confirm it is you")
+            .navigationTitle("Confirm It\u{2019}s You")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
         }
