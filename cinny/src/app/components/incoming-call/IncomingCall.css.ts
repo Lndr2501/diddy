@@ -2,32 +2,35 @@ import { keyframes, style } from '@vanilla-extract/css';
 import { color } from 'folds';
 
 /*
- * Incoming call banner at the top of the window. The sequence, all in CSS:
- *   1. a round bubble with a phone drops in from the top (0-420 ms)
- *   2. the phone rings: a short shake (380-900 ms)
- *   3. the bubble opens into the full card, the phone slides to its place on the left (850-1300 ms)
- *   4. name, line and buttons fade in (1100-1550 ms)
- *   5. a green wash spreads from the phone across the card (1250-1900 ms)
- *   6. while it rings: the phone wobbles every 1.8 s and soft rings ripple out of it
- * With reduced motion the card simply fades in, already coloured.
+ * Incoming call banner at the top of the window, one continuous motion (about 0.9 s):
+ *   1. a green bubble with the phone drops in from the top (0-420 ms)
+ *   2. the phone rings once (300-760 ms)
+ *   3. the bubble opens sideways into the card; the colour opens with it, the phone glides to the
+ *      left (600-1000 ms), text and buttons arrive while it settles (760-1080 ms)
+ *   4. the phone steps back to a quiet tint, so only the answer button stays bright (880-1200 ms)
+ *   5. while it rings: a short wobble every 2 s and one soft ring around the phone
+ * The card is a single solid colour (Success container) so nothing sweeps or blends on top.
+ * Only transform, opacity and one clip-path are animated. Reduced motion: a plain fade.
  */
 
 const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
-const SPRING = 'cubic-bezier(0.34, 1.4, 0.64, 1)';
-const EASE_OUT = 'cubic-bezier(0.2, 0, 0, 1)';
+const SPRING = 'cubic-bezier(0.3, 1.35, 0.6, 1)';
+const EASE = 'cubic-bezier(0.32, 0.72, 0, 1)';
 
 export const CARD_HEIGHT = 64;
+const R = CARD_HEIGHT / 2;
 const ICON = 44;
 const PAD = (CARD_HEIGHT - ICON) / 2;
-const ICON_CENTER_X = PAD + ICON / 2;
+const WIDTH = 'min(420px, calc(100vw - 24px))';
 
 const dropIn = keyframes({
-  from: { transform: 'translateY(-96px) scale(0.6)', opacity: 0 },
+  from: { transform: 'translateY(-88px) scale(0.5)', opacity: 0 },
+  '60%': { opacity: 1 },
   to: { transform: 'translateY(0) scale(1)', opacity: 1 },
 });
 const leave = keyframes({
   from: { transform: 'translateY(0) scale(1)', opacity: 1 },
-  to: { transform: 'translateY(-110%) scale(0.92)', opacity: 0 },
+  to: { transform: 'translateY(-24px) scale(0.96)', opacity: 0 },
 });
 const fadeIn = keyframes({ from: { opacity: 0 }, to: { opacity: 1 } });
 
@@ -35,27 +38,24 @@ export const Host = style({
   position: 'fixed',
   left: '50%',
   zIndex: 1001,
-  width: `min(420px, calc(100vw - 24px))`,
-  marginLeft: `calc(min(420px, calc(100vw - 24px)) / -2)`,
-  // the card is clipped while it opens; a drop shadow on the parent follows the clipped shape
-  filter: 'drop-shadow(0 10px 28px rgba(0, 0, 0, 0.32)) drop-shadow(0 2px 6px rgba(0, 0, 0, 0.18))',
+  width: WIDTH,
+  marginLeft: `calc(${WIDTH} / -2)`,
+  // follows the clipped shape while the card opens
+  filter: 'drop-shadow(0 8px 20px rgba(0, 0, 0, 0.28)) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2))',
   animation: `${dropIn} 420ms ${SPRING} both`,
-  '@media': { [REDUCED_MOTION]: { animation: `${fadeIn} 200ms linear both` } },
+  '@media': { [REDUCED_MOTION]: { animation: `${fadeIn} 180ms linear both` } },
 });
 export const Leaving = style({
-  animation: `${leave} 260ms ${EASE_OUT} both`,
+  animation: `${leave} 220ms ${EASE} both`,
   pointerEvents: 'none',
   '@media': { [REDUCED_MOTION]: { animation: `${leave} 1ms linear both` } },
 });
 
-/* 3. bubble -> card: the clip opens from a circle in the middle to the whole card */
+/* the bubble is the card clipped to a circle in the middle; it opens to the full card */
 const open = keyframes({
-  from: {
-    clipPath: `inset(0 calc(50% - ${CARD_HEIGHT / 2}px) 0 calc(50% - ${CARD_HEIGHT / 2}px) round ${CARD_HEIGHT / 2}px)`,
-  },
-  to: { clipPath: `inset(0 0 0 0 round ${CARD_HEIGHT / 2}px)` },
+  from: { clipPath: `inset(0 calc(50% - ${R}px) round ${R}px)` },
+  to: { clipPath: `inset(0 0 round ${R}px)` },
 });
-
 export const Card = style({
   position: 'relative',
   height: CARD_HEIGHT,
@@ -63,39 +63,32 @@ export const Card = style({
   display: 'flex',
   alignItems: 'center',
   gap: 12,
-  padding: `0 ${PAD}px 0 ${ICON + PAD * 2}px`,
-  borderRadius: CARD_HEIGHT / 2,
-  overflow: 'hidden',
-  background: color.Surface.Container,
-  color: color.Surface.OnContainer,
-  animation: `${open} 450ms ${EASE_OUT} 850ms both`,
+  padding: `0 ${PAD + 2}px 0 ${ICON + PAD + 12}px`,
+  borderRadius: R,
+  background: color.Success.Container,
+  color: color.Success.OnContainer,
+  boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${color.Success.OnContainer} 10%, transparent)`,
+  animation: `${open} 400ms ${EASE} 600ms both`,
   '@media': { [REDUCED_MOTION]: { animation: 'none' } },
 });
 
-/* 5. the green wash, spreading as a circle from the phone */
-const wash = keyframes({
-  from: { clipPath: `circle(0px at ${ICON_CENTER_X}px 50%)` },
-  to: { clipPath: `circle(520px at ${ICON_CENTER_X}px 50%)` },
+/* the phone sits in a full-width layer so it can glide from the middle to the left by transform */
+const glide = keyframes({
+  from: { transform: `translateX(calc(50% - ${R}px))` },
+  to: { transform: 'translateX(0)' },
 });
-export const Wash = style({
+export const PhoneTrack = style({
   position: 'absolute',
   inset: 0,
   pointerEvents: 'none',
-  background: `radial-gradient(circle at ${ICON_CENTER_X}px 50%, color-mix(in srgb, ${color.Success.Main} 34%, ${color.Surface.Container}) 0%, color-mix(in srgb, ${color.Success.Main} 16%, ${color.Surface.Container}) 45%, color-mix(in srgb, ${color.Success.Main} 10%, ${color.Surface.Container}) 100%)`,
-  boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${color.Success.Main} 30%, transparent)`,
-  borderRadius: 'inherit',
-  animation: `${wash} 650ms ${EASE_OUT} 1250ms both`,
+  animation: `${glide} 400ms ${EASE} 600ms both`,
   '@media': { [REDUCED_MOTION]: { animation: 'none' } },
 });
-
-/* the phone: in the middle of the bubble first, then on the left of the card */
-const slideLeft = keyframes({
-  from: { left: `calc(50% - ${ICON / 2}px)` },
-  to: { left: PAD },
-});
-const turnGreen = keyframes({
-  from: { background: color.SurfaceVariant.Container, color: color.SurfaceVariant.OnContainer },
-  to: { background: color.Success.Main, color: color.Success.OnMain },
+/* bright while it is the bubble, then it steps back so only "Answer" stays bright green */
+const SUBTLE = `color-mix(in srgb, ${color.Success.OnContainer} 14%, transparent)`;
+const settle = keyframes({
+  from: { background: color.Success.Main, color: color.Success.OnMain },
+  to: { background: SUBTLE, color: color.Success.OnContainer },
 });
 export const Phone = style({
   position: 'absolute',
@@ -106,70 +99,67 @@ export const Phone = style({
   borderRadius: '50%',
   display: 'grid',
   placeItems: 'center',
-  background: color.Success.Main,
-  color: color.Success.OnMain,
-  animation: `${slideLeft} 450ms ${EASE_OUT} 850ms both, ${turnGreen} 350ms ease-out 1250ms both`,
+  background: SUBTLE,
+  color: color.Success.OnContainer,
+  animation: `${settle} 320ms ease-out 880ms both`,
   '@media': { [REDUCED_MOTION]: { animation: 'none' } },
 });
 
-/* 2. + 6. ringing: one shake on arrival, then a short wobble every 1.8 s */
-const shake = keyframes({
+const ringOnce = keyframes({
   '0%, 100%': { transform: 'rotate(0deg)' },
-  '10%, 30%, 50%, 70%': { transform: 'rotate(-16deg)' },
-  '20%, 40%, 60%, 80%': { transform: 'rotate(16deg)' },
+  '15%, 45%, 75%': { transform: 'rotate(-14deg)' },
+  '30%, 60%, 90%': { transform: 'rotate(14deg)' },
 });
 const wobble = keyframes({
-  '0%, 40%, 100%': { transform: 'rotate(0deg)' },
-  '5%, 15%, 25%': { transform: 'rotate(-12deg)' },
-  '10%, 20%, 30%': { transform: 'rotate(12deg)' },
+  '0%, 30%, 100%': { transform: 'rotate(0deg)' },
+  '5%, 15%, 25%': { transform: 'rotate(-10deg)' },
+  '10%, 20%': { transform: 'rotate(10deg)' },
 });
 export const PhoneGlyph = style({
   display: 'grid',
   placeItems: 'center',
-  animation: `${shake} 520ms ease-in-out 380ms both, ${wobble} 1.8s ease-in-out 2s infinite`,
+  animation: `${ringOnce} 460ms ease-in-out 300ms both, ${wobble} 2s ease-in-out 1.6s infinite`,
   '@media': { [REDUCED_MOTION]: { animation: 'none' } },
 });
 
-const ripple = keyframes({
-  from: { transform: 'scale(1)', opacity: 0.55 },
-  to: { transform: 'scale(1.9)', opacity: 0 },
+/* one soft ring that stays inside the card */
+const pulse = keyframes({
+  from: { transform: 'scale(1)', opacity: 0.5 },
+  to: { transform: 'scale(1.42)', opacity: 0 },
 });
 export const Ripple = style({
   position: 'absolute',
   inset: 0,
   borderRadius: '50%',
-  border: `2px solid ${color.Success.Main}`,
+  boxShadow: `0 0 0 2px color-mix(in srgb, ${color.Success.OnContainer} 45%, transparent)`,
   opacity: 0,
-  animation: `${ripple} 1.8s ease-out 1.9s infinite`,
-  selectors: { '&:nth-child(2)': { animationDelay: '2.5s' } },
+  animation: `${pulse} 2s ${EASE} 1.6s infinite`,
   '@media': { [REDUCED_MOTION]: { display: 'none' } },
 });
 
-/* 4. text and buttons */
-const rise = keyframes({
-  from: { opacity: 0, transform: 'translateY(4px)' },
-  to: { opacity: 1, transform: 'translateY(0)' },
+const arrive = keyframes({
+  from: { opacity: 0, transform: 'translateX(-6px)' },
+  to: { opacity: 1, transform: 'translateX(0)' },
 });
 export const Text = style({
-  position: 'relative',
   flex: 1,
   minWidth: 0,
   display: 'flex',
   flexDirection: 'column',
   gap: 1,
-  animation: `${rise} 350ms ${EASE_OUT} 1100ms both`,
+  animation: `${arrive} 300ms ${EASE} 780ms both`,
   '@media': { [REDUCED_MOTION]: { animation: 'none' } },
 });
 const line = style({ overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' });
 export const Title = style([line, { fontSize: 15, fontWeight: 600, lineHeight: '19px' }]);
-export const Subtitle = style([line, { fontSize: 13, lineHeight: '17px', opacity: 0.75 }]);
+export const Subtitle = style([line, { fontSize: 13, lineHeight: '17px', opacity: 0.72 }]);
 export const Problem = style([line, { fontSize: 12, lineHeight: '16px', color: color.Critical.Main }]);
 
 const pop = keyframes({
-  from: { opacity: 0, transform: 'scale(0.6)' },
+  from: { opacity: 0, transform: 'scale(0.7)' },
   to: { opacity: 1, transform: 'scale(1)' },
 });
-export const Actions = style({ position: 'relative', display: 'flex', gap: 8, flexShrink: 0 });
+export const Actions = style({ display: 'flex', gap: 8, flexShrink: 0 });
 const action = style({
   width: 40,
   height: 40,
@@ -181,12 +171,12 @@ const action = style({
   placeItems: 'center',
   cursor: 'pointer',
   transition: 'transform 120ms ease-out, filter 120ms ease-out',
-  animation: `${pop} 320ms ${SPRING} 1200ms both`,
+  animation: `${pop} 280ms ${SPRING} 820ms both`,
   selectors: {
     '&:hover:not(:disabled)': { filter: 'brightness(1.08)' },
     '&:active:not(:disabled)': { transform: 'scale(0.92)' },
     '&:disabled': { opacity: 0.45, cursor: 'default' },
-    '&:focus-visible': { outline: `2px solid ${color.Surface.OnContainer}`, outlineOffset: 2 },
+    '&:focus-visible': { outline: `2px solid ${color.Success.OnContainer}`, outlineOffset: 2 },
   },
   '@media': { [REDUCED_MOTION]: { animation: 'none' } },
 });
@@ -196,11 +186,7 @@ export const Decline = style([
 ]);
 export const Accept = style([
   action,
-  {
-    background: color.Success.Main,
-    color: color.Success.OnMain,
-    animationDelay: '1280ms',
-  },
+  { background: color.Success.Main, color: color.Success.OnMain, animationDelay: '880ms' },
 ]);
 /* the hang-up symbol is the phone turned down */
-export const HangUp = style({ transform: 'rotate(135deg)' });
+export const HangUp = style({ display: 'grid', transform: 'rotate(135deg)' });

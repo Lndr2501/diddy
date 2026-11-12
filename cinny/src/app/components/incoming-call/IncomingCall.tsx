@@ -37,8 +37,8 @@ type IncomingCallProps = {
 };
 
 /**
- * Incoming call banner at the top of the window: a ringing phone drops in, opens into a card and
- * colours it green. Answer and reject (in a group: ignore) sit on the right. Not modal: the rest of
+ * Incoming call banner at the top of the window: a green bubble with a ringing phone drops in and
+ * opens into the card. Answer and reject (in a group: ignore) sit on the right. Not modal: the rest of
  * the app stays usable while it rings.
  */
 export function IncomingCall({ dm, info, leaving, onIgnore, onAnswer, onReject }: IncomingCallProps) {
@@ -93,12 +93,12 @@ export function IncomingCall({ dm, info, leaving, onIgnore, onAnswer, onReject }
       aria-label={`${text.title}: ${text.subtitle}`}
     >
       <div className={css.Card}>
-        <span className={css.Wash} aria-hidden />
-        <span className={css.Phone} aria-hidden>
-          <span className={css.Ripple} />
-          <span className={css.Ripple} />
-          <span className={css.PhoneGlyph}>
-            <Icon size="200" src={text.video ? Icons.VideoCamera : Icons.Phone} filled />
+        <span className={css.PhoneTrack} aria-hidden>
+          <span className={css.Phone}>
+            <span className={css.Ripple} />
+            <span className={css.PhoneGlyph}>
+              <Icon size="200" src={text.video ? Icons.VideoCamera : Icons.Phone} filled />
+            </span>
           </span>
         </span>
         <div className={css.Text}>
