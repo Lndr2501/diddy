@@ -302,10 +302,11 @@ struct VoiceMicButton: View {
 
     var body: some View {
         Button { Task { await recorder.start() } } label: {
-            Image(systemName: "mic.fill")
-                .font(.system(size: 17))
+            Image(systemName: "mic")
+                .font(.system(size: 18))
                 .foregroundStyle(Theme.muted)
-                .frame(width: 36, height: 36)
+                .frame(width: ChatStyle.minTapSize, height: ChatStyle.minTapSize)
+                .contentShape(Rectangle())
         }
         .accessibilityLabel("Record voice message")
         .alert("Voice message", isPresented: Binding(get: { recorder.error != nil }, set: { if !$0 { recorder.error = nil } })) {

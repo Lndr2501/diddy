@@ -178,7 +178,7 @@ struct RichMessageBody: View {
     var onLink: (URL) -> OpenURLAction.Result = { _ in .systemAction }
 
     @StateObject private var state = RichRenderState()
-    @ScaledMetric(relativeTo: .body) private var emojiHeight: CGFloat = 20
+    @ScaledMetric(relativeTo: .subheadline) private var emojiHeight: CGFloat = 18
 
     private var document: RichDocument {
         var resolved = source
@@ -246,7 +246,7 @@ private struct RichBlocksView: View {
     private func blockView(_ block: RichBlock, edited: Bool) -> some View {
         switch block {
         case .paragraph(let inlines):
-            line(inlines, font: .body, edited: edited)
+            line(inlines, font: ChatStyle.bodyFont, edited: edited)
         case .heading(let level, let inlines):
             line(inlines, font: Self.headingFont(level), edited: edited)
         case .code(let code, let label):
@@ -262,6 +262,7 @@ private struct RichBlocksView: View {
                 ForEach(Array(items.enumerated()), id: \.offset) { pair in
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text(verbatim: ordered ? "\(start + pair.offset)." : "•")
+                            .font(ChatStyle.bodyFont)
                             .foregroundStyle(Theme.muted)
                             .frame(minWidth: 18, alignment: .trailing)
                         AnyView(RichBlocksView(blocks: pair.element, state: state, ownUserId: ownUserId))
@@ -306,10 +307,11 @@ private struct RichBlocksView: View {
 
     private static func headingFont(_ level: Int) -> Font {
         switch level {
-        case 1: return .title2.bold()
-        case 2: return .title3.bold()
-        case 3: return .headline
-        default: return .subheadline.bold()
+        // One step smaller than before, like the message text.
+        case 1: return .title3.bold()
+        case 2: return .headline
+        case 3: return .subheadline.bold()
+        default: return .subheadline.weight(.semibold)
         }
     }
 }

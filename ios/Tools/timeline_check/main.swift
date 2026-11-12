@@ -121,4 +121,14 @@ check(TimelineLayout.hiddenSetupLines([
     .membership(.unbanned, at(0)), .membership(.banned, at(1)),
 ], isDirect: true, createdAt: at(0)).isEmpty, "unban and ban stay")
 
+// The day divider says Today and Yesterday by the calendar day, not by 24 hours.
+var utc = Calendar(identifier: .gregorian)
+utc.timeZone = TimeZone(identifier: "UTC")!
+let noon = Date(timeIntervalSince1970: 1_794_484_800) // 2026-11-12 12:00 UTC
+check(TimelineLayout.day(of: noon.addingTimeInterval(-11 * 3600), now: noon, calendar: utc) == .today, "early this morning is today")
+check(TimelineLayout.day(of: noon.addingTimeInterval(-13 * 3600), now: noon, calendar: utc) == .yesterday, "late last night is yesterday")
+check(TimelineLayout.day(of: noon.addingTimeInterval(-36 * 3600 + 60), now: noon, calendar: utc) == .yesterday, "yesterday morning")
+check(TimelineLayout.day(of: noon.addingTimeInterval(-37 * 3600), now: noon, calendar: utc) == .earlier, "the day before yesterday")
+check(TimelineLayout.day(of: noon.addingTimeInterval(13 * 3600), now: noon, calendar: utc) == .earlier, "tomorrow is a date")
+
 if failures == 0 { print("ALL OK") } else { print("\(failures) FAILED"); exit(1) }

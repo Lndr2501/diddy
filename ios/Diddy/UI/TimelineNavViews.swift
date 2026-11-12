@@ -72,15 +72,15 @@ struct TimelineNavSheetView: View {
 
 // MARK: Lines in the chat
 
-/// The line above the first unread message.
+/// The line above the first unread message, in a soft accent like the desktop (not alarm red).
 struct NewMessagesDivider: View {
     var body: some View {
         HStack(spacing: 8) {
-            Rectangle().fill(Theme.danger).frame(height: 1)
-            Text("New Messages").font(.caption2.weight(.bold)).foregroundStyle(Theme.danger)
-            Rectangle().fill(Theme.danger).frame(height: 1)
+            Rectangle().fill(Theme.accent.opacity(0.35)).frame(height: 1)
+            Text("New Messages").font(.caption2.weight(.semibold)).foregroundStyle(Theme.accent)
+            Rectangle().fill(Theme.accent.opacity(0.35)).frame(height: 1)
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, ChatStyle.edgePadding)
         .padding(.top, 10)
         .padding(.bottom, 2)
         .accessibilityElement(children: .ignore)
@@ -119,7 +119,7 @@ struct JumpToUnreadPill: View {
         }
         .buttonStyle(.plain)
         .background(Capsule().fill(Theme.elevated))
-        .overlay(Capsule().stroke(Theme.accent.opacity(0.5), lineWidth: 1))
+        .overlay(Capsule().stroke(Theme.faint.opacity(0.3), lineWidth: 1))
         .shadow(color: Color.black.opacity(0.2), radius: 6, y: 2)
         .padding(.top, 8)
     }
@@ -133,9 +133,9 @@ struct ThreadSummaryButton: View {
     var body: some View {
         Button(action: onOpen) {
             HStack(spacing: 6) {
-                Image(systemName: "bubble.left.and.bubble.right").font(.caption).foregroundStyle(Theme.accent)
+                Image(systemName: "bubble.left.and.bubble.right").font(.caption).foregroundStyle(Theme.muted)
                 Text(info.replies == 1 ? "1 reply" : "\(info.replies) replies")
-                    .font(.caption.weight(.semibold)).foregroundStyle(Theme.accent)
+                    .font(.caption.weight(.semibold)).foregroundStyle(Theme.text)
                 if !info.latestText.isEmpty {
                     Text("\(info.latestSender): \(info.latestText)")
                         .font(.caption).foregroundStyle(Theme.faint).lineLimit(1)
@@ -148,8 +148,8 @@ struct ThreadSummaryButton: View {
             .background(RoundedRectangle(cornerRadius: 8).fill(Theme.elevated))
         }
         .buttonStyle(.plain)
-        .padding(.leading, 68)
-        .padding(.trailing, 16)
+        .padding(.leading, ChatStyle.textLeading)
+        .padding(.trailing, ChatStyle.edgePadding)
         .padding(.top, 2)
         .accessibilityLabel("Thread, \(info.replies) replies. Open thread")
     }
@@ -161,39 +161,42 @@ struct PinnedMarker: View {
         Label("Pinned", systemImage: "pin.fill")
             .font(.caption2.weight(.semibold))
             .foregroundStyle(Theme.faint)
-            .padding(.leading, 68)
+            .padding(.leading, ChatStyle.textLeading)
             .padding(.top, 2)
     }
 }
 
-/// "A and B are following the conversation." under the chat; tap for the list.
+/// "Seen by Anton" or "Seen by 4" with small faces at the right under the chat, like the
+/// desktop; tap for the list.
 struct TimelineFollowingLine: View {
-    let names: [String]
+    let userIds: [String]
+    @ObservedObject var account: MatrixAccount
     let onTap: () -> Void
 
-    private var label: Text {
-        var text = Text("")
-        for piece in TimelineNav.following(names) {
-            text = text + (piece.bold ? Text(piece.text).bold() : Text(piece.text))
-        }
-        return text
-    }
-
     var body: some View {
-        if !names.isEmpty {
+        if !userIds.isEmpty {
+            let names = userIds.map { account.name(of: $0) }
             Button(action: onTap) {
                 HStack(spacing: 6) {
-                    Image(systemName: "checkmark.circle").font(.caption2)
-                    label.lineLimit(1)
                     Spacer(minLength: 0)
+                    HStack(spacing: -4) {
+                        ForEach(userIds.prefix(4), id: \.self) { userId in
+                            AvatarView(url: account.profiles[userId]?.avatarUrl, name: account.name(of: userId), size: 16, account: account)
+                                .overlay(Circle().stroke(Theme.chat, lineWidth: 1.5))
+                        }
+                    }
+                    Text(TimelineNav.seenBy(names)).lineLimit(1)
                 }
                 .font(.caption)
-                .foregroundStyle(Theme.muted)
-                .padding(.horizontal, 16)
+                .foregroundStyle(Theme.faint)
+                .padding(.horizontal, ChatStyle.edgePadding)
                 .padding(.vertical, 3)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .accessibilityElement(children: .ignore)
             .accessibilityLabel("Seen by \(names.joined(separator: ", "))")
+            .accessibilityAddTraits(.isButton)
         }
     }
 }

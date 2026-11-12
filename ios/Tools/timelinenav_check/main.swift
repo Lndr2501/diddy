@@ -51,6 +51,11 @@ check(joined(["A", "B", "C"]) == "A, B and C are following the conversation.", j
 check(joined(["A", "B", "C", "D", "E"]) == "A, B, C and 2 others are following the conversation.", joined(["A", "B", "C", "D", "E"]))
 check(TimelineNav.following(["A", "B"]).filter { $0.bold }.map { $0.text } == ["A", "B"], "names in bold")
 
+// The quiet "Seen by" line, like the desktop: one name, else the count.
+check(TimelineNav.seenBy([]) == "", "nobody has read it")
+check(TimelineNav.seenBy(["Anton"]) == "Seen by Anton", TimelineNav.seenBy(["Anton"]))
+check(TimelineNav.seenBy(["A", "B", "C", "D"]) == "Seen by 4", TimelineNav.seenBy(["A", "B", "C", "D"]))
+
 // Jumping to a hidden event lands on the next shown row, or the one before at the end.
 check(TimelineNav.rowId(for: "$c", in: entries) == "rc", "own row")
 check(TimelineNav.rowId(for: "$state", in: entries) == "rc", "next shown row")

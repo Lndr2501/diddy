@@ -15,6 +15,9 @@ struct ComposerEditor: UIViewRepresentable {
     /// The field grows with its text, wrapped lines and Dynamic Type included, up to this height and then scrolls.
     static let minHeight: CGFloat = 36
     static let maxHeight: CGFloat = 140
+    /// Text style of the field, one step below body like the messages; the placeholder uses `font`.
+    static let textStyle: UIFont.TextStyle = .callout
+    static let font: Font = .callout
 
     final class PasteView: UITextView {
         var files: (([URL], [UIImage]) -> Void)?
@@ -31,7 +34,7 @@ struct ComposerEditor: UIViewRepresentable {
     func makeUIView(context: Context) -> PasteView {
         let view = PasteView()
         view.delegate = context.coordinator
-        view.font = .preferredFont(forTextStyle: .body)
+        view.font = .preferredFont(forTextStyle: Self.textStyle)
         view.adjustsFontForContentSizeCategory = true
         view.backgroundColor = .clear
         view.textColor = .label

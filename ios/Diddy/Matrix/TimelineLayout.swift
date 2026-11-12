@@ -38,6 +38,16 @@ enum TimelineLayout {
         return current.date.timeIntervalSince(previous.date) < groupWindow
     }
 
+    /// What the day divider above a row says, like the desktop: "Today", "Yesterday" or the date.
+    enum Day: Equatable { case today, yesterday, earlier }
+
+    static func day(of date: Date, now: Date = Date(), calendar: Calendar = .current) -> Day {
+        if calendar.isDate(date, inSameDayAs: now) { return .today }
+        if let yesterday = calendar.date(byAdding: .day, value: -1, to: now),
+           calendar.isDate(date, inSameDayAs: yesterday) { return .yesterday }
+        return .earlier
+    }
+
     /// The changes the chat writes a line for (others, like profile edits, are left out).
     enum Membership: Equatable {
         case joined, invited, left, removed, banned, unbanned, declined

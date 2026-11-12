@@ -93,6 +93,16 @@ enum TimelineNav {
         }
     }
 
+    /// Desktop's quiet line under the chat: the name when one person has read the newest message,
+    /// the number when several have.
+    static func seenBy(_ names: [String]) -> String {
+        switch names.count {
+        case 0: return ""
+        case 1: return "Seen by \(names[0])"
+        default: return "Seen by \(names.count)"
+        }
+    }
+
     // MARK: Jumping
 
     /// The row to show for an event: its own, or the next one shown after it when the chat hides
