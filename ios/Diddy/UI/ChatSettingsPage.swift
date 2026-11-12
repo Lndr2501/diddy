@@ -61,28 +61,28 @@ struct ChatSettingsView: View {
                 Toggle(isOn: $nameplates) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Nameplates")
-                        Text("Moving pictures, videos and gradients behind names in the member and DM lists. Off shows a still picture; with Reduce Motion turned on in iOS they never move.")
+                        Text("Moving pictures, videos and gradients behind names in the member and DM lists.")
                             .font(.caption).foregroundStyle(Theme.muted)
                     }
                 }
                 Toggle(isOn: $profileEffects) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Profile effects")
-                        Text("Animated overlays other people put over their profile card. Off shows a still picture; with Reduce Motion turned on in iOS they never move.")
+                        Text("Profile Effects")
+                        Text("Animated overlays other people put over their profile card.")
                             .font(.caption).foregroundStyle(Theme.muted)
                     }
                 }
                 Toggle(isOn: $profileFrames) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Profile frames")
+                        Text("Profile Frames")
                         Text("Decorative frames other people put around their profile card.")
                             .font(.caption).foregroundStyle(Theme.muted)
                     }
                 }
             } header: {
-                Text("Animated profile pictures")
+                Text("Profile Decorations")
             } footer: {
-                Text("Profile pictures themselves stay still in Diddy for iOS.")
+                Text("What other people add to their profile. Nameplates and effects that are off show a still picture, and with Reduce Motion turned on in iOS nothing moves. Profile pictures themselves stay still in Diddy for iOS.")
             }
         }
         .scrollContentBackground(.hidden)

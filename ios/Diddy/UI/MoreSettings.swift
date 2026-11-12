@@ -27,19 +27,33 @@ struct BlockedUsersView: View {
             } footer: {
                 Text("Prevent receiving messages or invites from a user by adding their user ID.")
             }
-            if let error { Text(error).foregroundStyle(Theme.danger) }
-            if !loading && userIds.isEmpty && error == nil {
-                Text("You have not blocked anyone.").foregroundStyle(Theme.muted)
+            if let error {
+                Section {
+                    Text(error).font(.footnote).foregroundStyle(Theme.danger)
+                    Button("Try Again") { Task { await load() } }
+                }
             }
-            ForEach(userIds, id: \.self) { userId in
-                HStack {
-                    PersonRow(name: account.name(of: userId), subtitle: userId, avatarUrl: account.profiles[userId]?.avatarUrl, account: account)
-                    Button("Unblock") { Task { await unblock(userId) } }
-                        .buttonStyle(.bordered)
+            Section {
+                if loading && userIds.isEmpty {
+                    HStack { Spacer(); ProgressView(); Spacer() }
+                } else if userIds.isEmpty && error == nil {
+                    Text("You have not blocked anyone.").foregroundStyle(Theme.muted)
+                }
+                ForEach(userIds, id: \.self) { userId in
+                    HStack {
+                        PersonRow(name: account.name(of: userId), subtitle: userId, avatarUrl: account.profiles[userId]?.avatarUrl, account: account)
+                        Button("Unblock") { Task { await unblock(userId) } }
+                            .buttonStyle(.bordered)
+                    }
+                }
+            } header: {
+                Text("Blocked")
+            } footer: {
+                if !userIds.isEmpty {
+                    Text("Blocked people can't send you messages or invites. Unblock them to see their messages again.")
                 }
             }
         }
-        .overlay { if loading { ProgressView() } }
         .scrollContentBackground(.hidden)
         .background(Theme.sidebar)
         .navigationTitle("Blocked Users")
@@ -94,7 +108,7 @@ struct AboutView: View {
 
     var body: some View {
         List {
-            Section {
+            Section("Diddy") {
                 LabeledContent("Version", value: version)
                 LabeledContent("Server", value: account.record.serverName)
                 LabeledContent("Matrix ID") {
@@ -107,7 +121,7 @@ struct AboutView: View {
                     Link(destination: repo) { Label("Diddy on GitHub", systemImage: "chevron.left.forwardslash.chevron.right") }
                 }
                 if let issues = URL(string: "https://github.com/Lndr2501/diddy/issues") {
-                    Link(destination: issues) { Label("Report a problem", systemImage: "ladybug.fill") }
+                    Link(destination: issues) { Label("Report a Problem", systemImage: "ladybug.fill") }
                 }
             } footer: {
                 Text("Diddy for iOS is built with matrix-rust-sdk and LiveKit.")
@@ -137,7 +151,7 @@ struct AboutView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Theme.sidebar)
-        .navigationTitle("About")
+        .navigationTitle("About Diddy")
         .navigationBarTitleDisplayMode(.inline)
     }
 }
