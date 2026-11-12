@@ -139,7 +139,7 @@ struct MembersView: View {
                         Section {
                             ForEach(entries) { entry in
                                 Button { selected = entry } label: {
-                                    PersonRow(name: entry.name, subtitle: entry.userId, avatarUrl: entry.avatarUrl, account: account, userId: entry.userId)
+                                    MemberListRow(entry: entry, account: account, presence: PresenceStore.of(account))
                                 }
                                 .listRowBackground(Color.clear)
                             }
@@ -217,6 +217,24 @@ struct MembersView: View {
         Text("\(title.uppercased()) — \(count)")
             .font(.caption.weight(.bold))
             .foregroundStyle(Theme.faint)
+    }
+}
+
+/// A row of the member list: the person's status message under their name, like Discord;
+/// their user ID when they have none.
+private struct MemberListRow: View {
+    let entry: MemberEntry
+    let account: MatrixAccount
+    @ObservedObject var presence: PresenceStore
+
+    var body: some View {
+        PersonRow(
+            name: entry.name,
+            subtitle: presence.message(of: entry.userId) ?? entry.userId,
+            avatarUrl: entry.avatarUrl,
+            account: account,
+            userId: entry.userId
+        )
     }
 }
 
