@@ -2,8 +2,26 @@ import MatrixRustSDK
 import PhotosUI
 import SwiftUI
 
+/// Pages of the Settings sheet that are opened by value, so a new theme can rebuild the sheet and
+/// still show them: the ones where you pick the theme.
+enum SettingsPage: Hashable {
+    case appearance, customTheme
+}
+
+/// The Settings sheet. A new theme rebuilds its pages (`diddySheetAppearance`); the path stays here,
+/// outside the rebuild, so Appearance stays open while you pick.
+struct SettingsSheet: View {
+    let account: MatrixAccount
+    @State private var path = NavigationPath()
+
+    var body: some View {
+        SettingsView(account: account, path: $path).diddySheetAppearance()
+    }
+}
+
 struct SettingsView: View {
     @ObservedObject var account: MatrixAccount
+    @Binding var path: NavigationPath
     @EnvironmentObject private var app: AppModel
     @Environment(\.dismiss) private var dismiss
     @State private var confirmLogout: MatrixAccount?
@@ -13,7 +31,7 @@ struct SettingsView: View {
     private var isVerified: Bool { account.verificationState == .verified }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             List {
                 ProfileSection(account: account)
 
@@ -50,8 +68,13 @@ struct SettingsView: View {
             .scrollContentBackground(.hidden)
             .background(Theme.sidebar)
             .navigationTitle("Settings")
-            .diddyMonochrome()
             .navigationBarTitleDisplayMode(.inline)
+            .navigationDestination(for: SettingsPage.self) { page in
+                switch page {
+                case .appearance: AppearanceSettingsView()
+                case .customTheme: CustomThemeView()
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
             }
@@ -71,11 +94,11 @@ struct SettingsView: View {
             } message: {
                 Text("Encrypted messages can only be read again with your recovery key or another verified device.")
             }
-            .sheet(isPresented: $showRecovery) { RecoveryView(account: account).diddyMonochrome() }
+            .sheet(isPresented: $showRecovery) { RecoveryView(account: account).diddySheetAppearance() }
         }
         // The guide brings its own navigation stack, so it opens as a sheet rather than a pushed page.
         .sheet(isPresented: $showWelcome) {
-            DiddyWelcomeView(account: account, onFinish: { showWelcome = false }).diddyMonochrome()
+            DiddyWelcomeView(account: account, onFinish: { showWelcome = false }).diddySheetAppearance()
         }
     }
 
@@ -114,7 +137,7 @@ struct SettingsView: View {
 
     private var appSection: some View {
         Section("App") {
-            NavigationLink { AppearanceSettingsView() } label: {
+            NavigationLink(value: SettingsPage.appearance) {
                 SettingsRowLabel(title: "Appearance", systemImage: "paintpalette.fill", color: .pink)
             }
             NavigationLink { ChatSettingsView() } label: {

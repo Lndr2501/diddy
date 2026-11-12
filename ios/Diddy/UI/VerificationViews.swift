@@ -46,7 +46,7 @@ private struct VerificationSheetHost: View {
                 get: { center.phase.isActive && center.presenters.last == id },
                 set: { isOn in if !isOn { Task { await center.dismiss() } } }
             )) {
-                VerificationSheet(center: center)
+                VerificationSheet(center: center).diddySheetAppearance()
             }
     }
 }

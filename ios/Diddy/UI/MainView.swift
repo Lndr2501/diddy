@@ -69,19 +69,20 @@ struct MainView: View {
         }
         .navigationSplitViewStyle(.balanced)
         // A new theme rebuilds the screens (the Theme colours are plain values); the sheets and
-        // the navigator stay, so Settings remains open while you pick.
+        // the navigator stay, so Settings remains open while you pick. The sheets below are their
+        // own presentations and rebuild themselves (diddySheetAppearance).
         .id(themes.id)
         .environmentObject(navigator)
         .sheet(isPresented: $showSettings) {
-            SettingsView(account: account).id(themes.id)
+            SettingsSheet(account: account)
         }
         .fullScreenCover(isPresented: $calls.showCallScreen) {
             if let call = calls.current {
                 NavigationStack {
                     VoiceChannelView(account: account, roomId: call.roomId, showsClose: true)
                 }
-                .id(themes.id)
                 .environmentObject(navigator)
+                .diddySheetAppearance()
             }
         }
         .callSwitchAlert(calls)
@@ -111,9 +112,11 @@ struct MainView: View {
         // Verification requests from your other devices and other people (VerificationViews.swift).
         .verificationRequests(account: account)
         .background(shortcuts)
-        .sheet(isPresented: $showQuickSwitch) { QuickSwitchView(account: account).environmentObject(navigator) }
-        .sheet(isPresented: $showWelcome, onDismiss: finishWelcome) { DiddyWelcomeView(account: account, onFinish: { finishWelcome(); showWelcome = false }) }
-        .sheet(item: $navigator.shellLink) { ShellJoinRoomView(account: account, link: $0).environmentObject(navigator) }
+        .sheet(isPresented: $showQuickSwitch) { QuickSwitchView(account: account).environmentObject(navigator).diddySheetAppearance() }
+        .sheet(isPresented: $showWelcome, onDismiss: finishWelcome) {
+            DiddyWelcomeView(account: account, onFinish: { finishWelcome(); showWelcome = false }).diddySheetAppearance()
+        }
+        .sheet(item: $navigator.shellLink) { ShellJoinRoomView(account: account, link: $0).environmentObject(navigator).diddySheetAppearance() }
         .task(id: account.id) { showWelcome = !UserDefaults.standard.bool(forKey: "diddy.welcome.done.\(account.id)") }
     }
 }

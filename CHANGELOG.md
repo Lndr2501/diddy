@@ -1,5 +1,9 @@
 # Changelog
 
+## Unveröffentlicht
+
+- **iOS: Theme-Wechsel in den Einstellungen wirkt sofort im ganzen Sheet:** Nach dem Wechsel (z. B. hell → dunkel) blieb das Settings-Sheet halb im alten Theme: heller Hintergrund, dunkle Karten mit dunklem Text, kaum lesbare Abschnittstitel, Done-Knopf und Häkchen in der alten Akzentfarbe. Ursache: Sheets sind eigene Präsentationen; der Neuaufbau, den der Hauptbildschirm für ein neues Theme auslöst, kam im Sheet nicht an, nur der Hell/Dunkel-Modus des Fensters. Jetzt beobachten Einstellungen, Anrufbildschirm, Schnellwechsler, Willkommens-Guide, Raum-Link, Verifizierung und „Add Account“ das Theme selbst und bauen sich mit Farben, Akzentfarbe, Hell/Dunkel und Monochrom neu auf (auch bei „Match System Appearance“). Die Seite „Appearance“ bleibt dabei offen.
+
 ## 1.7.0 (2026-11-12)
 
 - **Aufgeräumte Oberfläche (macOS, Linux):**

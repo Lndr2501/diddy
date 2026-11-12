@@ -155,8 +155,9 @@ extension Color {
     }
 }
 
-/// The chosen theme, stored on this device. Changing it rebuilds the UI (`DiddyApp` and `MainView`
-/// watch `id`), because the `Theme` colours are plain values and not observed by single views.
+/// The chosen theme, stored on this device. Changing it rebuilds the UI (`DiddyApp`, `MainView` and
+/// every sheet with `diddySheetAppearance` watch `id`), because the `Theme` colours are plain values
+/// and not observed by single views.
 ///
 /// Like desktop: one fixed theme, or "Match System Appearance" with a light and a dark choice, and
 /// a custom theme made of three colours.
@@ -309,7 +310,7 @@ struct ThemeSection: View {
             } else {
                 grid(allThemes, selected: store.selectedId, onSelect: { store.select($0) })
             }
-            NavigationLink { CustomThemeView() } label: { Label("Custom Theme Colors", systemImage: "paintpalette.fill") }
+            NavigationLink(value: SettingsPage.customTheme) { Label("Custom Theme Colors", systemImage: "paintpalette.fill") }
         } header: {
             Text("Theme")
         } footer: {

@@ -35,18 +35,32 @@ struct DiddyAppearance: ViewModifier {
     }
 }
 
-/// Monochrome mode for the screens that iOS shows outside the root view, such as sheets.
-struct DiddyMonochrome: ViewModifier {
+/// The theme for a sheet or full-screen cover. iOS shows these in their own presentation, outside
+/// the screens that `MainView` rebuilds for a new theme, and a rebuild requested from the presenting
+/// view does not reach the presented content: after a theme change the sheet kept the old `Theme`
+/// colours and tint under the new light or dark mode. So the presentation watches the theme itself,
+/// rebuilds its content (the `Theme` colours are plain values) and sets colour scheme, tint and
+/// monochrome mode again.
+struct DiddySheetAppearance: ViewModifier {
+    @ObservedObject private var store = ThemeStore.shared
     @AppStorage(ThemeStore.monochromeKey) private var monochrome = false
 
     func body(content: Content) -> some View {
-        content.grayscale(monochrome ? 1 : 0)
+        content
+            .id(store.id)
+            // Always explicit: with "Match System Appearance" the active theme already follows the
+            // system, and a sheet that goes back to no preference can keep the old mode.
+            .preferredColorScheme(store.theme.isLight ? ColorScheme.light : ColorScheme.dark)
+            .tint(store.theme.accent)
+            .grayscale(monochrome ? 1 : 0)
     }
 }
 
 extension View {
     func diddyAppearance() -> some View { modifier(DiddyAppearance()) }
-    func diddyMonochrome() -> some View { modifier(DiddyMonochrome()) }
+    /// Put on the content of sheets and covers that can stay open while the theme changes: those
+    /// of `RootView` and `MainView` and the ones Settings opens.
+    func diddySheetAppearance() -> some View { modifier(DiddySheetAppearance()) }
 }
 
 /// Settings > Appearance: theme, display (monochrome, page zoom) and the home-screen icon.

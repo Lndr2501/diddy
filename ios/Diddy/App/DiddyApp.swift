@@ -38,12 +38,12 @@ struct RootView: View {
                 MainView(account: account)
                     .id(account.id)
                     .sheet(isPresented: $app.addingAccount) {
-                        LoginView(isAddingAccount: true)
+                        LoginView(isAddingAccount: true).diddySheetAppearance()
                     }
             } else if !app.unreachable.isEmpty {
                 OfflineView()
                     .sheet(isPresented: $app.addingAccount) {
-                        LoginView(isAddingAccount: true)
+                        LoginView(isAddingAccount: true).diddySheetAppearance()
                     }
             } else {
                 LoginView(isAddingAccount: false)
