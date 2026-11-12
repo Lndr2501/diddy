@@ -310,7 +310,7 @@ private struct WatchPlayerCard: View {
 
 // MARK: - Settings
 
-/// Watch together on/off and the SponsorBlock categories (Settings > Watch together).
+/// Watch together on/off and the SponsorBlock categories (Settings > Watch Together).
 struct WatchTogetherSettingsView: View {
     @ObservedObject private var prefsStore = WatchTogetherPrefsStore.shared
 
@@ -345,7 +345,9 @@ struct WatchTogetherSettingsView: View {
                 }
             }
         }
-        .navigationTitle("Watch together")
+        .scrollContentBackground(.hidden)
+        .background(Theme.sidebar)
+        .navigationTitle("Watch Together")
         .navigationBarTitleDisplayMode(.inline)
     }
 }
