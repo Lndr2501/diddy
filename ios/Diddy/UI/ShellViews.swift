@@ -16,15 +16,24 @@ struct OwnStatusMenu: View {
                     Label(option.label, systemImage: chosen == option.status ? "checkmark.circle.fill" : "circle")
                 }
             }
-            Button("Status message") { showingMessage = true }
-            Button("Edit Profile and Bio") { showing = true }
+            Divider()
+            Button { showingMessage = true } label: { Label("Set Status Message", systemImage: "text.bubble") }
+            Button { showing = true } label: { Label("Edit Profile", systemImage: "person.crop.circle") }
         } label: {
             AvatarView(url: account.avatarUrl, name: account.title, size: 34, account: account)
                 .overlay(alignment: .bottomTrailing) { PresenceDot(userId: account.userId, account: account, size: 11) }
         }
         .disabled(busy)
         .accessibilityLabel("Account and status (\(OwnStatusOptions.info(chosen).label))")
-        .sheet(isPresented: $showing) { DiddyProfileEditor(account: account) }
+        // The editor brings its own title and Save button but no navigation bar of its own.
+        .sheet(isPresented: $showing) {
+            NavigationStack {
+                DiddyProfileEditor(account: account)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) { Button("Cancel") { showing = false } }
+                    }
+            }
+        }
         .sheet(isPresented: $showingMessage) { OwnStatusMessageView(account: account) }
         .alert("Could not save status", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
             Button("OK", role: .cancel) {}
@@ -58,17 +67,22 @@ struct ShellSyncBanner: View {
     var body: some View {
         Group {
             if let kind {
-                HStack {
+                HStack(spacing: 8) {
                     Label(kind.text, systemImage: "wifi.exclamationmark")
+                        .lineLimit(2)
                     if kind == .error {
                         Button("Retry") {
                             retrying = true
                             Task { await account.resume(); retrying = false }
-                        }.disabled(retrying)
+                        }
+                        .buttonStyle(.plain)
+                        .font(.footnote.weight(.bold))
+                        .disabled(retrying)
                     }
                 }
                 .font(.footnote).foregroundStyle(.white)
-                .frame(maxWidth: .infinity).padding(.vertical, 5).background(Theme.danger)
+                .frame(maxWidth: .infinity).padding(.horizontal, 12).padding(.vertical, 6).background(Theme.danger)
+                .accessibilityElement(children: .combine)
             }
         }
         .onAppear { if account.syncState == .running { everRan = true } }
@@ -103,7 +117,7 @@ struct WelcomeGuideView: View {
                     }
                 }.padding()
             }
-            .navigationTitle("Welcome guide").navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("Matrix Guide").navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Skip") { finish() }.keyboardShortcut(.cancelAction) } }
         }
     }
@@ -117,12 +131,25 @@ struct ShellUpdateNotice: View {
         Group {
             if let release, UpdateCheckLogic.isUpdateWanted(latest: release.version,
                 current: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0", skipped: skipped) {
-                HStack {
-                    if let url = URL(string: release.ipaUrl ?? release.pageUrl) { Link("Diddy \(release.version) available", destination: url) }
+                HStack(spacing: 8) {
+                    if let url = URL(string: release.ipaUrl ?? release.pageUrl) {
+                        Link(destination: url) {
+                            Label("Diddy \(release.version) is available", systemImage: "arrow.down.circle.fill")
+                        }
+                    }
                     Spacer()
-                    Button { skipped = release.version } label: { Image(systemName: "xmark") }
-                        .accessibilityLabel("Dismiss update notice")
-                }.font(.footnote).padding(8).background(Theme.elevated)
+                    Button { skipped = release.version } label: {
+                        Image(systemName: "xmark").foregroundStyle(Theme.muted)
+                            .frame(width: 28, height: 28)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Dismiss update notice")
+                }
+                .font(.footnote.weight(.semibold))
+                .padding(.leading, 12).padding(.trailing, 6).padding(.vertical, 4)
+                .background(RoundedRectangle(cornerRadius: 8).fill(Theme.elevated))
+                .padding(.horizontal, 8).padding(.bottom, 6)
             }
         }
         .task {
@@ -153,7 +180,8 @@ private struct OwnStatusMessageView: View {
                 Text("Shown as your profile bio to other Diddy users.").font(.footnote)
                 if let error { Text(error).foregroundStyle(Theme.danger) }
             }
-            .navigationTitle("Status message")
+            .navigationTitle("Status Message")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction) }
                 ToolbarItem(placement: .confirmationAction) {

@@ -6,6 +6,7 @@ struct DiddyWelcomeView: View {
     var onFinish: () -> Void
     @State private var error: String?
     @State private var busy = false
+    @State private var showGuide = false
     private var candidates: [SpaceRoom] {
         var seen = Set<String>()
         return account.categories.values.flatMap { $0 }.flatMap { $0.channels }.filter {
@@ -18,9 +19,12 @@ struct DiddyWelcomeView: View {
             List {
                 Section {
                     Text("Welcome to Diddy").font(.title.bold())
-                    NavigationLink("Matrix guide for Discord users") { WelcomeGuideView() }
+                    // The guide has its own navigation bar, so it opens as a sheet and not pushed.
+                    Button { showGuide = true } label: {
+                        Label("Matrix Guide for Discord Users", systemImage: "book")
+                    }
                 }
-                Section("Join a Diddy server") {
+                Section("Join a Diddy Server") {
                     Text("Join its Diddy room to see profiles, name styles and badges of other Diddy users.")
                     if candidates.isEmpty {
                         Text("On Diddy-ready servers an admin creates a hidden room called Diddy Options. Ask your admin if none is available.")
@@ -42,15 +46,22 @@ struct DiddyWelcomeView: View {
                             }
                         }.disabled(busy)
                     }
-                    if busy { ProgressView() }
+                    if busy { HStack { Spacer(); ProgressView(); Spacer() } }
                     if let error { Text(error).foregroundStyle(Theme.danger) }
                 }
-                Section("Make it yours") {
-                    NavigationLink("Open Profile settings") { DiddyProfileEditor(account: account) }
+                Section {
+                    NavigationLink { DiddyProfileEditor(account: account) } label: {
+                        Label("Edit Profile", systemImage: "person.crop.circle")
+                    }
+                } header: {
+                    Text("Make It Yours")
+                } footer: {
                     Text("Choose your name style, status and profile. Changes are shared with other members of your Diddy room.")
                 }
             }
-            .navigationTitle("Welcome guide")
+            .navigationTitle("Welcome")
+            .navigationBarTitleDisplayMode(.inline)
+            .sheet(isPresented: $showGuide) { WelcomeGuideView() }
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done", action: onFinish).keyboardShortcut(.cancelAction) } }
         }
         .task { await account.loadAllChannels() }
@@ -80,11 +91,23 @@ struct DiddyServerNotice: View {
     }
     var body: some View {
         if !pending.isEmpty {
-            HStack {
-                Button("This server uses Diddy") { showing = true }
+            HStack(spacing: 8) {
+                Button { showing = true } label: {
+                    Label("This server uses Diddy", systemImage: "sparkles")
+                }
                 Spacer()
-                Button(action: dismissNotice) { Image(systemName: "xmark") }.accessibilityLabel("Dismiss welcome notice")
-            }.font(.footnote).padding(8)
+                Button(action: dismissNotice) {
+                    Image(systemName: "xmark").foregroundStyle(Theme.muted)
+                        .frame(width: 28, height: 28)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Dismiss welcome notice")
+            }
+            .font(.footnote.weight(.semibold))
+            .padding(.leading, 12).padding(.trailing, 6).padding(.vertical, 4)
+            .background(RoundedRectangle(cornerRadius: 8).fill(Theme.elevated))
+            .padding(.horizontal, 8).padding(.bottom, 6)
             .sheet(isPresented: $showing) {
                 DiddyWelcomeView(account: account, onFinish: { dismissNotice(); showing = false })
             }

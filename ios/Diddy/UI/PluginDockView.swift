@@ -17,7 +17,7 @@ struct PluginDockView: View {
     }
     var body: some View {
         if !pinned.isEmpty {
-            DisclosureGroup("Plugins", isExpanded: $expanded) {
+            DisclosureGroup(isExpanded: $expanded) {
                 ScrollView {
                     VStack(spacing: 8) {
                         ForEach(pinned) { plugin in
@@ -39,7 +39,13 @@ struct PluginDockView: View {
                         }
                     }
                 }.frame(maxHeight: 300)
-            }.padding(10)
+            } label: {
+                Label("Plugins", systemImage: "puzzlepiece.extension")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Theme.muted)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
         }
     }
 }
