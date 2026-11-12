@@ -68,7 +68,12 @@ struct DiddyProfileEditor: View {
     var body: some View {
         Form {
             if !loaded {
-                ProgressView().frame(maxWidth: .infinity).listRowBackground(Color.clear)
+                HStack(spacing: 10) {
+                    ProgressView()
+                    Text("Loading your profile").foregroundStyle(Theme.muted)
+                }
+                .frame(maxWidth: .infinity)
+                .listRowBackground(Color.clear)
             } else if !account.canEditDiddyProfile {
                 if account.diddyPrimaryRoom == nil {
                     DiddyOptionsSetupView(account: account) { Task { await reload() } }

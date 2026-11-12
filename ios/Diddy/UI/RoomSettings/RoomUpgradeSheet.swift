@@ -10,6 +10,7 @@ struct RoomUpgradeSheet: View {
     @State private var newCreator = ""
     @State private var upgrading = false
     @State private var error: String?
+    @State private var confirming = false
 
     private var word: String { model.isSpace ? "Space" : "Room" }
     private var allowsCreators: Bool { RoomVersionSupport.creators(version) }
@@ -24,10 +25,19 @@ struct RoomUpgradeSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    Text("This action is irreversible!").bold().foregroundStyle(Theme.danger)
+                    Label {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("This can't be undone").bold().foregroundStyle(Theme.danger)
+                            Text("A new \(word.lowercased()) replaces this one. Members have to join the new \(word.lowercased()); this one stays readable.")
+                                .font(.footnote)
+                                .foregroundStyle(Theme.muted)
+                        }
+                    } icon: {
+                        Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Theme.danger)
+                    }
                 }
                 Section("Options") {
-                    Picker("Room Version", selection: $version) {
+                    Picker("\(word) Version", selection: $version) {
                         ForEach(model.roomVersions, id: \.self) { value in Text(value).tag(value) }
                     }
                     .disabled(upgrading)
@@ -68,11 +78,15 @@ struct RoomUpgradeSheet: View {
                     }
                 }
                 if let error {
-                    Section { Text(error).font(.footnote).foregroundStyle(Theme.danger) }
+                    Section {
+                        Label(error, systemImage: "exclamationmark.triangle.fill")
+                            .font(.footnote)
+                            .foregroundStyle(Theme.danger)
+                    }
                 }
                 Section {
-                    Button {
-                        Task { await upgrade() }
+                    Button(role: .destructive) {
+                        confirming = true
                     } label: {
                         HStack {
                             if upgrading { ProgressView() }
@@ -80,6 +94,11 @@ struct RoomUpgradeSheet: View {
                         }
                     }
                     .disabled(upgrading || version.isEmpty)
+                    .confirmationDialog("Upgrade this \(word.lowercased()) to version \(version)?", isPresented: $confirming, titleVisibility: .visible) {
+                        Button("Upgrade \(word)", role: .destructive) { Task { await upgrade() } }
+                    } message: {
+                        Text("This can't be undone.")
+                    }
                 }
             }
             .scrollContentBackground(.hidden)
