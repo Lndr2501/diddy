@@ -32,13 +32,30 @@ struct RoomPermissionsView: View {
                 }
                 if !changes.isEmpty { applySection(levels: levels) }
             } else {
-                Section { HStack { Spacer(); ProgressView(); Spacer() } }
+                Section {
+                    HStack(spacing: 10) {
+                        Spacer()
+                        ProgressView()
+                        Text("Loading permissions").foregroundStyle(Theme.muted)
+                        Spacer()
+                    }
+                }
             }
         }
         .scrollContentBackground(.hidden)
         .background(Theme.sidebar.ignoresSafeArea())
-        .navigationTitle("Permissions")
+        .navigationTitle("Roles & Permissions")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                if !changes.isEmpty {
+                    Button("Apply") {
+                        if let levels = state?.powerLevels { Task { await apply(levels: levels) } }
+                    }
+                    .disabled(model.busy)
+                }
+            }
+        }
         .sheet(item: Binding(get: { peek.map { PeekedPower(power: $0) } }, set: { peek = $0?.power })) { item in
             PeekPermissionsView(model: model, power: item.power)
         }
@@ -60,7 +77,7 @@ struct RoomPermissionsView: View {
         } header: {
             Text("Founders")
         } footer: {
-            Text("Founding members has all permissions and can only be changed during upgrade.")
+            Text("Founders have all permissions and can only be changed during an upgrade.")
         }
     }
 
@@ -84,21 +101,33 @@ struct RoomPermissionsView: View {
                 NavigationLink {
                     RoomPowersEditor(model: model)
                 } label: {
-                    Text("Edit")
+                    Label("Edit Power Levels", systemImage: "slider.horizontal.3")
                 }
             }
         } header: {
             Text("Power Levels")
         } footer: {
-            Text("Manage and customize incremental power levels for users.")
+            if canEditPowers {
+                Text("Tap a power level to see what it may do.")
+            } else {
+                Text("Tap a power level to see what it may do. Your role can't edit the power levels.")
+            }
         }
     }
 
     // MARK: Permissions
 
     private func usersSection(tags: [Int: RoomPowerTag], levels: RoomPowerLevelsModel) -> some View {
-        Section("Users") {
+        Section {
             permissionRow("Default Power", detail: "Default power level for all users.", location: .user(nil), tags: tags, levels: levels)
+        } header: {
+            Text("Users")
+        } footer: {
+            if canEditPermissions {
+                Text("Changes below are collected; tap Apply to save them.")
+            } else {
+                Text("Your role can't change the permissions.")
+            }
         }
     }
 
@@ -133,6 +162,15 @@ struct RoomPermissionsView: View {
         }
     }
 
+    private func apply(levels: RoomPowerLevelsModel) async {
+        let content = RoomPermissionGroups.applying(changes, to: levels, groups: groups)
+        let worked = await model.perform {
+            try await model.sendState(RoomRoleChange.powerLevelsType, content: content)
+        }
+        applyFailed = !worked
+        if worked { changes = [:] }
+    }
+
     private func change(_ location: PermissionLocation, to power: Int, from current: Int) {
         if power == current {
             changes[location] = nil
@@ -144,24 +182,18 @@ struct RoomPermissionsView: View {
     private func applySection(levels: RoomPowerLevelsModel) -> some View {
         Section {
             if applyFailed || model.actionError != nil {
-                Text("Failed to apply changes! Please try again.").font(.footnote.bold()).foregroundStyle(Theme.danger)
+                Label("Couldn't apply the changes. Please try again.", systemImage: "exclamationmark.triangle.fill")
+                    .font(.footnote.bold()).foregroundStyle(Theme.danger)
             } else {
-                Text("Changes saved! Apply when ready.").font(.footnote.bold())
+                Text(changes.count == 1 ? "1 unsaved change." : "\(changes.count) unsaved changes.").font(.footnote.bold())
             }
-            Button("Reset", role: .cancel) {
+            Button("Discard Changes", role: .destructive) {
                 changes = [:]
                 applyFailed = false
             }
             .disabled(model.busy)
             Button {
-                Task {
-                    let content = RoomPermissionGroups.applying(changes, to: levels, groups: groups)
-                    let worked = await model.perform {
-                        try await model.sendState(RoomRoleChange.powerLevelsType, content: content)
-                    }
-                    applyFailed = !worked
-                    if worked { changes = [:] }
-                }
+                Task { await apply(levels: levels) }
             } label: {
                 HStack {
                     if model.busy { ProgressView() }
@@ -200,9 +232,13 @@ struct PeekPermissionsView: View {
                         Section(group.name) {
                             ForEach(group.items) { item in
                                 let has = levels.power(at: item.location) <= power
-                                Text("\(has ? "✅" : "❌") \(item.name)")
-                                    .font(.callout)
-                                    .foregroundStyle(has ? Theme.text : Theme.danger)
+                                Label {
+                                    Text(item.name).foregroundStyle(has ? Theme.text : Theme.muted)
+                                } icon: {
+                                    Image(systemName: has ? "checkmark.circle.fill" : "xmark.circle")
+                                        .foregroundStyle(has ? Theme.online : Theme.danger)
+                                }
+                                .font(.callout)
                             }
                         }
                     }
@@ -245,7 +281,7 @@ struct RoomPowersEditor: View {
                 Button { creating = true } label: { Label("New Power Level", systemImage: "plus") }
                     .disabled(model.busy)
             } footer: {
-                Text("Create a new power level.")
+                Text("Changes are collected; tap Apply to save them.")
             }
             Section("Power Levels") {
                 ForEach(RoomPowerTags.powers(shown), id: \.self) { power in
@@ -255,11 +291,12 @@ struct RoomPowersEditor: View {
             if changed {
                 Section {
                     if applyFailed || model.actionError != nil {
-                        Text("Failed to apply changes! Please try again.").font(.footnote.bold()).foregroundStyle(Theme.danger)
+                        Label("Couldn't apply the changes. Please try again.", systemImage: "exclamationmark.triangle.fill")
+                            .font(.footnote.bold()).foregroundStyle(Theme.danger)
                     } else {
-                        Text("Changes saved! Apply when ready.").font(.footnote.bold())
+                        Text("You have unsaved changes.").font(.footnote.bold())
                     }
-                    Button("Reset", role: .cancel) {
+                    Button("Discard Changes", role: .destructive) {
                         edited = nil
                         deleted = []
                         applyFailed = false
@@ -281,6 +318,14 @@ struct RoomPowersEditor: View {
         .background(Theme.sidebar.ignoresSafeArea())
         .navigationTitle("Power Levels")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                if changed {
+                    Button("Apply") { Task { await apply() } }
+                        .disabled(model.busy)
+                }
+            }
+        }
         .sheet(item: $editing) { item in
             RoleTagForm(power: item.power, existing: shown, tag: shown[item.power]) { power, tag in
                 var tags = shown
@@ -392,7 +437,7 @@ struct RoleTagForm: View {
                 }
                 Section("Color") {
                     Toggle("Use a color", isOn: $hasColor)
-                    if hasColor { ColorPicker("Pick", selection: $color, supportsOpacity: false) }
+                    if hasColor { ColorPicker("Color", selection: $color, supportsOpacity: false) }
                 }
                 Section("Icon") {
                     if keepsPictureIcon {
@@ -404,7 +449,7 @@ struct RoleTagForm: View {
             }
             .scrollContentBackground(.hidden)
             .background(Theme.sidebar.ignoresSafeArea())
-            .navigationTitle(power == nil ? "New Power Level" : "Edit")
+            .navigationTitle(power == nil ? "New Power Level" : "Edit Power Level")
             .navigationBarTitleDisplayMode(.inline)
             .tint(Theme.accent)
             .toolbar {
