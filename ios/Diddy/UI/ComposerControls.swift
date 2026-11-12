@@ -106,42 +106,122 @@ struct ComposerEmojiPicker: View {
     var onCustom: (PackImage, Bool) -> Void
     @State private var search = ""
     @State private var stickers = false
+    @Environment(\.dismiss) private var dismiss
+
     var body: some View {
         NavigationStack {
             ScrollView {
-                LazyVStack(alignment: .leading) {
-                    ForEach(packs) { pack in
-                        let images = pack.images(for: stickers ? ImagePack.sticker : ImagePack.emoticon)
-                            .filter { search.isEmpty || ImagePack.matches($0, search) }
-                        if !images.isEmpty {
-                            Text(pack.name ?? "Custom pack").font(.headline)
-                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 90))]) {
-                                ForEach(images) { image in
-                                    Button { onCustom(image, stickers) } label: {
-                                        VStack {
-                                            AvatarView(url: image.url, name: image.shortcode, size: stickers ? 64 : 32, account: account)
-                                            Text(":" + image.shortcode + ":").lineLimit(2).font(.caption)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    if !stickers {
-                        ForEach(EmojiCatalog.groupNames.indices, id: \.self) { index in
-                            Text(EmojiCatalog.groupNames[index]).font(.headline)
-                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 44))]) {
-                                ForEach(EmojiCatalog.groups[index].filter { search.isEmpty || EmojiCatalog.matches($0, search) }) { emoji in
-                                    Button(emoji.unicode) { onEmoji(emoji.unicode) }.font(.system(size: 28)).accessibilityLabel(emoji.label)
-                                }
-                            }
-                        }
-                    }
-                }.padding()
+                LazyVStack(alignment: .leading, spacing: 8) {
+                    packSections
+                    if !stickers { emojiSections }
+                    if isEmpty { emptyState }
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 16)
             }
-            .searchable(text: $search)
+            .background(Theme.chat.ignoresSafeArea())
+            .searchable(text: $search, prompt: stickers ? "Search stickers" : "Search emoji")
             .navigationTitle(stickers ? "Stickers" : "Emoji")
-            .toolbar { ToolbarItem(placement: .navigationBarTrailing) { Button(stickers ? "Emoji" : "Stickers") { stickers.toggle() } } }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Picker("Kind", selection: $stickers) {
+                        Text("Emoji").tag(false)
+                        Text("Stickers").tag(true)
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(maxWidth: 220)
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
+            }
         }
+        .presentationDetents([.medium, .large])
+    }
+
+    private var usage: String { stickers ? ImagePack.sticker : ImagePack.emoticon }
+
+    private func images(in pack: ImagePack) -> [PackImage] {
+        pack.images(for: usage).filter { search.isEmpty || ImagePack.matches($0, search) }
+    }
+
+    private func emoji(inGroup index: Int) -> [EmojiEntry] {
+        EmojiCatalog.groups[index].filter { search.isEmpty || EmojiCatalog.matches($0, search) }
+    }
+
+    private var isEmpty: Bool {
+        if packs.contains(where: { !images(in: $0).isEmpty }) { return false }
+        if stickers { return true }
+        return !EmojiCatalog.groups.indices.contains(where: { !emoji(inGroup: $0).isEmpty })
+    }
+
+    private func sectionTitle(_ title: String) -> some View {
+        Text(title)
+            .font(.footnote.weight(.semibold))
+            .foregroundStyle(Theme.muted)
+            .padding(.top, 12)
+    }
+
+    /// The account's and rooms' own packs; stickers bigger, both named for VoiceOver.
+    @ViewBuilder
+    private var packSections: some View {
+        ForEach(packs) { pack in
+            let found = images(in: pack)
+            if !found.isEmpty {
+                sectionTitle(pack.name ?? "Custom Pack")
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: stickers ? 80 : 44))], spacing: 8) {
+                    ForEach(found) { image in
+                        Button { onCustom(image, stickers) } label: {
+                            AvatarView(url: image.url, name: image.shortcode, size: stickers ? 72 : 32, cornerRadius: stickers ? 8 : 4, account: account)
+                                .frame(width: stickers ? 80 : 44, height: stickers ? 80 : 44)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(":" + image.shortcode + ":")
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var emojiSections: some View {
+        ForEach(EmojiCatalog.groupNames.indices, id: \.self) { index in
+            let found = emoji(inGroup: index)
+            if !found.isEmpty {
+                sectionTitle(EmojiCatalog.groupNames[index])
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 44))], spacing: 4) {
+                    ForEach(found) { emoji in
+                        Button { onEmoji(emoji.unicode) } label: {
+                            Text(verbatim: emoji.unicode)
+                                .font(.system(size: 30))
+                                .frame(width: 44, height: 44)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(emoji.label)
+                    }
+                }
+            }
+        }
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 8) {
+            Image(systemName: stickers ? "photo.on.rectangle" : "face.smiling")
+                .font(.system(size: 32))
+                .foregroundStyle(Theme.faint)
+            Text(search.isEmpty ? (stickers ? "No Stickers Yet" : "No Emoji") : "No Results")
+                .font(.headline)
+                .foregroundStyle(Theme.text)
+            if search.isEmpty, stickers {
+                Text("Sticker packs from your account and this room appear here.")
+                    .font(.footnote)
+                    .foregroundStyle(Theme.muted)
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 60)
     }
 }
