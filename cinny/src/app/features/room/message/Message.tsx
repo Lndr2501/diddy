@@ -828,11 +828,6 @@ export const Message = as<'div', MessageProps>(
             hour24Clock={hour24Clock}
             dateFormatString={dateFormatString}
           />
-          {messageLayout === MessageLayout.Modern && hover && (
-            <Text as="span" size="T200" priority="300">
-              {senderId}
-            </Text>
-          )}
         </Box>
       </Box>
     );

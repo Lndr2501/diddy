@@ -96,6 +96,7 @@ export function DirectTab() {
       <SidebarItemTooltip tooltip="Direct Messages">
         {(triggerRef) => (
           <SidebarAvatar
+            aria-label="Direct Messages"
             as="button"
             ref={triggerRef}
             outlined

@@ -212,14 +212,28 @@ export const DIDDY_ICONS: Partial<Record<keyof typeof Icons, IconSrc>> = {
   HashGlobe: icon([
     line('M10 4 8 20M16 4l-1 7M4.5 9h15M4 15h7'),
     outline(18, 17.5, 3.6),
-    line('M14.4 17.5h7.2M18 13.9c1 1 1.5 2.2 1.5 3.6s-.5 2.6-1.5 3.6c-1-1-1.5-2.2-1.5-3.6s.5-2.6 1.5-3.6z'),
+    line('M14.6 17.5h6.8'),
   ]),
   VolumeHighGlobe: icon([
     shape(SPEAKER),
     line('M15.5 9a4 4 0 0 1 .9 2'),
     outline(18, 17.5, 3.6),
-    line('M14.4 17.5h7.2M18 13.9c1 1 1.5 2.2 1.5 3.6s-.5 2.6-1.5 3.6c-1-1-1.5-2.2-1.5-3.6s.5-2.6 1.5-3.6z'),
+    line('M14.6 17.5h6.8'),
   ]),
+  Leaf: icon([shape('M5 19c0-8.3 5.2-14 14-14 0 8.8-5.7 14-14 14z'), cut('M5 19l8-8')]),
+  Cup: icon([
+    shape('M5 9h11v5a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5z'),
+    line('M16 10.5h1.5a2.5 2.5 0 0 1 0 5H16M9 3.8v2.2M12.5 3.8v2.2'),
+  ]),
+  Ball: icon([
+    ring(12, 12, 9),
+    cut('M3 12h18M12 3v18M5.6 5.6c3.5 3.5 3.5 9.3 0 12.8M18.4 5.6c-3.5 3.5-3.5 9.3 0 12.8'),
+  ]),
+  Bulb: icon([
+    shape('M9 16c0-2.2-3-3.6-3-7a6 6 0 0 1 12 0c0 3.4-3 4.8-3 7z'),
+    line('M9.5 19h5M10.5 21.5h3'),
+  ]),
+  Peace: icon([ring(12, 12, 9), cut('M12 3v18M12 12l-6.2 6.2M12 12l6.2 6.2')]),
   Star: icon([shape(STAR)]),
   Heart: icon([shape('M12 20s-7.5-4.6-7.5-10.1A4.2 4.2 0 0 1 12 7.4a4.2 4.2 0 0 1 7.5 2.5C19.5 15.4 12 20 12 20z')]),
   Pin: icon([

@@ -95,3 +95,15 @@ export const PillText = style({
 export const PillTextMuted = style({
   opacity: 0.72,
 });
+
+/* "Show" / "Hide" next to a folded run of room updates: a small quiet text button */
+export const RunToggle = style({
+  selectors: {
+    '&&': {
+      minHeight: toRem(22),
+      padding: `0 ${toRem(6)}`,
+      opacity: 0.8,
+    },
+    '&&:hover': { opacity: 1 },
+  },
+});

@@ -49,7 +49,8 @@ export const SearchField = style({
   alignItems: 'center',
   gap: config.space.S200,
   flexShrink: 1,
-  minWidth: toRem(120),
+  // wide enough for the label and the shortcut keycap, so it never reads "Se..."
+  minWidth: toRem(156),
   width: toRem(220),
   height: toRem(32),
   padding: `0 ${config.space.S200} 0 ${config.space.S300}`,

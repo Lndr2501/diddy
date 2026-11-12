@@ -683,6 +683,8 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
           before={
             <IconButton
               onClick={() => pickFile('*')}
+              aria-label="Attach file"
+              title="Attach file"
               variant="SurfaceVariant"
               fill="None"
               className={css.ComposerIconButton}
@@ -702,6 +704,9 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
                 size="300"
                 radii="Pill"
                 onClick={() => setToolbar(!toolbar)}
+                aria-label="Formatting"
+                title="Formatting"
+                aria-pressed={toolbar}
               >
                 <Icon src={toolbar ? Icons.AlphabetUnderline : Icons.Alphabet} />
               </IconButton>
@@ -741,6 +746,8 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
                     {!hideStickerBtn && (
                       <IconButton
                         aria-pressed={emojiBoardTab === EmojiBoardTab.Sticker}
+                        aria-label="Stickers"
+                        title="Stickers"
                         onClick={() => setEmojiBoardTab(EmojiBoardTab.Sticker)}
                         variant="SurfaceVariant"
                         fill="None"
@@ -756,6 +763,8 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
                     )}
                     <IconButton
                       ref={emojiBtnRef}
+                      aria-label="Emoji"
+                      title="Emoji"
                       aria-pressed={
                         hideStickerBtn ? !!emojiBoardTab : emojiBoardTab === EmojiBoardTab.Emoji
                       }

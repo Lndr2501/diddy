@@ -327,7 +327,7 @@ export function Search({ requestClose }: SearchProps) {
                           data-room-id={roomId}
                           data-space={room.isSpaceRoom()}
                           onClick={handleRoomClick}
-                          variant={listFocus.index === index ? 'Primary' : 'Surface'}
+                          variant="Surface"
                           aria-pressed={listFocus.index === index}
                           className={css.Row}
                           radii="400"

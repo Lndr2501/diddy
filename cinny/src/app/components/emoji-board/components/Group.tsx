@@ -22,7 +22,7 @@ export const EmojiGroup = as<
     {...props}
     ref={ref}
   >
-    <Text id={`EmojiGroup-${id}-label`} as="label" className={css.EmojiGroupLabel} size="O400">
+    <Text id={`EmojiGroup-${id}-label`} as="label" className={css.EmojiGroupLabel} size="T200">
       {label}
     </Text>
     <div aria-labelledby={`EmojiGroup-${id}-label`} className={css.EmojiGroupContent}>

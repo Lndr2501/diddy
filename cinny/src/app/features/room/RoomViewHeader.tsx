@@ -729,6 +729,7 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
                 radii="300"
                 onClick={handleOpenMenu}
                 ref={triggerRef}
+                aria-label="More options"
                 aria-pressed={!!menuAnchor}
               >
                 <Icon size="200" src={Icons.VerticalDots} filled={!!menuAnchor} />

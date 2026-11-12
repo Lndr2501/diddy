@@ -101,19 +101,17 @@ export const EmojiGroup = style({
   padding: `${config.space.S300} 0`,
 });
 
+// Group heading: small sentence-case label on the left, sticky on the board's own surface
 export const EmojiGroupLabel = style({
   position: 'sticky',
-  top: config.space.S200,
+  top: 0,
   zIndex: 1,
-
-  margin: 'auto',
-  padding: `${toRem(3)} ${toRem(10)}`,
-  borderRadius: config.radii.Pill,
-  backgroundColor: `var(--diddy-material, color-mix(in srgb, ${color.SurfaceVariant.Container} 85%, transparent))`,
-  backdropFilter: 'saturate(180%) blur(20px)',
-  WebkitBackdropFilter: 'saturate(180%) blur(20px)',
-  border: `var(--diddy-border, 1px solid color-mix(in srgb, ${color.Surface.OnContainer} 8%, transparent))`,
+  display: 'block',
+  padding: `${toRem(6)} ${config.space.S300}`,
+  backgroundColor: `var(--diddy-material-strong, color-mix(in srgb, ${color.Surface.Container} 92%, transparent))`,
   color: color.SurfaceVariant.OnContainer,
+  opacity: 0.6,
+  fontWeight: 600,
 });
 
 export const EmojiGroupContent = style([

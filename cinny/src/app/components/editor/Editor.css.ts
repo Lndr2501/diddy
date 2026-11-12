@@ -17,9 +17,9 @@ export const Editor = style([
       },
     },
     selectors: {
+      // focus: the frame only gets a little brighter, no coloured ring around the whole card
       '&:focus-within': {
-        borderColor: `color-mix(in srgb, ${color.Primary.Main} 45%, transparent)`,
-        boxShadow: `0 0 0 ${toRem(3)} color-mix(in srgb, ${color.Primary.Main} 14%, transparent)`,
+        borderColor: `color-mix(in srgb, ${color.SurfaceVariant.OnContainer} 22%, transparent)`,
       },
     },
   },

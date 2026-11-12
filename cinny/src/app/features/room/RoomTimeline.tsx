@@ -38,6 +38,7 @@ import {
   ContainerColor,
   Icon,
   Icons,
+  Button,
   Line,
   Scroll,
   Text,
@@ -86,6 +87,7 @@ import {
   reactionOrEditEvent,
 } from '../../utils/room';
 import { isCardActionMessage } from '../../plugins/botCard';
+import { findUpdateRuns, summarizeUpdates, TimelineKind } from '../../plugins/timelineGroups';
 import { useSetting } from '../../state/hooks/settings';
 import { MessageLayout, settingsAtom } from '../../state/settings';
 import { useMatrixEventRenderer } from '../../hooks/useMatrixEventRenderer';
@@ -465,6 +467,8 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
   const direct = useIsDirectRoom();
   const [hideMembershipEvents] = useSetting(settingsAtom, 'hideMembershipEvents');
   const [hideNickAvatarEvents] = useSetting(settingsAtom, 'hideNickAvatarEvents');
+  // runs of room updates the user unfolded, keyed by the id of their first event
+  const [openUpdateRuns, setOpenUpdateRuns] = useState<ReadonlySet<string>>(() => new Set());
   const [mediaAutoLoad] = useSetting(settingsAtom, 'mediaAutoLoad');
   const [urlPreview] = useSetting(settingsAtom, 'urlPreview');
   const [encUrlPreview] = useSetting(settingsAtom, 'encUrlPreview');
@@ -1794,6 +1798,90 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
   let prevRenderedEvent: MatrixEvent | undefined;
   let newDivider = false;
   let dayDivider = false;
+  // Fold runs of room updates (joins, invites, name / topic / avatar changes) into one row.
+  const UPDATE_TYPES: string[] = [
+    StateEvent.RoomMember,
+    StateEvent.RoomName,
+    StateEvent.RoomTopic,
+    StateEvent.RoomAvatar,
+  ];
+  const timelineItems = getItems();
+  const eventOfItem = (item: number): MatrixEvent | undefined => {
+    const [eventTimeline, baseIndex] = getTimelineAndBaseIndex(timeline.linkedTimelines, item);
+    if (!eventTimeline) return undefined;
+    return getTimelineEvent(eventTimeline, getTimelineRelativeIndex(item, baseIndex)) ?? undefined;
+  };
+  const itemKinds: TimelineKind[] = [];
+  const itemDays: string[] = [];
+  const itemEvents: (MatrixEvent | undefined)[] = [];
+  timelineItems.forEach((item) => {
+    const ev = eventOfItem(item);
+    itemEvents.push(ev);
+    itemDays.push(ev ? new Date(ev.getTs()).toDateString() : '');
+    const sender = ev?.getSender();
+    if (
+      !ev ||
+      (sender && ignoredUsersSet.has(sender)) ||
+      (ev.isRedacted() && !showHiddenEvents) ||
+      reactionOrEditEvent(ev) ||
+      isCardActionMessage(ev.getContent())
+    ) {
+      itemKinds.push('hidden');
+      return;
+    }
+    if (ev.getType() === StateEvent.RoomMember) {
+      const changed = isMembershipChanged(ev);
+      if ((changed && hideMembershipEvents) || (!changed && hideNickAvatarEvents)) {
+        itemKinds.push('hidden');
+        return;
+      }
+    }
+    const evType = ev.getType();
+    if (UPDATE_TYPES.includes(evType)) {
+      itemKinds.push('update');
+      return;
+    }
+    // everything without its own renderer (power levels, join rules...) is only drawn with
+    // "show hidden events"; otherwise it must not break a run of updates
+    const ownRenderer: string[] = [
+      MessageEvent.RoomMessage,
+      MessageEvent.RoomMessageEncrypted,
+      MessageEvent.Sticker,
+      StateEvent.GroupCallMemberPrefix,
+    ];
+    itemKinds.push(ownRenderer.includes(evType) || showHiddenEvents ? 'message' : 'hidden');
+  });
+  const updateRunOfItem = new Map<number, { key: string; first: boolean; summary: string }>();
+  findUpdateRuns(itemKinds, itemDays).forEach(({ start, end }) => {
+    const runEvents = itemEvents
+      .slice(start, end + 1)
+      .filter((ev, i): ev is MatrixEvent => !!ev && itemKinds[start + i] === 'update');
+    const key = runEvents[0]?.getId();
+    if (!key) return;
+    const summary = summarizeUpdates(
+      runEvents.map((ev) =>
+        ev.getType() === StateEvent.RoomMember
+          ? {
+              membership: ev.getContent().membership,
+              prevMembership: ev.getPrevContent().membership,
+            }
+          : {}
+      )
+    );
+    for (let i = start; i <= end; i += 1) {
+      if (itemKinds[i] === 'update') {
+        updateRunOfItem.set(timelineItems[i], { key, first: i === start, summary });
+      }
+    }
+  });
+  const toggleUpdateRun = (key: string) =>
+    setOpenUpdateRuns((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+
   const eventRenderer = (item: number) => {
     const [eventTimeline, baseIndex] = getTimelineAndBaseIndex(timeline.linkedTimelines, item);
     if (!eventTimeline) return null;
@@ -1833,7 +1921,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
       !mEvent.replyEventId &&
       minuteDifference(prevRenderedEvent.getTs(), mEvent.getTs()) < 2;
 
-    const eventJSX = isVisible
+    let eventJSX = isVisible
       ? renderMatrixEvent(
           mEvent.getType(),
           typeof mEvent.getStateKey() === 'string',
@@ -1847,6 +1935,57 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
     prevEvent = mEvent;
     if (isVisible) {
       prevRenderedEvent = mEvent;
+    }
+
+    const updateRun = updateRunOfItem.get(item);
+    if (updateRun && eventJSX) {
+      const open = openUpdateRuns.has(updateRun.key);
+      if (updateRun.first) {
+        const summaryJSX = (
+          <MessageBase key={`run-${updateRun.key}`} space={messageSpacing}>
+            <EventContent
+              messageLayout={messageLayout}
+              time={
+                <Time
+                  ts={mEvent.getTs()}
+                  compact={messageLayout === MessageLayout.Compact}
+                  hour24Clock={hour24Clock}
+                  dateFormatString={dateFormatString}
+                />
+              }
+              iconSrc={Icons.User}
+              content={
+                <Box grow="Yes" alignItems="Center" gap="200">
+                  <Text size="T300" priority="300" truncate>
+                    {updateRun.summary}
+                  </Text>
+                  <Button
+                    variant="Secondary"
+                    fill="None"
+                    size="300"
+                    radii="300"
+                    className={css.RunToggle}
+                    aria-expanded={open}
+                    onClick={() => toggleUpdateRun(updateRun.key)}
+                  >
+                    <Text size="B300">{open ? 'Hide' : 'Show'}</Text>
+                  </Button>
+                </Box>
+              }
+            />
+          </MessageBase>
+        );
+        eventJSX = open ? (
+          <React.Fragment key={`run-group-${updateRun.key}`}>
+            {summaryJSX}
+            {eventJSX}
+          </React.Fragment>
+        ) : (
+          summaryJSX
+        );
+      } else if (!open) {
+        eventJSX = null;
+      }
     }
 
     const newDividerJSX =

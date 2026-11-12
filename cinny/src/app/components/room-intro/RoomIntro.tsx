@@ -51,7 +51,8 @@ export const RoomIntro = as<'div', RoomIntroProps>(({ room, ...props }, ref) => 
   return (
     <Box direction="Column" grow="Yes" gap="500" {...props} ref={ref}>
       <Box>
-        <Avatar size="500">
+        {/* a direct chat shows a person, and people are round everywhere */}
+        <Avatar size="500" radii={mDirects.has(room.roomId) ? 'Pill' : undefined}>
           <RoomAvatar
             roomId={room.roomId}
             src={avatarHttpUrl ?? undefined}

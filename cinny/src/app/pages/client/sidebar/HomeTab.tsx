@@ -109,6 +109,7 @@ export function HomeTab() {
       <SidebarItemTooltip tooltip="Home">
         {(triggerRef) => (
           <SidebarAvatar
+            aria-label="Home"
             as="button"
             ref={triggerRef}
             outlined

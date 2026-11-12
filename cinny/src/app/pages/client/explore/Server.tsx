@@ -135,7 +135,7 @@ function Search({ active, loading, searchInputRef, onSearch, onReset }: SearchPr
               <Text size="B300">Clear</Text>
             </Chip>
           ) : (
-            <Chip type="submit" variant="Primary" size="400" radii="Pill" outlined>
+            <Chip type="submit" variant="SurfaceVariant" size="400" radii="Pill">
               <Text size="B300">Enter</Text>
             </Chip>
           )
@@ -236,7 +236,7 @@ function ThirdPartyProtocolsSelector({
         aria-pressed={!!menuAnchor}
         radii="Pill"
         size="400"
-        variant={instanceId ? 'Success' : 'SurfaceVariant'}
+        variant={instanceId ? 'Primary' : 'SurfaceVariant'}
         after={<Icon size="100" src={Icons.ChevronBottom} />}
       >
         <Text size="T200" truncate>
@@ -542,7 +542,7 @@ export function PublicRooms() {
                           key={filter.title}
                           onClick={handleRoomFilterClick}
                           data-room-filter={filter.value}
-                          variant={filter.value === serverSearchParams.type ? 'Success' : 'Surface'}
+                          variant={filter.value === serverSearchParams.type ? 'Secondary' : 'Surface'}
                           aria-pressed={filter.value === serverSearchParams.type}
                           before={
                             filter.value === serverSearchParams.type && (

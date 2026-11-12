@@ -12,7 +12,6 @@ export const Composer = style({
 
 const CARD_SHADOW =
   'var(--diddy-shadow-2, 0 1px 2px rgba(0, 0, 0, 0.1), 0 8px 24px rgba(0, 0, 0, 0.16))';
-const FOCUS_HALO = `0 0 0 3px color-mix(in srgb, ${color.Primary.Main} 14%, transparent)`;
 
 globalStyle(`${Composer} > ${Editor}`, {
   backgroundColor: `var(--diddy-material-strong, color-mix(in srgb, ${color.SurfaceVariant.Container} 92%, transparent))`,
@@ -21,9 +20,6 @@ globalStyle(`${Composer} > ${Editor}`, {
   boxShadow: CARD_SHADOW,
 });
 
-globalStyle(`${Composer} > ${Editor}:focus-within`, {
-  boxShadow: `${FOCUS_HALO}, ${CARD_SHADOW}`,
-});
 
 // Quiet icon buttons of the composer (attach, format, sticker, emoji, mic): round hover fill.
 export const ComposerIconButton = style({

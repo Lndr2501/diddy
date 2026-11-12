@@ -102,6 +102,7 @@ export function CreateTab() {
             }
           >
             <SidebarAvatar
+              aria-label="Create"
               className={css.SidebarAddAvatar}
               data-open={!!menuCords}
               as="button"

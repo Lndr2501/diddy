@@ -1,5 +1,5 @@
 import { JoinRule } from 'matrix-js-sdk';
-import { AvatarFallback, AvatarImage, Icon, Icons, color } from 'folds';
+import { AvatarFallback, AvatarImage, Icon, Icons } from 'folds';
 import React, { ComponentProps, ReactEventHandler, ReactNode, forwardRef, useState } from 'react';
 import * as css from './RoomAvatar.css';
 import { getRoomIconSrc } from '../../utils/room';
@@ -21,7 +21,11 @@ export function RoomAvatar({ roomId, src, alt, renderFallback }: RoomAvatarProps
   if (!src || error) {
     return (
       <AvatarFallback
-        style={{ backgroundColor: colorMXID(roomId ?? ''), color: color.Surface.Container }}
+        // a soft tint of the room's colour with the glyph in that colour (no loud solid tiles)
+        style={{
+          backgroundColor: `color-mix(in srgb, ${colorMXID(roomId ?? '')} 18%, transparent)`,
+          color: colorMXID(roomId ?? ''),
+        }}
         className={css.RoomAvatar}
       >
         {renderFallback()}

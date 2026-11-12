@@ -102,6 +102,10 @@ export const Row = style({
     '&&:not([aria-pressed="true"]):hover': {
       backgroundColor: HOVER,
     },
+    // keyboard selection: the neutral selected fill
+    '&&[aria-pressed="true"]': {
+      backgroundColor: 'var(--diddy-selected)',
+    },
   },
 });
 

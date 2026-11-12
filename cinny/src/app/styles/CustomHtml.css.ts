@@ -261,7 +261,10 @@ export const EmoticonImg = style([
 export const highlightText = style([
   DefaultReset,
   {
-    backgroundColor: 'yellow',
-    color: 'black',
+    // a soft accent mark instead of highlighter yellow
+    backgroundColor: `color-mix(in srgb, ${color.Primary.Main} 30%, transparent)`,
+    color: 'inherit',
+    borderRadius: toRem(3),
+    boxShadow: `0 0 0 1px color-mix(in srgb, ${color.Primary.Main} 30%, transparent)`,
   },
 ]);
