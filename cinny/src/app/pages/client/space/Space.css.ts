@@ -4,8 +4,7 @@ import { SELECTED } from '../../../components/sidebar/diddyTokens';
 
 /* Lobby and Search: a compact pair of buttons above the rooms, visually apart from room rows */
 export const QuickRow = style({
-  paddingBottom: config.space.S200,
-  borderBottom: `1px solid color-mix(in srgb, ${color.Background.OnContainer} 8%, transparent)`,
+  paddingBottom: config.space.S100,
 });
 
 export const QuickItem = style({

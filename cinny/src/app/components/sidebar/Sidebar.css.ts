@@ -234,9 +234,25 @@ export const SidebarAvatar = recipe({
         borderRadius: toRem(12),
       },
     },
+    // the rail's own buttons (home, inbox, explore, add...): plain glyphs without a frame, a soft
+    // surface on hover and when their page is open
     outlined: {
       true: {
-        border: BORDER,
+        border: 'none',
+        backgroundColor: 'transparent',
+        color: `color-mix(in srgb, ${color.Background.OnContainer} 78%, transparent)`,
+        selectors: {
+          'button&:hover': {
+            filter: 'none',
+            boxShadow: 'none',
+            backgroundColor: HOVER,
+            color: color.Background.OnContainer,
+          },
+          '[data-active=true] &': {
+            backgroundColor: `color-mix(in srgb, ${color.Background.OnContainer} 11%, transparent)`,
+            color: color.Background.OnContainer,
+          },
+        },
       },
     },
   },
@@ -246,23 +262,15 @@ export const SidebarAvatar = recipe({
 });
 export type SidebarAvatarVariants = RecipeVariants<typeof SidebarAvatar>;
 
-// Home tab: always accented, filled when selected.
+// Home tab: like the other rail buttons (it used to be a permanently accented tile).
 export const SidebarHomeAvatar = style({
   border: 'none',
-  backgroundColor: color.Primary.Container,
-  color: color.Primary.OnContainer,
-  selectors: {
-    '[data-active=true] &': {
-      backgroundColor: color.Primary.Main,
-      color: color.Primary.OnMain,
-    },
-  },
 });
 
-// "+" add button: quiet outlined tile that fills softly on hover.
+// "+" add button: a quiet glyph that fills softly on hover.
 export const SidebarAddAvatar = style({
   backgroundColor: 'transparent',
-  border: BORDER,
+  border: 'none',
   color: color.Background.OnContainer,
   opacity: 0.8,
   selectors: {

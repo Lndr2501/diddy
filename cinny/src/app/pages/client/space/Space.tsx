@@ -25,8 +25,7 @@ import {
   toRem,
 } from 'folds';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { JoinRule, Room } from 'matrix-js-sdk';
-import { RoomJoinRulesEventContent } from 'matrix-js-sdk/lib/types';
+import { Room } from 'matrix-js-sdk';
 import FocusTrap from 'focus-trap-react';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { mDirectAtom } from '../../../state/mDirectList';
@@ -252,10 +251,6 @@ function SpaceHeader() {
   const spaceName = useRoomName(space);
   const [menuAnchor, setMenuAnchor] = useState<RectCords>();
 
-  const joinRules = useStateEvent(
-    space,
-    StateEvent.RoomJoinRules
-  )?.getContent<RoomJoinRulesEventContent>();
 
   const handleOpenMenu: MouseEventHandler<HTMLButtonElement> = (evt) => {
     const cords = evt.currentTarget.getBoundingClientRect();
@@ -273,7 +268,6 @@ function SpaceHeader() {
             <Text size="H4" className={pageCss.PageNavHeaderTitle} truncate>
               {spaceName}
             </Text>
-            {joinRules?.join_rule !== JoinRule.Public && <Icon src={Icons.Lock} size="50" />}
             <Icon src={Icons.ChevronBottom} size="50" style={{ opacity: config.opacity.P300 }} />
           </Box>
           <Box shrink="No">

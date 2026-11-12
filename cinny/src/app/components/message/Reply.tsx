@@ -147,7 +147,6 @@ export const Reply = as<'div', ReplyProps>(
                 </span>
                 <Text size="T200" truncate>
                   <b>
-                    @
                     <DiddyName
                       userId={sender}
                       name={getMemberDisplayName(room, sender) ?? getMxIdLocalPart(sender) ?? sender}

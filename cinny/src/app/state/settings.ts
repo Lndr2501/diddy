@@ -73,7 +73,7 @@ const defaultSettings: Settings = {
   memberSortFilterIndex: 0,
   enterForNewline: false,
   messageLayout: 0,
-  messageSpacing: '400',
+  messageSpacing: '300',
   hideMembershipEvents: false,
   hideNickAvatarEvents: true,
   mediaAutoLoad: true,

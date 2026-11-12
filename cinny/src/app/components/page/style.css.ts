@@ -5,13 +5,11 @@ import {
   BORDER,
   FOCUS_RING,
   HOVER,
-  MATERIAL_STRONG,
   RADIUS_CARD,
   RADIUS_CTL,
   RADIUS_ROW,
   REDUCED_MOTION,
   SEPARATOR,
-  SHADOW_1,
   SHADOW_2,
   SIDE_TONE,
   transition,
@@ -157,11 +155,9 @@ export const PageNavFooter = style([
     // concentric with the nav panel (18 px radius, 8 px inset)
     borderRadius: RADIUS_ROW,
     overflow: 'hidden',
-    // already sits on the blurred nav material, so no second backdrop blur here
-    backgroundColor: MATERIAL_STRONG,
+    // a quiet raised area without frame or shadow (call panel, plugins and your account)
+    backgroundColor: `color-mix(in srgb, ${color.SurfaceVariant.OnContainer} 5%, transparent)`,
     color: color.SurfaceVariant.OnContainer,
-    border: BORDER,
-    boxShadow: SHADOW_1,
   },
 ]);
 

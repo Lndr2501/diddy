@@ -111,6 +111,7 @@ export function HomeTab() {
           <SidebarAvatar
             as="button"
             ref={triggerRef}
+            outlined
             className={css.SidebarHomeAvatar}
             onClick={handleHomeClick}
             onContextMenu={handleContextMenu}

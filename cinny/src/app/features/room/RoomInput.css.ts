@@ -31,7 +31,7 @@ export const ComposerIconButton = style({
   selectors: {
     '&&': {
       color: color.SurfaceVariant.OnContainer,
-      opacity: 0.85,
+      opacity: 0.6,
     },
     '&&:hover, &&:focus-visible, &&[aria-pressed=true]': {
       opacity: 1,
@@ -67,6 +67,12 @@ export const SendButton = style({
     },
     '&&:hover, &&:focus-visible': {
       backgroundColor: color.Primary.MainHover,
+    },
+    // nothing to send yet: a quiet grey circle instead of the accent
+    '&&[data-ready=false]': {
+      backgroundColor: `color-mix(in srgb, ${color.SurfaceVariant.OnContainer} 10%, transparent)`,
+      color: `color-mix(in srgb, ${color.SurfaceVariant.OnContainer} 55%, transparent)`,
+      boxShadow: 'none',
     },
     '&&:active': {
       backgroundColor: color.Primary.MainActive,

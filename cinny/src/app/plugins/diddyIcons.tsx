@@ -209,6 +209,17 @@ export const DIDDY_ICONS: Partial<Record<keyof typeof Icons, IconSrc>> = {
     solid('M14.5 17.2a1 1 0 0 1 1-1h5a1 1 0 0 1 1 1v2.6a1 1 0 0 1-1 1h-5a1 1 0 0 1-1-1z'),
     line('M16 16.2v-.9a2 2 0 0 1 4 0v.9'),
   ]),
+  HashGlobe: icon([
+    line('M10 4 8 20M16 4l-1 7M4.5 9h15M4 15h7'),
+    outline(18, 17.5, 3.6),
+    line('M14.4 17.5h7.2M18 13.9c1 1 1.5 2.2 1.5 3.6s-.5 2.6-1.5 3.6c-1-1-1.5-2.2-1.5-3.6s.5-2.6 1.5-3.6z'),
+  ]),
+  VolumeHighGlobe: icon([
+    shape(SPEAKER),
+    line('M15.5 9a4 4 0 0 1 .9 2'),
+    outline(18, 17.5, 3.6),
+    line('M14.4 17.5h7.2M18 13.9c1 1 1.5 2.2 1.5 3.6s-.5 2.6-1.5 3.6c-1-1-1.5-2.2-1.5-3.6s.5-2.6 1.5-3.6z'),
+  ]),
   Star: icon([shape(STAR)]),
   Heart: icon([shape('M12 20s-7.5-4.6-7.5-10.1A4.2 4.2 0 0 1 12 7.4a4.2 4.2 0 0 1 7.5 2.5C19.5 15.4 12 20 12 20z')]),
   Pin: icon([

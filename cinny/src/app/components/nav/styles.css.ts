@@ -62,21 +62,21 @@ const NavItemBase = style({
 
   selectors: {
     '&:hover, &:focus-visible': {
-      backgroundColor: color.SurfaceVariant.Container,
+      backgroundColor: `color-mix(in srgb, ${OnContainer} 6%, transparent)`,
     },
     '&[data-hover=true]': {
-      backgroundColor: color.SurfaceVariant.Container,
+      backgroundColor: `color-mix(in srgb, ${OnContainer} 6%, transparent)`,
     },
     [`&:has(.${NavLink}:active)`]: {
-      backgroundColor: color.SurfaceVariant.ContainerActive,
+      backgroundColor: `color-mix(in srgb, ${OnContainer} 12%, transparent)`,
     },
-    // selected row: rounded accent-tinted highlight
+    // selected row: a quiet neutral fill, the text at full strength
     '&[aria-selected=true]': {
-      backgroundColor: color.Primary.Container,
-      color: color.Primary.OnContainer,
+      backgroundColor: 'var(--diddy-selected)',
+      color: OnContainer,
     },
     '&[aria-selected=true]:hover': {
-      backgroundColor: color.Primary.ContainerHover,
+      backgroundColor: `color-mix(in srgb, ${OnContainer} 13%, transparent)`,
     },
     [`&:has(.${NavLink}:focus-visible)`]: {
       outline: `${config.borderWidth.B600} solid ${ContainerLine}`,

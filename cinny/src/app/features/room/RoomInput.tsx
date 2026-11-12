@@ -195,6 +195,8 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
       selectedFiles.map((f) => f.file)
     );
     const uploadBoardHandlers = useRef<UploadBoardImperativeHandlers>();
+    // the send button only lights up when there is something to send
+    const [hasText, setHasText] = useState(false);
 
     const imagePackRooms: Room[] = useImagePackRooms(roomId, roomToParents);
 
@@ -638,7 +640,10 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
           onKeyDown={handleKeyDown}
           onKeyUp={handleKeyUp}
           onPaste={handlePaste}
-          onChange={handleAutomaticDraftSave}
+          onChange={() => {
+            setHasText(!isEmptyEditor(editor));
+            handleAutomaticDraftSave();
+          }}
           top={
             replyDraft && (
               <div>
@@ -777,6 +782,8 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
                 size="300"
                 radii="Pill"
                 className={css.SendButton}
+                data-ready={hasText || selectedFiles.length > 0}
+                aria-label="Send message"
               >
                 <Icon src={Icons.Send} />
               </IconButton>

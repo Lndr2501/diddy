@@ -425,7 +425,7 @@ export const diddyTheme = createTheme(color, {
  *   --diddy-accent           accent colour (Primary.Main)
  *   --diddy-material         translucent fill for sidebars / popovers / menus (use with --diddy-blur)
  *   --diddy-material-strong  denser translucent fill for sheets / dialogs
- *   --diddy-selected         quiet accent tinted fill for selected rows
+ *   --diddy-selected         quiet neutral fill for selected rows (accent stays for what needs attention)
  *   --diddy-selection        text selection background
  *   --diddy-focus-ring       keyboard focus ring colour
  */
@@ -434,7 +434,7 @@ globalStyle('body', {
     '--diddy-accent': color.Primary.Main,
     '--diddy-material': `color-mix(in srgb, ${color.SurfaceVariant.Container} 78%, transparent)`,
     '--diddy-material-strong': `color-mix(in srgb, ${color.Surface.Container} 92%, transparent)`,
-    '--diddy-selected': `color-mix(in srgb, ${color.Primary.Main} 18%, transparent)`,
+    '--diddy-selected': `color-mix(in srgb, ${color.Surface.OnContainer} 10%, transparent)`,
     '--diddy-selection': `color-mix(in srgb, ${color.Primary.Main} 34%, transparent)`,
     '--diddy-focus-ring': `color-mix(in srgb, ${color.Primary.Main} 65%, transparent)`,
   },
@@ -444,7 +444,7 @@ globalStyle('body.prism-light', {
   vars: {
     '--diddy-material': `color-mix(in srgb, ${color.Surface.Container} 78%, transparent)`,
     '--diddy-material-strong': `color-mix(in srgb, ${color.Surface.Container} 94%, transparent)`,
-    '--diddy-selected': `color-mix(in srgb, ${color.Primary.Main} 13%, transparent)`,
+    '--diddy-selected': `color-mix(in srgb, ${color.Surface.OnContainer} 6%, transparent)`,
     '--diddy-selection': `color-mix(in srgb, ${color.Primary.Main} 24%, transparent)`,
     '--diddy-focus-ring': `color-mix(in srgb, ${color.Primary.Main} 55%, transparent)`,
   },

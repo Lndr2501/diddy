@@ -263,44 +263,19 @@ export const getUnreadInfos = (mx: MatrixClient): UnreadInfo[] => {
   return unreadInfos;
 };
 
+/**
+ * Room icon by type. Private (invite / knock) is the normal case and gets the plain glyph; only
+ * public rooms are marked (globe), so the lists are not full of locks.
+ */
 export const getRoomIconSrc = (
   icons: Record<IconName, IconSrc>,
   roomType?: string,
   joinRule?: JoinRule
 ): IconSrc => {
-  if (roomType === RoomType.Space) {
-    if (joinRule === JoinRule.Public) return icons.SpaceGlobe;
-    if (
-      joinRule === JoinRule.Invite ||
-      joinRule === JoinRule.Knock ||
-      joinRule === JoinRule.Private
-    ) {
-      return icons.SpaceLock;
-    }
-    return icons.Space;
-  }
-
-  if (roomType === RoomType.Call) {
-    if (joinRule === JoinRule.Public) return icons.VolumeHighGlobe;
-    if (
-      joinRule === JoinRule.Invite ||
-      joinRule === JoinRule.Knock ||
-      joinRule === JoinRule.Private
-    ) {
-      return icons.VolumeHighLock;
-    }
-    return icons.VolumeHigh;
-  }
-
-  if (joinRule === JoinRule.Public) return icons.HashGlobe;
-  if (
-    joinRule === JoinRule.Invite ||
-    joinRule === JoinRule.Knock ||
-    joinRule === JoinRule.Private
-  ) {
-    return icons.HashLock;
-  }
-  return icons.Hash;
+  const isPublic = joinRule === JoinRule.Public;
+  if (roomType === RoomType.Space) return isPublic ? icons.SpaceGlobe : icons.Space;
+  if (roomType === RoomType.Call) return isPublic ? icons.VolumeHighGlobe : icons.VolumeHigh;
+  return isPublic ? icons.HashGlobe : icons.Hash;
 };
 
 export const getRoomAvatarUrl = (

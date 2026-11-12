@@ -58,9 +58,9 @@ export const RoomBadge = style({
   height: toRem(32),
   borderRadius: 'var(--diddy-radius-ctl, 10px)',
   overflow: 'hidden',
-  backgroundColor: color.Primary.Container,
-  color: color.Primary.OnContainer,
-  boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${color.Surface.OnContainer} 8%, transparent)`,
+  // neutral tile: the room glyph is information, not a highlight
+  backgroundColor: `color-mix(in srgb, ${color.Surface.OnContainer} 7%, transparent)`,
+  color: `color-mix(in srgb, ${color.Surface.OnContainer} 80%, transparent)`,
 });
 
 export const RoomBadgeAvatar = style({
