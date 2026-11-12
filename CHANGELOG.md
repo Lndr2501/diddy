@@ -10,6 +10,18 @@
   - **Calls:** Lautstärke pro Person, Geräteauswahl, Ping, Reaktionen, Soundboard mit mehreren Clips, Sounds einzeln und mit eigenen Dateien, Watch together.
   - **Einstellungen:** Benachrichtigungsregeln, Darstellung (System hell/dunkel, eigenes Theme, Zoom), Geräte abmelden und verifizieren, Wiederherstellung einrichten, Entwicklerwerkzeuge, Diddy-Optionsraum, Badges, Profil-Export und -Import.
   - **„Bitte nicht stören“** macht auf iOS jetzt wirklich still, die Server-Suche beim Login gibt nach 8 s auf.
+- **iOS: aufgeräumte Oberfläche:**
+  - **Einstellungen:** in Gruppen (Account, App, Help) mit Symbolen. Darstellung hat eine eigene Seite, Abmelden steht unten und fragt nach.
+  - **Chat:** Kopfzeile mit Anruf, Suche und einem Menü. Das Nachrichtenmenü ist in Gruppen sortiert, Löschen steht unten in Rot. Das Eingabefeld wächst mit dem Text, Anhänge liegen hinter „+“, und Vorschläge für @, # und :emoji: gelten an der Cursorstelle.
+  - **Raumliste:** ein gemeinsames Server-Menü für Leiste und Kopf, eine einzige Suche, Hinweise bei leeren Listen.
+  - **Calls:** eine Leiste unten (Lautsprecher, Kamera, Mikro, Teilen, Mehr, Auflegen). Reaktionen, Soundboard, Watch together, Taub schalten und Audiogeräte liegen unter „Mehr“. Die Statuszeile zeigt Neu verbinden und schwache Verbindung.
+  - **Profile und Räume:** Die Profilkarte hat eine klare Reihenfolge, Moderation steht unten. Raum-Einstellungen sind gruppiert, und wo man ungespeicherte Änderungen verlassen würde, fragt die App nach. Im Profil-Editor bleibt die Vorschau sichtbar.
+- **iOS: kleinere Fehler:**
+  - „Edit Profile“ im Status-Menü hatte keinen Speichern-Knopf.
+  - Plugins und Einladungen ließen sich per Wischen ohne Rückfrage entfernen.
+  - Fünf Chat-Schalter ohne Wirkung sind weg.
+  - „Aktivität ausblenden“ blendet wie am Desktop auch das Tippen anderer aus.
+  - Escape schließt nur noch das oberste Fenster.
 - **iOS: „Mit Agent reden“ entfernt:** Auf dem iPhone ergibt das keinen Sinn. Wer am Desktop mit einem Agenten redet, wird auf iOS weiter als „Redet mit Agent“ angezeigt.
 - **iOS: Löschen fragt nach:** Eigene Nachrichten wurden sofort gelöscht; jetzt kommt wie am Desktop eine Abfrage mit optionalem Grund.
 - **iOS: Einladungs-Sound** ist ab Werk aus, wie am Desktop.
