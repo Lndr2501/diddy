@@ -19,20 +19,18 @@ struct MessageSearchView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                HStack {
-                    TextField("Search for keyword", text: $term)
-                        .textInputAutocapitalization(.never).autocorrectionDisabled()
-                        .submitLabel(.search).onSubmit { search() }
-                    Button(action: search) { Image(systemName: "magnifyingglass") }
-                        .accessibilityLabel("Search messages")
-                }.padding()
-                if roomId != nil { Toggle("Search all rooms", isOn: $global).padding(.horizontal) }
+            VStack(spacing: 8) {
                 Picker("Order", selection: $order) {
                     ForEach(MessageSearch.Order.allCases) { Text($0.title).tag($0) }
-                }.pickerStyle(.segmented).padding()
-                Text("Encrypted messages cannot be searched on the server.")
-                    .font(.footnote).foregroundStyle(Theme.muted).padding(.horizontal)
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal)
+                .padding(.top, 8)
+                if roomId != nil {
+                    Toggle("Search All Rooms", isOn: $global)
+                        .font(.subheadline)
+                        .padding(.horizontal)
+                }
                 List {
                     ForEach(store.groups) { group in
                         Section(account.summary(for: group.roomId)?.name ?? group.roomId) {
@@ -51,21 +49,45 @@ struct MessageSearchView: View {
                     }
                     if store.loading { HStack { Spacer(); ProgressView(); Spacer() } }
                     if let error = store.error {
-                        Text(error).foregroundStyle(Theme.danger)
-                        Button("Retry") { Task { await store.load(account: account) } }
+                        Section {
+                            Text(error).foregroundStyle(Theme.danger)
+                            Button("Try Again") { Task { await store.load(account: account) } }
+                        }
                     } else if store.nextBatch != nil && !store.loading {
-                        Button("Load more") { Task { await store.load(account: account) } }
+                        Button("Load More") { Task { await store.load(account: account) } }
                     } else if store.searched && store.groups.isEmpty && !store.loading {
-                        Text("No results found").foregroundStyle(Theme.muted)
+                        statusRow("No Results", detail: "Try another word, or search all rooms.", symbol: "magnifyingglass")
+                    } else if !store.searched && !store.loading {
+                        statusRow("Search Messages", detail: "Type a word and tap Search. Encrypted messages cannot be searched on the server.", symbol: "text.magnifyingglass")
                     }
-                }.listStyle(.insetGrouped)
+                }
+                .listStyle(.insetGrouped)
+                .scrollContentBackground(.hidden)
             }
-            .background(Theme.chat)
+            .background(Theme.chat.ignoresSafeArea())
+            .searchable(text: $term, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search for keyword")
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled()
+            .onSubmit(of: .search) { search() }
             .navigationTitle("Search Messages")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
             .onChange(of: order) { _ in search() }
             .onChange(of: global) { _ in search() }
         }
+    }
+
+    /// A quiet centred line in the list: before the first search and when nothing was found.
+    private func statusRow(_ title: String, detail: String, symbol: String) -> some View {
+        VStack(spacing: 6) {
+            Image(systemName: symbol).font(.system(size: 26)).foregroundStyle(Theme.faint)
+            Text(title).font(.headline).foregroundStyle(Theme.text)
+            Text(detail).font(.footnote).foregroundStyle(Theme.muted).multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 24)
+        .listRowBackground(Color.clear)
+        .accessibilityElement(children: .combine)
     }
 
     private func search() {

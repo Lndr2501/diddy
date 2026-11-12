@@ -279,6 +279,7 @@ private struct RichBlocksView: View {
         if edited { text = text + Text(" (edited)").font(.caption2).foregroundColor(Theme.faint) }
         return text
             .foregroundStyle(Theme.text)
+            .textSelection(.enabled)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -292,12 +293,15 @@ private struct RichBlocksView: View {
                 Text(verbatim: code)
                     .font(.system(.footnote, design: .monospaced))
                     .foregroundStyle(Theme.text)
+                    .textSelection(.enabled)
                     .fixedSize(horizontal: true, vertical: true)
             }
         }
-        .padding(8)
+        .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 6).fill(Theme.elevated))
+        // Same corners and edge as link previews, files and bot cards.
+        .background(RoundedRectangle(cornerRadius: 8).fill(Theme.elevated))
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.faint.opacity(0.25), lineWidth: 1))
     }
 
     private static func headingFont(_ level: Int) -> Font {
