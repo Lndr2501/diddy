@@ -17,6 +17,12 @@ import UniformTypeIdentifiers
 @MainActor
 struct DiddyProfileEditor: View {
     @ObservedObject var account: MatrixAccount
+    /// Shown as the root of its own sheet: brings a Cancel button that asks before discarding.
+    var inSheet = false
+    @Environment(\.dismiss) private var dismiss
+    @State private var askDiscard = false
+    @State private var previewExpanded = true
+    @State private var keyboardShown = false
     @State private var draft = DiddyProfileDraft()
     @State private var original = DiddyProfileDraft()
     @State private var tab = Tab.name
@@ -84,7 +90,6 @@ struct DiddyProfileEditor: View {
                     }
                 }
             } else {
-                previewSection
                 Section {
                     Picker("Part", selection: $tab) {
                         ForEach(Tab.allCases, id: \.self) { Text($0.rawValue).tag($0) }
@@ -103,11 +108,21 @@ struct DiddyProfileEditor: View {
                 saveSection
             }
         }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if loaded && account.canEditDiddyProfile { pinnedPreview }
+        }
         .scrollContentBackground(.hidden)
         .background(Theme.sidebar)
         .navigationTitle("Diddy Profile")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            if inSheet {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        if dirty { askDiscard = true } else { dismiss() }
+                    }
+                }
+            }
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save") { Task { await save() } }.disabled(!canSave)
             }
@@ -140,46 +155,88 @@ struct DiddyProfileEditor: View {
             Task { await uploadNameplate(item) }
         }
         .onChange(of: draft) { _ in saved = false }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+            keyboardShown = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            keyboardShown = false
+        }
+        .discardChangesBackButton(dirty && !inSheet, asking: $askDiscard)
+        .interactiveDismissDisabled(dirty)
+        .discardChangesDialog(isPresented: $askDiscard, saveTitle: canSave ? "Save" : nil, onSave: {
+            await save()
+        }, onDiscard: {
+            revert()
+        }, onLeave: { dismiss() })
     }
 
     // MARK: Preview
 
-    private var previewSection: some View { preview(shown) }
-
-    private func preview(_ shown: DiddyProfile?) -> some View {
-        Section {
-            VStack(alignment: .leading, spacing: 14) {
-                // The card with its frame around it and the effect over it, like the profile card.
-                DiddyProfileFrameBox(frame: shown?.frame, account: account, available: previewWidth > 0 ? previewWidth : 280) {
-                    previewCard(shown)
-                }
-                .frame(maxWidth: .infinity)
-                // A row of the member list, with the nameplate behind it.
-                HStack(spacing: 10) {
-                    AvatarView(url: account.avatarUrl, name: account.title, size: 32, account: account)
-                        .overlay(alignment: .bottomTrailing) { DiddyStatusDot(status: shown?.status, size: 10) }
-                    DiddyName(name: account.title, profile: shown).lineLimit(1)
-                    if !shownBadges.isEmpty { DiddyBadges(badges: shownBadges, account: account) }
-                    Spacer(minLength: 0)
-                }
-                .padding(.vertical, 6)
-                .padding(.horizontal, 8)
-                .diddyNameplate(shown?.nameplate, account: account, bleed: EdgeInsets())
-            }
-            .padding(.vertical, 4)
-            .frame(maxWidth: .infinity)
-            .background {
-                GeometryReader { proxy in
-                    Color.clear
-                        .onAppear { previewWidth = proxy.size.width }
-                        .onChange(of: proxy.size.width) { previewWidth = $0 }
+    /// Your unsaved changes, the way other Diddy users will see them. Pinned above the form so
+    /// it stays in view on every tab: the card scrolls inside a capped height (small iPhones), and
+    /// collapsed or while typing only the member-list row is shown.
+    private var pinnedPreview: some View {
+        let shown = self.shown
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("Preview").font(.footnote.weight(.semibold)).foregroundStyle(Theme.muted)
+                Spacer()
+                if !keyboardShown {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) { previewExpanded.toggle() }
+                    } label: {
+                        Label(previewExpanded ? "Hide Card" : "Show Card",
+                              systemImage: previewExpanded ? "chevron.up" : "chevron.down")
+                            .font(.footnote)
+                    }
                 }
             }
-        } header: {
-            Text("Preview")
-        } footer: {
-            Text("Your unsaved changes, the way other Diddy users will see them.")
+            if previewExpanded && !keyboardShown {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 14) {
+                        previewCardBox(shown)
+                        previewRow(shown)
+                    }
+                    .padding(.vertical, 4)
+                }
+                .frame(maxHeight: 280)
+            } else {
+                previewRow(shown)
+            }
         }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(Theme.sidebar)
+        .overlay(alignment: .bottom) { Divider() }
+    }
+
+    /// The card with its frame around it and the effect over it, like the profile card.
+    private func previewCardBox(_ shown: DiddyProfile?) -> some View {
+        DiddyProfileFrameBox(frame: shown?.frame, account: account, available: previewWidth > 0 ? previewWidth : 280) {
+            previewCard(shown)
+        }
+        .frame(maxWidth: .infinity)
+        .background {
+            GeometryReader { proxy in
+                Color.clear
+                    .onAppear { previewWidth = proxy.size.width }
+                    .onChange(of: proxy.size.width) { previewWidth = $0 }
+            }
+        }
+    }
+
+    /// A row of the member list, with the nameplate behind it.
+    private func previewRow(_ shown: DiddyProfile?) -> some View {
+        HStack(spacing: 10) {
+            AvatarView(url: account.avatarUrl, name: account.title, size: 32, account: account)
+                .overlay(alignment: .bottomTrailing) { DiddyStatusDot(status: shown?.status, size: 10) }
+            DiddyName(name: account.title, profile: shown).lineLimit(1)
+            if !shownBadges.isEmpty { DiddyBadges(badges: shownBadges, account: account) }
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 6)
+        .padding(.horizontal, 8)
+        .diddyNameplate(shown?.nameplate, account: account, bleed: EdgeInsets())
     }
 
     private func previewCard(_ shown: DiddyProfile?) -> some View {
@@ -738,8 +795,9 @@ struct DiddyProfileEditor: View {
         notice = nil
     }
 
-    private func save() async {
-        guard canSave else { return }
+    @discardableResult
+    private func save() async -> Bool {
+        guard canSave else { return false }
         saving = true
         error = nil
         defer { saving = false }
@@ -758,8 +816,10 @@ struct DiddyProfileEditor: View {
             DiddyClientVersion.shares = share
             originalShareVersion = share
             saved = true
+            return true
         } catch {
             self.error = error.friendlyMessage
+            return false
         }
     }
 

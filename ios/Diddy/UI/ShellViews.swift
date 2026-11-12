@@ -25,13 +25,10 @@ struct OwnStatusMenu: View {
         }
         .disabled(busy)
         .accessibilityLabel("Account and status (\(OwnStatusOptions.info(chosen).label))")
-        // The editor brings its own title and Save button but no navigation bar of its own.
+        // The editor brings its own title, Save and (in a sheet) Cancel, but no navigation bar.
         .sheet(isPresented: $showing) {
             NavigationStack {
-                DiddyProfileEditor(account: account)
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) { Button("Cancel") { showing = false } }
-                    }
+                DiddyProfileEditor(account: account, inSheet: true)
             }
         }
         .sheet(isPresented: $showingMessage) { OwnStatusMessageView(account: account) }
