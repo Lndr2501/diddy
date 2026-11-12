@@ -1,22 +1,6 @@
 /* eslint-disable jsx-a11y/media-has-caption */
 import React, { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai';
-import FocusTrap from 'focus-trap-react';
-import {
-  Avatar,
-  Box,
-  Button,
-  color,
-  config,
-  Dialog,
-  Icon,
-  Icons,
-  Overlay,
-  OverlayBackdrop,
-  OverlayCenter,
-  Text,
-  toRem,
-} from 'folds';
 import {
   ClientEvent,
   EventTimelineSetHandlerMap,
@@ -27,7 +11,7 @@ import {
   SyncState,
 } from 'matrix-js-sdk';
 import { MatrixRTCSessionEvent } from 'matrix-js-sdk/lib/matrixrtc/MatrixRTCSession';
-import { IRTCNotificationContent, RTCNotificationType } from 'matrix-js-sdk/lib/matrixrtc/types';
+import { IRTCNotificationContent } from 'matrix-js-sdk/lib/matrixrtc/types';
 import { CryptoBackend } from 'matrix-js-sdk/lib/common-crypto/CryptoBackend';
 import {
   CallEmbedContextProvider,
@@ -43,8 +27,6 @@ import { CallEmbed, ElementWidgetActions, useClientWidgetApiEvent } from '../plu
 import { useSelectedRoom } from '../hooks/router/useSelectedRoom';
 import { ScreenSize, useScreenSizeContext } from '../hooks/useScreenSize';
 import { useMatrixClient } from '../hooks/useMatrixClient';
-import { getSoundUrl, isSoundEnabled } from '../plugins/sounds';
-import { isDoNotDisturb } from '../plugins/diddy/status';
 import { playCallSound, startRingback, stopRingback } from '../plugins/call/callSounds';
 import {
   ConnectionLossDetector,
@@ -59,190 +41,19 @@ import {
 } from '../plugins/call/streamStats';
 import { useCallSpeakers } from '../hooks/useCallSpeakers';
 import { speakingUsersAtom } from '../state/speakingUsers';
-import { useCallMembersChange, useCallSession } from '../hooks/useCall';
-import { useRoomAvatar, useRoomName } from '../hooks/useRoomMeta';
+import { useCallMembersChange } from '../hooks/useCall';
 import { mDirectAtom } from '../state/mDirectList';
-import { useMediaAuthentication } from '../hooks/useMediaAuthentication';
-import { mxcUrlToHttp } from '../utils/matrix';
-import { RoomAvatar, RoomIcon } from './room-avatar';
 import { useRoomNavigate } from '../hooks/useRoomNavigate';
 import { getStateEvent } from '../utils/room';
 import { StateEvent } from '../../types/matrix/room';
 import { getPowersLevelFromMatrixEvent } from '../hooks/usePowerLevels';
 import { getRoomCreatorsForRoomId } from '../hooks/useRoomCreators';
 import { getRoomPermissionsAPI } from '../hooks/useRoomPermissions';
-import { useLivekitSupport } from '../hooks/useLivekitSupport';
-import { CallAvatarAnimation } from '../styles/Animations.css';
-import { webRTCSupported } from '../utils/rtc';
 import { AgentVoiceSync } from './AgentVoiceSync';
 import { WatchTogetherSync } from './WatchTogetherSync';
 import { diag } from '../plugins/diagnostics';
-
-type IncomingCallInfo = {
-  room: Room;
-  sender: string;
-  senderTs: number;
-  lifetime: number;
-  intent?: string;
-  notificationType: RTCNotificationType;
-  refEventId: string;
-};
-type IncomingCallProps = {
-  dm: boolean;
-  info: IncomingCallInfo;
-  onIgnore: () => void;
-  onAnswer: (room: Room, video: boolean) => void;
-  onReject: (room: Room, eventId: string) => void;
-};
-function IncomingCall({ dm, info, onIgnore, onAnswer, onReject }: IncomingCallProps) {
-  const mx = useMatrixClient();
-  const useAuthentication = useMediaAuthentication();
-  const livekitSupported = useLivekitSupport();
-  const rtcSupported = webRTCSupported();
-  const canAnswer = livekitSupported && rtcSupported;
-  const { room } = info;
-
-  const audioRef = useRef<HTMLAudioElement>(null);
-
-  const roomName = useRoomName(room);
-  const roomAvatar = useRoomAvatar(room, dm);
-  const avatarUrl = roomAvatar
-    ? mxcUrlToHttp(mx, roomAvatar, useAuthentication, 96, 96, 'crop') ?? undefined
-    : undefined;
-
-  const session = useCallSession(room);
-  useCallMembersChange(
-    session,
-    useCallback(
-      (members) => {
-        // over, or you answered on another device: stop ringing here
-        if (members.length === 0 || members.some((m) => m.sender === mx.getSafeUserId())) {
-          onIgnore();
-        }
-      },
-      [onIgnore, mx]
-    )
-  );
-
-  const playSound = useCallback(() => {
-    const audioElement = audioRef.current;
-    // Do not disturb keeps the incoming call on screen but does not ring (#71)
-    if (!audioElement || !isSoundEnabled('ringing') || isDoNotDisturb(mx)) return;
-    audioElement.src = getSoundUrl('ringing');
-    audioElement.play().catch(() => {});
-  }, [mx]);
-
-  useEffect(() => {
-    if (info.notificationType === 'ring') {
-      playSound();
-    }
-  }, [playSound, info.notificationType]);
-
-  return (
-    <>
-      <Overlay open backdrop={<OverlayBackdrop />}>
-        <OverlayCenter>
-          <FocusTrap
-            focusTrapOptions={{
-              initialFocus: false,
-              onDeactivate: () => onIgnore(),
-              clickOutsideDeactivates: false,
-              escapeDeactivates: false,
-            }}
-          >
-            <Dialog style={{ maxWidth: toRem(324) }}>
-              <Box style={{ padding: config.space.S400 }} direction="Column" gap="700">
-                <Text size="T200" align="Center">
-                  {info.sender}
-                </Text>
-                <Box direction="Column" gap="500" alignItems="Center">
-                  <Box shrink="No">
-                    <Avatar size="500" className={CallAvatarAnimation}>
-                      <RoomAvatar
-                        roomId={room.roomId}
-                        src={avatarUrl}
-                        alt={roomName}
-                        renderFallback={() => (
-                          <RoomIcon
-                            roomType={room.getType()}
-                            size="400"
-                            joinRule={room.getJoinRule()}
-                            filled
-                          />
-                        )}
-                      />
-                    </Avatar>
-                  </Box>
-                  <Box grow="Yes" direction="Column" gap="100" alignItems="Center">
-                    <Text size="H3" align="Center" truncate>
-                      {roomName}
-                    </Text>
-                    <Text size="T300" align="Center">
-                      Incoming Call
-                    </Text>
-                  </Box>
-                </Box>
-                {!livekitSupported && (
-                  <Text
-                    style={{ margin: 'auto', color: color.Critical.Main }}
-                    size="L400"
-                    align="Center"
-                  >
-                    Your homeserver does not support calling.
-                  </Text>
-                )}
-                {!rtcSupported && (
-                  <Text
-                    style={{ margin: 'auto', color: color.Critical.Main }}
-                    size="L400"
-                    align="Center"
-                  >
-                    Your browser does not support WebRTC, which is required for calling.
-                  </Text>
-                )}
-                <Box direction="Column" gap="300">
-                  <Button
-                    style={{ flexGrow: 1 }}
-                    variant="Success"
-                    size="400"
-                    radii="400"
-                    onClick={() => onAnswer(room, info.intent === 'video')}
-                    before={
-                      <Icon
-                        size="200"
-                        src={info.intent === 'video' ? Icons.VideoCamera : Icons.Phone}
-                        filled
-                      />
-                    }
-                    disabled={!canAnswer}
-                  >
-                    <Text as="span" size="B400">
-                      Answer
-                    </Text>
-                  </Button>
-                  <Button
-                    style={{ flexGrow: 1 }}
-                    variant="Success"
-                    fill="Soft"
-                    size="400"
-                    radii="400"
-                    onClick={() => (dm ? onReject(room, info.refEventId) : onIgnore())}
-                    before={<Icon size="200" src={Icons.Cross} filled />}
-                  >
-                    <Text as="span" size="B400">
-                      {dm ? 'Reject' : 'Ignore'}
-                    </Text>
-                  </Button>
-                </Box>
-              </Box>
-            </Dialog>
-          </FocusTrap>
-        </OverlayCenter>
-      </Overlay>
-      <audio ref={audioRef} loop style={{ display: 'none' }} />
-    </>
-  );
-}
+import { IncomingCall, IncomingCallInfo } from './incoming-call/IncomingCall';
+import { INCOMING_CALL_LEAVE_MS } from '../plugins/call/incomingCallText';
 
 type IncomingCallListenerProps = {
   callEmbed?: CallEmbed;
@@ -376,18 +187,35 @@ function IncomingCallListener({ callEmbed, joined }: IncomingCallListenerProps) 
     if (callInfo && (joined || callEmbed)) setCallInfo(undefined);
   }, [callInfo, joined, callEmbed]);
 
-  if (callInfo && callEmbed?.roomId === callInfo.room.roomId) {
-    return null;
-  }
-  return !joined && callInfo ? (
+  // keep the banner mounted for its leave animation after the ring ends
+  const visible =
+    !!callInfo && !joined && callEmbed?.roomId !== callInfo.room.roomId ? callInfo : undefined;
+  const [shown, setShown] = useState<{ info: IncomingCallInfo; leaving: boolean }>();
+  useEffect(() => {
+    if (visible) {
+      setShown({ info: visible, leaving: false });
+      return undefined;
+    }
+    setShown((prev) => (prev && !prev.leaving ? { ...prev, leaving: true } : prev));
+    const timer = window.setTimeout(
+      () => setShown((prev) => (prev?.leaving ? undefined : prev)),
+      INCOMING_CALL_LEAVE_MS
+    );
+    return () => window.clearTimeout(timer);
+  }, [visible]);
+
+  if (!shown) return null;
+  return (
     <IncomingCall
-      dm={dm}
-      info={callInfo}
+      key={shown.info.refEventId}
+      dm={directs.has(shown.info.room.roomId)}
+      info={shown.info}
+      leaving={shown.leaving}
       onIgnore={handleIgnore}
       onAnswer={handleAnswer}
       onReject={handleReject}
     />
-  ) : null;
+  );
 }
 
 function CallUtils({ embed }: { embed: CallEmbed }) {

@@ -66,7 +66,8 @@ test('every notification and ring path asks isDoNotDisturb, not the device copy'
   const features = src('pages/client/ClientNonUIFeatures.tsx');
   assert.equal((features.match(/if \(isDoNotDisturb\(mx\)\) return;/g) ?? []).length, 2);
   assert.doesNotMatch(features, /getLocalStatus\(\)/);
-  assert.match(src('components/CallEmbedProvider.tsx'), /isDoNotDisturb\(mx\)/);
+  // the ringing of an incoming call (the banner lives in its own file)
+  assert.match(src('components/incoming-call/IncomingCall.tsx'), /isDoNotDisturb\(mx\)/);
 });
 
 test('the status sync follows profile changes', () => {
