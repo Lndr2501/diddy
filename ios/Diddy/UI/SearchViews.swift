@@ -128,7 +128,9 @@ struct QuickSwitchView: View {
         NavigationStack {
             List {
                 Section {
-                    Button("Search Messages") { messages = true }
+                    Button { messages = true } label: {
+                        Label("Search Messages", systemImage: "text.magnifyingglass")
+                    }
                 }
                 Section("Rooms, people and servers") {
                     ForEach(results) { item in

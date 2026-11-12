@@ -277,7 +277,7 @@ struct PublicRoomPreviewSheet: View {
                     if let alias = entry.canonicalAlias {
                         Text(alias).font(.subheadline).foregroundStyle(Theme.muted)
                     }
-                    Label("\(entry.memberCount) members", systemImage: "person.2.fill")
+                    Label(entry.memberCount == 1 ? "1 member" : "\(entry.memberCount) members", systemImage: "person.2.fill")
                         .font(.subheadline).foregroundStyle(Theme.muted)
                     if let topic = entry.topic {
                         Text(topic).font(.body).foregroundStyle(Theme.text).frame(maxWidth: .infinity, alignment: .leading)
@@ -300,7 +300,7 @@ struct PublicRoomPreviewSheet: View {
             .navigationTitle(entry.isSpace ? "Server" : "Room")
             .navigationBarTitleDisplayMode(.inline)
             .tint(Theme.accent)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
         }
     }
 

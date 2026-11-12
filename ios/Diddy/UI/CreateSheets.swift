@@ -64,11 +64,18 @@ private struct NewRoomForm: View {
         return NewRoomAccess.allCases.filter { $0 != .restricted || canRestrict }
     }
 
-    private var noun: String { isSpace ? "Server" : "Room" }
+    /// A room made inside a server is a channel, as in the server menu's Create Channel.
+    private var noun: String { isSpace ? "Server" : (parentId != nil ? "Channel" : "Room") }
 
     var body: some View {
         NavigationStack {
             Form {
+                Section("Name") {
+                    TextField(isSpace ? "My Server" : (isVoice ? "Lounge" : "new-\(noun.lowercased())"), text: $name)
+                }
+                Section("Topic (Optional)") {
+                    TextField("What is it about?", text: $topic, axis: .vertical)
+                }
                 if !isSpace {
                     Section("Type") {
                         Picker("Type", selection: $isVoice) {
@@ -88,12 +95,6 @@ private struct NewRoomForm: View {
                 } footer: {
                     Text(access.detail)
                 }
-                Section("Name") {
-                    TextField(isSpace ? "My Server" : (isVoice ? "Lounge" : "new-room"), text: $name)
-                }
-                Section("Topic (Optional)") {
-                    TextField("What is it about?", text: $topic, axis: .vertical)
-                }
                 if request.effectiveAccess == .public {
                     Section {
                         TextField("address", text: $alias)
@@ -109,14 +110,14 @@ private struct NewRoomForm: View {
                     Section {
                         Toggle("End-to-End Encryption", isOn: $encryption)
                     } footer: {
-                        Text("Once this feature is enabled, it can't be disabled after the room is created.")
+                        Text("Encryption can't be turned off after the \(noun.lowercased()) is created.")
                     }
                 }
                 Section {
                     DisclosureGroup("Advanced Options", isExpanded: $advanced) {
                         if request.effectiveAccess != .public && (NewRoomVersionSupport.knock(version)) {
                             Toggle("Knock to Join", isOn: $knock)
-                            Text("Anyone can send request to join this \(noun.lowercased()).")
+                            Text("Anyone can ask to join this \(noun.lowercased()).")
                                 .font(.footnote).foregroundStyle(Theme.muted)
                         }
                         Toggle("Allow Federation", isOn: $federation)

@@ -21,6 +21,7 @@ private struct LeaveServerDialog: ViewModifier {
         ) { id in
             Button("Leave Server Only") { leave(id, withChannels: false) }
             Button("Leave Server and Its Channels", role: .destructive) { leave(id, withChannels: true) }
+            Button("Cancel", role: .cancel) {}
         } message: { _ in
             Text("Are you sure you want to leave this server? You need a new invite to come back if it is private.")
         }
@@ -115,7 +116,8 @@ struct ManageServerView: View {
                 titleVisibility: .visible,
                 presenting: removing
             ) { row in
-                Button("Remove", role: .destructive) { remove(row) }
+                Button("Remove from Server", role: .destructive) { remove(row) }
+                Button("Cancel", role: .cancel) {}
             } message: { row in
                 Text("\(row.name) stays as it is, it is only taken out of this server.")
             }
@@ -124,10 +126,11 @@ struct ManageServerView: View {
 
     @ViewBuilder
     private func addMenu(to parent: String) -> some View {
+        Button { sheet = .createRoom(parent) } label: { Label("Create Channel", systemImage: "plus.bubble") }
+        Button { sheet = .createServer(parent) } label: { Label("Create Server", systemImage: "plus.square.on.square") }
+        Divider()
         Button { sheet = .addRooms(parent) } label: { Label("Add Existing Room", systemImage: "number") }
         Button { sheet = .addServers(parent) } label: { Label("Add Existing Server", systemImage: "square.stack.3d.up") }
-        Button { sheet = .createRoom(parent) } label: { Label("Create Room", systemImage: "plus.bubble") }
-        Button { sheet = .createServer(parent) } label: { Label("Create Server", systemImage: "plus.square.on.square") }
     }
 
     private func rowView(_ row: HierarchyRow) -> some View {
@@ -146,11 +149,18 @@ struct ManageServerView: View {
                 } label: {
                     Label(row.suggested ? "Unset Suggested" : "Set Suggested", systemImage: row.suggested ? "star.slash" : "star")
                 }
-                if row.isSpace { addMenu(to: row.roomId) }
-                Button(role: .destructive) { removing = row } label: { Label("Remove", systemImage: "minus.circle") }
+                if row.isSpace {
+                    Divider()
+                    addMenu(to: row.roomId)
+                }
+                Divider()
+                Button(role: .destructive) { removing = row } label: { Label("Remove from Server", systemImage: "minus.circle") }
             } label: {
                 Image(systemName: "ellipsis.circle").foregroundStyle(Theme.muted)
+                    .frame(width: 36, height: 36)
+                    .contentShape(Rectangle())
             }
+            .accessibilityLabel("Options for \(row.name)")
         }
         .padding(.leading, CGFloat(row.depth) * 20)
         .listRowBackground(Color.clear)
