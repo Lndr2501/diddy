@@ -224,6 +224,26 @@ jobs:
           swiftc -swift-version 5 Diddy/Matrix/RichText.swift Diddy/Matrix/MessageEmbeds.swift Tools/richtext_check/main.swift -o "$RUNNER_TEMP/diddy-richtext-check"
           "$RUNNER_TEMP/diddy-richtext-check"
 
+      - name: Check Diddy badge rules
+        run: |
+          swiftc -swift-version 5 Diddy/Matrix/DiddyEvents.swift Diddy/Matrix/DiddyTrust.swift Diddy/Matrix/DiddyProfileDecor.swift Diddy/Matrix/DiddyProfileDraft.swift Diddy/Matrix/DiddyBadgeLogic.swift Tools/badge_check/main.swift -o "$RUNNER_TEMP/diddy-badge-check"
+          "$RUNNER_TEMP/diddy-badge-check"
+
+      - name: Check Diddy decor import (zip) rules
+        run: |
+          swiftc -swift-version 5 Diddy/Matrix/DiddyProfileDecor.swift Diddy/Matrix/DiddyProfileDraft.swift Diddy/Matrix/DiddyZip.swift Diddy/Matrix/DiddyDecorImport.swift Tools/diddyzip_check/main.swift -o "$RUNNER_TEMP/diddy-diddyzip-check"
+          "$RUNNER_TEMP/diddy-diddyzip-check"
+
+      - name: Check Diddy options room rules
+        run: |
+          swiftc -swift-version 5 Diddy/Matrix/DiddyEvents.swift Diddy/Matrix/DiddyOptionsRoomLogic.swift Tools/optionsroom_check/main.swift -o "$RUNNER_TEMP/diddy-optionsroom-check"
+          "$RUNNER_TEMP/diddy-optionsroom-check"
+
+      - name: Check Diddy profile export and import
+        run: |
+          swiftc -swift-version 5 Diddy/Matrix/DiddyProfileDecor.swift Diddy/Matrix/DiddyProfileDraft.swift Diddy/Matrix/DiddyProfileTransfer.swift Tools/profiletransfer_check/main.swift -o "$RUNNER_TEMP/diddy-profiletransfer-check"
+          "$RUNNER_TEMP/diddy-profiletransfer-check"
+
       - name: Install XcodeGen
         run: command -v xcodegen || brew install xcodegen
 
