@@ -42,7 +42,13 @@ struct MainView: View {
         NavigationSplitView {
             HStack(spacing: 0) {
                 ServerRail(account: account, selection: $navigator.server)
-                ChannelSidebar(account: account, server: navigator.server, destination: $navigator.destination, showSettings: $showSettings)
+                ChannelSidebar(
+                    account: account,
+                    server: navigator.server,
+                    destination: $navigator.destination,
+                    showSettings: $showSettings,
+                    showSearch: $showQuickSwitch
+                )
             }
             .background(Theme.sidebar)
             .toolbar(.hidden, for: .navigationBar)
@@ -154,7 +160,7 @@ struct EmptyChannelView: View {
             Theme.chat.ignoresSafeArea()
             VStack(spacing: 12) {
                 Image("DiddyLogo").resizable().frame(width: 72, height: 72).opacity(0.8)
-                Text("Pick a channel").font(.headline).foregroundStyle(Theme.muted)
+                Text("Pick a channel or conversation").font(.headline).foregroundStyle(Theme.muted)
             }
         }
     }
@@ -167,11 +173,12 @@ struct ChannelSidebar: View {
     let server: String?
     @Binding var destination: Destination?
     @Binding var showSettings: Bool
+    /// The quick switcher of the whole app (also Command-K), opened from the magnifier in the header.
+    @Binding var showSearch: Bool
     @EnvironmentObject private var calls: CallManager
     @State private var joinError: String?
     @State private var showRecovery = false
     @State private var filter = ""
-    @State private var showSearch = false
     @State private var joining: Set<String> = []
     @State private var sheet: SidebarSheet?
     @State private var leavingServer: String?
@@ -201,6 +208,7 @@ struct ChannelSidebar: View {
         let id: String
         let name: String
         let isDirect: Bool
+        let inServer: Bool
     }
 
     private var query: String { filter.trimmingCharacters(in: .whitespaces) }
@@ -226,11 +234,6 @@ struct ChannelSidebar: View {
                 .padding(.horizontal, 8)
                 .padding(.bottom, 6)
             }
-            Button { showSearch = true } label: {
-                Label("Search rooms, people and messages", systemImage: "magnifyingglass")
-                    .font(.subheadline).padding(10)
-            }
-            .keyboardShortcut("k", modifiers: .command)
             searchField
             List(selection: $destination) {
                 if let server {
@@ -256,7 +259,6 @@ struct ChannelSidebar: View {
             Button("OK", role: .cancel) {}
         } message: { Text(joinError ?? "") }
         .leaveServerDialog(account: account, serverId: $leavingServer) { joinError = $0 }
-        .sheet(isPresented: $showSearch) { QuickSwitchView(account: account) }
         .sheet(isPresented: $showRecovery) { RecoveryView(account: account) }
         .sheet(item: $sheet) { sheet in
             switch sheet {
@@ -278,9 +280,16 @@ struct ChannelSidebar: View {
             titleVisibility: .visible,
             presenting: leaveRequest
         ) { request in
-            Button(request.isDirect ? "Close Conversation" : "Leave Room", role: .destructive) { leave(request) }
+            Button(RoomMenuWording.leaveTitle(isDirect: request.isDirect, inServer: request.inServer), role: .destructive) {
+                leave(request)
+            }
+            Button("Cancel", role: .cancel) {}
         } message: { request in
-            Text(request.isDirect ? "The conversation disappears from your list." : "Are you sure you want to leave this room?")
+            if request.isDirect {
+                Text("The conversation disappears from your list.")
+            } else {
+                Text("Are you sure you want to leave this \(RoomMenuWording.noun(isDirect: false, inServer: request.inServer).lowercased())?")
+            }
         }
         .task { await account.watchNotificationSettings() }
         .task(id: account.rooms.count) { await account.refreshNotifyLevels() }
@@ -296,7 +305,12 @@ struct ChannelSidebar: View {
             onSettings: { sheet = .roomSettings($0) },
             onLeave: { id in
                 let summary = account.summary(for: id)
-                leaveRequest = LeaveRequest(id: id, name: summary?.name ?? "this room", isDirect: summary?.isDirect == true)
+                leaveRequest = LeaveRequest(
+                    id: id,
+                    name: summary?.name ?? "this room",
+                    isDirect: summary?.isDirect == true,
+                    inServer: account.server(of: id) != nil
+                )
             },
             onError: { joinError = $0 }
         )
@@ -317,59 +331,72 @@ struct ChannelSidebar: View {
     }
 
     private var header: some View {
-        HStack {
+        HStack(spacing: 4) {
             if let server {
                 Menu {
-                    Button { sheet = .members(server) } label: { Label("Members", systemImage: "person.2.fill") }
-                    Button { sheet = .invite(server) } label: { Label("Invite People", systemImage: "person.badge.plus") }
-                    Button { sheet = .createChannel(server) } label: { Label("Create Channel", systemImage: "plus.bubble") }
-                    Button { sheet = .manage(server) } label: { Label("Manage Channels", systemImage: "list.bullet.indent") }
-                    Button { sheet = .roomSettings(server) } label: { Label("Server Settings", systemImage: "gearshape") }
-                    if !account.unjoinedChannels(inSpace: server).isEmpty {
-                        Button { joinAll(server) } label: { Label("Join All Channels", systemImage: "arrow.right.circle") }
-                    }
-                    Divider()
-                    Button(role: .destructive) { leavingServer = server } label: {
-                        Label("Leave Server", systemImage: "rectangle.portrait.and.arrow.right")
-                    }
+                    ServerMenuItems(
+                        account: account,
+                        serverId: server,
+                        onInvite: { sheet = .invite(server) },
+                        onCreateChannel: { sheet = .createChannel(server) },
+                        onManage: { sheet = .manage(server) },
+                        onSettings: { sheet = .roomSettings(server) },
+                        onJoinAll: joinAllAction(server),
+                        onLeave: { leavingServer = server }
+                    )
                 } label: {
                     HStack(spacing: 4) {
                         Text(serverName).font(.headline).foregroundStyle(Theme.text).lineLimit(1)
                         Image(systemName: "chevron.down").font(.caption.weight(.bold)).foregroundStyle(Theme.muted)
                     }
                 }
+                .accessibilityLabel("\(serverName), server menu")
                 Spacer()
-                Button { sheet = .members(server) } label: {
-                    Image(systemName: "person.2.fill").foregroundStyle(Theme.muted)
-                }
-                .accessibilityLabel("Members")
+                headerButton("magnifyingglass", label: "Search") { showSearch = true }
+                headerButton("person.2.fill", label: "Members") { sheet = .members(server) }
             } else {
                 Text(serverName).font(.headline).foregroundStyle(Theme.text).lineLimit(1)
+                    .accessibilityAddTraits(.isHeader)
                 Spacer()
+                headerButton("magnifyingglass", label: "Search") { showSearch = true }
                 Menu {
                     Button { sheet = .newMessage } label: { Label("New Message", systemImage: "square.and.pencil") }
                     Button { sheet = .createRoom } label: { Label("Create Room", systemImage: "plus.bubble") }
+                    Divider()
                     Button { sheet = .explore } label: { Label("Explore", systemImage: "safari") }
                 } label: {
                     Image(systemName: "square.and.pencil").foregroundStyle(Theme.muted)
+                        .frame(width: 36, height: 36)
+                        .contentShape(Rectangle())
                 }
-                .accessibilityLabel("New Message")
+                .accessibilityLabel("New Message or Room")
             }
         }
-        .padding(.horizontal, 16)
+        .padding(.leading, 16)
+        .padding(.trailing, 8)
         .frame(height: 52)
+    }
+
+    private func headerButton(_ systemImage: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage).foregroundStyle(Theme.muted)
+                .frame(width: 36, height: 36)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
     }
 
     private var searchField: some View {
         HStack(spacing: 6) {
             Image(systemName: "magnifyingglass").font(.footnote).foregroundStyle(Theme.faint)
-            TextField("Search", text: $filter)
+            TextField(server == nil ? "Find a conversation" : "Find a channel", text: $filter)
                 .font(.subheadline)
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
             if !filter.isEmpty {
                 Button { filter = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.faint) }
-                    .accessibilityLabel("Clear search")
+                    .accessibilityLabel("Clear")
             }
         }
         .padding(.horizontal, 10)
@@ -382,6 +409,12 @@ struct ChannelSidebar: View {
     private var serverName: String {
         guard let server else { return "Direct Messages" }
         return account.spaces.first { $0.roomId == server }?.displayName ?? "Server"
+    }
+
+    /// Join All Channels only shows in the server menu while some channels are not joined yet.
+    private func joinAllAction(_ server: String) -> (() -> Void)? {
+        if account.unjoinedChannels(inSpace: server).isEmpty { return nil }
+        return { joinAll(server) }
     }
 
     private func joinAll(_ server: String) {
@@ -416,6 +449,11 @@ struct ChannelSidebar: View {
             } header: { sectionHeader("Favourites") }
         }
         let direct = account.directMessages.filter { !$0.isFavourite && matches($0.name) }
+        let others = account.roomsOutsideServers.filter { !$0.isFavourite && matches($0.name) }
+        if !query.isEmpty && invites.isEmpty && favourites.isEmpty && direct.isEmpty && others.isEmpty {
+            noResults
+        }
+        if !direct.isEmpty || query.isEmpty {
         Section {
             ForEach(direct) { room in
                 RoomRow(account: account, room: room, icon: nil)
@@ -425,13 +463,13 @@ struct ChannelSidebar: View {
             }
             if direct.isEmpty && query.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("No conversations yet.").font(.subheadline).foregroundStyle(Theme.muted)
-                    Button("Start a conversation") { sheet = .newMessage }.font(.subheadline.weight(.semibold))
+                    Text("No direct messages yet.").font(.subheadline).foregroundStyle(Theme.muted)
+                    Button("New Message") { sheet = .newMessage }.font(.subheadline.weight(.semibold))
                 }
                 .listRowBackground(Color.clear)
             }
         } header: { sectionHeader("Direct Messages") }
-        let others = account.roomsOutsideServers.filter { !$0.isFavourite && matches($0.name) }
+        }
         if !others.isEmpty {
             Section {
                 ForEach(others) { room in
@@ -473,6 +511,9 @@ struct ChannelSidebar: View {
             .disabled(joiningAll)
             .listRowBackground(Color.clear)
         }
+        if !query.isEmpty && !categories.isEmpty && !categories.contains(where: { $0.channels.contains { matches($0.displayName) } }) {
+            noResults
+        }
         ForEach(categories) { category in
             let channels = category.channels.filter { matches($0.displayName) }
             if !channels.isEmpty {
@@ -503,6 +544,13 @@ struct ChannelSidebar: View {
             .disabled(joining.contains(channel.roomId))
             .listRowBackground(Color.clear)
         }
+    }
+
+    private var noResults: some View {
+        Text("No results for \u{201C}\(query)\u{201D}")
+            .font(.subheadline)
+            .foregroundStyle(Theme.muted)
+            .listRowBackground(Color.clear)
     }
 
     private func rowBackground(_ value: Destination) -> some View {

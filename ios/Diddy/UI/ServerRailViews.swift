@@ -13,7 +13,7 @@ struct ServerRail: View {
     @State private var errorText: String?
 
     private enum RailSheet: Identifiable {
-        case add, explore, arrange, invite(String), settings(String), manage(String)
+        case add, explore, arrange, invite(String), settings(String), manage(String), createChannel(String)
         var id: String {
             switch self {
             case .add: return "add"
@@ -22,6 +22,7 @@ struct ServerRail: View {
             case .invite(let id): return "invite\(id)"
             case .settings(let id): return "settings\(id)"
             case .manage(let id): return "manage\(id)"
+            case .createChannel(let id): return "create\(id)"
             }
         }
     }
@@ -41,7 +42,7 @@ struct ServerRail: View {
                 ) {
                     Image("DiddyLogo").resizable().scaledToFill()
                 }
-                .accessibilityLabel("Direct Messages")
+                .accessibilityLabel("Home")
                 Capsule().fill(Theme.elevated).frame(width: 32, height: 2).padding(.vertical, 2)
                 ForEach(entries) { entry in
                     switch entry {
@@ -51,8 +52,8 @@ struct ServerRail: View {
                         folderButtons(folder)
                     }
                 }
-                roundButton("plus", label: "Add a server") { sheet = .add }
-                roundButton("safari", label: "Explore public rooms and servers") { sheet = .explore }
+                roundButton("plus", label: "Add a Server") { sheet = .add }
+                roundButton("safari", label: "Explore") { sheet = .explore }
             }
             .padding(.vertical, 12)
         }
@@ -68,6 +69,7 @@ struct ServerRail: View {
             case .invite(let id): InviteView(account: account, roomId: id)
             case .settings(let id): RoomSettingsView(roomId: id, account: account)
             case .manage(let id): ManageServerView(account: account, serverId: id)
+            case .createChannel(let id): CreateRoomView(account: account, parentId: id)
             }
         }
         .leaveServerDialog(account: account, serverId: $leaving) { errorText = $0 }
@@ -112,6 +114,7 @@ struct ServerRail: View {
         .buttonStyle(.plain)
         .frame(maxWidth: .infinity)
         .accessibilityLabel(folder.name ?? "Folder")
+        .accessibilityValue(open ? "Expanded, \(folder.content.count) servers" : "Collapsed, \(folder.content.count) servers")
         .contextMenu {
             Button { sheet = .arrange } label: { Label("Arrange Servers", systemImage: "arrow.up.arrow.down") }
         }
@@ -146,19 +149,19 @@ struct ServerRail: View {
         }
     }
 
-    /// Desktop's server menu, as a long press.
+    /// Desktop's server menu, as a long press; the same items as the server name's menu above the channels.
     @ViewBuilder
     private func serverMenu(_ id: String) -> some View {
-        Button { Task { await account.markServerAsRead(id) } } label: { Label("Mark as Read", systemImage: "checkmark.circle") }
-        Button { sheet = .invite(id) } label: { Label("Invite", systemImage: "person.badge.plus") }
-        Button {
-            Task { if let link = await account.roomLink(id) { UIPasteboard.general.string = link } }
-        } label: { Label("Copy Link", systemImage: "link") }
-        Button { sheet = .manage(id) } label: { Label("Manage Channels", systemImage: "list.bullet.indent") }
-        Button { sheet = .settings(id) } label: { Label("Server Settings", systemImage: "gearshape") }
-        Button { sheet = .arrange } label: { Label("Arrange Servers", systemImage: "arrow.up.arrow.down") }
-        Divider()
-        Button(role: .destructive) { leaving = id } label: { Label("Leave Server", systemImage: "rectangle.portrait.and.arrow.right") }
+        ServerMenuItems(
+            account: account,
+            serverId: id,
+            onInvite: { sheet = .invite(id) },
+            onCreateChannel: { sheet = .createChannel(id) },
+            onManage: { sheet = .manage(id) },
+            onSettings: { sheet = .settings(id) },
+            onArrange: { sheet = .arrange },
+            onLeave: { leaving = id }
+        )
     }
 
     /// Discord's rail: a white pip for anything unread, a red number only for what is really for you.
@@ -183,6 +186,48 @@ struct ServerRail: View {
                 .offset(x: -2)
         }
         .animation(.spring(response: 0.25), value: selected)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+        .accessibilityValue(badge > 0 ? "\(badge) mentions" : (unread ? "Unread messages" : ""))
+    }
+}
+
+/// The menu of a server, the same from the rail (long press) and from the server's name above the
+/// channels. Items without an action are left out.
+struct ServerMenuItems: View {
+    @ObservedObject var account: MatrixAccount
+    let serverId: String
+    var onInvite: () -> Void
+    var onCreateChannel: () -> Void
+    var onManage: () -> Void
+    var onSettings: () -> Void
+    var onJoinAll: (() -> Void)? = nil
+    var onArrange: (() -> Void)? = nil
+    var onLeave: () -> Void
+
+    var body: some View {
+        Button { Task { await account.markServerAsRead(serverId) } } label: {
+            Label("Mark as Read", systemImage: "checkmark.circle")
+        }
+        .disabled(account.unreadCount(inSpace: serverId) == 0 && account.mentionCount(inSpace: serverId) == 0)
+        Button(action: onInvite) { Label("Invite People", systemImage: "person.badge.plus") }
+        Button {
+            Task { if let link = await account.roomLink(serverId) { UIPasteboard.general.string = link } }
+        } label: { Label("Copy Link", systemImage: "link") }
+        Divider()
+        Button(action: onCreateChannel) { Label("Create Channel", systemImage: "plus.bubble") }
+        if let onJoinAll {
+            Button(action: onJoinAll) { Label("Join All Channels", systemImage: "arrow.right.circle") }
+        }
+        Button(action: onManage) { Label("Manage Channels", systemImage: "list.bullet.indent") }
+        Button(action: onSettings) { Label("Server Settings", systemImage: "gearshape") }
+        if let onArrange {
+            Divider()
+            Button(action: onArrange) { Label("Arrange Servers", systemImage: "arrow.up.arrow.down") }
+        }
+        Divider()
+        Button(role: .destructive, action: onLeave) {
+            Label("Leave Server", systemImage: "rectangle.portrait.and.arrow.right")
+        }
     }
 }
 
@@ -210,6 +255,9 @@ struct ServerRailEditorView: View {
         NavigationStack {
             List {
                 Section {
+                    if entries.isEmpty {
+                        Text("You have not joined any servers yet.").foregroundStyle(Theme.muted)
+                    }
                     ForEach(entries) { entry in
                         row(entry)
                     }
@@ -250,8 +298,10 @@ struct ServerRailEditorView: View {
                         }
                     }
                 } label: {
-                    Image(systemName: "folder").foregroundStyle(Theme.muted)
+                    Image(systemName: "folder.badge.plus").foregroundStyle(Theme.muted)
+                        .frame(width: 44, height: 44)
                 }
+                .accessibilityLabel("Move \(info.name) to a Folder")
             }
         case .folder(let folder):
             NavigationLink {
@@ -313,9 +363,11 @@ struct FolderEditorView: View {
                             apply(ServerRailLayout.takeOut(id, of: entries))
                         } label: {
                             Image(systemName: "arrow.up.right.square").foregroundStyle(Theme.muted)
+                                .frame(width: 44, height: 44)
+                                .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel("Take out of folder")
+                        .accessibilityLabel("Take \(info.name) out of the folder")
                     }
                 }
                 .onMove { source, destination in
@@ -331,6 +383,8 @@ struct FolderEditorView: View {
                 } label: {
                     Label("Dissolve Folder", systemImage: "folder.badge.minus")
                 }
+            } footer: {
+                Text("The servers stay in your list, only the folder goes away.")
             }
             if let error { Text(error).foregroundStyle(Theme.danger) }
         }

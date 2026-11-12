@@ -45,7 +45,20 @@ struct RoomNotifyMenuButton: View {
     }
 }
 
+/// Words for a room in menus and dialogs: a channel inside a server, a room outside, or a direct message.
+enum RoomMenuWording {
+    static func noun(isDirect: Bool, inServer: Bool) -> String {
+        if isDirect { return "Conversation" }
+        return inServer ? "Channel" : "Room"
+    }
+
+    static func leaveTitle(isDirect: Bool, inServer: Bool) -> String {
+        isDirect ? "Close Conversation" : "Leave \(noun(isDirect: false, inServer: inServer))"
+    }
+}
+
 /// Long press on a room in the list, like desktop's room menu (features/room-nav/RoomNavItem.tsx).
+/// Grouped as on iOS: reading state first, sharing next, settings, and leaving last in red.
 struct RoomContextMenu: View {
     @ObservedObject var account: MatrixAccount
     let roomId: String
@@ -57,6 +70,14 @@ struct RoomContextMenu: View {
     var body: some View {
         let summary = account.summary(for: roomId)
         let favourite = summary?.isFavourite ?? false
+        let isDirect = summary?.isDirect == true
+        let inServer = account.server(of: roomId) != nil
+        Button {
+            Task { await account.markRoomAsRead(roomId) }
+        } label: {
+            Label("Mark as Read", systemImage: "checkmark.circle")
+        }
+        .disabled((summary?.unread ?? 0) == 0 && (summary?.mentions ?? 0) == 0)
         Button {
             Task {
                 do { try await account.setFavourite(roomId, !favourite) } catch { onError(error.friendlyMessage) }
@@ -67,19 +88,14 @@ struct RoomContextMenu: View {
                 systemImage: favourite ? "star.slash" : "star"
             )
         }
-        Button {
-            Task { await account.markRoomAsRead(roomId) }
-        } label: {
-            Label("Mark as Read", systemImage: "checkmark.circle")
-        }
-        .disabled((summary?.unread ?? 0) == 0 && (summary?.mentions ?? 0) == 0)
         Menu {
             RoomNotifyPicker(account: account, roomId: roomId, onError: onError)
         } label: {
             Label("Notifications", systemImage: account.notifyLevel(for: roomId).systemImage)
         }
-        if summary?.isDirect != true {
-            Button { onInvite(roomId) } label: { Label("Invite", systemImage: "person.badge.plus") }
+        Divider()
+        if !isDirect {
+            Button { onInvite(roomId) } label: { Label("Invite People", systemImage: "person.badge.plus") }
         }
         Button {
             Task {
@@ -88,10 +104,12 @@ struct RoomContextMenu: View {
         } label: {
             Label("Copy Link", systemImage: "link")
         }
-        Button { onSettings(roomId) } label: { Label("Room Settings", systemImage: "gearshape") }
+        Button { onSettings(roomId) } label: {
+            Label("\(RoomMenuWording.noun(isDirect: isDirect, inServer: inServer)) Settings", systemImage: "gearshape")
+        }
         Divider()
         Button(role: .destructive) { onLeave(roomId) } label: {
-            Label(summary?.isDirect == true ? "Close Conversation" : "Leave Room", systemImage: "rectangle.portrait.and.arrow.right")
+            Label(RoomMenuWording.leaveTitle(isDirect: isDirect, inServer: inServer), systemImage: "rectangle.portrait.and.arrow.right")
         }
     }
 }
