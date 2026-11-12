@@ -1,6 +1,6 @@
 # Changelog
 
-## Unveröffentlicht
+## 1.7.1 (2026-11-12)
 
 - **iOS: Diddy-Profile wie am Desktop (Effekte, Rahmen, Banner, Namensstil):** Wer in mehreren Diddy-Options-Räumen ist, bekam auf iOS teils ein anderes, älteres Profil angezeigt als am Desktop, oder gar keines. iOS sortierte die Räume nach Codepunkten („!B…“ vor „!a…“), Desktop mit `localeCompare`. Damit gewann ein anderer Raum, und iOS schrieb das eigene Profil auch in einen anderen Raum, als Desktop zuerst liest. iOS sortiert jetzt genau wie Desktop. Ein Raum zählt nur noch mit Marker-Event als Options-Raum, wie am Desktop, nicht schon wegen des Topic-Tags. Die Größengrenze (4096 Zeichen) misst iOS jetzt exakt wie `JSON.stringify` am Desktop. Vorher zählten Kommazahlen wie Bildausschnitte je nach Apple-Foundation mit 17 Stellen, sodass große Profile auf iOS wegfallen konnten. Verworfene Profile stehen im Diagnose-Log (`diddy: profile dropped`).
 
