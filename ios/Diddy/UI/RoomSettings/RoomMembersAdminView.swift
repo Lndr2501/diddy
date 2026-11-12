@@ -10,6 +10,7 @@ struct RoomMembersAdminView: View {
     @State private var search = ""
     @State private var selected: RoomMemberState?
     @State private var working: Set<String> = []
+    @State private var pendingCancel: RoomMemberState?
 
     private var permissions: RoomPermissionsModel? { model.state?.permissions }
 
@@ -56,6 +57,19 @@ struct RoomMembersAdminView: View {
         .refreshable { await model.load() }
         .sheet(item: $selected, onDismiss: { Task { await model.load() } }) { member in
             UserProfileSheet(account: model.account, userId: member.userId, roomId: model.roomId)
+        }
+        .confirmationDialog(
+            "Cancel the invite?",
+            isPresented: Binding(get: { pendingCancel != nil }, set: { if !$0 { pendingCancel = nil } }),
+            titleVisibility: .visible
+        ) {
+            Button("Cancel Invite", role: .destructive) {
+                if let member = pendingCancel { run(.kick, member) }
+                pendingCancel = nil
+            }
+            Button("Keep Invite", role: .cancel) { pendingCancel = nil }
+        } message: {
+            Text(pendingCancel.map { "\($0.displayName ?? $0.userId) can no longer join with this invite." } ?? "")
         }
     }
 
@@ -115,7 +129,7 @@ struct RoomMembersAdminView: View {
                 Button("Unban") { run(.unban, member) }.tint(Theme.accent)
             }
             if options.canCancelInvite {
-                Button("Cancel Invite", role: .destructive) { run(.kick, member) }
+                Button("Cancel Invite", role: .destructive) { pendingCancel = member }
             }
         }
     }
