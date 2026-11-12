@@ -16,7 +16,7 @@ export const Host = style({
   margin: 0,
   padding: 0,
   pointerEvents: 'none',
-  transition: `height 300ms ${SPRING}`,
+  transition: `height 300ms ${SPRING}, top 400ms ${SPRING}`,
 });
 
 export const Toast = style({

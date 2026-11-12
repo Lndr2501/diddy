@@ -16,3 +16,6 @@ export const pushToastAtom = atom(null, (get, set, toast: AppToast) => {
 export const dismissToastAtom = atom(null, (get, set, key: string) => {
   set(toastsAtom, removeToast(get(toastsAtom), key));
 });
+
+/** An incoming call banner is showing at the top; the toasts move down below it. */
+export const callBannerShownAtom = atom(false);

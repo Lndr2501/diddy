@@ -9,7 +9,7 @@ import React, {
 import { useAtomValue, useSetAtom } from 'jotai';
 import { useNavigate } from 'react-router-dom';
 import { Icon, Icons } from 'folds';
-import { AppToast, dismissToastAtom, toastsAtom } from '../../state/toasts';
+import { AppToast, callBannerShownAtom, dismissToastAtom, toastsAtom } from '../../state/toasts';
 import {
   TOAST_DURATION_MS,
   TOAST_GAP,
@@ -22,6 +22,7 @@ import { useRoomNavigate } from '../../hooks/useRoomNavigate';
 import { getInboxInvitesPath } from '../../pages/pathUtils';
 import { useHasCustomTitleBar } from '../titlebar/TitleBar';
 import { TITLE_BAR_HEIGHT } from '../titlebar/TitleBar.css';
+import { CARD_HEIGHT as CALL_BANNER_HEIGHT } from '../incoming-call/IncomingCall.css';
 import * as css from './ToastHost.css';
 
 const LEAVE_MS = 260;
@@ -172,6 +173,8 @@ export function ToastHost() {
   const { navigateRoom } = useRoomNavigate();
   const navigate = useNavigate();
   const customTitleBar = useHasCustomTitleBar();
+  // a ringing call sits at the very top; the toasts line up below it
+  const callBanner = useAtomValue(callBannerShownAtom);
 
   const [expanded, setExpanded] = useState(false);
   const [leaving, setLeaving] = useState<ReadonlySet<string>>(new Set());
@@ -228,7 +231,7 @@ export function ToastHost() {
       aria-live="polite"
       aria-label="Notifications"
       style={{
-        top: (customTitleBar ? TITLE_BAR_HEIGHT : 0) + 12,
+        top: (customTitleBar ? TITLE_BAR_HEIGHT : 0) + 12 + (callBanner ? CALL_BANNER_HEIGHT + 8 : 0),
         height,
         // expanded, the gaps between the cards belong to the stack so it does not collapse
         pointerEvents: expanded ? 'auto' : undefined,

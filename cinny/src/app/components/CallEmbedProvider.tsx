@@ -53,6 +53,7 @@ import { AgentVoiceSync } from './AgentVoiceSync';
 import { WatchTogetherSync } from './WatchTogetherSync';
 import { diag } from '../plugins/diagnostics';
 import { IncomingCall, IncomingCallInfo } from './incoming-call/IncomingCall';
+import { callBannerShownAtom } from '../state/toasts';
 import { INCOMING_CALL_LEAVE_MS } from '../plugins/call/incomingCallText';
 
 type IncomingCallListenerProps = {
@@ -191,6 +192,11 @@ function IncomingCallListener({ callEmbed, joined }: IncomingCallListenerProps) 
   const visible =
     !!callInfo && !joined && callEmbed?.roomId !== callInfo.room.roomId ? callInfo : undefined;
   const [shown, setShown] = useState<{ info: IncomingCallInfo; leaving: boolean }>();
+  const setCallBannerShown = useSetAtom(callBannerShownAtom);
+  useEffect(() => {
+    setCallBannerShown(!!shown && !shown.leaving);
+  }, [shown, setCallBannerShown]);
+  useEffect(() => () => setCallBannerShown(false), [setCallBannerShown]);
   useEffect(() => {
     if (visible) {
       setShown({ info: visible, leaving: false });
