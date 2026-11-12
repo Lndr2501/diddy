@@ -39,6 +39,11 @@ extension CallSession {
         AVAudioSession.sharedInstance().currentRoute.inputs.first?.uid
     }
 
+    /// The microphone chosen in the devices sheet; nil when the system picks.
+    static var preferredInputUid: String? {
+        AVAudioSession.sharedInstance().preferredInput?.uid
+    }
+
     /// Picks a microphone for the call (nil: the system's choice).
     static func selectInput(uid: String?) throws {
         let session = AVAudioSession.sharedInstance()

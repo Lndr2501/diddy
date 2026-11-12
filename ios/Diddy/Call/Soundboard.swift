@@ -386,6 +386,8 @@ final class ClipMixer: @unchecked Sendable {
 
 /// The soundboard during a call: tap a clip to play it for everyone.
 struct SoundboardSheet: View {
+    /// The call the sheet belongs to: clips go out through its microphone.
+    @ObservedObject var session: CallSession
     @ObservedObject private var board = Soundboard.shared
     @Environment(\.dismiss) private var dismiss
     @State private var importing = false
@@ -428,6 +430,11 @@ struct SoundboardSheet: View {
                     .accessibilityLabel("Soundboard volume")
                     if let error {
                         Text(error).font(.footnote).foregroundStyle(Theme.danger)
+                    }
+                    if !session.microphoneOn {
+                        Label("Your microphone is muted, so nobody hears your clips.", systemImage: "mic.slash.fill")
+                            .font(.footnote)
+                            .foregroundStyle(Theme.danger)
                     }
                     Text("Everyone in the call hears clips while your microphone is on. Hold a clip to delete it.")
                         .font(.footnote)

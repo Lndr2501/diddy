@@ -118,7 +118,7 @@ struct WelcomeGuideView: View {
                 }.padding()
             }
             .navigationTitle("Matrix Guide").navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Skip") { finish() }.keyboardShortcut(.cancelAction) } }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Skip") { finish() } } }
         }
     }
     private func finish() { onFinish?(); dismiss() }
@@ -183,7 +183,7 @@ private struct OwnStatusMessageView: View {
             .navigationTitle("Status Message")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction) }
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         saving = true

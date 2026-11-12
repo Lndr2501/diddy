@@ -122,19 +122,26 @@ extension MainView {
     private func finishWelcome() { UserDefaults.standard.set(true, forKey: "diddy.welcome.done.\(account.id)") }
     private var shortcuts: some View {
         Group {
-            Button("Close sheet") {
-                showSettings = false; showQuickSwitch = false; showWelcome = false
-                navigator.shellLink = nil
-                let scene = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first { $0.activationState == .foregroundActive }
-                var controller = scene?.windows.first { $0.isKeyWindow }?.rootViewController
-                while let presented = controller?.presentedViewController { controller = presented }
-                if controller?.presentingViewController != nil { controller?.dismiss(animated: true) }
-            }.keyboardShortcut(.cancelAction)
+            // The only Escape in the app: closes the topmost sheet. Sheets with unsaved changes
+            // (interactiveDismissDisabled) stay open, like a swipe down.
+            Button("Close sheet") { closeTopSheet() }.keyboardShortcut(.cancelAction)
             Button("Quick switcher") { showQuickSwitch = true }.keyboardShortcut("k", modifiers: .command)
             Button("Settings") { showSettings = true }.keyboardShortcut(",", modifiers: .command)
             Button("Previous room") { moveRoom(-1) }.keyboardShortcut(.upArrow, modifiers: .command)
             Button("Next room") { moveRoom(1) }.keyboardShortcut(.downArrow, modifiers: .command)
         }.hidden()
+    }
+    private func closeTopSheet() {
+        let scene = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first { $0.activationState == .foregroundActive }
+        var controller = scene?.windows.first { $0.isKeyWindow }?.rootViewController
+        while let presented = controller?.presentedViewController { controller = presented }
+        guard let top = controller, let presenter = top.presentingViewController, !top.isModalInPresentation else { return }
+        if presenter.presentingViewController == nil {
+            // A sheet of this screen: also reset its flag so it can open again.
+            showSettings = false; showQuickSwitch = false; showWelcome = false
+            navigator.shellLink = nil
+        }
+        top.dismiss(animated: true)
     }
     private func moveRoom(_ step: Int) {
         let ids: [String]

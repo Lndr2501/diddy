@@ -25,26 +25,6 @@ struct RoomNotifyPicker: View {
     }
 }
 
-/// The bell in a chat's header: opens the same notification choices.
-struct RoomNotifyMenuButton: View {
-    @ObservedObject var account: MatrixAccount
-    let roomId: String
-    @State private var error: String?
-
-    var body: some View {
-        Menu {
-            RoomNotifyPicker(account: account, roomId: roomId) { error = $0 }
-        } label: {
-            Image(systemName: account.notifyLevel(for: roomId).systemImage)
-        }
-        .accessibilityLabel("Notifications")
-        .task { await account.refreshNotifyLevels() }
-        .alert("Notifications", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
-            Button("OK", role: .cancel) {}
-        } message: { Text(error ?? "") }
-    }
-}
-
 /// Words for a room in menus and dialogs: a channel inside a server, a room outside, or a direct message.
 enum RoomMenuWording {
     static func noun(isDirect: Bool, inServer: Bool) -> String {

@@ -25,7 +25,7 @@ struct ShellJoinRoomView: View {
                 if let error { Text(error).foregroundStyle(Theme.danger) }
             }
             .navigationTitle("Open Matrix room")
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction) } }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
         }
     }
     private func open() {

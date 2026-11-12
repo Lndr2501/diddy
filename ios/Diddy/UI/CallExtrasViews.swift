@@ -232,7 +232,7 @@ struct CallMoreButton: View {
     private func sheetContent(_ which: CallMoreSheet) -> some View {
         switch which {
         case .reactions: CallReactionsSheet(session: session)
-        case .soundboard: SoundboardSheet()
+        case .soundboard: SoundboardSheet(session: session)
         case .devices: CallDevicesSheet(session: session, extras: extras)
         case .watchLink: WatchLinkSheet(watch: watch)
         }
@@ -260,6 +260,7 @@ struct CallDevicesSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var inputs: [AVAudioSessionPortDescription] = CallSession.availableInputs
     @State private var currentInput: String? = CallSession.currentInputUid
+    @State private var preferredInput: String? = CallSession.preferredInputUid
     @State private var error: String?
 
     var body: some View {
@@ -274,12 +275,18 @@ struct CallDevicesSheet: View {
                             HStack {
                                 Text(port.portName).foregroundStyle(Theme.text)
                                 Spacer()
-                                if port.uid == currentInput { Image(systemName: "checkmark").foregroundStyle(Theme.accent) }
+                                if preferredInput != nil && port.uid == currentInput {
+                                    Image(systemName: "checkmark").foregroundStyle(Theme.accent)
+                                }
                             }
                         }
                     }
                     Button { select(nil) } label: {
-                        Text("System Default").foregroundStyle(Theme.text)
+                        HStack {
+                            Text("System Default").foregroundStyle(Theme.text)
+                            Spacer()
+                            if preferredInput == nil { Image(systemName: "checkmark").foregroundStyle(Theme.accent) }
+                        }
                     }
                     volumeRow("Input volume", value: extras.inputVolume) { extras.setInputVolume($0) }
                 }
@@ -323,6 +330,7 @@ struct CallDevicesSheet: View {
     private func refresh() {
         inputs = CallSession.availableInputs
         currentInput = CallSession.currentInputUid
+        preferredInput = CallSession.preferredInputUid
     }
 
     private func select(_ uid: String?) {
