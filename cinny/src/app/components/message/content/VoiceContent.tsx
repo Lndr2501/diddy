@@ -1,5 +1,13 @@
 /* eslint-disable jsx-a11y/media-has-caption */
-import React, { MouseEvent, useCallback, useMemo, useRef, useState } from 'react';
+import React, {
+  KeyboardEvent,
+  PointerEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { EncryptedAttachmentInfo } from 'browser-encrypt-attachment';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { AsyncStatus, useAsyncCallback } from '../../../hooks/useAsyncCallback';
@@ -20,8 +28,12 @@ import {
   mxcUrlToHttp,
 } from '../../../utils/matrix';
 import { useMediaAuthentication } from '../../../hooks/useMediaAuthentication';
-import { VoiceInfo, waveformBars } from '../../../plugins/voiceMessage';
-import { PauseGlyph, PlayGlyph } from './VoiceIcons';
+import {
+  keySeekTime,
+  seekFraction,
+  VoiceInfo,
+  waveformBars,
+} from '../../../plugins/voiceMessage';
 import * as css from './VoiceContent.css';
 
 const BAR_COUNT = 40;
@@ -35,7 +47,22 @@ export type VoiceContentProps = {
   encInfo?: EncryptedAttachmentInfo;
 };
 
-/** Voice message: play button, clickable waveform, time. Loads the audio on the first play. */
+type GlowState = 'off' | 'on' | 'fading';
+
+/** Play triangle that splits into the two pause bars. */
+function PlayPauseMorph({ playing }: { playing: boolean }) {
+  return (
+    <span className={`${css.Morph} ${playing ? css.MorphPlaying : ''}`} aria-hidden>
+      <span className={css.MorphLeft} />
+      <span className={css.MorphRight} />
+    </span>
+  );
+}
+
+/**
+ * Voice message: play button, waveform to drag over (or arrow keys when focused), time.
+ * Loads the audio on the first play. While playing, lights circle the edge of the capsule.
+ */
 export function VoiceContent({ mimeType, url, info, voice, encInfo }: VoiceContentProps) {
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
@@ -66,29 +93,81 @@ export function VoiceContent({ mimeType, url, info, voice, encInfo }: VoiceConte
   useMediaPlayTimeCallback(getAudioRef, useThrottle(handlePlayTime, PLAY_TIME_THROTTLE_OPS));
 
   const bars = useMemo(() => waveformBars(voice.waveform, BAR_COUNT), [voice.waveform]);
-  const progress = duration > 0 ? Math.min(currentTime / duration, 1) : 0;
   const ready = srcState.status === AsyncStatus.Success;
   const busy = srcState.status === AsyncStatus.Loading || (ready && loading);
+  const canSeek = ready && duration > 0;
+
+  // position while dragging, so the waveform follows the pointer without waiting for timeupdate
+  const [scrub, setScrub] = useState<number | null>(null);
+  const progress = scrub ?? (duration > 0 ? Math.min(currentTime / duration, 1) : 0);
+
+  const [glow, setGlow] = useState<GlowState>('off');
+  useEffect(() => {
+    if (playing) {
+      setGlow('on');
+      return undefined;
+    }
+    setGlow((g) => (g === 'off' ? 'off' : 'fading'));
+    const timer = window.setTimeout(() => setGlow('off'), css.GLOW_FADE_MS);
+    return () => window.clearTimeout(timer);
+  }, [playing]);
 
   const handlePlay = () => {
     if (ready) setPlaying(!playing);
     else if (srcState.status !== AsyncStatus.Loading) loadSrc();
   };
-  const handleSeek = (event: MouseEvent<HTMLButtonElement>) => {
-    if (!ready || duration <= 0) return;
+
+  const seekToPointer = (event: PointerEvent<HTMLDivElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
-    seek(((event.clientX - rect.left) / Math.max(rect.width, 1)) * duration);
+    const fraction = seekFraction(event.clientX, rect.left, rect.width);
+    setScrub(fraction);
+    seek(fraction * duration);
+  };
+  const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    if (!canSeek || event.button !== 0) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    seekToPointer(event);
+  };
+  const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    if (scrub === null || !event.currentTarget.hasPointerCapture(event.pointerId)) return;
+    seekToPointer(event);
+  };
+  const handlePointerEnd = (event: PointerEvent<HTMLDivElement>) => {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    if (scrub !== null) {
+      setCurrentTime(scrub * duration);
+      setScrub(null);
+    }
+  };
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (!canSeek) return;
+    const next = keySeekTime(event.key, currentTime, duration);
+    if (next === undefined) return;
+    event.preventDefault();
+    setCurrentTime(next);
+    seek(next);
   };
 
   // remaining time while playing (like Messages), total length otherwise
-  const shown = playing || currentTime > 0 ? Math.max(duration - currentTime, 0) : duration;
+  const position = scrub !== null ? scrub * duration : currentTime;
+  const shown = playing || position > 0 ? Math.max(duration - position, 0) : duration;
 
-  let glyph = <PlayGlyph />;
-  if (busy) glyph = <span className={css.Spinner} aria-hidden />;
-  else if (playing) glyph = <PauseGlyph />;
+  const glyph = busy ? (
+    <span className={css.Spinner} aria-hidden />
+  ) : (
+    <PlayPauseMorph playing={playing} />
+  );
 
   return (
     <div className={css.Voice}>
+      {glow !== 'off' && (
+        <span className={`${css.Glow} ${glow === 'fading' ? css.GlowFading : ''}`} aria-hidden>
+          <span className={css.GlowOrbit} />
+          <span className={css.GlowFace} />
+        </span>
+      )}
       <button
         type="button"
         className={css.PlayButton}
@@ -98,12 +177,21 @@ export function VoiceContent({ mimeType, url, info, voice, encInfo }: VoiceConte
       >
         {glyph}
       </button>
-      <button
-        type="button"
+      <div
         className={css.Wave}
-        onClick={handleSeek}
-        disabled={!ready}
+        role="slider"
+        tabIndex={canSeek ? 0 : -1}
         aria-label="Voice message position"
+        aria-disabled={!canSeek}
+        aria-valuemin={0}
+        aria-valuemax={Math.round(duration)}
+        aria-valuenow={Math.round(position)}
+        aria-valuetext={secondsToMinutesAndSeconds(position)}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerEnd}
+        onPointerCancel={handlePointerEnd}
+        onKeyDown={handleKeyDown}
       >
         {bars.map((height, index) => (
           <span
@@ -113,7 +201,7 @@ export function VoiceContent({ mimeType, url, info, voice, encInfo }: VoiceConte
             style={{ height: `${Math.round(height * 100)}%` }}
           />
         ))}
-      </button>
+      </div>
       {srcState.status === AsyncStatus.Error ? (
         <span className={css.Error} role="alert">
           Failed

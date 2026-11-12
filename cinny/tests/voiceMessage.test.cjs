@@ -89,3 +89,22 @@ test('bars for drawing are resampled, within 0..1 and never invisible', () => {
   assert.equal(arr(mod.waveformBars([], 5)).length, 5);
   assert.deepEqual(arr(mod.waveformBars([1, 2], 0)), []);
 });
+
+test('dragging over the waveform maps the pointer to 0..1 and sticks to the ends', () => {
+  assert.equal(mod.seekFraction(150, 100, 200), 0.25);
+  assert.equal(mod.seekFraction(50, 100, 200), 0);
+  assert.equal(mod.seekFraction(400, 100, 200), 1);
+  assert.equal(mod.seekFraction(150, 100, 0), 0);
+  assert.equal(mod.seekFraction(NaN, 100, 200), 0);
+});
+
+test('keys on the waveform seek within the message', () => {
+  assert.equal(mod.keySeekTime('ArrowRight', 10, 60), 15);
+  assert.equal(mod.keySeekTime('ArrowLeft', 3, 60), 0);
+  assert.equal(mod.keySeekTime('ArrowUp', 58, 60), 60);
+  assert.equal(mod.keySeekTime('PageUp', 0, 60), 6);
+  assert.equal(mod.keySeekTime('Home', 30, 60), 0);
+  assert.equal(mod.keySeekTime('End', 30, 60), 60);
+  assert.equal(mod.keySeekTime('Enter', 30, 60), undefined);
+  assert.equal(mod.keySeekTime('ArrowRight', 0, 0), undefined);
+});

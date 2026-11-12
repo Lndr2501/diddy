@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.6.2 (unveröffentlicht)
+
+- **Sprachnachrichten neu gestaltet (macOS, Linux):** Die Kapsel ist ruhiger, mit dünneren Balken. Beim Abspielen teilt sich das Play-Dreieck in die Pause-Balken, und weiche Lichter in der Akzentfarbe kreisen innen am Rand. Bei Pause laufen sie aus, bei „Bewegung reduzieren“ bleiben sie weg. Gespult wird per Ziehen über die Wellenform oder, wenn sie den Fokus hat, mit den Pfeiltasten (5 s), Bild auf/ab (10 %), Pos1 und Ende. iOS ist unverändert.
+
 ## 1.6.1 (2026-11-12)
 
 - **iOS: fast alles vom Desktop:** Die iOS-App kann jetzt den Großteil dessen, was Desktop-Diddy kann. Alles ist gebaut und kompiliert, aber noch nicht auf einem iPhone ausprobiert; die Liste steht in `ios/README.md`. Neu sind unter anderem:

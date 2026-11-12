@@ -1,12 +1,18 @@
 import { keyframes, style } from '@vanilla-extract/css';
 import { color, config } from 'folds';
 
+const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
+
 /*
- * Voice message capsule, modelled on the audio message of Apple's Messages: one row, everything
- * vertically centred, a round play button, a waveform of rounded bars and the time in tabular
- * figures. Sizes follow the HIG: 44 pt hit target for the button, 13 pt secondary label.
+ * Voice message capsule: one row, everything vertically centred, a round play button, a waveform
+ * of thin rounded bars and the time in tabular figures. While playing, soft lights in the accent
+ * colour circle the inside edge of the capsule and wind down on pause. 44 pt hit target for the
+ * button, 13 pt secondary label.
  */
 export const Voice = style({
+  position: 'relative',
+  isolation: 'isolate',
+  overflow: 'hidden',
   display: 'inline-flex',
   alignItems: 'center',
   gap: 10,
@@ -17,8 +23,54 @@ export const Voice = style({
   borderRadius: 24,
   background: color.SurfaceVariant.Container,
   color: color.SurfaceVariant.OnContainer,
+  boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${color.SurfaceVariant.OnContainer} 7%, transparent)`,
   verticalAlign: 'middle',
 });
+
+/* --- lights along the edge while playing ------------------------------------------------------ */
+
+const orbit = keyframes({ to: { transform: 'translate(-50%, -50%) rotate(360deg)' } });
+const glowIn = keyframes({ from: { opacity: 0 }, to: { opacity: 1 } });
+const glowOut = keyframes({ from: { opacity: 1 }, to: { opacity: 0 } });
+
+export const GLOW_FADE_MS = 900;
+
+export const Glow = style({
+  position: 'absolute',
+  inset: 0,
+  zIndex: -1,
+  borderRadius: 'inherit',
+  overflow: 'hidden',
+  pointerEvents: 'none',
+  animation: `${glowIn} 450ms ease-out both`,
+  '@media': { [REDUCED_MOTION]: { display: 'none' } },
+});
+export const GlowFading = style({
+  animation: `${glowOut} ${GLOW_FADE_MS}ms ease-out both`,
+});
+/* two soft lights opposite each other, turning around the middle of the capsule */
+export const GlowOrbit = style({
+  position: 'absolute',
+  top: '50%',
+  left: '50%',
+  width: 340,
+  height: 340,
+  transform: 'translate(-50%, -50%)',
+  background: `conic-gradient(from 0deg, transparent 0deg, ${color.Primary.Main} 35deg, transparent 80deg, transparent 180deg, ${color.Primary.Main} 215deg, transparent 260deg)`,
+  filter: 'blur(14px)',
+  opacity: 0.9,
+  animation: `${orbit} 3.6s linear infinite`,
+});
+/* the face of the capsule above the lights, so only a soft rim of light shows */
+export const GlowFace = style({
+  position: 'absolute',
+  inset: 4,
+  borderRadius: 'inherit',
+  background: color.SurfaceVariant.Container,
+  filter: 'blur(5px)',
+});
+
+/* --- play button with the triangle splitting into the pause bars ----------------------------- */
 
 export const PlayButton = style({
   flexShrink: 0,
@@ -44,6 +96,39 @@ export const PlayButton = style({
   },
 });
 
+export const Morph = style({ position: 'relative', width: 14, height: 14 });
+export const MorphPlaying = style({});
+const morphHalf = style({
+  position: 'absolute',
+  inset: 0,
+  background: 'currentColor',
+  transition: 'clip-path 220ms cubic-bezier(0.2, 0, 0, 1)',
+  '@media': { [REDUCED_MOTION]: { transition: 'none' } },
+});
+/* play triangle (optically centred, apex at 12/7 of a 14 grid) cut in two; pause bars 3 wide */
+export const MorphLeft = style([
+  morphHalf,
+  {
+    clipPath: 'polygon(25% 14.29%, 55.36% 32.14%, 55.36% 67.86%, 25% 85.71%)',
+    selectors: {
+      [`${MorphPlaying} &`]: {
+        clipPath: 'polygon(21.43% 14.29%, 42.86% 14.29%, 42.86% 85.71%, 21.43% 85.71%)',
+      },
+    },
+  },
+]);
+export const MorphRight = style([
+  morphHalf,
+  {
+    clipPath: 'polygon(55.36% 32.14%, 85.71% 50%, 85.71% 50%, 55.36% 67.86%)',
+    selectors: {
+      [`${MorphPlaying} &`]: {
+        clipPath: 'polygon(57.14% 14.29%, 78.57% 14.29%, 78.57% 85.71%, 57.14% 85.71%)',
+      },
+    },
+  },
+]);
+
 export const Wave = style({
   flex: 1,
   minWidth: 0,
@@ -52,23 +137,26 @@ export const Wave = style({
   justifyContent: 'space-between',
   gap: 2,
   height: 28,
-  margin: 0,
-  padding: 0,
-  border: 'none',
-  background: 'transparent',
+  borderRadius: 6,
   cursor: 'pointer',
-  selectors: { '&:disabled': { cursor: 'default' } },
+  touchAction: 'none',
+  userSelect: 'none',
+  outline: 'none',
+  selectors: {
+    '&[aria-disabled="true"]': { cursor: 'default' },
+    '&:focus-visible': { boxShadow: `0 0 0 2px ${color.Primary.Main}` },
+  },
 });
 
 export const Bar = style({
   flex: '1 1 0',
-  maxWidth: 3,
-  minWidth: 2,
+  maxWidth: 2,
+  minWidth: 1,
   minHeight: 3,
   borderRadius: 999,
   background: 'currentColor',
-  opacity: 0.3,
-  transition: 'opacity 120ms linear',
+  opacity: 0.32,
+  transition: 'opacity 120ms linear, color 120ms linear',
 });
 export const BarPlayed = style({ opacity: 1, color: color.Primary.Main });
 

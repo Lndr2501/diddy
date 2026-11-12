@@ -102,3 +102,29 @@ export const waveformBars = (waveform: number[], count: number): number[] => {
     return Math.min(Math.max(avg / WAVEFORM_MAX, 0.08), 1);
   });
 };
+
+/** Position 0..1 on the waveform for a pointer at `clientX`; outside the bar it sticks to the ends. */
+export const seekFraction = (clientX: number, left: number, width: number): number => {
+  if (!Number.isFinite(clientX) || !Number.isFinite(left) || !(width > 0)) return 0;
+  return Math.min(Math.max((clientX - left) / width, 0), 1);
+};
+
+export const VOICE_KEY_STEP_S = 5;
+
+/**
+ * New play position (seconds) for a key on the focused waveform, or undefined for other keys:
+ * arrows jump 5 s, Page keys 10 % of the length, Home / End to the start / end.
+ */
+export const keySeekTime = (key: string, current: number, duration: number): number | undefined => {
+  if (!(duration > 0)) return undefined;
+  const now = Number.isFinite(current) ? current : 0;
+  let next: number;
+  if (key === 'ArrowLeft' || key === 'ArrowDown') next = now - VOICE_KEY_STEP_S;
+  else if (key === 'ArrowRight' || key === 'ArrowUp') next = now + VOICE_KEY_STEP_S;
+  else if (key === 'PageDown') next = now - duration / 10;
+  else if (key === 'PageUp') next = now + duration / 10;
+  else if (key === 'Home') next = 0;
+  else if (key === 'End') next = duration;
+  else return undefined;
+  return Math.min(Math.max(next, 0), duration);
+};
