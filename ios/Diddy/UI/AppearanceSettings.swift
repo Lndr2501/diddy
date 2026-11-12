@@ -49,7 +49,74 @@ extension View {
     func diddyMonochrome() -> some View { modifier(DiddyMonochrome()) }
 }
 
-/// Settings > Display: monochrome mode and page zoom, like desktop's Display section.
+/// Settings > Appearance: theme, display (monochrome, page zoom) and the home-screen icon.
+struct AppearanceSettingsView: View {
+    var body: some View {
+        List {
+            ThemeSection()
+            DisplaySection()
+            AppIconSection()
+        }
+        .scrollContentBackground(.hidden)
+        .background(Theme.sidebar)
+        .navigationTitle("Appearance")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+/// Settings > Appearance > App Icon: the five icon colours of the desktop app.
+private struct AppIconSection: View {
+    @State private var icon = AppIconChoice.current
+    @State private var iconError: String?
+
+    var body: some View {
+        Section {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 64), spacing: 14)], spacing: 14) {
+                ForEach(AppIconChoice.allCases) { choice in
+                    Button { select(choice) } label: { tile(choice) }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("\(choice.title) icon")
+                        .accessibilityAddTraits(icon == choice ? .isSelected : [])
+                }
+            }
+            .padding(.vertical, 6)
+            if let iconError { Text(iconError).font(.footnote).foregroundStyle(Theme.danger) }
+        } header: {
+            Text("App Icon")
+        } footer: {
+            Text("Changes the icon on your home screen.")
+        }
+    }
+
+    private func tile(_ choice: AppIconChoice) -> some View {
+        let selected = icon == choice
+        return VStack(spacing: 6) {
+            Image(choice.previewImage)
+                .resizable()
+                .frame(width: 60, height: 60)
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(selected ? Theme.accent : Color.clear, lineWidth: 3)
+                )
+            Text(choice.title).font(.caption).foregroundStyle(selected ? Theme.text : Theme.muted)
+        }
+    }
+
+    private func select(_ choice: AppIconChoice) {
+        Task { @MainActor in
+            do {
+                try await choice.apply()
+                icon = choice
+                iconError = nil
+            } catch {
+                iconError = error.friendlyMessage
+            }
+        }
+    }
+}
+
+/// Settings > Appearance > Display: monochrome mode and page zoom, like desktop's Display section.
 struct DisplaySection: View {
     @AppStorage(ThemeStore.monochromeKey) private var monochrome = false
     @AppStorage(ThemeStore.zoomKey) private var zoom = AppearanceLogic.defaultZoom
@@ -76,7 +143,7 @@ struct DisplaySection: View {
         } header: {
             Text("Display")
         } footer: {
-            Text("Page Zoom is between 75% and 150% and works on top of the text size set in iOS Settings.")
+            Text("Page Zoom goes from 75% to 150% and works on top of the text size set in iOS Settings.")
         }
     }
 }

@@ -1,13 +1,13 @@
 import SwiftUI
 import UIKit
 
-/// Settings > Notifications, like desktop's Notifications page: system notifications and their
-/// sound on this device, then the account's push rules (All Messages, Mentions, Keywords) with
-/// the same Sound / Silent / Off levels, and email notifications.
+/// Settings > Notifications, like desktop's Notifications page: notifications on this device and
+/// call alerts while Diddy is closed, then the account's push rules (All Messages, Mentions,
+/// Keywords) with the same Sound / Silent / Off levels, and email notifications. The sounds
+/// themselves are switched in Settings > Sounds.
 struct NotificationSettingsView: View {
     @ObservedObject var account: MatrixAccount
     @AppStorage(LocalNotifications.settingKey) private var backgroundNotifications = false
-    @AppStorage(SoundSetting.messages.rawValue) private var notificationSound = true
     @State private var notificationsDenied = false
     @State private var rules: [String: Any] = [:]
     @State private var loaded = false
@@ -24,7 +24,10 @@ struct NotificationSettingsView: View {
         List {
             systemSection
             if let error {
-                Section { Text(error).font(.footnote).foregroundStyle(Theme.danger) }
+                Section {
+                    Text(error).font(.footnote).foregroundStyle(Theme.danger)
+                    Button("Try Again") { Task { await load() } }
+                }
             }
             Section {
                 ForEach(PushRuleLogic.allMessages) { item in
@@ -43,6 +46,7 @@ struct NotificationSettingsView: View {
                 Text("Mentions")
             }
             keywordSection
+            emailSection
         }
         .overlay { if !loaded && error == nil { ProgressView() } }
         .scrollContentBackground(.hidden)
@@ -61,27 +65,30 @@ struct NotificationSettingsView: View {
         }
     }
 
-    // MARK: System
+    // MARK: This device
 
+    @ViewBuilder
     private var systemSection: some View {
         Section {
-            Toggle(isOn: Binding(get: { backgroundNotifications }, set: { setBackgroundNotifications($0) })) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Notifications in the background")
-                    Text("Show notifications when messages arrive.").font(.caption).foregroundStyle(Theme.muted)
-                }
-            }
-            Toggle(isOn: $notificationSound) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Notification Sound")
-                    Text("Play sound when new message arrive.").font(.caption).foregroundStyle(Theme.muted)
-                }
-            }
+            Toggle("Background Notifications", isOn: Binding(get: { backgroundNotifications }, set: { setBackgroundNotifications($0) }))
+            NavigationLink("Sounds") { SoundSettingsView() }
+        } header: {
+            Text("This Device")
+        } footer: {
+            Text("Keeps Diddy running in the background so new messages, mentions and calls show up as notifications. Uses more battery. If iOS ends Diddy, for example after a restart, open it once to start again. Message, mention and invitation sounds are under Sounds.")
+        }
+        Section {
+            NavigationLink("Call Alerts") { CallAlertSettingsView() }
+        } footer: {
+            Text("Get \u{201C}Name is calling you\u{201D} through the ntfy app while Diddy is closed.")
+        }
+    }
+
+    private var emailSection: some View {
+        Section {
             emailRow
         } header: {
-            Text("System")
-        } footer: {
-            Text("Keeps Diddy running in the background so new messages, mentions and calls show up as notifications. Works without a paid Apple account, but uses more battery. If iOS ends Diddy, for example after a restart, open it once to start again.")
+            Text("Email")
         }
     }
 
@@ -103,7 +110,7 @@ struct NotificationSettingsView: View {
             }
             Group {
                 if emailFailed {
-                    Text("Unexpected Error!").foregroundStyle(Theme.danger)
+                    Text("The email setting could not be loaded.").foregroundStyle(Theme.danger)
                 } else if let email, email.email == nil {
                     Text("Your account does not have any email attached.").foregroundStyle(Theme.danger)
                 } else if let address = email?.email {

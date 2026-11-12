@@ -12,15 +12,18 @@ struct SoundSettingsView: View {
 
     var body: some View {
         List {
-            ForEach(Array(Sound.groups.enumerated()), id: \.offset) { _, group in
-                Section(group.title) {
+            ForEach(Array(Sound.groups.enumerated()), id: \.offset) { index, group in
+                Section {
                     ForEach(group.sounds) { sound in row(sound) }
+                } header: {
+                    Text(group.title)
+                } footer: {
+                    if group.sounds.contains(.ringtone) {
+                        Text("Diddy can only ring while it is open. The ringtone follows the silent switch and also vibrates.")
+                    } else if index == Sound.groups.count - 1 {
+                        Text("Your own sounds stay on this device. Notifications while Diddy is in the background keep Diddy's sound.")
+                    }
                 }
-            }
-            Section {
-                EmptyView()
-            } footer: {
-                Text("Diddy can only ring while it is open. The ringtone follows the silent switch and also vibrates. Your own sounds stay on this device; notifications while Diddy is in the background keep Diddy's sound.")
             }
         }
         .scrollContentBackground(.hidden)
@@ -99,8 +102,9 @@ struct SoundSettingsView: View {
     }
 }
 
-/// Settings > Calls: voice processing and the remembered volumes of people.
+/// Settings > Calls: noise suppression, voice processing and the remembered volumes of people.
 struct CallSettingsView: View {
+    @AppStorage(NoiseSuppression.settingKey) private var noiseSuppression = true
     @AppStorage(CallPrefs.voiceProcessingKey) private var voiceProcessing = true
     @State private var confirmReset = false
     @State private var resetDone = false
@@ -108,16 +112,31 @@ struct CallSettingsView: View {
     var body: some View {
         List {
             Section {
-                Toggle("Voice processing", isOn: $voiceProcessing)
+                Toggle("Noise Suppression", isOn: Binding(
+                    get: { noiseSuppression },
+                    set: { isOn in
+                        noiseSuppression = isOn
+                        NoiseSuppression.apply()
+                    }
+                ))
+            } header: {
+                Text("Microphone")
             } footer: {
-                Text("Echo cancellation, noise suppression and auto gain of the microphone by the system. Keep it on if you use the speaker instead of headphones. Off keeps your music and other apps sounding normal. Applies the next time you join a call.")
+                Text("Filters background noise such as fans and typing out of your microphone. Takes effect at once, also during a call.")
             }
             Section {
-                Button("Reset volumes", role: .destructive) { confirmReset = true }
+                Toggle("Voice Processing", isOn: $voiceProcessing)
+            } footer: {
+                Text("The system's echo cancellation and automatic gain. Keep it on if you use the speaker instead of headphones; off keeps music and other apps sounding normal. Applies the next time you join a call.")
+            }
+            Section {
+                Button("Reset Volumes", role: .destructive) { confirmReset = true }
+            } header: {
+                Text("Volumes")
             } footer: {
                 Text(resetDone
                     ? "All volumes are back to 100 %."
-                    : "Diddy remembers the volume and mute for me you give each person and their screen share on this device. Reset puts everyone back to 100 %.")
+                    : "Diddy remembers the volume and \u{201C}mute for me\u{201D} you set for each person and their screen share, on this device.")
             }
         }
         .scrollContentBackground(.hidden)
@@ -125,7 +144,7 @@ struct CallSettingsView: View {
         .navigationTitle("Calls")
         .navigationBarTitleDisplayMode(.inline)
         .confirmationDialog("Reset all volumes to 100 %?", isPresented: $confirmReset, titleVisibility: .visible) {
-            Button("Reset volumes", role: .destructive) {
+            Button("Reset Volumes", role: .destructive) {
                 CallVolumeMemory.clearAll(UserDefaultsVolumeStorage.shared)
                 resetDone = true
             }

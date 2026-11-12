@@ -6,11 +6,11 @@ struct SettingsView: View {
     @ObservedObject var account: MatrixAccount
     @EnvironmentObject private var app: AppModel
     @Environment(\.dismiss) private var dismiss
-    @State private var icon = AppIconChoice.current
-    @State private var iconError: String?
     @State private var confirmLogout: MatrixAccount?
     @State private var showRecovery = false
-    @AppStorage(NoiseSuppression.settingKey) private var noiseSuppression = true
+    @State private var showWelcome = false
+
+    private var isVerified: Bool { account.verificationState == .verified }
 
     var body: some View {
         NavigationStack {
@@ -33,89 +33,18 @@ struct SettingsView: View {
                         dismiss()
                         app.addingAccount = true
                     } label: {
-                        Label("Add an account on another server", systemImage: "plus.circle.fill")
+                        Label("Add Account", systemImage: "plus.circle.fill")
                     }
                 }
 
-                Section { NavigationLink("Welcome guide") { DiddyWelcomeView(account: account, onFinish: { dismiss() }) } }
-
-                ThemeSection()
-
-                DisplaySection()
-
-                Section {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 64), spacing: 14)], spacing: 14) {
-                        ForEach(AppIconChoice.allCases) { choice in
-                            Button {
-                                Task {
-                                    do {
-                                        try await choice.apply()
-                                        icon = choice
-                                    } catch { iconError = error.friendlyMessage }
-                                }
-                            } label: {
-                                VStack(spacing: 6) {
-                                    Image(choice.previewImage)
-                                        .resizable()
-                                        .frame(width: 60, height: 60)
-                                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                                .stroke(icon == choice ? Theme.accent : .clear, lineWidth: 3)
-                                        )
-                                    Text(choice.title).font(.caption).foregroundStyle(icon == choice ? Theme.text : Theme.muted)
-                                }
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    .padding(.vertical, 6)
-                    if let iconError { Text(iconError).font(.footnote).foregroundStyle(Theme.danger) }
-                } header: {
-                    Text("App Icon")
-                } footer: {
-                    Text("Changes the icon on your home screen.")
-                }
-
-                Section {
-                    NavigationLink { ChatSettingsView() } label: { Label("Chat", systemImage: "bubble.left.and.bubble.right.fill") }
-                    NavigationLink { NotificationSettingsView(account: account) } label: { Label("Notifications", systemImage: "bell.fill") }
-                    NavigationLink { SoundSettingsView() } label: { Label("Sounds", systemImage: "speaker.wave.2.fill") }
-                    NavigationLink { CallSettingsView() } label: { Label("Calls", systemImage: "mic.fill") }
-                    NavigationLink { CallAlertSettingsView() } label: { Label("Call Alerts", systemImage: "phone.fill") }
-                    NavigationLink { PluginSettingsView() } label: { Label("Plugins", systemImage: "puzzlepiece.extension.fill") }
-                    NavigationLink { WatchTogetherSettingsView() } label: { Label("Watch together", systemImage: "play.rectangle.fill") }
-                }
-
-                Section {
-                    Toggle("Noise suppression", isOn: Binding(
-                        get: { noiseSuppression },
-                        set: { isOn in
-                            noiseSuppression = isOn
-                            NoiseSuppression.apply()
-                        }
-                    ))
-                } footer: {
-                    Text("Filters background noise such as fans and typing out of your microphone, on this device.")
-                }
-
-                Section("Security") {
-                    LabeledContent("Session", value: account.verificationState == .verified ? "Verified" : "Not verified")
-                    LabeledContent("Device ID", value: account.deviceId)
-                    Button("Enter recovery key") { showRecovery = true }
-                    NavigationLink("Devices") { DevicesView(account: account) }
-                    NavigationLink("Encryption") { EncryptionSettingsView(account: account) }
-                    NavigationLink("Contact Information") { ContactInfoView(account: account) }
-                    NavigationLink("Blocked Users") { BlockedUsersView(account: account) }
-                    NavigationLink("Developer Tools") { DeveloperToolsView(account: account) }
-                }
-
-                Section {
-                    NavigationLink { AboutView(account: account) } label: { Label("About Diddy", systemImage: "info.circle.fill") }
-                }
+                accountSection
+                appSection
+                helpSection
 
                 Section {
                     Button("Log Out of \(account.record.serverName)", role: .destructive) { confirmLogout = account }
+                } footer: {
+                    Text("Signed in as \(account.userId)")
                 }
             }
             .scrollContentBackground(.hidden)
@@ -142,13 +71,117 @@ struct SettingsView: View {
             } message: {
                 Text("Encrypted messages can only be read again with your recovery key or another verified device.")
             }
-            .sheet(isPresented: $showRecovery) { RecoveryView(account: account) }
+            .sheet(isPresented: $showRecovery) { RecoveryView(account: account).diddyMonochrome() }
+        }
+        // The guide brings its own navigation stack, so it opens as a sheet rather than a pushed page.
+        .sheet(isPresented: $showWelcome) {
+            DiddyWelcomeView(account: account, onFinish: { showWelcome = false }).diddyMonochrome()
+        }
+    }
+
+    // MARK: Sections
+
+    private var accountSection: some View {
+        Section {
+            if !isVerified {
+                Button { showRecovery = true } label: {
+                    SettingsRowLabel(title: "Enter Recovery Key", systemImage: "key.fill", color: .orange)
+                }
+            }
+            NavigationLink { DevicesView(account: account) } label: {
+                SettingsRowLabel(title: "Devices", systemImage: "iphone", color: .gray)
+            }
+            NavigationLink { EncryptionSettingsView(account: account) } label: {
+                SettingsRowLabel(
+                    title: "Encryption", systemImage: "lock.fill", color: .green,
+                    value: isVerified ? "Verified" : "Not Verified",
+                    valueColor: isVerified ? Theme.muted : Theme.danger)
+            }
+            NavigationLink { ContactInfoView(account: account) } label: {
+                SettingsRowLabel(title: "Contact Information", systemImage: "envelope.fill", color: .blue)
+            }
+            NavigationLink { BlockedUsersView(account: account) } label: {
+                SettingsRowLabel(title: "Blocked Users", systemImage: "hand.raised.fill", color: .red)
+            }
+        } header: {
+            Text("Account")
+        } footer: {
+            if !isVerified {
+                Text("This device is not verified yet. Enter your recovery key or verify it from another device to read your encrypted messages.")
+            }
+        }
+    }
+
+    private var appSection: some View {
+        Section("App") {
+            NavigationLink { AppearanceSettingsView() } label: {
+                SettingsRowLabel(title: "Appearance", systemImage: "paintpalette.fill", color: .pink)
+            }
+            NavigationLink { ChatSettingsView() } label: {
+                SettingsRowLabel(title: "Chat", systemImage: "bubble.left.and.bubble.right.fill", color: .blue)
+            }
+            NavigationLink { NotificationSettingsView(account: account) } label: {
+                SettingsRowLabel(title: "Notifications", systemImage: "bell.badge.fill", color: .red)
+            }
+            NavigationLink { SoundSettingsView() } label: {
+                SettingsRowLabel(title: "Sounds", systemImage: "speaker.wave.2.fill", color: .pink)
+            }
+            NavigationLink { CallSettingsView() } label: {
+                SettingsRowLabel(title: "Calls", systemImage: "phone.fill", color: .green)
+            }
+            NavigationLink { WatchTogetherSettingsView() } label: {
+                SettingsRowLabel(title: "Watch Together", systemImage: "play.rectangle.fill", color: .red)
+            }
+            NavigationLink { PluginSettingsView() } label: {
+                SettingsRowLabel(title: "Plugins", systemImage: "puzzlepiece.extension.fill", color: .purple)
+            }
+        }
+    }
+
+    private var helpSection: some View {
+        Section("Help") {
+            Button { showWelcome = true } label: {
+                SettingsRowLabel(title: "Welcome Guide", systemImage: "hand.wave.fill", color: .orange)
+            }
+            NavigationLink { AboutView(account: account) } label: {
+                SettingsRowLabel(title: "About Diddy", systemImage: "info.circle.fill", color: .gray)
+            }
+            NavigationLink { DeveloperToolsView(account: account) } label: {
+                SettingsRowLabel(title: "Developer Tools", systemImage: "hammer.fill", color: .gray)
+            }
         }
     }
 }
 
-/// Turns on "<name> is calling you" through the ntfy app, for when Diddy is closed.
-private struct CallAlertSettingsView: View {
+/// A settings row like the iOS Settings app: an SF Symbol in a coloured rounded square, the
+/// title, and an optional value on the trailing side.
+struct SettingsRowLabel: View {
+    let title: String
+    let systemImage: String
+    let color: Color
+    var value: String? = nil
+    var valueColor: Color = Theme.muted
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(Color.white)
+                .frame(width: 29, height: 29)
+                .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(color))
+                .accessibilityHidden(true)
+            Text(title).foregroundStyle(Theme.text)
+            if let value {
+                Spacer(minLength: 8)
+                Text(value).foregroundStyle(valueColor).lineLimit(1)
+            }
+        }
+    }
+}
+
+/// Turns on "<name> is calling you" through the ntfy app, for when Diddy is closed
+/// (Settings > Notifications > Call Alerts).
+struct CallAlertSettingsView: View {
     @EnvironmentObject private var app: AppModel
     @AppStorage(CallPushSettings.enabledKey) private var enabled = false
     @AppStorage(CallPushSettings.serverKey) private var server = CallPushSettings.defaultServer
@@ -235,7 +268,7 @@ private struct ProfileSection: View {
     @State private var error: String?
 
     var body: some View {
-        Section("Profile") {
+        Section {
             HStack(spacing: 14) {
                 PhotosPicker(selection: $photo, matching: .images) {
                     AvatarView(url: account.avatarUrl, name: account.title, size: 60, account: account)
@@ -261,8 +294,10 @@ private struct ProfileSection: View {
             }
             if let error { Text(error).font(.footnote).foregroundStyle(Theme.danger) }
             NavigationLink { DiddyProfileEditor(account: account) } label: {
-                Label("Diddy Profile", systemImage: "paintbrush.fill")
+                SettingsRowLabel(title: "Diddy Profile", systemImage: "paintbrush.fill", color: Theme.accent)
             }
+        } footer: {
+            Text("Tap your picture or name to change them.")
         }
         .task(id: account.displayName) { name = account.displayName ?? "" }
         .onChange(of: photo) { item in

@@ -313,7 +313,7 @@ struct ThemeSection: View {
         } header: {
             Text("Theme")
         } footer: {
-            Text("The same colour themes as the desktop app. Light themes switch the whole app to light mode.")
+            Text("The same color themes as the desktop app. Light themes switch the whole app to light mode.")
         }
     }
 
