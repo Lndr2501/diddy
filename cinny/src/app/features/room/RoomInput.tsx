@@ -100,7 +100,8 @@ import {
   getImageMsgContent,
   getVideoMsgContent,
 } from './msgContent';
-import { getMemberDisplayName, getMentionContent, trimReplyFromBody } from '../../utils/room';
+import { getMemberDisplayName, getMentionContent } from '../../utils/room';
+import { replyPreviewText } from '../../utils/replyPreview';
 import * as css from './RoomInput.css';
 import { CommandAutocomplete } from './CommandAutocomplete';
 import { BotCommandAutocomplete } from './BotCommandAutocomplete';
@@ -666,7 +667,7 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
                       }
                     >
                       <Text size="T300" truncate>
-                        {trimReplyFromBody(replyDraft.body)}
+                        {replyPreviewText(replyDraft.body)}
                       </Text>
                     </ReplyLayout>
                   </Box>

@@ -2,7 +2,8 @@ import { Box, Icon, Icons, Text, as, color, toRem } from 'folds';
 import { EventTimelineSet, Room } from 'matrix-js-sdk';
 import React, { MouseEventHandler, ReactNode, useCallback, useMemo } from 'react';
 import classNames from 'classnames';
-import { getMemberAvatarMxc, getMemberDisplayName, trimReplyFromBody } from '../../utils/room';
+import { getMemberAvatarMxc, getMemberDisplayName } from '../../utils/room';
+import { replyPreviewText } from '../../utils/replyPreview';
 import { getMxIdLocalPart, mxcUrlToHttp } from '../../utils/matrix';
 import { UserAvatar } from '../user-avatar';
 import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
@@ -113,7 +114,8 @@ export const Reply = as<'div', ReplyProps>(
     );
 
     const badEncryption = replyEvent?.getContent().msgtype === 'm.bad.encrypted';
-    const bodyJSX = body ? scaleSystemEmoji(trimReplyFromBody(body)) : fallbackBody;
+    const bodyJSX =
+      typeof body === 'string' && body ? scaleSystemEmoji(replyPreviewText(body)) : fallbackBody;
 
     return (
       <Box
