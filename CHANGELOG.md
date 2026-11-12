@@ -6,6 +6,10 @@
 
 - **iOS: Theme-Wechsel in den Einstellungen wirkt sofort im ganzen Sheet:** Nach dem Wechsel (z. B. hell → dunkel) blieb das Settings-Sheet halb im alten Theme: heller Hintergrund, dunkle Karten mit dunklem Text, kaum lesbare Abschnittstitel, Done-Knopf und Häkchen in der alten Akzentfarbe. Ursache: Sheets sind eigene Präsentationen; der Neuaufbau, den der Hauptbildschirm für ein neues Theme auslöst, kam im Sheet nicht an, nur der Hell/Dunkel-Modus des Fensters. Jetzt beobachten Einstellungen, Anrufbildschirm, Schnellwechsler, Willkommens-Guide, Raum-Link, Verifizierung und „Add Account“ das Theme selbst und bauen sich mit Farben, Akzentfarbe, Hell/Dunkel und Monochrom neu auf (auch bei „Match System Appearance“). Die Seite „Appearance“ bleibt dabei offen.
 
+- **iOS: Call im Querformat aufgeräumt:** Auf dem iPhone im Querformat stehen Zuklappen, Titel, Status („5 in voice“, Ping) und Mitglieder in einer schlanken Zeile statt in Navigationsleiste plus Statuszeile. Die Steuerknöpfe stehen als Spalte rechts (44 pt) statt als Leiste unten. Die Bühne bekommt so fast die ganze Höhe; Dynamic Island und Home-Indicator bleiben frei. Ohne Freigabe stehen alle Teilnehmer in einem Raster, das die Fläche nutzt (5 Personen 3 + 2, 8 Personen 4 × 2), statt in bildschirmbreiten Kacheln untereinander: Das Raster wählte bisher bei kurzer Bühne immer eine Spalte. Bei Freigabe füllt das Bild die Bühne, die übrigen Kacheln stehen als schmale Spalte daneben und werden nicht mehr links abgeschnitten. Das Hochformat bleibt wie bisher (`Call/CallStageLayout.swift`, Prüfung `Tools/stagelayout_check`).
+
+- **iOS: Kein Chat-Knopf mehr im Call:** Die Sprechblase oben rechts in der Call-Ansicht ist weg, der Mitglieder-Knopf steht allein. Damit ist der Text-Chat eines Sprachkanals auf iOS vorerst nicht mehr erreichbar (Sprachkanäle öffnen immer die Call-Ansicht); der Chat normaler Räume und DMs ist wie bisher über die Raumliste da.
+
 ## 1.7.0 (2026-11-12)
 
 - **Aufgeräumte Oberfläche (macOS, Linux):**

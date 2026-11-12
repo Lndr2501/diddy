@@ -25,33 +25,7 @@ struct StageItem: Identifiable, Equatable {
     }
 }
 
-/// How `count` equal tiles fill `size`: the column count that gives the biggest 16:10 tile.
-struct StageGridLayout: Equatable {
-    let columns: Int
-    let cellWidth: CGFloat
-    let cellHeight: CGFloat
-    let rows: Int
-
-    static func make(count: Int, size: CGSize, spacing: CGFloat, minCellHeight: CGFloat) -> StageGridLayout {
-        let count = max(count, 1)
-        let width = Double(max(size.width, 1))
-        let height = Double(max(size.height, 1))
-        var best = StageGridLayout(columns: 1, cellWidth: width, cellHeight: max(minCellHeight, height), rows: count)
-        var bestArea: CGFloat = -1
-        for columns in 1...count {
-            let rows = (count + columns - 1) / columns
-            let cellWidth = max((width - CGFloat(columns - 1) * spacing) / CGFloat(columns), 1)
-            let cellHeight = max((height - CGFloat(rows - 1) * spacing) / CGFloat(rows), minCellHeight)
-            let fitWidth = min(cellWidth, cellHeight * 1.6)
-            let area = fitWidth * fitWidth / 1.6
-            if area > bestArea + 0.5 {
-                bestArea = area
-                best = StageGridLayout(columns: columns, cellWidth: cellWidth, cellHeight: cellHeight, rows: rows)
-            }
-        }
-        return best
-    }
-}
+// StageGridLayout and StageStripLayout: Call/CallStageLayout.swift.
 
 // MARK: Stage
 
@@ -72,6 +46,7 @@ struct CallStageView: View {
     @EnvironmentObject private var calls: CallManager
     @State private var focusKey: String?
     @State private var volumeTarget: VolumeTarget?
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     init(session: CallSession, account: MatrixAccount?, showProfile: @escaping (String) -> Void) {
         self.session = session
@@ -97,7 +72,7 @@ struct CallStageView: View {
             }
             .frame(width: geo.size.width, height: geo.size.height)
         }
-        .padding(12)
+        .padding(verticalSizeClass == .compact ? 8 : 12)
         .sheet(item: $volumeTarget) { target in
             PersonVolumeSheet(extras: extras, userId: target.userId, name: target.name, kind: target.kind)
         }
@@ -116,7 +91,9 @@ struct CallStageView: View {
     // MARK: Layouts
 
     private func gridLayout(_ items: [StageItem], size: CGSize) -> some View {
-        let layout = StageGridLayout.make(count: items.count, size: size, spacing: spacing, minCellHeight: 110)
+        // iPhone in landscape: smaller tiles before the grid scrolls
+        let minCellHeight: CGFloat = verticalSizeClass == .compact ? 64 : 110
+        let layout = StageGridLayout.make(count: items.count, size: size, spacing: spacing, minCellHeight: minCellHeight)
         let rows = stride(from: 0, to: items.count, by: layout.columns).map {
             Array(items[$0..<min($0 + layout.columns, items.count)])
         }
@@ -135,19 +112,22 @@ struct CallStageView: View {
 
     private func focusedLayout(_ item: StageItem, items: [StageItem], size: CGSize) -> some View {
         let others = items.filter { $0.id != item.id }
-        let thumbHeight: CGFloat = size.height < 380 ? 72 : 104
-        let thumb = CGSize(width: thumbHeight * 1.6, height: thumbHeight)
-        let stripHeight = others.isEmpty ? 0 : thumbHeight
-        let big = CGSize(width: size.width, height: max(size.height - stripHeight - (others.isEmpty ? 0 : spacing), 60))
-        return VStack(spacing: spacing) {
-            tile(item, size: big, role: .focus)
+        let strip = StageStripLayout.make(count: others.count, size: size, spacing: spacing)
+        // Thumbnails under the large tile, or in a column beside it on a wide stage (landscape).
+        let outer = strip.beside ? AnyLayout(HStackLayout(spacing: spacing)) : AnyLayout(VStackLayout(spacing: spacing))
+        let inner = strip.beside ? AnyLayout(VStackLayout(spacing: spacing)) : AnyLayout(HStackLayout(spacing: spacing))
+        let axes: Axis.Set = strip.beside ? .vertical : .horizontal
+        return outer {
+            tile(item, size: strip.focus, role: .focus)
             if !others.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: spacing) {
-                        ForEach(others) { other in tile(other, size: thumb, role: .thumb) }
+                ScrollView(axes, showsIndicators: false) {
+                    inner {
+                        ForEach(others) { other in tile(other, size: strip.thumb, role: .thumb) }
                     }
+                    // centred while they fit, from the start once they scroll: none is cut off
+                    .frame(minWidth: strip.beside ? nil : strip.strip.width, minHeight: strip.beside ? strip.strip.height : nil)
                 }
-                .frame(height: thumbHeight)
+                .frame(width: strip.strip.width, height: strip.strip.height)
             }
         }
     }

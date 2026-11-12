@@ -7,14 +7,12 @@ import UniformTypeIdentifiers
 struct ChatView: View {
     @ObservedObject var account: MatrixAccount
     let roomId: String
-    /// The text chat of a voice channel, opened from inside it: no call button or banner needed.
-    var isVoiceChat = false
     @StateObject private var holder = TimelineHolder()
 
     var body: some View {
         Group {
             if let controller = holder.controller {
-                ChatContent(account: account, controller: controller, summary: account.summary(for: roomId), isVoiceChat: isVoiceChat)
+                ChatContent(account: account, controller: controller, summary: account.summary(for: roomId))
             } else {
                 ZStack { Theme.chat.ignoresSafeArea(); ProgressView() }
             }
@@ -41,7 +39,6 @@ private struct ChatContent: View {
     @ObservedObject var account: MatrixAccount
     @ObservedObject var controller: TimelineController
     let summary: RoomSummary?
-    let isVoiceChat: Bool
     @EnvironmentObject private var calls: CallManager
     @StateObject private var memberStore = MemberStore()
     @StateObject private var botCommands = BotCommandStore()
@@ -95,7 +92,7 @@ private struct ChatContent: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if !isVoiceChat { CallBanner(account: account, summary: summary, roomId: roomId, title: title) }
+            CallBanner(account: account, summary: summary, roomId: roomId, title: title)
             messages
             typingLine
             followingLine
@@ -136,14 +133,12 @@ private struct ChatContent: View {
             }
             // Two buttons and one menu, so the title keeps its room on small iPhones.
             ToolbarItemGroup(placement: .navigationBarTrailing) {
-                if !isVoiceChat {
-                    Button {
-                        Task { await calls.requestJoin(account: account, roomId: roomId, roomName: title, showCallScreen: true) }
-                    } label: {
-                        Image(systemName: "phone")
-                    }
-                    .accessibilityLabel("Start voice call")
+                Button {
+                    Task { await calls.requestJoin(account: account, roomId: roomId, roomName: title, showCallScreen: true) }
+                } label: {
+                    Image(systemName: "phone")
                 }
+                .accessibilityLabel("Start voice call")
                 Button { showSearch = true } label: { Image(systemName: "magnifyingglass") }
                     .accessibilityLabel("Search messages")
                 Menu { headerMenu } label: { Image(systemName: "ellipsis.circle") }

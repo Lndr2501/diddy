@@ -8,7 +8,7 @@ struct VoiceChannelView: View {
     var showsClose = false
     @EnvironmentObject private var calls: CallManager
     @Environment(\.dismiss) private var dismiss
-    @State private var showChat = false
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
     @State private var showMembers = false
     @State private var joining = false
     @State private var profile: ProfileTarget?
@@ -16,11 +16,23 @@ struct VoiceChannelView: View {
     private var summary: RoomSummary? { account.summary(for: roomId) }
     private var title: String { summary?.name ?? "Voice" }
 
+    /// iPhone in landscape inside this call: the call draws its own slim header row instead of the
+    /// navigation bar, so the stage gets nearly the whole height.
+    private var landscapeCall: Bool {
+        verticalSizeClass == .compact && calls.current?.roomId == roomId
+    }
+
     var body: some View {
         ZStack {
             Theme.rail.ignoresSafeArea()
             if let session = calls.current, session.roomId == roomId {
-                ConnectedVoiceView(session: session) { profile = ProfileTarget(userId: $0) }
+                ConnectedVoiceView(
+                    session: session,
+                    title: title,
+                    showsClose: showsClose,
+                    showMembers: { showMembers = true },
+                    showProfile: { profile = ProfileTarget(userId: $0) }
+                )
             } else {
                 lobby
             }
@@ -29,6 +41,7 @@ struct VoiceChannelView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Theme.rail, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
+        .toolbar(landscapeCall ? .hidden : .automatic, for: .navigationBar)
         .toolbar {
             if showsClose {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -36,19 +49,9 @@ struct VoiceChannelView: View {
                         .accessibilityLabel("Minimize call")
                 }
             }
-            ToolbarItemGroup(placement: .navigationBarTrailing) {
+            ToolbarItem(placement: .navigationBarTrailing) {
                 Button { showMembers = true } label: { Image(systemName: "person.2.fill") }
                     .accessibilityLabel("Members")
-                Button { showChat = true } label: { Image(systemName: "bubble.left.fill") }
-                    .accessibilityLabel("Text chat")
-            }
-        }
-        .sheet(isPresented: $showChat) {
-            NavigationStack {
-                ChatView(account: account, roomId: roomId, isVoiceChat: true)
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) { Button("Close") { showChat = false } }
-                    }
             }
         }
         .sheet(isPresented: $showMembers) { MembersView(account: account, roomId: roomId) }
@@ -113,12 +116,22 @@ struct ProfileTarget: Identifiable {
 private struct ConnectedVoiceView: View {
     @ObservedObject var session: CallSession
     @ObservedObject private var extras: CallLiveExtras
+    let title: String
+    /// Shown full screen: the header's left button minimizes the call instead of going back.
+    let showsClose: Bool
+    let showMembers: () -> Void
     let showProfile: (String) -> Void
     @EnvironmentObject private var calls: CallManager
     @EnvironmentObject private var app: AppModel
+    @EnvironmentObject private var navigator: AppNavigator
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
-    init(session: CallSession, showProfile: @escaping (String) -> Void) {
+    init(session: CallSession, title: String, showsClose: Bool, showMembers: @escaping () -> Void, showProfile: @escaping (String) -> Void) {
         self.session = session
+        self.title = title
+        self.showsClose = showsClose
+        self.showMembers = showMembers
         self.showProfile = showProfile
         _extras = ObservedObject(wrappedValue: session.extras)
     }
@@ -126,17 +139,65 @@ private struct ConnectedVoiceView: View {
     /// The login that joined this call: member avatars are that account's media.
     private var callAccount: MatrixAccount? { app.accounts.first { $0.id == session.accountId } }
 
+    /// iPhone in landscape: one slim header row and the buttons in a column on the right, so the
+    /// stage gets nearly the whole height (the navigation bar is hidden, see VoiceChannelView).
+    private var landscape: Bool { verticalSizeClass == .compact }
+
+    // One layout that switches between column and row, so turning the phone keeps the focused
+    // tile and an open sheet of the "More" button instead of building them again.
     var body: some View {
-        VStack(spacing: 0) {
-            CallStatusHeader(session: session, extras: extras)
-            // The video of Watch together above the stage (beside it in landscape), then one tile
-            // per person and per screen share; a tap focuses one (CallStageView.swift).
-            WatchTogetherStage(watch: session.watchTogether) {
-                CallStageView(session: session, account: callAccount, showProfile: showProfile)
+        let outer = landscape ? AnyLayout(HStackLayout(spacing: 0)) : AnyLayout(VStackLayout(spacing: 0))
+        outer {
+            VStack(spacing: 0) {
+                if landscape {
+                    landscapeHeader
+                } else {
+                    CallStatusHeader(session: session, extras: extras)
+                }
+                // The video of Watch together above the stage (beside it in landscape), then one tile
+                // per person and per screen share; a tap focuses one (CallStageView.swift).
+                WatchTogetherStage(watch: session.watchTogether) {
+                    CallStageView(session: session, account: callAccount, showProfile: showProfile)
+                }
+                notices
             }
-            notices
             controls
         }
+    }
+
+    /// Back (or minimize), the title, the call status and the members, in one row.
+    private var landscapeHeader: some View {
+        HStack(spacing: 6) {
+            if showsClose {
+                headerButton("chevron.down", label: "Minimize call") { calls.showCallScreen = false }
+            } else if horizontalSizeClass == .compact {
+                // the hidden navigation bar took the back button with it
+                headerButton("chevron.left", label: "Back") { navigator.destination = nil }
+            }
+            Text(title)
+                .font(.subheadline.bold())
+                .foregroundStyle(Theme.text)
+                .lineLimit(1)
+                .accessibilityAddTraits(.isHeader)
+            CallStatusHeader(session: session, extras: extras, horizontalPadding: 6)
+            headerButton("person.2.fill", label: "Members", action: showMembers)
+        }
+        .padding(.horizontal, 6)
+        .padding(.top, 2)
+    }
+
+    private func headerButton(_ icon: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(Theme.accent)
+                .frame(width: 36, height: 36)
+                .background(Circle().fill(Theme.elevated))
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
     }
 
     @ViewBuilder
@@ -159,44 +220,63 @@ private struct ConnectedVoiceView: View {
     }
 
     /// The core actions in one row, like FaceTime: speaker, camera, microphone, share, more, leave.
-    /// Each button gets an equal share of the width, so it fits the iPhone SE and landscape.
+    /// Each button gets an equal share of the width, so it fits the iPhone SE. In landscape the
+    /// same buttons stand in a column on the right, smaller (44 pt) and spread over the height,
+    /// beside the island and above the home indicator.
     private var controls: some View {
-        HStack(spacing: 0) {
+        let stack = landscape ? AnyLayout(VStackLayout(spacing: 4)) : AnyLayout(HStackLayout(spacing: 0))
+        return stack { controlButtons }
+            .buttonStyle(.plain)
+            .environment(\.callBarIconSize, landscape ? 44 : 50)
+            .padding(.horizontal, landscape ? 10 : 8)
+            .padding(.top, landscape ? 6 : 12)
+            .padding(.bottom, landscape ? 6 : 10)
+            .frame(maxWidth: landscape ? nil : 520, maxHeight: landscape ? .infinity : nil)
+            .frame(maxWidth: landscape ? nil : .infinity)
+            .background(Theme.sidebar.ignoresSafeArea(edges: controlBackgroundEdges))
+    }
+
+    /// The bar's colour runs under the home indicator, the column's also to the right edge.
+    private var controlBackgroundEdges: Edge.Set {
+        landscape ? [.trailing, .vertical] : .bottom
+    }
+
+    /// One slot per button: an equal share of the row's width, or of the column's height.
+    private func slot<Content: View>(_ content: Content) -> some View {
+        content.frame(maxWidth: landscape ? nil : .infinity, maxHeight: landscape ? .infinity : nil)
+    }
+
+    @ViewBuilder
+    private var controlButtons: some View {
+        slot(
             Button { session.toggleSpeaker() } label: {
                 CallBarIcon(icon: session.speakerOn ? "speaker.wave.2.fill" : "speaker.fill", highlight: session.speakerOn)
             }
             .accessibilityLabel("Speaker")
             .accessibilityValue(session.speakerOn ? "On" : "Off")
-            .frame(maxWidth: .infinity)
+        )
+        slot(
             Button { Task { await session.toggleCamera() } } label: {
                 CallBarIcon(icon: session.cameraOn ? "video.fill" : "video.slash.fill", highlight: session.cameraOn)
             }
             .accessibilityLabel("Camera")
             .accessibilityValue(session.cameraOn ? "On" : "Off")
-            .frame(maxWidth: .infinity)
+        )
+        slot(
             Button { Task { await session.toggleMicrophone() } } label: {
                 CallBarIcon(icon: session.microphoneOn ? "mic.fill" : "mic.slash.fill", warn: !session.microphoneOn)
             }
             .accessibilityLabel("Microphone")
             .accessibilityValue(session.microphoneOn ? "On" : "Muted")
-            .frame(maxWidth: .infinity)
-            ShareControl(session: session, extras: extras)
-                .frame(maxWidth: .infinity)
-            CallMoreButton(session: session, extras: extras, watch: session.watchTogether)
-                .frame(maxWidth: .infinity)
+        )
+        slot(ShareControl(session: session, extras: extras))
+        slot(CallMoreButton(session: session, extras: extras, watch: session.watchTogether))
+        slot(
             Button { Task { await calls.leave() } } label: {
                 CallBarIcon(icon: "phone.down.fill", destructive: true)
             }
             .accessibilityLabel("Leave call")
-            .frame(maxWidth: .infinity)
-        }
-        .buttonStyle(.plain)
-        .padding(.horizontal, 8)
-        .padding(.top, 12)
-        .padding(.bottom, 10)
-        .frame(maxWidth: 520)
-        .frame(maxWidth: .infinity)
-        .background(Theme.sidebar.ignoresSafeArea(edges: .bottom))
+        )
     }
 }
 
@@ -205,6 +285,7 @@ private struct ConnectedVoiceView: View {
 private struct CallStatusHeader: View {
     @ObservedObject var session: CallSession
     @ObservedObject var extras: CallLiveExtras
+    var horizontalPadding: CGFloat = 14
 
     private var reconnecting: Bool { session.isReconnecting }
 
@@ -260,7 +341,7 @@ private struct CallStatusHeader: View {
             }
             if session.connected { PingBadge(extras: extras) }
         }
-        .padding(.horizontal, 14)
+        .padding(.horizontal, horizontalPadding)
         .frame(minHeight: 36)
         .accessibilityElement(children: .contain)
     }

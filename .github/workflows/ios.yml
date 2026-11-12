@@ -104,6 +104,11 @@ jobs:
           swiftc -swift-version 5 Diddy/Call/StreamZoom.swift Tools/streamzoom_check/main.swift -o "$RUNNER_TEMP/diddy-streamzoom-check"
           "$RUNNER_TEMP/diddy-streamzoom-check"
 
+      - name: Check call stage layout
+        run: |
+          swiftc -swift-version 5 Diddy/Call/CallStageLayout.swift Tools/stagelayout_check/main.swift -o "$RUNNER_TEMP/diddy-stagelayout-check"
+          "$RUNNER_TEMP/diddy-stagelayout-check"
+
       - name: Check avatar choice rules
         run: |
           swiftc -swift-version 5 Diddy/Matrix/AvatarChoice.swift Tools/avatar_check/main.swift -o "$RUNNER_TEMP/diddy-avatar-check"

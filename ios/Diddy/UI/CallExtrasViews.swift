@@ -141,13 +141,26 @@ struct ShareControl: View {
     }
 }
 
-/// A round button of the call bar (50 pt, so the tap target is never under 44 pt).
+private struct CallBarIconSizeKey: EnvironmentKey {
+    static let defaultValue: CGFloat = 50
+}
+
+extension EnvironmentValues {
+    /// The diameter of the call bar buttons: 50 pt, 44 pt in the side column in landscape.
+    var callBarIconSize: CGFloat {
+        get { self[CallBarIconSizeKey.self] }
+        set { self[CallBarIconSizeKey.self] = newValue }
+    }
+}
+
+/// A round button of the call bar (50 pt, 44 pt in landscape, so the tap target is never under 44 pt).
 /// `warn`: an "off" state that matters (muted, deafened); `destructive`: leave, red.
 struct CallBarIcon: View {
     let icon: String
     var highlight = false
     var warn = false
     var destructive = false
+    @Environment(\.callBarIconSize) private var size
 
     private var foreground: Color {
         if destructive { return .white }
@@ -162,9 +175,9 @@ struct CallBarIcon: View {
 
     var body: some View {
         Image(systemName: icon)
-            .font(.system(size: 19, weight: .semibold))
+            .font(.system(size: (19 * size / 50).rounded(), weight: .semibold))
             .foregroundStyle(foreground)
-            .frame(width: 50, height: 50)
+            .frame(width: size, height: size)
             .background(Circle().fill(fill))
             .contentShape(Circle())
     }
