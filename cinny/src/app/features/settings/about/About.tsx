@@ -8,6 +8,7 @@ import { APP_NAME, APP_REPO_URL, APP_VERSION, UPSTREAM_NAME, UPSTREAM_URL } from
 import { clearCacheAndReload } from '../../../../client/initMatrix';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { InsetGroup, InsetItem, InsetRow, InsetSection, SettingsPage } from '../inset-list';
+import { WelcomeGuideSettings } from '../general/General';
 import * as sheetCss from '../../../components/sheet/Sheet.css';
 import { canInvoke, invoke } from '../../../plugins/tauri';
 import { copyToClipboard } from '../../../utils/dom';
@@ -86,6 +87,7 @@ export function About({ requestClose }: AboutProps) {
           </Box>
         </Box>
       </Box>
+      <WelcomeGuideSettings />
       <InsetSection title="Options">
         <InsetGroup>
           <InsetRow

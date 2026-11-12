@@ -20,7 +20,7 @@ import {
 import FocusTrap from 'focus-trap-react';
 import classNames from 'classnames';
 import { isKeyHotkey } from 'is-hotkey';
-import { AppearanceSettings, General } from './general';
+import { AppearanceSettings, CallsSettings, ChatSettings } from './general';
 import { ScreenSize, useScreenSizeContext } from '../../hooks/useScreenSize';
 import { Account } from './account';
 import { Notifications } from './notifications';
@@ -42,7 +42,8 @@ import {
 } from './settingsSearch';
 
 export enum SettingsPages {
-  GeneralPage,
+  ChatPage,
+  CallsPage,
   AppearancePage,
   ProfilePage,
   AccountPage,
@@ -73,22 +74,28 @@ const SETTINGS_MENU: SettingsMenuGroup[] = [
   {
     items: [
       {
-        page: SettingsPages.GeneralPage,
-        name: 'General',
-        icon: Icons.Setting,
-        search: SETTINGS_SEARCH_INDEX.general,
-      },
-      {
         page: SettingsPages.AppearancePage,
         name: 'Appearance',
         icon: Icons.Sun,
         search: SETTINGS_SEARCH_INDEX.appearance,
       },
       {
+        page: SettingsPages.ChatPage,
+        name: 'Chat',
+        icon: Icons.Message,
+        search: SETTINGS_SEARCH_INDEX.chat,
+      },
+      {
         page: SettingsPages.NotificationPage,
         name: 'Notifications',
         icon: Icons.Bell,
         search: SETTINGS_SEARCH_INDEX.notifications,
+      },
+      {
+        page: SettingsPages.CallsPage,
+        name: 'Calls & Audio',
+        icon: Icons.Headphone,
+        search: SETTINGS_SEARCH_INDEX.calls,
       },
     ],
   },
@@ -196,7 +203,7 @@ export function Settings({ initialPage, requestClose }: SettingsProps) {
   const isMobile = screenSize === ScreenSize.Mobile;
   const [activePage, setActivePage] = useState<SettingsPages | undefined>(() => {
     if (initialPage !== undefined) return initialPage;
-    return isMobile ? undefined : SettingsPages.GeneralPage;
+    return isMobile ? undefined : SettingsPages.AppearancePage;
   });
   const [query, setQuery] = useState('');
 
@@ -361,8 +368,11 @@ export function Settings({ initialPage, requestClose }: SettingsProps) {
       {showContent && (
         <SettingsBreadcrumb.Provider value="Settings">
         <div className={classNames(css.Content, isMobile && css.ContentCompact)}>
-          {activePage === SettingsPages.GeneralPage && (
-            <General requestClose={handlePageRequestClose} />
+          {activePage === SettingsPages.ChatPage && (
+            <ChatSettings requestClose={handlePageRequestClose} />
+          )}
+          {activePage === SettingsPages.CallsPage && (
+            <CallsSettings requestClose={handlePageRequestClose} />
           )}
           {activePage === SettingsPages.AppearancePage && (
             <AppearanceSettings requestClose={handlePageRequestClose} />

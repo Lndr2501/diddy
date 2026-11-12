@@ -132,7 +132,7 @@ test('frame ZIP imports; a second account sees effect and frame, the viewer swit
 
   await b.keyboard.press('Escape');
   await b.getByRole('button', { name: 'User settings' }).click();
-  await b.getByRole('navigation', { name: 'Settings' }).getByText('General', { exact: true }).click();
+  await b.getByRole('navigation', { name: 'Settings' }).getByText('Appearance', { exact: true }).click();
   const sw = b
     .locator('xpath=//*[normalize-space(text())="Profile frames"]/ancestor::*[.//*[@role="switch" or self::input[@type="checkbox"]]][1]')
     .locator('[role=switch], input[type=checkbox]')

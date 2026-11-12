@@ -40,21 +40,22 @@ test('every setting title in features/settings is in the search index', () => {
 });
 
 test('settings are found on their page', () => {
-  assert.deepEqual(pagesFor('noise suppression'), ['general']);
-  assert.deepEqual(pagesFor('noise sup'), ['general']);
+  assert.deepEqual(pagesFor('noise suppression'), ['calls']);
+  assert.deepEqual(pagesFor('noise sup'), ['calls']);
   assert.deepEqual(pagesFor('zoom'), ['appearance']);
-  assert.deepEqual(pagesFor('time format'), ['general']);
-  assert.deepEqual(pagesFor('sponsorblock'), ['general']);
-  assert.ok(pagesFor('nameplate').includes('general'));
+  assert.deepEqual(pagesFor('time format'), ['chat']);
+  assert.deepEqual(pagesFor('sponsorblock'), ['calls']);
+  assert.ok(pagesFor('welcome guide').includes('about'));
+  assert.ok(pagesFor('nameplate').includes('appearance'));
   assert.ok(pagesFor('nameplate').includes('profile'));
   assert.ok(pagesFor('keyword').includes('notifications'));
 });
 
 test('the page shows which settings matched', () => {
-  assert.deepEqual([...mod.matchingTitles(index.general, 'noise')], ['Noise suppression']);
+  assert.deepEqual([...mod.matchingTitles(index.calls, 'noise')], ['Noise suppression']);
   assert.deepEqual([...mod.matchingTitles(index.appearance, 'page zoom')], ['Page Zoom']);
-  assert.deepEqual([...mod.matchingTitles(index.general, '')], []);
-  assert.ok(mod.matchingTitles(index.general, 'url').length <= 3);
+  assert.deepEqual([...mod.matchingTitles(index.chat, '')], []);
+  assert.ok(mod.matchingTitles(index.chat, 'url').length <= 3);
 });
 
 test('empty, unknown and odd queries', () => {
@@ -62,7 +63,7 @@ test('empty, unknown and odd queries', () => {
   assert.equal(pagesFor('   ').length, Object.keys(index).length);
   assert.deepEqual(pagesFor('qqqzzz'), []);
   assert.deepEqual(pagesFor('ZOOM'), ['appearance']);
-  assert.ok(pagesFor('Ënter newline').includes('general'), 'accents are ignored');
+  assert.ok(pagesFor('Ënter newline').includes('chat'), 'accents are ignored');
   assert.ok(pagesFor('developer').includes('developerTools'));
   assert.ok(pagesFor('@room').includes('notifications'));
 });

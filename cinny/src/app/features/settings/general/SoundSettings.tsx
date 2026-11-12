@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Box, Button, Icon, IconButton, Icons, Switch, Text } from 'folds';
 import { InsetGroup, InsetRow, InsetSection } from '../inset-list';
+import * as css from './SoundSettings.css';
 import {
   playSound,
   resetCustomSound,
@@ -33,45 +34,53 @@ function SoundRow({ sound }: SoundRowProps) {
 
   return (
     <InsetRow
+      className={css.SoundRow}
       title={sound.title}
       description={
         error ?? (customName ? `${sound.description} Own sound: ${customName}` : sound.description)
       }
       after={
         <Box alignItems="Center" gap="200">
-          <IconButton
-            size="300"
-            radii="Pill"
-            variant="Surface"
-            fill="None"
-            aria-label={`Play ${sound.title}`}
-            onClick={() => playSound(sound.id, { force: true })}
+          <Box
+            alignItems="Center"
+            gap="200"
+            className={css.SoundActions}
+            data-custom={!!customName}
           >
-            <Icon size="100" src={Icons.Play} />
-          </IconButton>
-          <Button
-            size="300"
-            radii="Pill"
-            variant="Secondary"
-            fill="Soft"
-            onClick={() => inputRef.current?.click()}
-          >
-            <Text size="B300">Replace</Text>
-          </Button>
-          {customName && (
+            <IconButton
+              size="300"
+              radii="Pill"
+              variant="Surface"
+              fill="None"
+              aria-label={`Play ${sound.title}`}
+              onClick={() => playSound(sound.id, { force: true })}
+            >
+              <Icon size="100" src={Icons.Play} />
+            </IconButton>
             <Button
               size="300"
               radii="Pill"
               variant="Secondary"
-              fill="None"
-              onClick={() => {
-                resetCustomSound(sound.id);
-                setError(undefined);
-              }}
+              fill="Soft"
+              onClick={() => inputRef.current?.click()}
             >
-              <Text size="B300">Reset</Text>
+              <Text size="B300">Replace</Text>
             </Button>
-          )}
+            {customName && (
+              <Button
+                size="300"
+                radii="Pill"
+                variant="Secondary"
+                fill="None"
+                onClick={() => {
+                  resetCustomSound(sound.id);
+                  setError(undefined);
+                }}
+              >
+                <Text size="B300">Reset</Text>
+              </Button>
+            )}
+          </Box>
           <Switch
             variant="Primary"
             value={enabled}

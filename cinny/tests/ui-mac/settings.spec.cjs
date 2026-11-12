@@ -1,4 +1,4 @@
-// Every settings page (General, Appearance, Profile incl. badges/profile card, Account, ...) opens
+// Every settings page (Appearance, Chat, Calls & Audio, Profile incl. badges/profile card, Account, ...) opens
 // without errors, horizontal overflow or overlapping controls, at the minimum and default window
 // size. Screenshots: test-results/ui-mac/screens/settings-<page>-<size>.png
 const { test, expect } = require('@playwright/test');
@@ -7,11 +7,12 @@ const { findOverlaps, openApp, dismissOnboarding, accounts } = require('./helper
 test.skip(!accounts.testa, 'no test accounts');
 
 const PAGES = [
-  'General',
   'Appearance',
+  'Chat',
+  'Notifications',
+  'Calls & Audio',
   'Profile',
   'Account',
-  'Notifications',
   'Devices',
   'Emojis & Stickers',
   'Plugins',

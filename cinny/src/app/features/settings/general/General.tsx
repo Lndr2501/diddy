@@ -11,6 +11,7 @@ import dayjs from 'dayjs';
 import {
   Box,
   Button,
+  Chip,
   config,
   Header,
   Icon,
@@ -47,6 +48,7 @@ import { useDateFormatItems } from '../../../hooks/useDateFormat';
 import { AppIconPicker } from './AppIconPicker';
 import { BackgroundSettings, CustomThemeSettings } from './CustomThemeSettings';
 import { ThemeTiles } from './ThemeTiles';
+import * as css from './General.css';
 import { updateCallPrefs, useCallPrefs } from '../../../state/callPrefs';
 import { SoundSettings } from './SoundSettings';
 import { browserStorage, clearAllCallVolumes } from '../../../plugins/call/volumeMemory';
@@ -813,7 +815,7 @@ function Messages() {
   );
 }
 
-function WelcomeGuideSettings() {
+export function WelcomeGuideSettings() {
   const mx = useMatrixClient();
   const [shown, setShown] = useState(false);
 
@@ -867,11 +869,39 @@ function AnimatedAvatarSettings() {
   const prefs = useAvatarPrefs();
 
   return (
-    <InsetSection title="Animated profile pictures">
+    <InsetSection
+      title="Animated profile pictures"
+      footer="With reduced motion turned on in your system, nothing moves."
+    >
       <InsetGroup>
         <InsetRow
+          title="Pictures move in"
+          description="Where animated profile pictures play. Elsewhere they stand still."
+        >
+          <div className={css.ChipRow} role="group" aria-label="Pictures move in">
+            {AVATAR_PLACES.map(({ surface, title, description }) => {
+              const on = prefs[surface];
+              return (
+                <Chip
+                  key={surface}
+                  variant={on ? 'Primary' : 'SurfaceVariant'}
+                  fill={on ? 'Soft' : 'None'}
+                  radii="Pill"
+                  outlined
+                  aria-pressed={on}
+                  title={description}
+                  before={on ? <Icon size="50" src={Icons.Check} /> : undefined}
+                  onClick={() => setAvatarAnimation(surface, !on)}
+                >
+                  <Text size="T200">{title}</Text>
+                </Chip>
+              );
+            })}
+          </div>
+        </InsetRow>
+        <InsetRow
           title="Only while speaking"
-          description="The picture stands still and moves only while the person speaks in the call you are in."
+          description="Pictures stand still and move only while the person speaks in your call."
           after={
             <Switch
               variant="Primary"
@@ -880,23 +910,9 @@ function AnimatedAvatarSettings() {
             />
           }
         />
-        {AVATAR_PLACES.map(({ surface, title, description }) => (
-          <InsetRow
-            key={surface}
-            title={title}
-            description={description}
-            after={
-              <Switch
-                variant="Primary"
-                value={prefs[surface]}
-                onChange={(value) => setAvatarAnimation(surface, value)}
-              />
-            }
-          />
-        ))}
         <InsetRow
           title="Nameplates"
-          description="Moving pictures, videos and gradients behind names in the member and DM lists. Off shows a still picture; with reduced motion turned on in your system they never move."
+          description="Moving backgrounds behind names in the member and DM lists."
           after={
             <Switch
               variant="Primary"
@@ -907,7 +923,7 @@ function AnimatedAvatarSettings() {
         />
         <InsetRow
           title="Profile effects"
-          description="Animated overlays other people put over their profile card. Off shows a still picture; with reduced motion turned on in your system they never move."
+          description="Animated overlays other people put on their profile card."
           after={
             <Switch
               variant="Primary"
@@ -985,21 +1001,29 @@ function CallSettings() {
   );
 }
 
-type GeneralProps = {
+type PageProps = {
   requestClose: () => void;
 };
-export function General({ requestClose }: GeneralProps) {
+
+/** Everything about reading and writing messages. */
+export function ChatSettings({ requestClose }: PageProps) {
   return (
-    <SettingsPage title="General" requestClose={requestClose}>
-      <AnimatedAvatarSettings />
+    <SettingsPage title="Chat" requestClose={requestClose}>
+      <Messages />
+      <Editor />
+      <DateAndTime />
+    </SettingsPage>
+  );
+}
+
+/** Calls, the app's sounds and the voice extras. */
+export function CallsSettings({ requestClose }: PageProps) {
+  return (
+    <SettingsPage title="Calls & Audio" requestClose={requestClose}>
       <CallSettings />
+      <SoundSettings />
       <AgentVoiceSettings />
       <WatchTogetherSettings />
-      <SoundSettings />
-      <WelcomeGuideSettings />
-      <DateAndTime />
-      <Editor />
-      <Messages />
     </SettingsPage>
   );
 }
@@ -1015,6 +1039,7 @@ export function AppearanceSettings({ requestClose }: AppearanceSettingsProps) {
       <BackgroundSettings />
       <DisplaySettings />
       <EmojiSettings />
+      <AnimatedAvatarSettings />
       <AppIconSettings />
     </SettingsPage>
   );

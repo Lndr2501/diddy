@@ -1,6 +1,7 @@
 import React, { ChangeEvent, useRef, useState } from 'react';
 import { Box, Button, color, Switch, Text, toRem } from 'folds';
 import { InsetGroup, InsetRow, InsetSection } from '../inset-list';
+import { CUSTOM_THEME_ID, useActiveTheme } from '../../../hooks/useTheme';
 import {
   CustomThemeConfig,
   DEFAULT_CUSTOM_THEME,
@@ -72,11 +73,14 @@ function Slider({ label, value, min, max, step, format, onChange }: SliderProps)
 export function CustomThemeSettings() {
   const config = useCustomTheme();
   const set = (patch: Partial<CustomThemeConfig>) => updateCustomTheme(patch);
+  // the colour fields only matter while the "Custom" theme is in use
+  const active = useActiveTheme();
+  if (active.id !== CUSTOM_THEME_ID) return null;
 
   return (
     <InsetSection
       title="Custom Theme"
-      footer={'Pick the "Custom" theme above to use these colors.'}
+      footer="Colors of the Custom theme."
     >
       <InsetGroup>
         <InsetRow
