@@ -9,6 +9,12 @@ struct ComposerEditor: UIViewRepresentable {
     var onFocus: (Bool) -> Void
     var onSend: () -> Void
     var onFiles: ([URL], [UIImage]) -> Void
+    /// Room on the right for a button laid over the field (the emoji button).
+    var trailingInset: CGFloat = 0
+
+    /// The field grows with its text, wrapped lines and Dynamic Type included, up to this height and then scrolls.
+    static let minHeight: CGFloat = 36
+    static let maxHeight: CGFloat = 140
 
     final class PasteView: UITextView {
         var files: (([URL], [UIImage]) -> Void)?
@@ -26,16 +32,27 @@ struct ComposerEditor: UIViewRepresentable {
         let view = PasteView()
         view.delegate = context.coordinator
         view.font = .preferredFont(forTextStyle: .body)
+        view.adjustsFontForContentSizeCategory = true
         view.backgroundColor = .clear
         view.textColor = .label
-        view.textContainerInset = UIEdgeInsets(top: 8, left: 6, bottom: 8, right: 6)
+        view.textContainerInset = UIEdgeInsets(top: 8, left: 6, bottom: 8, right: 6 + trailingInset)
         view.accessibilityLabel = "Message"
+        view.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         return view
+    }
+
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: PasteView, context: Context) -> CGSize? {
+        let width = proposal.width ?? 240
+        let fitting = uiView.sizeThatFits(CGSize(width: width, height: CGFloat.greatestFiniteMagnitude))
+        let height = min(Self.maxHeight, max(Self.minHeight, ceil(fitting.height)))
+        return CGSize(width: width, height: height)
     }
 
     func updateUIView(_ view: PasteView, context: Context) {
         context.coordinator.parent = self
         view.files = onFiles
+        let insets = UIEdgeInsets(top: 8, left: 6, bottom: 8, right: 6 + trailingInset)
+        if view.textContainerInset != insets { view.textContainerInset = insets }
         if isFocused, !view.isFirstResponder { view.becomeFirstResponder() }
         if view.text != text { view.text = text }
         let length = (text as NSString).length

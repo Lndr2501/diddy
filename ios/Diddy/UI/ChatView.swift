@@ -85,6 +85,7 @@ private struct ChatContent: View {
     @State private var highlightedRowId: String?
     @State private var unreadSeen = false
     @State private var unreadDismissed = false
+    @State private var notifyError: String?
     @FocusState private var composerFocused: Bool
 
     private var title: String { summary?.name ?? "Channel" }
@@ -132,29 +133,26 @@ private struct ChatContent: View {
                 }
                 .accessibilityLabel("\(title), channel details")
             }
+            // Two buttons and one menu, so the title keeps its room on small iPhones.
             ToolbarItemGroup(placement: .navigationBarTrailing) {
-                RoomNotifyMenuButton(account: account, roomId: roomId)
-                Button { showSearch = true } label: { Image(systemName: "magnifyingglass") }
-                    .accessibilityLabel("Search messages")
                 if !isVoiceChat {
                     Button {
                         Task { await calls.requestJoin(account: account, roomId: roomId, roomName: title, showCallScreen: true) }
                     } label: {
-                        Image(systemName: "phone.fill")
+                        Image(systemName: "phone")
                     }
                     .accessibilityLabel("Start voice call")
                 }
-                Button { showMembers = true } label: {
-                    Image(systemName: "person.2.fill")
-                }
-                .accessibilityLabel("Members")
-                Menu {
-                    Button { navSheet = .pinned } label: { Label("Pinned Messages", systemImage: "pin") }
-                    Button { navSheet = .jumpToDate } label: { Label("Jump to Time", systemImage: "calendar") }
-                } label: { Image(systemName: "ellipsis.circle") }
+                Button { showSearch = true } label: { Image(systemName: "magnifyingglass") }
+                    .accessibilityLabel("Search messages")
+                Menu { headerMenu } label: { Image(systemName: "ellipsis.circle") }
                     .accessibilityLabel("More")
             }
         }
+        .task { await account.refreshNotifyLevels() }
+        .alert("Notifications", isPresented: Binding(get: { notifyError != nil }, set: { if !$0 { notifyError = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: { Text(notifyError ?? "") }
         .sheet(item: $navSheet) { sheet in
             TimelineNavSheetView(account: account, controller: controller, sheet: sheet) { eventId in
                 navSheet = nil
@@ -382,6 +380,21 @@ private struct ChatContent: View {
         }
     }
 
+    /// The header's "More" menu: people, finding things, then the room's notification level.
+    @ViewBuilder
+    private var headerMenu: some View {
+        Button { showMembers = true } label: { Label("Members", systemImage: "person.2") }
+        Divider()
+        Button { navSheet = .pinned } label: { Label("Pinned Messages", systemImage: "pin") }
+        Button { navSheet = .jumpToDate } label: { Label("Jump to Time", systemImage: "calendar") }
+        Divider()
+        Menu {
+            RoomNotifyPicker(account: account, roomId: roomId) { notifyError = $0 }
+        } label: {
+            Label("Notifications", systemImage: account.notifyLevel(for: roomId).systemImage)
+        }
+    }
+
     // MARK: Moving around the chat
 
     private var dividerRowId: String? { controller.nav.dividerRowId(me: account.userId) }
@@ -446,17 +459,66 @@ private struct ChatContent: View {
         }
     }
 
-    /// The desktop's extra message actions: thread, read receipts, pin, link, source, history, report.
+    private func reply(to row: MessageRow) {
+        replyTo = row
+        restoredReplyId = nil
+        editing = nil
+        composerFocused = true
+    }
+
+    private func startEditing(_ row: MessageRow, text: String) {
+        let readable = Self.readableMentions(in: text)
+        editing = row
+        replyTo = nil
+        draft = readable.text
+        mentions = readable.mentions
+        selection = NSRange(location: (draft as NSString).length, length: 0)
+        composerFocused = true
+    }
+
+    /// The event id of a message the extra actions (thread, pin, link, source, ...) can work on.
+    private func actionableEventId(of row: MessageRow) -> String? {
+        guard row.layoutKind == .message, !row.isRedactedMessage else { return nil }
+        return row.remoteEventId
+    }
+
+    /// The long-press menu, in three groups like other chat apps: the everyday actions first,
+    /// then the ones about the message, and Report, View Source and Delete at the end.
     @ViewBuilder
-    private func navMenu(for row: MessageRow) -> some View {
-        if row.layoutKind == .message, !row.isRedactedMessage, let eventId = row.remoteEventId {
+    private func menu(for row: MessageRow) -> some View {
+        let eventId = actionableEventId(of: row)
+        Menu {
+            ForEach(ReactionEmoji.quick, id: \.self) { emoji in
+                Button(emoji) { Task { await controller.toggleReaction(emoji, on: row) } }
+            }
+            Divider()
+            Button { reactingTo = row } label: { Label("More Emoji…", systemImage: "plus") }
+        } label: { Label("Add Reaction", systemImage: "face.smiling") }
+        Button { reply(to: row) } label: { Label("Reply", systemImage: "arrowshape.turn.up.left") }
+        if let eventId {
             Button {
                 let root = controller.nav.snapshot.entries.first(where: { $0.eventId == eventId })?.threadRoot
                 navSheet = .thread(root: root ?? eventId)
             } label: { Label("Reply in Thread", systemImage: "bubble.left.and.bubble.right") }
-            if !controller.nav.readers(of: eventId).isEmpty {
-                Button { navSheet = .readers(eventId: eventId) } label: { Label("Read Receipts", systemImage: "checkmark.circle") }
+        }
+        if case .text(let text) = row.body {
+            Button { UIPasteboard.general.string = Self.readableMentions(in: text).text } label: {
+                Label("Copy Text", systemImage: "doc.on.doc")
             }
+            if row.isOwn {
+                Button { startEditing(row, text: text) } label: { Label("Edit Message", systemImage: "pencil") }
+            }
+        }
+        Divider()
+        aboutMenu(for: row, eventId: eventId)
+        Divider()
+        lastMenu(for: row, eventId: eventId)
+    }
+
+    /// The middle of the long-press menu: pin, link, who read it, earlier versions, the sender.
+    @ViewBuilder
+    private func aboutMenu(for row: MessageRow, eventId: String?) -> some View {
+        if let eventId {
             if controller.nav.canPin {
                 let pinned = controller.nav.isPinned(eventId)
                 Button {
@@ -466,48 +528,25 @@ private struct ChatContent: View {
             Button {
                 Task { if let link = await controller.permalink(of: eventId) { UIPasteboard.general.string = link } }
             } label: { Label("Copy Link", systemImage: "link") }
+            if !controller.nav.readers(of: eventId).isEmpty {
+                Button { navSheet = .readers(eventId: eventId) } label: { Label("Read Receipts", systemImage: "checkmark.circle") }
+            }
             if row.isEdited {
                 Button { navSheet = .history(row) } label: { Label("Edit History", systemImage: "clock.arrow.circlepath") }
             }
+        }
+        Button { profile = ProfileTarget(userId: row.sender) } label: { Label("View Profile", systemImage: "person.crop.circle") }
+    }
+
+    /// The end of the long-press menu: View Source, Report and Delete, the last one in red.
+    @ViewBuilder
+    private func lastMenu(for row: MessageRow, eventId: String?) -> some View {
+        if let eventId {
             Button { navSheet = .source(row) } label: { Label("View Source", systemImage: "curlybraces") }
             if !row.isOwn {
-                Button(role: .destructive) { navSheet = .report(eventId: eventId) } label: { Label("Report", systemImage: "exclamationmark.bubble") }
+                Button { navSheet = .report(eventId: eventId) } label: { Label("Report Message", systemImage: "exclamationmark.bubble") }
             }
         }
-    }
-
-    private func reply(to row: MessageRow) {
-        replyTo = row
-        restoredReplyId = nil
-        editing = nil
-        composerFocused = true
-    }
-
-    @ViewBuilder
-    private func menu(for row: MessageRow) -> some View {
-        Button { reply(to: row) } label: { Label("Reply", systemImage: "arrowshape.turn.up.left") }
-        Menu {
-            ForEach(ReactionEmoji.quick, id: \.self) { emoji in
-                Button(emoji) { Task { await controller.toggleReaction(emoji, on: row) } }
-            }
-            Divider()
-            Button { reactingTo = row } label: { Label("More Emoji…", systemImage: "plus") }
-        } label: { Label("Add Reaction", systemImage: "face.smiling") }
-        if case .text(let text) = row.body {
-            let readable = Self.readableMentions(in: text)
-            Button { UIPasteboard.general.string = readable.text } label: { Label("Copy Text", systemImage: "doc.on.doc") }
-            if row.isOwn {
-                Button {
-                    editing = row
-                    replyTo = nil
-                    draft = readable.text
-                    mentions = readable.mentions
-                    composerFocused = true
-                } label: { Label("Edit Message", systemImage: "pencil") }
-            }
-        }
-        navMenu(for: row)
-        Button { profile = ProfileTarget(userId: row.sender) } label: { Label("View Profile", systemImage: "person.crop.circle") }
         if row.layoutKind == .message, row.eventId != nil,
            TimelineNav.canDelete(isOwn: row.isOwn, isRedacted: row.isRedactedMessage,
                                  canRedactOwn: controller.nav.canRedactOwn, canRedactOther: controller.nav.canRedactOther) {
@@ -560,7 +599,7 @@ private struct ChatContent: View {
 
     private var composer: some View {
         VStack(spacing: 0) {
-            BotCommandSuggestions(store: botCommands, draft: $draft, room: controller.room, account: account, enabled: editing == nil)
+            BotCommandSuggestions(store: botCommands, draft: draftMovingCursorToEnd, room: controller.room, account: account, enabled: editing == nil)
             if !mentionSuggestions.isEmpty {
                 VStack(spacing: 0) {
                     ForEach(mentionSuggestions) { member in
@@ -568,6 +607,7 @@ private struct ChatContent: View {
                             PersonRow(name: member.name, subtitle: member.userId, avatarUrl: member.avatarUrl, account: account)
                                 .padding(.horizontal, 14)
                                 .padding(.vertical, 6)
+                                .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                     }
@@ -575,86 +615,170 @@ private struct ChatContent: View {
                 .background(Theme.elevated)
             }
             composerSuggestions
-            if !pendingFiles.isEmpty {
-                VStack(alignment: .leading) {
-                    ForEach(pendingFiles) { file in
-                        HStack {
-                            Text(file.name).lineLimit(1)
-                            Text(ComposerSize.text(Int64(file.data.count))).font(.caption)
-                            Button { pendingFiles.removeAll { $0.id == file.id } } label: { Image(systemName: "xmark.circle") }.disabled(sending)
-                        }
-                    }
-                    TextField("Caption (optional)", text: $attachmentCaption)
-                    if controller.uploadingAttachment {
-                        HStack { ProgressView(); Text("Uploading…"); Button("Cancel") { controller.cancelAttachment() } }
-                    }
-                }.padding(12)
-            }
-            if ChatSettings.editorToolbar {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack {
-                        ForEach(ComposerFormat.allCases) { format in
-                            Button(format.title) {
-                                let result = format.apply(to: draft, selection: selection)
-                                draft = result.text; selection = result.selection
-                            }.font(.caption).padding(6)
-                        }
-                    }.padding(.horizontal, 12)
+            if !pendingFiles.isEmpty { pendingAttachments }
+            if ChatSettings.editorToolbar { formatToolbar }
+            if replyTo == nil, restoredReplyId != nil {
+                composerContext(Text("Replying to saved message").foregroundColor(Theme.muted), symbol: "arrowshape.turn.up.left") {
+                    restoredReplyId = nil; saveDraft()
                 }
             }
-            if replyTo == nil, restoredReplyId != nil {
-                composerContext(Text("Replying to saved message")) { restoredReplyId = nil; saveDraft() }
-            }
             if let replyTo {
-                composerContext(Text("Replying to ").foregroundColor(Theme.muted) + Text(replyTo.senderName).bold().foregroundColor(Theme.text)) {
+                composerContext(Text("Replying to ").foregroundColor(Theme.muted) + Text(replyTo.senderName).bold().foregroundColor(Theme.text),
+                                symbol: "arrowshape.turn.up.left") {
                     self.replyTo = nil
                 }
             }
             if editing != nil {
-                composerContext(Text("Editing message").foregroundColor(Theme.muted)) {
+                composerContext(Text("Editing message").foregroundColor(Theme.muted), symbol: "pencil") {
                     editing = nil
                     draft = ""
                 }
             }
-            HStack(alignment: .bottom, spacing: 10) {
-                if editing == nil {
-                    Menu {
-                        Button("Photos and videos") { showPhotos = true }
-                        Button("Files") { showFiles = true }
-                        if UIImagePickerController.isSourceTypeAvailable(.camera) {
-                            Button("Camera") { showCamera = true }
-                        }
-                    } label: {
-                        Image(systemName: "plus.circle.fill").font(.system(size: 26)).foregroundStyle(Theme.muted)
-                    }
-                    Button { showEmoji = true } label: { Image(systemName: "face.smiling").font(.system(size: 22)) }
-                }
-                ComposerEditor(text: $draft, selection: $selection, isFocused: composerFocused, onFocus: { composerFocused = $0 }, onSend: send, onFiles: { urls, images in
-                    Task { await addFiles(urls, images: images) }
-                })
-                    .frame(height: min(140, max(38, CGFloat(draft.components(separatedBy: "\n").count) * 22 + 16)))
-                    .overlay(alignment: .leading) {
-                        if draft.isEmpty { Text("Message \(title)").foregroundStyle(Theme.muted).padding(.leading, 10).allowsHitTesting(false) }
-                    }
-                    .background(RoundedRectangle(cornerRadius: 20).fill(Theme.input))
-                if !trimmedDraft.isEmpty || !pendingFiles.isEmpty {
-                    Button(action: send) {
-                        Image(systemName: editing == nil ? "paperplane.fill" : "checkmark")
-                            .foregroundStyle(Theme.onAccent)
-                            .frame(width: 36, height: 36)
-                            .background(Circle().fill(Theme.accent))
-                    }
-                    .disabled(sending)
-                    .accessibilityLabel(editing == nil ? "Send" : "Save edit")
-                } else if editing == nil {
-                    VoiceMicButton(recorder: recorder)
-                }
-            }
-            .overlay { if recorder.isActive { VoiceRecordingBar(recorder: recorder, onSend: sendVoice) } }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            composerInputRow
         }
         .background(Theme.chat)
+    }
+
+    /// The bot's suggestions set the whole draft; the cursor goes to its end.
+    private var draftMovingCursorToEnd: Binding<String> {
+        Binding(get: { draft }, set: { text in
+            draft = text
+            selection = NSRange(location: (text as NSString).length, length: 0)
+        })
+    }
+
+    /// Plus (attachments), the field with the emoji button inside, then send or the microphone.
+    private var composerInputRow: some View {
+        HStack(alignment: .bottom, spacing: 8) {
+            if editing == nil {
+                Menu {
+                    Button { showPhotos = true } label: { Label("Photos and Videos", systemImage: "photo.on.rectangle") }
+                    if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                        Button { showCamera = true } label: { Label("Camera", systemImage: "camera") }
+                    }
+                    Button { showFiles = true } label: { Label("Files", systemImage: "doc") }
+                } label: {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 26))
+                        .foregroundStyle(Theme.muted)
+                        .frame(width: 36, height: 36)
+                }
+                .accessibilityLabel("Add attachment")
+            }
+            ComposerEditor(text: $draft, selection: $selection, isFocused: composerFocused, onFocus: { composerFocused = $0 }, onSend: send, onFiles: { urls, images in
+                Task { await addFiles(urls, images: images) }
+            }, trailingInset: editing == nil ? 30 : 0)
+                .frame(minHeight: 36)
+                .overlay(alignment: .leading) {
+                    if draft.isEmpty {
+                        Text("Message \(title)")
+                            .foregroundStyle(Theme.muted)
+                            .lineLimit(1)
+                            .padding(.leading, 11)
+                            .padding(.trailing, editing == nil ? 36 : 8)
+                            .allowsHitTesting(false)
+                            .accessibilityHidden(true)
+                    }
+                }
+                .overlay(alignment: .bottomTrailing) {
+                    if editing == nil {
+                        Button { showEmoji = true } label: {
+                            Image(systemName: "face.smiling")
+                                .font(.system(size: 20))
+                                .foregroundStyle(Theme.muted)
+                                .frame(width: 34, height: 36)
+                        }
+                        .accessibilityLabel("Emoji and stickers")
+                    }
+                }
+                .background(RoundedRectangle(cornerRadius: 18).fill(Theme.input))
+            if !trimmedDraft.isEmpty || !pendingFiles.isEmpty {
+                Button(action: send) {
+                    Image(systemName: editing == nil ? "paperplane.fill" : "checkmark")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(Theme.onAccent)
+                        .frame(width: 36, height: 36)
+                        .background(Circle().fill(Theme.accent))
+                }
+                .disabled(sending)
+                .opacity(sending ? 0.6 : 1)
+                .accessibilityLabel(editing == nil ? "Send" : "Save edit")
+            } else if editing == nil {
+                VoiceMicButton(recorder: recorder)
+            }
+        }
+        .overlay { if recorder.isActive { VoiceRecordingBar(recorder: recorder, onSend: sendVoice) } }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+    }
+
+    /// Files waiting to be sent: one chip each, a caption field and the upload state.
+    private var pendingAttachments: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(pendingFiles) { file in
+                        PendingFileChip(file: file, disabled: sending) {
+                            pendingFiles.removeAll { $0.id == file.id }
+                        }
+                    }
+                }
+            }
+            TextField("Caption (optional)", text: $attachmentCaption)
+                .font(.subheadline)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(RoundedRectangle(cornerRadius: 10).fill(Theme.input))
+            if controller.uploadingAttachment {
+                HStack(spacing: 8) {
+                    ProgressView()
+                    Text("Uploading…").font(.footnote).foregroundStyle(Theme.muted)
+                    Spacer(minLength: 0)
+                    Button("Cancel") { controller.cancelAttachment() }.font(.footnote.weight(.semibold))
+                }
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.top, 8)
+    }
+
+    /// Settings > Chat > Editor Toolbar: one icon per format.
+    private var formatToolbar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 2) {
+                ForEach(ComposerFormat.allCases) { format in
+                    Button {
+                        let result = format.apply(to: draft, selection: selection)
+                        draft = result.text; selection = result.selection
+                    } label: {
+                        Image(systemName: Self.symbol(of: format))
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(Theme.muted)
+                            .frame(width: 38, height: 32)
+                    }
+                    .accessibilityLabel(format.title)
+                }
+            }
+            .padding(.horizontal, 8)
+        }
+        .padding(.top, 4)
+    }
+
+    private static func symbol(of format: ComposerFormat) -> String {
+        switch format {
+        case .bold: return "bold"
+        case .italic: return "italic"
+        case .underline: return "underline"
+        case .strike: return "strikethrough"
+        case .code: return "chevron.left.forwardslash.chevron.right"
+        case .spoiler: return "eye.slash"
+        case .quote: return "text.quote"
+        case .codeBlock: return "curlybraces"
+        case .orderedList: return "list.number"
+        case .unorderedList: return "list.bullet"
+        case .heading: return "textformat.size"
+        case .link: return "link"
+        }
     }
 
     private func sendVoice() async {
@@ -666,17 +790,19 @@ private struct ChatContent: View {
         } else { recorder.restore(recording) }
     }
 
-    private func composerContext(_ text: Text, cancel: @escaping () -> Void) -> some View {
-        HStack {
-            text
-            Spacer()
+    private func composerContext(_ text: Text, symbol: String, cancel: @escaping () -> Void) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: symbol).foregroundStyle(Theme.muted).accessibilityHidden(true)
+            text.lineLimit(1)
+            Spacer(minLength: 0)
             Button(action: cancel) { Image(systemName: "xmark.circle.fill").frame(width: 30, height: 30) }
                 .foregroundStyle(Theme.muted)
                 .accessibilityLabel("Cancel")
         }
         .font(.footnote)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 4)
+        .padding(.leading, 14)
+        .padding(.trailing, 8)
+        .padding(.vertical, 2)
         .background(Theme.elevated)
     }
 
@@ -737,17 +863,20 @@ private struct ChatContent: View {
         selection = NSRange(location: start + (text as NSString).length, length: 0)
     }
 
+    /// Slash commands, #rooms and :emoji: while typing, in the same rows as the bot commands.
     private var composerSuggestions: some View {
-        VStack(alignment: .leading) {
+        VStack(spacing: 0) {
             if editing == nil {
                 ForEach(SlashCommand.suggestions(for: draft).prefix(6)) { command in
-                    Button("/" + command.rawValue + " — " + command.description) { draft = "/" + command.rawValue + " "; selection = NSRange(location: (draft as NSString).length, length: 0) }
-                        .font(.caption).lineLimit(2)
+                    ComposerSuggestionRow(symbol: "slash.circle", title: "/" + command.rawValue, subtitle: command.description) {
+                        draft = "/" + command.rawValue + " "
+                        selection = NSRange(location: (draft as NSString).length, length: 0)
+                    }
                 }
             }
             if case .room(let query) = ComposerQuery.current(in: draft) {
                 ForEach(account.rooms.filter { $0.isJoined && !$0.isSpace && (query.isEmpty || $0.name.localizedCaseInsensitiveContains(query)) }.prefix(6)) { room in
-                    Button("#" + room.name) {
+                    ComposerSuggestionRow(symbol: "number", title: room.name) {
                         let key = "#" + room.name
                         tokens[key] = .room(id: room.canonicalAlias ?? room.id, via: [])
                         draft = ComposerQuery.replacingWord(in: draft, with: key + " ")
@@ -757,13 +886,13 @@ private struct ChatContent: View {
             }
             if case .emoticon(let query) = ComposerQuery.current(in: draft) {
                 ForEach(EmojiCatalog.search(query, limit: 5)) { emoji in
-                    Button(emoji.unicode + " :" + emoji.shortcode + ":") {
+                    ComposerSuggestionRow(glyph: emoji.unicode, title: ":" + emoji.shortcode + ":") {
                         draft = ComposerQuery.replacingWord(in: draft, with: emoji.unicode + " ")
                         selection = NSRange(location: (draft as NSString).length, length: 0)
                     }
                 }
-                ForEach(Array(packs.flatMap { $0.images(for: ImagePack.emoticon) }.filter { ImagePack.matches($0, query) }.prefix(5).enumerated()), id: \.offset) { _, image in
-                    Button(":" + image.shortcode + ":") {
+                ForEach(Array(customEmojiMatches(query).enumerated()), id: \.offset) { _, image in
+                    ComposerSuggestionRow(title: ":" + image.shortcode + ":", imageURL: image.url, account: account) {
                         let key = ":" + image.shortcode + ":"
                         tokens[key] = .emoticon(mxc: image.url, shortcode: image.shortcode)
                         draft = ComposerQuery.replacingWord(in: draft, with: key + " ")
@@ -771,7 +900,13 @@ private struct ChatContent: View {
                     }
                 }
             }
-        }.padding(.horizontal, 12)
+        }
+        .background(Theme.elevated)
+    }
+
+    private func customEmojiMatches(_ query: String) -> [PackImage] {
+        let all = packs.flatMap { $0.images(for: ImagePack.emoticon) }
+        return Array(all.filter { ImagePack.matches($0, query) }.prefix(5))
     }
 
     private func addData(_ data: Data, name: String, mime: String) async {
@@ -1290,4 +1425,81 @@ private struct ComposerPendingFile: Identifiable {
     let name: String
     let mime: String
     let data: Data
+}
+
+/// One suggestion above the composer: a symbol, an emoji or a custom emoji, then the text.
+private struct ComposerSuggestionRow: View {
+    var symbol: String?
+    var glyph: String?
+    let title: String
+    var subtitle: String?
+    var imageURL: String?
+    var account: MatrixAccount?
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                leading.frame(width: 24, height: 24)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(verbatim: title).font(.subheadline.weight(.semibold)).foregroundStyle(Theme.text).lineLimit(1)
+                    if let subtitle, !subtitle.isEmpty {
+                        Text(verbatim: subtitle).font(.caption).foregroundStyle(Theme.muted).lineLimit(2)
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 7)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private var leading: some View {
+        if let imageURL, let account {
+            AvatarView(url: imageURL, name: title, size: 24, account: account)
+        } else if let glyph {
+            Text(verbatim: glyph).font(.system(size: 20))
+        } else if let symbol {
+            Image(systemName: symbol).foregroundStyle(Theme.muted)
+        } else {
+            Color.clear
+        }
+    }
+}
+
+/// A file waiting in the composer: kind, name, size and a button to take it out again.
+private struct PendingFileChip: View {
+    let file: ComposerPendingFile
+    let disabled: Bool
+    let onRemove: () -> Void
+
+    private var symbol: String {
+        if file.mime.hasPrefix("image/") { return "photo" }
+        if file.mime.hasPrefix("video/") { return "film" }
+        if file.mime.hasPrefix("audio/") { return "waveform" }
+        return "doc"
+    }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: symbol).foregroundStyle(Theme.accent).accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 0) {
+                Text(verbatim: file.name).font(.footnote).foregroundStyle(Theme.text).lineLimit(1).truncationMode(.middle)
+                Text(ComposerSize.text(Int64(file.data.count))).font(.caption2).foregroundStyle(Theme.muted)
+            }
+            .frame(maxWidth: 150, alignment: .leading)
+            Button(action: onRemove) {
+                Image(systemName: "xmark.circle.fill").font(.system(size: 18)).foregroundStyle(Theme.muted)
+            }
+            .disabled(disabled)
+            .accessibilityLabel("Remove \(file.name)")
+        }
+        .padding(.leading, 10)
+        .padding(.trailing, 6)
+        .padding(.vertical, 6)
+        .background(RoundedRectangle(cornerRadius: 10).fill(Theme.elevated))
+    }
 }
