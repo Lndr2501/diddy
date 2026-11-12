@@ -284,7 +284,7 @@ do {
     do { _ = try N.read(nothing, inflater: inflater); check(false, "nothing") }
     catch { check((error as? DiddyZipError)?.message == "This ZIP file has no video or image for a nameplate.", "nothing message: \(error)") }
 } catch { check(false, "nameplate zip: \(error)") }
-check(N.colorFromMetadata(#"{"gradient_colours":["#ABCDEF"]}"#) == "#abcdef", "string colour")
+check(N.colorFromMetadata(##"{"gradient_colours":["#ABCDEF"]}"##) == "#abcdef", "string colour")
 check(N.colorFromMetadata(#"{"gradient_colours":[65280]}"#) == "#00ff00", "number colour with zeros")
 check(N.colorFromMetadata(#"{"gradient_colours":[]}"#) == nil && N.colorFromMetadata("{}") == nil && N.colorFromMetadata("nope") == nil, "no colour")
 check(N.colorFromMetadata(#"{"gradient_colours":[16777216]}"#) == nil && N.colorFromMetadata(#"{"gradient_colours":[-1]}"#) == nil, "out of range")

@@ -45,7 +45,7 @@ let profile = parsed["profile"] as? [String: Any] ?? [:]
 check(Set(profile.keys) == ["v", "nameStyle", "card", "nameplate", "effect", "frame", "bio", "about", "interests", "links", "activity", "cardLayout"],
       "carried parts: \(profile.keys.sorted())")
 check(profile["status"] == nil && profile["shownBadges"] == nil && profile["clientVersion"] == nil, "no status, badges or version in the file")
-check(text(profile["nameStyle"]) == #"{"v":{"bold":true,"color":"#aabbcc","font":"serif"}}"#, "name style: \(text(profile["nameStyle"]))")
+check(text(profile["nameStyle"]) == ##"{"v":{"bold":true,"color":"#aabbcc","font":"serif"}}"##, "name style: \(text(profile["nameStyle"]))")
 check(text(profile["effect"]) == #"{"v":{"preset":"sparkles"}}"#, "preset effect")
 check(file.contains("\n  "), "the file is indented like desktop's")
 check(!file.contains("\\/"), "slashes are not escaped")

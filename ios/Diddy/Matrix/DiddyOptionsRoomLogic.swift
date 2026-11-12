@@ -66,7 +66,10 @@ enum DiddyOptionsRoomLogic {
     // MARK: Using an existing room
 
     private static func number(_ value: Any?) -> Int? {
-        guard let value = value as? NSNumber, CFGetTypeID(value) != CFBooleanGetTypeID() else { return nil }
+        guard let value = value as? NSNumber else { return nil }
+        #if canImport(ObjectiveC)
+        if CFGetTypeID(value) == CFBooleanGetTypeID() { return nil }
+        #endif
         let double = value.doubleValue
         return double.isFinite ? Int(max(-1_000_000_000, min(1_000_000_000, double))) : nil
     }

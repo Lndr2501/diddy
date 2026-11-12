@@ -34,9 +34,9 @@ check(parsed?.badgeId == id && parsed?.userId == bob, "award key parses back")
 
 // Contents
 check(text(L.definitionContent(name: "Star", emoji: "⭐", imageMxc: nil, color: "#7aa2f7", createdBy: alice))
-      == #"{"v":{"color":"#7aa2f7","createdBy":"@alice:example.org","emoji":"⭐","name":"Star"}}"#, "definition with an emoji")
+      == ##"{"v":{"color":"#7aa2f7","createdBy":"@alice:example.org","emoji":"⭐","name":"Star"}}"##, "definition with an emoji")
 check(text(L.definitionContent(name: "Pic", emoji: "x", imageMxc: "mxc://example.org/abc", color: "#7aa2f7", createdBy: alice))
-      == #"{"v":{"color":"#7aa2f7","createdBy":"@alice:example.org","imageMxc":"mxc://example.org/abc","name":"Pic"}}"#, "an image replaces the emoji")
+      == ##"{"v":{"color":"#7aa2f7","createdBy":"@alice:example.org","imageMxc":"mxc://example.org/abc","name":"Pic"}}"##, "an image replaces the emoji")
 check(text(L.awardContent(by: alice, at: 1_700_000_000_123)) == #"{"v":{"at":1700000000123,"by":"@alice:example.org"}}"#, "award content")
 let definition = L.definitionContent(name: "Star", emoji: "⭐", imageMxc: nil, color: "#7aa2f7", createdBy: alice)
 check(DiddyEvents.jsonLength(definition) ?? 99999 < DiddyEvents.maxContentBytes, "a badge is small")
