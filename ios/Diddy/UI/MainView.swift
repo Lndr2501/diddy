@@ -642,6 +642,7 @@ struct ChannelRow: View {
                 Spacer()
                 if account.notifyLevel(for: channel.roomId) == .mute {
                     Image(systemName: "bell.slash.fill").font(.caption2).foregroundStyle(Theme.faint)
+                        .accessibilityLabel("Muted")
                 }
                 if isJoining {
                     ProgressView()
@@ -651,6 +652,7 @@ struct ChannelRow: View {
                     UnreadBadge(count: mentions)
                 }
             }
+            .frame(minHeight: 28)
             // Discord lists who is connected right under a voice channel.
             if let session = calls.current, session.roomId == channel.roomId {
                 LiveVoiceRoster(session: session, account: account)
@@ -747,10 +749,16 @@ struct RoomRow: View {
             Spacer()
             if account.notifyLevel(for: room.id) == .mute {
                 Image(systemName: "bell.slash.fill").font(.caption2).foregroundStyle(Theme.faint)
+                    .accessibilityLabel("Muted")
             }
-            if room.hasCall { Image(systemName: "speaker.wave.2.fill").foregroundStyle(Theme.online) }
+            if room.hasCall {
+                Image(systemName: "speaker.wave.2.fill").foregroundStyle(Theme.online)
+                    .accessibilityLabel("Call in progress")
+            }
             if room.badge > 0 { UnreadBadge(count: room.badge) }
         }
+        // Rooms with a # icon and conversations with an avatar get the same height.
+        .frame(minHeight: 36)
         .diddyNameplate(room.dmUserId.flatMap { account.diddyProfiles[$0]?.nameplate }, account: account)
     }
 }

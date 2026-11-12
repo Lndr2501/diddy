@@ -15,7 +15,7 @@ struct LoginView: View {
                     VStack(spacing: 22) {
                         Image("DiddyLogo").resizable().frame(width: 88, height: 88).padding(.top, 32)
                         VStack(spacing: 6) {
-                            Text(isAddingAccount ? "Add an account" : "Welcome to Diddy").font(.title.bold()).foregroundStyle(Theme.text)
+                            Text(isAddingAccount ? "Add an Account" : "Welcome to Diddy").font(.title.bold()).foregroundStyle(Theme.text)
                             Text(isAddingAccount
                                  ? "Sign in on another homeserver. Your current account stays signed in."
                                  : "Sign in with your Matrix account.")
@@ -49,6 +49,11 @@ struct LoginView: View {
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .disabled(login.method != nil)
+                    .submitLabel(.continue)
+                    .onSubmit {
+                        guard login.method == nil, !login.busy else { return }
+                        Task { await login.discover() }
+                    }
             }
             switch login.method {
             case nil:
@@ -74,7 +79,7 @@ struct LoginView: View {
                 serverLine
                 Text("This server signs you in on its own page. Diddy never sees your password.")
                     .font(.footnote).foregroundStyle(Theme.muted)
-                primaryButton("Continue to sign in") {
+                primaryButton("Continue to Sign In") {
                     if let result = await login.loginWithOAuth() {
                         await app.add(record: result.0, client: result.1)
                         if isAddingAccount { dismiss() }
