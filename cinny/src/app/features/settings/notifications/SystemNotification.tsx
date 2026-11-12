@@ -134,7 +134,7 @@ export function SystemNotification() {
                   : 'Notifications are not supported by the system.'}
               </Text>
             ) : (
-              <span>Show desktop notifications when message arrive.</span>
+              <span>Show desktop notifications when messages arrive.</span>
             )
           }
           after={
@@ -154,7 +154,7 @@ export function SystemNotification() {
         />
         <InsetRow
           title="Notification Sound"
-          description="Play sound when new message arrive."
+          description="Play a sound when new messages arrive."
           after={
             <Switch
               variant="Primary"

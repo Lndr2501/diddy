@@ -1,28 +1,29 @@
 import React, { useState } from 'react';
 import {
   Box,
-  Icon,
-  Icons,
   Modal,
   Overlay,
   OverlayBackdrop,
   OverlayCenter,
   Text,
   as,
-  config,
 } from 'folds';
 import { Room } from 'matrix-js-sdk';
 import classNames from 'classnames';
 import FocusTrap from 'focus-trap-react';
 
 import { getMemberDisplayName } from '../../utils/room';
-import { getMxIdLocalPart } from '../../utils/matrix';
+import { getMxIdLocalPart, mxcUrlToHttp } from '../../utils/matrix';
+import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
+import colorMXID from '../../../util/colorMXID';
 import * as css from './RoomViewFollowing.css';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { useRoomLatestRenderedEvent } from '../../hooks/useRoomLatestRenderedEvent';
 import { useRoomEventReaders } from '../../hooks/useRoomEventReaders';
 import { EventReaders } from '../../components/event-readers';
 import { stopPropagation } from '../../utils/keyboard';
+
+const MAX_FACES = 4;
 
 export function RoomViewFollowingPlaceholder() {
   return <div className={css.RoomViewFollowingPlaceholder} />;
@@ -37,11 +38,20 @@ export const RoomViewFollowing = as<'div', RoomViewFollowingProps>(
     const [open, setOpen] = useState(false);
     const latestEvent = useRoomLatestRenderedEvent(room);
     const latestEventReaders = useRoomEventReaders(room, latestEvent?.getId());
-    const names = latestEventReaders
+    const useAuthentication = useMediaAuthentication();
+    const readers = latestEventReaders
       .filter((readerId) => readerId !== mx.getUserId())
-      .map(
-        (readerId) => getMemberDisplayName(room, readerId) ?? getMxIdLocalPart(readerId) ?? readerId
-      );
+      .map((userId) => {
+        const mxc = room.getMember(userId)?.getMxcAvatarUrl();
+        return {
+          userId,
+          name: getMemberDisplayName(room, userId) ?? getMxIdLocalPart(userId) ?? userId,
+          avatarUrl: mxc
+            ? mxcUrlToHttp(mx, mxc, useAuthentication, 32, 32, 'crop') ?? undefined
+            : undefined,
+        };
+      });
+    const names = readers.map((r) => r.name);
 
     const eventId = latestEvent?.getId();
 
@@ -72,69 +82,30 @@ export const RoomViewFollowing = as<'div', RoomViewFollowingProps>(
           alignItems="Center"
           justifyContent="End"
           gap="200"
+          title={names.length > 0 ? names.join(', ') : undefined}
+          aria-label={names.length > 0 ? `Seen by ${names.join(', ')}` : undefined}
           {...props}
           ref={ref}
         >
-          {names.length > 0 && (
+          {readers.length > 0 && (
             <>
-              <Icon style={{ opacity: config.opacity.P300 }} size="100" src={Icons.CheckTwice} />
-              <Text size="T300" truncate>
-                {names.length === 1 && (
-                  <>
-                    <b>{names[0]}</b>
-                    <Text as="span" size="Inherit" priority="300">
-                      {' is following the conversation.'}
-                    </Text>
-                  </>
-                )}
-                {names.length === 2 && (
-                  <>
-                    <b>{names[0]}</b>
-                    <Text as="span" size="Inherit" priority="300">
-                      {' and '}
-                    </Text>
-                    <b>{names[1]}</b>
-                    <Text as="span" size="Inherit" priority="300">
-                      {' are following the conversation.'}
-                    </Text>
-                  </>
-                )}
-                {names.length === 3 && (
-                  <>
-                    <b>{names[0]}</b>
-                    <Text as="span" size="Inherit" priority="300">
-                      {', '}
-                    </Text>
-                    <b>{names[1]}</b>
-                    <Text as="span" size="Inherit" priority="300">
-                      {' and '}
-                    </Text>
-                    <b>{names[2]}</b>
-                    <Text as="span" size="Inherit" priority="300">
-                      {' are following the conversation.'}
-                    </Text>
-                  </>
-                )}
-                {names.length > 3 && (
-                  <>
-                    <b>{names[0]}</b>
-                    <Text as="span" size="Inherit" priority="300">
-                      {', '}
-                    </Text>
-                    <b>{names[1]}</b>
-                    <Text as="span" size="Inherit" priority="300">
-                      {', '}
-                    </Text>
-                    <b>{names[2]}</b>
-                    <Text as="span" size="Inherit" priority="300">
-                      {' and '}
-                    </Text>
-                    <b>{names.length - 3} others</b>
-                    <Text as="span" size="Inherit" priority="300">
-                      {' are following the conversation.'}
-                    </Text>
-                  </>
-                )}
+              <span className={css.Faces} aria-hidden>
+                {readers.slice(0, MAX_FACES).map((reader) => (
+                  <span
+                    key={reader.userId}
+                    className={css.Face}
+                    style={{ backgroundColor: colorMXID(reader.userId) }}
+                  >
+                    {reader.avatarUrl ? (
+                      <img className={css.FaceImg} src={reader.avatarUrl} alt="" draggable={false} />
+                    ) : (
+                      reader.name.trim().charAt(0).toUpperCase()
+                    )}
+                  </span>
+                ))}
+              </span>
+              <Text size="T200" priority="300" truncate>
+                {`Seen by ${readers.length === 1 ? readers[0].name : readers.length}`}
               </Text>
             </>
           )}

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Box, Button, IconButton, Icon, Icons, Text, color, config, toRem } from 'folds';
 import { useAtomValue } from 'jotai';
 import { APP_VERSION } from '../../appInfo';
+import { LAYER } from '../sidebar/diddyTokens';
 import { settingsAtom } from '../../state/settings';
 import { canInvoke, invoke } from '../../plugins/tauri';
 import {
@@ -87,7 +88,7 @@ export function UpdateNotice() {
         position: 'fixed',
         right: config.space.S400,
         bottom: config.space.S400,
-        zIndex: 1000,
+        zIndex: LAYER.notice,
         maxWidth: toRem(360),
         padding: `${config.space.S200} ${config.space.S300}`,
         borderRadius: toRem(14),

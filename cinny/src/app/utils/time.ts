@@ -19,10 +19,10 @@ export const timeMonth = (ts: number): string => dayjs(ts).format('MMMM');
 export const timeYear = (ts: number): string => dayjs(ts).format('YYYY');
 
 export const timeHourMinute = (ts: number, hour24Clock: boolean): string =>
-  dayjs(ts).format(hour24Clock ? 'HH:mm' : 'hh:mm A');
+  dayjs(ts).format(hour24Clock ? 'HH:mm' : 'h:mm A');
 
 export const timeHourMinuteSecond = (ts: number, hour24Clock: boolean): string =>
-  dayjs(ts).format(hour24Clock ? 'HH:mm:ss' : 'hh:mm A');
+  dayjs(ts).format(hour24Clock ? 'HH:mm:ss' : 'h:mm:ss A');
 
 export const timeDayMonYear = (ts: number, dateFormatString: string): string =>
   dayjs(ts).format(dateFormatString);

@@ -8,7 +8,6 @@ import React, {
 } from 'react';
 import { useAtom, useAtomValue } from 'jotai';
 import {
-  Avatar,
   Box,
   Button,
   Icon,
@@ -87,6 +86,7 @@ import { BreakWord } from '../../../styles/Text.css';
 import { InviteUserPrompt } from '../../../components/invite-user-prompt';
 import { useCallEmbed } from '../../../hooks/useCallEmbed';
 import { SpaceJoinMenuItems } from '../../../components/space-join/SpaceJoinMenuItems';
+import * as css from './Space.css';
 
 type SpaceMenuProps = {
   room: Room;
@@ -461,40 +461,43 @@ export function Space() {
               replacementRoomId={tombstoneEvent.getContent().replacement_room}
             />
           )}
-          <NavCategory>
-            <NavItem variant="Background" radii="400" aria-selected={lobbySelected}>
+          {/* the space's own pages as two compact buttons, set apart from the room list */}
+          <Box gap="100" className={css.QuickRow}>
+            <NavItem
+              className={css.QuickItem}
+              variant="Background"
+              radii="400"
+              aria-selected={lobbySelected}
+            >
               <NavLink to={getSpaceLobbyPath(getCanonicalAliasOrRoomId(mx, space.roomId))}>
                 <NavItemContent>
-                  <Box as="span" grow="Yes" alignItems="Center" gap="200">
-                    <Avatar size="200" radii="400">
-                      <Icon src={Icons.Flag} size="100" filled={lobbySelected} />
-                    </Avatar>
-                    <Box as="span" grow="Yes">
-                      <Text as="span" size="Inherit" truncate>
-                        Lobby
-                      </Text>
-                    </Box>
+                  <Box as="span" grow="Yes" alignItems="Center" justifyContent="Center" gap="200">
+                    <Icon src={Icons.Flag} size="100" filled={lobbySelected} />
+                    <Text as="span" size="T300" truncate>
+                      Lobby
+                    </Text>
                   </Box>
                 </NavItemContent>
               </NavLink>
             </NavItem>
-            <NavItem variant="Background" radii="400" aria-selected={searchSelected}>
+            <NavItem
+              className={css.QuickItem}
+              variant="Background"
+              radii="400"
+              aria-selected={searchSelected}
+            >
               <NavLink to={getSpaceSearchPath(getCanonicalAliasOrRoomId(mx, space.roomId))}>
                 <NavItemContent>
-                  <Box as="span" grow="Yes" alignItems="Center" gap="200">
-                    <Avatar size="200" radii="400">
-                      <Icon src={Icons.Search} size="100" filled={searchSelected} />
-                    </Avatar>
-                    <Box as="span" grow="Yes">
-                      <Text as="span" size="Inherit" truncate>
-                        Message Search
-                      </Text>
-                    </Box>
+                  <Box as="span" grow="Yes" alignItems="Center" justifyContent="Center" gap="200">
+                    <Icon src={Icons.Search} size="100" filled={searchSelected} />
+                    <Text as="span" size="T300" truncate>
+                      Search
+                    </Text>
                   </Box>
                 </NavItemContent>
               </NavLink>
             </NavItem>
-          </NavCategory>
+          </Box>
           <NavCategory
             style={{
               height: virtualizer.getTotalSize(),

@@ -1,10 +1,10 @@
 import { style } from '@vanilla-extract/css';
 import { color } from 'folds';
-import { SHADOW_3 } from '../sidebar/diddyTokens';
+import { EASE_SPRING, LAYER, SHADOW_3 } from '../sidebar/diddyTokens';
 import { TOAST_HEIGHT } from '../../plugins/toastLogic';
 
 const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
-const SPRING = 'cubic-bezier(0.21, 1.02, 0.73, 1)';
+const SPRING = EASE_SPRING;
 
 /* The stack sits at the top centre of the window; only the cards themselves take clicks. */
 export const Host = style({
@@ -12,7 +12,7 @@ export const Host = style({
   left: '50%',
   transform: 'translateX(-50%)',
   width: 'min(380px, calc(100vw - 24px))',
-  zIndex: 1000,
+  zIndex: LAYER.toast,
   margin: 0,
   padding: 0,
   pointerEvents: 'none',

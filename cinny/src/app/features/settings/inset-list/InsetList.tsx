@@ -14,6 +14,50 @@ import * as css from './style.css';
 /** Name of the settings window shown in front of the page title ("Settings / General"). */
 export const SettingsBreadcrumb = createContext<string | undefined>(undefined);
 
+type SettingsPageHeaderProps = {
+  title: ReactNode;
+  requestClose: () => void;
+  /** Quiet extra actions left of the close button (e.g. export / import). */
+  actions?: ReactNode;
+};
+/** The slim header every settings page shares: "Settings / Title", actions, close. */
+export function SettingsPageHeader({ title, requestClose, actions }: SettingsPageHeaderProps) {
+  const crumb = useContext(SettingsBreadcrumb);
+  return (
+    <PageHeader outlined={false} className={css.Header}>
+      <div className={css.Crumbs}>
+        {crumb && (
+          <>
+            <Text as="span" size="T300" className={css.CrumbParent}>
+              {crumb}
+            </Text>
+            <span className={css.CrumbSeparator} aria-hidden>
+              /
+            </span>
+          </>
+        )}
+        <Text as="h1" size="T300" className={css.CrumbTitle} truncate>
+          {title}
+        </Text>
+      </div>
+      <div className={css.HeaderActions}>
+        {actions}
+        <IconButton
+          onClick={requestClose}
+          variant="SurfaceVariant"
+          fill="Soft"
+          size="400"
+          radii="Pill"
+          aria-label="Close settings"
+          title="Close (Esc)"
+        >
+          <Icon size="200" src={Icons.Cross} />
+        </IconButton>
+      </div>
+    </PageHeader>
+  );
+}
+
 type SettingsPageProps = {
   title: ReactNode;
   requestClose: () => void;
@@ -21,39 +65,9 @@ type SettingsPageProps = {
 };
 /** Full settings page: header with the title aligned to the content column, scrolling body. */
 export function SettingsPage({ title, requestClose, children }: SettingsPageProps) {
-  const crumb = useContext(SettingsBreadcrumb);
   return (
     <Page>
-      <PageHeader outlined={false} className={css.Header}>
-        <div className={css.Crumbs}>
-          {crumb && (
-            <>
-              <Text as="span" size="T300" className={css.CrumbParent}>
-                {crumb}
-              </Text>
-              <span className={css.CrumbSeparator} aria-hidden>
-                /
-              </span>
-            </>
-          )}
-          <Text as="h1" size="T300" className={css.CrumbTitle} truncate>
-            {title}
-          </Text>
-        </div>
-        <div className={css.HeaderActions}>
-          <IconButton
-            onClick={requestClose}
-            variant="SurfaceVariant"
-            fill="Soft"
-            size="400"
-            radii="Pill"
-            aria-label="Close settings"
-            title="Close (Esc)"
-          >
-            <Icon size="200" src={Icons.Cross} />
-          </IconButton>
-        </div>
-      </PageHeader>
+      <SettingsPageHeader title={title} requestClose={requestClose} />
       <Box grow="Yes">
         <Scroll hideTrack visibility="Hover">
           <PageContent>

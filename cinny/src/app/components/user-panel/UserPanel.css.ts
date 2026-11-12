@@ -194,3 +194,12 @@ export const UserPanelButton = style({
     },
   },
 });
+
+// Device pickers only appear while the panel is hovered or focused, so the name keeps its room.
+export const UserPanelChevron = style({
+  selectors: {
+    [`${UserPanel}:not(:hover):not(:focus-within) &`]: {
+      display: 'none',
+    },
+  },
+});

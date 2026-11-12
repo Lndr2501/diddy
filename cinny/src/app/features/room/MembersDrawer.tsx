@@ -1,4 +1,5 @@
 import React, {
+  ReactNode,
   ChangeEventHandler,
   MouseEventHandler,
   useCallback,
@@ -11,7 +12,6 @@ import {
   Avatar,
   Badge,
   Box,
-  Button,
   Chip,
   Header,
   Icon,
@@ -67,7 +67,6 @@ import { isPresentState, resolvePresenceState } from '../../utils/presenceState'
 import { AvatarPresence, PresenceBadge } from '../../components/presence';
 import { InviteUserPrompt } from '../../components/invite-user-prompt';
 import { useRoomPermissions } from '../../hooks/useRoomPermissions';
-import { useOpenRoomSettings } from '../../state/hooks/roomSettings';
 import { DiddyName } from '../../components/diddy/DiddyName';
 import { readProfile, useDiddyProfile } from '../../plugins/diddy/profiles';
 import { useMyStatus } from '../../plugins/diddy/status';
@@ -81,28 +80,32 @@ import {
 } from '../../components/diddy/Nameplate';
 import { SIDE_TONE } from '../../components/sidebar/diddyTokens';
 
+const MEMBER_SEARCH_MIN = 20;
+
 type MemberDrawerHeaderProps = {
   room: Room;
+  /** small icon buttons (filter, sort, invite) next to the close button */
+  actions?: ReactNode;
 };
-function MemberDrawerHeader({ room }: MemberDrawerHeaderProps) {
+function MemberDrawerHeader({ room, actions }: MemberDrawerHeaderProps) {
   const setPeopleDrawer = useSetSetting(settingsAtom, 'isPeopleDrawer');
 
   return (
     <Header className={css.MembersDrawerHeader} variant="Surface" size="600">
       <Box grow="Yes" alignItems="Center" gap="200">
         <Box grow="Yes" alignItems="Center" gap="200">
-          <Icon size="200" src={Icons.User} />
           <Text
             className={css.MembersDrawerTitle}
             title={`${room.getJoinedMemberCount()} Members`}
             size="H5"
             truncate
           >
-            Participants{' '}
+            Members{' '}
             <span className={css.MembersDrawerCount}>{millify(room.getJoinedMemberCount())}</span>
           </Text>
         </Box>
-        <Box shrink="No" alignItems="Center">
+        <Box shrink="No" alignItems="Center" gap="100">
+          {actions}
           <TooltipProvider
             position="Bottom"
             align="End"
@@ -117,6 +120,7 @@ function MemberDrawerHeader({ room }: MemberDrawerHeaderProps) {
               <IconButton
                 ref={triggerRef}
                 variant="Surface"
+                fill="None"
                 radii="400"
                 onClick={() => setPeopleDrawer(false)}
               >
@@ -177,7 +181,7 @@ export function MemberRowView({
       className={classNames(
         css.MemberRow,
         offline && css.MemberRowOffline,
-        withNameplate && NameplateHost,
+        withNameplate && NameplateHost
       )}
       style={{
         padding: `0 ${config.space.S200}`,
@@ -197,7 +201,7 @@ export function MemberRowView({
             )
           }
         >
-          <Avatar size="200">
+          <Avatar size="200" radii="Pill">
             <UserAvatar
               surface="members"
               userId={userId}
@@ -284,8 +288,8 @@ const isPresent = (mx: MatrixClient, userId: string): boolean => {
             // invisible counts as offline for everyone, also for yourself while you sync
             chosen: readProfile(mx, userId)?.status === 'invisible' ? 'invisible' : undefined,
           }
-        : undefined,
-    ),
+        : undefined
+    )
   );
 };
 
@@ -318,11 +322,11 @@ const usePresenceVersion = (mx: MatrixClient): number => {
 const groupMembersByPresence = (
   mx: MatrixClient,
   members: RoomMember[],
-  getTag: GetMemberPowerTag,
+  getTag: GetMemberPowerTag
 ): { items: Array<MemberGroupLabel | RoomMember>; offline: ReadonlySet<string> } => {
   const myUserId = mx.getUserId();
   const hasPresence = members.some(
-    (m) => m.userId !== myUserId && mx.getUser(m.userId)?.events.presence !== undefined,
+    (m) => m.userId !== myUserId && mx.getUser(m.userId)?.events.presence !== undefined
   );
   const present = hasPresence ? members.filter((m) => isPresent(mx, m.userId)) : members;
   const absent = hasPresence ? members.filter((m) => !isPresent(mx, m.userId)) : [];
@@ -375,7 +379,6 @@ export function MembersDrawer({ room, members }: MembersDrawerProps) {
   const permissions = useRoomPermissions(creators, powerLevels);
   const canInvite = permissions.action('invite', mx.getSafeUserId());
   const [invitePrompt, setInvitePrompt] = useState(false);
-  const openRoomSettings = useOpenRoomSettings();
 
   const fetchingMembers = members.length < room.getJoinedMemberCount();
   const openUserRoomProfile = useOpenUserRoomProfile();
@@ -395,17 +398,19 @@ export function MembersDrawer({ room, members }: MembersDrawerProps) {
 
   const filteredMembers = useMemo(
     () => members.filter(membershipFilter.filterFn).sort(memberSort.sortFn).sort(memberPowerSort),
-    [members, membershipFilter, memberSort, memberPowerSort],
+    [members, membershipFilter, memberSort, memberPowerSort]
   );
 
   const [result, search, resetSearch] = useAsyncSearch(
     filteredMembers,
     getRoomMemberStr,
-    SEARCH_OPTIONS,
+    SEARCH_OPTIONS
   );
   if (!result && searchInputRef.current?.value) search(searchInputRef.current.value);
 
   const processMembers = result ? result.items : filteredMembers;
+  // a name search only pays off in bigger rooms
+  const showSearch = room.getJoinedMemberCount() >= MEMBER_SEARCH_MIN || !!result;
 
   const presenceVersion = usePresenceVersion(mx);
   // going invisible must regroup you at once, without waiting for a presence event
@@ -414,7 +419,7 @@ export function MembersDrawer({ room, members }: MembersDrawerProps) {
     () => groupMembersByPresence(mx, processMembers, getPowerTag),
     // presenceVersion changes whenever someone goes online/offline
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [mx, processMembers, getPowerTag, presenceVersion, myStatus],
+    [mx, processMembers, getPowerTag, presenceVersion, myStatus]
   );
 
   const virtualizer = useVirtualizer({
@@ -430,9 +435,95 @@ export function MembersDrawer({ room, members }: MembersDrawerProps) {
         if (evt.target.value) search(evt.target.value);
         else resetSearch();
       },
-      [search, resetSearch],
+      [search, resetSearch]
     ),
-    { wait: 200 },
+    { wait: 200 }
+  );
+
+  const headerActions = (
+    <>
+      <UseStateProvider initial={undefined}>
+        {(anchor: RectCords | undefined, setAnchor) => (
+          <PopOut
+            anchor={anchor}
+            position="Bottom"
+            align="End"
+            offset={4}
+            content={
+              <MembershipFilterMenu
+                selected={membershipFilterIndex}
+                onSelect={setMembershipFilterIndex}
+                requestClose={() => setAnchor(undefined)}
+              />
+            }
+          >
+            <IconButton
+              variant="Surface"
+              fill="None"
+              radii="400"
+              aria-label={`Show: ${membershipFilter.name}`}
+              title={`Show: ${membershipFilter.name}`}
+              aria-pressed={!!anchor || membershipFilterIndex !== 0}
+              onClick={
+                ((evt) =>
+                  setAnchor(
+                    evt.currentTarget.getBoundingClientRect()
+                  )) as MouseEventHandler<HTMLButtonElement>
+              }
+            >
+              <Icon size="100" src={Icons.Filter} />
+            </IconButton>
+          </PopOut>
+        )}
+      </UseStateProvider>
+      <UseStateProvider initial={undefined}>
+        {(anchor: RectCords | undefined, setAnchor) => (
+          <PopOut
+            anchor={anchor}
+            position="Bottom"
+            align="End"
+            offset={4}
+            content={
+              <MemberSortMenu
+                selected={sortFilterIndex}
+                onSelect={setSortFilterIndex}
+                requestClose={() => setAnchor(undefined)}
+              />
+            }
+          >
+            <IconButton
+              variant="Surface"
+              fill="None"
+              radii="400"
+              aria-label={`Sort: ${memberSort.name}`}
+              title={`Sort: ${memberSort.name}`}
+              aria-pressed={!!anchor}
+              onClick={
+                ((evt) =>
+                  setAnchor(
+                    evt.currentTarget.getBoundingClientRect()
+                  )) as MouseEventHandler<HTMLButtonElement>
+              }
+            >
+              <Icon size="100" src={Icons.Sort} />
+            </IconButton>
+          </PopOut>
+        )}
+      </UseStateProvider>
+      {canInvite && (
+        <IconButton
+          variant="Surface"
+          fill="None"
+          radii="400"
+          aria-label="Invite"
+          title="Invite"
+          aria-pressed={invitePrompt}
+          onClick={() => setInvitePrompt(true)}
+        >
+          <Icon size="100" src={Icons.UserPlus} />
+        </IconButton>
+      )}
+    </>
   );
 
   const handleMemberClick: MouseEventHandler<HTMLButtonElement> = (evt) => {
@@ -448,111 +539,48 @@ export function MembersDrawer({ room, members }: MembersDrawerProps) {
       shrink="No"
       direction="Column"
     >
-      <MemberDrawerHeader room={room} />
+      {invitePrompt && <InviteUserPrompt room={room} requestClose={() => setInvitePrompt(false)} />}
+      <MemberDrawerHeader room={room} actions={headerActions} />
       <Box className={css.MemberDrawerContentBase} grow="Yes">
         <Scroll ref={scrollRef} variant="Surface" size="300" visibility="Hover" hideTrack>
           <Box className={css.MemberDrawerContent} direction="Column" gap="200">
             <Box ref={scrollTopAnchorRef} className={css.DrawerGroup} direction="Column" gap="200">
-              <Box alignItems="Center" justifyContent="SpaceBetween" gap="200">
-                <UseStateProvider initial={undefined}>
-                  {(anchor: RectCords | undefined, setAnchor) => (
-                    <PopOut
-                      anchor={anchor}
-                      position="Bottom"
-                      align="Start"
-                      offset={4}
-                      content={
-                        <MembershipFilterMenu
-                          selected={membershipFilterIndex}
-                          onSelect={setMembershipFilterIndex}
-                          requestClose={() => setAnchor(undefined)}
-                        />
-                      }
-                    >
-                      <Chip
-                        onClick={
-                          ((evt) =>
-                            setAnchor(
-                              evt.currentTarget.getBoundingClientRect(),
-                            )) as MouseEventHandler<HTMLButtonElement>
-                        }
-                        variant="Surface"
-                        size="400"
-                        radii="300"
-                        before={<Icon src={Icons.Filter} size="50" />}
-                      >
-                        <Text size="T200">{membershipFilter.name}</Text>
-                      </Chip>
-                    </PopOut>
-                  )}
-                </UseStateProvider>
-                <UseStateProvider initial={undefined}>
-                  {(anchor: RectCords | undefined, setAnchor) => (
-                    <PopOut
-                      anchor={anchor}
-                      position="Bottom"
-                      align="End"
-                      offset={4}
-                      content={
-                        <MemberSortMenu
-                          selected={sortFilterIndex}
-                          onSelect={setSortFilterIndex}
-                          requestClose={() => setAnchor(undefined)}
-                        />
-                      }
-                    >
-                      <Chip
-                        onClick={
-                          ((evt) =>
-                            setAnchor(
-                              evt.currentTarget.getBoundingClientRect(),
-                            )) as MouseEventHandler<HTMLButtonElement>
-                        }
-                        variant="Surface"
-                        size="400"
-                        radii="300"
-                        after={<Icon src={Icons.Sort} size="50" />}
-                      >
-                        <Text size="T200">{memberSort.name}</Text>
-                      </Chip>
-                    </PopOut>
-                  )}
-                </UseStateProvider>
-              </Box>
-              <Box direction="Column" gap="100">
-                <Input
-                  ref={searchInputRef}
-                  onChange={handleSearchChange}
-                  style={{ paddingRight: config.space.S200 }}
-                  placeholder="Type name..."
-                  variant="SurfaceVariant"
-                  size="400"
-                  radii="400"
-                  before={<Icon size="50" src={Icons.Search} />}
-                  after={
-                    result && (
-                      <Chip
-                        variant={result.items.length > 0 ? 'Success' : 'Critical'}
-                        size="400"
-                        radii="Pill"
-                        aria-pressed
-                        onClick={() => {
-                          if (searchInputRef.current) {
-                            searchInputRef.current.value = '';
-                            searchInputRef.current.focus();
-                          }
-                          resetSearch();
-                        }}
-                        after={<Icon size="50" src={Icons.Cross} />}
-                      >
-                        <Text size="B300">{`${result.items.length || 'No'} ${
-                          result.items.length === 1 ? 'Result' : 'Results'
-                        }`}</Text>
-                      </Chip>
-                    )
-                  }
-                />
-              </Box>
+              {showSearch && (
+                <Box direction="Column" gap="100">
+                  <Input
+                    ref={searchInputRef}
+                    onChange={handleSearchChange}
+                    style={{ paddingRight: config.space.S200 }}
+                    placeholder="Type name..."
+                    variant="SurfaceVariant"
+                    size="400"
+                    radii="400"
+                    before={<Icon size="50" src={Icons.Search} />}
+                    after={
+                      result && (
+                        <Chip
+                          variant={result.items.length > 0 ? 'Success' : 'Critical'}
+                          size="400"
+                          radii="Pill"
+                          aria-pressed
+                          onClick={() => {
+                            if (searchInputRef.current) {
+                              searchInputRef.current.value = '';
+                              searchInputRef.current.focus();
+                            }
+                            resetSearch();
+                          }}
+                          after={<Icon size="50" src={Icons.Cross} />}
+                        >
+                          <Text size="B300">{`${result.items.length || 'No'} ${
+                            result.items.length === 1 ? 'Result' : 'Results'
+                          }`}</Text>
+                        </Chip>
+                      )
+                    }
+                  />
+                </Box>
+              )}
             </Box>
 
             <ScrollTopContainer scrollRef={scrollRef} anchorRef={scrollTopAnchorRef}>
@@ -623,7 +651,7 @@ export function MembersDrawer({ room, members }: MembersDrawerProps) {
                         }
                         offline={offlineIds.has(tagOrMember.userId)}
                         typing={typingMembers.some(
-                          (receipt) => receipt.userId === tagOrMember.userId,
+                          (receipt) => receipt.userId === tagOrMember.userId
                         )}
                       />
                     </div>
@@ -639,35 +667,6 @@ export function MembersDrawer({ room, members }: MembersDrawerProps) {
             )}
           </Box>
         </Scroll>
-      </Box>
-      <Box className={css.MemberDrawerFooter} direction="Column" gap="200" shrink="No">
-        {invitePrompt && (
-          <InviteUserPrompt room={room} requestClose={() => setInvitePrompt(false)} />
-        )}
-        <Button
-          className={css.FooterButton}
-          variant="Secondary"
-          fill="Soft"
-          size="400"
-          radii="400"
-          before={<Icon size="100" src={Icons.UserPlus} />}
-          onClick={() => setInvitePrompt(true)}
-          aria-pressed={invitePrompt}
-          disabled={!canInvite}
-        >
-          <Text size="B400">Invite</Text>
-        </Button>
-        <Button
-          className={css.FooterButton}
-          variant="Secondary"
-          fill="Soft"
-          size="400"
-          radii="400"
-          before={<Icon size="100" src={Icons.Setting} />}
-          onClick={() => openRoomSettings(room.roomId, space?.roomId)}
-        >
-          <Text size="B400">Room settings</Text>
-        </Button>
       </Box>
     </Box>
   );

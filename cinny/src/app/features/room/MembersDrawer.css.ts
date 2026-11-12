@@ -42,16 +42,6 @@ export const MembersDrawerCount = style({
   opacity: 0.6,
 });
 
-export const MemberDrawerFooter = style({
-  padding: config.space.S300,
-  borderTop: `var(--diddy-border, 1px solid color-mix(in srgb, ${color.Surface.OnContainer} 8%, transparent))`,
-});
-
-export const FooterButton = style({
-  width: '100%',
-  justifyContent: 'flex-start',
-});
-
 export const AdminIcon = style({
   flexShrink: 0,
   color: color.Warning.Main,
@@ -130,6 +120,8 @@ export const MemberRow = style({
       minHeight: toRem(36),
       height: toRem(36),
       borderRadius: 'var(--diddy-radius-ctl, 10px)',
+      // rows only get a surface on hover / when selected (dark themes showed a box per row)
+      backgroundColor: 'transparent',
     },
     '&&:hover, &&:focus-visible': {
       backgroundColor: `var(--diddy-hover, color-mix(in srgb, ${color.Surface.OnContainer} 6%, transparent))`,

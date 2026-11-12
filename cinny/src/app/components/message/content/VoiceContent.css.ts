@@ -1,5 +1,6 @@
 import { keyframes, style } from '@vanilla-extract/css';
 import { color, config } from 'folds';
+import { EASE_OUT, MOTION } from '../../sidebar/diddyTokens';
 
 const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
 
@@ -102,7 +103,7 @@ const morphHalf = style({
   position: 'absolute',
   inset: 0,
   background: 'currentColor',
-  transition: 'clip-path 220ms cubic-bezier(0.2, 0, 0, 1)',
+  transition: `clip-path ${MOTION.normal} ${EASE_OUT}`,
   '@media': { [REDUCED_MOTION]: { transition: 'none' } },
 });
 /* play triangle (optically centred, apex at 12/7 of a 14 grid) cut in two; pause bars 3 wide */

@@ -19,12 +19,15 @@ import { pushSessionToSW } from './sw-session';
 import { getFallbackSession } from './app/state/sessions';
 import { installContextMenuGuard } from './app/plugins/contextMenu';
 import { installErrorLogging } from './app/plugins/diagnostics';
+import { applyDiddyIcons } from './app/plugins/diddyIcons';
 
 document.body.classList.add(configClass, varsClass);
 
 // the desktop app only shows its own right-click menus (see plugins/contextMenu.ts)
 installContextMenuGuard();
 installErrorLogging();
+// Diddy's own icon set replaces the folds drawings app-wide (plugins/diddyIcons.tsx)
+applyDiddyIcons();
 
 // Register Service Worker
 if ('serviceWorker' in navigator) {

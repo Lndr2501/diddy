@@ -39,3 +39,24 @@ export const RoomViewFollowing = recipe({
     },
   },
 });
+
+/* who has seen the latest message: small overlapping faces */
+export const Faces = style({
+  display: 'inline-flex',
+  alignItems: 'center',
+  flexShrink: 0,
+});
+export const Face = style({
+  width: toRem(18),
+  height: toRem(18),
+  borderRadius: '50%',
+  overflow: 'hidden',
+  display: 'grid',
+  placeItems: 'center',
+  fontSize: toRem(10),
+  fontWeight: 600,
+  color: color.Surface.Container,
+  boxShadow: `0 0 0 2px ${color.Surface.Container}`,
+  selectors: { '& + &': { marginLeft: toRem(-6) } },
+});
+export const FaceImg = style({ width: '100%', height: '100%', objectFit: 'cover' });

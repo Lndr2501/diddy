@@ -480,7 +480,7 @@ function RoomNotificationsGroupComp({
               <ModernLayout
                 before={
                   <AvatarBase>
-                    <Avatar size="300">
+                    <Avatar size="300" radii="Pill">
                       <UserAvatar surface="chat"
                         userId={event.sender}
                         src={

@@ -41,3 +41,30 @@ export const transition = (...props: string[]): string =>
   props.map((p) => `${p} ${DUR} ${EASE}`).join(', ');
 
 export const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
+
+/*
+ * Motion: three durations and two curves for everything that moves. `EASE_OUT` for things that
+ * settle (menus, cards, fades), `EASE_SPRING` for things that arrive with a little bounce
+ * (toasts, the call banner, buttons popping in).
+ */
+export const MOTION = {
+  fast: '120ms',
+  normal: '220ms',
+  enter: '400ms',
+} as const;
+export const EASE_OUT = 'cubic-bezier(0.32, 0.72, 0, 1)';
+export const EASE_SPRING = 'cubic-bezier(0.3, 1.35, 0.6, 1)';
+
+/**
+ * Stacking layers, lowest to highest. Anything floating over the app takes one of these instead
+ * of an ad-hoc number, so new overlays cannot end up under or over the wrong thing.
+ */
+export const LAYER = {
+  raised: 1,
+  sticky: 10,
+  popover: 100,
+  dialog: 500,
+  notice: 900,
+  toast: 1000,
+  call: 1001,
+} as const;

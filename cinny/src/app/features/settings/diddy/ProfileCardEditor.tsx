@@ -589,13 +589,14 @@ export function LayoutEditor({ draft, patch }: { draft: Draft; patch: PatchDraft
 }
 
 export type EditorTab = 'identity' | 'card' | 'avatar' | 'status' | 'layout' | 'privacy';
-const TABS: { id: EditorTab; label: string; icon: IconSrc }[] = [
-  { id: 'identity', label: 'Identity', icon: Icons.User },
-  { id: 'card', label: 'Profile card', icon: Icons.Pencil },
-  { id: 'avatar', label: 'Avatar & nameplate', icon: Icons.Photo },
-  { id: 'status', label: 'Status & badges', icon: Icons.Star },
-  { id: 'layout', label: 'Layouts', icon: Icons.Category },
-  { id: 'privacy', label: 'Privacy & data', icon: Icons.ShieldLock },
+// `short` is shown in the one-row tab strip, `label` is the accessible and hover name
+const TABS: { id: EditorTab; label: string; short: string; icon: IconSrc }[] = [
+  { id: 'identity', label: 'Identity', short: 'Identity', icon: Icons.User },
+  { id: 'card', label: 'Profile card', short: 'Card', icon: Icons.Pencil },
+  { id: 'avatar', label: 'Avatar & nameplate', short: 'Avatar', icon: Icons.Photo },
+  { id: 'status', label: 'Status & badges', short: 'Status', icon: Icons.Star },
+  { id: 'layout', label: 'Layouts', short: 'Layout', icon: Icons.Category },
+  { id: 'privacy', label: 'Privacy & data', short: 'Privacy', icon: Icons.ShieldLock },
 ];
 
 export function EditorTabs({
@@ -616,10 +617,11 @@ export function EditorTabs({
           role="tab"
           className={css.Tab}
           aria-selected={tab === t.id}
+          aria-label={t.label}
+          title={t.label}
           onClick={() => onChange(t.id)}
         >
-          <Icon size="100" src={t.icon} filled={tab === t.id} />
-          <span className={css.TabLabel}>{t.label}</span>
+          <span className={css.TabLabel}>{t.short}</span>
         </button>
       ))}
     </div>

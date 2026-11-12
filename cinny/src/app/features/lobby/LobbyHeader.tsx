@@ -39,7 +39,6 @@ import { useRoomPermissions } from '../../hooks/useRoomPermissions';
 import { InviteUserPrompt } from '../../components/invite-user-prompt';
 import { SpaceJoinMenuItems } from '../../components/space-join/SpaceJoinMenuItems';
 import {
-  HeaderBellButton,
   HeaderSearchField,
 } from '../../components/top-actions';
 
@@ -291,10 +290,7 @@ export function LobbyHeader({ showProfile, powerLevels }: LobbyHeaderProps) {
             }
           />
           {screenSize !== ScreenSize.Mobile && (
-            <>
-              <HeaderBellButton />
-              <HeaderSearchField />
-            </>
+            <HeaderSearchField />
           )}
         </Box>
       </Box>

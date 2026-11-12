@@ -76,7 +76,7 @@ function ActiveCallButtons({ callEmbed }: ActiveCallButtonsProps) {
       >
         <Icon size="100" src={microphone ? Icons.Mic : Icons.MicMute} filled={!microphone} />
       </IconButton>
-      <DeviceChevron kind="input" />
+      <DeviceChevron kind="input" className={css.UserPanelChevron} />
       <IconButton
         variant="SurfaceVariant"
         fill="None"
@@ -92,7 +92,7 @@ function ActiveCallButtons({ callEmbed }: ActiveCallButtonsProps) {
       >
         <Icon size="100" src={sound ? Icons.Headphone : Icons.HeadphoneMute} filled={!sound} />
       </IconButton>
-      <DeviceChevron kind="output" />
+      <DeviceChevron kind="output" className={css.UserPanelChevron} />
     </>
   );
 }
@@ -115,7 +115,7 @@ function IdleCallButtons() {
       >
         <Icon size="100" src={Icons.Mic} />
       </IconButton>
-      <DeviceChevron kind="input" />
+      <DeviceChevron kind="input" className={css.UserPanelChevron} />
       <IconButton
         variant="SurfaceVariant"
         fill="None"
@@ -130,7 +130,7 @@ function IdleCallButtons() {
       >
         <Icon size="100" src={Icons.Headphone} />
       </IconButton>
-      <DeviceChevron kind="output" />
+      <DeviceChevron kind="output" className={css.UserPanelChevron} />
     </>
   );
 }

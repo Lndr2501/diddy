@@ -20,6 +20,7 @@ export const DefaultPlaceholder = as<'div', { variant?: ContainerColor }>(
           <Avatar
             style={{ backgroundColor: color[variant ?? 'SurfaceVariant'].Container }}
             size="300"
+            radii="Pill"
           />
         }
       >

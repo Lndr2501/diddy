@@ -78,191 +78,210 @@ import { millify } from '../../plugins/millify';
 import { usePresenceState } from '../../hooks/usePresenceState';
 import { AvatarPresence, PresenceBadge } from '../../components/presence';
 import { PRESENCE_STATE_LABEL } from '../../utils/presenceState';
-import { HeaderBellButton, HeaderSearchField } from '../../components/top-actions';
+import { HeaderSearchField } from '../../components/top-actions';
 
 type RoomMenuProps = {
   room: Room;
   requestClose: () => void;
+  /** Opens the message search for this room (not offered in encrypted rooms). */
+  onSearch?: () => void;
 };
-const RoomMenu = forwardRef<HTMLDivElement, RoomMenuProps>(({ room, requestClose }, ref) => {
-  const mx = useMatrixClient();
-  const [hideActivity] = useSetting(settingsAtom, 'hideActivity');
-  const unread = useRoomUnread(room.roomId, roomToUnreadAtom);
-  const powerLevels = usePowerLevelsContext();
-  const creators = useRoomCreators(room);
+const RoomMenu = forwardRef<HTMLDivElement, RoomMenuProps>(
+  ({ room, requestClose, onSearch }, ref) => {
+    const mx = useMatrixClient();
+    const [hideActivity] = useSetting(settingsAtom, 'hideActivity');
+    const unread = useRoomUnread(room.roomId, roomToUnreadAtom);
+    const powerLevels = usePowerLevelsContext();
+    const creators = useRoomCreators(room);
 
-  const permissions = useRoomPermissions(creators, powerLevels);
-  const canInvite = permissions.action('invite', mx.getSafeUserId());
-  const notificationPreferences = useRoomsNotificationPreferencesContext();
-  const notificationMode = getRoomNotificationMode(notificationPreferences, room.roomId);
-  const { navigateRoom } = useRoomNavigate();
+    const permissions = useRoomPermissions(creators, powerLevels);
+    const canInvite = permissions.action('invite', mx.getSafeUserId());
+    const notificationPreferences = useRoomsNotificationPreferencesContext();
+    const notificationMode = getRoomNotificationMode(notificationPreferences, room.roomId);
+    const { navigateRoom } = useRoomNavigate();
 
-  const [invitePrompt, setInvitePrompt] = useState(false);
+    const [invitePrompt, setInvitePrompt] = useState(false);
 
-  const handleMarkAsRead = () => {
-    markAsRead(mx, room.roomId, hideActivity);
-    requestClose();
-  };
+    const handleMarkAsRead = () => {
+      markAsRead(mx, room.roomId, hideActivity);
+      requestClose();
+    };
 
-  const handleInvite = () => {
-    setInvitePrompt(true);
-  };
+    const handleInvite = () => {
+      setInvitePrompt(true);
+    };
 
-  const handleCopyLink = () => {
-    const roomIdOrAlias = getCanonicalAliasOrRoomId(mx, room.roomId);
-    const viaServers = isRoomAlias(roomIdOrAlias) ? undefined : getViaServers(room);
-    copyToClipboard(getMatrixToRoom(roomIdOrAlias, viaServers));
-    requestClose();
-  };
+    const handleCopyLink = () => {
+      const roomIdOrAlias = getCanonicalAliasOrRoomId(mx, room.roomId);
+      const viaServers = isRoomAlias(roomIdOrAlias) ? undefined : getViaServers(room);
+      copyToClipboard(getMatrixToRoom(roomIdOrAlias, viaServers));
+      requestClose();
+    };
 
-  const openSettings = useOpenRoomSettings();
-  const parentSpace = useSpaceOptionally();
-  const handleOpenSettings = () => {
-    openSettings(room.roomId, parentSpace?.roomId);
-    requestClose();
-  };
+    const openSettings = useOpenRoomSettings();
+    const parentSpace = useSpaceOptionally();
+    const handleOpenSettings = () => {
+      openSettings(room.roomId, parentSpace?.roomId);
+      requestClose();
+    };
 
-  return (
-    <Menu ref={ref} style={{ maxWidth: toRem(160), width: '100vw' }}>
-      {invitePrompt && (
-        <InviteUserPrompt
-          room={room}
-          requestClose={() => {
-            setInvitePrompt(false);
-            requestClose();
-          }}
-        />
-      )}
-      <Box direction="Column" gap="100" style={{ padding: config.space.S100 }}>
-        <MenuItem
-          onClick={handleMarkAsRead}
-          size="300"
-          after={<Icon size="100" src={Icons.CheckTwice} />}
-          radii="300"
-          disabled={!unread}
-        >
-          <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
-            Mark as Read
-          </Text>
-        </MenuItem>
-        <RoomNotificationModeSwitcher roomId={room.roomId} value={notificationMode}>
-          {(handleOpen, opened, changing) => (
+    return (
+      <Menu ref={ref} style={{ maxWidth: toRem(160), width: '100vw' }}>
+        {invitePrompt && (
+          <InviteUserPrompt
+            room={room}
+            requestClose={() => {
+              setInvitePrompt(false);
+              requestClose();
+            }}
+          />
+        )}
+        <Box direction="Column" gap="100" style={{ padding: config.space.S100 }}>
+          {onSearch && (
             <MenuItem
+              onClick={() => {
+                onSearch();
+                requestClose();
+              }}
               size="300"
-              after={
-                changing ? (
-                  <Spinner size="100" variant="Secondary" />
-                ) : (
-                  <Icon size="100" src={getRoomNotificationModeIcon(notificationMode)} />
-                )
-              }
+              after={<Icon size="100" src={Icons.Search} />}
               radii="300"
-              aria-pressed={opened}
-              onClick={handleOpen}
             >
               <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
-                Notifications
+                Search Messages
               </Text>
             </MenuItem>
           )}
-        </RoomNotificationModeSwitcher>
-      </Box>
-      <Line variant="Surface" size="300" />
-      <Box direction="Column" gap="100" style={{ padding: config.space.S100 }}>
-        <MenuItem
-          onClick={handleInvite}
-          variant="Primary"
-          fill="None"
-          size="300"
-          after={<Icon size="100" src={Icons.UserPlus} />}
-          radii="300"
-          aria-pressed={invitePrompt}
-          disabled={!canInvite}
-        >
-          <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
-            Invite
-          </Text>
-        </MenuItem>
-        <MenuItem
-          onClick={handleCopyLink}
-          size="300"
-          after={<Icon size="100" src={Icons.Link} />}
-          radii="300"
-        >
-          <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
-            Copy Link
-          </Text>
-        </MenuItem>
-        <MenuItem
-          onClick={handleOpenSettings}
-          size="300"
-          after={<Icon size="100" src={Icons.Setting} />}
-          radii="300"
-        >
-          <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
-            Room Settings
-          </Text>
-        </MenuItem>
-        <UseStateProvider initial={false}>
-          {(promptJump, setPromptJump) => (
-            <>
+          <MenuItem
+            onClick={handleMarkAsRead}
+            size="300"
+            after={<Icon size="100" src={Icons.CheckTwice} />}
+            radii="300"
+            disabled={!unread}
+          >
+            <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
+              Mark as Read
+            </Text>
+          </MenuItem>
+          <RoomNotificationModeSwitcher roomId={room.roomId} value={notificationMode}>
+            {(handleOpen, opened, changing) => (
               <MenuItem
-                onClick={() => setPromptJump(true)}
                 size="300"
-                after={<Icon size="100" src={Icons.RecentClock} />}
+                after={
+                  changing ? (
+                    <Spinner size="100" variant="Secondary" />
+                  ) : (
+                    <Icon size="100" src={getRoomNotificationModeIcon(notificationMode)} />
+                  )
+                }
                 radii="300"
-                aria-pressed={promptJump}
+                aria-pressed={opened}
+                onClick={handleOpen}
               >
                 <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
-                  Jump to Time
+                  Notifications
                 </Text>
               </MenuItem>
-              {promptJump && (
-                <JumpToTime
-                  onSubmit={(eventId) => {
-                    setPromptJump(false);
-                    navigateRoom(room.roomId, eventId);
-                    requestClose();
-                  }}
-                  onCancel={() => setPromptJump(false)}
-                />
-              )}
-            </>
-          )}
-        </UseStateProvider>
-      </Box>
-      <Line variant="Surface" size="300" />
-      <Box direction="Column" gap="100" style={{ padding: config.space.S100 }}>
-        <UseStateProvider initial={false}>
-          {(promptLeave, setPromptLeave) => (
-            <>
-              <MenuItem
-                onClick={() => setPromptLeave(true)}
-                variant="Critical"
-                fill="None"
-                size="300"
-                after={<Icon size="100" src={Icons.ArrowGoLeft} />}
-                radii="300"
-                aria-pressed={promptLeave}
-              >
-                <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
-                  Leave Room
-                </Text>
-              </MenuItem>
-              {promptLeave && (
-                <LeaveRoomPrompt
-                  roomId={room.roomId}
-                  onDone={requestClose}
-                  onCancel={() => setPromptLeave(false)}
-                />
-              )}
-            </>
-          )}
-        </UseStateProvider>
-      </Box>
-    </Menu>
-  );
-});
+            )}
+          </RoomNotificationModeSwitcher>
+        </Box>
+        <Line variant="Surface" size="300" />
+        <Box direction="Column" gap="100" style={{ padding: config.space.S100 }}>
+          <MenuItem
+            onClick={handleInvite}
+            variant="Primary"
+            fill="None"
+            size="300"
+            after={<Icon size="100" src={Icons.UserPlus} />}
+            radii="300"
+            aria-pressed={invitePrompt}
+            disabled={!canInvite}
+          >
+            <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
+              Invite
+            </Text>
+          </MenuItem>
+          <MenuItem
+            onClick={handleCopyLink}
+            size="300"
+            after={<Icon size="100" src={Icons.Link} />}
+            radii="300"
+          >
+            <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
+              Copy Link
+            </Text>
+          </MenuItem>
+          <MenuItem
+            onClick={handleOpenSettings}
+            size="300"
+            after={<Icon size="100" src={Icons.Setting} />}
+            radii="300"
+          >
+            <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
+              Room Settings
+            </Text>
+          </MenuItem>
+          <UseStateProvider initial={false}>
+            {(promptJump, setPromptJump) => (
+              <>
+                <MenuItem
+                  onClick={() => setPromptJump(true)}
+                  size="300"
+                  after={<Icon size="100" src={Icons.RecentClock} />}
+                  radii="300"
+                  aria-pressed={promptJump}
+                >
+                  <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
+                    Jump to Time
+                  </Text>
+                </MenuItem>
+                {promptJump && (
+                  <JumpToTime
+                    onSubmit={(eventId) => {
+                      setPromptJump(false);
+                      navigateRoom(room.roomId, eventId);
+                      requestClose();
+                    }}
+                    onCancel={() => setPromptJump(false)}
+                  />
+                )}
+              </>
+            )}
+          </UseStateProvider>
+        </Box>
+        <Line variant="Surface" size="300" />
+        <Box direction="Column" gap="100" style={{ padding: config.space.S100 }}>
+          <UseStateProvider initial={false}>
+            {(promptLeave, setPromptLeave) => (
+              <>
+                <MenuItem
+                  onClick={() => setPromptLeave(true)}
+                  variant="Critical"
+                  fill="None"
+                  size="300"
+                  after={<Icon size="100" src={Icons.ArrowGoLeft} />}
+                  radii="300"
+                  aria-pressed={promptLeave}
+                >
+                  <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
+                    Leave Room
+                  </Text>
+                </MenuItem>
+                {promptLeave && (
+                  <LeaveRoomPrompt
+                    roomId={room.roomId}
+                    onDone={requestClose}
+                    onCancel={() => setPromptLeave(false)}
+                  />
+                )}
+              </>
+            )}
+          </UseStateProvider>
+        </Box>
+      </Menu>
+    );
+  }
+);
 
 type CallMenuProps = {
   onVoiceCall: () => void;
@@ -343,7 +362,9 @@ function CallButton() {
         tooltip={
           <Tooltip>
             {inAnotherCall ? (
-              <Text size="L400">You&apos;re in another call — Starting one will end it for you.</Text>
+              <Text size="L400">
+                You&apos;re in another call — Starting one will end it for you.
+              </Text>
             ) : (
               <Text>Call</Text>
             )}
@@ -593,13 +614,13 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
         </Box>
 
         <Box className={css.HeaderActions} shrink="No" alignItems="Center">
-          {!encryptedRoom && (
+          {(pinnedEvents.length > 0 || !!pinMenuAnchor) && (
             <TooltipProvider
               position="Bottom"
               offset={4}
               tooltip={
                 <Tooltip>
-                  <Text>Search</Text>
+                  <Text>Pinned Messages</Text>
                 </Tooltip>
               }
             >
@@ -610,55 +631,32 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
                   fill="Soft"
                   size="300"
                   radii="300"
+                  onClick={handleOpenPinMenu}
                   ref={triggerRef}
-                  onClick={handleSearchClick}
+                  aria-pressed={!!pinMenuAnchor}
                 >
-                  <Icon size="200" src={Icons.Search} />
+                  {pinnedEvents.length > 0 && (
+                    <Badge
+                      style={{
+                        position: 'absolute',
+                        left: toRem(3),
+                        top: toRem(3),
+                      }}
+                      variant="Secondary"
+                      size="400"
+                      fill="Solid"
+                      radii="Pill"
+                    >
+                      <Text as="span" size="L400">
+                        {pinnedEvents.length}
+                      </Text>
+                    </Badge>
+                  )}
+                  <Icon size="200" src={Icons.Pin} filled={!!pinMenuAnchor} />
                 </IconButton>
               )}
             </TooltipProvider>
           )}
-          <TooltipProvider
-            position="Bottom"
-            offset={4}
-            tooltip={
-              <Tooltip>
-                <Text>Pinned Messages</Text>
-              </Tooltip>
-            }
-          >
-            {(triggerRef) => (
-              <IconButton
-                className={css.SoftButton}
-                variant="Surface"
-                fill="Soft"
-                size="300"
-                radii="300"
-                onClick={handleOpenPinMenu}
-                ref={triggerRef}
-                aria-pressed={!!pinMenuAnchor}
-              >
-                {pinnedEvents.length > 0 && (
-                  <Badge
-                    style={{
-                      position: 'absolute',
-                      left: toRem(3),
-                      top: toRem(3),
-                    }}
-                    variant="Secondary"
-                    size="400"
-                    fill="Solid"
-                    radii="Pill"
-                  >
-                    <Text as="span" size="L400">
-                      {pinnedEvents.length}
-                    </Text>
-                  </Badge>
-                )}
-                <Icon size="200" src={Icons.Pin} filled={!!pinMenuAnchor} />
-              </IconButton>
-            )}
-          </TooltipProvider>
           <PopOut
             anchor={pinMenuAnchor}
             position="Bottom"
@@ -753,15 +751,16 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
                   escapeDeactivates: stopPropagation,
                 }}
               >
-                <RoomMenu room={room} requestClose={() => setMenuAnchor(undefined)} />
+                <RoomMenu
+                  room={room}
+                  requestClose={() => setMenuAnchor(undefined)}
+                  onSearch={encryptedRoom ? undefined : handleSearchClick}
+                />
               </FocusTrap>
             }
           />
           {screenSize !== ScreenSize.Mobile && (
-            <>
-              <HeaderBellButton />
-              <HeaderSearchField />
-            </>
+            <HeaderSearchField />
           )}
         </Box>
       </Box>

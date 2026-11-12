@@ -30,24 +30,28 @@ export const EditorRow = style([
   {
     display: 'grid',
     gridTemplateColumns: 'auto minmax(0, 1fr) auto',
-    gridTemplateAreas: '"text text text" "before . after"',
-    alignItems: 'center',
+    // one line: attach on the left, text in the middle, actions on the right; the buttons stay at
+    // the bottom while the text grows
+    gridTemplateAreas: '"before text after"',
+    alignItems: 'end',
   },
 ]);
 
 export const EditorOptions = style([
   DefaultReset,
   {
-    padding: `${config.space.S100} ${config.space.S200} ${config.space.S200}`,
+    padding: `${toRem(7)} ${config.space.S100}`,
   },
 ]);
 
 export const EditorOptionsBefore = style({
   gridArea: 'before',
+  paddingLeft: config.space.S200,
 });
 
 export const EditorOptionsAfter = style({
   gridArea: 'after',
+  paddingRight: config.space.S200,
 });
 
 export const EditorTextareaScroll = style({
@@ -60,7 +64,7 @@ export const EditorTextarea = style([
   {
     flexGrow: 1,
     height: '100%',
-    padding: `${toRem(16)} ${toRem(18)} ${toRem(8)}`,
+    padding: `${toRem(13)} ${toRem(6)}`,
     selectors: {
       '&:focus': {
         outline: 'none',
@@ -82,7 +86,7 @@ export const EditorPlaceholderTextVisual = style([
   DefaultReset,
   {
     display: 'block',
-    paddingTop: toRem(16),
+    paddingTop: toRem(13),
     paddingLeft: 0,
   },
 ]);

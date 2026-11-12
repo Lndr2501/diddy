@@ -17,8 +17,10 @@ import {
   PluginsTab,
 } from './sidebar';
 import { CreateTab } from './sidebar/CreateTab';
+import { ScreenSize, useScreenSizeContext } from '../../hooks/useScreenSize';
 
 export function SidebarNav() {
+  const screenSize = useScreenSizeContext();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   return (
@@ -43,7 +45,8 @@ export function SidebarNav() {
             <SidebarStackSeparator />
             <SidebarStack>
               <PluginsTab />
-              <SearchTab />
+              {/* on larger screens the search field in the header does the same */}
+              {screenSize === ScreenSize.Mobile && <SearchTab />}
               <UnverifiedTab />
             </SidebarStack>
           </>

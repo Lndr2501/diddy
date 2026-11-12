@@ -17,12 +17,16 @@ export function UnreadBadgeCenter({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * One rule everywhere: mentions are loud (accent colour), plain unread messages are quiet (soft
+ * grey with the count, or a small dot).
+ */
 export function UnreadBadge({ highlight, count }: UnreadBadgeProps) {
   return (
     <Badge
-      variant={highlight ? 'Success' : 'Secondary'}
+      variant={highlight ? 'Primary' : 'Secondary'}
       size={count > 0 ? '400' : '200'}
-      fill="Solid"
+      fill={highlight || count === 0 ? 'Solid' : 'Soft'}
       radii="Pill"
       outlined={false}
     >

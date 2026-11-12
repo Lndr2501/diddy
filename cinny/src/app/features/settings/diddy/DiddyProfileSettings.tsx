@@ -10,7 +10,7 @@ import React, {
 } from 'react';
 import { EventType } from 'matrix-js-sdk';
 import classNames from 'classnames';
-import { Avatar, Box, Button, Icon, IconButton, Icons, Scroll, Switch, Text, toRem } from 'folds';
+import { Avatar, Box, Button, Icon, Icons, Scroll, Switch, Text, toRem } from 'folds';
 import { Page } from '../../../components/page';
 import { canSaveWithDialog, saveTextFileAs } from '../../../plugins/tauri';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
@@ -103,6 +103,7 @@ import {
   UploadField,
 } from './ProfileSettingsUI';
 import * as css from './DiddyProfileSettings.css';
+import { SettingsPageHeader } from '../inset-list';
 import { DiddyName } from '../../../components/diddy/DiddyName';
 import { DEFAULT_IMAGE_POS, PositionedImg } from '../../../components/diddy/PositionedImg';
 import { UserAvatar } from '../../../components/user-avatar';
@@ -1424,8 +1425,68 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
 
   const showSaveBar = dirty && hasOptionsRoom;
 
+  const headerActions = hasOptionsRoom ? (
+    <>
+      <input
+        ref={importInput}
+        type="file"
+        accept=".json,application/json"
+        hidden
+        data-testid="profile-import-input"
+        onChange={(evt) => {
+          const file = evt.target.files?.[0];
+          // the same file can be picked again
+          evt.target.value = '';
+          handleImportFile(file).catch(() =>
+            setTransfer({ tone: 'error', text: 'The file could not be read.' })
+          );
+        }}
+      />
+      <Button
+        size="300"
+        variant="Secondary"
+        fill="None"
+        radii="300"
+        before={<Icon size="100" src={Icons.Download} />}
+        disabled={saving}
+        onClick={() => {
+          handleExport();
+        }}
+      >
+        <Text size="B300">Export</Text>
+      </Button>
+      <Button
+        size="300"
+        variant="Secondary"
+        fill="None"
+        radii="300"
+        before={<Icon size="100" src={Icons.ArrowTop} />}
+        disabled={saving}
+        onClick={() => importInput.current?.click()}
+      >
+        <Text size="B300">Import</Text>
+      </Button>
+      <Button
+        size="300"
+        variant="Secondary"
+        fill="None"
+        radii="300"
+        before={<Icon size="100" src={Icons.Reload} />}
+        disabled={saving || stableKey(draft) === stableKey({})}
+        onClick={() => {
+          setDraft({});
+          setSaveError(undefined);
+        }}
+      >
+        <Text size="B300">Reset to default</Text>
+      </Button>
+    </>
+  ) : undefined;
+
   return (
     <Page>
+      {/* the same slim header as every other settings page; save / cancel live in the save bar */}
+      <SettingsPageHeader title="Profile" requestClose={requestClose} actions={headerActions} />
       <Box grow="Yes">
         <Scroll hideTrack visibility="Hover">
           <div
@@ -1440,98 +1501,6 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
               } as React.CSSProperties
             }
           >
-            <header className={css.Head}>
-              <div className={css.HeadText}>
-                <Text as="h1" size="H2" className={css.HeadTitle}>
-                  Profile
-                </Text>
-                <Text size="T300" priority="300">
-                  Customize your identity, profile card and how you appear to others on Matrix.
-                </Text>
-              </div>
-              <div className={css.HeadActions}>
-                {hasOptionsRoom && (
-                  <>
-                    <input
-                      ref={importInput}
-                      type="file"
-                      accept=".json,application/json"
-                      hidden
-                      data-testid="profile-import-input"
-                      onChange={(evt) => {
-                        const file = evt.target.files?.[0];
-                        // the same file can be picked again
-                        evt.target.value = '';
-                        handleImportFile(file).catch(() =>
-                          setTransfer({ tone: 'error', text: 'The file could not be read.' })
-                        );
-                      }}
-                    />
-                    <Button
-                      size="400"
-                      variant="Secondary"
-                      fill="None"
-                      radii="300"
-                      before={<Icon size="100" src={Icons.Download} />}
-                      disabled={saving}
-                      onClick={() => {
-                        handleExport();
-                      }}
-                    >
-                      <Text size="B400">Export</Text>
-                    </Button>
-                    <Button
-                      size="400"
-                      variant="Secondary"
-                      fill="None"
-                      radii="300"
-                      before={<Icon size="100" src={Icons.ArrowTop} />}
-                      disabled={saving}
-                      onClick={() => importInput.current?.click()}
-                    >
-                      <Text size="B400">Import</Text>
-                    </Button>
-                    <Button
-                      size="400"
-                      variant="Secondary"
-                      fill="None"
-                      radii="300"
-                      before={<Icon size="100" src={Icons.Reload} />}
-                      disabled={saving || stableKey(draft) === stableKey({})}
-                      onClick={() => {
-                        setDraft({});
-                        setSaveError(undefined);
-                      }}
-                    >
-                      <Text size="B400">Reset to default</Text>
-                    </Button>
-                    <Button
-                      size="400"
-                      variant="Secondary"
-                      fill="Soft"
-                      radii="300"
-                      disabled={saving || !dirty || !profileKnown}
-                      onClick={resetDraft}
-                    >
-                      <Text size="B400">Cancel</Text>
-                    </Button>
-                    <Button
-                      size="400"
-                      variant="Primary"
-                      radii="300"
-                      disabled={saveDisabled}
-                      onClick={handleSave}
-                    >
-                      <Text size="B400">{saving ? 'Saving...' : 'Save changes'}</Text>
-                    </Button>
-                  </>
-                )}
-                <IconButton onClick={requestClose} variant="Surface" radii="300" aria-label="Close">
-                  <Icon src={Icons.Cross} />
-                </IconButton>
-              </div>
-            </header>
-
             {!hasOptionsRoom && setupCard}
             <LegacyAvatarNotice
               legacyMxc={stored?.animatedAvatarMxc}

@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Icon, Icons } from 'folds';
 import { useAtomValue } from 'jotai';
+import { roomToUnreadAtom } from '../../../state/room/roomToUnread';
 import {
   SidebarAvatar,
   SidebarItem,
@@ -27,6 +28,12 @@ export function InboxTab() {
   const inboxSelected = useInboxSelected();
   const allInvites = useAtomValue(allInvitesAtom);
   const inviteCount = allInvites.length;
+  // a mention anywhere shows a dot here (the bell in the room header used to show it)
+  const roomToUnread = useAtomValue(roomToUnreadAtom);
+  let hasMention = false;
+  roomToUnread.forEach((unread) => {
+    if (unread.highlight > 0) hasMention = true;
+  });
 
   const handleInboxClick = () => {
     if (screenSize === ScreenSize.Mobile) {
@@ -55,6 +62,11 @@ export function InboxTab() {
       {inviteCount > 0 && (
         <SidebarItemBadge hasCount>
           <UnreadBadge highlight count={inviteCount} />
+        </SidebarItemBadge>
+      )}
+      {inviteCount === 0 && hasMention && (
+        <SidebarItemBadge hasCount={false}>
+          <UnreadBadge highlight count={0} />
         </SidebarItemBadge>
       )}
     </SidebarItem>

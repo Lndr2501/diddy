@@ -89,7 +89,7 @@ export const EventReaders = as<'div', EventReadersProps>(
                       );
                     }}
                     before={
-                      <Avatar size="200">
+                      <Avatar size="200" radii="Pill">
                         <UserAvatar surface="members"
                           userId={readerId}
                           src={avatarUrl ?? undefined}

@@ -113,7 +113,7 @@ export function HeaderProfileButton() {
             onClick={() => setSettings(true)}
             aria-label="User Settings"
           >
-            <Avatar size="300" radii="300">
+            <Avatar size="300" radii="Pill">
               <UserAvatar surface="account"
                 userId={userId}
                 src={avatarUrl}

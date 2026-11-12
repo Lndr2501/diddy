@@ -109,10 +109,11 @@ export const Panel = style({
 // --- tabs --------------------------------------------------------------------------------------
 
 export const Tabs = style({
-  // an even 3 x 2 grid: six tabs never leave a ragged or stretched last row, and nothing is
-  // cut off (a scrolling strip with a hidden scrollbar used to hide the last tabs)
+  // one even row of short labels; narrow pages fall back to an even 3 x 2 grid (never a
+  // scrolling strip, that used to hide the last tabs)
   display: 'grid',
-  gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+  gridAutoFlow: 'column',
+  gridAutoColumns: 'minmax(0, 1fr)',
   gap: SPACE.xs,
   padding: SPACE.xs,
   borderRadius: RADIUS_ROW,
@@ -121,7 +122,8 @@ export const Tabs = style({
   boxSizing: 'border-box',
 });
 globalStyle(`${Wrap}[data-compact=true] ${Tabs}`, {
-  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+  gridAutoFlow: 'row',
+  gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
 });
 
 export const Tab = style({

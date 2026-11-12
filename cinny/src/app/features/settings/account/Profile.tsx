@@ -86,7 +86,7 @@ function ProfileAvatar({ profile, userId }: ProfileProps) {
   return (
     <InsetRow
       before={
-        <Avatar size="500" radii="300">
+        <Avatar size="500" radii="Pill">
           <UserAvatar
             surface="account"
             userId={userId}

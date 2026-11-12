@@ -1,5 +1,6 @@
 import { globalStyle, keyframes, style } from '@vanilla-extract/css';
 import { color } from 'folds';
+import { EASE_OUT, EASE_SPRING, LAYER } from '../sidebar/diddyTokens';
 
 /*
  * Incoming call banner at the top of the window, one continuous motion (about 0.9 s):
@@ -12,8 +13,8 @@ import { color } from 'folds';
  */
 
 const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
-const SPRING = 'cubic-bezier(0.3, 1.35, 0.6, 1)';
-const EASE = 'cubic-bezier(0.32, 0.72, 0, 1)';
+const SPRING = EASE_SPRING;
+const EASE = EASE_OUT;
 
 /* call colours are the same in every theme, like on phones */
 const GREEN = '#30D158';
@@ -40,7 +41,7 @@ const fadeIn = keyframes({ from: { opacity: 0 }, to: { opacity: 1 } });
 export const Host = style({
   position: 'fixed',
   left: '50%',
-  zIndex: 1001,
+  zIndex: LAYER.call,
   width: WIDTH,
   marginLeft: `calc(${WIDTH} / -2)`,
   // follows the clipped shape while the card opens
