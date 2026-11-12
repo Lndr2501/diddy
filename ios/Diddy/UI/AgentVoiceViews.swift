@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// "Redet mit Agent": a small badge for any tile or card (#131).
+/// "Redet mit Agent": a small badge for any tile or card (#131). Same words as the desktop tile;
+/// VoiceOver says "Talking to agent" like the desktop aria-label.
 struct AgentTalkingBadge: View {
     var compact = false
 
@@ -13,7 +14,7 @@ struct AgentTalkingBadge: View {
             .padding(.vertical, 4)
             .background(Capsule().fill(Theme.accent))
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Redet mit Agent")
+            .accessibilityLabel("Talking to agent")
     }
 }
 

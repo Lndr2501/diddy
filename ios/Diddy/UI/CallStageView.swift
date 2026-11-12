@@ -299,6 +299,7 @@ private struct PersonTile: View {
         else if !member.microphoneOn { parts.append("muted") }
         else if speaking { parts.append("speaking") }
         if member.camera != nil { parts.append("camera on") }
+        if member.talkingToAgent { parts.append("talking to agent") }
         return parts.joined(separator: ", ")
     }
 }
