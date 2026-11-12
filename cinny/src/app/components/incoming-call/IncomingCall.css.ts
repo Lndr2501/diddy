@@ -1,30 +1,33 @@
-import { keyframes, style } from '@vanilla-extract/css';
+import { globalStyle, keyframes, style } from '@vanilla-extract/css';
 import { color } from 'folds';
 
 /*
  * Incoming call banner at the top of the window, one continuous motion (about 0.9 s):
- *   1. a green bubble with the phone drops in from the top (0-420 ms)
- *   2. the phone rings once (300-760 ms)
- *   3. the bubble opens sideways into the card; the colour opens with it, the phone glides to the
- *      left (600-1000 ms), text and buttons arrive while it settles (760-1080 ms)
- *   4. the phone steps back to a quiet tint, so only the answer button stays bright (880-1200 ms)
- *   5. while it rings: a short wobble every 2 s and one soft ring around the phone
- * The card is a single solid colour (Success container) so nothing sweeps or blends on top.
- * Only transform, opacity and one clip-path are animated. Reduced motion: a plain fade.
+ *   1. the green phone tile drops in from the top, its handset draws itself (0-650 ms)
+ *   2. the handset rings once (420-880 ms)
+ *   3. the card opens around the tile (650-1050 ms); text and buttons arrive (820-1150 ms)
+ *   4. while it rings: a short wobble every 2 s and one soft ring around the tile
+ * The card is neutral like the rest of the app; only the tile and the two buttons carry colour,
+ * in the usual call green and red with white glyphs. Reduced motion: a plain fade.
  */
 
 const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
 const SPRING = 'cubic-bezier(0.3, 1.35, 0.6, 1)';
 const EASE = 'cubic-bezier(0.32, 0.72, 0, 1)';
 
-export const CARD_HEIGHT = 64;
-const R = CARD_HEIGHT / 2;
-const ICON = 44;
-const PAD = (CARD_HEIGHT - ICON) / 2;
+/* call colours are the same in every theme, like on phones */
+const GREEN = '#30D158';
+const RED = '#FF453A';
+
+export const CARD_HEIGHT = 60;
+const RADIUS = 22;
+const TILE = 40;
+const TILE_RADIUS = 12;
+const PAD = (CARD_HEIGHT - TILE) / 2;
 const WIDTH = 'min(420px, calc(100vw - 24px))';
 
 const dropIn = keyframes({
-  from: { transform: 'translateY(-88px) scale(0.5)', opacity: 0 },
+  from: { transform: 'translateY(-80px) scale(0.6)', opacity: 0 },
   '60%': { opacity: 1 },
   to: { transform: 'translateY(0) scale(1)', opacity: 1 },
 });
@@ -41,7 +44,7 @@ export const Host = style({
   width: WIDTH,
   marginLeft: `calc(${WIDTH} / -2)`,
   // follows the clipped shape while the card opens
-  filter: 'drop-shadow(0 8px 20px rgba(0, 0, 0, 0.28)) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2))',
+  filter: 'drop-shadow(0 8px 20px rgba(0, 0, 0, 0.28)) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.18))',
   animation: `${dropIn} 420ms ${SPRING} both`,
   '@media': { [REDUCED_MOTION]: { animation: `${fadeIn} 180ms linear both` } },
 });
@@ -51,10 +54,12 @@ export const Leaving = style({
   '@media': { [REDUCED_MOTION]: { animation: `${leave} 1ms linear both` } },
 });
 
-/* the bubble is the card clipped to a circle in the middle; it opens to the full card */
+/* first only the tile is visible (the card clipped to it), then the card opens around it */
 const open = keyframes({
-  from: { clipPath: `inset(0 calc(50% - ${R}px) round ${R}px)` },
-  to: { clipPath: `inset(0 0 round ${R}px)` },
+  from: {
+    clipPath: `inset(${PAD}px calc(50% - ${TILE / 2}px) round ${TILE_RADIUS}px)`,
+  },
+  to: { clipPath: `inset(0 0 round ${RADIUS}px)` },
 });
 export const Card = style({
   position: 'relative',
@@ -63,45 +68,46 @@ export const Card = style({
   display: 'flex',
   alignItems: 'center',
   gap: 12,
-  padding: `0 ${PAD + 2}px 0 ${ICON + PAD + 12}px`,
-  borderRadius: R,
-  background: color.Success.Container,
-  color: color.Success.OnContainer,
-  boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${color.Success.OnContainer} 10%, transparent)`,
-  animation: `${open} 400ms ${EASE} 600ms both`,
+  padding: `0 ${PAD}px 0 ${TILE + PAD + 12}px`,
+  borderRadius: RADIUS,
+  background: color.SurfaceVariant.Container,
+  color: color.SurfaceVariant.OnContainer,
+  boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${color.SurfaceVariant.OnContainer} 10%, transparent)`,
+  animation: `${open} 400ms ${EASE} 650ms both`,
   '@media': { [REDUCED_MOTION]: { animation: 'none' } },
 });
 
-/* the phone sits in a full-width layer so it can glide from the middle to the left by transform */
+/* the tile sits in a full-width layer so it can glide from the middle to the left by transform */
 const glide = keyframes({
-  from: { transform: `translateX(calc(50% - ${R}px))` },
+  from: { transform: `translateX(calc(50% - ${PAD + TILE / 2}px))` },
   to: { transform: 'translateX(0)' },
 });
-export const PhoneTrack = style({
+export const TileTrack = style({
   position: 'absolute',
   inset: 0,
   pointerEvents: 'none',
-  animation: `${glide} 400ms ${EASE} 600ms both`,
+  animation: `${glide} 400ms ${EASE} 650ms both`,
   '@media': { [REDUCED_MOTION]: { animation: 'none' } },
 });
-/* bright while it is the bubble, then it steps back so only "Answer" stays bright green */
-const SUBTLE = `color-mix(in srgb, ${color.Success.OnContainer} 14%, transparent)`;
-const settle = keyframes({
-  from: { background: color.Success.Main, color: color.Success.OnMain },
-  to: { background: SUBTLE, color: color.Success.OnContainer },
-});
-export const Phone = style({
+export const Tile = style({
   position: 'absolute',
   top: PAD,
   left: PAD,
-  width: ICON,
-  height: ICON,
-  borderRadius: '50%',
+  width: TILE,
+  height: TILE,
+  borderRadius: TILE_RADIUS,
   display: 'grid',
   placeItems: 'center',
-  background: SUBTLE,
-  color: color.Success.OnContainer,
-  animation: `${settle} 320ms ease-out 880ms both`,
+  background: GREEN,
+  color: '#fff',
+});
+
+/* glyphs draw themselves in */
+const draw = keyframes({ from: { strokeDashoffset: 1 }, to: { strokeDashoffset: 0 } });
+export const Draw = style({});
+globalStyle(`${Draw} path, ${Draw} rect`, {
+  strokeDasharray: '1 1',
+  animation: `${draw} 500ms ${EASE} 150ms both`,
   '@media': { [REDUCED_MOTION]: { animation: 'none' } },
 });
 
@@ -115,23 +121,23 @@ const wobble = keyframes({
   '5%, 15%, 25%': { transform: 'rotate(-10deg)' },
   '10%, 20%': { transform: 'rotate(10deg)' },
 });
-export const PhoneGlyph = style({
+export const TileGlyph = style({
   display: 'grid',
   placeItems: 'center',
-  animation: `${ringOnce} 460ms ease-in-out 300ms both, ${wobble} 2s ease-in-out 1.6s infinite`,
+  animation: `${ringOnce} 460ms ease-in-out 420ms both, ${wobble} 2s ease-in-out 1.6s infinite`,
   '@media': { [REDUCED_MOTION]: { animation: 'none' } },
 });
 
-/* one soft ring that stays inside the card */
+/* one soft ring around the tile, small enough to stay inside the card */
 const pulse = keyframes({
-  from: { transform: 'scale(1)', opacity: 0.5 },
-  to: { transform: 'scale(1.42)', opacity: 0 },
+  from: { transform: 'scale(1)', opacity: 0.55 },
+  to: { transform: 'scale(1.32)', opacity: 0 },
 });
 export const Ripple = style({
   position: 'absolute',
   inset: 0,
-  borderRadius: '50%',
-  boxShadow: `0 0 0 2px color-mix(in srgb, ${color.Success.OnContainer} 45%, transparent)`,
+  borderRadius: TILE_RADIUS,
+  boxShadow: `0 0 0 2px ${GREEN}`,
   opacity: 0,
   animation: `${pulse} 2s ${EASE} 1.6s infinite`,
   '@media': { [REDUCED_MOTION]: { display: 'none' } },
@@ -147,12 +153,12 @@ export const Text = style({
   display: 'flex',
   flexDirection: 'column',
   gap: 1,
-  animation: `${arrive} 300ms ${EASE} 780ms both`,
+  animation: `${arrive} 300ms ${EASE} 820ms both`,
   '@media': { [REDUCED_MOTION]: { animation: 'none' } },
 });
 const line = style({ overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' });
 export const Title = style([line, { fontSize: 15, fontWeight: 600, lineHeight: '19px' }]);
-export const Subtitle = style([line, { fontSize: 13, lineHeight: '17px', opacity: 0.72 }]);
+export const Subtitle = style([line, { fontSize: 13, lineHeight: '17px', opacity: 0.6 }]);
 export const Problem = style([line, { fontSize: 12, lineHeight: '16px', color: color.Critical.Main }]);
 
 const pop = keyframes({
@@ -169,24 +175,20 @@ const action = style({
   borderRadius: '50%',
   display: 'grid',
   placeItems: 'center',
+  color: '#fff',
   cursor: 'pointer',
   transition: 'transform 120ms ease-out, filter 120ms ease-out',
-  animation: `${pop} 280ms ${SPRING} 820ms both`,
+  animation: `${pop} 280ms ${SPRING} 860ms both`,
   selectors: {
-    '&:hover:not(:disabled)': { filter: 'brightness(1.08)' },
+    '&:hover:not(:disabled)': { filter: 'brightness(1.1)' },
     '&:active:not(:disabled)': { transform: 'scale(0.92)' },
-    '&:disabled': { opacity: 0.45, cursor: 'default' },
-    '&:focus-visible': { outline: `2px solid ${color.Success.OnContainer}`, outlineOffset: 2 },
+    '&:disabled': { opacity: 0.4, cursor: 'default' },
+    '&:focus-visible': {
+      outline: `2px solid ${color.SurfaceVariant.OnContainer}`,
+      outlineOffset: 2,
+    },
   },
   '@media': { [REDUCED_MOTION]: { animation: 'none' } },
 });
-export const Decline = style([
-  action,
-  { background: color.Critical.Main, color: color.Critical.OnMain },
-]);
-export const Accept = style([
-  action,
-  { background: color.Success.Main, color: color.Success.OnMain, animationDelay: '880ms' },
-]);
-/* the hang-up symbol is the phone turned down */
-export const HangUp = style({ display: 'grid', transform: 'rotate(135deg)' });
+export const Decline = style([action, { background: RED }]);
+export const Accept = style([action, { background: GREEN, animationDelay: '920ms' }]);

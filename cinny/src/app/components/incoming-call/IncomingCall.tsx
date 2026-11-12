@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { Room } from 'matrix-js-sdk';
 import { RTCNotificationType } from 'matrix-js-sdk/lib/matrixrtc/types';
-import { Icon, Icons } from 'folds';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { useLivekitSupport } from '../../hooks/useLivekitSupport';
 import { webRTCSupported } from '../../utils/rtc';
@@ -14,6 +13,7 @@ import { getMxIdLocalPart } from '../../utils/matrix';
 import { incomingCallText } from '../../plugins/call/incomingCallText';
 import { useHasCustomTitleBar } from '../titlebar/TitleBar';
 import { TITLE_BAR_HEIGHT } from '../titlebar/TitleBar.css';
+import { CrossGlyph, HangUpGlyph, PhoneGlyph, VideoGlyph } from './CallGlyphs';
 import * as css from './IncomingCall.css';
 
 export type IncomingCallInfo = {
@@ -37,8 +37,8 @@ type IncomingCallProps = {
 };
 
 /**
- * Incoming call banner at the top of the window: a green bubble with a ringing phone drops in and
- * opens into the card. Answer and reject (in a group: ignore) sit on the right. Not modal: the rest of
+ * Incoming call banner at the top of the window: a green tile with a ringing phone drops in and
+ * the card opens around it. Answer and reject (in a group: ignore) sit on the right. Not modal: the rest of
  * the app stays usable while it rings.
  */
 export function IncomingCall({ dm, info, leaving, onIgnore, onAnswer, onReject }: IncomingCallProps) {
@@ -93,11 +93,11 @@ export function IncomingCall({ dm, info, leaving, onIgnore, onAnswer, onReject }
       aria-label={`${text.title}: ${text.subtitle}`}
     >
       <div className={css.Card}>
-        <span className={css.PhoneTrack} aria-hidden>
-          <span className={css.Phone}>
+        <span className={css.TileTrack} aria-hidden>
+          <span className={css.Tile}>
             <span className={css.Ripple} />
-            <span className={css.PhoneGlyph}>
-              <Icon size="200" src={text.video ? Icons.VideoCamera : Icons.Phone} filled />
+            <span className={`${css.TileGlyph} ${css.Draw}`}>
+              {text.video ? <VideoGlyph /> : <PhoneGlyph />}
             </span>
           </span>
         </span>
@@ -120,9 +120,7 @@ export function IncomingCall({ dm, info, leaving, onIgnore, onAnswer, onReject }
             disabled={leaving}
             onClick={() => (dm ? onReject(room, info.refEventId) : onIgnore())}
           >
-            <span className={dm ? css.HangUp : undefined}>
-              <Icon size="200" src={dm ? Icons.Phone : Icons.Cross} filled />
-            </span>
+            {dm ? <HangUpGlyph /> : <CrossGlyph size={18} />}
           </button>
           <button
             type="button"
@@ -132,7 +130,7 @@ export function IncomingCall({ dm, info, leaving, onIgnore, onAnswer, onReject }
             disabled={!canAnswer || leaving}
             onClick={() => onAnswer(room, text.video)}
           >
-            <Icon size="200" src={text.video ? Icons.VideoCamera : Icons.Phone} filled />
+            {text.video ? <VideoGlyph /> : <PhoneGlyph />}
           </button>
         </div>
       </div>
