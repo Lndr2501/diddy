@@ -237,9 +237,10 @@ export const Segment = style({
     '&:hover:not([aria-checked="true"]):not(:disabled)': {
       backgroundColor: color.Background.ContainerHover,
     },
+    // the chosen option is a raised neutral segment; the accent stays for switches that are on
     '&[aria-checked="true"]': {
-      backgroundColor: color.Primary.Main,
-      color: color.Primary.OnMain,
+      backgroundColor: `color-mix(in srgb, ${color.Background.OnContainer} 16%, transparent)`,
+      color: color.Background.OnContainer,
       boxShadow: '0 1px 2px rgba(0, 0, 0, 0.2)',
     },
     '&:disabled': {

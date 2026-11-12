@@ -148,8 +148,8 @@ export const Tab = style({
   selectors: {
     '&:hover': { background: color.SurfaceVariant.ContainerHover },
     '&[aria-selected=true]': {
-      background: color.Primary.Main,
-      color: color.Primary.OnMain,
+      background: `color-mix(in srgb, ${color.SurfaceVariant.OnContainer} 14%, transparent)`,
+      color: color.SurfaceVariant.OnContainer,
       fontWeight: 600,
       boxShadow: '0 1px 2px rgba(0, 0, 0, 0.2)',
     },
@@ -215,8 +215,8 @@ export const IconTile = style({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  background: color.Primary.Container,
-  color: color.Primary.OnContainer,
+  background: `color-mix(in srgb, ${color.SurfaceVariant.OnContainer} 8%, transparent)`,
+  color: color.SurfaceVariant.OnContainer,
 });
 
 export const SectionBody = style({
@@ -436,8 +436,8 @@ export const SegmentButton = style({
   selectors: {
     '&:hover:not([aria-pressed=true])': { background: color.Background.ContainerHover },
     '&[aria-pressed=true]': {
-      background: color.Primary.Main,
-      color: color.Primary.OnMain,
+      background: `color-mix(in srgb, ${color.SurfaceVariant.OnContainer} 14%, transparent)`,
+      color: color.SurfaceVariant.OnContainer,
       fontWeight: 600,
       boxShadow: '0 1px 2px rgba(0, 0, 0, 0.2)',
     },

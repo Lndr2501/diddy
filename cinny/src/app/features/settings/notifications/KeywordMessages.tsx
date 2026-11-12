@@ -171,7 +171,7 @@ export function KeywordMessagesNotifications() {
           <Text size="T200" priority="300">
             Badge
           </Text>
-          <Badge radii="300" variant="Success" fill="Solid">
+          <Badge radii="300" variant="Primary" fill="Solid">
             <Text size="L400">1</Text>
           </Badge>
         </Box>

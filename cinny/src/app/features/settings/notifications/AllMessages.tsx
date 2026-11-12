@@ -85,7 +85,7 @@ export function AllMessagesNotifications() {
           <Text size="T200" priority="300">
             Badge
           </Text>
-          <Badge radii="300" variant="Secondary" fill="Solid">
+          <Badge radii="300" variant="Secondary" fill="Soft">
             <Text size="L400">1</Text>
           </Badge>
         </Box>
