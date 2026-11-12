@@ -2,6 +2,10 @@
 // Foundation only, runs on macOS and Linux. Run from the ios folder:
 //   swiftc Diddy/Call/CallStageLayout.swift Tools/stagelayout_check/main.swift -o /tmp/stagelayout_check && /tmp/stagelayout_check
 import Foundation
+// On macOS, CGSize's Equatable conformance and .zero come from CoreGraphics, not Foundation.
+#if canImport(CoreGraphics)
+import CoreGraphics
+#endif
 
 var failures = 0
 func check(_ condition: Bool, _ message: String, line: Int = #line) {

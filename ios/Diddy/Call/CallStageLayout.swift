@@ -1,4 +1,8 @@
 import Foundation
+// On macOS, CGSize's Equatable conformance and .zero come from CoreGraphics, not Foundation.
+#if canImport(CoreGraphics)
+import CoreGraphics
+#endif
 
 // The geometry of the call stage (CallStageView.swift), Foundation only so it is checked on any
 // machine: Tools/stagelayout_check.
