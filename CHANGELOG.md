@@ -1,6 +1,6 @@
 # Changelog
 
-## Unveröffentlicht
+## 1.6.1 (2026-11-12)
 
 - **iOS: fast alles vom Desktop:** Die iOS-App kann jetzt den Großteil dessen, was Desktop-Diddy kann. Alles ist gebaut und kompiliert, aber noch nicht auf einem iPhone ausprobiert; die Liste steht in `ios/README.md`. Neu sind unter anderem:
   - **Nachrichten:** Spoiler, Code, Zitate, Listen, Link-Vorschauen, Video im Chat, Standort, eigene Emoji, Sticker; Sprachnachrichten von Linux (Ogg/Opus) spielen ab.
