@@ -2,6 +2,7 @@
 
 ## 1.6.2 (unveröffentlicht)
 
+- **Benachrichtigungen im Fenster (macOS, Linux):** Ist Diddy im Vordergrund, kommen neue Nachrichten und Einladungen jetzt als Karte oben in der Mitte statt als System-Benachrichtigung: Raumbild, Raumname und eine einzeilige Vorschau („Name: Text“, in DMs nur der Text; Spoiler, Bilder und Sprachnachrichten nur als Wort). Erwähnungen haben einen Ring in der Akzentfarbe. Mehrere stapeln sich, die neueste vorn, die älteren lugen darunter hervor und fächern sich beim Überfahren auf. Pro Raum gibt es eine Karte, die bei neuen Nachrichten aktualisiert wird. Nach 5 s verschwinden sie, beim Überfahren nicht. Klick öffnet den Raum; wegwischen nach oben, das ✕ oder Esc schließt. Ist Diddy im Hintergrund, bleibt es bei der System-Benachrichtigung. Es gilt der bestehende Schalter „Benachrichtigungen“ und „Bitte nicht stören“.
 - **Sprachnachrichten neu gestaltet (macOS, Linux):** Die Kapsel ist ruhiger, mit dünneren Balken. Beim Abspielen teilt sich das Play-Dreieck in die Pause-Balken, und weiche Lichter in der Akzentfarbe kreisen innen am Rand. Bei Pause laufen sie aus, bei „Bewegung reduzieren“ bleiben sie weg. Gespult wird per Ziehen über die Wellenform oder, wenn sie den Fokus hat, mit den Pfeiltasten (5 s), Bild auf/ab (10 %), Pos1 und Ende. iOS ist unverändert.
 
 ## 1.6.1 (2026-11-12)

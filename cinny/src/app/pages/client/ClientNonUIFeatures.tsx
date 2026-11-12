@@ -1,4 +1,4 @@
-import { useAtomValue } from 'jotai';
+import { useAtomValue, useSetAtom } from 'jotai';
 import React, { ReactNode, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { RoomEvent, RoomEventHandlerMap } from 'matrix-js-sdk';
@@ -39,6 +39,12 @@ import { MatrixIntro } from '../../features/intro/MatrixIntro';
 import { CallFrameMenu } from '../../components/CallFrameMenu';
 import { CallUserMenu } from '../../components/CallUserMenu';
 import { UpdateNotice } from '../../components/update-notice/UpdateNotice';
+import { ToastHost } from '../../components/toast/ToastHost';
+import { pushToastAtom } from '../../state/toasts';
+import { messagePreview, messageToastBody } from '../../plugins/toastLogic';
+
+/** The user is looking at Diddy: notify inside the window instead of through the system. */
+const windowInFocus = (): boolean => document.hasFocus() && document.visibilityState === 'visible';
 
 /**
  * Notification sounds go through Web Audio instead of an <audio> element. A played <audio> element
@@ -163,6 +169,7 @@ function InviteNotifications() {
   const mx = useMatrixClient();
 
   const navigate = useNavigate();
+  const pushToast = useSetAtom(pushToastAtom);
   const [showNotifications] = useSetting(settingsAtom, 'showNotifications');
   const [notificationSound] = useSetting(settingsAtom, 'isNotificationSounds');
 
@@ -192,15 +199,32 @@ function InviteNotifications() {
   useEffect(() => {
     if (invites.length > perviousInviteLen && mx.getSyncState() === 'SYNCING') {
       if (isDoNotDisturb(mx)) return;
-      if (showNotifications && notificationPermission('granted')) {
-        notify(invites.length - perviousInviteLen);
+      const count = invites.length - perviousInviteLen;
+      if (showNotifications && windowInFocus()) {
+        pushToast({
+          key: 'invites',
+          title: 'Invitation',
+          body: count === 1 ? 'You have a new invitation.' : `You have ${count} new invitations.`,
+          stamp: Date.now(),
+        });
+      } else if (showNotifications && notificationPermission('granted')) {
+        notify(count);
       }
 
       if (notificationSound) {
         playSound();
       }
     }
-  }, [mx, invites, perviousInviteLen, showNotifications, notificationSound, notify, playSound]);
+    }, [
+    mx,
+    invites,
+    perviousInviteLen,
+    showNotifications,
+    notificationSound,
+    notify,
+    playSound,
+    pushToast,
+  ]);
 
   return (
     // eslint-disable-next-line jsx-a11y/media-has-caption
@@ -218,6 +242,7 @@ function MessageNotifications() {
   const [notificationSound] = useSetting(settingsAtom, 'isNotificationSounds');
 
   const navigate = useNavigate();
+  const pushToast = useSetAtom(pushToastAtom);
   const notificationSelected = useInboxNotificationsSelected();
   const selectedRoomId = useSelectedRoom();
 
@@ -294,25 +319,49 @@ function MessageNotifications() {
         return;
       }
 
-      if (showNotifications && notificationPermission('granted')) {
+      const highlight = mx.getPushActionsForEvent(mEvent)?.tweaks?.highlight;
+      if (showNotifications) {
         const avatarMxc =
           room.getAvatarFallbackMember()?.getMxcAvatarUrl() ?? room.getMxcAvatarUrl();
-        notify({
-          roomName: room.name ?? 'Unknown',
-          roomAvatar: avatarMxc
-            ? mxcUrlToHttp(mx, avatarMxc, useAuthentication, 96, 96, 'crop') ?? undefined
-            : undefined,
-          username: getMemberDisplayName(room, sender) ?? getMxIdLocalPart(sender) ?? sender,
-          roomId: room.roomId,
-          eventId,
-        });
+        const roomName = room.name ?? 'Unknown';
+        const roomAvatar = avatarMxc
+          ? mxcUrlToHttp(mx, avatarMxc, useAuthentication, 96, 96, 'crop') ?? undefined
+          : undefined;
+        const username = getMemberDisplayName(room, sender) ?? getMxIdLocalPart(sender) ?? sender;
+        if (windowInFocus()) {
+          // the event may still be encrypted; without a readable body the toast names the sender
+          mx.decryptEventIfNeeded(mEvent)
+            .catch(() => undefined)
+            .then(() => {
+              const preview = mEvent.isDecryptionFailure()
+                ? ''
+                : messagePreview(mEvent.getType(), mEvent.getContent());
+              pushToast({
+                key: room.roomId,
+                roomId: room.roomId,
+                title: roomName,
+                body: messageToastBody(roomName, username, preview),
+                avatarUrl: roomAvatar,
+                highlight: !!highlight,
+                stamp: Date.now(),
+              });
+            });
+        } else if (notificationPermission('granted')) {
+          notify({
+            roomName,
+            roomAvatar,
+            username,
+            roomId: room.roomId,
+            eventId,
+          });
+        }
       }
 
       if (notificationSound) {
         // a message that mentions you has its own sound instead of the plain message sound
         playSound(
           pickMessageSound(
-            mx.getPushActionsForEvent(mEvent)?.tweaks?.highlight,
+            highlight,
             cachedUnreadInfo?.highlight,
             unreadInfo.highlight
           )
@@ -330,6 +379,7 @@ function MessageNotifications() {
     showNotifications,
     playSound,
     notify,
+    pushToast,
     selectedRoomId,
     useAuthentication,
   ]);
@@ -394,6 +444,7 @@ export function ClientNonUIFeatures({ children }: ClientNonUIFeaturesProps) {
       <CallFrameMenu />
       <CallUserMenu />
       <UpdateNotice />
+      <ToastHost />
       {children}
     </>
   );
