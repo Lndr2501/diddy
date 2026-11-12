@@ -17,7 +17,11 @@ module.exports = defineConfig({
   use: {
     baseURL: 'http://127.0.0.1:4175',
     ...(chrome
-      ? { ...devices['Desktop Chrome'], launchOptions: { executablePath: chrome } }
+      ? {
+          ...devices['Desktop Chrome'],
+          // containers often have a tiny /dev/shm; Chrome then crashes while taking the screenshot
+          launchOptions: { executablePath: chrome, args: ['--disable-dev-shm-usage'] },
+        }
       : devices['Desktop Safari']),
     headless: true,
   },

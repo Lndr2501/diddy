@@ -41,9 +41,15 @@ const openGeneral = async (page) => {
   await page.getByRole('button', { name: 'Northwind Studio' }).first().click();
   await page.getByText('general', { exact: true }).first().click();
   await page.getByText('See you there').first().waitFor({ timeout: 30000 });
-  // the timeline opens at the room start; jump to the newest messages
+  // the timeline opens at the room start; jump to the newest messages (the button can need a few
+  // seconds to appear and sometimes a second click)
   const jump = page.getByRole('button', { name: 'Jump to Latest' });
-  if (await jump.isVisible({ timeout: 3000 }).catch(() => false)) await jump.click();
+  for (let i = 0; i < 3; i += 1) {
+    if (!(await jump.isVisible({ timeout: 6000 }).catch(() => false))) break;
+    await jump.click().catch(() => undefined);
+    await page.waitForTimeout(1500);
+  }
+  await page.getByText('See you there').last().scrollIntoViewIfNeeded().catch(() => undefined);
   // let the image and avatars load
   await page.waitForTimeout(2500);
 };

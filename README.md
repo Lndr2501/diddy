@@ -72,6 +72,9 @@ Online, Idle, Do Not Disturb and Invisible. Do Not Disturb silences message soun
 More details:
 
 - **Chat:** voice messages that show up as voice messages in Element, a right-click menu with *Copy Text*, *Join All Rooms* for spaces, and a calm member list split by online and offline.
+- **Notifications in the window:** while Diddy is in front, new messages and invitations slide in as cards at the top (click opens the room, swipe up dismisses), and incoming calls arrive as a banner with answer and decline. In the background the system notification is used.
+- **Calm interface:** an own icon set, neutral highlights with the accent kept for mentions and sending, room updates folded into one line ("4 joined · 4 invited"), a one-line composer and voice messages with a scrubbable waveform.
+- **Settings by topic:** *Appearance*, *Chat*, *Notifications* and *Calls & Audio*, with a search that finds every single setting.
 - **Music stays loud:** with *Voice processing* off, Diddy records the microphone directly through Core Audio, so macOS no longer ducks other apps when you join a call.
 - **Call alerts:** on iOS, optional push alerts through [ntfy](https://ntfy.sh) ("Name is calling you") when someone calls and the app is closed.
 - **Connection profiles:** if a homeserver is down, open another one in its own window with a separate login and data store. Your existing account and keys stay untouched.

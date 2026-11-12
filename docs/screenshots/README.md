@@ -31,4 +31,16 @@ python3 tests/screenshots/montage.py    # themes.png, shrinks the single images 
 - Linux: set `DIDDY_SHOTS_CHROME=/path/to/chrome` to render with an installed Chrome instead.
 - `SHOTS_ONLY=diddy,settings` renders only some images; `DIDDY_SHOTS_OUT=<dir>` changes the output folder.
 
-On Linux, Synapse is available with `nix build nixpkgs#matrix-synapse`.
+On Linux, Synapse is available with `nix build nixpkgs#matrix-synapse`, or without Nix in a venv:
+`python3 -m venv venv && venv/bin/pip install matrix-synapse`, then
+`venv/bin/python -m synapse.app.homeserver --server-name localhost --config-path homeserver.yaml --generate-config --report-stats=no`
+and add `enable_registration`, `enable_registration_without_verification`, generous `rc_*` limits and
+`app_service_config_files` (see above) to `homeserver.yaml`. Keep its data outside `/tmp` if `/tmp` is a
+small tmpfs.
+
+Chrome on Linux: use the browser Playwright installs (`npx playwright install chromium-headless-shell`,
+the version must match the installed Playwright) and point `DIDDY_SHOTS_CHROME` at its
+`chrome-headless-shell`. The config starts it with `--disable-dev-shm-usage`, because a small
+`/dev/shm` (as in containers) makes Chrome crash while taking the screenshot. Without an emoji font
+the emoji in the images are empty boxes: put `NotoColorEmoji.ttf` (googlefonts/noto-emoji, tag
+`v2.047`) into `~/.local/share/fonts` and run `fc-cache -f`.
