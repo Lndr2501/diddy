@@ -96,6 +96,11 @@ struct IncomingCallView: View {
     @ObservedObject var manager: CallManager
     @State private var pulsing = false
     @State private var answering = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
+
+    /// iPhone in landscape: smaller avatar and less room under the buttons, so nothing is cut.
+    private var compact: Bool { verticalSizeClass == .compact }
 
     var body: some View {
         ZStack {
@@ -107,15 +112,17 @@ struct IncomingCallView: View {
                 ZStack {
                     Circle()
                         .stroke(Theme.online.opacity(pulsing ? 0 : 0.7), lineWidth: 3)
-                        .frame(width: 132, height: 132)
+                        .frame(width: compact ? 88 : 132, height: compact ? 88 : 132)
                         .scaleEffect(pulsing ? 1.35 : 1)
-                    AvatarView(url: call.avatarUrl, name: call.name, size: 120, account: call.account)
+                    AvatarView(url: call.avatarUrl, name: call.name, size: compact ? 80 : 120, account: call.account)
                 }
+                .accessibilityHidden(true)
                 .onAppear {
+                    guard !reduceMotion else { return }
                     withAnimation(.easeOut(duration: 1.3).repeatForever(autoreverses: false)) { pulsing = true }
                 }
                 Text(call.name)
-                    .font(.largeTitle.bold())
+                    .font(compact ? .title.bold() : .largeTitle.bold())
                     .foregroundStyle(Theme.text)
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
@@ -132,10 +139,10 @@ struct IncomingCallView: View {
                         manager.answerIncoming()
                     }
                 }
-                .padding(.bottom, 48)
+                .padding(.bottom, compact ? 0 : 48)
                 .disabled(answering)
             }
-            .padding(24)
+            .padding(compact ? 12 : 24)
         }
         .accessibilityAddTraits(.isModal)
     }
@@ -152,5 +159,8 @@ struct IncomingCallView: View {
             }
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title)
+        .accessibilityAddTraits(.isButton)
     }
 }

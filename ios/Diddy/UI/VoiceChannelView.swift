@@ -206,7 +206,7 @@ private struct CallStatusHeader: View {
     @ObservedObject var session: CallSession
     @ObservedObject var extras: CallLiveExtras
 
-    private var reconnecting: Bool { session.state.hasPrefix("Reconnecting") }
+    private var reconnecting: Bool { session.isReconnecting }
 
     /// One lit bar: the round trip is 250 ms or more.
     private var weakConnection: Bool {
@@ -266,6 +266,17 @@ private struct CallStatusHeader: View {
     }
 }
 
+extension CallSession {
+    /// LiveKit lost the server and is trying again (`state` is "Reconnecting…" then).
+    fileprivate var isReconnecting: Bool { state.hasPrefix("Reconnecting") }
+
+    /// The status colour of the call bars: orange while reconnecting, green when connected.
+    fileprivate var statusColor: Color {
+        if isReconnecting { return Color.orange }
+        return connected ? Theme.online : Theme.muted
+    }
+}
+
 /// Discord's green "Voice Connected" panel above the user panel. Tapping it opens the call.
 struct VoiceStatusBar: View {
     @ObservedObject var session: CallSession
@@ -277,7 +288,8 @@ struct VoiceStatusBar: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Label(session.state, systemImage: "antenna.radiowaves.left.and.right")
                         .font(.footnote.weight(.bold))
-                        .foregroundStyle(session.connected ? Theme.online : Theme.muted)
+                        .foregroundStyle(session.statusColor)
+                        .lineLimit(1)
                     Text("\(session.roomName) · \(session.members.count) in voice")
                         .font(.caption).foregroundStyle(Theme.muted).lineLimit(1)
                 }
@@ -285,7 +297,10 @@ struct VoiceStatusBar: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Open call")
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(session.roomName), \(session.state), \(session.members.count) in voice")
+            .accessibilityHint("Opens the call")
+            .accessibilityAddTraits(.isButton)
             barButton(session.microphoneOn ? "mic.fill" : "mic.slash.fill", tint: session.microphoneOn ? Theme.muted : Theme.danger, label: session.microphoneOn ? "Mute" : "Unmute") {
                 Task { await session.toggleMicrophone() }
             }
@@ -305,7 +320,7 @@ struct VoiceStatusBar: View {
 
     private func barButton(_ icon: String, tint: Color, label: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Image(systemName: icon).foregroundStyle(tint).frame(width: 40, height: 44)
+            Image(systemName: icon).foregroundStyle(tint).frame(width: 44, height: 44).contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)
@@ -345,9 +360,14 @@ struct CallBanner: View {
                 .foregroundStyle(.white)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 7)
+                .frame(minHeight: 44)
                 .background(Theme.online)
             }
             .buttonStyle(.plain)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(participants.count == 1 ? "\(account.name(of: participants[0])) is in a call" : "\(participants.count) people are in a call")
+            .accessibilityHint("Joins the call")
+            .accessibilityAddTraits(.isButton)
         }
     }
 }
@@ -359,16 +379,27 @@ private struct OngoingCallBanner: View {
     var body: some View {
         Button { calls.showCallScreen = true } label: {
             HStack(spacing: 8) {
-                Image(systemName: session.microphoneOn ? "waveform" : "mic.slash.fill")
-                Text("\(session.roomName) · \(session.members.count) in voice").font(.footnote.weight(.semibold)).lineLimit(1)
+                if session.isReconnecting {
+                    ProgressView().tint(.white).scaleEffect(0.7).frame(width: 16, height: 16)
+                } else {
+                    Image(systemName: session.microphoneOn ? "waveform" : "mic.slash.fill")
+                }
+                Text(session.isReconnecting ? "\(session.roomName) · Reconnecting…" : "\(session.roomName) · \(session.members.count) in voice")
+                    .font(.footnote.weight(.semibold))
+                    .lineLimit(1)
                 Spacer()
                 Text("Return").font(.footnote.bold())
             }
             .foregroundStyle(.white)
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
-            .background(Theme.online)
+            .frame(minHeight: 44)
+            .background(session.isReconnecting ? Color.orange : Theme.online)
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(session.microphoneOn ? "In a call in \(session.roomName)" : "In a call in \(session.roomName), muted")
+        .accessibilityHint("Returns to the call")
+        .accessibilityAddTraits(.isButton)
     }
 }
