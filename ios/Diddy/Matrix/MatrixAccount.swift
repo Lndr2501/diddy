@@ -126,6 +126,8 @@ final class MatrixAccount: ObservableObject, Identifiable {
     var diddyOwnProfileRaw: [String: Any]?
     var diddyLoading = false
     var diddyLoadedAt: Date?
+    /// Last summary written to the diagnostics log by `loadDiddyProfiles`.
+    var diddyLastSummary = ""
     /// Decrypting readers of the encrypted options rooms, by room id (see DiddyOptionsFeed.swift).
     var diddyFeeds: [String: DiddyOptionsFeed] = [:]
 

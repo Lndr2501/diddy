@@ -341,10 +341,11 @@ extension MatrixAccount {
         // Profiles: the first room (in desktop's order) with a valid profile of that user wins.
         var profiles: [String: DiddyProfile] = [:]
         var ownRaw: [String: Any]?
+        var rejected: Set<String> = []
         for room in loaded {
             for (userId, _) in room.data.byKey[DiddyEvents.profile] ?? [:] where profiles[userId] == nil {
                 guard let newest = room.data.newest(type: DiddyEvents.profile, key: userId, from: userId),
-                      let profile = DiddyProfile(newest.content) else { continue }
+                      let profile = DiddyProfile(newest.content) else { rejected.insert(userId); continue }
                 profiles[userId] = profile
                 if userId == self.userId { ownRaw = newest.content }
             }
@@ -402,6 +403,14 @@ extension MatrixAccount {
 
         if diddyProfiles != profiles { diddyProfiles = profiles }
         if diddyBadges != badges { diddyBadges = badges }
+        // One line when the picture changes, so a missing profile can be traced in Diagnostics.
+        rejected.subtract(profiles.keys)
+        let summary = "diddy: options rooms=\(optionsRooms.count) read=\(loaded.count) encrypted=\(loaded.filter(\.encrypted).count) "
+            + "profiles=\(profiles.count) unreadable=\(rejected.sorted().joined(separator: ","))"
+        if summary != diddyLastSummary {
+            diddyLastSummary = summary
+            DiagLog.shared.write(summary)
+        }
         // Every badge you were given, for the editor's "shown badges" (built-in ones first).
         let ownBadges = (owned[self.userId] ?? []).compactMap { definitions[$0] }.sorted { a, b in
             if a.id.hasPrefix("g.") != b.id.hasPrefix("g.") { return a.id.hasPrefix("g.") }
