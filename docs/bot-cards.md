@@ -51,9 +51,9 @@ Zeitleiste mit Zeiten darunter, eine Knopfreihe und „Up next“. Alle Felder s
 | `room` | Raumname für die Kopfzeile (höchstens 80 Zeichen) |
 | `requestedBy` | Anzeigename, wer den Titel gewünscht hat (höchstens 80 Zeichen); für Autoplay `"Autoplay"` |
 | `upNext` | höchstens 3 Einträge `{ "title": "…", "artist": "…"? }`, nummeriert als „Titel · Künstler“ |
-| `controls` | `{ "prev"?, "toggle"?, "skip"?, "volume"? }`, jeder Wert ein Befehl |
+| `controls` | `{ "prev"?, "toggle"?, "skip"?, "volume"?, "dashboard"? }`, jeder Wert ein Befehl |
 | `volumeMax` | obere Grenze des Lautstärke-Reglers, Standard `100` |
-| `more` | höchstens 10 Knöpfe `{ "label", "send" }` wie bei `actions`, im Menü „⋯“ (Loop, Queue, Stop, ±10 s …) |
+| `more` | höchstens 16 Knöpfe `{ "label", "send" }` wie bei `actions`, im Menü „⋯“ (alle übrigen Funktionen des Bots: Loop, Autoplay, Queue, Favoriten, Stop, ±10 s …) |
 
 - **Mit `controls` zeichnet Diddy den Player und ignoriert `actions`.** Ältere Diddy-Versionen kennen `controls` nicht
   und nehmen weiter `actions`, darum schickt ein Bot beides. Ohne `controls` bleibt die Karte wie bisher.
@@ -61,6 +61,9 @@ Zeitleiste mit Zeiten darunter, eine Knopfreihe und „Up next“. Alle Felder s
   (Pause bzw. Play), nicht nach dem Befehl.
 - `volume` ist ein Befehlsanfang: Der Knopf zeigt `<volume-Feld der Karte>%`, ein Klick öffnet einen Regler von 0 bis
   `volumeMax`, beim Loslassen sendet Diddy `<volume> N` (z. B. `!volume 120`).
+- `dashboard` ist ein Knopf „Dashboard“ in der Knopfreihe. Diddy sendet nur den Befehl; der Bot antwortet mit einem
+  persönlichen Link (beim Musikbot per Direktnachricht).
+- Lautstärke-Regler und „⋯“ öffnen sich als eigene Zeile unter den Knöpfen in der Karte.
 - Befehle in `controls` sind `!befehl` oder `!befehl argument` (Präfix `!` oder `/`, höchstens 30 bzw. 20 Zeichen), damit
   auch `<volume> N` noch als Knopf-Befehl gilt und im Chat ausgeblendet wird. Anderes verwirft Diddy.
 - Die Zeitleiste (`seek`) funktioniert im Player genauso.
@@ -70,7 +73,7 @@ Zeitleiste mit Zeiten darunter, eine Knopfreihe und „Up next“. Alle Felder s
   "v": 1, "kind": "track", "state": "playing", "title": "Neon Highway", "artist": "The Midnight Drivers",
   "duration": 214, "position": 63, "startedAt": 1763000000000, "seek": "!seek", "volume": 70,
   "room": "Lounge", "requestedBy": "Luis", "volumeMax": 150,
-  "controls": { "prev": "!previous", "toggle": "!pause", "skip": "!skip", "volume": "!volume" },
+  "controls": { "prev": "!previous", "toggle": "!pause", "skip": "!skip", "volume": "!volume", "dashboard": "!dashboard" },
   "more": [{ "label": "🔁 Loop", "send": "!loop" }, { "label": "⏹ Stop", "send": "!stop" }],
   "upNext": [{ "title": "Paper Planets", "artist": "Kim & the Comets" }],
   "actions": [{ "label": "⏸ Pause", "send": "!pause" }, { "label": "⏭ Weiter", "send": "!skip" }]
