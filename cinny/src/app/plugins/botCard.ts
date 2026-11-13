@@ -19,6 +19,19 @@ export type HelpGroup = { title: string; items: HelpItem[] };
 export type ListItem = { title: string; subtitle?: string; duration?: number };
 export type ChartItem = { label: string; value: number; sub?: string };
 export type Chart = { title: string; unit?: string; items: ChartItem[] };
+export type UpNextItem = { title: string; artist?: string };
+/**
+ * Player buttons of a track card. When present, Diddy draws the player layout and ignores
+ * `actions` (older clients keep using `actions`, so a bot sends both).
+ */
+export type PlayerControls = {
+  prev?: string;
+  /** "!pause" while playing, "!resume" while paused */
+  toggle?: string;
+  skip?: string;
+  /** command prefix: the volume slider sends `<volume> N` */
+  volume?: string;
+};
 
 export type BotCard =
   | {
@@ -41,6 +54,16 @@ export type BotCard =
       /** current volume of the bot (shown next to the times) */
       volume?: number;
       actions: CardAction[];
+      /** room name for the "Now playing in" header */
+      room?: string;
+      /** display name of whoever asked for the track ("Autoplay" for autoplay picks) */
+      requestedBy?: string;
+      upNext?: UpNextItem[];
+      controls?: PlayerControls;
+      /** upper end of the volume slider (default 100) */
+      volumeMax?: number;
+      /** extra commands in the "⋯" menu of the player */
+      more?: CardAction[];
     }
   | { kind: 'queue'; now?: QueueItem; items: QueueItem[]; total: number; actions: CardAction[] }
   | { kind: 'help'; groups: HelpGroup[]; note?: string }
@@ -104,6 +127,33 @@ const actions = (v: unknown): CardAction[] => {
   return out;
 };
 
+// A player button's command. It must still look like a card action after Diddy appends one
+// argument (the volume), so `isCardActionMessage` hides it in the chat.
+const COMMAND = /^[!/][^\s]{1,30}( [^\s]{1,20})?$/;
+const command = (v: unknown): string | undefined =>
+  typeof v === 'string' && v.length <= 60 && COMMAND.test(v) ? v : undefined;
+
+const controls = (v: unknown): PlayerControls | undefined => {
+  if (!isObject(v)) return undefined;
+  const out: PlayerControls = {};
+  (['prev', 'toggle', 'skip', 'volume'] as const).forEach((k) => {
+    const c = command(v[k]);
+    if (c) out[k] = c;
+  });
+  return out;
+};
+
+const upNext = (v: unknown): UpNextItem[] | undefined => {
+  if (!Array.isArray(v)) return undefined;
+  const out: UpNextItem[] = [];
+  v.slice(0, 20).forEach((i) => {
+    if (!isObject(i) || out.length >= 3) return;
+    const title = text(i.title, 160);
+    if (title) out.push({ title, artist: text(i.artist, 120) });
+  });
+  return out;
+};
+
 const queueItem = (v: unknown): QueueItem | undefined => {
   if (!isObject(v)) return undefined;
   const title = text(v.title, 160);
@@ -139,6 +189,12 @@ export const parseBotCard = (content: unknown): BotCard | undefined => {
         typeof raw.seek === 'string' && /^[!/][^\s]{1,30}$/.test(raw.seek) ? raw.seek : undefined,
       volume: num(raw.volume, 1000),
       actions: actions(raw.actions),
+      room: text(raw.room, 80),
+      requestedBy: text(raw.requestedBy, 80),
+      upNext: upNext(raw.upNext),
+      controls: controls(raw.controls),
+      volumeMax: num(raw.volumeMax, 1000) || undefined,
+      more: Array.isArray(raw.more) ? actions(raw.more) : undefined,
     };
   }
 

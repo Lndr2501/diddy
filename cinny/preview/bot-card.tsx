@@ -63,7 +63,52 @@ const wrap = (card: Record<string, unknown>) => ({
   'dev.diddy.card': { v: 1, ...card },
 });
 const now = Date.now();
+const playerControls = { prev: '!previous', skip: '!skip', volume: '!volume' };
+const playerMore = [
+  { label: '🔁 Loop', send: '!loop' },
+  { label: '📜 Queue', send: '!queue' },
+  { label: '⏹ Stop', send: '!stop' },
+  { label: '⏪ 10 s', send: '!seek -10' },
+  { label: '⏩ 10 s', send: '!seek +10' },
+];
 const samples = [
+  // player layout (controls): the old `actions` are ignored
+  wrap({
+    kind: 'track',
+    state: 'playing',
+    title: 'Neon Highway',
+    artist: 'The Midnight Drivers',
+    duration: 214,
+    position: 63,
+    startedAt: now,
+    seek: '!seek',
+    volume: 70,
+    volumeMax: 150,
+    room: 'Lounge',
+    requestedBy: 'Luis',
+    controls: { ...playerControls, toggle: '!pause' },
+    more: playerMore,
+    upNext: [
+      { title: 'Paper Planets', artist: 'Kim & the Comets' },
+      { title: 'Slow Static', artist: 'Aurora Lane' },
+    ],
+    actions: [{ label: '⏸ Old Pause', send: '!pause' }],
+  }),
+  wrap({
+    kind: 'track',
+    state: 'paused',
+    title: 'A very long title that has to be cut somewhere because it does not fit on two lines of the card',
+    artist: 'Somebody With A Really Long Artist Name',
+    duration: 3725,
+    position: 1800,
+    seek: '!seek',
+    volume: 120,
+    volumeMax: 150,
+    room: 'A room with a long name in the header',
+    requestedBy: 'Autoplay',
+    controls: { ...playerControls, toggle: '!resume' },
+    more: playerMore,
+  }),
   wrap({
     kind: 'track',
     state: 'searching',
