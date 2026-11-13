@@ -51,6 +51,7 @@ import {
   isLivekitTokenRequest,
   JoinTimer,
   TO_DEVICE_RETRY_MS,
+  watchLivekitSignal,
   watchMediaConnected,
 } from './joinTiming';
 import { createThemeSync, ThemeSync } from './callThemeSync';
@@ -258,6 +259,8 @@ export class CallEmbed {
     const installMediaPatches = () => {
       // the call's peer connections: stream diagnostics and the "connection lost" sound
       trackPeerConnections(iframe.contentWindow);
+      // #161: every LiveKit signal attempt (open or failed) in the join timeline
+      watchLivekitSignal(iframe.contentWindow, diag);
       // E2EE worker of the call: logs decryption trouble and sets a missing decrypt flag (#74)
       installE2eeWatch(iframe.contentWindow);
       // received audio stuck near full scale (undecrypted noise) gets a log line (#74)
@@ -388,12 +391,18 @@ export class CallEmbed {
         this.disposables.push(watchMediaConnected(pc, () => timer.mark('media connected')));
       })
     );
+    let giveUp = 0;
     const poll = window.setInterval(() => {
       const tiles = countTiles(this.document);
       if (tiles > 0) timer.mark('first tile shown');
-      if (tiles > 1) timer.mark('another person shown');
+      if (tiles > 1) {
+        timer.mark('another person shown');
+        // Done: without this every join ended with a misleading "gave up" line.
+        window.clearInterval(poll);
+        window.clearTimeout(giveUp);
+      }
     }, 250);
-    const giveUp = window.setTimeout(() => {
+    giveUp = window.setTimeout(() => {
       window.clearInterval(poll);
       timer.mark('gave up waiting for tiles (60 s)');
     }, 60000);
