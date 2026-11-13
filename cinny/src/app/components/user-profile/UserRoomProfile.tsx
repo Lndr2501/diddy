@@ -6,6 +6,8 @@ import { safeColor } from '../../plugins/diddy/sanitize';
 import { shownCardLayout } from '../../plugins/diddy/profilePreview';
 import { ProfileCardActions, ProfileCardView } from './ProfileCardView';
 import { useDiddyProfile } from '../../plugins/diddy/profiles';
+import { withBotProfile } from '../../plugins/botProfile';
+import { useRoomBots } from '../../hooks/useRoomBots';
 import {
   addRoomIdToMDirect,
   getMxIdLocalPart,
@@ -82,7 +84,9 @@ export function UserRoomProfile({ userId, large }: UserRoomProfileProps) {
   // the same state the DM list, room header and member list show (#73)
   const shownPresence = usePresenceState(userId);
 
-  const profile = useDiddyProfile(mx, userId);
+  // a bot (dev.diddy.bot) fills in what its Diddy profile leaves empty
+  const bot = useRoomBots(room).get(userId);
+  const profile = withBotProfile(useDiddyProfile(mx, userId), bot);
   const accent = safeColor(profile?.card?.accent);
   // the big window has its own layout (expanded unless the owner chose tabs for it)
   const layout = shownCardLayout(profile, !!large);
@@ -180,7 +184,7 @@ export function UserRoomProfile({ userId, large }: UserRoomProfileProps) {
   const actions = notMe ? (
     <ProfileCardActions
       accent={accent}
-      canCall={canCall}
+      canCall={canCall && !bot}
       calling={calling}
       callTitle={callEmbed ? 'Leaves your current call' : 'Call privately'}
       onCall={handleCall}
@@ -197,6 +201,7 @@ export function UserRoomProfile({ userId, large }: UserRoomProfileProps) {
       profile={profile}
       layout={layout}
       large={large}
+      bot={!!bot}
       onAvatarClick={large ? undefined : () => openLargeProfile(room.roomId, userId)}
       actions={actions}
       sharedRooms={notMe ? <MutualRoomsChip userId={userId} /> : undefined}

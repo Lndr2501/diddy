@@ -29,7 +29,7 @@ import { stopPropagation } from '../../utils/keyboard';
 import { copyToClipboard } from '../../utils/dom';
 import { useTimeoutToggle } from '../../hooks/useTimeoutToggle';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
-import { CardStyle, DiddyProfile } from '../../plugins/diddy/types';
+import { BadgeDef, CardStyle, DiddyProfile } from '../../plugins/diddy/types';
 import type { BigProfileAvatar, BigProfileBanner } from '../../plugins/diddy/profileExtras';
 import { useMxcUrl } from '../../plugins/diddy/media';
 import { useShownBadges } from '../../plugins/diddy/profiles';
@@ -224,12 +224,22 @@ export function UserIdChip({ userId }: { userId: string }) {
   );
 }
 
-function NameBadges({ userId, size }: { userId: string; size: number }) {
+/** Shown first on the card of a user that announced itself as a bot (dev.diddy.bot). */
+const BOT_BADGE = {
+  id: 'diddy.bot',
+  name: 'Bot',
+  emoji: '🤖',
+  color: '#7A5CFF',
+  description: 'This account is a bot',
+} as BadgeDef;
+
+function NameBadges({ userId, size, bot }: { userId: string; size: number; bot?: boolean }) {
   const mx = useMatrixClient();
   const badges = useShownBadges(mx, userId);
-  if (badges.length === 0) return null;
+  if (badges.length === 0 && !bot) return null;
   return (
     <span className={css.NameBadges}>
+      {bot && <BadgeChip badge={BOT_BADGE} size={size} />}
       {badges.map((b) => (
         <BadgeChip key={b.id} badge={b} size={size} />
       ))}
@@ -244,6 +254,8 @@ type UserHeroNameProps = {
   /** the bio is a card module now; the name block shows it only when asked to */
   showBio?: boolean;
   compact?: boolean;
+  /** a bot (dev.diddy.bot): the Bot badge comes first */
+  bot?: boolean;
 };
 export function UserHeroName({
   displayName,
@@ -251,6 +263,7 @@ export function UserHeroName({
   profile,
   showBio = true,
   compact,
+  bot,
 }: UserHeroNameProps) {
   const username = getMxIdLocalPart(userId);
   const name = displayName ?? username ?? userId;
@@ -268,7 +281,7 @@ export function UserHeroName({
         >
           <DiddyName userId={userId} name={name} />
         </Text>
-        <NameBadges userId={userId} size={compact ? 18 : 20} />
+        <NameBadges userId={userId} size={compact ? 18 : 20} bot={bot} />
       </div>
       <Box alignItems="Center" style={{ minWidth: 0 }}>
         <UserIdChip userId={userId} />
@@ -289,17 +302,27 @@ export function UserHeroName({
 
 type ProfileStatusProps = {
   presence?: ShownPresence;
+  /** a bot: "● Bot" instead of the online state */
+  bot?: boolean;
 };
 /** Online state and the Matrix status message as small pills with icons. */
-export function ProfileStatus({ presence }: ProfileStatusProps) {
+export function ProfileStatus({ presence, bot }: ProfileStatusProps) {
   const state = presence?.state;
   const label = state ? PRESENCE_STATE_LABEL[state] : undefined;
   const message = presence?.message;
-  if (!label && !message) return null;
+  if (!label && !message && !bot) return null;
 
   return (
     <Box gap="100" wrap="Wrap" alignItems="Center">
-      {label && (
+      {bot && (
+        <span className={css.Pill}>
+          <span className={css.BotDot} aria-hidden="true" />
+          <Text as="span" size="T200">
+            Bot
+          </Text>
+        </span>
+      )}
+      {!bot && label && (
         <span className={css.Pill}>
           {state && <StatusIcon state={state} size={10} decorative />}
           <Text as="span" size="T200">
