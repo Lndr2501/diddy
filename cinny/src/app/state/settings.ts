@@ -28,6 +28,8 @@ export interface Settings {
   pageZoom: number;
   hideActivity: boolean;
   showDynamicPageTitle: boolean;
+  /** a collapsible "Direct Messages" section at the bottom of every space's room list */
+  showDirectsInSpaces?: boolean;
 
   isPeopleDrawer: boolean;
   memberSortFilterIndex: number;
@@ -68,6 +70,7 @@ const defaultSettings: Settings = {
   pageZoom: 100,
   hideActivity: false,
   showDynamicPageTitle: false,
+  showDirectsInSpaces: false,
 
   isPeopleDrawer: true,
   memberSortFilterIndex: 0,
