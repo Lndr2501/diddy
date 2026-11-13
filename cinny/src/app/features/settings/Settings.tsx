@@ -33,7 +33,7 @@ import { Plugins } from './plugins';
 import { stopPropagation } from '../../utils/keyboard';
 import { LogoutDialog } from '../../components/LogoutDialog';
 import * as css from './styles.css';
-import { SettingsBreadcrumb } from './inset-list';
+import { SettingsBreadcrumb, SettingsCompact } from './inset-list';
 import {
   SETTINGS_SEARCH_INDEX,
   SettingsSearchEntry,
@@ -366,6 +366,7 @@ export function Settings({ initialPage, requestClose }: SettingsProps) {
         </nav>
       )}
       {showContent && (
+        <SettingsCompact.Provider value={isMobile}>
         <SettingsBreadcrumb.Provider value="Settings">
         <div className={classNames(css.Content, isMobile && css.ContentCompact)}>
           {activePage === SettingsPages.ChatPage && (
@@ -403,6 +404,7 @@ export function Settings({ initialPage, requestClose }: SettingsProps) {
           )}
         </div>
         </SettingsBreadcrumb.Provider>
+        </SettingsCompact.Provider>
       )}
     </div>
   );

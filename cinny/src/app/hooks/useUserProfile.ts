@@ -32,12 +32,15 @@ export const useUserProfile = (userId: string): UserProfile => {
       }));
     };
 
-    mx.getProfileInfo(userId).then((info) =>
-      setProfile({
-        avatarUrl: info.avatar_url,
-        displayName: info.displayname,
-      })
-    );
+    // Unknown users, other servers that are offline, rate limits: keep what the room knows.
+    mx.getProfileInfo(userId)
+      .then((info) =>
+        setProfile({
+          avatarUrl: info.avatar_url,
+          displayName: info.displayname,
+        })
+      )
+      .catch(() => undefined);
 
     user?.on(UserEvent.AvatarUrl, onAvatarChange);
     user?.on(UserEvent.DisplayName, onDisplayNameChange);

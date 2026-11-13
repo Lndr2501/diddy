@@ -47,3 +47,23 @@ for (const [sizeName, size] of Object.entries(SIZES)) {
     expect(problems).toEqual([]);
   });
 }
+
+// Phones: a settings page covers the menu. Every page needs a visible way back to it (a back arrow,
+// not a close cross that looked like it closed all of settings).
+test('settings on a phone: every page leads back to the menu', async ({ browser }) => {
+  test.setTimeout(120000);
+  const page = await openApp(browser, 'testa', { width: 375, height: 667 }, { tauri: false });
+  await dismissOnboarding(page, 4000);
+  await page.getByRole('button', { name: 'User settings' }).click();
+  const nav = page.getByRole('navigation', { name: 'Settings' });
+  await expect(nav).toBeVisible({ timeout: 15000 });
+  for (const name of PAGES) {
+    await dismissOnboarding(page, 300);
+    await nav.getByRole('button', { name, exact: true }).click();
+    await expect(nav, `${name} covers the menu`).toBeHidden();
+    await expect(page.getByRole('button', { name: 'Close settings' })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Back to settings' }).click();
+    await expect(nav, `${name} leads back`).toBeVisible();
+  }
+  expect(page.appErrors()).toEqual([]);
+});

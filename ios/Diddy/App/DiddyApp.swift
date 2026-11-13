@@ -17,6 +17,8 @@ struct DiddyApp: App {
                 .environmentObject(app.calls)
                 .diddyAppearance()
                 .task { await app.restore() }
+                // `diddy://share?…` from the share extension (ShareInbox.swift).
+                .onOpenURL { ShareInbox.shared.handle($0) }
         }
     }
 }

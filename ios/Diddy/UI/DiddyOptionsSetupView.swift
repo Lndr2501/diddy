@@ -6,6 +6,8 @@ import SwiftUI
 @MainActor
 struct DiddyOptionsSetupView: View {
     @ObservedObject var account: MatrixAccount
+    /// Header of the first section; the Data Room page uses it to add another room.
+    var title = "Set Up the Data Room"
     /// Called when a room is ready, so the editor can read the profile again.
     var onReady: () -> Void
 
@@ -42,7 +44,7 @@ struct DiddyOptionsSetupView: View {
             .pickerStyle(.segmented)
             .disabled(working)
         } header: {
-            Text("Set Up the Data Room")
+            Text(title)
         }
         switch mode {
         case .create: createSection

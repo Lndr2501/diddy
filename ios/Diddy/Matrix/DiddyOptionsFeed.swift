@@ -14,9 +14,9 @@ struct DiddyMessageEvent {
 /// Reads the message-mode events of an encrypted options room.
 ///
 /// The server only has ciphertext, so the raw `/messages` call that works for unencrypted rooms is
-/// no use. The SDK decrypts events inside its timeline instead. A timeline filtered to custom
-/// message-like events (plus undecryptable ones, so a missing key is noticed) shows only the Diddy
-/// data; the decrypted JSON of each item gives the content. The timeline stays open, so new
+/// no use. The SDK decrypts events inside its timeline instead. The timeline is unfiltered;
+/// `rebuild` keeps the Diddy events (and notes undecryptable ones, so a missing key is noticed),
+/// and the decrypted JSON of each item gives the content. The timeline stays open, so new
 /// events arrive live and `onChange` fires (debounced) when something Diddy-related changed.
 @MainActor
 final class DiddyOptionsFeed {
@@ -55,7 +55,10 @@ final class DiddyOptionsFeed {
         defer { starting = false }
         let configuration = TimelineConfiguration(
             focus: .live(hideThreadedEvents: false),
-            filter: .eventFilter(filter: .include([.anyCustomMessageLikeEvent, .eventType(.roomEncrypted)])),
+            // Everything, sorted out in `rebuild`: with an include filter for custom and encrypted
+            // events the SDK let nothing through, not even decrypted Diddy events (the log showed
+            // 400 events read and 0 items), so no profile from an encrypted room ever arrived.
+            filter: .all,
             internalIdPrefix: "diddy-options",
             dateDividerMode: .daily,
             trackReadReceipts: .disabled,

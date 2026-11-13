@@ -17,11 +17,14 @@ export const useRoomMembers = (mx: MatrixClient, roomId: string): RoomMember[] =
 
     if (room) {
       setMembers(room.getMembers());
-      room.loadMembersIfNeeded().then(() => {
+      // Also on failure (flaky network): otherwise every later membership change was ignored and
+      // the list stayed frozen until the view was opened again.
+      const loaded = () => {
         loadingMembers = false;
         if (disposed) return;
         updateMemberList();
-      });
+      };
+      room.loadMembersIfNeeded().then(loaded, loaded);
     }
 
     mx.on(RoomMemberEvent.Membership, updateMemberList);

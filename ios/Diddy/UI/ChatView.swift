@@ -69,6 +69,9 @@ private struct ChatContent: View {
     @State private var selection = NSRange(location: 0, length: 0)
     @State private var restoredReplyId: String?
     @State private var pendingFiles: [ComposerPendingFile] = []
+    /// A song shared from Apple Music or Spotify, sent as a music card with the next send.
+    @State private var pendingMusic: MusicCard?
+    @ObservedObject private var inbox = ShareInbox.shared
     @State private var sending = false
     @State private var draftLoaded = false
     @AppStorage(ChatSettings.editorToolbarKey) private var showFormatToolbar = false
@@ -230,7 +233,10 @@ private struct ChatContent: View {
                 }
                 draftLoaded = true
             }
+            takeShare()
         }
+        // Shared from another app while this chat is already open.
+        .onReceive(inbox.$staged) { _ in if draftLoaded { takeShare() } }
         .onDisappear {
             saveDraft()
             controller.setTyping(false)
@@ -530,7 +536,7 @@ private struct ChatContent: View {
     /// Double tap gives a text message a ❤️ (or takes yours away); pictures and files keep their tap.
     private static func doubleTapReacts(_ row: MessageRow) -> Bool {
         guard row.layoutKind == .message, !row.isRedactedMessage, case .text = row.body else { return false }
-        return row.card == nil
+        return row.card == nil && row.music == nil
     }
 
     private func quickLove(_ row: MessageRow) {
@@ -688,6 +694,7 @@ private struct ChatContent: View {
                 .background(Theme.elevated)
             }
             composerSuggestions
+            if let pendingMusic { pendingMusicPreview(pendingMusic) }
             if !pendingFiles.isEmpty { pendingAttachments }
             if showFormatToolbar { formatToolbar }
             if replyTo == nil, restoredReplyId != nil {
@@ -753,7 +760,7 @@ private struct ChatContent: View {
                 .frame(minHeight: ComposerEditor.minHeight)
                 .overlay(alignment: .leading) {
                     if draft.isEmpty {
-                        Text(editing != nil ? "Edit message" : pendingFiles.isEmpty ? "Message \(title)" : "Add a caption…")
+                        Text(editing != nil ? "Edit message" : pendingMusic != nil ? "Add a message…" : pendingFiles.isEmpty ? "Message \(title)" : "Add a caption…")
                             .font(ComposerEditor.font)
                             .foregroundStyle(Theme.faint)
                             .lineLimit(1)
@@ -773,7 +780,7 @@ private struct ChatContent: View {
                 }
                 .accessibilityLabel("Emoji and stickers")
             }
-            if !trimmedDraft.isEmpty || !pendingFiles.isEmpty {
+            if !trimmedDraft.isEmpty || !pendingFiles.isEmpty || pendingMusic != nil {
                 Button(action: send) {
                     Image(systemName: editing == nil ? "arrow.up" : "checkmark")
                         .font(.system(size: 15, weight: .bold))
@@ -797,6 +804,49 @@ private struct ChatContent: View {
         .padding(.horizontal, 10)
         .padding(.top, 6)
         .padding(.bottom, 8)
+    }
+
+    /// A shared song waiting to be sent: the card as it will look, with a cross to drop it.
+    private func pendingMusicPreview(_ music: MusicCard) -> some View {
+        HStack {
+            MusicCardView(card: music, account: account, interactive: false)
+                .frame(maxWidth: 260)
+                .overlay(alignment: .topTrailing) {
+                    Button { pendingMusic = nil } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(.white)
+                            .frame(width: 22, height: 22)
+                            .background(Circle().fill(Color.black.opacity(0.7)))
+                            .frame(width: 34, height: 34)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(sending)
+                    .offset(x: 10, y: -10)
+                    .accessibilityLabel("Remove song")
+                }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 14)
+        .padding(.top, 12)
+    }
+
+    /// Something shared from another app (ShareInbox) for this chat: files and the song go into
+    /// the composer, the text into the draft. Nothing is sent before you tap send.
+    private func takeShare() {
+        guard editing == nil, let share = inbox.take(for: roomId) else { return }
+        if let music = share.music { pendingMusic = music }
+        let text = share.draftText
+        if !text.isEmpty {
+            draft = draft.isEmpty ? text : draft + "\n" + text
+            selection = NSRange(location: (draft as NSString).length, length: 0)
+        }
+        Task {
+            for file in await ShareInbox.composerFiles(of: share) {
+                await addData(file.data, name: file.name, mime: file.mime)
+            }
+        }
     }
 
     /// Files waiting to be sent, as thumbnails above the bar. The text in the bar is the caption,
@@ -892,7 +942,7 @@ private struct ChatContent: View {
     }
 
     private func send() {
-        guard !sending, !trimmedDraft.isEmpty || !pendingFiles.isEmpty else { return }
+        guard !sending, !trimmedDraft.isEmpty || !pendingFiles.isEmpty || pendingMusic != nil else { return }
         let original = draft
         var allTokens = tokens
         for (name, id) in mentions { allTokens["@" + name] = .user(id: id) }
@@ -905,10 +955,18 @@ private struct ChatContent: View {
             replyUserId: replyTo?.sender, ownUserId: account.userId)
         let files = pendingFiles
         let caption = original.trimmingCharacters(in: .whitespacesAndNewlines)
+        let music = editing == nil ? pendingMusic : nil
         sending = true
         Task {
             var success = true
-            if !files.isEmpty {
+            // The song first, then what was typed as its own message (like iMessage).
+            if let music {
+                guard await controller.sendMusic(music, client: account.client) else { sending = false; return }
+                pendingMusic = nil
+            }
+            if music != nil && files.isEmpty && caption.isEmpty {
+                // nothing else to send
+            } else if !files.isEmpty {
                 // The caption goes with the first file only, so it is not repeated under every photo.
                 for (index, file) in files.enumerated() {
                     if await controller.sendAttachment(data: file.data, filename: file.name, mime: file.mime,
@@ -1290,6 +1348,8 @@ struct MessageRowView: View {
         switch row.body {
         case .text where row.card != nil:
             if let card = row.card { BotCardView(card: card, account: account, onCommand: onCardCommand) }
+        case .text where row.music != nil:
+            if let music = row.music { MusicCardView(card: music, account: account) }
         case .text where row.location != nil:
             if let location = row.location { LocationMessageView(location: location) }
         case .text(let text):

@@ -41,6 +41,7 @@ Die App ist Beta: Alles in der Tabelle ist gebaut und läuft bei den ersten Test
 | Lesebestätigungen („Gesehen von“), Linie „Neue Nachrichten“ mit Springen und Als-gelesen, zum Zitat springen, zu Datum springen, Threads, angeheftete Nachrichten, Link kopieren, Melden, Quelltext, Bearbeitungsverlauf, Löschen mit Grund, „Wer hat reagiert“ | 🧪 |
 | Nachrichtensuche im Raum und überall, Schnellwechsler für Räume, DMs und Server | 🧪 |
 | Eingabefeld: Dateien, Videos, Kamera, Einfügen, Entwürfe pro Raum, `#raum`- und `:emoji:`-Vorschläge, Emoji- und Sticker-Auswahl, Slash-Befehle, Formatierungsleiste | 🧪 |
+| Teilen aus anderen Apps („Diddy“ im Teilen-Menü): Fotos, Videos, Dateien, Links, Text; Chat wählen, dann liegt alles im Eingabefeld. Apple-Music-Lyrics und Song-Links (auch Spotify) werden eine Musik-Karte wie bei iMessage (Zeilen groß, Titel, Künstler, Cover, 30-Sekunden-Vorschau); Desktop zeigt sie genauso | 🧪 braucht eine App-Gruppe beim Signieren, sonst kommen nur Text und Links an |
 | Sprachnachrichten von Linux (Ogg/Opus, WebM/Opus) abspielen | 🧪 |
 | Raumliste: Favoriten, Langdruck-Menü (Favorit, gelesen, Benachrichtigungen, Einladen, Link, Einstellungen, Verlassen), Raumverzeichnis, Vorschau vor dem Beitritt, Server verwalten (Räume hinzufügen, empfohlen, erstellen mit allen Optionen), Server-Reihenfolge und Ordner wie am Desktop | 🧪 Reihenfolge vom Desktop kommt erst beim nächsten Öffnen der App an |
 | Raum- und Server-Einstellungen: Name, Thema, Bild, Beitrittsregel, Verlauf, Verschlüsselung, Verzeichnis, Adressen, Upgrade; Rollen und Rechte bearbeiten; Mitglieder filtern, Rauswerfen und Bannen mit Grund, Entbannen, Einladung zurückziehen | 🧪 Bild-Icons für Rollen nur behalten, nicht neu anlegen |
@@ -75,7 +76,7 @@ Die IPA baut der Workflow [Build iOS](../.github/workflows/ios.yml), Artefakt `d
 Grenzen einer kostenlosen Apple-ID:
 - Die App läuft 7 Tage und muss dann neu signiert werden (AltStore/SideStore machen das automatisch).
 - Höchstens 3 eigene Apps gleichzeitig.
-- Diddy hat keine Erweiterungen und belegt nur eine App-ID (eine kostenlose Apple-ID bekommt 10 pro Woche). Der Workflow bricht ab, falls doch eine Erweiterung in die IPA gerät.
+- Diddy hat genau eine Erweiterung: „Diddy“ im Teilen-Menü (`DiddyShare`). AltStore und SideStore belegen dafür eine zweite App-ID (eine kostenlose Apple-ID bekommt 10 pro Woche); Sideloader, die die App-ID der App mitnutzen, keine. Der Workflow bricht ab, falls eine andere Erweiterung in die IPA gerät.
 
 **Mit bezahltem Konto:** Repository-Secrets `APPLE_TEAM_ID`, `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8` setzen (siehe Kopf des Workflows), dann ist die IPA signiert.
 

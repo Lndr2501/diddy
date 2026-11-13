@@ -17,7 +17,9 @@ export const useMediaPlay = (
     (play: boolean) => {
       const targetEl = getTargetElement();
       if (!targetEl) return;
-      if (play) targetEl.play();
+      // play() rejects when autoplay is blocked (Safari/iOS) or the source fails; the play/pause
+      // events below keep the button state right either way.
+      if (play) targetEl.play().catch(() => undefined);
       else targetEl.pause();
     },
     [getTargetElement]

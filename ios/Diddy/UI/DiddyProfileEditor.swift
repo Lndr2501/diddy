@@ -107,6 +107,17 @@ struct DiddyProfileEditor: View {
                 }
                 saveSection
             }
+            if loaded {
+                // Always reachable, also when a room was found automatically: desktop may read
+                // from another room (chosen there), which has to be added here by hand.
+                Section {
+                    NavigationLink { DiddyDataRoomView(account: account) } label: {
+                        Label("Data Room", systemImage: "externaldrive.connected.to.line.below")
+                    }
+                } footer: {
+                    Text("The room your profile, badges and name styles are shared through. Missing profiles of others? Add the room your desktop uses.")
+                }
+            }
         }
         .safeAreaInset(edge: .top, spacing: 0) {
             if loaded && account.canEditDiddyProfile { pinnedPreview }

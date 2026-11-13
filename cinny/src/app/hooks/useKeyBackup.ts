@@ -27,11 +27,14 @@ export const useKeyBackupStatus = (crypto: CryptoApi): boolean => {
   const [status, setStatus] = useState(false);
 
   useEffect(() => {
-    crypto.getActiveSessionBackupVersion().then((v) => {
-      if (alive()) {
-        setStatus(typeof v === 'string');
-      }
-    });
+    crypto
+      .getActiveSessionBackupVersion()
+      .then((v) => {
+        if (alive()) {
+          setStatus(typeof v === 'string');
+        }
+      })
+      .catch(() => undefined);
   }, [crypto, alive]);
 
   useKeyBackupStatusChange(setStatus);
@@ -106,11 +109,14 @@ export const useKeyBackupInfo = (crypto: CryptoApi): KeyBackupInfo | undefined |
   const [info, setInfo] = useState<KeyBackupInfo | null>();
 
   const fetchInfo = useCallback(() => {
-    crypto.getKeyBackupInfo().then((i) => {
-      if (alive()) {
-        setInfo(i);
-      }
-    });
+    crypto
+      .getKeyBackupInfo()
+      .then((i) => {
+        if (alive()) {
+          setInfo(i);
+        }
+      })
+      .catch(() => undefined);
   }, [crypto, alive]);
 
   useEffect(() => {
@@ -141,11 +147,14 @@ export const useKeyBackupTrust = (
   const [trust, setTrust] = useState<BackupTrustInfo>();
 
   const fetchTrust = useCallback(() => {
-    crypto.isKeyBackupTrusted(backupInfo).then((t) => {
-      if (alive()) {
-        setTrust(t);
-      }
-    });
+    crypto
+      .isKeyBackupTrusted(backupInfo)
+      .then((t) => {
+        if (alive()) {
+          setTrust(t);
+        }
+      })
+      .catch(() => undefined);
   }, [crypto, alive, backupInfo]);
 
   useEffect(() => {
