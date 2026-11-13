@@ -55,6 +55,8 @@ struct BotCardControls: Equatable {
     var skip: String?
     /// The client appends the new value: `<volume> 80`.
     var volume: String?
+    /// opens the bot's web dashboard (the bot answers with a personal link)
+    var dashboard: String?
 }
 
 struct BotCardUpNext: Equatable {
@@ -201,10 +203,13 @@ enum BotCardParser {
         return tail.contains(rest.count) && noWhitespace(String(rest))
     }
 
-    static func actions(_ value: Any?) -> [BotCardAction] {
+    /// Most entries in the "⋯" menu of the player card (other buttons: 10).
+    static let moreMax = 16
+
+    static func actions(_ value: Any?, max: Int = 10) -> [BotCardAction] {
         guard let list = value as? [Any] else { return [] }
         var out: [BotCardAction] = []
-        for case let item as [String: Any] in list.prefix(10) {
+        for case let item as [String: Any] in list.prefix(max) {
             guard let label = text(item["label"], 24), let send = text(item["send"], 120) else { continue }
             // A button only types a bot command into the chat for you: it has to look like one.
             if looksLikeCommand(send, tail: 1...Int.max) { out.append(BotCardAction(label: label, send: send)) }
@@ -225,7 +230,8 @@ enum BotCardParser {
     static func controls(_ value: Any?) -> BotCardControls? {
         guard let object = value as? [String: Any] else { return nil }
         return BotCardControls(prev: playerCommand(object["prev"]), toggle: playerCommand(object["toggle"]),
-                               skip: playerCommand(object["skip"]), volume: playerCommand(object["volume"]))
+                               skip: playerCommand(object["skip"]), volume: playerCommand(object["volume"]),
+                               dashboard: playerCommand(object["dashboard"]))
     }
 
     static func upNext(_ value: Any?) -> [BotCardUpNext] {
@@ -275,7 +281,7 @@ enum BotCardParser {
                 upNext: upNext(raw["upNext"]),
                 controls: controls(raw["controls"]),
                 volumeMax: number(raw["volumeMax"], max: 1000).flatMap { $0 > 0 ? $0 : nil },
-                more: actions(raw["more"])
+                more: actions(raw["more"], max: moreMax)
             ))
 
         case "queue":

@@ -275,6 +275,9 @@ struct BotCardView: View {
                         togglePanel(.volume, volume: track.volume, max: volumeMax)
                     }
                 }
+                if let dashboard = controls.dashboard {
+                    playerButton("Dashboard", icon: "square.grid.2x2.fill", label: "Dashboard") { run(dashboard) }
+                }
                 if !track.more.isEmpty {
                     playerButton(nil, icon: "ellipsis", selected: panel == .more, label: "More") {
                         togglePanel(.more, volume: track.volume, max: volumeMax)
