@@ -14,6 +14,7 @@ import {
   formatCardTime,
   livePosition,
 } from '../../plugins/botCard';
+import { RangeInput } from '../diddy/RangeInput';
 import * as css from './BotCard.css';
 
 const STATE_LABEL: Record<TrackState, string> = {
@@ -269,7 +270,10 @@ function useDismiss(open: boolean, close: () => void): React.RefObject<HTMLDivEl
   return ref;
 }
 
-/** Volume button: opens a slider (0..max); releasing it sends `<command> N`. */
+/**
+ * Volume button: opens a slider row below the buttons, inside the card (a floating
+ * popover got cut off at the timeline edge). Releasing it sends `<command> N`.
+ */
 function VolumeControl({
   command,
   volume,
@@ -294,7 +298,7 @@ function VolumeControl({
     if (volume === undefined || Math.round(volume) !== value) send(`${command} ${value}`);
   };
   return (
-    <div className={css.PopAnchor} ref={ref}>
+    <div className={css.VolumeAnchor} ref={ref}>
       <button
         type="button"
         className={css.PlayerButton}
@@ -307,10 +311,10 @@ function VolumeControl({
         {volume !== undefined && <span>{Math.round(volume)}%</span>}
       </button>
       {open && (
-        <div className={css.Popover} data-bot-popover="volume">
-          <input
+        <div className={css.VolumePanel} data-bot-popover="volume">
+          <Glyph d={GLYPH.volume} />
+          <RangeInput
             className={css.VolumeSlider}
-            type="range"
             min={0}
             max={max}
             step={1}
