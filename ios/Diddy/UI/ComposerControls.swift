@@ -6,6 +6,10 @@ struct ComposerEditor: UIViewRepresentable {
     @Binding var text: String
     @Binding var selection: NSRange
     var isFocused: Bool
+    /// Raised each time the field must take the keyboard, even when `isFocused` already is true
+    /// (a swipe to reply ends inside a gesture, where the plain flag change can come too early or
+    /// change nothing).
+    var focusToken: Int = 0
     var onFocus: (Bool) -> Void
     var onSend: () -> Void
     var onFiles: ([URL], [UIImage]) -> Void
@@ -57,6 +61,14 @@ struct ComposerEditor: UIViewRepresentable {
         let insets = UIEdgeInsets(top: 8, left: 6, bottom: 8, right: 6 + trailingInset)
         if view.textContainerInset != insets { view.textContainerInset = insets }
         if isFocused, !view.isFirstResponder { view.becomeFirstResponder() }
+        if context.coordinator.lastFocusToken != focusToken {
+            context.coordinator.lastFocusToken = focusToken
+            // One run loop later, when the gesture that asked for it has finished.
+            DispatchQueue.main.async { [weak view] in
+                guard let view, view.window != nil, !view.isFirstResponder else { return }
+                view.becomeFirstResponder()
+            }
+        }
         if view.text != text { view.text = text }
         let length = (text as NSString).length
         if selection.location <= length, selection.length <= length - selection.location,
@@ -66,7 +78,11 @@ struct ComposerEditor: UIViewRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator(self) }
     final class Coordinator: NSObject, UITextViewDelegate {
         var parent: ComposerEditor
-        init(_ parent: ComposerEditor) { self.parent = parent }
+        var lastFocusToken: Int
+        init(_ parent: ComposerEditor) {
+            self.parent = parent
+            lastFocusToken = parent.focusToken
+        }
         func textViewDidBeginEditing(_ view: UITextView) { parent.onFocus(true) }
         func textViewDidEndEditing(_ view: UITextView) { parent.onFocus(false) }
         func textViewDidChange(_ view: UITextView) { parent.text = view.text; parent.selection = view.selectedRange }

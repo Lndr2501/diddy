@@ -101,6 +101,8 @@ private struct ChatContent: View {
     @State private var unreadDismissed = false
     @State private var notifyError: String?
     @FocusState private var composerFocused: Bool
+    /// Raised by a reply, so the keyboard comes up even after a swipe (see ComposerEditor.focusToken).
+    @State private var composerFocusToken = 0
 
     private var title: String { summary?.name ?? "Channel" }
     private var roomId: String { controller.room.id() }
@@ -499,6 +501,7 @@ private struct ChatContent: View {
         restoredReplyId = nil
         editing = nil
         composerFocused = true
+        composerFocusToken += 1
     }
 
     private func startEditing(_ row: MessageRow, text: String) {
@@ -709,7 +712,7 @@ private struct ChatContent: View {
                 }
                 .accessibilityLabel("Add attachment")
             }
-            ComposerEditor(text: $draft, selection: $selection, isFocused: composerFocused, onFocus: { composerFocused = $0 }, onSend: send, onFiles: { urls, images in
+            ComposerEditor(text: $draft, selection: $selection, isFocused: composerFocused, focusToken: composerFocusToken, onFocus: { composerFocused = $0 }, onSend: send, onFiles: { urls, images in
                 Task { await addFiles(urls, images: images) }
             }, trailingInset: editing == nil ? 30 : 0)
                 .frame(minHeight: ComposerEditor.minHeight)
