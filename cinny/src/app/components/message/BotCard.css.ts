@@ -15,6 +15,13 @@ export const Card = style({
   display: 'flex',
   flexDirection: 'column',
   gap: toRem(10),
+  selectors: {
+    // player layout: accent stripe on the left like a now-playing widget
+    '&[data-player]': {
+      borderLeft: `${toRem(4)} solid ${color.Primary.Main}`,
+      padding: `${toRem(12)} ${toRem(14)}`,
+    },
+  },
 });
 
 export const TrackRow = style({
@@ -359,3 +366,149 @@ export const ChartValue = style({
 });
 
 export const ChartSub = style({ opacity: 0.65, fontSize: toRem(12) });
+
+// ---- player layout (track card with `controls`)
+
+export const Eyebrow = style({
+  margin: 0,
+  fontSize: toRem(11),
+  fontWeight: 700,
+  letterSpacing: '0.05em',
+  textTransform: 'uppercase',
+  opacity: 0.65,
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+});
+
+export const PlayerCover = style([
+  Cover,
+  {
+    width: toRem(56),
+    height: toRem(56),
+    selectors: {
+      // no thumbnail: colourful tile with a music note, same in every theme
+      '&[data-art]': {
+        background: 'linear-gradient(135deg, #ff6fa5, #7a5cff 60%, #2bd9a8)',
+        color: '#fff',
+      },
+    },
+  },
+]);
+
+export const Glyph = style({
+  width: toRem(16),
+  height: toRem(16),
+  flexShrink: 0,
+  display: 'block',
+  selectors: {
+    [`${PlayerCover} &`]: { width: toRem(24), height: toRem(24) },
+  },
+});
+
+export const PlayerButtons = style({
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: toRem(6),
+});
+
+export const PopAnchor = style({ position: 'relative', display: 'inline-flex' });
+
+export const PlayerButton = style({
+  margin: 0,
+  height: toRem(32),
+  minWidth: toRem(32),
+  padding: `0 ${toRem(11)}`,
+  borderRadius: toRem(9),
+  border: 'none',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: toRem(6),
+  backgroundColor: color.SurfaceVariant.ContainerActive,
+  color: color.SurfaceVariant.OnContainer,
+  font: 'inherit',
+  fontSize: toRem(13),
+  fontWeight: 600,
+  fontVariantNumeric: 'tabular-nums',
+  cursor: 'pointer',
+  selectors: {
+    '&:hover': { backgroundColor: color.SurfaceVariant.ContainerLine },
+    '&:focus-visible': { outline: `${toRem(2)} solid ${color.Primary.Main}`, outlineOffset: toRem(1) },
+    '&:disabled': { opacity: 0.5, cursor: 'default' },
+    '&[data-primary]': {
+      backgroundColor: color.Primary.Main,
+      color: color.Primary.OnMain,
+    },
+    '&[data-primary]:hover': { backgroundColor: color.Primary.MainHover },
+  },
+});
+
+export const Popover = style({
+  position: 'absolute',
+  zIndex: 5,
+  top: `calc(100% + ${toRem(6)})`,
+  left: 0,
+  minWidth: toRem(150),
+  padding: toRem(6),
+  borderRadius: toRem(10),
+  border: `${config.borderWidth.B300} solid ${color.Surface.ContainerLine}`,
+  backgroundColor: color.Surface.Container,
+  color: color.Surface.OnContainer,
+  boxShadow: '0 8px 24px rgba(0, 0, 0, 0.25)',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: toRem(2),
+  selectors: {
+    // the "⋯" button is the last one in the row: open towards the left
+    '&[data-bot-popover=more]': { left: 'auto', right: 0 },
+    '&[data-bot-popover=volume]': {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: toRem(8),
+      padding: `${toRem(8)} ${toRem(10)}`,
+      minWidth: toRem(200),
+    },
+  },
+});
+
+export const VolumeSlider = style({
+  flexGrow: 1,
+  minWidth: 0,
+  accentColor: color.Primary.Main,
+  cursor: 'pointer',
+});
+
+export const VolumeValue = style({
+  flexShrink: 0,
+  width: toRem(38),
+  textAlign: 'right',
+  fontSize: toRem(12.5),
+  fontWeight: 600,
+  fontVariantNumeric: 'tabular-nums',
+});
+
+export const MenuItem = style({
+  margin: 0,
+  padding: `${toRem(6)} ${toRem(10)}`,
+  border: 'none',
+  borderRadius: toRem(7),
+  backgroundColor: 'transparent',
+  color: 'inherit',
+  font: 'inherit',
+  fontSize: toRem(13),
+  textAlign: 'left',
+  whiteSpace: 'nowrap',
+  cursor: 'pointer',
+  selectors: {
+    '&:hover, &:focus-visible': { backgroundColor: color.Surface.ContainerHover, outline: 'none' },
+    '&:disabled': { opacity: 0.5, cursor: 'default' },
+  },
+});
+
+export const UpNextIndex = style({
+  flexShrink: 0,
+  width: toRem(14),
+  fontVariantNumeric: 'tabular-nums',
+  opacity: 0.6,
+});

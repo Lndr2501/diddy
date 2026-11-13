@@ -212,3 +212,92 @@ test('messages sent by card buttons are recognised, real messages are never hidd
   assert.equal(isCardActionMessage(null), false);
   assert.equal(isCardActionMessage({ body: '!pause' }), false);
 });
+
+test('player fields of a track card are read and cleaned', () => {
+  const c = parseBotCard(
+    card({
+      kind: 'track',
+      state: 'playing',
+      title: 'Neon Highway',
+      room: 'Lounge',
+      requestedBy: 'Autoplay',
+      upNext: [
+        { title: 'A', artist: 'X' },
+        { title: 'B' },
+        { title: '' },
+        'nope',
+        { title: 'C' },
+        { title: 'D' },
+      ],
+      controls: { prev: '!previous', toggle: '!pause', skip: '!skip', volume: '!volume' },
+      volumeMax: 150,
+      more: [
+        { label: 'Loop', send: '!loop' },
+        { label: 'Bad', send: 'rm -rf' },
+      ],
+    })
+  );
+  assert.equal(c.room, 'Lounge');
+  assert.equal(c.requestedBy, 'Autoplay');
+  assert.equal(
+    JSON.stringify(c.upNext),
+    JSON.stringify([{ title: 'A', artist: 'X' }, { title: 'B' }, { title: 'C' }])
+  );
+  assert.equal(
+    JSON.stringify(c.controls),
+    JSON.stringify({ prev: '!previous', toggle: '!pause', skip: '!skip', volume: '!volume' })
+  );
+  assert.equal(c.volumeMax, 150);
+  assert.equal(JSON.stringify(c.more), JSON.stringify([{ label: 'Loop', send: '!loop' }]));
+});
+
+test('player fields: untrusted values are dropped, old cards stay without controls', () => {
+  const long = 'x'.repeat(500);
+  const c = parseBotCard(
+    card({
+      kind: 'track',
+      state: 'paused',
+      title: 't',
+      room: long,
+      requestedBy: long,
+      upNext: 'nope',
+      controls: {
+        prev: 'previous',
+        toggle: '!resume',
+        skip: '!skip now please',
+        volume: 42,
+      },
+      volumeMax: Infinity,
+      more: { label: 'x', send: '!x' },
+    })
+  );
+  assert.equal(c.room.length, 80);
+  assert.ok(c.room.endsWith('…'));
+  assert.equal(c.requestedBy.length, 80);
+  assert.equal(c.upNext, undefined);
+  // only "!cmd" or "!cmd arg": the sent text must still count as a card action (hidden in chat)
+  assert.equal(JSON.stringify(c.controls), JSON.stringify({ toggle: '!resume' }));
+  assert.equal(c.volumeMax, undefined);
+  assert.equal(c.more, undefined);
+  for (const bad of [0, -5, NaN, '150', 1e6]) {
+    assert.equal(
+      parseBotCard(card({ kind: 'track', state: 'playing', title: 't', volumeMax: bad })).volumeMax,
+      undefined
+    );
+  }
+  // no controls object: the classic card (actions) is drawn
+  const old = parseBotCard(
+    card({ kind: 'track', state: 'playing', title: 't', actions: [{ label: 'P', send: '!pause' }] })
+  );
+  assert.equal(old.controls, undefined);
+  assert.equal(old.actions.length, 1);
+  assert.equal(
+    parseBotCard(card({ kind: 'track', state: 'playing', title: 't', controls: 'x' })).controls,
+    undefined
+  );
+  // the volume command plus a number is still a hidden card action
+  assert.equal(
+    isCardActionMessage({ msgtype: 'm.text', body: '!volume 120', 'dev.diddy.card_action': true }),
+    true
+  );
+});

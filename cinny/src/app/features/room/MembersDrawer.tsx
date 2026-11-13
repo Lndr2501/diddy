@@ -70,6 +70,7 @@ import { useRoomPermissions } from '../../hooks/useRoomPermissions';
 import { DiddyName } from '../../components/diddy/DiddyName';
 import { readProfile, useDiddyProfile } from '../../plugins/diddy/profiles';
 import { useMyStatus } from '../../plugins/diddy/status';
+import { useRoomBots } from '../../hooks/useRoomBots';
 import {
   NameplateBackdrop,
   NameplateHost,
@@ -145,6 +146,8 @@ type MemberItemProps = {
   admin?: boolean;
   /** shown in the "Offline" group: the row is greyed out */
   offline?: boolean;
+  /** announced itself as a bot (dev.diddy.bot / dev.diddy.commands): "Bot" as the status line */
+  bot?: boolean;
 };
 type MemberRowViewProps = Omit<MemberItemProps, 'room' | 'member'> & {
   userId: string;
@@ -166,6 +169,7 @@ export function MemberRowView({
   typing,
   admin,
   offline,
+  bot,
 }: MemberRowViewProps) {
   const avatarUrl = avatarMxc
     ? mx.mxcUrlToHttp(avatarMxc, 100, 100, 'crop', undefined, false, useAuthentication)
@@ -232,10 +236,20 @@ export function MemberRowView({
       }
     >
       {withNameplate && <NameplateBackdrop plate={nameplate} animate={animateNameplate} />}
-      <Box grow="Yes" className={withNameplate ? NameplateText : undefined}>
+      <Box
+        grow="Yes"
+        direction="Column"
+        className={withNameplate ? NameplateText : undefined}
+        style={{ minWidth: 0 }}
+      >
         <Text size="T400" truncate>
           <DiddyName userId={userId} name={name} showBadges />
         </Text>
+        {bot && (
+          <Text size="T200" priority="300" truncate>
+            Bot
+          </Text>
+        )}
       </Box>
     </MenuItem>
   );
@@ -251,6 +265,7 @@ function MemberItem({
   typing,
   admin,
   offline,
+  bot,
 }: MemberItemProps) {
   const name =
     getMemberDisplayName(room, member.userId) ?? getMxIdLocalPart(member.userId) ?? member.userId;
@@ -266,6 +281,7 @@ function MemberItem({
       typing={typing}
       admin={admin}
       offline={offline}
+      bot={bot}
     />
   );
 }
@@ -273,6 +289,7 @@ function MemberItem({
 const ADMIN_POWER_LEVEL = 100;
 
 const OFFLINE_TAG: MemberPowerTag = { name: 'Offline' };
+const BOTS_TAG: MemberPowerTag = { name: 'Bots' };
 
 type MemberGroupLabel = MemberPowerTag & { count: number };
 
@@ -318,13 +335,19 @@ const usePresenceVersion = (mx: MatrixClient): number => {
  * Discord-style member list: people who are online (or idle) grouped by their power tag,
  * then everyone who is offline in one shared "Offline" group at the bottom.
  * If the server sends no presence at all, the list stays grouped by power tag only.
+ * Bots (dev.diddy.bot / dev.diddy.commands) get their own "Bots" group above "Offline".
  */
 const groupMembersByPresence = (
   mx: MatrixClient,
-  members: RoomMember[],
-  getTag: GetMemberPowerTag
+  allMembers: RoomMember[],
+  getTag: GetMemberPowerTag,
+  bots: ReadonlyMap<string, unknown>
 ): { items: Array<MemberGroupLabel | RoomMember>; offline: ReadonlySet<string> } => {
   const myUserId = mx.getUserId();
+  const botMembers = allMembers.filter((m) => bots.has(m.userId));
+  const members = botMembers.length
+    ? allMembers.filter((m) => !bots.has(m.userId))
+    : allMembers;
   const hasPresence = members.some(
     (m) => m.userId !== myUserId && mx.getUser(m.userId)?.events.presence !== undefined
   );
@@ -344,6 +367,10 @@ const groupMembersByPresence = (
     label.count += 1;
     items.push(member);
   });
+  if (botMembers.length > 0) {
+    items.push({ ...BOTS_TAG, count: botMembers.length });
+    items.push(...botMembers);
+  }
   if (absent.length > 0) {
     items.push({ ...OFFLINE_TAG, count: absent.length });
     items.push(...absent);
@@ -413,13 +440,14 @@ export function MembersDrawer({ room, members }: MembersDrawerProps) {
   const showSearch = room.getJoinedMemberCount() >= MEMBER_SEARCH_MIN || !!result;
 
   const presenceVersion = usePresenceVersion(mx);
+  const bots = useRoomBots(room);
   // going invisible must regroup you at once, without waiting for a presence event
   const myStatus = useMyStatus(mx);
   const { items: PLTagOrRoomMember, offline: offlineIds } = useMemo(
-    () => groupMembersByPresence(mx, processMembers, getPowerTag),
+    () => groupMembersByPresence(mx, processMembers, getPowerTag, bots),
     // presenceVersion changes whenever someone goes online/offline
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [mx, processMembers, getPowerTag, presenceVersion, myStatus]
+    [mx, processMembers, getPowerTag, bots, presenceVersion, myStatus]
   );
 
   const virtualizer = useVirtualizer({
@@ -650,6 +678,7 @@ export function MembersDrawer({ room, members }: MembersDrawerProps) {
                           getPowerLevel(tagOrMember.userId) >= ADMIN_POWER_LEVEL
                         }
                         offline={offlineIds.has(tagOrMember.userId)}
+                        bot={bots.has(tagOrMember.userId)}
                         typing={typingMembers.some(
                           (receipt) => receipt.userId === tagOrMember.userId
                         )}

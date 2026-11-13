@@ -95,6 +95,7 @@ export const SETTINGS_SEARCH_INDEX: Record<string, SettingsSearchEntry> = {
       'Page Zoom',
       'Monochrome Mode',
       'Dynamic Page Title',
+      'Direct Messages in Spaces',
       'Emoji',
       'Apple Color Emoji',
       'App Icon',
