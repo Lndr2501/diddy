@@ -54,6 +54,7 @@ import { SoundSettings } from './SoundSettings';
 import { browserStorage, clearAllCallVolumes } from '../../../plugins/call/volumeMemory';
 import { AgentVoiceSettings } from './AgentVoiceSettings';
 import { WatchTogetherSettings } from './WatchTogetherSettings';
+import { CameraDeviceList } from '../../call/DevicePicker';
 import { AvatarSurface, setAvatarAnimation, useAvatarPrefs } from '../../../state/avatarPrefs';
 import { resetDiddyOnboarding } from '../../../plugins/diddy/onboarding';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
@@ -991,6 +992,12 @@ function CallSettings() {
             />
           }
         />
+        <InsetRow
+          title="Camera"
+          description="Used for video in calls. Changing it switches the camera of a running call too."
+        >
+          <CameraDeviceList />
+        </InsetRow>
         <InsetRow
           title="Volumes of people"
           description="Diddy remembers the volume and mute for me you give each person (and their screen share) on this device. Reset puts everyone back to 100 % from their next call on."

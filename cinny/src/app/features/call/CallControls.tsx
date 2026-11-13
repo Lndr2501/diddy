@@ -92,7 +92,10 @@ export function CallControls({ callEmbed }: CallControlsProps) {
           <SoundButton enabled={sound} onToggle={() => callEmbed.control.toggleSound()} />
           <DeviceChevron kind="output" size="bar" className={css.ControlChevron} />
         </div>
-        <VideoButton enabled={video} onToggle={handleVideoToggle} />
+        <div className={css.ControlSplit}>
+          <VideoButton enabled={video} onToggle={handleVideoToggle} />
+          <DeviceChevron kind="camera" size="bar" className={css.ControlChevron} />
+        </div>
         {screenshare ? (
           <div className={css.ControlSplit} data-active>
             <ScreenShareButton enabled onToggle={toggleScreenshare} />

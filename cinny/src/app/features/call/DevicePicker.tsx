@@ -25,6 +25,12 @@ import {
   useAudioPrefs,
 } from '../../plugins/call/audioDevices';
 import { switchLiveMicrophone, useSoundboard } from '../../plugins/call';
+import {
+  requestCameraAccess,
+  setCameraPref,
+  useCameraPref,
+  useCameras,
+} from '../../plugins/call/cameraDevices';
 import { callEmbedAtom } from '../../state/callEmbed';
 import { RangeInput } from '../../components/diddy/RangeInput';
 import * as css from './styles.css';
@@ -183,14 +189,57 @@ export function OutputDeviceMenu() {
   );
 }
 
+/**
+ * The cameras to pick from (#201). The choice is kept and also switches the camera of a running
+ * call (Element Call follows its device list, see plugins/call/cameraDevices.ts).
+ */
+export function CameraDeviceList() {
+  const { cameras, refresh } = useCameras();
+  const selected = useCameraPref();
+  const named = cameras.some((c) => !/^Camera \d+$/.test(c.label));
+
+  const handleReveal = async () => {
+    await requestCameraAccess();
+    refresh();
+  };
+
+  return (
+    <Box direction="Column" gap="200">
+      <div style={LIST_STYLE}>
+        <DeviceList devices={cameras} selected={selected} onSelect={setCameraPref} />
+      </div>
+      {cameras.length > 0 && !named && (
+        <MenuItem size="300" variant="Surface" radii="400" onClick={handleReveal}>
+          <Text size="T200" priority="300" truncate>
+            Allow camera access to show names
+          </Text>
+        </MenuItem>
+      )}
+    </Box>
+  );
+}
+
+export function CameraDeviceMenu() {
+  return (
+    <Menu className={css.PopoverMenu} style={MENU_STYLE}>
+      <Box direction="Column" gap="200" style={SECTION_STYLE}>
+        <Text size="T300" className={css.PopoverTitle}>
+          Camera
+        </Text>
+        <CameraDeviceList />
+      </Box>
+    </Menu>
+  );
+}
+
 type DeviceChevronProps = {
-  kind: 'input' | 'output';
+  kind: 'input' | 'output' | 'camera';
   /** Small chevron for the user panel, larger one for the call control bar. */
   size?: 'panel' | 'bar';
   /** Extra class for the button (e.g. to match the neighbouring button). */
   className?: string;
 };
-/** Chevron button that opens the input or output device menu above itself. */
+/** Chevron button that opens the input, output or camera menu above itself. */
 export function DeviceChevron({ kind, size = 'panel', className }: DeviceChevronProps) {
   const [cords, setCords] = useState<RectCords>();
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -224,7 +273,16 @@ export function DeviceChevron({ kind, size = 'panel', className }: DeviceChevron
     };
   }, [open]);
 
-  const label = kind === 'input' ? 'Input device and volume' : 'Output device and volume';
+  const label = {
+    input: 'Input device and volume',
+    output: 'Output device and volume',
+    camera: 'Camera',
+  }[kind];
+  const menus = {
+    input: <InputDeviceMenu />,
+    output: <OutputDeviceMenu />,
+    camera: <CameraDeviceMenu />,
+  };
   const bar = size === 'bar';
 
   return (
@@ -233,7 +291,7 @@ export function DeviceChevron({ kind, size = 'panel', className }: DeviceChevron
       position="Top"
       align={bar ? 'Center' : 'Start'}
       content={
-        <div ref={menuRef}>{kind === 'input' ? <InputDeviceMenu /> : <OutputDeviceMenu />}</div>
+        <div ref={menuRef}>{menus[kind]}</div>
       }
     >
       <IconButton

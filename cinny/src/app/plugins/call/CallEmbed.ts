@@ -32,6 +32,7 @@ import { installContextMenuGuard } from '../contextMenu';
 import { installCallFrameMenu } from '../callFrameMenu';
 import { installSoundboard, releaseCallMicrophones } from './soundboard';
 import { installLocalSpeaking, stopLocalSpeaking } from './localSpeaking';
+import { installCameraChoice } from './cameraDevices';
 import { installCallTheme } from './callTheme';
 import { installScreenShareGrid } from './screenShareGrid';
 import { installVoiceBoost } from './voiceBoost';
@@ -275,6 +276,8 @@ export class CallEmbed {
       installSoundboard(iframe.contentWindow);
       // after the soundboard: measures the microphone exactly as the call gets it (#76)
       installLocalSpeaking(iframe.contentWindow);
+      // #201: the camera picked in Diddy, also switched while the call runs
+      installCameraChoice(iframe.contentWindow);
       installVideoCodecPreference(iframe.contentWindow);
       // Restyle the Element Call tiles to match the app theme.
       installCallTheme(iframe.contentWindow);
