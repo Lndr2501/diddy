@@ -38,6 +38,8 @@ export class CallControl extends EventEmitter implements CallControlState {
 
   private restarting = false;
 
+  private disposed = false;
+
   // Whether the microphone was live when the user deafened, so un-deafening can restore it.
   private micWasOnBeforeDeafen = false;
 
@@ -134,10 +136,15 @@ export class CallControl extends EventEmitter implements CallControlState {
   }
 
   public async applyState() {
-    await this.setMediaState({
+    const wanted = (): ElementMediaStatePayload => ({
       audio_enabled: this.microphone,
       video_enabled: this.video,
     });
+    // At join the call page can be too busy to answer within the widget timeout (10 s, #161). The
+    // state is absolute, so sending it once more is safe; it makes sure a muted join stays muted.
+    if (!(await this.setMediaState(wanted())) && !this.disposed) {
+      await this.setMediaState(wanted());
+    }
     this.setSound();
     this.emitStateUpdate();
   }
@@ -195,9 +202,25 @@ export class CallControl extends EventEmitter implements CallControlState {
     this.setSound();
   }
 
-  private async setMediaState(state: ElementMediaStatePayload) {
-    const data = await this.call.transport.send(ElementWidgetActions.DeviceMute, state);
-    return new Promise<typeof data>(resolve => {
+  /**
+   * Asks the call page to switch microphone/camera; resolves with whether the page acknowledged.
+   * Never rejects: when the page does not answer (still connecting, or the call just ended) this
+   * logs and resolves with `false`. The page's next DeviceMute echo still updates our state.
+   * Before, every caller that did not catch (mute keys, deafen, agent voice, the join itself) left
+   * "Request timed out" / "Transport stopped" as unhandled rejections in the app log (#161).
+   */
+  private async setMediaState(state: ElementMediaStatePayload): Promise<boolean> {
+    try {
+      await this.call.transport.send(ElementWidgetActions.DeviceMute, state);
+    } catch (e) {
+      diag(
+        `call: mute state audio=${state.audio_enabled} video=${
+          state.video_enabled
+        } not acknowledged by the call page (${String(e)})`
+      );
+      return false;
+    }
+    return new Promise<boolean>((resolve) => {
       if (this.mediaStatePromiseResolver) {
         this.mediaStatePromiseResolver();
       }
@@ -205,11 +228,11 @@ export class CallControl extends EventEmitter implements CallControlState {
       // or permission nothing changes, and the button stayed busy forever (review).
       const timer = window.setTimeout(() => {
         if (this.mediaStatePromiseResolver === done) this.mediaStatePromiseResolver = undefined;
-        resolve(data);
+        resolve(true);
       }, MEDIA_STATE_ECHO_MS);
       const done = () => {
         window.clearTimeout(timer);
-        resolve(data);
+        resolve(true);
       };
       this.mediaStatePromiseResolver = done;
     });
@@ -418,6 +441,7 @@ export class CallControl extends EventEmitter implements CallControlState {
   }
 
   public dispose() {
+    this.disposed = true;
     playCallSound('disconnect');
     this.bodyMutationObserver.disconnect();
     this.controlMutationObserver.disconnect();

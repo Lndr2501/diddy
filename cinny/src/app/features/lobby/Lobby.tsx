@@ -298,7 +298,9 @@ export function Lobby() {
 
         // remove from current space
         if (item.parentId !== containerParentId) {
-          mx.sendStateEvent(item.parentId, StateEvent.SpaceChild as any, {}, item.roomId);
+          mx.sendStateEvent(item.parentId, StateEvent.SpaceChild as any, {}, item.roomId).catch(
+            () => undefined
+          );
         }
 
         if (
@@ -321,7 +323,7 @@ export function Lobby() {
             mx.sendStateEvent(itemRoom.roomId, StateEvent.RoomJoinRules as any, {
               ...joinRuleContent,
               allow,
-            });
+            }).catch(() => undefined);
           }
         }
 
@@ -422,7 +424,9 @@ export function Lobby() {
         newItems.push(rId);
       }
       const newSpacesContent = makeCinnySpacesContent(mx, newItems);
-      mx.setAccountData(AccountDataEvent.CinnySpaces as any, newSpacesContent as any);
+      mx.setAccountData(AccountDataEvent.CinnySpaces as any, newSpacesContent as any).catch(
+        () => undefined
+      );
     },
     [mx, sidebarItems, sidebarSpaces]
   );

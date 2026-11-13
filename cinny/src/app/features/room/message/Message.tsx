@@ -408,7 +408,9 @@ export const MessagePinItem = as<
     if (!isPinned && eventId) {
       pinContent.pinned.push(eventId);
     }
-    mx.sendStateEvent(room.roomId, StateEvent.RoomPinnedEvents as any, pinContent);
+    mx.sendStateEvent(room.roomId, StateEvent.RoomPinnedEvents as any, pinContent).catch(
+      () => undefined
+    );
     onClose?.();
   };
 
@@ -848,7 +850,8 @@ export const Message = as<'div', MessageProps>(
           data-user-id={senderId}
           onClick={onUserClick}
         >
-          <UserAvatar surface="chat"
+          <UserAvatar
+            surface="chat"
             userId={senderId}
             src={
               senderAvatarMxc

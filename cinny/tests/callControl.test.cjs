@@ -15,7 +15,7 @@ const compiled = ts.transpileModule(source, {
   },
 }).outputText;
 
-function setup({ missing = false, disabled = false, contentWindow = true } = {}) {
+function setup({ missing = false, disabled = false, contentWindow = true, call = {} } = {}) {
   const calls = [];
   const diagnostics = [];
   let focused = false;
@@ -28,6 +28,7 @@ function setup({ missing = false, disabled = false, contentWindow = true } = {})
   };
   const document = {
     querySelector: () => (missing ? null : button),
+    querySelectorAll: () => [],
     hasFocus: () => focused,
   };
   const iframe = {
@@ -54,7 +55,7 @@ function setup({ missing = false, disabled = false, contentWindow = true } = {})
     '../diagnostics': { diag: (message) => diagnostics.push(message) },
     './audioDevices': { subscribeAudioPrefs: () => () => {}, applyAudioOutput() {} },
     './screenShareAudio': { screenShareAudio: {} },
-    './types': {},
+    './types': { ElementWidgetActions: { DeviceMute: 'io.element.device_mute' } },
   };
   const exports = {};
   vm.runInNewContext(
@@ -69,11 +70,12 @@ function setup({ missing = false, disabled = false, contentWindow = true } = {})
         observe() {}
         disconnect() {}
       },
+      window: { setTimeout: (fn) => setTimeout(fn, 0), clearTimeout },
     },
     { filename }
   );
   return {
-    control: new exports.CallControl({}, {}, iframe),
+    control: new exports.CallControl({}, call, iframe),
     calls,
     diagnostics,
   };
@@ -103,4 +105,60 @@ test('the iframe element is focused even without an available contentWindow', ()
   const { control, calls } = setup({ contentWindow: false });
   control.toggleScreenshare();
   assert.deepEqual(calls, ['iframe.focus', 'click']);
+});
+
+// #161: the call page sometimes does not answer a mute request in time (busy while joining, or the
+// call just ended). That used to surface as "js unhandled rejection: Request timed out".
+const rejectingCall = (sent, message = 'Request timed out') => ({
+  transport: {
+    send: async (action, data) => {
+      sent.push([action, data]);
+      throw new Error(message);
+    },
+  },
+});
+
+test('a mute request the call page does not answer resolves false and is logged', async () => {
+  const unhandled = [];
+  const onUnhandled = (reason) => unhandled.push(reason);
+  process.on('unhandledRejection', onUnhandled);
+  const sent = [];
+  const { control, diagnostics } = setup({ call: rejectingCall(sent) });
+  control.toggleMicrophone(true); // fire and forget, like the mute key and the agent voice
+  assert.equal(await control.toggleVideo(), false);
+  await new Promise((resolve) => {
+    setTimeout(resolve, 20);
+  });
+  process.off('unhandledRejection', onUnhandled);
+  assert.deepEqual(unhandled, []);
+  assert.equal(sent.length, 2);
+  assert.ok(
+    diagnostics.some((d) =>
+      /not acknowledged by the call page \(Error: Request timed out\)/.test(d)
+    )
+  );
+});
+
+test('the join state is sent once more when the call page did not answer', async () => {
+  const sent = [];
+  const { control } = setup({ call: rejectingCall(sent) });
+  await control.applyState();
+  assert.equal(sent.length, 2);
+  assert.deepEqual(sent[0], sent[1]);
+});
+
+test('an answered mute request resolves true without a second send', async () => {
+  const sent = [];
+  const call = {
+    transport: {
+      send: async (action, data) => {
+        sent.push([action, data]);
+        return {};
+      },
+    },
+  };
+  const { control } = setup({ call });
+  await control.applyState();
+  assert.equal(sent.length, 1);
+  assert.equal(await control.toggleMicrophone(true), true);
 });

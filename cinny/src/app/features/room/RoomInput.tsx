@@ -456,7 +456,8 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
         content.formatted_body = formattedBody;
       }
       if (replyDraft) content['m.relates_to'] = getReplyContent(replyDraft);
-      mx.sendMessage(roomId, content as any);
+      // A failed send stays in the timeline as "not sent" with retry (local echo).
+      mx.sendMessage(roomId, content as any).catch(() => undefined);
       resetEditor(editor);
       resetEditorHistory(editor);
       setReplyDraft(undefined);
@@ -532,7 +533,7 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
         content['m.relates_to'] = getReplyContent(replyDraft);
         setReplyDraft(undefined);
       }
-      mx.sendEvent(roomId, EventType.Sticker, content);
+      mx.sendEvent(roomId, EventType.Sticker, content).catch(() => undefined);
     };
 
     return (

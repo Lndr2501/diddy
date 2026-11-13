@@ -19,8 +19,12 @@ export async function markAsRead(mx: MatrixClient, roomId: string, privateReceip
   const latestEvent = getLatestValidEvent();
   if (latestEvent === null) return;
 
-  await mx.sendReadReceipt(
-    latestEvent,
-    privateReceipt ? ReceiptType.ReadPrivate : ReceiptType.Read
-  );
+  try {
+    await mx.sendReadReceipt(
+      latestEvent,
+      privateReceipt ? ReceiptType.ReadPrivate : ReceiptType.Read
+    );
+  } catch {
+    // Best effort: offline or a server hiccup. The next read marks the room as read again.
+  }
 }

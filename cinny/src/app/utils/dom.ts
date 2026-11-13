@@ -178,7 +178,8 @@ export const loadVideoElement = (url: string): Promise<HTMLVideoElement> =>
 
     video.src = url;
     video.load();
-    video.play();
+    // Autoplay can be blocked (Safari/iOS); loadeddata still fires and resolves.
+    video.play().catch(() => undefined);
   });
 
 export const getThumbnailDimensions = (width: number, height: number): [number, number] => {
@@ -241,21 +242,27 @@ export const scrollToBottom = (scrollEl: HTMLElement, behavior?: 'auto' | 'insta
   });
 };
 
-export const copyToClipboard = (text: string) => {
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(text);
-  } else {
-    const host = document.body;
-    const copyInput = document.createElement('input');
-    copyInput.style.position = 'fixed';
-    copyInput.style.opacity = '0';
-    copyInput.value = text;
-    host.append(copyInput);
+const legacyCopy = (text: string) => {
+  const host = document.body;
+  const copyInput = document.createElement('input');
+  copyInput.style.position = 'fixed';
+  copyInput.style.opacity = '0';
+  copyInput.value = text;
+  host.append(copyInput);
 
-    copyInput.select();
-    copyInput.setSelectionRange(0, 99999);
-    document.execCommand('Copy');
-    copyInput.remove();
+  copyInput.select();
+  copyInput.setSelectionRange(0, 99999);
+  document.execCommand('Copy');
+  copyInput.remove();
+};
+
+export const copyToClipboard = (text: string) => {
+  if (navigator.clipboard?.writeText) {
+    // WebKit (macOS app, iOS Safari) rejects writeText outside a fresh user gesture or without
+    // focus; fall back to the old way instead of silently copying nothing.
+    navigator.clipboard.writeText(text).catch(() => legacyCopy(text));
+  } else {
+    legacyCopy(text);
   }
 };
 

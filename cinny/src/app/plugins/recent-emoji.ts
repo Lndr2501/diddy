@@ -47,5 +47,5 @@ export function addRecentEmoji(mx: MatrixClient, unicode: string) {
     {
       recent_emoji: recentEmoji.slice(0, 100),
     } as never
-  );
+  ).catch(() => undefined);
 }
