@@ -74,6 +74,9 @@ private struct ChatContent: View {
     @State private var actionRow: MessageRow?
     /// Whether the chat follows the newest message. Only the user scrolling up turns this off.
     @State private var atBottom = true
+    /// The composer's height: when it shrinks (a photo taken out, the reply bar closed) the list
+    /// grows and would show an empty gap below the last message until scrolled.
+    @State private var composerHeight: CGFloat = 0
     @State private var bottomVisible = false
     /// Set by a drag, so the end leaving the screen can be told apart from content growing above it.
     @State private var userScrolled = false
@@ -321,6 +324,11 @@ private struct ChatContent: View {
                 guard atBottom || controller.rows.last?.isOwn == true else { return }
                 withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo("bottom", anchor: .bottom) }
                 controller.markRead()
+            }
+            .onChange(of: composerHeight) { _ in
+                // After the new layout, so the jump uses the list's new height.
+                guard atBottom else { return }
+                DispatchQueue.main.async { proxy.scrollTo("bottom", anchor: .bottom) }
             }
             .onChange(of: composerFocused) { focused in
                 guard focused, atBottom else { return }
@@ -678,6 +686,10 @@ private struct ChatContent: View {
             composerInputRow
         }
         .background(Theme.chat)
+        .background(GeometryReader { geometry in
+            Color.clear.preference(key: ComposerHeightKey.self, value: geometry.size.height)
+        })
+        .onPreferenceChange(ComposerHeightKey.self) { composerHeight = $0 }
     }
 
     /// The bot's suggestions set the whole draft; the cursor goes to its end.
@@ -1005,6 +1017,11 @@ private extension View {
             self
         }
     }
+}
+
+private struct ComposerHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
 }
 
 struct ViewedImage: Identifiable {
