@@ -68,10 +68,6 @@ final class TimelineNavModel: ObservableObject {
         pinned = ids
     }
 
-    func unread(me: String, reachedStart: Bool) -> TimelineNav.Unread {
-        TimelineNav.unread(snapshot.entries, readUpTo: readUpTo, me: me, reachedStart: reachedStart)
-    }
-
     /// The row "New Messages" goes above.
     func dividerRowId(me: String) -> String? {
         TimelineNav.newDividerRowId(snapshot.entries, readUpTo: readUpTo, me: me)

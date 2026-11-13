@@ -41,23 +41,6 @@ enum TimelineNav {
         return nil
     }
 
-    enum Unread: Equatable {
-        /// Nothing unread, or nothing to jump to.
-        case none
-        /// The "New Messages" line is above this row.
-        case divider(rowId: String)
-        /// The last read message is older than what is loaded.
-        case notLoaded
-    }
-
-    static func unread(_ entries: [Entry], readUpTo: String?, me: String, reachedStart: Bool) -> Unread {
-        // Local echoes have no receipt yet (useRoomEventReaders.ts), and an empty list is still loading.
-        guard let readUpTo, readUpTo.hasPrefix("$"), !entries.isEmpty else { return .none }
-        if let rowId = newDividerRowId(entries, readUpTo: readUpTo, me: me) { return .divider(rowId: rowId) }
-        if entries.contains(where: { $0.eventId == readUpTo }) || reachedStart { return .none }
-        return .notLoaded
-    }
-
     // MARK: Read receipts
 
     /// Everyone who has read up to the event or past it, the latest readers first, like the desktop's

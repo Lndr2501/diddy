@@ -89,8 +89,6 @@ private struct ChatContent: View {
     @State private var navSheet: TimelineNavSheet?
     @State private var jumpTarget: TimelineJumpTarget?
     @State private var highlightedRowId: String?
-    @State private var unreadSeen = false
-    @State private var unreadDismissed = false
     @State private var notifyError: String?
     @FocusState private var composerFocused: Bool
 
@@ -252,9 +250,7 @@ private struct ChatContent: View {
                             }
                     }
                     ForEach(controller.rows) { row in
-                        if !unreadDismissed, dividerRowId == row.id {
-                            NewMessagesDivider().onAppear { unreadSeen = true }
-                        }
+                        if dividerRowId == row.id { NewMessagesDivider() }
                         MessageRowView(
                             row: row,
                             account: account,
@@ -356,18 +352,6 @@ private struct ChatContent: View {
                 guard let target = jumpTarget else { return }
                 await jump(to: target.eventId, proxy: proxy)
             }
-            .overlay(alignment: .top) {
-                ZStack {
-                    if showsUnreadPill {
-                        JumpToUnreadPill(
-                            onJump: { Task { await jumpToUnread(proxy: proxy) } },
-                            onMarkRead: { unreadDismissed = true; controller.markRead() }
-                        )
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                    }
-                }
-                .animation(.easeOut(duration: 0.15), value: showsUnreadPill)
-            }
             .overlay(alignment: .bottomTrailing) {
                 ZStack {
                     if !atBottom { jumpToLatestButton(proxy: proxy) }
@@ -378,7 +362,7 @@ private struct ChatContent: View {
         }
     }
 
-    /// Bottom right of the chat, above the composer; the unread pill sits at the top, so they never meet.
+    /// Bottom right of the chat, above the composer.
     private func jumpToLatestButton(proxy: ScrollViewProxy) -> some View {
         Button {
             withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo("bottom", anchor: .bottom) }
@@ -417,15 +401,6 @@ private struct ChatContent: View {
 
     private var dividerRowId: String? { controller.nav.dividerRowId(me: account.userId) }
 
-    private var unread: TimelineNav.Unread {
-        controller.nav.unread(me: account.userId, reachedStart: controller.reachedStart)
-    }
-
-    private var showsUnreadPill: Bool {
-        guard !unreadDismissed, !unreadSeen else { return false }
-        return unread != .none
-    }
-
     /// Shows a message, loading older ones first when it is further back; the sheet of the
     /// surrounding messages is the way out for a message that cannot be reached.
     private func jump(to eventId: String, proxy: ScrollViewProxy) async {
@@ -442,18 +417,6 @@ private struct ChatContent: View {
         proxy.scrollTo(rowId, anchor: .center)
         try? await Task.sleep(nanoseconds: 1_700_000_000)
         if highlightedRowId == rowId { highlightedRowId = nil }
-    }
-
-    private func jumpToUnread(proxy: ScrollViewProxy) async {
-        if unread == .notLoaded, let readUpTo = controller.nav.readUpTo {
-            _ = await controller.loadRowId(forEvent: readUpTo)
-        }
-        guard case .divider(let rowId) = unread else { return }
-        userScrolled = true
-        atBottom = false
-        proxy.scrollTo(rowId, anchor: .top)
-        try? await Task.sleep(nanoseconds: 300_000_000)
-        proxy.scrollTo(rowId, anchor: .top)
     }
 
     private func openReply(of row: MessageRow) {
