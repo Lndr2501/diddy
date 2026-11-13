@@ -41,6 +41,11 @@ export interface Settings {
   mediaAutoLoad: boolean;
   urlPreview: boolean;
   encUrlPreview: boolean;
+  /**
+   * Set once the stored settings know that link cards in encrypted rooms are read by the app itself
+   * (never by the homeserver), which made them safe to have on by default (#197).
+   */
+  localLinkPreviews: boolean;
   showHiddenEvents: boolean;
   legacyUsernameColor: boolean;
 
@@ -81,7 +86,8 @@ const defaultSettings: Settings = {
   hideNickAvatarEvents: true,
   mediaAutoLoad: true,
   urlPreview: true,
-  encUrlPreview: false,
+  encUrlPreview: true,
+  localLinkPreviews: true,
   showHiddenEvents: false,
   legacyUsernameColor: false,
 
@@ -100,9 +106,16 @@ const defaultSettings: Settings = {
 export const getSettings = () => {
   const settings = localStorage.getItem(STORAGE_KEY);
   if (settings === null) return defaultSettings;
+  const stored = JSON.parse(settings) as Partial<Settings>;
+  // Before #197 the encrypted-room previews went through the homeserver and were off by default,
+  // so a stored `false` is almost always that old default.
+  if (stored.localLinkPreviews === undefined) {
+    stored.encUrlPreview = true;
+    stored.localLinkPreviews = true;
+  }
   return {
     ...defaultSettings,
-    ...(JSON.parse(settings) as Settings),
+    ...stored,
   };
 };
 

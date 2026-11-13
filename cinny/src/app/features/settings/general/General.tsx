@@ -815,10 +815,12 @@ function Messages() {
           />
           <InsetRow
             title="Url Preview"
+            description="Cards and pictures under links. Picture links load straight from the site."
             after={<Switch variant="Primary" value={urlPreview} onChange={setUrlPreview} />}
           />
           <InsetRow
             title="Url Preview in Encrypted Room"
+            description="Diddy reads the page itself, the link is not sent to your homeserver."
             after={<Switch variant="Primary" value={encUrlPreview} onChange={setEncUrlPreview} />}
           />
         </InsetGroup>

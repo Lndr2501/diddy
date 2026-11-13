@@ -11,6 +11,7 @@ const paths = require('../lib/paths.cjs');
 const diag = require('../lib/diag.cjs');
 const connections = require('../lib/connections.cjs');
 const myinstants = require('../lib/myinstants.cjs');
+const linkPreview = require('../lib/linkPreview.cjs');
 const { fitIntoArea, parseWindowState } = require('../lib/windowFit.cjs');
 const { resolveFile, contentType, startStaticServer } = require('../lib/staticServer.cjs');
 const { parseAgentVoiceLaunch, createAgentVoiceTrigger } = require('../lib/agentVoice.cjs');
@@ -278,4 +279,27 @@ test('the sign-on window hands the first app address to the main window and clos
   assert.equal(prevented, true);
   assert.equal(loaded, `${appOrigin}/?loginToken=abc`);
   assert.equal(closed, true);
+});
+
+test('link previews: only public pages, redirects checked, HTML only, size capped (#197)', async () => {
+  for (const host of ['example.com', '8.8.8.8', '[2001:4860::8888]']) assert.equal(linkPreview.isPublicHost(host), true, host);
+  for (const host of ['localhost', 'router', 'nas.local', '10.0.0.1', '192.168.178.62', '172.20.0.1', '[::1]', '[fd00::1]']) {
+    assert.equal(linkPreview.isPublicHost(host), false, host);
+  }
+  await assert.rejects(linkPreview.fetchPage('http://192.168.0.1/'), /public/);
+  await assert.rejects(linkPreview.fetchPage('file:///etc/passwd'), /public/);
+
+  const reply = (status, headers, body = '') => new Response(status >= 300 && status < 400 ? null : body, { status, headers });
+  const html = async (url) =>
+    url.pathname === '/start' ? reply(301, { location: '/page' }) : reply(200, { 'content-type': 'text/html; charset=utf-8' }, '<head><title>ok</title></head>');
+  assert.equal(await linkPreview.fetchPage('https://example.com/start', html), '<head><title>ok</title></head>');
+
+  const intoLan = async () => reply(302, { location: 'http://192.168.0.1/admin' });
+  await assert.rejects(linkPreview.fetchPage('https://example.com/a', intoLan), /302/);
+
+  const image = async () => reply(200, { 'content-type': 'image/png' }, 'x');
+  await assert.rejects(linkPreview.fetchPage('https://example.com/a', image), /not a web page/);
+
+  const big = async () => reply(200, { 'content-type': 'text/html' }, 'a'.repeat(linkPreview.MAX_BYTES + 5000));
+  assert.equal((await linkPreview.fetchPage('https://example.com/a', big)).length, linkPreview.MAX_BYTES);
 });
