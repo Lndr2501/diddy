@@ -20,6 +20,7 @@
   - **Animierte Profilbilder:** GIF-, WebP- und APNG-Profilbilder bewegen sich jetzt auch auf iOS, überall wo ein Profilbild steht (Chat, Listen, Profil, Antworten). Im Call nur, solange die Person spricht, wie am Desktop. Dafür lädt die App das Original einmal; ein stilles Bild merkt sie sich und lädt es nie wieder, Animationen liegen im Cache. Neuer Schalter unter Settings → Chat → „Animated Profile Pictures“. Reduce Motion und Stromsparmodus halten sie an.
   - **Chatliste:** DMs zeigen wieder die Nameplate und die Abzeichen der anderen Person (fehlten seit den neuen Tabs).
   - **Antworten:** Der Name im Zitat trägt den Diddy-Namensstil der Person.
+  - **Profilkarte:** Die Akzentfarbe der Karte zeichnet wie am Desktop einen Ring mit leichtem Schein um die Karte und färbt Interessen, Info-Symbole, Links und die Aktivität. Bisher nutzte iOS sie nur für die Knöpfe.
 - **iOS-Redesign, Teil 2: langes Drücken:** Statt des System-Kontextmenüs dunkelt der Chat ab, die Nachricht erscheint hervorgehoben, darüber eine Leiste mit 6 Schnellreaktionen und „+“ für alle Emoji, unten gleiten die Aktionen als Liste herein (Löschen rot). Ein kurzer haptischer Stoß bestätigt das Drücken. Doppeltippen auf eine Textnachricht setzt oder entfernt ein ❤️. Text lässt sich im Chat nicht mehr markieren; „Copy Text“ kopiert ihn.
 
 - **Bot-Karten als Player, Bots erkennbar (macOS, Linux; Player-Karte auch iOS):** Für den Musikbot und andere Bots, angelehnt an die Jukebox der Website-Demo. Beschreibung in `docs/bot-cards.md`.

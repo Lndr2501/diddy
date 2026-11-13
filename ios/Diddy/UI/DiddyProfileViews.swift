@@ -67,6 +67,18 @@ struct DiddyStatusDot: View {
 struct DiddyCardModules: View {
     let profile: DiddyProfile
 
+    /// The card's accent colour tints the pills, icons and the activity, like desktop
+    /// (`ProfileModules.tsx`).
+    private var accent: Color? { Color(diddyHex: profile.cardAccent) }
+
+    @ViewBuilder private func pill(_ shape: some Shape) -> some View {
+        if let accent {
+            shape.fill(Theme.input).overlay(shape.fill(accent.opacity(0.16))).overlay(shape.stroke(accent.opacity(0.3), lineWidth: 1))
+        } else {
+            shape.fill(Theme.input)
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             ForEach(profile.modules, id: \.self) { module in
@@ -95,9 +107,9 @@ struct DiddyCardModules: View {
     private func activityView(_ activity: DiddyProfile.Activity) -> some View {
         HStack(spacing: 10) {
             Image(systemName: Self.activityIcon(activity.kind))
-                .foregroundStyle(Theme.accent)
+                .foregroundStyle(accent == nil ? Theme.onAccent : .white)
                 .frame(width: 32, height: 32)
-                .background(RoundedRectangle(cornerRadius: 8).fill(Theme.input))
+                .background(RoundedRectangle(cornerRadius: 8).fill(accent ?? Theme.accent))
             VStack(alignment: .leading, spacing: 1) {
                 Text(activity.text).foregroundStyle(Theme.text)
                 if let detail = activity.detail { Text(detail).font(.caption).foregroundStyle(Theme.muted) }
@@ -111,7 +123,7 @@ struct DiddyCardModules: View {
                 Label {
                     Text(fact.value).foregroundStyle(Theme.text)
                 } icon: {
-                    Image(systemName: Self.factIcon(fact.field)).foregroundStyle(Theme.muted)
+                    Image(systemName: Self.factIcon(fact.field)).foregroundStyle(accent ?? Theme.muted)
                 }
                 .accessibilityLabel("\(fact.field.capitalized): \(fact.value)")
             }
@@ -126,7 +138,7 @@ struct DiddyCardModules: View {
                     .foregroundStyle(Theme.text)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 4)
-                    .background(Capsule().fill(Theme.input))
+                    .background(pill(Capsule()))
             }
         }
     }
@@ -138,6 +150,7 @@ struct DiddyCardModules: View {
                     Label(link.url.host ?? link.url.absoluteString, systemImage: link.kind == "web" ? "globe" : "link")
                         .lineLimit(1)
                 }
+                .tint(accent ?? Theme.accent)
             }
         }
     }

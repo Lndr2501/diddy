@@ -297,8 +297,10 @@ struct UserProfileSheet: View {
     private var diddy: DiddyProfile? { account.diddyProfiles[userId] }
     private var badges: [DiddyBadge] { account.diddyBadges[userId] ?? [] }
 
-    /// A frame or effect needs a visible card to sit on.
-    private var decorated: Bool { diddy?.frame?.resolved != nil || diddy?.effect != nil }
+    /// The card's accent colour: a ring around the card, like desktop (`CardRing`).
+    private var cardAccent: Color? { Color(diddyHex: diddy?.cardAccent) }
+    /// A frame, effect or accent ring needs a visible card to sit on.
+    private var decorated: Bool { diddy?.frame?.resolved != nil || diddy?.effect != nil || cardAccent != nil }
 
     var body: some View {
         NavigationStack {
@@ -385,6 +387,19 @@ struct UserProfileSheet: View {
         .padding(decorated ? 10 : 0)
         .background {
             if decorated { RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.sidebar) }
+        }
+        .overlay {
+            if let accent = cardAccent {
+                let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
+                ZStack {
+                    // A soft glow on the inside, then the 2 pt ring.
+                    shape.strokeBorder(accent.opacity(0.33), lineWidth: 10).blur(radius: 8)
+                    shape.strokeBorder(accent, lineWidth: 2)
+                }
+                .clipShape(shape)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+            }
         }
         .overlay {
             if let effect = diddy?.effect {
