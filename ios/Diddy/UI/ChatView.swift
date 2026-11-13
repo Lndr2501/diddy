@@ -1327,7 +1327,10 @@ struct MessageRowView: View {
                         }
                     }
                     content
-                    if !row.previewURLs.isEmpty { LinkPreviewStrip(urls: row.previewURLs, account: account) }
+                    if !row.previewURLs.isEmpty {
+                        LinkPreviewStrip(urls: row.previewURLs, account: account, encrypted: row.previewsLocal,
+                                         onImage: onImage)
+                    }
                     if !row.reactions.isEmpty { reactions }
                 }
                 Spacer(minLength: 0)

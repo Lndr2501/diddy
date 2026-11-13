@@ -10,7 +10,7 @@ struct ChatSettingsView: View {
 
     @AppStorage(ChatSettings.autoLoadMediaKey) private var autoLoadMedia = true
     @AppStorage(ChatSettings.urlPreviewsKey) private var urlPreviews = true
-    @AppStorage(ChatSettings.encryptedUrlPreviewsKey) private var encryptedUrlPreviews = false
+    @AppStorage(ChatSettings.encryptedUrlPreviewsKey) private var encryptedUrlPreviews = true
 
     @AppStorage(ChatSettings.timeFormatKey) private var timeFormat = ChatSettings.TimeFormat.system.rawValue
     @AppStorage(ChatSettings.dateFormatKey) private var dateFormat = DateFormatRules.defaultFormat

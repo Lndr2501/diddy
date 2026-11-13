@@ -47,6 +47,8 @@ struct MessageRow: Identifiable {
     var richItalic = false
     /// Web links to preview under the message (empty when previews are off).
     var previewURLs: [String] = []
+    /// The chat is encrypted: the app reads the previews itself instead of asking the homeserver.
+    var previewsLocal = false
     /// A video message; `body` is its file line, which a client without a player shows.
     var video: VideoAttachment? = nil
     var location: LocationAttachment? = nil
@@ -375,6 +377,7 @@ final class TimelineController: ObservableObject {
                 createdAt = date
             }
             guard var row = Self.row(for: event, id: item.uniqueId().id, me: ownUserId, previews: previews) else { continue }
+            row.previewsLocal = roomEncrypted
             row.dayDivider = pendingDay
             pendingDay = nil
             built.append(row)
