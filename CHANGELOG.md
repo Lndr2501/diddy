@@ -2,6 +2,11 @@
 
 ## Unveröffentlicht
 
+- **macOS: Threads (#188):** „Reply in Thread“ und das Thread-Zeichen an einer Antwort öffnen jetzt eine Thread-Ansicht rechts neben dem Raum (Ursprungsnachricht, alle Antworten, Antwortfeld). Ältere Antworten holt sie vom Server. Vorher gab es keine Ansicht, Thread-Antworten standen nur mitten im Chat. Die Mitgliederliste weicht, solange ein Thread offen ist.
+- **Profil (#177):** Links zeigen neben dem Symbol ihren Namen (GitHub, YouTube, bei Webseiten die Adresse). Die Symbole der Fakten (Ort, Alter, Schule, Beruf) sind deutlicher.
+- **Linux (#137):** Neun Hotkey-Tests liefen unbemerkt als „cancelled“ (der Timer des Portal-Helfers war `unref`-t) und zählten nicht als Fehler. Jetzt laufen alle 86 Electron-Tests.
+- **iOS/iPadOS (#187, #189, #190):** Auf dem iPad steht die Mitgliederliste wie am Mac rechts neben dem Chat (Knopf in der Kopfzeile blendet sie aus). Die Channel-Details haben „Media & Files“ mit Bildern, Videos und Dateien des Channels. Auf dem iPad antwortet auch ein Wisch nach rechts (nicht vom Bildschirmrand aus). Nur Syntax und die Wisch-Logik (`swipereply_check`) sind geprüft, nicht mit dem iOS-SDK kompiliert.
+
 - **Eigenes Soundpack (macOS, Linux, iOS):** Alle App-Sounds sind durch eigene ersetzt, mit eigenen Melodien in SoundCraft gebaut und gleich laut. Nachrichten und Anrufe klingen weich (Sinus plus Oktave), die eigenen Steuerknöpfe (Mikro, Kopfhörer, Kamera, Bildschirmübertragung, Mikro-Wechsel) kurz und holzig wie eine Marimba, jeweils als Paar auf- und abwärts. Die Nachricht ist D5 G5, die Erwähnung baut darauf auf (G4 D5 G5). Eingehender Anruf und Freizeichen sind eigene Schleifen (3,0 s und 2,5 s).
   - Neu dazugekommen sind eigene Sounds für Erwähnung, Einladung (statt des alten Cinny-Tons `invite.ogg`), abgelehnten Anruf, keine Antwort und Verbindungsabbruch. Bisher klangen sie wie Nachricht bzw. „Jemand geht“, auf iOS waren es synthetisierte Töne in anderem Klang.
   - Der eigene Beitritt klingt überall wie „Jemand kommt“.
