@@ -2,7 +2,10 @@
 
 ## Unveröffentlicht
 
-- **Eigene Sounds für Erwähnung, Einladung, abgelehnten Anruf, keine Antwort und Verbindungsabbruch (macOS, Linux, iOS):** Diese Ereignisse hatten keinen eigenen Sound im Pack. Am Desktop klang die Erwähnung wie eine Nachricht, abgelehnt und Verbindungsabbruch wie „Jemand geht“, die Einladung war der alte Cinny-Ton (`invite.ogg`). Auf iOS waren es synthetisierte Töne in anderem Klang. Die neuen Sounds sind in SoundCraft gebaut, im Klang des Packs (Sinus plus Oktave, C/G-Dur) und gleich laut: Erwähnung G4 D5 G5, Einladung als Glocken-Arpeggio, abgelehnt G4 → D#4, keine Antwort C5 A4 F4, Verbindungsabbruch chromatisch abwärts. Der eigene Beitritt klingt auf iOS jetzt wie am Desktop gleich wie „Jemand kommt“. iOS-Mitteilungen für Erwähnung und Einladung nutzen CAF-Kopien der neuen Sounds; `make_sounds.py` erzeugt nur noch das Freizeichen.
+- **Eigenes Soundpack (macOS, Linux, iOS):** Alle App-Sounds sind durch eigene ersetzt, mit eigenen Melodien in SoundCraft gebaut und gleich laut. Nachrichten und Anrufe klingen weich (Sinus plus Oktave), die eigenen Steuerknöpfe (Mikro, Kopfhörer, Kamera, Bildschirmübertragung, Mikro-Wechsel) kurz und holzig wie eine Marimba, jeweils als Paar auf- und abwärts. Die Nachricht ist D5 G5, die Erwähnung baut darauf auf (G4 D5 G5). Eingehender Anruf und Freizeichen sind eigene Schleifen (3,0 s und 2,5 s).
+  - Neu dazugekommen sind eigene Sounds für Erwähnung, Einladung (statt des alten Cinny-Tons `invite.ogg`), abgelehnten Anruf, keine Antwort und Verbindungsabbruch. Bisher klangen sie wie Nachricht bzw. „Jemand geht“, auf iOS waren es synthetisierte Töne in anderem Klang.
+  - Der eigene Beitritt klingt überall wie „Jemand kommt“.
+  - iOS spielt jetzt alle Sounds aus demselben Pack, auch das Freizeichen. Die Mitteilungstöne (Nachricht, Erwähnung, Einladung, Klingeln) sind CAF-Kopien der neuen Sounds. `ios/Tools/make_sounds.py` und die synthetisierten Töne sind entfernt, ebenso die ungenutzten `stream_user_joined.mp3` und `stream_user_left.mp3`.
 
 ## 1.7.1 (2026-11-12)
 

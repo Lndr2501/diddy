@@ -3,9 +3,9 @@ import AudioToolbox
 import Foundation
 import os
 
-/// The app's sounds. Most come from Diddy's sound pack, the MP3s the desktop app plays too
-/// (cinny/public/sound/diddy); the rest, which the pack has no sound for, are made by
-/// Tools/make_sounds.py. The raw value is the name of the made file.
+/// The app's sounds, all from Diddy's sound pack: the MP3s the desktop app plays too
+/// (cinny/public/sound/diddy). The raw value names a bundled CAF that is tried when the pack
+/// file is missing.
 enum Sound: String, CaseIterable, Identifiable {
     case ringtone, ringback
     case callJoined = "call_joined", callLeft = "call_left"
@@ -83,6 +83,7 @@ enum Sound: String, CaseIterable, Identifiable {
     var packFile: String? {
         switch self {
         case .ringtone: return "call_ringing"
+        case .ringback: return "call_calling"
         case .callLeft: return "disconnect"
         case .userJoined: return "user_join"
         case .userLeft: return "user_leave"
@@ -103,7 +104,6 @@ enum Sound: String, CaseIterable, Identifiable {
         case .callDeclined: return "call_declined"
         case .noAnswer: return "no_answer"
         case .connectionLost: return "connection_lost"
-        default: return nil
         }
     }
 
