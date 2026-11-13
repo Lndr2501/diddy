@@ -11,20 +11,53 @@ import UIKit
 struct LinkPreviewStrip: View {
     let urls: [String]
     let account: MatrixAccount
+    /// Encrypted chat: the app reads the pages itself, the links never reach the homeserver (#197).
+    var encrypted = false
+    /// Opens a picture full screen.
+    var onImage: ((UIImage) -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             ForEach(urls, id: \.self) { url in
-                LinkPreviewCard(url: url, account: account)
+                if LinkEmbedRules.isImageLink(url) {
+                    LinkImageEmbed(url: url, onImage: onImage)
+                } else {
+                    LinkPreviewCard(url: url, account: account, encrypted: encrypted, onImage: onImage)
+                }
             }
         }
         .padding(.top, 4)
     }
 }
 
+/// A link straight to a picture shows the picture (#198); nothing when it does not load.
+private struct LinkImageEmbed: View {
+    let url: String
+    var onImage: ((UIImage) -> Void)?
+    @State private var image: UIImage?
+
+    var body: some View {
+        Group {
+            if let image {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: 280, maxHeight: 280, alignment: .leading)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .contentShape(Rectangle())
+                    .onTapGesture { onImage?(image) }
+                    .accessibilityLabel("Picture from \(URL(string: url)?.host ?? url)")
+            }
+        }
+        .task(id: url) { image = await LinkPageFetcher.image(for: url) }
+    }
+}
+
 private struct LinkPreviewCard: View {
     let url: String
     let account: MatrixAccount
+    var encrypted = false
+    var onImage: ((UIImage) -> Void)?
     @State private var data: LinkPreviewData?
     @State private var image: UIImage?
 
@@ -32,53 +65,70 @@ private struct LinkPreviewCard: View {
         Group {
             if let data { card(data) }
         }
-        .task(id: "\(account.id)|\(url)") {
-            let loaded = await LinkPreviewStore.shared.preview(for: url, accountId: account.id, client: account.client)
+        .task(id: "\(account.id)|\(encrypted)|\(url)") {
+            let loaded = await LinkPreviewStore.shared.preview(
+                for: url, accountId: account.id, client: account.client, encrypted: encrypted
+            )
             data = loaded
             image = nil
-            if let loaded, let mxc = loaded.imageURL {
-                image = await MediaLoader.shared.thumbnail(url: mxc, size: 256, accountId: account.id, client: account.client)
+            guard let picture = loaded?.imageURL else { return }
+            if picture.hasPrefix("mxc://") {
+                image = await MediaLoader.shared.thumbnail(url: picture, size: 512, accountId: account.id, client: account.client)
+            } else {
+                image = await LinkPageFetcher.image(for: picture)
             }
         }
     }
 
-    /// Site and address on top like the desktop: `Site | example.org/page`.
+    /// The site's name on top, or its address when the page names none.
     private func header(_ data: LinkPreviewData) -> String {
-        let address = url.removingPercentEncoding ?? url
-        if let site = data.siteName { return "\(site) | \(address)" }
-        return address
+        if let site = data.siteName { return site }
+        guard let host = URL(string: url)?.host else { return url.removingPercentEncoding ?? url }
+        return host.hasPrefix("www.") ? String(host.dropFirst(4)) : host
+    }
+
+    private func accent(_ data: LinkPreviewData) -> Color {
+        guard let hex = data.color?.dropFirst(), hex.count == 6, let value = UInt32(hex, radix: 16) else { return Theme.accent }
+        return Color(red: Double((value >> 16) & 0xff) / 255, green: Double((value >> 8) & 0xff) / 255, blue: Double(value & 0xff) / 255)
     }
 
     @ViewBuilder
     private func card(_ data: LinkPreviewData) -> some View {
-        let content = HStack(alignment: .top, spacing: 10) {
+        let text = VStack(alignment: .leading, spacing: 3) {
+            Text(verbatim: header(data)).font(.caption).foregroundStyle(Theme.muted).lineLimit(1)
+            if let title = data.title {
+                Text(verbatim: title).font(.subheadline.weight(.semibold)).foregroundStyle(Theme.online).lineLimit(2)
+            }
+            if let description = data.description {
+                Text(verbatim: description).font(.caption).foregroundStyle(Theme.text).lineLimit(3)
+            }
+        }
+        let content = VStack(alignment: .leading, spacing: 8) {
+            if let target = RichTextBuilder.safeURL(url) {
+                Link(destination: target) { text }.buttonStyle(.plain)
+            } else {
+                text
+            }
             if let image {
                 Image(uiImage: image)
                     .resizable()
                     .scaledToFill()
-                    .frame(width: 72, height: 72)
+                    .frame(maxWidth: .infinity, maxHeight: 180)
                     .clipShape(RoundedRectangle(cornerRadius: 6))
+                    .contentShape(Rectangle())
+                    .onTapGesture { onImage?(image) }
                     .accessibilityHidden(true)
             }
-            VStack(alignment: .leading, spacing: 2) {
-                Text(verbatim: header(data)).font(.caption).foregroundStyle(Theme.online).lineLimit(1)
-                if let title = data.title {
-                    Text(verbatim: title).font(.subheadline.weight(.semibold)).foregroundStyle(Theme.text).lineLimit(2)
-                }
-                if let description = data.description {
-                    Text(verbatim: description).font(.caption).foregroundStyle(Theme.muted).lineLimit(3)
-                }
-            }
-            Spacer(minLength: 0)
         }
-        .padding(10)
-        .frame(maxWidth: 360, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 8).fill(Theme.elevated))
-        if let target = RichTextBuilder.safeURL(url) {
-            Link(destination: target) { content }.buttonStyle(.plain)
-        } else {
-            content
-        }
+        content
+            .padding(10)
+            .padding(.leading, 4)
+            .frame(maxWidth: 360, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 8).fill(Theme.elevated)
+                    .overlay(alignment: .leading) { Rectangle().fill(accent(data)).frame(width: 4) }
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+            )
     }
 }
 

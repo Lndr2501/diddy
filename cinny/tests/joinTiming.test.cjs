@@ -14,7 +14,7 @@ vm.runInNewContext(
   }).outputText,
   { exports: mod, performance, URL }
 );
-const { createJoinTimer, countTiles, isLivekitTokenRequest, watchMediaConnected } = mod;
+const { createJoinTimer, countTiles, isLivekitTokenRequest, watchMediaConnected, isLivekitSignalUrl, watchLivekitSignal } = mod;
 
 test('each step is logged once, with the time since the last step and since the start', () => {
   const lines = [];
@@ -136,4 +136,44 @@ test('an already connected peer is reported immediately without keeping a listen
   });
   assert.equal(calls, 1);
   assert.equal(pc.listenerCount, 0);
+});
+
+test('LiveKit signal sockets are recognised (#161)', () => {
+  assert.equal(isLivekitSignalUrl('wss://sfu.example.org/rtc?access_token=x'), true);
+  assert.equal(isLivekitSignalUrl('wss://sfu.example.org/livekit/sfu/rtc/v1?access_token=x'), true);
+  assert.equal(isLivekitSignalUrl('wss://sfu.example.org/rtc/validate'), false);
+  assert.equal(isLivekitSignalUrl('https://sfu.example.org/rtc'), false);
+  assert.equal(isLivekitSignalUrl('wss://matrix.example.org/_matrix/client/v3/sync'), false);
+  assert.equal(isLivekitSignalUrl('nope'), false);
+});
+
+test('each LiveKit signal attempt is logged: open, or closed before open', () => {
+  class FakeSocket extends EventTarget {
+    constructor(url) {
+      super();
+      this.url = url;
+    }
+  }
+  const win = { WebSocket: FakeSocket };
+  const lines = [];
+  let t = 0;
+  watchLivekitSignal(win, (l) => lines.push(l), () => t);
+  const first = new win.WebSocket('wss://sfu.example.org/rtc?access_token=a');
+  t = 5000;
+  const closed = new Event('close');
+  closed.code = 1006;
+  first.dispatchEvent(closed);
+  const second = new win.WebSocket('wss://sfu.example.org/rtc?access_token=a');
+  t = 5300;
+  second.dispatchEvent(new Event('open'));
+  const other = new win.WebSocket('wss://matrix.example.org/other');
+  other.dispatchEvent(new Event('open'));
+  assert.deepEqual(lines, [
+    'call join: LiveKit signal 1 closed before open after 5000 ms (code 1006)',
+    'call join: LiveKit signal 2 open after 300 ms',
+  ]);
+  assert.ok(second instanceof FakeSocket);
+  const wrapped = win.WebSocket;
+  watchLivekitSignal(win, () => {}, () => 0);
+  assert.equal(win.WebSocket, wrapped, 'installed once');
 });

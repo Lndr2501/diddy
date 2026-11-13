@@ -8,8 +8,22 @@ struct ChatView: View {
     @ObservedObject var account: MatrixAccount
     let roomId: String
     @StateObject private var holder = TimelineHolder()
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @AppStorage(MemberPanel.key) private var memberPanelOpen = true
 
     var body: some View {
+        HStack(spacing: 0) {
+            chat
+            // iPad: the members on the right like on macOS (#187); iPhone keeps the sheet.
+            if horizontalSizeClass == .regular, memberPanelOpen, holder.controller != nil {
+                Divider()
+                MembersView(account: account, roomId: roomId, onClose: { memberPanelOpen = false })
+                    .frame(width: 300)
+            }
+        }
+    }
+
+    private var chat: some View {
         Group {
             if let controller = holder.controller {
                 ChatContent(account: account, controller: controller, summary: account.summary(for: roomId))
@@ -63,6 +77,8 @@ private struct ChatContent: View {
     @AppStorage(ChatSettings.editorToolbarKey) private var showFormatToolbar = false
     @StateObject private var recorder = VoiceRecorder()
     @State private var showMembers = false
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @AppStorage(MemberPanel.key) private var memberPanelOpen = true
     @State private var showInfo = false
     @State private var showSearch = false
     @State private var searchContext: SearchEventTarget?
@@ -91,6 +107,8 @@ private struct ChatContent: View {
     @State private var highlightedRowId: String?
     @State private var notifyError: String?
     @FocusState private var composerFocused: Bool
+    /// Raised by a reply, so the keyboard comes up even after a swipe (see ComposerEditor.focusToken).
+    @State private var composerFocusToken = 0
 
     private var title: String { summary?.name ?? "Channel" }
     private var roomId: String { controller.room.id() }
@@ -385,7 +403,9 @@ private struct ChatContent: View {
     private var headerMenu: some View {
         Button { showInfo = true } label: { Label("Details", systemImage: "info.circle") }
         Button { showSearch = true } label: { Label("Search Messages", systemImage: "magnifyingglass") }
-        Button { showMembers = true } label: { Label("Members", systemImage: "person.2") }
+        Button {
+            if horizontalSizeClass == .regular { memberPanelOpen.toggle() } else { showMembers = true }
+        } label: { Label("Members", systemImage: "person.2") }
         Divider()
         Button { navSheet = .pinned } label: { Label("Pinned Messages", systemImage: "pin") }
         Button { navSheet = .jumpToDate } label: { Label("Jump to Time", systemImage: "calendar") }
@@ -449,6 +469,7 @@ private struct ChatContent: View {
         restoredReplyId = nil
         editing = nil
         composerFocused = true
+        composerFocusToken += 1
     }
 
     private func startEditing(_ row: MessageRow, text: String) {
@@ -581,7 +602,10 @@ private struct ChatContent: View {
             title: title,
             onBack: backAction,
             onInfo: { showInfo = true },
-            onCall: { Task { await calls.requestJoin(account: account, roomId: roomId, roomName: title, showCallScreen: true) } }
+            onCall: { Task { await calls.requestJoin(account: account, roomId: roomId, roomName: title, showCallScreen: true) } },
+            // iPad: the member list is a column beside the chat (ChatView), shown and hidden here.
+            membersOpen: horizontalSizeClass == .regular ? memberPanelOpen : nil,
+            onToggleMembers: { memberPanelOpen.toggle() }
         ) {
             headerMenu
         }
@@ -693,7 +717,7 @@ private struct ChatContent: View {
                 }
                 .accessibilityLabel("Add attachment")
             }
-            ComposerEditor(text: $draft, selection: $selection, isFocused: composerFocused, onFocus: { composerFocused = $0 }, onSend: send, onFiles: { urls, images in
+            ComposerEditor(text: $draft, selection: $selection, isFocused: composerFocused, focusToken: composerFocusToken, onFocus: { composerFocused = $0 }, onSend: send, onFiles: { urls, images in
                 Task { await addFiles(urls, images: images) }
             })
                 .frame(minHeight: ComposerEditor.minHeight)
@@ -1051,7 +1075,7 @@ struct ViewedImage: Identifiable {
 }
 
 /// Full screen photo: pinch to zoom, drag when zoomed, share or save.
-private struct ImageViewer: View {
+struct ImageViewer: View {
     let image: UIImage
     @Environment(\.dismiss) private var dismiss
     @State private var scale: CGFloat = 1
@@ -1266,7 +1290,10 @@ struct MessageRowView: View {
                         }
                     }
                     content
-                    if !row.previewURLs.isEmpty { LinkPreviewStrip(urls: row.previewURLs, account: account) }
+                    if !row.previewURLs.isEmpty {
+                        LinkPreviewStrip(urls: row.previewURLs, account: account, encrypted: row.previewsLocal,
+                                         onImage: onImage)
+                    }
                     if !row.reactions.isEmpty { reactions }
                 }
                 Spacer(minLength: 0)
@@ -1498,7 +1525,7 @@ private struct ChatImage: View {
     }
 }
 
-private struct FileAttachment: View {
+struct FileAttachment: View {
     let name: String
     let source: MediaSource
     let client: Client

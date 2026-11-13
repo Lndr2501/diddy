@@ -44,7 +44,8 @@ const startPortalShortcut = ({
       kill();
       finish('timeout');
     }, timeoutMs);
-    timer.unref?.();
+    // No unref(): the timer is cleared as soon as the shortcut is bound or the helper ends, and an unref'd
+    // one lets the Node test runner see an empty event loop and cancel this test and all after it.
 
     const handle = (line) => {
       const event = parseHelperLine(line);

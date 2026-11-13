@@ -12,6 +12,13 @@ name: Build
 #       APPLE_SIGNING_IDENTITY       e.g. "Developer ID Application: Name (TEAMID)"
 #     and for notarization additionally APPLE_ID, APPLE_PASSWORD (app-specific password),
 #     APPLE_TEAM_ID. The workflow then signs and notarizes by itself.
+#   - Dev builds without a Developer ID can use a self-signed identity instead (#164): set
+#       DEV_SIGNING_CERTIFICATE           base64 of its .p12
+#       DEV_SIGNING_CERTIFICATE_PASSWORD  its password
+#       DEV_SIGNING_IDENTITY              its name, e.g. "Diddy Signing"
+#     (.github/scripts/dev-signing-secrets.sh exports and sets them). An ad hoc signature differs
+#     on every build, so macOS asked for the keychain password ("Diddy Dev WebCrypto Master Key")
+#     after each update; with a fixed identity "Always Allow" holds for later builds.
 on:
   workflow_dispatch:
     inputs:
@@ -102,10 +109,23 @@ jobs:
           APPLE_ID: ${{ matrix.name == 'macos' && secrets.APPLE_ID || '' }}
           APPLE_PASSWORD: ${{ matrix.name == 'macos' && secrets.APPLE_PASSWORD || '' }}
           APPLE_TEAM_ID: ${{ matrix.name == 'macos' && secrets.APPLE_TEAM_ID || '' }}
+          DEV_SIGNING_CERTIFICATE: ${{ matrix.name == 'macos' && inputs.dev && secrets.DEV_SIGNING_CERTIFICATE || '' }}
+          DEV_SIGNING_CERTIFICATE_PASSWORD: ${{ matrix.name == 'macos' && inputs.dev && secrets.DEV_SIGNING_CERTIFICATE_PASSWORD || '' }}
+          DEV_SIGNING_IDENTITY: ${{ matrix.name == 'macos' && inputs.dev && secrets.DEV_SIGNING_IDENTITY || '' }}
         run: |
           for v in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
             if [ -z "${!v}" ]; then unset "$v"; fi
           done
+          # Dev build without a Developer ID: a fixed self-signed identity keeps the signature the
+          # same from build to build, so the keychain does not ask again after each update (#164).
+          if [ -z "${APPLE_CERTIFICATE:-}" ] && [ -n "$DEV_SIGNING_CERTIFICATE" ] && [ -n "$DEV_SIGNING_IDENTITY" ]; then
+            export APPLE_CERTIFICATE="$DEV_SIGNING_CERTIFICATE"
+            export APPLE_CERTIFICATE_PASSWORD="$DEV_SIGNING_CERTIFICATE_PASSWORD"
+            export APPLE_SIGNING_IDENTITY="$DEV_SIGNING_IDENTITY"
+            unset APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID
+            echo "macOS signing: fixed dev identity"
+          fi
+          unset DEV_SIGNING_CERTIFICATE DEV_SIGNING_CERTIFICATE_PASSWORD DEV_SIGNING_IDENTITY
           if [ -z "${APPLE_CERTIFICATE:-}" ]; then
             # Ad-hoc sign the macOS bundle so its resources are sealed; without it
             # Gatekeeper reports the downloaded app as damaged.
@@ -113,7 +133,7 @@ jobs:
           fi
           if [ "${{ matrix.name }}" = "macos" ]; then
             if [ -n "${APPLE_CERTIFICATE:-}" ]; then
-              echo "macOS signing: Developer ID certificate${APPLE_ID:+, notarization on}"
+              echo "macOS signing: certificate ${APPLE_SIGNING_IDENTITY:-}${APPLE_ID:+, notarization on}"
             else
               echo "macOS signing: ad hoc (no certificate secrets set)"
             fi

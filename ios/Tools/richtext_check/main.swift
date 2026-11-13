@@ -258,4 +258,53 @@ do {
     check(MessageMediaSize.aspect(width: 100, height: 1000) == 0.4, "very tall is capped")
 }
 
+// MARK: Link embeds (#197, #198)
+
+do {
+    check(LinkEmbedRules.isImageLink("https://example.com/a/cat.PNG"), "png link is a picture")
+    check(LinkEmbedRules.isImageLink("https://example.com/cat.jpeg?size=large"), "jpeg with query")
+    check(LinkEmbedRules.isImageLink("https://media.tenor.com/abc/tenor.gif"), "tenor gif")
+    check(LinkEmbedRules.isImageLink("https://pbs.twimg.com/media/Fabc?format=jpg"), "twitter picture")
+    check(!LinkEmbedRules.isImageLink("https://example.com/page.html"), "web page is no picture")
+    check(!LinkEmbedRules.isImageLink("http://192.168.1.1/cam.jpg"), "LAN picture is not loaded")
+    check(!LinkEmbedRules.isImageLink("ftp://example.com/x.png"), "ftp is not loaded")
+
+    for host in ["example.com", "8.8.8.8", "172.32.0.1", "[2001:4860::8888]"] {
+        check(LinkEmbedRules.isPublicHost(host), "public: \(host)")
+    }
+    for host in ["localhost", "router", "nas.local", "x.lan", "127.0.0.1", "10.0.0.1", "172.16.0.1",
+                 "192.168.178.62", "169.254.1.1", "100.64.0.1", "0.0.0.0", "[::1]", "[fd00::1]", "[fe80::1]"] {
+        check(!LinkEmbedRules.isPublicHost(host), "not public: \(host)")
+    }
+    check(LinkEmbedRules.isFetchable("https://example.com/x"), "https page is fetchable")
+    check(!LinkEmbedRules.isFetchable("javascript:alert(1)"), "javascript is not fetchable")
+}
+
+do {
+    let page = """
+    <!doctype html><html><head>
+      <title>Fallback</title>
+      <meta property="og:title" content="Rick Astley - Never Gonna Give You Up &amp; more">
+      <meta content='The official video' property='og:description'>
+      <meta property="og:site_name" content="YouTube">
+      <meta property="og:image" content="/vi/x/maxresdefault.jpg">
+      <meta name="theme-color" content="#ff0000">
+    </head><body><meta property="og:title" content="ignored"></body></html>
+    """
+    let meta = LinkPageMeta.parse(html: page, pageURL: "https://www.youtube.com/watch?v=x")
+    check(meta?.title == "Rick Astley - Never Gonna Give You Up & more", "og title: \(String(describing: meta?.title))")
+    check(meta?.description == "The official video", "og description")
+    check(meta?.siteName == "YouTube", "site name")
+    check(meta?.imageURL == "https://www.youtube.com/vi/x/maxresdefault.jpg", "relative picture made absolute: \(String(describing: meta?.imageURL))")
+    check(meta?.color == "#ff0000", "theme color")
+
+    let plain = LinkPageMeta.parse(html: "<head><title>  Hello\n World </title><meta name=\"description\" content=\"A page\"></head>", pageURL: "https://example.com/")
+    check(plain?.title == "Hello World", "title fallback: \(String(describing: plain?.title))")
+    check(plain?.description == "A page", "description fallback")
+    check(LinkPageMeta.parse(html: "<html><body>hi</body></html>", pageURL: "https://example.com") == nil, "empty page has no card")
+    let lan = LinkPageMeta.parse(html: "<head><title>T</title><meta property=\"og:image\" content=\"http://192.168.0.2/x.png\"></head>", pageURL: "https://example.com")
+    check(lan?.imageURL == nil, "LAN picture dropped")
+    check(LinkPageMeta.decodeEntities("a &lt;b&gt; &#39;c&#x27; &unknown;") == "a <b> 'c' &unknown;", "entities")
+}
+
 if failures == 0 { print("ALL OK") } else { print("\(failures) FAILED"); exit(1) }

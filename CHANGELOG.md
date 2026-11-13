@@ -2,6 +2,10 @@
 
 ## Unveröffentlicht
 
+- **macOS: Threads (#188):** „Reply in Thread“ und das Thread-Zeichen an einer Antwort öffnen jetzt eine Thread-Ansicht rechts neben dem Raum (Ursprungsnachricht, alle Antworten, Antwortfeld). Ältere Antworten holt sie vom Server. Vorher gab es keine Ansicht, Thread-Antworten standen nur mitten im Chat. Die Mitgliederliste weicht, solange ein Thread offen ist.
+- **Profil (#177):** Links zeigen neben dem Symbol ihren Namen (GitHub, YouTube, bei Webseiten die Adresse). Die Symbole der Fakten (Ort, Alter, Schule, Beruf) sind deutlicher.
+- **Linux (#137):** Neun Hotkey-Tests liefen unbemerkt als „cancelled“ (der Timer des Portal-Helfers war `unref`-t) und zählten nicht als Fehler. Jetzt laufen alle 86 Electron-Tests.
+- **iOS/iPadOS (#187, #189, #190):** Auf dem iPad steht die Mitgliederliste wie am Mac rechts neben dem Chat (Knopf in der Kopfzeile blendet sie aus). Die Channel-Details haben „Media & Files“ mit Bildern, Videos und Dateien des Channels. Auf dem iPad antwortet auch ein Wisch nach rechts (nicht vom Bildschirmrand aus). Nur Syntax und die Wisch-Logik (`swipereply_check`) sind geprüft, nicht mit dem iOS-SDK kompiliert.
 - **iOS-Redesign, Teil 1: Chat:** Der Chat bekommt ein neues, ruhiges Aussehen nach dem abgestimmten Entwurf (WhatsApp-Bedienung, Discord-Inhalte).
   - **Kopf:** eigener flacher Kopf statt der Systemleiste mit Glas-Kapseln. Zurück-Pfeil (nur iPhone), Bild bzw. #, Name und darunter der Status (DM) oder die Mitgliederzahl, dann Anruf und ⓘ mit dem bisherigen Menü (neu oben: „Details“). Wischen vom linken Rand geht weiter zurück.
   - **Verlauf:** Text 16 statt 15 pt, Namen weiß statt bunt (Diddy-Namensstile bleiben), mehr Abstand zwischen Gruppen. Aufeinanderfolgende Anrufzeilen werden zu einer („3 calls 19:22–19:34“). Antworten zeigen eine Linie vom Profilbild zum Zitat und das Bild des zitierten Absenders. „New Messages“ ist eine dünne Linie mit „NEW“ rechts.

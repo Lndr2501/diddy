@@ -29,6 +29,7 @@ const { createConnectionWindows, partitionOf } = require('./lib/connectionWindow
 const { createAppIcons } = require('./lib/appIcon.cjs');
 const { originOf, configurePermissions } = require('./lib/permissions.cjs');
 const myinstants = require('./lib/myinstants.cjs');
+const linkPreview = require('./lib/linkPreview.cjs');
 const { fitIntoArea, parseWindowState, guardWindowBounds } = require('./lib/windowFit.cjs');
 const { addFeatureSwitch } = require('./lib/commandLine.cjs');
 const { createStartupGate } = require('./lib/startupGate.cjs');
@@ -381,6 +382,7 @@ const commands = {
   },
   myinstants_fetch_text: ({ url }) => myinstants.fetchText(String(url)),
   myinstants_fetch_audio: ({ url }) => myinstants.fetchAudio(String(url)),
+  link_preview_fetch: ({ url }) => linkPreview.fetchPage(String(url)),
   connection_profiles: () => connections.readProfiles(configDir()),
   account_labels: () => connections.readAccountLabels(configDir()),
   set_account_label: ({ id, user }) => connections.setAccountLabel(configDir(), id, user),

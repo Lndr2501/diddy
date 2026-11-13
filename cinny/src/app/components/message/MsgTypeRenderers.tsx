@@ -27,6 +27,7 @@ import {
 } from '../../../types/matrix/common';
 import { FALLBACK_MIMETYPE, getBlobSafeMimeType } from '../../utils/mimeTypes';
 import { parseGeoUri, scaleYDimension } from '../../utils/common';
+import { fitMediaBox } from '../../utils/mediaBox';
 import { Attachment, AttachmentBox, AttachmentContent, AttachmentHeader } from './attachment';
 import { FileHeader, FileDownloadButton } from './FileHeader';
 import { readVoice, VoiceInfo } from '../../plugins/voiceMessage';
@@ -196,13 +197,15 @@ export function MImage({ content, renderImageContent, outlined }: MImageProps) {
   if (typeof mxcUrl !== 'string') {
     return <BrokenContent />;
   }
-  const height = scaleYDimension(imgInfo?.w || 400, 400, imgInfo?.h || 400);
+  // Fits into 400 × 320 with its own aspect ratio, so tall screenshots stay slim (#200).
+  const box = fitMediaBox(imgInfo?.w, imgInfo?.h);
 
   return (
-    <Attachment outlined={outlined}>
+    <Attachment outlined={outlined} style={{ width: toRem(box.width) }}>
       <AttachmentBox
         style={{
-          height: toRem(height < 48 ? 48 : height),
+          width: toRem(box.width),
+          height: toRem(box.height),
         }}
       >
         {renderImageContent({
@@ -246,7 +249,8 @@ export function MVideo({ content, renderAsFile, renderVideoContent, outlined }: 
     return <BrokenContent />;
   }
 
-  const height = scaleYDimension(videoInfo.w || 400, 400, videoInfo.h || 400);
+  // Full width for the file header; tall videos are letterboxed instead of filling the chat (#200).
+  const { height } = fitMediaBox(videoInfo.w, videoInfo.h, 400, 360);
 
   const filename = content.filename ?? content.body ?? 'Video';
 
@@ -268,7 +272,7 @@ export function MVideo({ content, renderAsFile, renderVideoContent, outlined }: 
       </AttachmentHeader>
       <AttachmentBox
         style={{
-          height: toRem(height < 48 ? 48 : height),
+          height: toRem(height),
         }}
       >
         {renderVideoContent({

@@ -44,12 +44,13 @@ export const SETTINGS_SEARCH_INDEX: Record<string, SettingsSearchEntry> = {
 
   calls: {
     name: 'Calls & Audio',
-    keywords: 'call voice audio sound microphone agent dictation watch together video',
+    keywords: 'call voice audio sound microphone agent dictation watch together video camera webcam',
     titles: [
       'Calls & Audio',
       'Calls',
       'Noise suppression',
       'Voice processing',
+      'Camera',
       'Volumes of people',
       'Sounds',
       'New message',

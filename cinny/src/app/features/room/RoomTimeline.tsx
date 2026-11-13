@@ -120,6 +120,7 @@ import { useMentionClickHandler } from '../../hooks/useMentionClickHandler';
 import { useSpoilerClickHandler } from '../../hooks/useSpoilerClickHandler';
 import { useRoomNavigate } from '../../hooks/useRoomNavigate';
 import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
+import { openThreadAtom } from '../../state/openThread';
 import { useIgnoredUsers } from '../../hooks/useIgnoredUsers';
 import { useImagePackRooms } from '../../hooks/useImagePackRooms';
 import { useIsDirectRoom } from '../../hooks/useRoom';
@@ -1070,6 +1071,16 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
     [handleOpenEvent]
   );
 
+  const setOpenThread = useSetAtom(openThreadAtom);
+  const handleOpenThread: MouseEventHandler = useCallback(
+    (evt) => {
+      const rootId = evt.currentTarget.getAttribute('data-event-id');
+      if (!rootId) return;
+      setOpenThread({ roomId: room.roomId, eventId: rootId });
+    },
+    [room.roomId, setOpenThread]
+  );
+
   const handleUserClick: MouseEventHandler<HTMLButtonElement> = useCallback(
     (evt) => {
       evt.preventDefault();
@@ -1117,6 +1128,11 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
         console.warn('Button should have "data-event-id" attribute!');
         return;
       }
+      if (startThread) {
+        // "Reply in thread" opens the thread next to the room (#188)
+        setOpenThread({ roomId: room.roomId, eventId: replyId });
+        return;
+      }
       const replyEvt = room.findEventById(replyId);
       if (!replyEvt) return;
       const editedReply = getEditedEvent(replyId, replyEvt, room.getUnfilteredTimelineSet());
@@ -1137,7 +1153,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
         setTimeout(() => ReactEditor.focus(editor), 100);
       }
     },
-    [room, setReplyDraft, editor]
+    [room, setReplyDraft, setOpenThread, editor]
   );
 
   const handleReactionToggle = useCallback(
@@ -1227,6 +1243,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
                   replyEventId={replyEventId}
                   threadRootId={threadRootId}
                   onClick={handleOpenReply}
+                  onThreadClick={handleOpenThread}
                   getMemberPowerTag={getMemberPowerTag}
                   accessibleTagColors={accessiblePowerTagColors}
                   legacyUsernameColor={legacyUsernameColor || direct}
@@ -1309,6 +1326,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
                   replyEventId={replyEventId}
                   threadRootId={threadRootId}
                   onClick={handleOpenReply}
+                  onThreadClick={handleOpenThread}
                   getMemberPowerTag={getMemberPowerTag}
                   accessibleTagColors={accessiblePowerTagColors}
                   legacyUsernameColor={legacyUsernameColor || direct}
@@ -1427,6 +1445,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
                   replyEventId={replyEventId}
                   threadRootId={threadRootId}
                   onClick={handleOpenReply}
+                  onThreadClick={handleOpenThread}
                   getMemberPowerTag={getMemberPowerTag}
                   accessibleTagColors={accessiblePowerTagColors}
                   legacyUsernameColor={legacyUsernameColor || direct}

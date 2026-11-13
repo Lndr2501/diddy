@@ -91,10 +91,18 @@ final class MemberStore: ObservableObject {
     }
 }
 
+/// The member list as a column on the right of the chat on iPad (#187), like the people drawer on
+/// macOS. On iPhone (compact width) the members stay a sheet. The choice is remembered.
+enum MemberPanel {
+    static let key = "diddy.memberPanelOpen"
+}
+
 struct MembersView: View {
     @ObservedObject var account: MatrixAccount
     let roomId: String
     var title = "Members"
+    /// Set when shown as the column next to the chat: the button hides the column, nothing is dismissed.
+    var onClose: (() -> Void)?
     @StateObject private var store = MemberStore()
     @Environment(\.dismiss) private var dismiss
     @State private var search = ""
@@ -158,7 +166,14 @@ struct MembersView: View {
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    if let onClose {
+                        Button { onClose() } label: { Image(systemName: "sidebar.right") }
+                            .accessibilityLabel("Hide member list")
+                    } else {
+                        Button("Done") { dismiss() }
+                    }
+                }
                 if canInvite {
                     ToolbarItem(placement: .navigationBarLeading) {
                         Button { inviting = true } label: { Image(systemName: "person.badge.plus") }

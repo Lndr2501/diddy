@@ -12,7 +12,11 @@ const ON_DARK = 'rgba(255, 255, 255, 0.92)';
 const ON_DARK_SOFT = 'rgba(255, 255, 255, 0.62)';
 const CTL_HOVER = 'rgba(255, 255, 255, 0.14)';
 
-/** Put on the folds `Modal` around the viewer: lets the viewer's own dark material show. */
+/**
+ * Put on the folds `Modal` around the viewer: lets the viewer's own dark material show. The frame
+ * gets a fixed size (#200): with only a minimum height the viewer's `height: 100%` did not
+ * resolve, so tall pictures (phone screenshots) were drawn at full size and cut off.
+ */
 export const ViewerFrame = style({
   selectors: {
     '&&&': {
@@ -20,6 +24,12 @@ export const ViewerFrame = style({
       backdropFilter: 'none',
       WebkitBackdropFilter: 'none',
       border: '1px solid rgba(255, 255, 255, 0.08)',
+      width: '94vw',
+      height: '92vh',
+      minWidth: 0,
+      minHeight: 0,
+      maxWidth: 'none',
+      maxHeight: 'none',
     },
   },
 });
@@ -68,22 +78,27 @@ export const ImageViewerTitle = style({
   },
 });
 
+/** Leaves room for the title on top and the control pill below, so they never cover the picture. */
 export const ImageViewerContent = style([
   DefaultReset,
   {
     height: '100%',
+    minHeight: 0,
     overflow: 'hidden',
+    padding: `${toRem(56)} ${toRem(24)} ${toRem(76)}`,
   },
 ]);
 
 export const ImageViewerImg = style([
   DefaultReset,
   {
+    display: 'block',
     objectFit: 'contain',
     width: 'auto',
     height: 'auto',
     maxWidth: '100%',
     maxHeight: '100%',
+    borderRadius: toRem(6),
     transition: 'transform 100ms linear',
   },
 ]);

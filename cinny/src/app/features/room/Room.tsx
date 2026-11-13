@@ -2,7 +2,7 @@ import React, { useCallback } from 'react';
 import { Box } from 'folds';
 import { useParams } from 'react-router-dom';
 import { isKeyHotkey } from 'is-hotkey';
-import { useAtomValue } from 'jotai';
+import { useAtom, useAtomValue } from 'jotai';
 import { RoomView } from './RoomView';
 import { MembersDrawer } from './MembersDrawer';
 import { ScreenSize, useScreenSizeContext } from '../../hooks/useScreenSize';
@@ -18,6 +18,8 @@ import { CallView } from '../call/CallView';
 import { RoomViewHeader } from './RoomViewHeader';
 import { callChatAtom } from '../../state/callEmbed';
 import { CallChatView } from './CallChatView';
+import { ThreadDrawer } from './ThreadDrawer';
+import { openThreadAtom } from '../../state/openThread';
 import { useCallEmbed } from '../../hooks/useCallEmbed';
 import { useCallMembers, useCallSession } from '../../hooks/useCall';
 
@@ -36,6 +38,8 @@ export function Room() {
   const powerLevels = usePowerLevels(room);
   const members = useRoomMembers(mx, room.roomId);
   const chat = useAtomValue(callChatAtom);
+  const [openThread] = useAtom(openThreadAtom);
+  const thread = openThread?.roomId === room.roomId ? openThread : undefined;
 
   useKeyDown(
     window,
@@ -62,7 +66,7 @@ export function Room() {
             </Box>
           </Box>
         )}
-        {!callView && (
+        {!callView && !(thread && screenSize !== ScreenSize.Desktop) && (
           <Box grow="Yes" direction="Column">
             <RoomViewHeader />
             <Box grow="Yes">
@@ -74,7 +78,10 @@ export function Room() {
         {callView && chat && (
           <CallChatView />
         )}
-        {!callView && screenSize === ScreenSize.Desktop && isDrawer && (
+        {!callView && thread && (
+          <ThreadDrawer key={`${room.roomId}${thread.eventId}`} room={room} rootId={thread.eventId} />
+        )}
+        {!callView && screenSize === ScreenSize.Desktop && isDrawer && !thread && (
           <MembersDrawer key={room.roomId} room={room} members={members} />
         )}
       </Box>

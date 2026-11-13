@@ -14,6 +14,7 @@ mod connections;
 #[cfg(target_os = "macos")]
 #[doc(hidden)]
 pub use connections::isolated_data_store;
+mod link_preview;
 mod myinstants;
 mod updater;
 mod window_guard;
@@ -500,6 +501,7 @@ pub fn run() {
             diag::open_log_folder,
             myinstants::myinstants_fetch_text,
             myinstants::myinstants_fetch_audio,
+            link_preview::link_preview_fetch,
             connections::connection_profiles,
             connections::open_connection_profile,
             connections::remove_connection_profile,
