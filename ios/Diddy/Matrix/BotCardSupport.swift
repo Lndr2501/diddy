@@ -9,6 +9,8 @@ import MatrixRustSDK
 struct BotCardInspection {
     var card: BotCard?
     var hidden = false
+    /// A shared song (MusicCard.swift).
+    var music: MusicCard?
 }
 
 @MainActor
@@ -35,6 +37,9 @@ enum BotCardLookup {
             result.hidden = true
         } else if BotCardParser.mightHaveCard(info.originalJson) || BotCardParser.mightHaveCard(info.latestEditJson) {
             result.card = BotCardParser.card(originalJson: info.originalJson, latestEditJson: info.latestEditJson)
+        }
+        if isText, result.card == nil, MusicCard.mightHaveCard(info.originalJson) || MusicCard.mightHaveCard(info.latestEditJson) {
+            result.music = MusicCard.card(originalJson: info.originalJson, latestEditJson: info.latestEditJson)
         }
         if !message.isEdited {
             if cache.count > 3000 { cache.removeAll() }
@@ -112,5 +117,28 @@ final class BotCommandStore: ObservableObject {
     static func mayBeCommand(_ draft: String) -> Bool {
         guard let first = draft.first, !draft.contains(where: { $0.isWhitespace }) else { return false }
         return "!%$.,;~?+*-".contains(first)
+    }
+}
+
+extension TimelineController {
+    /// Sends a shared song as a music card: the cover is uploaded first (other people's clients
+    /// then load it from your server, not from Apple or Spotify).
+    func sendMusic(_ card: MusicCard, client: Client) async -> Bool {
+        var card = card
+        if card.artwork == nil, let remote = card.remoteArtwork,
+           let (data, response) = try? await URLSession.shared.data(from: remote),
+           (response as? HTTPURLResponse)?.statusCode == 200, data.count <= 5 * 1024 * 1024 {
+            let mime = (response as? HTTPURLResponse)?.mimeType ?? "image/jpeg"
+            card.artwork = try? await client.uploadMedia(mimeType: mime, data: data, progressWatcher: nil)
+        }
+        guard let json = try? JSONSerialization.data(withJSONObject: card.content()) else { return false }
+        setTyping(false)
+        do {
+            _ = try await room.sendRaw(eventType: "m.room.message", content: String(decoding: json, as: UTF8.self))
+            return true
+        } catch {
+            sendError = error.friendlyMessage
+            return false
+        }
     }
 }

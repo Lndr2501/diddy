@@ -1,6 +1,7 @@
-# Native iOS/iPadOS client: one app target, no extensions, so sideloading with a free Apple ID
-# needs a single App ID. Generate the Xcode project with `xcodegen` in this folder
-# (the .xcodeproj is not committed), see ios/README.md.
+# Native iOS/iPadOS client: the app and one share extension (DiddyShare, "Diddy" in the share
+# sheet). Sideloaders that reuse the app's App ID for extensions (the home server's does) need no
+# second one; AltStore/SideStore with a free Apple ID need one more. Generate the Xcode project
+# with `xcodegen` in this folder (the .xcodeproj is not committed), see ios/README.md.
 name: Diddy
 options:
   bundleIdPrefix: app.diddy
@@ -51,6 +52,9 @@ targets:
           - -w
           - -I$(SRCROOT)/Vendor/rnnoise/include
     dependencies:
+      - target: DiddyShare
+        embed: true
+        codeSign: false
       # MatrixRustSDK is a dynamic framework (the Rust core lives in it) and must be copied into
       # the app; CI checks that every @rpath framework is really inside the IPA.
       - package: MatrixRustSDK
@@ -86,6 +90,11 @@ targets:
         NSCameraUsageDescription: Diddy needs the camera for video in voice channels.
         NSPhotoLibraryAddUsageDescription: Diddy saves images to your photo library when you choose Save to Photos.
         NSLocalNetworkUsageDescription: Diddy connects to Matrix and voice servers on your network.
+        # The share extension opens the app with `diddy://share?...` (App/ShareHandoff.swift).
+        CFBundleURLTypes:
+          - CFBundleURLName: app.diddy.ios.share
+            CFBundleURLSchemes:
+              - diddy
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.diddy.ios
@@ -93,3 +102,37 @@ targets:
         # Home-screen icons the user can switch to in Settings (see AppIconManager.swift).
         ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: AppIcon-Blue AppIcon-Purple AppIcon-Black AppIcon-Magenta
         ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: NO
+
+  # "Diddy" in the share sheet: collects photos, videos, files, links and text (Apple Music lyrics)
+  # into the app group and opens the app, which asks for the chat and sends. No Matrix code here.
+  DiddyShare:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: DiddyShare
+      - path: Diddy/App/ShareHandoff.swift
+    info:
+      path: DiddyShare/Info.plist
+      properties:
+        CFBundleDisplayName: Diddy
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.share-services
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
+          NSExtensionAttributes:
+            NSExtensionActivationRule:
+              NSExtensionActivationSupportsImageWithMaxCount: 20
+              NSExtensionActivationSupportsMovieWithMaxCount: 10
+              NSExtensionActivationSupportsFileWithMaxCount: 10
+              NSExtensionActivationSupportsWebURLWithMaxCount: 1
+              NSExtensionActivationSupportsText: true
+              NSExtensionActivationSupportsAttachmentsWithMaxCount: 20
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.diddy.ios.share
+        # It opens the app through the application object (ShareViewController.openApp).
+        APPLICATION_EXTENSION_API_ONLY: NO
+        SKIP_INSTALL: YES
+        # The app's bridging header (RNNoise) has nothing to do here.
+        SWIFT_OBJC_BRIDGING_HEADER: ""
