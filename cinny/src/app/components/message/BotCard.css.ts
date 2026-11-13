@@ -462,21 +462,29 @@ export const Popover = style({
   selectors: {
     // the "⋯" button is the last one in the row: open towards the left
     '&[data-bot-popover=more]': { left: 'auto', right: 0 },
-    '&[data-bot-popover=volume]': {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: toRem(8),
-      padding: `${toRem(8)} ${toRem(10)}`,
-      minWidth: toRem(200),
-    },
   },
+});
+
+// The volume button and its slider row are direct flex items of PlayerButtons,
+// so the row can wrap onto its own line below the buttons.
+export const VolumeAnchor = style({ display: 'contents' });
+
+export const VolumePanel = style({
+  order: 1,
+  flexBasis: '100%',
+  boxSizing: 'border-box',
+  display: 'flex',
+  alignItems: 'center',
+  gap: toRem(10),
+  padding: `${toRem(8)} ${toRem(12)}`,
+  borderRadius: toRem(9),
+  // outline only: the slider's empty track uses ContainerActive and must stay visible
+  border: `${config.borderWidth.B300} solid ${color.SurfaceVariant.ContainerLine}`,
 });
 
 export const VolumeSlider = style({
   flexGrow: 1,
   minWidth: 0,
-  accentColor: color.Primary.Main,
-  cursor: 'pointer',
 });
 
 export const VolumeValue = style({
