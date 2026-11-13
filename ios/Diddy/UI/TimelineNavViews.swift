@@ -76,9 +76,8 @@ struct TimelineNavSheetView: View {
 struct NewMessagesDivider: View {
     var body: some View {
         HStack(spacing: 8) {
-            Rectangle().fill(Theme.accent.opacity(0.35)).frame(height: 1)
-            Text("New Messages").font(.caption2.weight(.semibold)).foregroundStyle(Theme.accent)
-            Rectangle().fill(Theme.accent.opacity(0.35)).frame(height: 1)
+            Rectangle().fill(Theme.accent.opacity(0.45)).frame(height: 1)
+            Text("NEW").font(.caption2.weight(.bold)).tracking(0.4).foregroundStyle(Theme.accent)
         }
         .padding(.horizontal, ChatStyle.edgePadding)
         .padding(.top, 10)
@@ -177,25 +176,24 @@ struct TimelineFollowingLine: View {
         if !userIds.isEmpty {
             let names = userIds.map { account.name(of: $0) }
             Button(action: onTap) {
-                HStack(spacing: 6) {
-                    Spacer(minLength: 0)
+                HStack(spacing: 4) {
                     HStack(spacing: -4) {
                         ForEach(userIds.prefix(4), id: \.self) { userId in
                             AvatarView(url: account.profiles[userId]?.avatarUrl, name: account.name(of: userId), size: 16, account: account)
                                 .overlay(Circle().stroke(Theme.chat, lineWidth: 1.5))
                         }
                     }
-                    Text(TimelineNav.seenBy(names)).lineLimit(1)
+                    if userIds.count > 4 {
+                        Text("+\(userIds.count - 4)").font(.caption2.weight(.semibold)).foregroundStyle(Theme.faint)
+                    }
                 }
-                .font(.caption)
-                .foregroundStyle(Theme.faint)
                 .padding(.horizontal, ChatStyle.edgePadding)
-                .padding(.vertical, 3)
+                .frame(minHeight: 20)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Seen by \(names.joined(separator: ", "))")
+            .accessibilityLabel(TimelineNav.seenBy(names))
             .accessibilityAddTraits(.isButton)
         }
     }

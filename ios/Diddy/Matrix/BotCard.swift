@@ -48,6 +48,22 @@ struct BotCardChart: Equatable {
     let items: [BotCardChartItem]
 }
 
+/// Buttons of the player layout, each a bot command (`!cmd` or `!cmd arg`).
+struct BotCardControls: Equatable {
+    var prev: String?
+    var toggle: String?
+    var skip: String?
+    /// The client appends the new value: `<volume> 80`.
+    var volume: String?
+    /// opens the bot's web dashboard (the bot answers with a personal link)
+    var dashboard: String?
+}
+
+struct BotCardUpNext: Equatable {
+    let title: String
+    let artist: String?
+}
+
 enum BotCardTrackState: String, CaseIterable {
     case searching, downloading, playing, paused, stopped, error
 }
@@ -74,6 +90,18 @@ struct BotCardTrack: Equatable {
     let seek: String?
     let volume: Double?
     let actions: [BotCardAction]
+    // Player layout (docs/bot-cards.md, "Player-Karte"). With `controls` Diddy draws the player
+    // and ignores `actions`; without it the card stays the classic one.
+    /// room name for the "Now playing in" header
+    var room: String? = nil
+    /// display name of whoever asked for the track ("Autoplay" for autoplay picks)
+    var requestedBy: String? = nil
+    var upNext: [BotCardUpNext] = []
+    var controls: BotCardControls? = nil
+    /// upper end of the volume slider (default 100)
+    var volumeMax: Double? = nil
+    /// extra commands behind the "⋯" button
+    var more: [BotCardAction] = []
 }
 
 enum BotCard: Equatable {
@@ -175,13 +203,42 @@ enum BotCardParser {
         return tail.contains(rest.count) && noWhitespace(String(rest))
     }
 
-    static func actions(_ value: Any?) -> [BotCardAction] {
+    /// Most entries in the "⋯" menu of the player card (other buttons: 10).
+    static let moreMax = 16
+
+    static func actions(_ value: Any?, max: Int = 10) -> [BotCardAction] {
         guard let list = value as? [Any] else { return [] }
         var out: [BotCardAction] = []
-        for case let item as [String: Any] in list.prefix(10) {
+        for case let item as [String: Any] in list.prefix(max) {
             guard let label = text(item["label"], 24), let send = text(item["send"], 120) else { continue }
             // A button only types a bot command into the chat for you: it has to look like one.
             if looksLikeCommand(send, tail: 1...Int.max) { out.append(BotCardAction(label: label, send: send)) }
+        }
+        return out
+    }
+
+    /// A player button's command: `^[!/][^\s]{1,30}( [^\s]{1,20})?$`, at most 60 characters, so it
+    /// still counts as a hidden card action after the client appends one argument (the volume).
+    static func playerCommand(_ value: Any?) -> String? {
+        guard let string = value as? String, string.count <= 60 else { return nil }
+        let parts = string.split(separator: " ", omittingEmptySubsequences: false).map(String.init)
+        guard (1...2).contains(parts.count), looksLikeCommand(parts[0], tail: 1...30) else { return nil }
+        if parts.count == 2, !((1...20).contains(parts[1].count) && noWhitespace(parts[1])) { return nil }
+        return string
+    }
+
+    static func controls(_ value: Any?) -> BotCardControls? {
+        guard let object = value as? [String: Any] else { return nil }
+        return BotCardControls(prev: playerCommand(object["prev"]), toggle: playerCommand(object["toggle"]),
+                               skip: playerCommand(object["skip"]), volume: playerCommand(object["volume"]),
+                               dashboard: playerCommand(object["dashboard"]))
+    }
+
+    static func upNext(_ value: Any?) -> [BotCardUpNext] {
+        guard let list = value as? [Any] else { return [] }
+        var out: [BotCardUpNext] = []
+        for case let item as [String: Any] in list.prefix(20) where out.count < 3 {
+            if let title = text(item["title"], 160) { out.append(BotCardUpNext(title: title, artist: text(item["artist"], 120))) }
         }
         return out
     }
@@ -218,7 +275,13 @@ enum BotCardParser {
                 note: text(raw["note"], 200),
                 seek: seek,
                 volume: number(raw["volume"], max: 1000),
-                actions: actions(raw["actions"])
+                actions: actions(raw["actions"]),
+                room: text(raw["room"], 80),
+                requestedBy: text(raw["requestedBy"], 80),
+                upNext: upNext(raw["upNext"]),
+                controls: controls(raw["controls"]),
+                volumeMax: number(raw["volumeMax"], max: 1000).flatMap { $0 > 0 ? $0 : nil },
+                more: actions(raw["more"], max: moreMax)
             ))
 
         case "queue":

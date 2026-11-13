@@ -3,14 +3,6 @@
 Diddy ist ein Matrix-Client: Tauri 2 (macOS) + Cinny-Fork in `cinny/` (React/TypeScript, vanilla-extract,
 folds, jotai). Dazu `electron/` (Linux) und `ios/` (Swift). Repo: Lndr2501/diddy. Anrede im Chat: duzen.
 
-## Aktueller Kurs: Stabilisierung auf 1.5 (ab 2026-11-09, vom Nutzer festgelegt)
-
-- **Feature-Stopp:** Wir bleiben bei Version 1.5.x. Keine neuen Funktionen, keine neuen Einstellungen, kein Redesign.
-- Erlaubt: Fehler beheben, Abstürze und Startprobleme, Stabilität, Leistung, Plattform-Gleichstand (alles, was es gibt, muss auf macOS, Linux und iOS laufen), Tests, Doku.
-- Ziel: **alle Plattformen stabil**. Kritische Bugs (Label Bug, Prio 1 und 2) vor allem anderen.
-- Issues mit Label `enhancement` oder neue Wünsche: nicht anfangen, nur vermerken. Der Nutzer entscheidet.
-- Bei Zweifel, ob etwas ein Feature ist: nicht bauen und den Nutzer fragen.
-
 ## Erst lesen
 
 1. Dieser Text, dann `docs/agent-guide.md` (Tests, Mac-Build, DMG, Testserver Schritt für Schritt).

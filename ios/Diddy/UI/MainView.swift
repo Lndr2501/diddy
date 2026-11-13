@@ -16,11 +16,14 @@ final class AppNavigator: ObservableObject {
     @Published var destination: Destination?
     @Published var shellLink: ShellRoomLink?
     @Published var searchTarget: SearchEventTarget?
+    /// The tab on iPhone (PhoneShell.swift); the iPad shows the rail and the channels instead.
+    @Published var tab: PhoneTab = .chats
 
     init() { server = UserDefaults.standard.string(forKey: "diddy.lastServer") }
 
     func open(_ roomId: String, account: MatrixAccount) {
         server = account.server(of: roomId)
+        tab = server == nil ? .chats : .servers
         destination = account.destination(for: roomId)
     }
 }
@@ -37,18 +40,26 @@ struct MainView: View {
     @State private var showQuickSwitch = false
     @State private var showWelcome = false
     @ObservedObject private var themes = ThemeStore.shared
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     var body: some View {
         NavigationSplitView {
-            HStack(spacing: 0) {
-                ServerRail(account: account, selection: $navigator.server)
-                ChannelSidebar(
-                    account: account,
-                    server: navigator.server,
-                    destination: $navigator.destination,
-                    showSettings: $showSettings,
-                    showSearch: $showQuickSwitch
-                )
+            Group {
+                if sizeClass == .compact {
+                    // iPhone: tabs at the bottom (Chats, Servers, Activity, You), the chat pushed over them.
+                    PhoneHome(account: account, showSettings: $showSettings, showSearch: $showQuickSwitch)
+                } else {
+                    HStack(spacing: 0) {
+                        ServerRail(account: account, selection: $navigator.server)
+                        ChannelSidebar(
+                            account: account,
+                            server: navigator.server,
+                            destination: $navigator.destination,
+                            showSettings: $showSettings,
+                            showSearch: $showQuickSwitch
+                        )
+                    }
+                }
             }
             .background(Theme.sidebar)
             .toolbar(.hidden, for: .navigationBar)
@@ -185,6 +196,9 @@ struct ChannelSidebar: View {
     @Binding var showSettings: Bool
     /// The quick switcher of the whole app (also Command-K), opened from the magnifier in the header.
     @Binding var showSearch: Bool
+    /// The iPhone's tabs: a large title, round buttons, the chat list with times and previews, and
+    /// no user panel or plugin dock at the bottom (those live in the You tab).
+    var phone = false
     @EnvironmentObject private var calls: CallManager
     @State private var joinError: String?
     @State private var showRecovery = false
@@ -229,7 +243,7 @@ struct ChannelSidebar: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            header
+            if phone { phoneHeader } else { header }
             ShellSyncBanner(account: account)
             ShellUpdateNotice()
             if account.needsRecovery {
@@ -245,6 +259,7 @@ struct ChannelSidebar: View {
                 .padding(.bottom, 6)
             }
             searchField
+            if phone && server == nil { PhoneCallCard(account: account) }
             List(selection: $destination) {
                 if let server {
                     serverChannels(server)
@@ -257,12 +272,14 @@ struct ChannelSidebar: View {
             .refreshable {
                 if let server { await account.loadChannels(spaceId: server) }
             }
-            if let call = calls.current {
+            if let call = calls.current, !(phone && server == nil) {
                 VoiceStatusBar(session: call)
             }
             DiddyServerNotice(account: account)
-            PluginDockView()
-            UserPanel(account: account, showSettings: $showSettings)
+            if !phone {
+                PluginDockView()
+                UserPanel(account: account, showSettings: $showSettings)
+            }
         }
         .background(Theme.sidebar)
         .alert("Could not join", isPresented: Binding(get: { joinError != nil }, set: { if !$0 { joinError = nil } })) {
@@ -344,16 +361,7 @@ struct ChannelSidebar: View {
         HStack(spacing: 4) {
             if let server {
                 Menu {
-                    ServerMenuItems(
-                        account: account,
-                        serverId: server,
-                        onInvite: { sheet = .invite(server) },
-                        onCreateChannel: { sheet = .createChannel(server) },
-                        onManage: { sheet = .manage(server) },
-                        onSettings: { sheet = .roomSettings(server) },
-                        onJoinAll: joinAllAction(server),
-                        onLeave: { leavingServer = server }
-                    )
+                    serverMenu(server)
                 } label: {
                     HStack(spacing: 4) {
                         Text(serverName).font(.headline).foregroundStyle(Theme.text).lineLimit(1)
@@ -370,10 +378,7 @@ struct ChannelSidebar: View {
                 Spacer()
                 headerButton("magnifyingglass", label: "Search") { showSearch = true }
                 Menu {
-                    Button { sheet = .newMessage } label: { Label("New Message", systemImage: "square.and.pencil") }
-                    Button { sheet = .createRoom } label: { Label("Create Room", systemImage: "plus.bubble") }
-                    Divider()
-                    Button { sheet = .explore } label: { Label("Explore", systemImage: "safari") }
+                    composeMenu
                 } label: {
                     Image(systemName: "square.and.pencil").foregroundStyle(Theme.muted)
                         .frame(width: 36, height: 36)
@@ -385,6 +390,79 @@ struct ChannelSidebar: View {
         .padding(.leading, 16)
         .padding(.trailing, 8)
         .frame(height: 52)
+    }
+
+    @ViewBuilder
+    private func serverMenu(_ server: String) -> some View {
+        ServerMenuItems(
+            account: account,
+            serverId: server,
+            onInvite: { sheet = .invite(server) },
+            onCreateChannel: { sheet = .createChannel(server) },
+            onManage: { sheet = .manage(server) },
+            onSettings: { sheet = .roomSettings(server) },
+            onJoinAll: joinAllAction(server),
+            onLeave: { leavingServer = server }
+        )
+    }
+
+    @ViewBuilder
+    private var composeMenu: some View {
+        Button { sheet = .newMessage } label: { Label("New Message", systemImage: "square.and.pencil") }
+        Button { sheet = .createRoom } label: { Label("Create Room", systemImage: "plus.bubble") }
+        Divider()
+        Button { sheet = .explore } label: { Label("Explore", systemImage: "safari") }
+    }
+
+    /// The iPhone header: a large "Chats" with the compose button, or the server's name (its menu)
+    /// with round Search and Members buttons.
+    private var phoneHeader: some View {
+        HStack(spacing: 8) {
+            if let server {
+                Menu {
+                    serverMenu(server)
+                } label: {
+                    HStack(spacing: 5) {
+                        Text(serverName).font(.title2.bold()).foregroundStyle(Theme.text).lineLimit(1)
+                        Image(systemName: "chevron.down").font(.footnote.weight(.bold)).foregroundStyle(Theme.muted)
+                    }
+                }
+                .accessibilityLabel("\(serverName), server menu")
+                Spacer(minLength: 8)
+                roundButton("magnifyingglass", label: "Search") { showSearch = true }
+                roundButton("person.2", label: "Members") { sheet = .members(server) }
+            } else {
+                Text("Chats").font(.largeTitle.bold()).foregroundStyle(Theme.text)
+                    .accessibilityAddTraits(.isHeader)
+                Spacer(minLength: 8)
+                Menu {
+                    composeMenu
+                } label: {
+                    roundIcon("square.and.pencil")
+                }
+                .accessibilityLabel("New Message or Room")
+            }
+        }
+        .padding(.leading, 18)
+        .padding(.trailing, 10)
+        .padding(.top, server == nil ? 6 : 2)
+        .padding(.bottom, 8)
+    }
+
+    private func roundIcon(_ systemImage: String) -> some View {
+        Image(systemName: systemImage)
+            .font(.system(size: 16, weight: .medium))
+            .foregroundStyle(Theme.text)
+            .frame(width: 36, height: 36)
+            .background(Circle().fill(Theme.elevated))
+            .frame(width: ChatStyle.minTapSize, height: ChatStyle.minTapSize)
+            .contentShape(Rectangle())
+    }
+
+    private func roundButton(_ systemImage: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) { roundIcon(systemImage) }
+            .buttonStyle(.plain)
+            .accessibilityLabel(label)
     }
 
     private func headerButton(_ systemImage: String, label: String, action: @escaping () -> Void) -> some View {
@@ -400,7 +478,7 @@ struct ChannelSidebar: View {
     private var searchField: some View {
         HStack(spacing: 6) {
             Image(systemName: "magnifyingglass").font(.footnote).foregroundStyle(Theme.faint)
-            TextField(server == nil ? "Find a conversation" : "Find a channel", text: $filter)
+            TextField(phone ? "Search" : (server == nil ? "Find a conversation" : "Find a channel"), text: $filter)
                 .font(.subheadline)
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
@@ -410,10 +488,10 @@ struct ChannelSidebar: View {
             }
         }
         .padding(.horizontal, 10)
-        .padding(.vertical, 7)
-        .background(RoundedRectangle(cornerRadius: 8).fill(Theme.rail))
-        .padding(.horizontal, 10)
-        .padding(.bottom, 6)
+        .padding(.vertical, phone ? 9 : 7)
+        .background(RoundedRectangle(cornerRadius: phone ? 11 : 8, style: .continuous).fill(phone ? Theme.elevated : Theme.rail))
+        .padding(.horizontal, phone ? 16 : 10)
+        .padding(.bottom, phone ? 8 : 6)
     }
 
     private var serverName: String {
@@ -447,6 +525,9 @@ struct ChannelSidebar: View {
                 }
             } header: { sectionHeader("Invites") }
         }
+        if phone {
+            phoneChats
+        } else {
         let favourites = (account.directMessages + account.roomsOutsideServers).filter { $0.isFavourite && matches($0.name) }
         if !favourites.isEmpty {
             Section {
@@ -489,6 +570,35 @@ struct ChannelSidebar: View {
                         .contextMenu { roomMenu(room.id) }
                 }
             } header: { sectionHeader("Rooms") }
+        }
+        }
+    }
+
+    /// The iPhone's chat list: favourites first, then everything by its newest message.
+    @ViewBuilder
+    private var phoneChats: some View {
+        let all = (account.directMessages + account.roomsOutsideServers).filter { matches($0.name) }
+        let pinned = ChatListLogic.sortedByActivity(all.filter(\.isFavourite)) { $0.lastActivity }
+        let rest = ChatListLogic.sortedByActivity(all.filter { !$0.isFavourite }) { $0.lastActivity }
+        ForEach(pinned + rest) { room in
+            ChatListRow(account: account, room: room)
+                .tag(Destination.text(room.id))
+                .listRowBackground(rowBackground(.text(room.id)))
+                .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 12))
+                .listRowSeparator(.hidden)
+                .contextMenu { roomMenu(room.id) }
+        }
+        if all.isEmpty {
+            if query.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("No chats yet.").font(.subheadline).foregroundStyle(Theme.muted)
+                    Button("New Message") { sheet = .newMessage }.font(.subheadline.weight(.semibold))
+                }
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+            } else {
+                noResults
+            }
         }
     }
 

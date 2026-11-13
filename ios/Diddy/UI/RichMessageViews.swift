@@ -199,7 +199,6 @@ struct RichMessageBody: View {
                 Text("(edited)").font(.caption2).foregroundColor(Theme.faint)
             }
         }
-        .textSelection(.enabled)
         .environment(\.openURL, OpenURLAction { url in handle(url) })
         .task(id: document.emojiURLs) { await loadEmoji(document.emojiURLs) }
     }
@@ -280,7 +279,6 @@ private struct RichBlocksView: View {
         if edited { text = text + Text(" (edited)").font(.caption2).foregroundColor(Theme.faint) }
         return text
             .foregroundStyle(Theme.text)
-            .textSelection(.enabled)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -294,7 +292,6 @@ private struct RichBlocksView: View {
                 Text(verbatim: code)
                     .font(.system(.footnote, design: .monospaced))
                     .foregroundStyle(Theme.text)
-                    .textSelection(.enabled)
                     .fixedSize(horizontal: true, vertical: true)
             }
         }

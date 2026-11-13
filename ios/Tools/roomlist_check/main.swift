@@ -286,6 +286,30 @@ let folderedFromFolder = ServerRailLayout.foldered("!b", in: railBase)
 check(folderedFromFolder.count == 4, "foldered out of a folder keeps the server: \(folderedFromFolder.count)")
 check(folderedFromFolder.flatMap(\.spaceIds) == ["!a", "!c", "!b", "!d"], "foldered out of a folder order")
 
+// MARK: Chat list
+
+check(ChatListLogic.preview("hi", isOwn: true, isDirect: false, senderName: "Luis") == "You: hi", "own message says You")
+check(ChatListLogic.preview("hi", isOwn: false, isDirect: true, senderName: "Mia") == "hi", "a DM shows the bare text")
+check(ChatListLogic.preview("hi", isOwn: false, isDirect: false, senderName: "Mia") == "Mia: hi", "a group names the sender")
+check(ChatListLogic.preview("hi", isOwn: false, isDirect: false, senderName: "") == "hi", "no name, no prefix")
+
+var listCalendar = Calendar(identifier: .gregorian)
+listCalendar.timeZone = TimeZone(identifier: "UTC")!
+let listNow = Date(timeIntervalSince1970: 1_794_484_800) // Thu 2026-11-12 12:00 UTC
+func listLabel(_ hoursAgo: Double) -> String {
+    ChatListLogic.timeLabel(listNow.addingTimeInterval(-hoursAgo * 3600), now: listNow, calendar: listCalendar,
+                            clock: { _ in "clock" }, weekday: { _ in "weekday" }, short: { _ in "date" })
+}
+check(listLabel(11) == "clock", "earlier today shows the time")
+check(listLabel(13) == "Yesterday", "last night is Yesterday")
+check(listLabel(24 * 3) == "weekday", "three days ago shows the weekday")
+check(listLabel(24 * 6) == "weekday", "six days ago still shows the weekday")
+check(listLabel(24 * 8) == "date", "more than a week ago shows the date")
+check(listLabel(-2) == "clock", "a clock running behind still shows the time")
+
+let dated: [(String, Date?)] = [("a", nil), ("b", listNow), ("c", listNow.addingTimeInterval(60)), ("d", nil), ("e", listNow)]
+check(ChatListLogic.sortedByActivity(dated, date: { $0.1 }).map(\.0) == ["c", "b", "e", "a", "d"], "newest first, ties and unknown keep their order")
+
 if failures == 0 {
     print("roomlist_check: all checks passed")
 } else {

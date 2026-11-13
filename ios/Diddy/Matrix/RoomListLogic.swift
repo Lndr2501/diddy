@@ -737,3 +737,40 @@ enum ServerHierarchy {
         candidates.filter { $0 != serverId && !alreadyInside.contains($0) }
     }
 }
+
+// MARK: - Chat list (iPhone "Chats" tab)
+
+/// The rows of the chat list: what the preview says and the time on the right.
+enum ChatListLogic {
+    /// "You: …" for your own message, "Mia: …" in a group, the bare text in a direct message.
+    static func preview(_ text: String, isOwn: Bool, isDirect: Bool, senderName: String) -> String {
+        if isOwn { return "You: " + text }
+        if isDirect || senderName.isEmpty { return text }
+        return senderName + ": " + text
+    }
+
+    /// The time on the right of a row: the clock time today, "Yesterday", the weekday within the
+    /// last week, the date before that. `clock` and `date` format in the device's style.
+    static func timeLabel(_ date: Date, now: Date = Date(), calendar: Calendar = .current,
+                          clock: (Date) -> String, weekday: (Date) -> String, short: (Date) -> String) -> String {
+        if calendar.isDate(date, inSameDayAs: now) { return clock(date) }
+        let startOfToday = calendar.startOfDay(for: now)
+        guard let startOfYesterday = calendar.date(byAdding: .day, value: -1, to: startOfToday),
+              let weekAgo = calendar.date(byAdding: .day, value: -6, to: startOfToday) else { return short(date) }
+        if date >= startOfYesterday && date < startOfToday { return "Yesterday" }
+        if date >= weekAgo && date < startOfToday { return weekday(date) }
+        return short(date)
+    }
+
+    /// Newest first; rooms without a known message go to the end in their old order.
+    static func sortedByActivity<T>(_ items: [T], date: (T) -> Date?) -> [T] {
+        items.enumerated().sorted { a, b in
+            switch (date(a.element), date(b.element)) {
+            case let (x?, y?): return x != y ? x > y : a.offset < b.offset
+            case (.some, nil): return true
+            case (nil, .some): return false
+            case (nil, nil): return a.offset < b.offset
+            }
+        }.map(\.element)
+    }
+}

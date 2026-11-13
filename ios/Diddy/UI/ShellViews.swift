@@ -3,6 +3,8 @@ import SwiftUI
 /// Uses the profile editor's merge path so changing status preserves other profile fields.
 struct OwnStatusMenu: View {
     @ObservedObject var account: MatrixAccount
+    /// The picture's size: small in the user panel, large on the iPhone's You tab.
+    var size: CGFloat = 34
     @State private var showing = false
     @State private var showingMessage = false
     @State private var busy = false
@@ -20,8 +22,8 @@ struct OwnStatusMenu: View {
             Button { showingMessage = true } label: { Label("Set Status Message", systemImage: "text.bubble") }
             Button { showing = true } label: { Label("Edit Profile", systemImage: "person.crop.circle") }
         } label: {
-            AvatarView(url: account.avatarUrl, name: account.title, size: 34, account: account)
-                .overlay(alignment: .bottomTrailing) { PresenceDot(userId: account.userId, account: account, size: 11) }
+            AvatarView(url: account.avatarUrl, name: account.title, size: size, account: account)
+                .overlay(alignment: .bottomTrailing) { PresenceDot(userId: account.userId, account: account, size: max(11, size / 3.2)) }
         }
         .disabled(busy)
         .accessibilityLabel("Account and status (\(OwnStatusOptions.info(chosen).label))")

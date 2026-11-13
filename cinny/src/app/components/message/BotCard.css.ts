@@ -2,6 +2,8 @@ import { keyframes, style } from '@vanilla-extract/css';
 import { color, config, toRem } from 'folds';
 
 const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
+// touch screens (iOS/iPadOS WebKit, Android): bigger targets
+const COARSE = '(pointer: coarse)';
 
 export const Card = style({
   boxSizing: 'border-box',
@@ -412,7 +414,10 @@ export const PlayerButtons = style({
   gap: toRem(6),
 });
 
-export const PopAnchor = style({ position: 'relative', display: 'inline-flex' });
+// Volume/"⋯" button and its panel are direct flex items of PlayerButtons, so the
+// panel wraps onto its own row inside the card (floating popovers got cut off at
+// the timeline edge and are hard to hit on touch screens).
+export const PanelAnchor = style({ display: 'contents' });
 
 export const PlayerButton = style({
   margin: 0,
@@ -442,41 +447,37 @@ export const PlayerButton = style({
     },
     '&[data-primary]:hover': { backgroundColor: color.Primary.MainHover },
   },
+  '@media': { [COARSE]: { height: toRem(40), minWidth: toRem(40) } },
 });
 
-export const Popover = style({
-  position: 'absolute',
-  zIndex: 5,
-  top: `calc(100% + ${toRem(6)})`,
-  left: 0,
-  minWidth: toRem(150),
+const panel = {
+  order: 1,
+  flexBasis: '100%',
+  boxSizing: 'border-box',
+  borderRadius: toRem(9),
+  border: `${config.borderWidth.B300} solid ${color.SurfaceVariant.ContainerLine}`,
+} as const;
+
+export const MorePanel = style({
+  ...panel,
   padding: toRem(6),
-  borderRadius: toRem(10),
-  border: `${config.borderWidth.B300} solid ${color.Surface.ContainerLine}`,
-  backgroundColor: color.Surface.Container,
-  color: color.Surface.OnContainer,
-  boxShadow: '0 8px 24px rgba(0, 0, 0, 0.25)',
   display: 'flex',
-  flexDirection: 'column',
-  gap: toRem(2),
-  selectors: {
-    // the "⋯" button is the last one in the row: open towards the left
-    '&[data-bot-popover=more]': { left: 'auto', right: 0 },
-    '&[data-bot-popover=volume]': {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: toRem(8),
-      padding: `${toRem(8)} ${toRem(10)}`,
-      minWidth: toRem(200),
-    },
-  },
+  flexWrap: 'wrap',
+  gap: toRem(6),
+});
+
+export const VolumePanel = style({
+  // outline only: the slider's empty track uses ContainerActive and must stay visible
+  ...panel,
+  display: 'flex',
+  alignItems: 'center',
+  gap: toRem(10),
+  padding: `${toRem(8)} ${toRem(12)}`,
 });
 
 export const VolumeSlider = style({
   flexGrow: 1,
   minWidth: 0,
-  accentColor: color.Primary.Main,
-  cursor: 'pointer',
 });
 
 export const VolumeValue = style({
@@ -490,20 +491,24 @@ export const VolumeValue = style({
 
 export const MenuItem = style({
   margin: 0,
-  padding: `${toRem(6)} ${toRem(10)}`,
+  minHeight: toRem(30),
+  padding: `0 ${toRem(10)}`,
   border: 'none',
   borderRadius: toRem(7),
-  backgroundColor: 'transparent',
-  color: 'inherit',
+  display: 'inline-flex',
+  alignItems: 'center',
+  backgroundColor: color.SurfaceVariant.ContainerActive,
+  color: color.SurfaceVariant.OnContainer,
   font: 'inherit',
   fontSize: toRem(13),
-  textAlign: 'left',
   whiteSpace: 'nowrap',
   cursor: 'pointer',
   selectors: {
-    '&:hover, &:focus-visible': { backgroundColor: color.Surface.ContainerHover, outline: 'none' },
+    '&:hover': { backgroundColor: color.SurfaceVariant.ContainerLine },
+    '&:focus-visible': { outline: `${toRem(2)} solid ${color.Primary.Main}`, outlineOffset: toRem(1) },
     '&:disabled': { opacity: 0.5, cursor: 'default' },
   },
+  '@media': { [COARSE]: { minHeight: toRem(40), padding: `0 ${toRem(14)}` } },
 });
 
 export const UpNextIndex = style({

@@ -525,7 +525,7 @@
     const name = u === ME ? 'Your stream' : `${users[u].name}'s stream`;
     const viewers = u === ME ? callPeople(state.call.room).length - 1 : 3;
     const audio = u === ME ? (state.systemAudio ? ' · with sound' : ' · no sound') : ' · with sound';
-    return `<button class="tile" type="button" aria-label="${esc(name)}">${content}
+    return `<button class="tile tile--stream" type="button" aria-label="${esc(name)}">${content}
       <span class="tile__live"><span class="tile__viewers">👁 ${viewers}</span><span class="live">LIVE</span></span>
       <span class="tile__name">${ic('share')}${esc(name)}${audio}</span></button>`;
   }
@@ -535,6 +535,11 @@
     const n = g.children.length;
     if (state.focus) {
       g.style.setProperty('--strip', Math.max(1, n - 1));
+      return;
+    }
+    if (window.innerWidth <= 820) {
+      // phones: stream tiles span the full width, people sit two per row
+      g.style.setProperty('--cols', n <= 2 ? 1 : 2);
       return;
     }
     const w = g.clientWidth;
@@ -617,7 +622,8 @@
   }
   function openPop(html, x, y, cls = '') {
     closePop();
-    layer.innerHTML = `<div class="pop ${cls}" id="pop" role="dialog">${html}</div>`;
+    const sheet = window.innerWidth <= 820 && /\bprofile\b/.test(cls) ? ' is-sheet' : '';
+    layer.innerHTML = `<div class="pop ${cls}${sheet}" id="pop" role="dialog">${html}</div>`;
     const pop = $('#pop');
     const r = pop.getBoundingClientRect();
     const left = Math.max(8, Math.min(x, window.innerWidth - r.width - 8));
@@ -1041,6 +1047,7 @@
   function openSettings(tab) {
     if (tab) settingsTab = tab;
     closePop();
+    closeSide();
     modal(`<div class="settings" role="dialog" aria-label="Settings"><nav class="settings__nav">
       <div class="settings__search">${ic('search')}Search<kbd>/</kbd></div>
       ${SETTINGS_NAV.map(([g, items]) => `<div class="group-label">${g}</div>${items.map(([id, icon, label]) => `<button class="navitem ${settingsTab === id ? 'is-active' : ''}" type="button" data-stab="${id}">${ic(icon)}<span class="navitem__name">${label}</span></button>`).join('')}`).join('')}
@@ -1518,7 +1525,7 @@
       {
         title: 'Rooms and voice rooms',
         text: 'Voice rooms show who\'s inside before you join, with a red mic for anyone muted and LIVE for streams.',
-        target: () => (isNarrow() ? null : $('.voice-room[data-room="lounge"]')?.parentElement ? $('#roomList') : null),
+        target: () => $('#roomList'),
         run: () => {
           selectRoom('general');
           if (isNarrow()) openSide();
@@ -1635,7 +1642,7 @@
         });
       }
       const last = this.i === this.steps.length - 1;
-      $('#tourTip').innerHTML = `<div class="tourtip__step">${this.i + 1} of ${this.steps.length}</div><h3>${s.title}</h3><p>${s.text}</p>
+      $('#tourTip').innerHTML = `<button class="ibtn tourtip__x" type="button" data-tour="skip" title="Close tour" aria-label="Close tour">${ic('x')}</button><div class="tourtip__step">${this.i + 1} of ${this.steps.length}</div><h3>${s.title}</h3><p>${s.text}</p>
         <div class="tourtip__btns"><div class="tourtip__dots">${this.steps.map((_, k) => `<i class="${k === this.i ? 'is-on' : ''}"></i>`).join('')}</div><span class="grow"></span>
         ${this.i === 0 ? '<button class="dbtn dbtn--ghost" type="button" data-tour="skip">Explore myself</button>' : '<button class="dbtn dbtn--ghost" type="button" data-tour="back">Back</button>'}
         <button class="dbtn dbtn--accent" type="button" data-tour="next">${last ? 'Done' : this.i === 0 ? 'Start tour' : 'Next'}</button></div>`;
@@ -1654,6 +1661,24 @@
       const H = window.innerHeight;
       const tw = tip.offsetWidth;
       const th = tip.offsetHeight;
+      if (isNarrow()) {
+        // phones: the tip docks to the top or bottom edge instead of floating over the target
+        const barH = $('#demoBar').offsetHeight;
+        tip.style.left = `${(W - tw) / 2}px`;
+        if (!r || r.width === 0) {
+          spot.style.cssText = `left:${W / 2}px;top:${H / 2}px;width:0;height:0`;
+          tip.style.top = `${H - th - 12}px`;
+          return;
+        }
+        const t = Math.max(barH, r.top - 4);
+        const b = Math.min(H - 4, r.bottom + 4);
+        spot.style.cssText = `left:${Math.max(4, r.left - 4)}px;top:${t}px;width:${Math.min(W - 4, r.right + 4) - Math.max(4, r.left - 4)}px;height:${b - t}px`;
+        const roomBelow = H - b;
+        const roomAbove = t - barH;
+        const dockTop = roomBelow < th + 24 && roomAbove > roomBelow;
+        tip.style.top = `${dockTop ? barH + 8 : H - th - 12}px`;
+        return;
+      }
       if (!r || r.width === 0) {
         spot.style.cssText = `left:${W / 2}px;top:${H / 2}px;width:0;height:0`;
         tip.style.left = `${(W - tw) / 2}px`;

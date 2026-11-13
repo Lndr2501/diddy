@@ -30,7 +30,7 @@ struct MessageRow: Identifiable {
     let body: Body
     let isOwn: Bool
     let isEdited: Bool
-    let reply: (sender: String, text: String)?
+    let reply: (sender: String, senderId: String, text: String, avatar: String?)?
     let reactions: [ReactionChip]
     /// Discord shows name and avatar only on the first message of a burst from one sender.
     var showsHeader: Bool
@@ -49,6 +49,10 @@ struct MessageRow: Identifiable {
     var video: VideoAttachment? = nil
     var location: LocationAttachment? = nil
     var isSticker = false
+    /// Calls this line stands for: 0 for anything but a call, more than 1 for a folded run.
+    var callCount = 0
+    /// When the last call of a folded run started.
+    var lastCallDate: Date?
 
     var layoutKind: TimelineLayout.Kind {
         if case .notice = body { return .notice }
@@ -393,6 +397,14 @@ final class TimelineController: ObservableObject {
             }
             row.dayDivider = row.dayDivider ?? carriedDay
             carriedDay = nil
+            // Call attempts right after each other become one line ("3 calls").
+            if let last = result.last,
+               TimelineLayout.joinsCallRun(isCall: row.callCount > 0, previousIsCall: last.callCount > 0,
+                                           hasDayDivider: row.dayDivider != nil) {
+                result[result.count - 1].callCount += row.callCount
+                result[result.count - 1].lastCallDate = row.date
+                continue
+            }
             let entry = TimelineLayout.Entry(sender: row.sender, date: row.date, kind: row.layoutKind,
                                              isReply: row.reply != nil, hasDayDivider: row.dayDivider != nil)
             row.showsHeader = !TimelineLayout.continuesGroup(entry, after: previous)
@@ -412,17 +424,22 @@ final class TimelineController: ObservableObject {
         }()
         let body: MessageRow.Body
         var edited = false
-        var reply: (sender: String, text: String)?
+        var reply: (sender: String, senderId: String, text: String, avatar: String?)?
         var card: BotCard?
         var membership: TimelineLayout.Membership?
         var extras = MessageExtras()
         var isSticker = false
+        var isCall = false
         switch event.content {
         case .msgLike(let content):
             if let details = content.inReplyTo, case .ready(let replied, let sender, let profile, _, _) = details.event() {
                 var replyName = sender
-                if case .ready(let displayName, _, _, _, _) = profile, let displayName { replyName = displayName }
-                reply = (sender: replyName, text: Self.preview(of: replied) ?? "…")
+                var replyAvatar: String?
+                if case .ready(let displayName, _, let avatarUrl, _, _) = profile {
+                    if let displayName { replyName = displayName }
+                    replyAvatar = avatarUrl
+                }
+                reply = (sender: replyName, senderId: sender, text: Self.preview(of: replied) ?? "…", avatar: replyAvatar)
             }
             switch content.kind {
             case .message(let message):
@@ -450,7 +467,8 @@ final class TimelineController: ObservableObject {
             membership = kind
             body = .notice(kind.text(name: displayName ?? userId))
         case .rtcNotification, .callInvite:
-            body = .notice("\(name) started a call")
+            body = .notice(TimelineLayout.callText(starter: name, count: 1))
+            isCall = true
         default:
             return nil
         }
@@ -475,6 +493,7 @@ final class TimelineController: ObservableObject {
             card: card,
             membership: membership
         )
+        if isCall { row.callCount = 1 }
         // A bot card keeps its own look; everything else gets the desktop's rendering.
         if card == nil {
             row.rich = extras.rich

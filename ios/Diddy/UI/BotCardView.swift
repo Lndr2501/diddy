@@ -10,6 +10,11 @@ struct BotCardView: View {
     var onCommand: (String) -> Void = { _ in }
     /// Like the desktop, one command at a time: a button is locked for a moment after a tap.
     @State private var busy = false
+    /// Player layout: the volume slider or the "⋯" commands, opened as a row inside the card.
+    @State private var panel: PlayerPanel?
+    @State private var volumeValue: Double = 0
+
+    private enum PlayerPanel { case volume, more }
 
     var body: some View {
         Group {
@@ -106,7 +111,16 @@ struct BotCardView: View {
 
     // MARK: Track
 
+    @ViewBuilder
     private func trackCard(_ track: BotCardTrack) -> some View {
+        if let controls = track.controls {
+            playerCard(track, controls: controls)
+        } else {
+            classicTrackCard(track)
+        }
+    }
+
+    private func classicTrackCard(_ track: BotCardTrack) -> some View {
         container {
             HStack(alignment: .top, spacing: 10) {
                 CardCover(url: track.thumbnail, account: account)
@@ -117,22 +131,29 @@ struct BotCardView: View {
                 }
                 Spacer(minLength: 0)
             }
-            if track.position != nil, track.duration != nil {
-                if track.state == .playing {
-                    TimelineView(.periodic(from: .now, by: 1)) { context in progress(track, now: context.date) }
-                } else {
-                    progress(track, now: Date())
-                }
-            } else if let duration = track.duration {
-                hint("Length \(BotCardParser.formatTime(duration))")
-            }
+            liveProgress(track, showVolume: true)
             if let note = track.note { hint(note) }
             actionButtons(track.actions)
         }
     }
 
     @ViewBuilder
-    private func progress(_ track: BotCardTrack, now: Date) -> some View {
+    private func liveProgress(_ track: BotCardTrack, showVolume: Bool) -> some View {
+        if track.position != nil, track.duration != nil {
+            if track.state == .playing {
+                TimelineView(.periodic(from: .now, by: 1)) { context in
+                    progress(track, now: context.date, showVolume: showVolume)
+                }
+            } else {
+                progress(track, now: Date(), showVolume: showVolume)
+            }
+        } else if let duration = track.duration {
+            hint("Length \(BotCardParser.formatTime(duration))")
+        }
+    }
+
+    @ViewBuilder
+    private func progress(_ track: BotCardTrack, now: Date, showVolume: Bool = true) -> some View {
         if let position = BotCardParser.livePosition(track, now: now), let duration = track.duration {
             let ratio = duration > 0 ? min(1, position / duration) : 0
             let seekable = track.seek != nil && (track.state == .playing || track.state == .paused)
@@ -154,7 +175,7 @@ struct BotCardView: View {
                 HStack {
                     Text(BotCardParser.formatTime(position))
                     Spacer()
-                    if let volume = track.volume { Text("🔊 \(Int(volume.rounded()))") }
+                    if showVolume, let volume = track.volume { Text("🔊 \(Int(volume.rounded()))") }
                     Spacer()
                     Text(BotCardParser.formatTime(duration))
                 }
@@ -169,6 +190,159 @@ struct BotCardView: View {
                 run("\(seek) \(direction == .increment ? "+10" : "-10")")
             }
         }
+    }
+
+    // MARK: Player (the bot sent `controls`; `actions` are ignored here)
+
+    private func playerHeader(_ track: BotCardTrack) -> String {
+        let base: String = {
+            switch track.state {
+            case .searching: return "Searching"
+            case .downloading: return "Loading"
+            case .playing: return "Now playing"
+            case .paused: return "Paused"
+            case .stopped: return "Stopped"
+            case .error: return "Error"
+            }
+        }()
+        guard let room = track.room, track.state == .playing || track.state == .paused else { return base }
+        return "\(base) in \(room)"
+    }
+
+    private func playerButton(_ title: String?, icon: String, primary: Bool = false, selected: Bool = false,
+                              label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: icon).font(.footnote.weight(.bold))
+                if let title { Text(title).font(.footnote.weight(.semibold)).monospacedDigit() }
+            }
+            .foregroundStyle(primary ? Theme.onAccent : Theme.text)
+            .padding(.horizontal, title == nil ? 0 : 14)
+            // 40 pt: comfortable to hit with a thumb
+            .frame(minWidth: 40, minHeight: 40)
+            .background(RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(primary ? Theme.accent : Theme.input))
+            .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .stroke(selected ? Theme.accent : .clear, lineWidth: 1.5))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(busy)
+        .opacity(busy ? 0.5 : 1)
+        .accessibilityLabel(label)
+    }
+
+    private func togglePanel(_ which: PlayerPanel, volume: Double?, max: Double) {
+        if panel == which {
+            panel = nil
+        } else {
+            volumeValue = min(volume ?? 0, max).rounded()
+            panel = which
+        }
+    }
+
+    private func playerCard(_ track: BotCardTrack, controls: BotCardControls) -> some View {
+        let playing = track.state == .playing
+        let volumeMax = track.volumeMax ?? 100
+        let sub = [track.artist, track.requestedBy.map { "requested by \($0)" }].compactMap { $0 }.joined(separator: " · ")
+        return container {
+            HStack(alignment: .center, spacing: 10) {
+                CardCover(url: track.thumbnail, account: account)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(playerHeader(track).uppercased())
+                        .font(.caption2.weight(.bold)).foregroundStyle(Theme.muted).lineLimit(1)
+                    Text(track.title).font(.subheadline.weight(.bold)).foregroundStyle(Theme.text)
+                    if !sub.isEmpty { Text(sub).font(.footnote).foregroundStyle(Theme.muted).lineLimit(1) }
+                }
+                Spacer(minLength: 0)
+            }
+            liveProgress(track, showVolume: false)
+            if let note = track.note { hint(note) }
+            CardFlowLayout(spacing: 6) {
+                if let prev = controls.prev {
+                    playerButton(nil, icon: "backward.end.fill", label: "Previous") { run(prev) }
+                }
+                if let toggle = controls.toggle {
+                    playerButton(playing ? "Pause" : "Play", icon: playing ? "pause.fill" : "play.fill",
+                                 primary: true, label: playing ? "Pause" : "Play") { run(toggle) }
+                }
+                if let skip = controls.skip {
+                    playerButton("Skip", icon: "forward.end.fill", label: "Skip") { run(skip) }
+                }
+                if controls.volume != nil {
+                    playerButton(track.volume.map { "\(Int($0.rounded()))%" }, icon: "speaker.wave.2.fill",
+                                 selected: panel == .volume, label: "Volume") {
+                        togglePanel(.volume, volume: track.volume, max: volumeMax)
+                    }
+                }
+                if let dashboard = controls.dashboard {
+                    playerButton("Dashboard", icon: "square.grid.2x2.fill", label: "Dashboard") { run(dashboard) }
+                }
+                if !track.more.isEmpty {
+                    playerButton(nil, icon: "ellipsis", selected: panel == .more, label: "More") {
+                        togglePanel(.more, volume: track.volume, max: volumeMax)
+                    }
+                }
+            }
+            if panel == .volume, let command = controls.volume {
+                HStack(spacing: 10) {
+                    Image(systemName: "speaker.wave.2.fill").font(.footnote).foregroundStyle(Theme.muted)
+                    // Sends once the finger lets go, like the desktop on pointerup.
+                    Slider(value: $volumeValue, in: 0...volumeMax, step: 1, onEditingChanged: { editing in
+                        guard !editing else { return }
+                        let value = Int(volumeValue.rounded())
+                        if track.volume.map({ Int($0.rounded()) }) != value { run("\(command) \(value)") }
+                    })
+                    .tint(Theme.accent)
+                    .disabled(busy)
+                    .accessibilityLabel("Volume")
+                    Text("\(Int(volumeValue.rounded()))%")
+                        .font(.footnote.weight(.semibold).monospacedDigit())
+                        .foregroundStyle(Theme.text)
+                        .frame(minWidth: 40, alignment: .trailing)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(Theme.faint.opacity(0.3), lineWidth: 1))
+            }
+            if panel == .more {
+                CardFlowLayout(spacing: 6) {
+                    ForEach(Array(track.more.enumerated()), id: \.offset) { _, action in
+                        Button {
+                            run(action.send)
+                            panel = nil
+                        } label: {
+                            Text(action.label)
+                                .font(.footnote.weight(.semibold))
+                                .foregroundStyle(Theme.text)
+                                .padding(.horizontal, 14)
+                                .frame(minHeight: 40)
+                                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Theme.input))
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(busy)
+                        .opacity(busy ? 0.5 : 1)
+                        .accessibilityHint(action.send)
+                    }
+                }
+                .padding(6)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(Theme.faint.opacity(0.3), lineWidth: 1))
+            }
+            if !track.upNext.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    sectionTitle("UP NEXT")
+                    ForEach(Array(track.upNext.enumerated()), id: \.offset) { index, item in
+                        itemRow(index: index + 1, title: item.title, subtitle: item.artist, duration: nil)
+                    }
+                }
+            }
+        }
+        // accent stripe on the left like a now-playing widget (the desktop's player card)
+        .overlay(alignment: .leading) {
+            Rectangle().fill(Theme.accent).frame(width: 4)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 
     // MARK: Queue and lists

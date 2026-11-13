@@ -131,4 +131,12 @@ check(TimelineLayout.day(of: noon.addingTimeInterval(-36 * 3600 + 60), now: noon
 check(TimelineLayout.day(of: noon.addingTimeInterval(-37 * 3600), now: noon, calendar: utc) == .earlier, "the day before yesterday")
 check(TimelineLayout.day(of: noon.addingTimeInterval(13 * 3600), now: noon, calendar: utc) == .earlier, "tomorrow is a date")
 
+// Call attempts right after each other become one line; a day divider or another row splits them.
+check(TimelineLayout.joinsCallRun(isCall: true, previousIsCall: true, hasDayDivider: false), "two calls in a row fold")
+check(!TimelineLayout.joinsCallRun(isCall: true, previousIsCall: true, hasDayDivider: true), "a new day starts a new call line")
+check(!TimelineLayout.joinsCallRun(isCall: true, previousIsCall: false, hasDayDivider: false), "a call after a message stays")
+check(!TimelineLayout.joinsCallRun(isCall: false, previousIsCall: true, hasDayDivider: false), "a message after a call stays")
+check(TimelineLayout.callText(starter: "Lndr", count: 1) == "Lndr started a call", "one call names who started it")
+check(TimelineLayout.callText(starter: "Lndr", count: 3) == "3 calls", "a folded run counts the calls")
+
 if failures == 0 { print("ALL OK") } else { print("\(failures) FAILED"); exit(1) }

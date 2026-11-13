@@ -22,6 +22,31 @@ if case .track(let t)? = parse(#"{"v":1,"kind":"track","state":"playing","title"
     check(t.actions == [BotCardAction(label: "Pause", send: "!pause")], "only command-like buttons")
 } else { check(false, "track parses") }
 
+// player layout
+if case .track(let t)? = parse(#"{"v":1,"kind":"track","state":"paused","title":"t","room":" Call #1 ","requestedBy":"Lndr","volume":60,"volumeMax":150,"upNext":[{"title":"a","artist":"b"},{"title":""},{"title":"c"},{"title":"d"},{"title":"e"}],"controls":{"prev":"!previous","toggle":"!resume","skip":"!skip now","volume":"!volume","dashboard":"!dashboard","bad":"!x"},"more":[{"label":"Loop","send":"!loop"},{"label":"x","send":"loop"}]}"#) {
+    check(t.room == "Call #1" && t.requestedBy == "Lndr", "room and requester")
+    check(t.upNext == [BotCardUpNext(title: "a", artist: "b"), BotCardUpNext(title: "c", artist: nil), BotCardUpNext(title: "d", artist: nil)], "up next: max 3, empty titles dropped")
+    check(t.controls == BotCardControls(prev: "!previous", toggle: "!resume", skip: "!skip now", volume: "!volume", dashboard: "!dashboard"), "controls")
+    check(t.volumeMax == 150, "volumeMax")
+    check(t.more == [BotCardAction(label: "Loop", send: "!loop")], "more: only commands")
+} else { check(false, "player track parses") }
+
+if case .track(let t)? = parse(#"{"v":1,"kind":"track","state":"playing","title":"t","controls":{"prev":"!a b c","toggle":"pause","skip":"!xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","volume":"! x"},"volumeMax":0}"#) {
+    check(t.controls == BotCardControls(), "bad player commands dropped, controls object kept")
+    check(t.volumeMax == nil, "volumeMax 0 dropped")
+} else { check(false, "player track 2 parses") }
+
+do {
+    let many = (0..<20).map { #"{"label":"L\#($0)","send":"!c\#($0)"}"# }.joined(separator: ",")
+    if case .track(let t)? = parse(#"{"v":1,"kind":"track","state":"playing","title":"t","controls":{},"more":[\#(many)],"actions":[\#(many)]}"#) {
+        check(t.more.count == 16 && t.actions.count == 10, "more takes 16, actions 10")
+    } else { check(false, "many buttons parse") }
+}
+
+if case .track(let t)? = parse(#"{"v":1,"kind":"track","state":"playing","title":"t"}"#) {
+    check(t.controls == nil && t.upNext.isEmpty && t.more.isEmpty, "classic card has no player fields")
+} else { check(false, "classic track parses") }
+
 if case .track(let t)? = parse(#"{"v":1,"kind":"track","state":"playing","title":"a","thumbnail":"https://evil/x.png","url":"javascript:alert(1)","seek":"seek","duration":-1,"position":true}"#) {
     check(t.thumbnail == nil, "https thumbnail dropped")
     check(t.url == nil, "javascript url dropped")

@@ -31,6 +31,8 @@ export type PlayerControls = {
   skip?: string;
   /** command prefix: the volume slider sends `<volume> N` */
   volume?: string;
+  /** opens the bot's web dashboard (the bot answers with a personal link) */
+  dashboard?: string;
 };
 
 export type BotCard =
@@ -114,10 +116,10 @@ const httpUrl = (v: unknown): string | undefined => {
   }
 };
 
-const actions = (v: unknown): CardAction[] => {
+const actions = (v: unknown, max = 10): CardAction[] => {
   if (!Array.isArray(v)) return [];
   const out: CardAction[] = [];
-  v.slice(0, 10).forEach((a) => {
+  v.slice(0, max).forEach((a) => {
     if (!isObject(a)) return;
     const label = text(a.label, 24);
     const send = text(a.send, 120);
@@ -126,6 +128,9 @@ const actions = (v: unknown): CardAction[] => {
   });
   return out;
 };
+
+/** Most entries in the "⋯" menu of the player card. */
+export const MORE_MAX = 16;
 
 // A player button's command. It must still look like a card action after Diddy appends one
 // argument (the volume), so `isCardActionMessage` hides it in the chat.
@@ -136,7 +141,7 @@ const command = (v: unknown): string | undefined =>
 const controls = (v: unknown): PlayerControls | undefined => {
   if (!isObject(v)) return undefined;
   const out: PlayerControls = {};
-  (['prev', 'toggle', 'skip', 'volume'] as const).forEach((k) => {
+  (['prev', 'toggle', 'skip', 'volume', 'dashboard'] as const).forEach((k) => {
     const c = command(v[k]);
     if (c) out[k] = c;
   });
@@ -194,7 +199,8 @@ export const parseBotCard = (content: unknown): BotCard | undefined => {
       upNext: upNext(raw.upNext),
       controls: controls(raw.controls),
       volumeMax: num(raw.volumeMax, 1000) || undefined,
-      more: Array.isArray(raw.more) ? actions(raw.more) : undefined,
+      // the "⋯" menu holds all other functions of the bot, so it takes more than the 10 buttons
+      more: Array.isArray(raw.more) ? actions(raw.more, MORE_MAX) : undefined,
     };
   }
 
