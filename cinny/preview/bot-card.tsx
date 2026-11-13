@@ -212,7 +212,7 @@ const samples = [
   wrap({
     kind: 'note',
     icon: '✅',
-    text: 'Issue #42 in Lndr2501/diddy angelegt: Login geht nicht',
+    text: '#42 angelegt: Login geht nicht',
     tone: 'success',
     url: 'https://github.com/Lndr2501/diddy/issues/42',
     linkLabel: 'Issue öffnen',

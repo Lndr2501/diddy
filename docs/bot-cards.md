@@ -30,7 +30,7 @@ Eine normale Nachricht (`m.notice` oder `m.text`) mit einem Zusatzfeld im `conte
 | `help` | `groups[]` mit `title` und `items[]` (`usage`, `desc`), `note?` |
 | `list` | `title`, `items[]` (`title`, `subtitle?`, `duration?`), `total?`, `empty?` (Text bei leerer Liste), `actions?`. Für Favoriten, Playlists u. ä. |
 | `stats` | `title`, `charts[]` mit `title`, `unit?`, `items[]` (`label`, `value` ≥ 0, `sub?`), `actions?`. Diddy zeichnet Balkendiagramme (Balken relativ zum größten Wert). |
-| `note` | `text`, `tone` (`info`, `success`, `warning`, `error`), `icon?` (ein Emoji), `url?` (http/https, als Link-Knopf im Chip), `linkLabel?` (Beschriftung, höchstens 40 Zeichen, Standard „Open“) |
+| `note` | `text`, `tone` (`info`, `success`, `warning`, `error`), `icon?` (ein Emoji), `url?` (http/https, als runder Link-Knopf rechts im Chip), `linkLabel?` (Beschriftung des Knopfs, höchstens 40 Zeichen, Standard „Open“) |
 
 `seek` (z. B. `"!seek"`) macht die Zeitleiste anklickbar: ein Klick sendet `<seek> mm:ss`, die Pfeiltasten auf der
 Zeitleiste `<seek> -10` / `<seek> +10`; beim Darüberfahren zeigt Diddy die Zeit unter dem Mauszeiger. `volume` ist die

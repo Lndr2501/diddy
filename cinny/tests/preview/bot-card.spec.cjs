@@ -59,7 +59,9 @@ test('a note card shows its link, readable in every tone, opening in a new windo
   await page.goto('/preview/bot-card.html?theme=light-theme');
   const link = page.locator('[data-bot-card="note"] a');
   await expect(link).toHaveCount(1);
-  await expect(link).toHaveText('Issue öffnen ↗');
+  await expect(link).toHaveText('Issue öffnen');
+  await link.hover();
+  expect(await link.evaluate((el) => getComputedStyle(el).textDecorationLine)).toBe('none');
   await expect(link).toHaveAttribute('href', 'https://github.com/Lndr2501/diddy/issues/42');
   await expect(link).toHaveAttribute('target', '_blank');
   await expect(link).toHaveAttribute('rel', /noopener/);

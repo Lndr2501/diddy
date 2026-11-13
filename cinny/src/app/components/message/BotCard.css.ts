@@ -259,14 +259,20 @@ export const NoteIcon = style({ flexShrink: 0, fontSize: toRem(16), lineHeight: 
 
 export const NoteLink = style({
   flexShrink: 0,
-  whiteSpace: 'nowrap',
-  fontWeight: 600,
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: toRem(4),
+  padding: `${toRem(3)} ${toRem(10)}`,
+  borderRadius: toRem(999),
+  border: `${config.borderWidth.B300} solid currentColor`,
   color: 'inherit',
-  textDecoration: 'underline',
-  textUnderlineOffset: toRem(2),
-  borderRadius: toRem(4),
+  fontSize: toRem(13),
+  fontWeight: 600,
+  whiteSpace: 'nowrap',
+  textDecoration: 'none',
   selectors: {
-    '&:hover': { opacity: 0.8 },
+    '&:hover': { backgroundColor: 'rgba(127, 127, 127, 0.18)', textDecoration: 'none' },
+    '&:active': { backgroundColor: 'rgba(127, 127, 127, 0.28)', textDecoration: 'none' },
     '&:focus-visible': { outline: `${toRem(2)} solid currentColor`, outlineOffset: toRem(2) },
   },
 });
