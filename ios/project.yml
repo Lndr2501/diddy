@@ -131,8 +131,9 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.diddy.ios.share
-        # It opens the app through the application object (ShareViewController.openApp).
-        APPLICATION_EXTENSION_API_ONLY: NO
+        # Xcode requires it for extensions; the app is opened through the runtime instead
+        # (ShareViewController.openApp).
+        APPLICATION_EXTENSION_API_ONLY: YES
         SKIP_INSTALL: YES
         # The app's bridging header (RNNoise) has nothing to do here.
         SWIFT_OBJC_BRIDGING_HEADER: ""

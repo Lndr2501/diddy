@@ -80,12 +80,18 @@ final class ShareViewController: UIViewController {
     // MARK: Opening the app
 
     /// An extension cannot open other apps through the public API; the application object in the
-    /// responder chain still can (sideloaded, so no App Review).
+    /// responder chain still can. `open(_:options:)` is unavailable to extensions at compile time,
+    /// so it is called through the Objective-C runtime (sideloaded, so no App Review).
     private func openApp(_ url: URL) -> Bool {
+        typealias Open = @convention(c) (AnyObject, Selector, NSURL, NSDictionary, (@convention(block) (Bool) -> Void)?) -> Void
+        let selector = NSSelectorFromString("openURL:options:completionHandler:")
+        guard let applicationClass = NSClassFromString("UIApplication") else { return false }
         var responder: UIResponder? = self
         while let current = responder {
-            if let application = current as? UIApplication {
-                application.open(url, options: [:], completionHandler: nil)
+            if current.isKind(of: applicationClass), current.responds(to: selector),
+               let method = current.method(for: selector) {
+                let open = unsafeBitCast(method, to: Open.self)
+                open(current, selector, url as NSURL, NSDictionary(), nil)
                 return true
             }
             responder = current.next
