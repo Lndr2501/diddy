@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="en" class="no-js">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Diddy – Matrix chat with voice calls that just work</title>
+  <meta name="description" content="Diddy is a free, open-source Matrix client for macOS, Linux and iPhone/iPad: reliable voice calls, screen sharing with sound, ten themes, rich profiles and plugins.">
+  <meta name="theme-color" content="#201723">
+  <meta name="color-scheme" content="dark">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="favicon.ico" sizes="48x48">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="manifest" href="site.webmanifest">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Diddy – Matrix chat with voice calls that just work">
+  <meta property="og:description" content="Free and open source for macOS, Linux and iPhone/iPad. Voice calls, screen sharing with sound, themes, profiles and plugins.">
+  <!-- og:image needs an absolute URL; set it once the domain is known (see website/README.md). -->
+  <meta property="og:image" content="assets/img/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="preload" href="assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/img/chat-diddy.webp" as="image" type="image/webp" imagesrcset="assets/img/chat-diddy-900.webp 900w, assets/img/chat-diddy.webp 1600w" imagesizes="(min-width: 1024px) 58vw, 100vw">
+  <link rel="stylesheet" href="assets/site.css">
+  <script>document.documentElement.classList.replace('no-js', 'js');</script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <!-- Icon sprite -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+    <defs>
+      <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></symbol>
+      <symbol id="i-github" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.52-1.33-1.28-1.69-1.28-1.69-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.19 1.76 1.19 1.03 1.76 2.69 1.25 3.35.96.1-.75.4-1.25.73-1.54-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.8 1.19 1.83 1.19 3.09 0 4.42-2.7 5.39-5.26 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5Z"/></symbol>
+      <symbol id="i-apple" viewBox="0 0 24 24" fill="currentColor"><path d="M16.37 12.6c-.02-2.2 1.8-3.26 1.88-3.31-1.03-1.5-2.62-1.7-3.18-1.73-1.35-.14-2.64.8-3.33.8-.69 0-1.75-.78-2.88-.76-1.48.02-2.85.86-3.61 2.19-1.54 2.67-.39 6.62 1.11 8.79.73 1.06 1.6 2.25 2.75 2.2 1.1-.04 1.52-.71 2.85-.71 1.33 0 1.71.71 2.88.69 1.19-.02 1.94-1.08 2.67-2.14.84-1.23 1.19-2.42 1.21-2.48-.03-.01-2.32-.89-2.35-3.54ZM14.2 6.13c.61-.74 1.02-1.76.91-2.78-.88.04-1.94.59-2.57 1.32-.56.65-1.06 1.69-.93 2.69.98.08 1.98-.5 2.59-1.23Z"/></symbol>
+      <symbol id="i-terminal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="18" rx="3"/><path d="m7 9 3 3-3 3"/><path d="M13 15h4"/></symbol>
+      <symbol id="i-phone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18h2"/></symbol>
+      <symbol id="i-mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4"/></symbol>
+      <symbol id="i-headphones" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14v-2a9 9 0 0 1 18 0v2"/><path d="M21 14v3a2 2 0 0 1-2 2h-1v-7h1a2 2 0 0 1 2 2ZM3 14v3a2 2 0 0 0 2 2h1v-7H5a2 2 0 0 0-2 2Z"/></symbol>
+      <symbol id="i-screen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></symbol>
+      <symbol id="i-hangup" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 14.5c-.8-.8-.7-2 .1-2.7C9 7.4 15 7.4 20.4 11.8c.8.7.9 1.9.1 2.7l-1.6 1.6c-.6.6-1.6.7-2.3.2l-1.7-1.2a1.8 1.8 0 0 1-.7-1.6l.1-1.3a10 10 0 0 0-4.6 0l.1 1.3c.1.6-.2 1.2-.7 1.6l-1.7 1.2c-.7.5-1.7.4-2.3-.2Z"/></symbol>
+      <symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+      <symbol id="i-palette" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="1.2"/><circle cx="17.5" cy="10.5" r="1.2"/><circle cx="8.5" cy="7.5" r="1.2"/><circle cx="6.5" cy="12.5" r="1.2"/><path d="M12 2a10 10 0 0 0 0 20c1 0 1.6-.8 1.6-1.7 0-.4-.2-.8-.4-1.1-.3-.3-.4-.7-.4-1.1 0-.9.8-1.7 1.7-1.7H16a6 6 0 0 0 6-6c0-4.4-4.5-8.4-10-8.4Z"/></symbol>
+      <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></symbol>
+      <symbol id="i-wave" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 10v4M6 6v12M10 3v18M14 8v8M18 5v14M22 10v4"/></symbol>
+      <symbol id="i-puzzle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19.4 14.3c.5 0 1-.2 1.3-.6a1.9 1.9 0 0 0 0-2.7c-.3-.4-.8-.6-1.3-.6H18V7a1 1 0 0 0-1-1h-3.4V4.6c0-.5-.2-1-.6-1.3a1.9 1.9 0 0 0-2.7 0c-.4.3-.6.8-.6 1.3V6H6a1 1 0 0 0-1 1v3.4h1.4c.5 0 1 .2 1.3.6a1.9 1.9 0 0 1 0 2.7c-.3.4-.8.6-1.3.6H5V18a1 1 0 0 0 1 1h3.7v-1.4c0-.5.2-1 .6-1.3a1.9 1.9 0 0 1 2.7 0c.4.3.6.8.6 1.3V19H17a1 1 0 0 0 1-1v-3.7Z"/></symbol>
+      <symbol id="i-bot" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 8V5"/><circle cx="12" cy="3.5" r="1.5"/><path d="M9 13v2M15 13v2"/></symbol>
+      <symbol id="i-server" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="7" rx="2"/><rect x="3" y="14" width="18" height="7" rx="2"/><path d="M7 6.5h.01M7 17.5h.01"/></symbol>
+      <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-3.5 8-10V5l-8-3-8 3v7c0 6.5 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></symbol>
+      <symbol id="i-eyeoff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.7 5.1A10 10 0 0 1 12 5c7 0 10 7 10 7a13 13 0 0 1-1.7 2.7M6.6 6.6A13 13 0 0 0 2 12s3 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/><path d="m2 2 20 20"/></symbol>
+      <symbol id="i-code" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 18 6-6-6-6M8 6l-6 6 6 6"/></symbol>
+      <symbol id="i-pause" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M10 15V9M14 15V9"/></symbol>
+      <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></symbol>
+      <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+      <symbol id="i-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+      <symbol id="i-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.4-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z"/></symbol>
+      <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></symbol>
+      <symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></symbol>
+      <symbol id="i-tv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="m17 2-5 5-5-5"/></symbol>
+      <symbol id="i-sparkle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9Z"/><path d="M19 16v4M17 18h4"/></symbol>
+      <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+      <symbol id="i-volume" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></symbol>
+    </defs>
+  </svg>
+
+  <header class="site-header" id="top">
+    <div class="container">
+      <a class="brand" href="#top" aria-label="Diddy, back to top">
+        <img src="assets/img/logo.svg" alt="" width="32" height="32">
+        Diddy
+      </a>
+      <button class="menu-toggle" type="button" aria-controls="site-nav" aria-expanded="false">
+        <svg aria-hidden="true"><use href="#i-menu"/></svg>
+        <span class="sr-only">Open menu</span>
+      </button>
+      <nav class="nav" id="site-nav" aria-label="Main">
+        <a href="#features">Features</a>
+        <a href="#themes">Themes</a>
+        <a href="#platforms">Platforms</a>
+        <a href="#faq">FAQ</a>
+        <a href="./demo/">Demo</a>
+        <a class="gh-link" href="https://github.com/Lndr2501/diddy" rel="noopener">
+          <svg aria-hidden="true"><use href="#i-github"/></svg>GitHub
+        </a>
+        <a class="btn btn-primary btn-sm" href="#download">
+          <svg aria-hidden="true"><use href="#i-download"/></svg>Download
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+
+    <!-- HERO: F-pattern. Line 1: headline (left). Line 2: sub-headline. Vertical scan: CTAs, platforms. Product image on the right. -->
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="container grid">
+        <div class="hero-copy">
+          <a class="badge" href="https://github.com/Lndr2501/diddy/blob/main/CHANGELOG.md" rel="noopener">
+            <b data-version>v1.7.1</b> Calmer interface, in-window notifications
+          </a>
+          <h1 id="hero-title">Matrix chat with voice calls that <em>just work.</em></h1>
+          <p class="lead">Diddy is a free, open-source Matrix client for macOS, Linux and iPhone. Reliable voice rooms, screen sharing with sound, ten themes and rich profiles, on any homeserver.</p>
+
+          <div class="cta-row">
+            <a class="btn btn-primary" id="hero-download" href="#download">
+              <svg aria-hidden="true"><use href="#i-download"/></svg>
+              <span data-cta-label>Download Diddy</span>
+            </a>
+            <a class="btn btn-ghost" href="./demo/">
+              <svg aria-hidden="true"><use href="#i-sparkle"/></svg>
+              Try the demo
+            </a>
+          </div>
+          <p class="cta-note"><span data-cta-note>Free · AGPL-3.0 · No account with us, no tracking.</span> <a href="#download">Other platforms</a></p>
+
+          <ul class="platform-pills" aria-label="Available for">
+            <li><svg aria-hidden="true"><use href="#i-apple"/></svg>macOS (Apple Silicon)</li>
+            <li><svg aria-hidden="true"><use href="#i-terminal"/></svg>Linux x86_64</li>
+            <li><svg aria-hidden="true"><use href="#i-phone"/></svg>iPhone &amp; iPad <span class="sr-only">(beta)</span><small aria-hidden="true" style="color:var(--warning)">beta</small></li>
+          </ul>
+        </div>
+
+        <div class="hero-media">
+          <div style="position:relative">
+            <div class="window">
+              <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i></div>
+              <img src="assets/img/chat-diddy.webp"
+                   srcset="assets/img/chat-diddy-900.webp 900w, assets/img/chat-diddy.webp 1600w"
+                   sizes="(min-width: 1024px) 58vw, 100vw"
+                   width="1600" height="1125"
+                   alt="Diddy in the Diddy theme: a space with rooms on the left, a team chat with an image and reactions in the middle, and the member list split by online and offline on the right.">
+            </div>
+            <div class="float-chip voice" aria-hidden="true"><span class="dot"></span>Standup · 4 in voice</div>
+            <div class="float-chip live" aria-hidden="true"><b>LIVE</b>Mia's screen, with sound</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="trust" aria-label="Key facts">
+      <div class="container">
+        <ul>
+          <li><svg aria-hidden="true"><use href="#i-code"/></svg>Open source, AGPL-3.0</li>
+          <li><svg aria-hidden="true"><use href="#i-shield"/></svg>End-to-end encrypted rooms</li>
+          <li><svg aria-hidden="true"><use href="#i-server"/></svg>Any Matrix homeserver</li>
+          <li><svg aria-hidden="true"><use href="#i-eyeoff"/></svg>No telemetry</li>
+          <li><svg aria-hidden="true"><use href="#i-pause"/></svg>No forced updates</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- FEATURES: 12-column bento, asymmetric 7/5, 4/4/4, 5/7, 6/6 -->
+    <section class="section" id="features" aria-labelledby="features-title">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">Features</span>
+          <h2 class="h2" id="features-title">Everything a group chat needs, nothing it doesn't.</h2>
+          <p class="lead">Diddy builds on Cinny and adds what everyday chat with friends and teams was missing: calls that connect, streams that stay sharp and an interface you can make your own.</p>
+        </div>
+
+        <div class="grid bento">
+          <article class="card span-7 feature-plum reveal">
+            <span class="icon-tile"><svg aria-hidden="true"><use href="#i-mic"/></svg></span>
+            <h3>Voice calls that connect</h3>
+            <p>Join a voice room with one click. Every person and every stream gets its own tile; click one to bring it to the front.</p>
+            <ul>
+              <li><strong>Works on macOS</strong>, where Cinny's web client hangs on join, and on Linux, also in encrypted rooms.</li>
+              <li><strong>Music stays loud:</strong> with voice processing off, macOS no longer ducks your other apps.</li>
+              <li><strong>Noise suppression</strong> (RNNoise) and per-person volume up to 200 %.</li>
+            </ul>
+            <div class="callbar" aria-hidden="true">
+              <div class="callbar-inner">
+                <button type="button" tabindex="-1" aria-pressed="true"><svg><use href="#i-mic"/></svg></button>
+                <button type="button" tabindex="-1"><svg><use href="#i-headphones"/></svg></button>
+                <button type="button" tabindex="-1"><svg><use href="#i-screen"/></svg></button>
+                <button type="button" tabindex="-1"><svg><use href="#i-volume"/></svg></button>
+                <button type="button" tabindex="-1" class="end"><svg><use href="#i-hangup"/></svg></button>
+              </div>
+            </div>
+          </article>
+
+          <article class="card span-5 reveal">
+            <span class="icon-tile"><svg aria-hidden="true"><use href="#i-screen"/></svg></span>
+            <h3>Screen sharing with sound</h3>
+            <p>Streams stay sharp even when Diddy is in the background. Share system audio on macOS 14.2+ and Linux and toggle it from the call bar, before or during the stream.</p>
+            <ul>
+              <li>Several streams at once, zoom and full screen.</li>
+              <li><strong>Watch together</strong> in a room.</li>
+            </ul>
+          </article>
+
+          <article class="card span-4 reveal">
+            <span class="icon-tile"><svg aria-hidden="true"><use href="#i-user"/></svg></span>
+            <h3>Profiles with personality</h3>
+            <p>Name colours, banners, badges, profile effects and frames. Everyone on Diddy sees them on profile cards, in the member list and in chat.</p>
+          </article>
+
+          <article class="card span-4 reveal">
+            <span class="icon-tile"><svg aria-hidden="true"><use href="#i-palette"/></svg></span>
+            <h3>Ten themes</h3>
+            <p>From Light and Silver to Daaark, Butter and the plum-and-pink Diddy theme. Or simply follow the system. <a href="#themes" style="color:var(--accent-on-soft)">See them all</a>.</p>
+          </article>
+
+          <article class="card span-4 reveal">
+            <span class="icon-tile"><svg aria-hidden="true"><use href="#i-moon"/></svg></span>
+            <h3>Status that means something</h3>
+            <p>Online, Idle, Do Not Disturb and Invisible. Do Not Disturb silences sounds, notifications and the call ring, and syncs across your devices.</p>
+          </article>
+
+          <article class="card span-5 reveal">
+            <span class="icon-tile"><svg aria-hidden="true"><use href="#i-wave"/></svg></span>
+            <h3>Voice messages</h3>
+            <p>Record and play with a scrubbable waveform. Element and other clients show them as proper voice messages.</p>
+            <div class="voice-msg" aria-hidden="true">
+              <div class="voice-msg-inner">
+                <span class="play"><svg><use href="#i-play"/></svg></span>
+                <span class="wave" data-wave></span>
+                <time>0:14</time>
+              </div>
+            </div>
+          </article>
+
+          <article class="card span-7 reveal">
+            <span class="icon-tile"><svg aria-hidden="true"><use href="#i-puzzle"/></svg></span>
+            <h3>Plugins, soundboard and sounds</h3>
+            <p>A sandboxed plugin system with a built-in gallery, a soundboard with MyInstants import, and every app sound can be switched off or replaced with your own file.</p>
+            <div class="chips" aria-label="Examples of built-in plugins">
+              <span>To-do</span><span>Notes</span><span>Timer</span><span>Calendar</span><span>Clock</span><span>Weather</span><span>Currency</span><span>Dice</span><span>+ your own</span>
+            </div>
+          </article>
+
+          <article class="card span-6 reveal">
+            <span class="icon-tile"><svg aria-hidden="true"><use href="#i-bot"/></svg></span>
+            <h3>Bot cards</h3>
+            <p>Bots can send structured cards: now playing with a live progress bar, queues, help pages and buttons. Other clients still see plain text.</p>
+            <div class="bot-card" aria-hidden="true">
+              <div class="bot-card-inner">
+                <span class="cover"></span>
+                <span><b>Midnight Drive</b><small>Neon Coast · 1:24 / 3:17</small></span>
+                <span class="bar"><span></span></span>
+              </div>
+            </div>
+          </article>
+
+          <article class="card span-6 reveal">
+            <span class="icon-tile"><svg aria-hidden="true"><use href="#i-server"/></svg></span>
+            <h3>When a homeserver goes down</h3>
+            <p>Retry, or open another server in its own window with a separate login and data store. Your account and keys stay untouched.</p>
+            <div class="conn" aria-hidden="true">
+              <div class="down"><i></i>matrix.example.org<span>unreachable</span></div>
+              <div class="up"><i></i>chat.example.net<span>connected</span></div>
+            </div>
+          </article>
+
+          <article class="card span-12 reveal" style="flex-direction:row;flex-wrap:wrap;gap:20px 32px;align-items:center">
+            <span class="icon-tile"><svg aria-hidden="true"><use href="#i-bell"/></svg></span>
+            <div style="flex:1;min-width:260px">
+              <h3 style="margin-top:0">A calm interface</h3>
+              <p>Notifications slide in at the top while Diddy is in front, incoming calls arrive as a banner, room updates fold into one line and settings are searchable down to every switch.</p>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- THEMES: interactive showcase, 4/8 split -->
+    <section class="section showcase" id="themes" aria-labelledby="themes-title">
+      <div class="container">
+        <div class="grid">
+          <div class="theme-side reveal">
+            <span class="eyebrow">Showcase</span>
+            <h2 class="h2" id="themes-title">Make it yours.</h2>
+            <p class="lead">Ten built-in themes, light to very dark. Pick one to preview the real app.</p>
+            <div class="theme-picker" role="group" aria-label="Choose a theme to preview">
+              <button type="button" data-theme="light" style="--sa:#f4f4f6;--sb:#2b6de8;--swatch-accent:#2b6de8" aria-pressed="false"><span class="swatch"></span>Light</button>
+              <button type="button" data-theme="silver" style="--sa:#dcdde2;--sb:#5f6470;--swatch-accent:#8b91a0" aria-pressed="false"><span class="swatch"></span>Silver</button>
+              <button type="button" data-theme="dark" style="--sa:#1c1c1e;--sb:#7aa2ff;--swatch-accent:#7aa2ff" aria-pressed="false"><span class="swatch"></span>Dark</button>
+              <button type="button" data-theme="daaark" style="--sa:#000;--sb:#346bf1;--swatch-accent:#346bf1" aria-pressed="false"><span class="swatch"></span>Daaark</button>
+              <button type="button" data-theme="butter" style="--sa:#f6edd6;--sb:#c08a2c;--swatch-accent:#c08a2c" aria-pressed="false"><span class="swatch"></span>Butter</button>
+              <button type="button" data-theme="diddy" style="--sa:#201723;--sb:#e5517c;--swatch-accent:#e5517c" aria-pressed="true"><span class="swatch"></span>Diddy</button>
+              <button type="button" data-theme="red" style="--sa:#140909;--sb:#ff4d5a;--swatch-accent:#ff4d5a" aria-pressed="false"><span class="swatch"></span>Red</button>
+              <button type="button" data-theme="green" style="--sa:#07120c;--sb:#42e08c;--swatch-accent:#42e08c" aria-pressed="false"><span class="swatch"></span>Green</button>
+              <button type="button" data-theme="purple" style="--sa:#0f0818;--sb:#b26bff;--swatch-accent:#b26bff" aria-pressed="false"><span class="swatch"></span>Purple</button>
+              <button type="button" data-theme="amber" style="--sa:#130c03;--sb:#ffa726;--swatch-accent:#ffa726" aria-pressed="false"><span class="swatch"></span>Amber</button>
+            </div>
+          </div>
+          <div class="theme-stage reveal">
+            <div class="window">
+              <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i></div>
+              <img id="theme-img" src="assets/img/theme-diddy.webp" width="1280" height="900" loading="lazy" alt="Diddy in the Diddy theme.">
+            </div>
+            <p class="theme-caption" aria-live="polite" id="theme-caption">Theme: Diddy</p>
+          </div>
+        </div>
+
+        <div class="grid shots">
+          <figure class="shot wide reveal">
+            <div class="window">
+              <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i></div>
+              <img src="assets/img/settings-profile.webp" width="1280" height="900" loading="lazy" alt="Settings page for editing the profile card with banner, badges and name style.">
+            </div>
+            <figcaption><b>Design your profile card.</b> Banner, badges, effects, frames and name style, with a live preview.</figcaption>
+          </figure>
+          <figure class="shot narrow reveal">
+            <div class="window">
+              <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i></div>
+              <img src="assets/img/settings-appearance.webp" width="1280" height="900" loading="lazy" alt="Appearance settings with all theme previews.">
+            </div>
+            <figcaption><b>Settings by topic.</b> Appearance, Chat, Notifications, Calls &amp; Audio, and a search that finds every switch.</figcaption>
+          </figure>
+        </div>
+        <p class="theme-caption" style="margin-top:28px">All screenshots come from the real app and show fictional example data.</p>
+      </div>
+    </section>
+
+    <!-- PLATFORMS -->
+    <section class="section" id="platforms" aria-labelledby="platforms-title">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">Platforms</span>
+          <h2 class="h2" id="platforms-title">Honest about what works where.</h2>
+          <p class="lead">macOS is the daily driver. Linux and the native iOS app are catching up fast; anything not yet tested in daily use is marked as such.</p>
+        </div>
+        <div class="table-wrap reveal" role="region" aria-labelledby="platforms-title">
+          <table>
+            <caption class="sr-only">Feature support per platform</caption>
+            <thead>
+              <tr><th scope="col">Feature</th><th scope="col">macOS</th><th scope="col">Linux</th><th scope="col">iPhone / iPad</th></tr>
+            </thead>
+            <tbody>
+              <tr><th scope="row">Chat, rooms, encryption</th><td><span class="st ok">Works</span></td><td><span class="st ok">Works</span><small>Electron</small></td><td><span class="st beta">Beta</span><small>native app</small></td></tr>
+              <tr><th scope="row">Voice calls</th><td><span class="st ok">Works</span></td><td><span class="st ok">Works</span><small>also encrypted</small></td><td><span class="st beta">Beta</span></td></tr>
+              <tr><th scope="row">Screen sharing</th><td><span class="st ok">Works</span></td><td><span class="st beta">Beta</span><small>Wayland portal / X11 picker</small></td><td><span class="st beta">Beta</span><small>full screen on iOS 27+</small></td></tr>
+              <tr><th scope="row">…with system sound</th><td><span class="st ok">Works</span><small>macOS 14.2+</small></td><td><span class="st beta">Beta</span><small>other apps’ sound</small></td><td><span class="st beta">Beta</span><small>app sound</small></td></tr>
+              <tr><th scope="row">Connection profiles</th><td><span class="st ok">Works</span><small>macOS 14+</small></td><td><span class="st beta">Beta</span></td><td><span class="st beta">Beta</span><small>multiple accounts</small></td></tr>
+              <tr><th scope="row">Voice messages</th><td><span class="st ok">Works</span></td><td><span class="st beta">Beta</span></td><td><span class="st beta">Beta</span><small>no Ogg/Opus playback</small></td></tr>
+              <tr><th scope="row">Call tiles, soundboard</th><td><span class="st ok">Works</span></td><td><span class="st ok">Works</span></td><td><span class="st beta">Beta</span></td></tr>
+              <tr><th scope="row">Bot cards, profiles, themes, plugins</th><td><span class="st ok">Works</span></td><td><span class="st ok">Works</span></td><td><span class="st beta">Beta</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="legend"><span class="st ok">Works and is tested</span><span class="st beta">Built, not yet tested in daily use</span><span class="st no">Not supported yet</span></p>
+      </div>
+    </section>
+
+    <!-- DOWNLOAD -->
+    <section class="section" id="download" aria-labelledby="download-title" style="padding-top:0">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">Download</span>
+          <h2 class="h2" id="download-title">Get Diddy <span data-version>v1.7.1</span>.</h2>
+          <p class="lead">Free downloads from GitHub Releases, built automatically from the source. Check them against <code>SHA256SUMS</code> if you like.</p>
+        </div>
+
+        <div class="download-box reveal">
+          <div class="tabs" role="tablist" aria-label="Platform">
+            <button type="button" role="tab" id="tab-mac" aria-controls="panel-mac" aria-selected="true"><svg aria-hidden="true"><use href="#i-apple"/></svg>macOS</button>
+            <button type="button" role="tab" id="tab-linux" aria-controls="panel-linux" aria-selected="false" tabindex="-1"><svg aria-hidden="true"><use href="#i-terminal"/></svg>Linux</button>
+            <button type="button" role="tab" id="tab-ios" aria-controls="panel-ios" aria-selected="false" tabindex="-1"><svg aria-hidden="true"><use href="#i-phone"/></svg>iOS</button>
+          </div>
+
+          <div class="tab-panel" role="tabpanel" id="panel-mac" aria-labelledby="tab-mac" tabindex="0">
+            <div class="tab-grid">
+              <ol class="steps">
+                <li><strong>Open the DMG</strong> and drag Diddy to <em>Applications</em>.</li>
+                <li><strong>Run this once in Terminal.</strong> Diddy is not notarized by Apple yet, so macOS would block it otherwise.
+                  <div class="code"><code>xattr -cr /Applications/Diddy.app</code><button class="copy" type="button" data-copy="xattr -cr /Applications/Diddy.app"><svg aria-hidden="true"><use href="#i-copy"/></svg><span>Copy</span></button></div>
+                </li>
+                <li><strong>Start Diddy</strong> and allow the microphone. For stream sound, also allow <em>Screen &amp; System Audio Recording</em>.</li>
+              </ol>
+              <div class="aside-card">
+                <h3>Diddy for Mac</h3>
+                <p>Apple Silicon (M1 or newer). Some features need macOS 14 or 14.2.</p>
+                <a class="btn btn-primary" data-asset="aarch64.dmg" href="https://github.com/Lndr2501/diddy/releases/latest"><svg aria-hidden="true"><use href="#i-download"/></svg>Download .dmg</a>
+              </div>
+            </div>
+          </div>
+
+          <div class="tab-panel" role="tabpanel" id="panel-linux" aria-labelledby="tab-linux" tabindex="0" hidden>
+            <div class="tab-grid">
+              <div class="pkg-list">
+                <h4>Debian / Ubuntu (recommended on Ubuntu 24.04+)</h4>
+                <div class="code"><code>sudo apt install ./Diddy_*_amd64.deb</code><button class="copy" type="button" data-copy="sudo apt install ./Diddy_*_amd64.deb"><svg aria-hidden="true"><use href="#i-copy"/></svg><span>Copy</span></button></div>
+                <h4>Fedora / openSUSE</h4>
+                <div class="code"><code>sudo dnf install ./Diddy_*_x86_64.rpm</code><button class="copy" type="button" data-copy="sudo dnf install ./Diddy_*_x86_64.rpm"><svg aria-hidden="true"><use href="#i-copy"/></svg><span>Copy</span></button></div>
+                <h4>AppImage</h4>
+                <div class="code"><code>chmod +x Diddy_*.AppImage &amp;&amp; ./Diddy_*.AppImage</code><button class="copy" type="button" data-copy="chmod +x Diddy_*.AppImage &amp;&amp; ./Diddy_*.AppImage"><svg aria-hidden="true"><use href="#i-copy"/></svg><span>Copy</span></button></div>
+                <h4>NixOS (in a checkout)</h4>
+                <div class="code"><code>nix run .#diddy</code><button class="copy" type="button" data-copy="nix run .#diddy"><svg aria-hidden="true"><use href="#i-copy"/></svg><span>Copy</span></button></div>
+                <div class="note"><svg aria-hidden="true"><use href="#i-info"/></svg><span>The AppImage needs FUSE 2 (<code>libfuse2</code> / <code>libfuse2t64</code>). On Ubuntu 24.04+ AppArmor can block Chromium's sandbox inside an AppImage, so use the <code>.deb</code> there: it ships an AppArmor profile.</span></div>
+              </div>
+              <div class="aside-card">
+                <h3>Diddy for Linux</h3>
+                <p>x86_64, built on Electron. System sound for streams needs PipeWire (<code>pipewire-pulse</code>) or PulseAudio.</p>
+                <a class="btn btn-primary" data-asset="amd64.deb" href="https://github.com/Lndr2501/diddy/releases/latest"><svg aria-hidden="true"><use href="#i-download"/></svg>Download .deb</a>
+                <a class="btn btn-ghost" data-asset="x86_64.rpm" href="https://github.com/Lndr2501/diddy/releases/latest" style="margin-top:10px">.rpm</a>
+                <a class="btn btn-ghost" data-asset="x86_64.AppImage" href="https://github.com/Lndr2501/diddy/releases/latest" style="margin-top:10px">.AppImage</a>
+              </div>
+            </div>
+          </div>
+
+          <div class="tab-panel" role="tabpanel" id="panel-ios" aria-labelledby="tab-ios" tabindex="0" hidden>
+            <div class="tab-grid">
+              <ol class="steps">
+                <li><strong>Download the IPA</strong> from the latest release.</li>
+                <li><strong>Install it with a sideloading tool</strong> such as AltStore, SideStore or Sideloadly. No paid Apple account needed.</li>
+                <li><strong>Sign in</strong> with your Matrix account. Voice rooms need a homeserver with Element Call / LiveKit.</li>
+              </ol>
+              <div class="aside-card">
+                <h3>Diddy for iPhone &amp; iPad <small style="color:var(--warning)">beta</small></h3>
+                <p>A native SwiftUI app, not a web view. Encrypted voice rooms do not rotate keys when someone leaves yet; hardening is planned.</p>
+                <a class="btn btn-primary" data-asset="iOS_unsigned.ipa" href="https://github.com/Lndr2501/diddy/releases/latest"><svg aria-hidden="true"><use href="#i-download"/></svg>Download .ipa</a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="cta-note" style="text-align:center;margin-top:18px"><a href="https://github.com/Lndr2501/diddy/releases/latest" rel="noopener">All files and checksums on GitHub</a> · <a href="https://github.com/Lndr2501/diddy#build-from-source" rel="noopener">Build from source</a></p>
+      </div>
+    </section>
+
+    <!-- DEMO -->
+    <section class="section" id="try" aria-labelledby="try-title" style="padding-top:0">
+      <div class="container">
+        <div class="card feature-plum reveal" style="flex-direction:row;flex-wrap:wrap;align-items:center;gap:24px 40px;padding:clamp(28px,4vw,48px)">
+          <div style="flex:1;min-width:260px">
+            <span class="eyebrow">Try it</span>
+            <h2 class="h2" id="try-title">Click around before you install.</h2>
+            <p class="lead">The interactive demo runs right in your browser with example data. No account, nothing to install.</p>
+          </div>
+          <a class="btn btn-primary" href="./demo/"><svg aria-hidden="true"><use href="#i-sparkle"/></svg>Open the demo<svg aria-hidden="true"><use href="#i-arrow"/></svg></a>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ: 4/8 split, sticky heading -->
+    <section class="section" id="faq" aria-labelledby="faq-title" style="padding-top:0">
+      <div class="container grid faq-grid">
+        <div class="faq-head reveal">
+          <span class="eyebrow">FAQ</span>
+          <h2 class="h2" id="faq-title">Questions, answered.</h2>
+          <p class="lead">Something missing? <a href="https://github.com/Lndr2501/diddy/issues" rel="noopener" style="color:var(--accent-on-soft)">Open an issue</a>.</p>
+        </div>
+        <div class="faq-list">
+          <details>
+            <summary>Does Diddy cost anything?</summary>
+            <div><p>No. Diddy is free and open source under the AGPL-3.0, like Cinny, which it is built on.</p></div>
+          </details>
+          <details>
+            <summary>Do I need a new account?</summary>
+            <div><p>No. Diddy speaks plain Matrix. Sign in with any existing Matrix account, for example on matrix.org or your own homeserver. Diddy itself runs no server and has no accounts.</p></div>
+          </details>
+          <details>
+            <summary>What data does Diddy collect?</summary>
+            <div><p>None for us. Diddy has no telemetry or analytics and there is no Diddy server. The app talks to the homeserver you choose, and at startup it asks GitHub whether a new release exists (you can turn this off under <em>Settings → About</em>). Optional call alerts on iOS use ntfy only if you turn them on.</p><p>A local log file helps with bug reports. It stays on your device and contains technical events, never message text.</p></div>
+          </details>
+          <details>
+            <summary>Why do I have to run a Terminal command on the Mac?</summary>
+            <div><p>Diddy is not notarized by Apple yet. <code>xattr -cr</code> removes the quarantine flag so macOS lets the app start.</p></div>
+          </details>
+          <details>
+            <summary>Does Diddy update itself?</summary>
+            <div><p>Only when you say so. At startup Diddy asks whether you want to update, skip that version or wait. On macOS it can then download and install the new version for you; on Linux it opens the release page. Nothing changes without your click.</p></div>
+          </details>
+          <details>
+            <summary>Can I chat with people on Element or other apps?</summary>
+            <div><p>Yes. It is all Matrix. Profiles, badges and bot cards are extras that only Diddy users see; everyone else gets normal messages.</p></div>
+          </details>
+          <details>
+            <summary>Windows?</summary>
+            <div><p>There is no official Windows build at the moment. macOS, Linux and iOS are the supported platforms.</p></div>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="final-title" style="padding-bottom:0">
+      <div class="container">
+        <div class="final-cta reveal">
+          <img src="assets/img/logo.svg" alt="" width="88" height="88">
+          <h2 class="h2" id="final-title">Your group chat, minus the friction.</h2>
+          <p class="lead" style="margin-inline:auto;max-width:32em">Free, open source and ready for your homeserver.</p>
+          <div class="cta-row">
+            <a class="btn btn-primary" href="#download" data-final-cta><svg aria-hidden="true"><use href="#i-download"/></svg>Download Diddy</a>
+            <a class="btn btn-ghost" href="https://github.com/Lndr2501/diddy" rel="noopener"><svg aria-hidden="true"><use href="#i-github"/></svg>Star on GitHub</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="grid">
+        <div class="footer-brand">
+          <a class="brand" href="#top"><img src="assets/img/logo.svg" alt="" width="32" height="32">Diddy</a>
+          <p>A Matrix chat client for macOS, Linux and iPhone/iPad. Built on <a href="https://github.com/cinnyapp/cinny" rel="noopener">Cinny</a>, <a href="https://tauri.app/" rel="noopener">Tauri</a> and <a href="https://www.electronjs.org/" rel="noopener">Electron</a>.</p>
+        </div>
+        <div class="footer-col">
+          <h2>Product</h2>
+          <ul>
+            <li><a href="#features">Features</a></li>
+            <li><a href="#themes">Themes</a></li>
+            <li><a href="#download">Download</a></li>
+            <li><a href="./demo/">Demo</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h2>Project</h2>
+          <ul>
+            <li><a href="https://github.com/Lndr2501/diddy" rel="noopener">Source code</a></li>
+            <li><a href="https://github.com/Lndr2501/diddy/blob/main/CHANGELOG.md" rel="noopener">Changelog</a></li>
+            <li><a href="https://github.com/Lndr2501/diddy/issues" rel="noopener">Report a bug</a></li>
+            <li><a href="https://github.com/Lndr2501/diddy/blob/main/LICENSE" rel="noopener">License (AGPL-3.0)</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h2>Legal</h2>
+          <ul>
+            <li><a href="impressum.html" hreflang="de">Legal notice</a></li>
+            <li><a href="datenschutz.html" hreflang="de">Privacy policy</a></li>
+            <li><a href="assets/fonts/OFL.txt">Font license</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-legal">
+        <p>© <span data-year>2026</span> The Diddy contributors. Diddy is free software under the GNU AGPL-3.0. This website sets no cookies and loads nothing from third parties.</p>
+        <p>Diddy is an independent project and not affiliated with or endorsed by Apple, the Matrix.org Foundation or the Cinny project. Apple, macOS, iPhone and iPad are trademarks of Apple Inc. Linux® is the registered trademark of Linus Torvalds. Matrix is a trademark of The Matrix.org Foundation. Other names belong to their respective owners.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="assets/site.js" defer></script>
+</body>
+</html>
