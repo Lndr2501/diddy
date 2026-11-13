@@ -86,6 +86,8 @@ import { InviteUserPrompt } from '../../../components/invite-user-prompt';
 import { useCallEmbed } from '../../../hooks/useCallEmbed';
 import { SpaceJoinMenuItems } from '../../../components/space-join/SpaceJoinMenuItems';
 import * as css from './Space.css';
+import { useDirectRooms } from '../direct/useDirectRooms';
+import { factoryRoomIdByActivity } from '../../../utils/sort';
 
 type SpaceMenuProps = {
   room: Room;
@@ -380,6 +382,77 @@ export function SpaceTombstone({ roomId, replacementRoomId }: SpaceTombstoneProp
   );
 }
 
+const DIRECTS_CATEGORY = 'diddy.directs';
+
+/**
+ * Your direct messages at the bottom of a space's room list (setting "Direct Messages in Spaces"),
+ * newest activity first. They open inside the space (SpaceRouteRoomProvider lets DMs through).
+ */
+function SpaceDirects({
+  spaceId,
+  spaceIdOrAlias,
+  hiddenRoomIds,
+}: {
+  spaceId: string;
+  spaceIdOrAlias: string;
+  /** rooms the space list already shows */
+  hiddenRoomIds: ReadonlySet<string>;
+}) {
+  const mx = useMatrixClient();
+  const directs = useDirectRooms();
+  const roomToUnread = useAtomValue(roomToUnreadAtom);
+  const selectedRoomId = useSelectedRoom();
+  const notificationPreferences = useRoomsNotificationPreferencesContext();
+  const [closedCategories, setClosedCategories] = useAtom(useClosedNavCategoriesAtom());
+  const categoryId = makeNavCategoryId(spaceId, DIRECTS_CATEGORY);
+  const closed = closedCategories.has(categoryId);
+  const handleCategoryClick = useCategoryHandler(setClosedCategories, (id) =>
+    closedCategories.has(id)
+  );
+
+  const roomIds = useMemo(() => {
+    const sorted = directs
+      .filter((rId) => !hiddenRoomIds.has(rId))
+      .sort(factoryRoomIdByActivity(mx));
+    // closed: like every category, unread and open chats stay visible
+    return closed
+      ? sorted.filter((rId) => roomToUnread.has(rId) || rId === selectedRoomId)
+      : sorted;
+  }, [mx, directs, hiddenRoomIds, closed, roomToUnread, selectedRoomId]);
+
+  if (directs.length === 0) return null;
+  return (
+    <NavCategory data-space-directs>
+      <div style={{ paddingTop: config.space.S400 }}>
+        <NavCategoryHeader>
+          <RoomNavCategoryButton
+            data-category-id={categoryId}
+            onClick={handleCategoryClick}
+            closed={closed}
+          >
+            Direct Messages
+          </RoomNavCategoryButton>
+        </NavCategoryHeader>
+      </div>
+      {roomIds.map((roomId) => {
+        const room = mx.getRoom(roomId);
+        if (!room) return null;
+        return (
+          <RoomNavItem
+            key={roomId}
+            room={room}
+            selected={selectedRoomId === roomId}
+            showAvatar
+            direct
+            linkPath={getSpaceRoomPath(spaceIdOrAlias, getCanonicalAliasOrRoomId(mx, roomId))}
+            notificationMode={getRoomNotificationMode(notificationPreferences, roomId)}
+          />
+        );
+      })}
+    </NavCategory>
+  );
+}
+
 export function Space() {
   const mx = useMatrixClient();
   const space = useSpace();
@@ -399,6 +472,7 @@ export function Space() {
   const callEmbed = useCallEmbed();
 
   const [closedCategories, setClosedCategories] = useAtom(useClosedNavCategoriesAtom());
+  const [directsInSpaces] = useSetting(settingsAtom, 'showDirectsInSpaces');
 
   const getRoom = useCallback(
     (rId: string): Room | undefined => {
@@ -443,6 +517,11 @@ export function Space() {
 
   const getToLink = (roomId: string) =>
     getSpaceRoomPath(spaceIdOrAlias, getCanonicalAliasOrRoomId(mx, roomId));
+
+  const hierarchyRoomIds = useMemo(
+    () => new Set(hierarchy.map((item) => item.roomId)),
+    [hierarchy]
+  );
 
   return (
     <PageNav>
@@ -545,6 +624,13 @@ export function Space() {
               );
             })}
           </NavCategory>
+          {directsInSpaces && (
+            <SpaceDirects
+              spaceId={space.roomId}
+              spaceIdOrAlias={spaceIdOrAlias}
+              hiddenRoomIds={hierarchyRoomIds}
+            />
+          )}
         </Box>
       </PageNavContent>
     </PageNav>

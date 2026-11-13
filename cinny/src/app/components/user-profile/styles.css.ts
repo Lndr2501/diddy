@@ -462,3 +462,12 @@ export const Divider = style({
   flexShrink: 0,
   backgroundColor: t.separator,
 });
+
+// "● Bot" on a bot's profile card
+export const BotDot = style({
+  width: toRem(8),
+  height: toRem(8),
+  borderRadius: '50%',
+  flexShrink: 0,
+  backgroundColor: color.Success.Main,
+});

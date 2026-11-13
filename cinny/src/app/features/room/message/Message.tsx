@@ -83,6 +83,8 @@ import { PowerIcon } from '../../../components/power';
 import { DiddyName } from '../../../components/diddy/DiddyName';
 import colorMXID from '../../../../util/colorMXID';
 import { getPowerTagIconSrc } from '../../../hooks/useMemberPowerTag';
+import { isRoomBot } from '../../../hooks/useRoomBots';
+import { BotTag } from '../../../components/message/BotTag';
 
 export type ReactionHandler = (keyOrMxc: string, shortcode: string) => void;
 
@@ -782,6 +784,7 @@ export const Message = as<'div', MessageProps>(
     const senderDisplayName =
       getMemberDisplayName(room, senderId) ?? getMxIdLocalPart(senderId) ?? senderId;
     const senderAvatarMxc = getMemberAvatarMxc(room, senderId);
+    const isBot = isRoomBot(room, senderId);
 
     const tagColor = memberPowerTag?.color
       ? accessibleTagColors?.get(memberPowerTag.color)
@@ -819,6 +822,7 @@ export const Message = as<'div', MessageProps>(
               </UsernameBold>
             </Text>
           </Username>
+          {isBot && <BotTag />}
           {tagIconSrc && <PowerIcon size="100" iconSrc={tagIconSrc} />}
         </Box>
         <Box shrink="No" gap="200" alignItems="Baseline">

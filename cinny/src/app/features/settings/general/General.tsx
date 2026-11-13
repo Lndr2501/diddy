@@ -189,6 +189,7 @@ function PageZoomInput() {
 function DisplaySettings() {
   const [monochromeMode, setMonochromeMode] = useSetting(settingsAtom, 'monochromeMode');
   const [dynamicPageTitle, setDynamicPageTitle] = useSetting(settingsAtom, 'showDynamicPageTitle');
+  const [directsInSpaces, setDirectsInSpaces] = useSetting(settingsAtom, 'showDirectsInSpaces');
 
   return (
     <InsetSection title="Display">
@@ -202,6 +203,17 @@ function DisplaySettings() {
           description="Display your current room and space in the window title."
           after={
             <Switch variant="Primary" value={dynamicPageTitle} onChange={setDynamicPageTitle} />
+          }
+        />
+        <InsetRow
+          title="Direct Messages in Spaces"
+          description="List your direct messages at the bottom of every space's room list."
+          after={
+            <Switch
+              variant="Primary"
+              value={!!directsInSpaces}
+              onChange={setDirectsInSpaces}
+            />
           }
         />
         <InsetRow

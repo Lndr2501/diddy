@@ -129,12 +129,17 @@ export function BioModule({
   bio,
   compact,
   long,
+  title = 'About me',
+  max = 160,
 }: {
   bio?: string;
   compact?: boolean;
   long?: boolean;
+  /** "About" on a bot's card */
+  title?: string;
+  max?: number;
 }) {
-  const text = safeText(bio, 160);
+  const text = safeText(bio, max);
   if (!text) return null;
   const body = (
     <Text
@@ -146,7 +151,7 @@ export function BioModule({
     </Text>
   );
   if (compact) return body;
-  return <Section title="About me">{body}</Section>;
+  return <Section title={title}>{body}</Section>;
 }
 
 export function ActivityModule({ profile, accent }: { profile?: DiddyProfile; accent?: string }) {
@@ -267,6 +272,8 @@ type ProfileModulesProps = {
   sharedRooms?: React.ReactNode;
   /** layout to use instead of the card's own (the big profile window has its own) */
   layout?: CardLayout;
+  /** title of the bio section ("About" for a bot, whose about text may be 200 characters) */
+  bioTitle?: string;
 };
 /** The modules of a card in the order and layout the owner chose (#29). */
 export function ProfileModules({
@@ -274,6 +281,7 @@ export function ProfileModules({
   accent,
   sharedRooms,
   layout: layoutOverride,
+  bioTitle,
 }: ProfileModulesProps) {
   const layout: CardLayout = layoutOverride ?? profile?.cardLayout?.layout ?? 'standard';
   const settings = { ...profile?.cardLayout, layout };
@@ -290,6 +298,8 @@ export function ProfileModules({
           <BioModule
             key={m}
             bio={profile?.bio}
+            title={bioTitle}
+            max={bioTitle ? 200 : undefined}
             compact={layout === 'compact'}
             long={layout === 'expanded' || layout === 'tabs'}
           />
@@ -327,7 +337,7 @@ export function ProfileModules({
       case 'about':
         return ABOUT_FIELDS.some((f) => !!safeText(profile?.about?.[f], 40));
       case 'bio':
-        return !!safeText(profile?.bio, 160);
+        return !!safeText(profile?.bio, bioTitle ? 200 : 160);
       case 'activity':
         return !!profile?.activity;
       case 'interests':

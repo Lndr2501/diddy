@@ -24,6 +24,8 @@ type ProfileCardViewProps = {
   layout: CardLayout;
   /** the big profile window: large banner and avatar */
   large?: boolean;
+  /** the user announced itself as a bot in this room: Bot badge and status line */
+  bot?: boolean;
   onAvatarClick?: () => void;
   /** buttons right of the avatar (Call, Message) */
   actions?: ReactNode;
@@ -48,6 +50,7 @@ export function ProfileCardView({
   profile,
   layout,
   large,
+  bot,
   onAvatarClick,
   actions,
   meta,
@@ -99,13 +102,15 @@ export function ProfileCardView({
               profile={profile}
               showBio={false}
               compact={compact}
+              bot={bot}
             />
-            <ProfileStatus presence={presence} />
+            <ProfileStatus presence={presence} bot={bot} />
           </Box>
           <ProfileModules
             profile={profile}
             accent={accent}
             layout={layout}
+            bioTitle={bot ? 'About' : undefined}
             sharedRooms={layout === 'tabs' ? sharedRooms : undefined}
           />
           <div className={css.MetaRow}>

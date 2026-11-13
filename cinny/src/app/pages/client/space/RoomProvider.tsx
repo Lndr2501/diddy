@@ -18,6 +18,7 @@ export function SpaceRouteRoomProvider({ children }: { children: ReactNode }) {
   const mx = useMatrixClient();
   const space = useSpace();
   const [developerTools] = useSetting(settingsAtom, 'developerTools');
+  const [directsInSpaces] = useSetting(settingsAtom, 'showDirectsInSpaces');
   const [roomToParents, setRoomToParents] = useAtom(roomToParentsAtom);
   const mDirects = useAtomValue(mDirectAtom);
   const allRooms = useAtomValue(allRoomsAtom);
@@ -47,7 +48,10 @@ export function SpaceRouteRoomProvider({ children }: { children: ReactNode }) {
     );
   }
 
-  if (!getAllParents(roomToParents, room.roomId).has(space.roomId)) {
+  // "Direct Messages in Spaces": a DM opens inside the space you are in
+  const directInSpace = directsInSpaces && mDirects.has(room.roomId);
+
+  if (!directInSpace && !getAllParents(roomToParents, room.roomId).has(space.roomId)) {
     if (getSpaceChildren(space).includes(room.roomId)) {
       // fill missing roomToParent mapping
       setRoomToParents({
