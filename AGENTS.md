@@ -47,7 +47,8 @@ ESLint hat viele Altlasten; neue Dateien trotzdem sauber halten (`npx eslint <da
 ## Wichtige Ordner (unter `cinny/src/app/`)
 
 - `plugins/call/`: Call-Logik (Audio, Rauschfilter `noiseSuppression.ts`, Soundboard, Ping `streamStats.ts`).
-- `plugins/sounds.ts`: alle App-Sounds (Web Audio, pro Sound an/aus, eigene Datei ersetzt). Dateien in `public/sound/diddy/`.
+- `plugins/sounds.ts`: alle App-Sounds (Web Audio, pro Sound an/aus, eigene Datei ersetzt). Dateien in `public/sound/diddy/`;
+  Erwähnung, Einladung, abgelehnt, keine Antwort und Verbindung verloren sind in SoundCraft gebaut (Sinus plus Oktave wie das Pack).
 - `plugins/userPlugins.ts`, `plugins/builtin/*.html`, `features/plugins/`: Plugin-System und Standard-Plugins.
 - `state/`: jotai-/Store-Zustand (`avatarPrefs`, `callPrefs`, `pluginDock` ...).
 - `features/call/`, `components/call-panel/`: Call-Oberfläche. `features/settings/`: Einstellungen.

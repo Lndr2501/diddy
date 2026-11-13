@@ -96,6 +96,13 @@ enum Sound: String, CaseIterable, Identifiable {
         case .cameraOff: return "camera_off"
         case .message: return "message1"
         case .micChange: return "mic_change"
+        // Joining yourself sounds like someone else joining, as on the desktop.
+        case .callJoined: return "user_join"
+        case .mention: return "mention"
+        case .invite: return "invite"
+        case .callDeclined: return "call_declined"
+        case .noAnswer: return "no_answer"
+        case .connectionLost: return "connection_lost"
         default: return nil
         }
     }

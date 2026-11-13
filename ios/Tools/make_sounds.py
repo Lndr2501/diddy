@@ -93,12 +93,6 @@ def fade_out(samples, length=0.012):
 # Name, samples, peak in dB. The peak sets how present a sound is against a call.
 SOUNDS = [
     ("ringback", lambda: mix(3.4, (0, pad((A4, E5), 1.2))), -14),
-    ("call_joined", lambda: notes((A5, D6), 0.09, 0.35), -6),
-    ("mention", lambda: mix(0.5, (0, glide(620, 1040, 0.2)), (0.09, tone(FS6, 0.4, decay=0.12))), -6),
-    ("invite", lambda: notes((FS5, A5, D6, FS6), 0.1, 0.5, decay=0.16), -7),
-    ("call_declined", lambda: notes((B4, B4, B4), 0.16, 0.14, decay=0.05, partials=SOFT), -7),
-    ("no_answer", lambda: notes((A5, FS5, D5), 0.17, 0.5, decay=0.16, partials=SOFT), -8),
-    ("connection_lost", lambda: notes((D5, A4, D4), 0.13, 0.45, decay=0.14), -6),
 ]
 
 

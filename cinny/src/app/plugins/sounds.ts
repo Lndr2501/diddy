@@ -20,7 +20,10 @@ import streamEnded from '../../../public/sound/diddy/stream_ended.mp3';
 import message from '../../../public/sound/diddy/message1.mp3';
 import ringing from '../../../public/sound/diddy/call_ringing.mp3';
 import ringback from '../../../public/sound/diddy/call_calling.mp3';
-import invite from '../../../public/sound/invite.ogg';
+import mention from '../../../public/sound/diddy/mention.mp3';
+import invite from '../../../public/sound/diddy/invite.mp3';
+import callDeclined from '../../../public/sound/diddy/call_declined.mp3';
+import connectionLost from '../../../public/sound/diddy/connection_lost.mp3';
 
 export type SoundId =
   | 'mute'
@@ -60,7 +63,7 @@ export const SOUND_GROUPS: { title: string; sounds: SoundInfo[] }[] = [
         id: 'mention',
         title: 'Mention',
         description: 'A message that mentions you.',
-        url: message,
+        url: mention,
       },
       { id: 'invite', title: 'Invitation', description: 'You are invited to a room.', url: invite },
     ],
@@ -103,13 +106,13 @@ export const SOUND_GROUPS: { title: string; sounds: SoundInfo[] }[] = [
         id: 'callDeclined',
         title: 'Call declined',
         description: 'The person you call declines.',
-        url: userLeave,
+        url: callDeclined,
       },
       {
         id: 'connectionLost',
         title: 'Connection lost',
         description: 'Your call loses its connection.',
-        url: userLeave,
+        url: connectionLost,
       },
     ],
   },

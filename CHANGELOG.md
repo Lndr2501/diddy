@@ -1,5 +1,9 @@
 # Changelog
 
+## Unveröffentlicht
+
+- **Eigene Sounds für Erwähnung, Einladung, abgelehnten Anruf, keine Antwort und Verbindungsabbruch (macOS, Linux, iOS):** Diese Ereignisse hatten keinen eigenen Sound im Pack. Am Desktop klang die Erwähnung wie eine Nachricht, abgelehnt und Verbindungsabbruch wie „Jemand geht“, die Einladung war der alte Cinny-Ton (`invite.ogg`). Auf iOS waren es synthetisierte Töne in anderem Klang. Die neuen Sounds sind in SoundCraft gebaut, im Klang des Packs (Sinus plus Oktave, C/G-Dur) und gleich laut: Erwähnung G4 D5 G5, Einladung als Glocken-Arpeggio, abgelehnt G4 → D#4, keine Antwort C5 A4 F4, Verbindungsabbruch chromatisch abwärts. Der eigene Beitritt klingt auf iOS jetzt wie am Desktop gleich wie „Jemand kommt“. iOS-Mitteilungen für Erwähnung und Einladung nutzen CAF-Kopien der neuen Sounds; `make_sounds.py` erzeugt nur noch das Freizeichen.
+
 ## 1.7.1 (2026-11-12)
 
 - **iOS: Diddy-Profile wie am Desktop (Effekte, Rahmen, Banner, Namensstil):** Wer in mehreren Diddy-Options-Räumen ist, bekam auf iOS teils ein anderes, älteres Profil angezeigt als am Desktop, oder gar keines. iOS sortierte die Räume nach Codepunkten („!B…“ vor „!a…“), Desktop mit `localeCompare`. Damit gewann ein anderer Raum, und iOS schrieb das eigene Profil auch in einen anderen Raum, als Desktop zuerst liest. iOS sortiert jetzt genau wie Desktop. Ein Raum zählt nur noch mit Marker-Event als Options-Raum, wie am Desktop, nicht schon wegen des Topic-Tags. Die Größengrenze (4096 Zeichen) misst iOS jetzt exakt wie `JSON.stringify` am Desktop. Vorher zählten Kommazahlen wie Bildausschnitte je nach Apple-Foundation mit 17 Stellen, sodass große Profile auf iOS wegfallen konnten. Verworfene Profile stehen im Diagnose-Log (`diddy: profile dropped`).
