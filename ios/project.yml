@@ -121,13 +121,10 @@ targets:
           NSExtensionPointIdentifier: com.apple.share-services
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
           NSExtensionAttributes:
-            NSExtensionActivationRule:
-              NSExtensionActivationSupportsImageWithMaxCount: 20
-              NSExtensionActivationSupportsMovieWithMaxCount: 10
-              NSExtensionActivationSupportsFileWithMaxCount: 10
-              NSExtensionActivationSupportsWebURLWithMaxCount: 1
-              NSExtensionActivationSupportsText: true
-              NSExtensionActivationSupportsAttachmentsWithMaxCount: 20
+            # Offered for everything: Apple Music's lyrics share uses its own item types, which the
+            # usual image/URL/text rules do not match. The extension takes what it can use and logs
+            # the types (sideloaded, so App Review's dislike of this rule does not matter).
+            NSExtensionActivationRule: TRUEPREDICATE
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.diddy.ios.share

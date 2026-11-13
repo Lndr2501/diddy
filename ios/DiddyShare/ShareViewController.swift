@@ -134,6 +134,44 @@ enum ShareItems {
             texts.append(text)
         } else if provider.hasItemConformingToTypeIdentifier(UTType.data.identifier) {
             if let file = await copyFile(provider, type: UTType.data, dir: dir) { manifest.files.append(file) }
+        } else if let type = provider.registeredTypeIdentifiers.first {
+            // Types of their own (Apple Music's lyrics): whatever the object turns out to be.
+            await collectAny(provider, type: type, into: &manifest, texts: &texts, dir: dir)
+        }
+    }
+
+    static func collectAny(_ provider: NSItemProvider, type: String, into manifest: inout ShareHandoff.Manifest,
+                           texts: inout [String], dir: URL?) async {
+        let item = await withCheckedContinuation { (continuation: CheckedContinuation<NSSecureCoding?, Never>) in
+            provider.loadItem(forTypeIdentifier: type) { item, _ in continuation.resume(returning: item) }
+        }
+        if let url = item as? URL {
+            if url.isFileURL {
+                if let file = copyIn(url, dir: dir) { manifest.files.append(file) }
+            } else if url.scheme == "https" || url.scheme == "http" {
+                manifest.urls.append(url.absoluteString)
+            }
+        } else if let text = item as? String {
+            texts.append(text)
+        } else if let text = item as? NSAttributedString {
+            texts.append(text.string)
+        } else if let image = item as? UIImage, let dir, let data = image.jpegData(compressionQuality: 0.9) {
+            let stored = UUID().uuidString + "-image.jpg"
+            if (try? data.write(to: dir.appendingPathComponent(stored))) != nil {
+                manifest.files.append(ShareHandoff.Manifest.File(stored: stored, name: "image.jpg", mime: "image/jpeg"))
+            }
+        } else if let data = item as? Data, let dir {
+            // Text in a data object (JSON, plain text), else a file of that type.
+            if let text = String(data: data, encoding: .utf8), !text.isEmpty, data.count < 20_000 {
+                texts.append(text)
+            } else {
+                let ext = UTType(type)?.preferredFilenameExtension ?? "bin"
+                let stored = UUID().uuidString + "-shared." + ext
+                if (try? data.write(to: dir.appendingPathComponent(stored))) != nil {
+                    manifest.files.append(ShareHandoff.Manifest.File(stored: stored, name: "shared." + ext,
+                                                                     mime: UTType(type)?.preferredMIMEType ?? "application/octet-stream"))
+                }
+            }
         }
     }
 
