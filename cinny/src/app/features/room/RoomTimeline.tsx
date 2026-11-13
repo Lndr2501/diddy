@@ -1149,17 +1149,18 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
       const myReaction = reactions.find(factoryEventSentBy(mx.getUserId()!));
 
       if (myReaction && !!myReaction?.isRelation()) {
-        mx.redactEvent(room.roomId, myReaction.getId()!);
+        mx.redactEvent(room.roomId, myReaction.getId()!).catch(() => undefined);
         return;
       }
       const rShortcode =
         shortcode ||
         (reactions.find(eventWithShortcode)?.getContent().shortcode as string | undefined);
+      // A failed send stays in the timeline as "not sent" (local echo); no unhandled rejection.
       mx.sendEvent(
         room.roomId,
         MessageEvent.Reaction as any,
         getReactionContent(targetEventId, key, rShortcode)
-      );
+      ).catch(() => undefined);
     },
     [mx, room]
   );

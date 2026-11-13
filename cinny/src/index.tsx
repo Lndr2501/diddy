@@ -41,8 +41,12 @@ if ('serviceWorker' in navigator) {
     pushSessionToSW(session?.baseUrl, session?.accessToken);
   };
 
-  navigator.serviceWorker.register(swUrl).then(sendSessionToSW);
-  navigator.serviceWorker.ready.then(sendSessionToSW);
+  // Registration fails in private windows and some embedded web views; the app works without it.
+  navigator.serviceWorker
+    .register(swUrl)
+    .then(sendSessionToSW)
+    .catch(() => undefined);
+  navigator.serviceWorker.ready.then(sendSessionToSW).catch(() => undefined);
 
   navigator.serviceWorker.addEventListener('message', (ev) => {
     const { type } = ev.data ?? {};
