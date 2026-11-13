@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<!--
+  Diddy built-in plugin: to-do list (add, tick off, delete; at most 50 tasks).
+  Saved through Diddy's storage, key "todos" = JSON [{"t":"text","d":false}, ...].
+  Self-contained, offline. Plugin API: docs/plugins.md (apiVersion 1, storage extension).
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>To-do</title>
+    <style>
+      :root { --fg: #1d1d1f; --muted: rgba(0, 0, 0, 0.55); --card: rgba(0, 0, 0, 0.05); --line: rgba(0, 0, 0, 0.1); --accent: #007aff; --error: #d70015; color-scheme: light; }
+      :root[data-theme="dark"] { --fg: #f5f5f7; --muted: rgba(255, 255, 255, 0.6); --card: rgba(255, 255, 255, 0.08); --line: rgba(255, 255, 255, 0.14); --accent: #0a84ff; --error: #ff6961; color-scheme: dark; }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; background: transparent; color: var(--fg); font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+      main { padding: 12px 14px 12px; display: flex; flex-direction: column; gap: 8px; }
+      .add { display: flex; gap: 8px; }
+      input[type="text"] { flex: 1; min-width: 0; font: inherit; color: inherit; background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
+      input[type="text"]::placeholder { color: var(--muted); }
+      button { font: inherit; color: inherit; cursor: pointer; }
+      #addBtn { background: var(--accent); color: #fff; border: 0; border-radius: 8px; padding: 6px 12px; }
+      button:disabled, input:disabled { opacity: 0.5; cursor: default; }
+      ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+      li { display: flex; align-items: center; gap: 8px; padding: 4px 2px; border-bottom: 1px solid var(--line); min-height: 32px; }
+      li:last-child { border-bottom: 0; }
+      li label { flex: 1; display: flex; align-items: center; gap: 8px; min-width: 0; cursor: pointer; }
+      li input[type="checkbox"] { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); flex: none; cursor: pointer; }
+      li span { overflow-wrap: anywhere; }
+      li.done span { color: var(--muted); text-decoration: line-through; }
+      .del { border: 0; background: transparent; color: var(--muted); border-radius: 6px; width: 24px; height: 24px; font-size: 16px; line-height: 1; flex: none; opacity: 0.6; }
+      .del:hover, .del:focus-visible { opacity: 1; background: var(--card); }
+      .empty { color: var(--muted); font-size: 13px; margin: 2px 0; text-align: center; }
+      .foot { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--muted); }
+      .link { background: none; border: 0; padding: 2px 4px; border-radius: 4px; color: var(--accent); font-size: 12px; }
+      .error { color: var(--error); margin: 0; font-size: 12px; }
+      .error:empty { display: none; }
+      :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+      [hidden] { display: none !important; }
+      /* compact: open tasks only (max 4) and a frameless add field below them */
+      :root[data-layout="compact"] main { padding: 4px 8px; gap: 0; }
+      :root[data-layout="compact"] .add { order: 2; }
+      :root[data-layout="compact"] ul { order: 1; }
+      :root[data-layout="compact"] .error { order: 3; }
+      :root[data-layout="compact"] li { min-height: 0; padding: 0; border: 0; font-size: 13px; line-height: 1.32; }
+      :root[data-layout="compact"] li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      :root[data-layout="compact"] li input[type="checkbox"] { width: 14px; height: 14px; }
+      :root[data-layout="compact"] input[type="text"] { border: 0; background: transparent; padding: 1px 0 1px 22px; font-size: 13px; line-height: 1.32; border-radius: 4px; }
+      :root[data-layout="compact"] #addBtn, :root[data-layout="compact"] .del, :root[data-layout="compact"] .foot { display: none; }
+      :root[data-layout="compact"] .empty { font-size: 12px; margin: 1px 0; text-align: left; }
+    </style>
+    <style id="diddy-custom-css"></style>
+  </head>
+  <body>
+    <main id="app">
+      <!-- no <form>: the Diddy sandbox does not allow form submission -->
+      <div class="add">
+        <input id="new" type="text" maxlength="140" placeholder="New task" aria-label="New task" autocomplete="off" />
+        <button id="addBtn" type="button">Add</button>
+      </div>
+      <ul id="list" aria-label="Tasks"></ul>
+      <p class="empty" id="empty" hidden></p>
+      <div class="foot">
+        <span id="summary" aria-live="polite"></span>
+        <button type="button" class="link" id="clear">Clear done</button>
+      </div>
+      <p class="error" id="error" role="alert"></p>
+    </main>
+
+    <script>
+      (() => {
+        "use strict";
+
+        const API_VERSION = 1;
+        const MAX_ITEMS = 50;
+        const MAX_TEXT = 140;
+        const host = window.parent;
+        const embedded = host !== window;
+        const root = document.documentElement;
+        const $ = (id) => document.getElementById(id);
+        const send = (message) => {
+          if (embedded) host.postMessage(message, "*");
+        };
+        root.dataset.theme = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        root.dataset.layout = "full";
+
+        // ---- storage through Diddy (the sandbox blocks localStorage) ----------------------
+        const KEY = /^[a-z0-9_.-]{1,40}$/;
+        const waiting = new Map();
+        let nextId = 0;
+        let storageAnswered = false;
+        let initDone;
+        const initSeen = new Promise((resolve) => (initDone = resolve));
+        const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+        async function storageGet(key) {
+          if (!embedded || !KEY.test(key)) return null;
+          await Promise.race([initSeen, delay(1000)]);
+          return new Promise((resolve) => {
+            const id = `get-${++nextId}`;
+            const timer = setTimeout(() => finish(null), 2000);
+            function finish(value) {
+              clearTimeout(timer);
+              waiting.delete(id);
+              resolve(value);
+            }
+            waiting.set(id, { key, finish });
+            send({ type: "diddy:storage:get", id, key });
+          });
+        }
+        function storageSet(key, value) {
+          if (!KEY.test(key) || typeof value !== "string" || value.length > 20000) return false;
+          send({ type: "diddy:storage:set", key, value });
+          return true;
+        }
+
+        window.addEventListener("message", (event) => {
+          if (!embedded || event.source !== host) return;
+          const data = event.data;
+          if (!data || typeof data !== "object") return;
+          if (data.type === "diddy:init") {
+            if (data.apiVersion !== API_VERSION) return;
+            if (data.theme === "light" || data.theme === "dark") root.dataset.theme = data.theme;
+            const layout = data.layout === "compact" ? "compact" : "full";
+            const changed = layout !== root.dataset.layout;
+            root.dataset.layout = layout;
+            $("diddy-custom-css").textContent = typeof data.customCss === "string" ? data.customCss : "";
+            initDone();
+            if (changed) render();
+          } else if (data.type === "diddy:storage:value") {
+            const entry = typeof data.id === "string" ? waiting.get(data.id) : undefined;
+            if (!entry || data.key !== entry.key) return;
+            if (data.value !== null && typeof data.value !== "string") return;
+            storageAnswered = true;
+            entry.finish(data.value);
+          }
+        });
+
+        const app = $("app");
+        let lastHeight = 0;
+        const reportHeight = () => {
+          const height = Math.ceil(app.getBoundingClientRect().height);
+          if (height !== lastHeight) {
+            lastHeight = height;
+            send({ type: "diddy:resize", height });
+          }
+        };
+        new ResizeObserver(reportHeight).observe(app);
+
+        // ---- tasks ------------------------------------------------------------------------
+        let items = []; // [{ t: string, d: boolean }]
+        let touched = false;
+        const clean = (text) => text.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, MAX_TEXT);
+        const showError = (message) => ($("error").textContent = message);
+
+        function parse(raw) {
+          try {
+            const data = JSON.parse(raw);
+            if (!Array.isArray(data)) return [];
+            const result = [];
+            for (const entry of data) {
+              if (result.length >= MAX_ITEMS) break;
+              if (!entry || typeof entry !== "object" || typeof entry.t !== "string") continue;
+              const t = clean(entry.t);
+              if (t) result.push({ t, d: entry.d === true });
+            }
+            return result;
+          } catch {
+            return [];
+          }
+        }
+
+        function save() {
+          touched = true;
+          const json = JSON.stringify(items);
+          if (!embedded) showError("Not saved: open this inside Diddy.");
+          else if (!storageSet("todos", json)) showError("Too much text to save. Remove some tasks.");
+          else if (!storageAnswered) showError("Storage unavailable. Tasks may not be kept.");
+          else showError("");
+        }
+
+        function render(focusIndex) {
+          const compact = root.dataset.layout === "compact";
+          const list = $("list");
+          const visible = items
+            .map((item, index) => ({ item, index }))
+            .filter(({ item }) => !compact || !item.d)
+            .slice(0, compact ? 4 : MAX_ITEMS);
+          list.replaceChildren(
+            ...visible.map(({ item, index }) => {
+              const li = document.createElement("li");
+              li.className = item.d ? "done" : "";
+              const label = document.createElement("label");
+              const box = document.createElement("input");
+              box.type = "checkbox";
+              box.checked = item.d;
+              box.addEventListener("change", () => {
+                items[index].d = box.checked;
+                save();
+                render(compact ? undefined : index);
+              });
+              const span = document.createElement("span");
+              span.textContent = item.t;
+              label.append(box, span);
+              const del = document.createElement("button");
+              del.type = "button";
+              del.className = "del";
+              del.textContent = "×";
+              del.setAttribute("aria-label", `Delete “${item.t}”`);
+              del.addEventListener("click", () => {
+                items.splice(index, 1);
+                save();
+                render(Math.min(index, items.length - 1));
+              });
+              li.append(label, del);
+              return li;
+            })
+          );
+          const open = items.filter((item) => !item.d).length;
+          const empty = $("empty");
+          empty.hidden = visible.length > 0;
+          empty.textContent = items.length ? "All done ✓" : "No tasks yet.";
+          $("summary").textContent = items.length ? `${open} open · ${items.length - open} done` : "";
+          $("clear").hidden = items.length === open;
+          const full = items.length >= MAX_ITEMS;
+          $("new").disabled = full;
+          $("addBtn").disabled = full;
+          $("new").placeholder = full ? `List is full (${MAX_ITEMS})` : compact ? "+ Add task" : "New task";
+          if (focusIndex !== undefined) {
+            const boxes = list.querySelectorAll("input[type=checkbox]");
+            (boxes[focusIndex] || boxes[boxes.length - 1] || $("new")).focus();
+          }
+        }
+
+        function add() {
+          const text = clean($("new").value);
+          if (!text) return;
+          if (items.length >= MAX_ITEMS) {
+            showError(`At most ${MAX_ITEMS} tasks. Delete some first.`);
+            return;
+          }
+          items.push({ t: text, d: false });
+          $("new").value = "";
+          save();
+          render();
+          $("new").focus();
+        }
+
+        $("addBtn").addEventListener("click", add);
+        $("new").addEventListener("keydown", (event) => {
+          if (event.key === "Enter") add();
+        });
+        $("clear").addEventListener("click", () => {
+          items = items.filter((item) => !item.d);
+          save();
+          render();
+          $("new").focus();
+        });
+
+        // ---- start ------------------------------------------------------------------------
+        send({
+          type: "diddy:ready",
+          apiVersion: API_VERSION,
+          manifest: { name: "To-do", description: "A small task list", height: 200 },
+        });
+        render();
+        reportHeight();
+        storageGet("todos").then((raw) => {
+          if (!embedded) showError("Not saved: open this inside Diddy.");
+          else if (!storageAnswered) showError("Storage unavailable. Tasks may not be kept.");
+          if (typeof raw !== "string") return;
+          // tasks added while we waited for the host are kept after the stored ones
+          items = parse(raw).concat(items).slice(0, MAX_ITEMS);
+          if (touched) save();
+          render();
+        });
+      })();
+    </script>
+  </body>
+</html>

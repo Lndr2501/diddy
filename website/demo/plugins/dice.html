@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<!--
+  Diddy built-in plugin: dice (d4–d20, 1–6 dice) and a coin flip. Uses crypto.getRandomValues
+  with rejection sampling, so every face is exactly equally likely (no modulo bias).
+  Stored key "settings" = {"sides":6,"count":2}. Plugin API: docs/plugins.md (apiVersion 1).
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Dice</title>
+    <style>
+      :root { --fg: #1d1d1f; --muted: rgba(0, 0, 0, 0.55); --card: rgba(0, 0, 0, 0.05); --line: rgba(0, 0, 0, 0.1); --accent: #007aff; --error: #d70015; --tile: #fff; color-scheme: light; }
+      :root[data-theme="dark"] { --fg: #f5f5f7; --muted: rgba(255, 255, 255, 0.6); --card: rgba(255, 255, 255, 0.08); --line: rgba(255, 255, 255, 0.14); --accent: #0a84ff; --error: #ff6961; --tile: rgba(255, 255, 255, 0.1); color-scheme: dark; }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; background: transparent; color: var(--fg); font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+      main { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 10px; }
+      button { font: inherit; color: inherit; cursor: pointer; }
+      .sides { display: flex; gap: 2px; padding: 2px; background: var(--card); border-radius: 9px; }
+      .sides button { flex: 1; border: 0; background: transparent; font-size: 12px; padding: 4px 0; border-radius: 7px; }
+      .sides button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+      .controls { display: flex; align-items: center; gap: 8px; }
+      .stepper { display: flex; align-items: center; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+      .stepper button { border: 0; background: var(--card); width: 28px; height: 30px; font-size: 16px; line-height: 1; }
+      .stepper button:disabled { opacity: 0.4; cursor: default; }
+      .stepper output { min-width: 26px; text-align: center; font-variant-numeric: tabular-nums; }
+      .primary, .secondary { border-radius: 8px; padding: 5px 14px; border: 1px solid transparent; height: 32px; }
+      .primary { background: var(--accent); color: #fff; flex: 1; }
+      .secondary { background: var(--card); border-color: var(--line); }
+      .result { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-height: 40px; }
+      .die { display: inline-grid; place-items: center; min-width: 36px; height: 36px; padding: 0 6px; border-radius: 9px; background: var(--tile); border: 1px solid var(--line); font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08); }
+      .total { margin-left: auto; font-size: 26px; font-weight: 300; font-variant-numeric: tabular-nums; }
+      .total small { font-size: 12px; color: var(--muted); margin-right: 4px; }
+      .hint { color: var(--muted); font-size: 13px; }
+      .pop { animation: pop 0.25s ease-out; }
+      @keyframes pop { from { transform: scale(0.6) rotate(-20deg); opacity: 0.3; } }
+      @media (prefers-reduced-motion: reduce) { .pop { animation: none; } }
+      h2 { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin: 0; }
+      ol { list-style: none; margin: 0; padding: 0; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+      ol li { padding: 1px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      ol li:first-child { color: var(--fg); }
+      .error { color: var(--error); margin: 0; font-size: 12px; }
+      .error:empty { display: none; }
+      #line { display: none; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+      :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+      [hidden] { display: none !important; }
+      :root[data-layout="compact"] main { padding: 8px 10px; gap: 4px; }
+      :root[data-layout="compact"] .sides, :root[data-layout="compact"] .stepper, :root[data-layout="compact"] #coin,
+      :root[data-layout="compact"] .result, :root[data-layout="compact"] .history { display: none; }
+      :root[data-layout="compact"] .primary { flex: none; height: 28px; padding: 3px 12px; }
+      :root[data-layout="compact"] #line { display: block; font-size: 14px; }
+      #line b { font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
+      #line small { font-size: 12px; color: var(--muted); }
+    </style>
+    <style id="diddy-custom-css"></style>
+  </head>
+  <body>
+    <main id="app">
+      <div class="sides" role="group" aria-label="Die type" id="sides"></div>
+      <div class="controls">
+        <div class="stepper" role="group" aria-label="Number of dice">
+          <button type="button" id="less" aria-label="Fewer dice">−</button>
+          <output id="count" aria-live="polite">2</output>
+          <button type="button" id="more" aria-label="More dice">+</button>
+        </div>
+        <button type="button" class="primary" id="roll">Roll</button>
+        <button type="button" class="secondary" id="coin">Coin</button>
+        <div id="line" aria-live="polite"></div>
+      </div>
+      <div class="result" id="result" aria-live="polite"><span class="hint">Pick a die and roll.</span></div>
+      <section class="history" id="historyBox" hidden>
+        <h2>Recent</h2>
+        <ol id="history" aria-label="Recent rolls"></ol>
+      </section>
+      <p class="error" id="error" role="alert"></p>
+    </main>
+
+    <script>
+      (() => {
+        "use strict";
+
+        const API_VERSION = 1;
+        const host = window.parent;
+        const embedded = host !== window;
+        const root = document.documentElement;
+        const $ = (id) => document.getElementById(id);
+        const send = (message) => {
+          if (embedded) host.postMessage(message, "*");
+        };
+        root.dataset.theme = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        root.dataset.layout = "full";
+
+        // ---- storage through Diddy (the sandbox blocks localStorage) ----------------------
+        const KEY = /^[a-z0-9_.-]{1,40}$/;
+        const waiting = new Map();
+        let nextId = 0;
+        let initDone;
+        const initSeen = new Promise((resolve) => (initDone = resolve));
+        const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+        async function storageGet(key) {
+          if (!embedded || !KEY.test(key)) return null;
+          await Promise.race([initSeen, delay(1000)]);
+          return new Promise((resolve) => {
+            const id = `get-${++nextId}`;
+            const timer = setTimeout(() => finish(null), 2000);
+            function finish(value) {
+              clearTimeout(timer);
+              waiting.delete(id);
+              resolve(value);
+            }
+            waiting.set(id, { key, finish });
+            send({ type: "diddy:storage:get", id, key });
+          });
+        }
+        function storageSet(key, value) {
+          if (!KEY.test(key) || typeof value !== "string" || value.length > 20000) return;
+          send({ type: "diddy:storage:set", key, value });
+        }
+
+        window.addEventListener("message", (event) => {
+          if (!embedded || event.source !== host) return;
+          const data = event.data;
+          if (!data || typeof data !== "object") return;
+          if (data.type === "diddy:init") {
+            if (data.apiVersion !== API_VERSION) return;
+            if (data.theme === "light" || data.theme === "dark") root.dataset.theme = data.theme;
+            root.dataset.layout = data.layout === "compact" ? "compact" : "full";
+            $("diddy-custom-css").textContent = typeof data.customCss === "string" ? data.customCss : "";
+            initDone();
+          } else if (data.type === "diddy:storage:value") {
+            const entry = typeof data.id === "string" ? waiting.get(data.id) : undefined;
+            if (!entry || data.key !== entry.key) return;
+            if (data.value !== null && typeof data.value !== "string") return;
+            entry.finish(data.value);
+          }
+        });
+
+        const app = $("app");
+        let lastHeight = 0;
+        const reportHeight = () => {
+          const height = Math.ceil(app.getBoundingClientRect().height);
+          if (height !== lastHeight) {
+            lastHeight = height;
+            send({ type: "diddy:resize", height });
+          }
+        };
+        new ResizeObserver(reportHeight).observe(app);
+
+        // ---- dice -------------------------------------------------------------------------
+        const SIDES = [4, 6, 8, 10, 12, 20];
+        let sides = 6;
+        let count = 2;
+        let touched = false;
+        const history = [];
+
+        // Uniform integer in 1..n: draw 32-bit values and reject the top part of the range that
+        // cannot be split evenly into n buckets, so there is no modulo bias.
+        const buffer = new Uint32Array(1);
+        function randomInt(n) {
+          const limit = 0x100000000 - (0x100000000 % n);
+          for (;;) {
+            crypto.getRandomValues(buffer);
+            if (buffer[0] < limit) return (buffer[0] % n) + 1;
+          }
+        }
+
+        for (const n of SIDES) {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.textContent = `d${n}`;
+          b.dataset.sides = String(n);
+          b.setAttribute("aria-label", `${n}-sided die`);
+          b.addEventListener("click", () => {
+            sides = n;
+            touched = true;
+            drawSettings();
+            save();
+          });
+          $("sides").append(b);
+        }
+
+        function drawSettings() {
+          for (const b of $("sides").children) b.setAttribute("aria-pressed", String(Number(b.dataset.sides) === sides));
+          $("count").textContent = String(count);
+          $("less").disabled = count <= 1;
+          $("more").disabled = count >= 6;
+          $("roll").textContent = `Roll ${count}d${sides}`;
+          $("roll").setAttribute("aria-label", `Roll ${count} ${sides}-sided ${count === 1 ? "die" : "dice"}`);
+        }
+        const save = () => storageSet("settings", JSON.stringify({ sides, count }));
+        const step = (delta) => {
+          count = Math.min(6, Math.max(1, count + delta));
+          touched = true;
+          drawSettings();
+          save();
+        };
+        $("less").addEventListener("click", () => step(-1));
+        $("more").addEventListener("click", () => step(1));
+
+        function tile(text, label) {
+          const span = document.createElement("span");
+          span.className = "die pop";
+          span.textContent = text;
+          if (label) span.setAttribute("aria-label", label);
+          return span;
+        }
+
+        // compact line: the outcome first, details muted after it
+        function setLine(main, detail) {
+          const b = document.createElement("b");
+          b.textContent = main;
+          const small = document.createElement("small");
+          small.textContent = detail ? ` ${detail}` : "";
+          $("line").replaceChildren(b, small);
+        }
+
+        function record(text) {
+          history.unshift(text);
+          history.length = Math.min(history.length, 5);
+          $("history").replaceChildren(
+            ...history.map((entry) => {
+              const li = document.createElement("li");
+              li.textContent = entry;
+              return li;
+            })
+          );
+          $("historyBox").hidden = false;
+        }
+
+        function guard(fn) {
+          try {
+            if (!window.crypto || typeof crypto.getRandomValues !== "function") throw new Error("no crypto");
+            fn();
+            $("error").textContent = "";
+          } catch {
+            $("error").textContent = "Secure random numbers are not available here.";
+          }
+        }
+
+        $("roll").addEventListener("click", () =>
+          guard(() => {
+            const values = Array.from({ length: count }, () => randomInt(sides));
+            const total = values.reduce((a, b) => a + b, 0);
+            const totalEl = document.createElement("span");
+            totalEl.className = "total";
+            const small = document.createElement("small");
+            small.textContent = "Total";
+            totalEl.append(small, String(total));
+            $("result").replaceChildren(...values.map((v) => tile(String(v))), ...(count > 1 ? [totalEl] : []));
+            record(`${count}d${sides} · ${values.join(" + ")}${count > 1 ? ` = ${total}` : ""}`);
+            setLine(String(total), count > 1 ? `${count}d${sides}: ${values.join("+")}` : `d${sides}`);
+          })
+        );
+        $("coin").addEventListener("click", () =>
+          guard(() => {
+            const side = randomInt(2) === 1 ? "Heads" : "Tails";
+            $("result").replaceChildren(tile(side === "Heads" ? "H" : "T", side), document.createTextNode(` ${side}`));
+            record(`Coin · ${side}`);
+            setLine(side, "coin");
+          })
+        );
+
+        // ---- start ------------------------------------------------------------------------
+        send({
+          type: "diddy:ready",
+          apiVersion: API_VERSION,
+          manifest: { name: "Dice", description: "Dice and coin flip", height: 210 },
+        });
+        drawSettings();
+        setLine("", "Ready to roll");
+        reportHeight();
+        storageGet("settings").then((raw) => {
+          if (touched || typeof raw !== "string") return;
+          try {
+            const saved = JSON.parse(raw);
+            if (saved && SIDES.includes(saved.sides)) sides = saved.sides;
+            if (saved && Number.isInteger(saved.count) && saved.count >= 1 && saved.count <= 6) count = saved.count;
+          } catch {}
+          drawSettings();
+        });
+      })();
+    </script>
+  </body>
+</html>

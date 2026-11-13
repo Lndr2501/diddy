@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Diddy Demo</title>
+    <meta
+      name="description"
+      content="Click through Diddy in your browser: rooms, voice calls with screen sharing, profiles, themes and plugins. Everything is simulated, nothing is sent anywhere."
+    />
+    <meta name="robots" content="index, follow" />
+    <meta name="theme-color" content="#140916" />
+    <link rel="icon" href="../favicon.ico" sizes="any" />
+    <link rel="icon" type="image/svg+xml" href="../favicon.svg" />
+    <link rel="apple-touch-icon" href="../apple-touch-icon.png" />
+    <link rel="preload" href="../assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="demo.css" />
+  </head>
+  <body class="theme-diddy">
+    <div class="glow" aria-hidden="true"></div>
+
+    <header id="demoBar" class="demobar">
+      <a class="demobar__brand" href="../" aria-label="Back to the Diddy website">
+        <img src="../assets/img/logo.svg" width="24" height="24" alt="" />
+        <span>Diddy</span>
+        <span class="demobar__tag">Demo</span>
+      </a>
+      <p class="demobar__note">Everything here is simulated. Nothing is sent anywhere.</p>
+      <div class="demobar__actions">
+        <button class="dbtn dbtn--ghost" id="tourBtn" type="button">Take the tour</button>
+        <a class="dbtn dbtn--accent cta" href="https://github.com/Lndr2501/diddy/releases/latest" rel="noopener">Download</a>
+      </div>
+    </header>
+
+    <main id="app" class="app" aria-label="Diddy demo">
+      <nav class="rail" aria-label="Spaces">
+        <button class="rail__btn is-active" type="button" title="Home" data-act="home"><span data-icon="home"></span></button>
+        <button class="rail__btn rail__space" type="button" title="Diddy Crew (space)" data-act="home">
+          <img src="../assets/img/logo.svg" alt="" width="28" height="28" />
+        </button>
+        <span class="rail__sep"></span>
+        <button class="rail__btn" type="button" title="Explore" data-act="explore"><span data-icon="compass"></span></button>
+        <button class="rail__btn" type="button" title="Create space" data-act="soon"><span data-icon="plus"></span></button>
+        <span class="rail__fill"></span>
+        <button class="rail__btn" type="button" title="Search" data-act="search"><span data-icon="search"></span></button>
+      </nav>
+
+      <div class="card">
+        <aside class="side" id="side" aria-label="Rooms">
+          <div class="side__head">
+            <span class="side__title">Diddy Crew</span>
+            <button class="ibtn" type="button" title="Space menu" data-act="spaceMenu"><span data-icon="more"></span></button>
+          </div>
+          <div class="side__scroll" id="roomList"></div>
+          <div id="voiceDock"></div>
+          <div class="userpanel" id="userPanel"></div>
+        </aside>
+
+        <section class="main" id="main" aria-live="polite"></section>
+
+        <aside class="drawer" id="drawer" aria-label="Participants"></aside>
+      </div>
+      <div class="scrim" id="scrim" hidden></div>
+    </main>
+
+    <div id="layer"></div>
+    <div id="toasts" class="toasts" role="status" aria-live="polite"></div>
+
+    <noscript><p class="noscript">The demo needs JavaScript.</p></noscript>
+    <script src="demo.js"></script>
+  </body>
+</html>
