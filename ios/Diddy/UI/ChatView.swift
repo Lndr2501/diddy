@@ -71,6 +71,8 @@ private struct ChatContent: View {
     @State private var openedFile: URL?
     /// The message the full emoji picker reacts to.
     @State private var reactingTo: MessageRow?
+    /// The long-pressed message whose reactions and actions are shown (MessageActionsOverlay.swift).
+    @State private var actionRow: MessageRow?
     /// Whether the chat follows the newest message. Only the user scrolling up turns this off.
     @State private var atBottom = true
     @State private var bottomVisible = false
@@ -114,6 +116,24 @@ private struct ChatContent: View {
         // Our own flat header (ChatHeader) instead of the system bar and its glass buttons; the
         // swipe back from the edge still works (ChatChrome.swift).
         .toolbar(.hidden, for: .navigationBar)
+        .overlay {
+            if let row = actionRow {
+                MessageActionsOverlay(
+                    row: row,
+                    account: account,
+                    onReact: { emoji in
+                        closeActions()
+                        Task { await controller.toggleReaction(emoji, on: row) }
+                    },
+                    onMoreReactions: { closeActions(); reactingTo = row },
+                    onClose: closeActions
+                ) {
+                    actions(for: row)
+                }
+                .transition(.opacity)
+            }
+        }
+        .animation(.easeOut(duration: 0.18), value: actionRow?.id)
         .task { await account.refreshNotifyLevels() }
         .alert("Notifications", isPresented: Binding(get: { notifyError != nil }, set: { if !$0 { notifyError = nil } })) {
             Button("OK", role: .cancel) {}
@@ -247,7 +267,10 @@ private struct ChatContent: View {
                             if bottomVisible { userScrolled = false }
                             reply(to: row)
                         }
-                        .contextMenu { menu(for: row) }
+                        // Long press: reactions and actions; double tap on text: a quick ❤️.
+                        .simultaneousGesture(LongPressGesture(minimumDuration: 0.35).onEnded { _ in openActions(for: row) })
+                        .simultaneousGesture(TapGesture(count: 2).onEnded { quickLove(row) },
+                                             including: Self.doubleTapReacts(row) ? .all : .subviews)
                         if let info = controller.nav.snapshot.threads[row.id], let eventId = row.remoteEventId {
                             ThreadSummaryButton(info: info) { navSheet = .thread(root: eventId) }
                         }
@@ -468,75 +491,91 @@ private struct ChatContent: View {
         return row.remoteEventId
     }
 
-    /// The long-press menu, in three groups like other chat apps: the everyday actions first,
-    /// then the ones about the message, and Report, View Source and Delete at the end.
+    private func openActions(for row: MessageRow) {
+        guard row.layoutKind == .message, actionRow == nil else { return }
+        composerFocused = false
+        actionRow = row
+    }
+
+    private func closeActions() { actionRow = nil }
+
+    /// Double tap gives a text message a ❤️ (or takes yours away); pictures and files keep their tap.
+    private static func doubleTapReacts(_ row: MessageRow) -> Bool {
+        guard row.layoutKind == .message, !row.isRedactedMessage, case .text = row.body else { return false }
+        return row.card == nil
+    }
+
+    private func quickLove(_ row: MessageRow) {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        Task { await controller.toggleReaction("❤️", on: row) }
+    }
+
+    /// The long-press actions, in three groups like other chat apps: the everyday actions first,
+    /// then the ones about the message, and Report, View Source and Delete at the end. Every
+    /// action closes the overlay first. The reactions sit in the bar above the message.
     @ViewBuilder
-    private func menu(for row: MessageRow) -> some View {
+    private func actions(for row: MessageRow) -> some View {
         let eventId = actionableEventId(of: row)
-        Menu {
-            ForEach(ReactionEmoji.quick, id: \.self) { emoji in
-                Button(emoji) { Task { await controller.toggleReaction(emoji, on: row) } }
-            }
-            Divider()
-            Button { reactingTo = row } label: { Label("More Emoji…", systemImage: "plus") }
-        } label: { Label("Add Reaction", systemImage: "face.smiling") }
-        Button { reply(to: row) } label: { Label("Reply", systemImage: "arrowshape.turn.up.left") }
+        Button { closeActions(); reply(to: row) } label: { Label("Reply", systemImage: "arrowshape.turn.up.left") }
         if let eventId {
             Button {
+                closeActions()
                 let root = controller.nav.snapshot.entries.first(where: { $0.eventId == eventId })?.threadRoot
                 navSheet = .thread(root: root ?? eventId)
             } label: { Label("Reply in Thread", systemImage: "bubble.left.and.bubble.right") }
         }
         if case .text(let text) = row.body {
-            Button { UIPasteboard.general.string = Self.readableMentions(in: text).text } label: {
+            Button { closeActions(); UIPasteboard.general.string = Self.readableMentions(in: text).text } label: {
                 Label("Copy Text", systemImage: "doc.on.doc")
             }
             if row.isOwn {
-                Button { startEditing(row, text: text) } label: { Label("Edit Message", systemImage: "pencil") }
+                Button { closeActions(); startEditing(row, text: text) } label: { Label("Edit Message", systemImage: "pencil") }
             }
         }
         Divider()
-        aboutMenu(for: row, eventId: eventId)
+        aboutActions(for: row, eventId: eventId)
         Divider()
-        lastMenu(for: row, eventId: eventId)
+        lastActions(for: row, eventId: eventId)
     }
 
-    /// The middle of the long-press menu: pin, link, who read it, earlier versions, the sender.
+    /// The middle of the long-press actions: pin, link, who read it, earlier versions, the sender.
     @ViewBuilder
-    private func aboutMenu(for row: MessageRow, eventId: String?) -> some View {
+    private func aboutActions(for row: MessageRow, eventId: String?) -> some View {
         if let eventId {
             if controller.nav.canPin {
                 let pinned = controller.nav.isPinned(eventId)
                 Button {
+                    closeActions()
                     Task { await controller.setPinned(eventId: eventId, pinned: !pinned) }
                 } label: { Label(pinned ? "Unpin Message" : "Pin Message", systemImage: pinned ? "pin.slash" : "pin") }
             }
             Button {
+                closeActions()
                 Task { if let link = await controller.permalink(of: eventId) { UIPasteboard.general.string = link } }
             } label: { Label("Copy Link", systemImage: "link") }
             if !controller.nav.readers(of: eventId).isEmpty {
-                Button { navSheet = .readers(eventId: eventId) } label: { Label("Read Receipts", systemImage: "checkmark.circle") }
+                Button { closeActions(); navSheet = .readers(eventId: eventId) } label: { Label("Read Receipts", systemImage: "checkmark.circle") }
             }
             if row.isEdited {
-                Button { navSheet = .history(row) } label: { Label("Edit History", systemImage: "clock.arrow.circlepath") }
+                Button { closeActions(); navSheet = .history(row) } label: { Label("Edit History", systemImage: "clock.arrow.circlepath") }
             }
         }
-        Button { profile = ProfileTarget(userId: row.sender) } label: { Label("View Profile", systemImage: "person.crop.circle") }
+        Button { closeActions(); profile = ProfileTarget(userId: row.sender) } label: { Label("View Profile", systemImage: "person.crop.circle") }
     }
 
-    /// The end of the long-press menu: View Source, Report and Delete, the last one in red.
+    /// The end of the long-press actions: View Source, Report and Delete, the last one in red.
     @ViewBuilder
-    private func lastMenu(for row: MessageRow, eventId: String?) -> some View {
+    private func lastActions(for row: MessageRow, eventId: String?) -> some View {
         if let eventId {
-            Button { navSheet = .source(row) } label: { Label("View Source", systemImage: "curlybraces") }
+            Button { closeActions(); navSheet = .source(row) } label: { Label("View Source", systemImage: "curlybraces") }
             if !row.isOwn {
-                Button { navSheet = .report(eventId: eventId) } label: { Label("Report Message", systemImage: "exclamationmark.bubble") }
+                Button { closeActions(); navSheet = .report(eventId: eventId) } label: { Label("Report Message", systemImage: "exclamationmark.bubble") }
             }
         }
         if row.layoutKind == .message, row.eventId != nil,
            TimelineNav.canDelete(isOwn: row.isOwn, isRedacted: row.isRedactedMessage,
                                  canRedactOwn: controller.nav.canRedactOwn, canRedactOther: controller.nav.canRedactOther) {
-            Button(role: .destructive) { navSheet = .delete(row) } label: {
+            Button(role: .destructive) { closeActions(); navSheet = .delete(row) } label: {
                 Label("Delete Message", systemImage: "trash")
             }
         }
@@ -1219,7 +1258,6 @@ struct MessageRowView: View {
                     (Text(rendered(text)) + Text(row.isEdited ? " (edited)" : "").font(.caption2).foregroundColor(Theme.faint))
                         .font(ChatStyle.bodyFont)
                         .foregroundStyle(Theme.text)
-                        .textSelection(.enabled)
                         .environment(\.openURL, OpenURLAction { handleLink($0) })
                 }
             }
