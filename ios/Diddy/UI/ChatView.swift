@@ -65,6 +65,7 @@ private struct ChatContent: View {
     @State private var showSearch = false
     @State private var searchContext: SearchEventTarget?
     @EnvironmentObject private var navigator: AppNavigator
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var profile: ProfileTarget?
     @State private var viewedImage: ViewedImage?
     @State private var openedFile: URL?
@@ -92,10 +93,9 @@ private struct ChatContent: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            header
             CallBanner(account: account, summary: summary, roomId: roomId, title: title)
             messages
-            typingLine
-            followingLine
             // A replaced (upgraded) room shows "This room has been replaced" instead (RoomSettings/RoomTombstoneViews.swift).
             RoomTombstoneGate(account: account, roomId: roomId, onOpen: { navigator.open($0, account: account) }) {
                 if canSend {
@@ -111,41 +111,9 @@ private struct ChatContent: View {
         }
         .background(Theme.chat.ignoresSafeArea())
         .navigationTitle(title)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(Theme.chat, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
-        .toolbar {
-            ToolbarItem(placement: .principal) {
-                Button { showInfo = true } label: {
-                    // Like desktop: the other person's picture in a DM and no lock (the channel
-                    // details opened from here say whether the room is encrypted).
-                    HStack(spacing: 8) {
-                        if let summary, summary.isDirect {
-                            AvatarView(url: summary.avatarUrl, name: title, size: 24, account: account)
-                                .overlay(alignment: .bottomTrailing) { PresenceDot(userId: summary.dmUserId, account: account, size: 8, ring: Theme.chat, onDemand: true).offset(x: 2, y: 2) }
-                        } else {
-                            Image(systemName: "number").foregroundStyle(Theme.faint)
-                        }
-                        Text(title).font(.headline).foregroundStyle(Theme.text).lineLimit(1)
-                    }
-                }
-                .accessibilityLabel("\(title), channel details")
-            }
-            // The call and one menu, in a muted colour like the desktop header: the accent is for
-            // mentions, sending and what is active. Search is in the menu, as on desktop.
-            ToolbarItemGroup(placement: .navigationBarTrailing) {
-                Button {
-                    Task { await calls.requestJoin(account: account, roomId: roomId, roomName: title, showCallScreen: true) }
-                } label: {
-                    Image(systemName: "phone").foregroundStyle(Theme.muted)
-                }
-                .tint(Theme.muted)
-                .accessibilityLabel("Start voice call")
-                Menu { headerMenu } label: { Image(systemName: "ellipsis").foregroundStyle(Theme.muted) }
-                    .tint(Theme.muted)
-                    .accessibilityLabel("More")
-            }
-        }
+        // Our own flat header (ChatHeader) instead of the system bar and its glass buttons; the
+        // swipe back from the edge still works (ChatChrome.swift).
+        .toolbar(.hidden, for: .navigationBar)
         .task { await account.refreshNotifyLevels() }
         .alert("Notifications", isPresented: Binding(get: { notifyError != nil }, set: { if !$0 { notifyError = nil } })) {
             Button("OK", role: .cancel) {}
@@ -285,7 +253,9 @@ private struct ChatContent: View {
                         }
                         if controller.nav.isPinned(row.remoteEventId) { PinnedMarker() }
                     }
-                    Color.clear.frame(height: 8).id("bottom")
+                    followingLine
+                    // Room for the floating "is typing" pill, so it never covers the last message.
+                    Color.clear.frame(height: 14).id("bottom")
                         .onAppear {
                             atBottom = true
                             bottomVisible = true
@@ -368,6 +338,7 @@ private struct ChatContent: View {
                 }
                 .animation(.easeOut(duration: 0.15), value: atBottom)
             }
+            .overlay(alignment: .bottomLeading) { typingPill }
         }
     }
 
@@ -392,6 +363,7 @@ private struct ChatContent: View {
     /// The header's "More" menu: search and people, finding things, then the room's notification level.
     @ViewBuilder
     private var headerMenu: some View {
+        Button { showInfo = true } label: { Label("Details", systemImage: "info.circle") }
         Button { showSearch = true } label: { Label("Search Messages", systemImage: "magnifyingglass") }
         Button { showMembers = true } label: { Label("Members", systemImage: "person.2") }
         Divider()
@@ -457,16 +429,20 @@ private struct ChatContent: View {
         navSheet = .reactions(key: key, senders: controller.nav.snapshot.reactionSenders[row.id]?[key] ?? [])
     }
 
-    /// Who has read the newest message, under the chat.
-    @ViewBuilder
+    /// Who has read the newest message: small pictures at the right under the last message. The
+    /// row keeps its height when nobody has read it yet, so the chat does not jump.
     private var followingLine: some View {
         let readers = controller.nav.latestReaders
-        if !readers.isEmpty {
-            TimelineFollowingLine(userIds: readers, account: account) {
-                if let latest = controller.nav.latestShownEventId { navSheet = .readers(eventId: latest) }
+        return ZStack(alignment: .trailing) {
+            Color.clear
+            if !readers.isEmpty {
+                TimelineFollowingLine(userIds: readers, account: account) {
+                    if let latest = controller.nav.latestShownEventId { navSheet = .readers(eventId: latest) }
+                }
+                .onAppear { account.resolveProfiles(readers, in: roomId) }
             }
-            .onAppear { account.resolveProfiles(readers, in: roomId) }
         }
+        .frame(height: 20)
     }
 
     private func reply(to row: MessageRow) {
@@ -566,20 +542,33 @@ private struct ChatContent: View {
         }
     }
 
-    /// Discord's line under the chat, always reserving no space when nobody types.
+    /// Who is typing, as a pill floating over the chat (ChatChrome.swift).
     @ViewBuilder
-    private var typingLine: some View {
-        let names = controller.typingUserIds.map { account.name(of: $0) }
-        if !names.isEmpty {
-            Text(names.count == 1 ? "\(names[0]) is typing…"
-                 : names.count == 2 ? "\(names[0]) and \(names[1]) are typing…"
-                 : "Several people are typing…")
-                .font(.caption.weight(.medium))
-                .foregroundStyle(Theme.muted)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 3)
-                .onAppear { account.resolveProfiles(controller.typingUserIds, in: roomId) }
+    private var typingPill: some View {
+        let ids = controller.typingUserIds
+        if !ids.isEmpty {
+            TypingPill(names: ids.map { account.name(of: $0) })
+                .transition(.opacity)
+                .onAppear { account.resolveProfiles(ids, in: roomId) }
+        }
+    }
+
+    /// Back to the list on iPhone; the iPad shows the list beside the chat.
+    private var backAction: (() -> Void)? {
+        guard sizeClass == .compact else { return nil }
+        return { navigator.destination = nil }
+    }
+
+    private var header: some View {
+        ChatHeader(
+            account: account,
+            summary: summary,
+            title: title,
+            onBack: backAction,
+            onInfo: { showInfo = true },
+            onCall: { Task { await calls.requestJoin(account: account, roomId: roomId, roomName: title, showCallScreen: true) } }
+        ) {
+            headerMenu
         }
     }
 
@@ -661,11 +650,11 @@ private struct ChatContent: View {
         })
     }
 
-    /// Plus (attachments), the field with the emoji button inside, then send or the microphone.
-    /// One slim line that grows with the text; the buttons keep 44 pt targets around smaller marks,
-    /// and only send is in the accent colour, once there is something to send.
+    /// One rounded bar holds everything: plus (attachments) on the left, the text, then emoji and
+    /// the microphone, which turns into the send button once there is something to send. It grows
+    /// with the text; the buttons stay at its bottom edge.
     private var composerInputRow: some View {
-        HStack(alignment: .bottom, spacing: 2) {
+        HStack(alignment: .bottom, spacing: 0) {
             if editing == nil {
                 Menu {
                     Button { showPhotos = true } label: { Label("Photos and Videos", systemImage: "photo.on.rectangle") }
@@ -675,66 +664,65 @@ private struct ChatContent: View {
                     Button { showFiles = true } label: { Label("Files", systemImage: "doc") }
                 } label: {
                     Image(systemName: "plus")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(Theme.muted)
-                        .frame(width: 32, height: 32)
-                        .background(Circle().fill(Theme.input))
-                        .frame(width: ChatStyle.minTapSize, height: ChatStyle.minTapSize)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(Theme.text)
+                        .frame(width: 30, height: 30)
+                        .background(Circle().fill(Theme.text.opacity(0.1)))
+                        .frame(width: 38, height: ComposerEditor.minHeight)
                         .contentShape(Rectangle())
                 }
                 .accessibilityLabel("Add attachment")
             }
             ComposerEditor(text: $draft, selection: $selection, isFocused: composerFocused, onFocus: { composerFocused = $0 }, onSend: send, onFiles: { urls, images in
                 Task { await addFiles(urls, images: images) }
-            }, trailingInset: editing == nil ? 30 : 0)
+            })
                 .frame(minHeight: ComposerEditor.minHeight)
                 .overlay(alignment: .leading) {
                     if draft.isEmpty {
-                        Text("Message \(title)")
+                        Text(editing == nil ? "Message \(title)" : "Edit message")
                             .font(ComposerEditor.font)
                             .foregroundStyle(Theme.faint)
                             .lineLimit(1)
                             .padding(.leading, 11)
-                            .padding(.trailing, editing == nil ? 36 : 8)
+                            .padding(.trailing, 8)
                             .allowsHitTesting(false)
                             .accessibilityHidden(true)
                     }
                 }
-                .overlay(alignment: .bottomTrailing) {
-                    if editing == nil {
-                        Button { showEmoji = true } label: {
-                            Image(systemName: "face.smiling")
-                                .font(.system(size: 19))
-                                .foregroundStyle(Theme.muted)
-                                .frame(width: 34, height: ComposerEditor.minHeight)
-                        }
-                        .accessibilityLabel("Emoji and stickers")
-                    }
+            if editing == nil {
+                Button { showEmoji = true } label: {
+                    Image(systemName: "face.smiling")
+                        .font(.system(size: 20))
+                        .foregroundStyle(Theme.muted)
+                        .frame(width: 36, height: ComposerEditor.minHeight)
+                        .contentShape(Rectangle())
                 }
-                .background(RoundedRectangle(cornerRadius: ComposerEditor.minHeight / 2, style: .continuous).fill(Theme.input))
-                // The single-line field sits in the middle of the 44 pt buttons beside it.
-                .padding(.vertical, (ChatStyle.minTapSize - ComposerEditor.minHeight) / 2)
-                .padding(.horizontal, editing == nil ? 0 : 6)
+                .accessibilityLabel("Emoji and stickers")
+            }
             if !trimmedDraft.isEmpty || !pendingFiles.isEmpty {
                 Button(action: send) {
                     Image(systemName: editing == nil ? "arrow.up" : "checkmark")
                         .font(.system(size: 15, weight: .bold))
                         .foregroundStyle(Theme.onAccent)
-                        .frame(width: 32, height: 32)
+                        .frame(width: 30, height: 30)
                         .background(Circle().fill(Theme.accent))
-                        .frame(width: ChatStyle.minTapSize, height: ChatStyle.minTapSize)
+                        .frame(width: 38, height: ComposerEditor.minHeight)
                         .contentShape(Rectangle())
                 }
                 .disabled(sending)
                 .opacity(sending ? 0.6 : 1)
                 .accessibilityLabel(editing == nil ? "Send" : "Save edit")
             } else if editing == nil {
-                VoiceMicButton(recorder: recorder)
+                VoiceMicButton(recorder: recorder, width: 36, height: ComposerEditor.minHeight)
             }
         }
-        .overlay { if recorder.isActive { VoiceRecordingBar(recorder: recorder, onSend: sendVoice) } }
         .padding(.horizontal, 4)
-        .padding(.vertical, 4)
+        .padding(.vertical, 3)
+        .background(RoundedRectangle(cornerRadius: ComposerEditor.minHeight / 2 + 3, style: .continuous).fill(Theme.input))
+        .overlay { if recorder.isActive { VoiceRecordingBar(recorder: recorder, onSend: sendVoice) } }
+        .padding(.horizontal, 10)
+        .padding(.top, 6)
+        .padding(.bottom, 8)
     }
 
     /// Files waiting to be sent: one chip each, a caption field and the upload state.
@@ -1112,19 +1100,22 @@ struct MessageRowView: View {
     /// enough; it follows the text, so a long line wraps under it.
     private func notice(_ text: String) -> some View {
         let symbol = noticeSymbol
+        let shown = row.callCount > 1 ? TimelineLayout.callText(starter: row.senderName, count: row.callCount) : text
+        var time = ChatSettings.time(row.date)
+        if row.callCount > 1, let last = row.lastCallDate { time += "–" + ChatSettings.time(last) }
         return HStack(alignment: .firstTextBaseline, spacing: ChatStyle.avatarSpacing) {
             // In the avatar column, so the text lines up with the messages.
             Image(systemName: symbol.name).font(.caption2).foregroundStyle(symbol.color)
                 .frame(width: ChatStyle.avatarSize)
                 .accessibilityHidden(true)
-            (Text(text).foregroundColor(Theme.muted)
-                + Text("  " + ChatSettings.time(row.date)).font(.caption2).foregroundColor(Theme.faint))
+            (Text(shown).foregroundColor(Theme.muted)
+                + Text("  " + time).font(.caption2).foregroundColor(Theme.faint))
                 .font(ChatStyle.noticeFont)
             Spacer(minLength: 0)
         }
         .padding(.horizontal, ChatStyle.edgePadding)
-        .padding(.top, 4)
-        .padding(.bottom, 1)
+        .padding(.top, 8)
+        .padding(.bottom, 2)
     }
 
     /// Discord's green arrow for joins only; every other change gets a neutral symbol of its own.
@@ -1144,12 +1135,18 @@ struct MessageRowView: View {
         VStack(alignment: .leading, spacing: 2) {
             if let reply = row.reply {
                 HStack(spacing: 5) {
-                    Image(systemName: "arrow.turn.up.right").font(.caption2).foregroundStyle(Theme.faint)
+                    // A bend from this message's avatar up to the quote, like a thread line.
+                    ReplyConnector()
+                        .stroke(Theme.faint.opacity(0.7), style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                        .frame(width: ChatStyle.textLeading - ChatStyle.edgePadding - ChatStyle.avatarSize / 2 - 6, height: 9)
+                        .padding(.top, 9)
+                        .accessibilityHidden(true)
+                    AvatarView(url: reply.avatar, name: reply.sender, size: 16, account: account)
                     // The name without "@", like the desktop.
                     Text(reply.sender).font(.caption.weight(.semibold)).foregroundStyle(Theme.muted).lineLimit(1)
                     Text(MentionText.readable(reply.text) { account.name(of: $0) }).font(.caption).foregroundStyle(Theme.faint).lineLimit(1)
                 }
-                .padding(.leading, ChatStyle.textLeading)
+                .padding(.leading, ChatStyle.edgePadding + ChatStyle.avatarSize / 2 - 1)
                 .padding(.trailing, ChatStyle.edgePadding)
                 .contentShape(Rectangle())
                 .onTapGesture(perform: onReplyTap)
@@ -1176,7 +1173,7 @@ struct MessageRowView: View {
                                     profile: account.diddyProfiles[row.sender],
                                     font: ChatStyle.nameFont,
                                     size: ChatStyle.nameSize,
-                                    fallback: Theme.color(for: row.sender)
+                                    fallback: Theme.text
                                 )
                                 .lineLimit(1)
                             }
@@ -1373,12 +1370,14 @@ private struct ChatImage: View {
     let onTap: (UIImage) -> Void
     @State private var image: UIImage?
     @State private var failed = false
+    /// The original is on its way after a tap; a spinner says the tap was seen.
+    @State private var opening = false
     /// Off until tapped when Settings > Chat says not to load pictures by themselves.
     @State private var requested = ChatSettings.autoLoadMedia
 
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 8).fill(Theme.elevated)
+            RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.elevated)
             if let image {
                 Image(uiImage: image).resizable().scaledToFit()
             } else if failed {
@@ -1388,16 +1387,26 @@ private struct ChatImage: View {
             } else {
                 ProgressView()
             }
+            if opening {
+                Color.black.opacity(0.3)
+                ProgressView().tint(.white)
+            }
         }
+        // As wide as the message column allows, in the picture's own shape.
         .aspectRatio(aspect, contentMode: .fit)
-        .frame(maxWidth: 280, maxHeight: 320, alignment: .leading)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Theme.text.opacity(0.07), lineWidth: 1))
+        .frame(maxWidth: 420, maxHeight: 360, alignment: .leading)
+        .padding(.top, 3)
+        .contentShape(Rectangle())
         .onTapGesture {
             guard requested else { requested = true; return }
-            guard image != nil else { return }
+            guard image != nil, !opening else { return }
+            opening = true
             Task {
                 // Show the original rather than the chat thumbnail.
                 let full = await MediaLoader.shared.image(source: source, size: nil, accountId: account.id, client: account.client)
+                opening = false
                 if let shown = full ?? image { onTap(shown) }
             }
         }

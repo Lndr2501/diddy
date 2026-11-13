@@ -1,11 +1,12 @@
 import SwiftUI
+import UIKit
 
 /// Sizes, spacing and fonts of the chat timeline, in one place. The fonts are text styles, so
-/// Dynamic Type and the in-app zoom still scale them. Like the calmer desktop timeline (1.7.0):
-/// message text one step below the system body, small round avatars, tight groups.
+/// Dynamic Type and the in-app zoom still scale them. Calm and roomy: regular weight text, white
+/// names, small round avatars, air between the groups of different people.
 enum ChatStyle {
     /// Message text.
-    static let bodyFont: Font = .subheadline
+    static let bodyFont: Font = .callout
     /// The sender above the first message of a group.
     static let nameFont: Font = .subheadline.weight(.semibold)
     /// Point size of `nameFont`, for the custom name fonts of Diddy profiles.
@@ -22,7 +23,7 @@ enum ChatStyle {
     /// Where the text of a message starts. Replies, threads and pins line up with it.
     static var textLeading: CGFloat { edgePadding + avatarSize + avatarSpacing }
     /// Space above the first message of a group and above a message that continues one.
-    static let groupTopPadding: CGFloat = 10
+    static let groupTopPadding: CGFloat = 14
     static let continuationTopPadding: CGFloat = 2
     /// Apple's smallest touch target.
     static let minTapSize: CGFloat = 44
@@ -156,5 +157,182 @@ private struct CallStrip<Leading: View, Trailing: View>: View {
         .frame(maxWidth: .infinity, minHeight: ChatStyle.minTapSize)
         .contentShape(Rectangle())
         .background(Theme.chat)
+    }
+}
+
+// MARK: Header
+
+/// The flat bar above a chat, drawn by the chat itself instead of the system navigation bar (no
+/// glass capsules): back on iPhone, the person or room with its status, call, and the menu.
+struct ChatHeader<MenuContent: View>: View {
+    @ObservedObject var account: MatrixAccount
+    let summary: RoomSummary?
+    let title: String
+    /// Nil where there is nothing to go back to (the iPad shows the list beside the chat).
+    let onBack: (() -> Void)?
+    let onInfo: () -> Void
+    let onCall: () -> Void
+    let menu: () -> MenuContent
+
+    init(account: MatrixAccount, summary: RoomSummary?, title: String, onBack: (() -> Void)?,
+         onInfo: @escaping () -> Void, onCall: @escaping () -> Void, @ViewBuilder menu: @escaping () -> MenuContent) {
+        self.account = account
+        self.summary = summary
+        self.title = title
+        self.onBack = onBack
+        self.onInfo = onInfo
+        self.onCall = onCall
+        self.menu = menu
+    }
+
+    var body: some View {
+        HStack(spacing: 2) {
+            if let onBack {
+                Button(action: onBack) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundStyle(Theme.text)
+                        .frame(width: 36, height: ChatStyle.minTapSize)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Back")
+            }
+            Button(action: onInfo) {
+                HStack(spacing: 10) {
+                    picture
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(title).font(.headline).foregroundStyle(Theme.text).lineLimit(1)
+                        subtitle
+                    }
+                    Spacer(minLength: 0)
+                }
+                .frame(minHeight: ChatStyle.minTapSize)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .padding(.leading, onBack == nil ? 10 : 0)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(title), channel details")
+            .accessibilityAddTraits(.isButton)
+            Button(action: onCall) { icon("phone") }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Start voice call")
+            Menu { menu() } label: { icon("info.circle") }
+                .accessibilityLabel("More")
+        }
+        .padding(.horizontal, 6)
+        .frame(height: 54)
+        .frame(maxWidth: .infinity)
+        .background(Theme.chat)
+        .overlay(alignment: .bottom) { Rectangle().fill(Theme.text.opacity(0.07)).frame(height: 1) }
+    }
+
+    private func icon(_ name: String) -> some View {
+        Image(systemName: name)
+            .font(.system(size: 19))
+            .foregroundStyle(Theme.muted)
+            .frame(width: ChatStyle.minTapSize, height: ChatStyle.minTapSize)
+            .contentShape(Rectangle())
+    }
+
+    @ViewBuilder private var picture: some View {
+        if let summary, summary.isDirect {
+            AvatarView(url: summary.avatarUrl, name: title, size: 34, account: account)
+                .overlay(alignment: .bottomTrailing) {
+                    PresenceDot(userId: summary.dmUserId, account: account, size: 10, ring: Theme.chat, onDemand: true).offset(x: 2, y: 2)
+                }
+        } else {
+            Image(systemName: "number")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(Theme.muted)
+                .frame(width: 34, height: 34)
+                .background(Circle().fill(Theme.elevated))
+        }
+    }
+
+    /// The other person's status in a DM, the number of members in a room.
+    @ViewBuilder private var subtitle: some View {
+        if let summary, summary.isDirect, let userId = summary.dmUserId {
+            PresenceSubtitle(userId: userId, store: PresenceStore.of(account))
+        } else if let summary, summary.memberCount > 0 {
+            Text(summary.memberCount == 1 ? "1 member" : "\(summary.memberCount) members")
+                .font(.caption)
+                .foregroundStyle(Theme.muted)
+                .lineLimit(1)
+        }
+    }
+}
+
+private struct PresenceSubtitle: View {
+    let userId: String
+    @ObservedObject var store: PresenceStore
+
+    var body: some View {
+        if let state = store.state(of: userId) {
+            Text(state.title).font(.caption).foregroundStyle(Theme.muted).lineLimit(1)
+        }
+    }
+}
+
+/// The chat hides the system navigation bar for its own header, which would also switch off the
+/// swipe back from the left edge. This keeps the swipe for every stack deeper than its root.
+extension UINavigationController: UIGestureRecognizerDelegate {
+    override open func viewDidLoad() {
+        super.viewDidLoad()
+        interactivePopGestureRecognizer?.delegate = self
+    }
+
+    public func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        guard gestureRecognizer === interactivePopGestureRecognizer else { return true }
+        return viewControllers.count > 1
+    }
+}
+
+// MARK: Timeline extras
+
+/// "Lndr is typing" floating over the bottom left of the chat, so nothing below it moves.
+struct TypingPill: View {
+    let names: [String]
+
+    var body: some View {
+        HStack(spacing: 6) {
+            HStack(spacing: 2) {
+                ForEach(0..<3, id: \.self) { _ in Circle().fill(Theme.muted).frame(width: 4, height: 4) }
+            }
+            Text(TypingPill.text(names)).lineLimit(1)
+        }
+        .font(.caption.weight(.medium))
+        .foregroundStyle(Theme.muted)
+        .padding(.leading, 9)
+        .padding(.trailing, 11)
+        .padding(.vertical, 5)
+        .background(Capsule().fill(Theme.elevated.opacity(0.95)))
+        .overlay(Capsule().strokeBorder(Theme.text.opacity(0.07), lineWidth: 1))
+        .padding(.leading, 12)
+        .padding(.bottom, 4)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(TypingPill.text(names))
+    }
+
+    static func text(_ names: [String]) -> String {
+        switch names.count {
+        case 1: return "\(names[0]) is typing…"
+        case 2: return "\(names[0]) and \(names[1]) are typing…"
+        default: return "Several people are typing…"
+        }
+    }
+}
+
+/// The bend from the avatar column up to the quoted message above a reply.
+struct ReplyConnector: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let radius = min(6, rect.height, rect.width)
+        path.move(to: CGPoint(x: rect.minX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + radius))
+        path.addQuadCurve(to: CGPoint(x: rect.minX + radius, y: rect.minY), control: CGPoint(x: rect.minX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+        return path
     }
 }

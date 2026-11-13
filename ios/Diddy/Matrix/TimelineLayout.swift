@@ -38,6 +38,17 @@ enum TimelineLayout {
         return current.date.timeIntervalSince(previous.date) < groupWindow
     }
 
+    /// Whether a call line is folded into the call line right above it ("3 calls" instead of three
+    /// lines). Only call lines that directly follow each other on the same day are joined.
+    static func joinsCallRun(isCall: Bool, previousIsCall: Bool, hasDayDivider: Bool) -> Bool {
+        isCall && previousIsCall && !hasDayDivider
+    }
+
+    /// The text of a call line: who started it, or how many calls a folded run holds.
+    static func callText(starter: String, count: Int) -> String {
+        count > 1 ? "\(count) calls" : "\(starter) started a call"
+    }
+
     /// What the day divider above a row says, like the desktop: "Today", "Yesterday" or the date.
     enum Day: Equatable { case today, yesterday, earlier }
 

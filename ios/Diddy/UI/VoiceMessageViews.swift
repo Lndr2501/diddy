@@ -299,13 +299,16 @@ private struct WaveformBars: View {
 /// The microphone next to the message field. A tap starts recording; the recording bar takes over.
 struct VoiceMicButton: View {
     @ObservedObject var recorder: VoiceRecorder
+    /// The composer puts the microphone inside its bar, a little smaller than a free button.
+    var width: CGFloat = ChatStyle.minTapSize
+    var height: CGFloat = ChatStyle.minTapSize
 
     var body: some View {
         Button { Task { await recorder.start() } } label: {
             Image(systemName: "mic")
-                .font(.system(size: 18))
+                .font(.system(size: 19))
                 .foregroundStyle(Theme.muted)
-                .frame(width: ChatStyle.minTapSize, height: ChatStyle.minTapSize)
+                .frame(width: width, height: height)
                 .contentShape(Rectangle())
         }
         .accessibilityLabel("Record voice message")

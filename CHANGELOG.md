@@ -2,6 +2,13 @@
 
 ## Unveröffentlicht
 
+- **iOS-Redesign, Teil 1: Chat:** Der Chat bekommt ein neues, ruhiges Aussehen nach dem abgestimmten Entwurf (WhatsApp-Bedienung, Discord-Inhalte).
+  - **Kopf:** eigener flacher Kopf statt der Systemleiste mit Glas-Kapseln. Zurück-Pfeil (nur iPhone), Bild bzw. #, Name und darunter der Status (DM) oder die Mitgliederzahl, dann Anruf und ⓘ mit dem bisherigen Menü (neu oben: „Details“). Wischen vom linken Rand geht weiter zurück.
+  - **Verlauf:** Text 16 statt 15 pt, Namen weiß statt bunt (Diddy-Namensstile bleiben), mehr Abstand zwischen Gruppen. Aufeinanderfolgende Anrufzeilen werden zu einer („3 calls 19:22–19:34“). Antworten zeigen eine Linie vom Profilbild zum Zitat und das Bild des zitierten Absenders. „New Messages“ ist eine dünne Linie mit „NEW“ rechts.
+  - **Nichts springt mehr:** „Seen by“ sind kleine Profilbilder rechts unter der letzten Nachricht, in einer Zeile fester Höhe. „… is typing“ schwebt als Kapsel unten links über dem Chat.
+  - **Bilder** bis 420 × 360 pt mit 14 pt Rundung. Ein Tipp zeigt sofort einen Ladekreis, bis das Original da ist.
+  - **Eingabefeld:** eine runde Leiste mit Plus, Text, Emoji und Mikrofon, das zum Senden-Knopf wird, sobald etwas drinsteht.
+
 - **Bot-Karten als Player, Bots erkennbar (macOS, Linux):** Für den Musikbot und andere Bots, angelehnt an die Jukebox der Website-Demo. Beschreibung in `docs/bot-cards.md`.
   - **Player-Karte:** Schickt ein Bot in einer `track`-Karte `controls`, zeichnet Diddy einen kompakten Player: „Now playing in <Raum>“, Cover (ohne Bild eine bunte Kachel mit Note), Titel, „Künstler · requested by Name“, Zeitleiste in der Akzentfarbe mit den Zeiten darunter, Knöpfe Zurück, Pause/Play (gefüllt), Skip, Lautstärke („70%“, Klick öffnet einen Regler, Loslassen sendet `!volume N`) und „⋯“ mit weiteren Befehlen, darunter „Up next“. Die Karte hat links einen Streifen in der Akzentfarbe. Neue, optionale Felder: `room`, `requestedBy`, `upNext`, `controls`, `volumeMax`, `more`; `v` bleibt 1. Ohne `controls` sieht die Karte aus wie bisher, ältere Diddy-Versionen nehmen weiter `actions`.
   - **Bots erkennen:** Ein Bot meldet sich mit dem Raum-Zustand `dev.diddy.bot` an (oder hat Befehle per `dev.diddy.commands` angemeldet). Dann steht „BOT“ neben seinem Namen im Chat, er bekommt in der Mitgliederliste die Gruppe „Bots — n“ mit „Bot“ als Statuszeile, und seine Profilkarte zeigt das Abzeichen „🤖 Bot“, „● Bot“, den Text aus `about` und den Banner-Verlauf. Ein Diddy-Profil des Bots hat Vorrang. Nur der Bot selbst kann sich so anmelden (der `state_key` ist seine Matrix-ID).
