@@ -222,6 +222,10 @@ final class CallSession: NSObject, ObservableObject {
     @Published private(set) var microphoneOn = true
     @Published private(set) var deafened = false
     @Published private(set) var cameraOn = false
+    /// The cameras of this device for the camera menu (#201); filled by `loadCameras()`.
+    @Published private(set) var cameras: [CameraChoice] = []
+    /// The camera picked in the menu (`AVCaptureDevice.uniqueID`), kept for later calls.
+    @Published private(set) var cameraId: String? = UserDefaults.standard.string(forKey: CallSession.cameraKey)
     @Published private(set) var screenSharing = false
     @Published private(set) var speakerOn = true
     @Published private(set) var outgoing: OutgoingRing = .none
@@ -498,9 +502,46 @@ final class CallSession: NSObject, ObservableObject {
         AudioManager.shared.isSpeakerOutputPreferred = speakerOn
     }
 
+    static let cameraKey = "call.cameraId"
+
+    /// The camera that is (or will be) used: the picked one, else the front camera LiveKit opens.
+    var activeCameraId: String? {
+        cameraId ?? cameras.first(where: { $0.name == "Front camera" })?.id ?? cameras.first?.id
+    }
+
+    /// Lists the cameras for the camera menu.
+    func loadCameras() async {
+        let devices = (try? await CameraCapturer.captureDevices()) ?? []
+        cameras = devices.map { CameraChoice(id: $0.uniqueID, name: CameraChoice.name(for: $0)) }
+    }
+
+    /// Camera options for the picked camera, nil for the system's default (front) camera.
+    private func pickedCameraOptions() async -> CameraCaptureOptions? {
+        guard let cameraId,
+              let device = try? await CameraCapturer.captureDevices().first(where: { $0.uniqueID == cameraId }) else { return nil }
+        return CameraCaptureOptions(device: device)
+    }
+
+    /// Picks the camera (#201) and switches a running camera to it right away.
+    func selectCamera(_ id: String) async {
+        cameraId = id
+        UserDefaults.standard.set(id, forKey: Self.cameraKey)
+        guard cameraOn,
+              let track = liveKitRoom.localParticipant.firstCameraPublication?.track as? LocalVideoTrack,
+              let capturer = track.capturer as? CameraCapturer,
+              let options = await pickedCameraOptions() else { return }
+        do {
+            _ = try await capturer.set(options: options)
+        } catch {
+            lastError = "Could not switch the camera."
+        }
+        refreshMembers()
+    }
+
     func toggleCamera() async {
         do {
-            _ = try await liveKitRoom.localParticipant.setCamera(enabled: !cameraOn)
+            let options = cameraOn ? nil : await pickedCameraOptions()
+            _ = try await liveKitRoom.localParticipant.setCamera(enabled: !cameraOn, captureOptions: options)
             cameraOn.toggle()
             Sounds.shared.play(cameraOn ? .cameraOn : .cameraOff)
         } catch {
@@ -976,6 +1017,26 @@ extension CallSession: LiveKit.RoomDelegate {
             case .disconnected: self.state = "Disconnected"
             default: break
             }
+        }
+    }
+}
+
+/// One camera in the call's camera menu (#201).
+struct CameraChoice: Identifiable, Hashable {
+    let id: String
+    let name: String
+
+    /// "Front camera", "Back camera", "Back ultra wide camera" instead of the system's long names.
+    static func name(for device: AVCaptureDevice) -> String {
+        switch device.position {
+        case .front: return "Front camera"
+        case .back:
+            switch device.deviceType {
+            case .builtInUltraWideCamera: return "Back ultra wide camera"
+            case .builtInTelephotoCamera: return "Back telephoto camera"
+            default: return "Back camera"
+            }
+        default: return device.localizedName
         }
     }
 }

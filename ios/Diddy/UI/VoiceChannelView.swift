@@ -261,6 +261,25 @@ private struct ConnectedVoiceView: View {
             }
             .accessibilityLabel("Camera")
             .accessibilityValue(session.cameraOn ? "On" : "Off")
+            // Long press: pick the camera (#201), like the camera chevron on desktop.
+            .contextMenu {
+                if session.cameras.isEmpty {
+                    Text("No camera found")
+                } else {
+                    ForEach(session.cameras) { camera in
+                        Button {
+                            Task { await session.selectCamera(camera.id) }
+                        } label: {
+                            if camera.id == session.activeCameraId {
+                                Label(camera.name, systemImage: "checkmark")
+                            } else {
+                                Text(camera.name)
+                            }
+                        }
+                    }
+                }
+            }
+            .task { await session.loadCameras() }
         )
         slot(
             Button { Task { await session.toggleMicrophone() } } label: {
