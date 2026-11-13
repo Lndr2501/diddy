@@ -31,6 +31,15 @@ export type AsyncState<D, E = unknown> = AsyncIdle | AsyncLoading | AsyncSuccess
 
 export type AsyncCallback<TArgs extends unknown[], TData> = (...args: TArgs) => Promise<TData>;
 
+/**
+ * Attaches a no-op rejection handler and returns the same promise. Whoever awaits it still gets
+ * the rejection; nobody awaiting it is no longer an unhandled rejection in the app log.
+ */
+export const markHandled = <T>(promise: Promise<T>): Promise<T> => {
+  promise.catch(() => undefined);
+  return promise;
+};
+
 export const useAsync = <TData, TError, TArgs extends unknown[]>(
   asyncCallback: AsyncCallback<TArgs, TData>,
   onStateChange: (state: AsyncState<TData, TError>) => void
@@ -42,7 +51,7 @@ export const useAsync = <TData, TError, TArgs extends unknown[]>(
   // we will throw all old request's response after they resolved.
   const reqNumberRef = useRef(0);
 
-  const callback: AsyncCallback<TArgs, TData> = useCallback(
+  const run: AsyncCallback<TArgs, TData> = useCallback(
     async (...args) => {
       queueMicrotask(() => {
         // Warning: flushSync was called from inside a lifecycle method.
@@ -91,6 +100,13 @@ export const useAsync = <TData, TError, TArgs extends unknown[]>(
       }
     },
     [asyncCallback, alive, onStateChange]
+  );
+
+  // The failure is already in the state. Callers that await still see the rejection; callers that
+  // fire and forget (useEffect loaders, handlers) no longer leave an unhandled rejection behind.
+  const callback: AsyncCallback<TArgs, TData> = useCallback(
+    (...args) => markHandled(run(...args)),
+    [run]
   );
 
   return callback;

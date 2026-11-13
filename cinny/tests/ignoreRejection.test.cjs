@@ -49,3 +49,22 @@ test('the source has no async callback bound directly to a handler', () => {
   walk(root);
   assert.deepEqual(offenders, [], 'wrap these in ignoreRejection(...)');
 });
+
+test('markHandled: nobody awaiting is fine, an awaiting caller still sees the error', async () => {
+  const unhandled = [];
+  const onUnhandled = (reason) => unhandled.push(reason);
+  process.on('unhandledRejection', onUnhandled);
+  mod.markHandled(Promise.reject(new Error('M_UNRECOGNIZED')));
+  const awaited = mod.markHandled(Promise.reject(new Error('M_LIMIT_EXCEEDED')));
+  await assert.rejects(awaited, /M_LIMIT_EXCEEDED/);
+  await new Promise((resolve) => {
+    setTimeout(resolve, 20);
+  });
+  process.off('unhandledRejection', onUnhandled);
+  assert.deepEqual(unhandled, []);
+});
+
+test('useAsync hands out the marked promise, not the raw one', () => {
+  const text = fs.readFileSync(file, 'utf8');
+  assert.match(text, /\(\.\.\.args\) => markHandled\(run\(\.\.\.args\)\)/);
+});
