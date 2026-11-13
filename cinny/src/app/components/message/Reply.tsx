@@ -64,6 +64,8 @@ type ReplyProps = {
   threadRootId?: string | undefined;
   replier?: string | undefined,
   onClick?: MouseEventHandler | undefined;
+  /** opens the thread of this message (#188); without it the thread tag jumps to the thread root */
+  onThreadClick?: MouseEventHandler | undefined;
   getMemberPowerTag?: GetMemberPowerTag;
   accessibleTagColors?: Map<string, string>;
   legacyUsernameColor?: boolean;
@@ -78,6 +80,7 @@ export const Reply = as<'div', ReplyProps>(
       threadRootId,
       replier,
       onClick,
+      onThreadClick,
       getMemberPowerTag,
       accessibleTagColors,
       legacyUsernameColor,
@@ -128,7 +131,11 @@ export const Reply = as<'div', ReplyProps>(
         data-reply-highlight={mx.getUserId() === sender && sender !== replier}
       >
         {threadRootId && (
-          <ThreadIndicator as="button" data-event-id={threadRootId} onClick={onClick} />
+          <ThreadIndicator
+            as="button"
+            data-event-id={threadRootId}
+            onClick={onThreadClick ?? onClick}
+          />
         )}
         <ReplyLayout
           as="button"
