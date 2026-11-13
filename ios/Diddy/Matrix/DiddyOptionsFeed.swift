@@ -71,15 +71,24 @@ final class DiddyOptionsFeed {
         listener = await timeline.addListener(listener: TimelineUpdates { [weak self] diffs in
             Task { @MainActor in self?.apply(diffs) }
         })
+        var pages = 0
+        var paging = "more"
         for _ in 0..<Self.maxPages {
-            guard let reachedStart = try? await timeline.paginateBackwards(numEvents: Self.pageSize) else { break }
-            if reachedStart { break }
+            do {
+                pages += 1
+                if try await timeline.paginateBackwards(numEvents: Self.pageSize) { paging = "start"; break }
+            } catch {
+                paging = "error \(error.friendlyMessage)"
+                break
+            }
         }
         // The listener delivers the items on its own thread; give the last diff a moment to land.
         try? await Task.sleep(nanoseconds: 400_000_000)
         ready = true
         let count = events.count
         DiagLog.shared.write("diddy: options room read room=\(roomId) events=\(count) undecryptable=\(undecryptableSenders.count)")
+        // What the timeline really held, so a profile that never arrives can be traced.
+        DiagLog.shared.write("diddy: options feed pages=\(pages) paging=\(paging) items=\(items.count) \(Self.describe(items)) unparsed=\(unparsed)")
     }
 
     /// Everything Diddy-related read so far, plus what this device sent and has not seen back.
@@ -112,6 +121,36 @@ final class DiddyOptionsFeed {
         if ready, signature != before { scheduleChange() }
     }
 
+    /// Diddy-typed items whose JSON could not be read (diagnostics only).
+    private var failedParse: Set<String> = []
+    private var unparsed: Int { failedParse.subtracting(parsed.keys).count }
+
+    /// Counts per event type and per content kind, for the diagnostics log.
+    private static func describe(_ items: [TimelineItem]) -> String {
+        var types: [String: Int] = [:]
+        var kinds: [String: Int] = [:]
+        for item in items {
+            guard let event = item.asEvent() else { continue }
+            types[event.eventTypeRaw ?? "nil", default: 0] += 1
+            let kind: String
+            switch event.content {
+            case .msgLike(let content):
+                switch content.kind {
+                case .other: kind = "other"
+                case .unableToDecrypt: kind = "utd"
+                case .message: kind = "message"
+                default: kind = "msglike"
+                }
+            default: kind = "nonmsg"
+            }
+            kinds[kind, default: 0] += 1
+        }
+        func text(_ counts: [String: Int]) -> String {
+            counts.sorted { $0.value > $1.value }.prefix(6).map { "\($0.key):\($0.value)" }.joined(separator: ",")
+        }
+        return "types=[\(text(types))] kinds=[\(text(kinds))]"
+    }
+
     private var signature: Int { parsed.count &+ undecryptableSenders.count &* 1000 }
 
     private func rebuild() {
@@ -129,6 +168,8 @@ final class DiddyOptionsFeed {
                 next[id] = known
             } else if let event = Self.parse(event, type: type) {
                 next[id] = event
+            } else {
+                failedParse.insert(id)
             }
         }
         parsed = next
