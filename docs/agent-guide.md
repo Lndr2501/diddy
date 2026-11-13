@@ -90,6 +90,8 @@ Dev-DMG (Variante "Diddy Dev", ändert nichts an der installierten Diddy-App): i
 `--config '{"productName":"Diddy Dev","mainBinaryName":"diddy-dev","identifier":"app.diddy.desktop.dev","bundle":{"createUpdaterArtifacts":false}}'`
 starten. Danach wie oben mit "Diddy Signing" signieren, sonst fragt macOS bei jedem Build nach "Diddy Dev WebCrypto Master Key" (#164):
 ad-hoc signierte Builds (CI) haben bei jedem Build eine andere Signatur. Mit stabiler Signatur genügt einmal "Immer erlauben".
+Dev-Builds aus der CI signiert `build.yml` mit derselben Identität, sobald die Secrets `DEV_SIGNING_*` gesetzt sind:
+einmalig auf dem Mac `.github/scripts/dev-signing-secrets.sh` ausführen (exportiert "Diddy Signing", setzt die Secrets per `gh`).
 
 Logs der laufenden App: `~/Library/Logs/Diddy/app.log` (z. B. `noise suppression on (RNNoise)`).
 Langsamer Call-Beitritt (#161): `grep 'call join:' ~/Library/Logs/Diddy/app.log`. Ungefähre Reihenfolge: `widget created`,
