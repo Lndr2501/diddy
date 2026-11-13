@@ -247,6 +247,9 @@ const GLYPH = {
     'M4 9.5h3l4-3.5v12l-4-3.5H4a.5.5 0 0 1-.5-.5v-4a.5.5 0 0 1 .5-.5zM15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11',
   more: 'M4 12a1.5 1.5 0 1 0 3 0 1.5 1.5 0 1 0-3 0M10.5 12a1.5 1.5 0 1 0 3 0 1.5 1.5 0 1 0-3 0M17 12a1.5 1.5 0 1 0 3 0 1.5 1.5 0 1 0-3 0',
   music: 'M9 18V5.5l11-2V16M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM20 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0z',
+  // four tiles of a dashboard
+  dashboard:
+    'M4.5 4.5h6v7h-6zM13.5 4.5h6v4h-6zM13.5 11.5h6v8h-6zM4.5 14.5h6v5h-6z',
 };
 
 const VOLUME_SETTLE_MS = 400;
@@ -430,7 +433,12 @@ function PlayerCard({
   const more = card.more ?? [];
   const hasButtons =
     enabled &&
-    (controls.prev || controls.toggle || controls.skip || controls.volume || more.length > 0);
+    (controls.prev ||
+      controls.toggle ||
+      controls.skip ||
+      controls.volume ||
+      controls.dashboard ||
+      more.length > 0);
 
   return (
     <div className={css.Card} data-bot-card="track" data-player>
@@ -493,6 +501,18 @@ function PlayerCard({
               send={send}
               busy={busy}
             />
+          )}
+          {controls.dashboard && (
+            <button
+              type="button"
+              className={css.PlayerButton}
+              title={controls.dashboard}
+              disabled={busy}
+              onClick={() => controls.dashboard && send(controls.dashboard)}
+            >
+              <Glyph d={GLYPH.dashboard} />
+              Dashboard
+            </button>
           )}
           {more.length > 0 && <MoreMenu items={more} send={send} busy={busy} />}
         </div>

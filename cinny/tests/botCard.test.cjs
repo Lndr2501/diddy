@@ -229,7 +229,13 @@ test('player fields of a track card are read and cleaned', () => {
         { title: 'C' },
         { title: 'D' },
       ],
-      controls: { prev: '!previous', toggle: '!pause', skip: '!skip', volume: '!volume' },
+      controls: {
+        prev: '!previous',
+        toggle: '!pause',
+        skip: '!skip',
+        volume: '!volume',
+        dashboard: '!dashboard',
+      },
       volumeMax: 150,
       more: [
         { label: 'Loop', send: '!loop' },
@@ -245,7 +251,13 @@ test('player fields of a track card are read and cleaned', () => {
   );
   assert.equal(
     JSON.stringify(c.controls),
-    JSON.stringify({ prev: '!previous', toggle: '!pause', skip: '!skip', volume: '!volume' })
+    JSON.stringify({
+      prev: '!previous',
+      toggle: '!pause',
+      skip: '!skip',
+      volume: '!volume',
+      dashboard: '!dashboard',
+    })
   );
   assert.equal(c.volumeMax, 150);
   assert.equal(JSON.stringify(c.more), JSON.stringify([{ label: 'Loop', send: '!loop' }]));
@@ -300,4 +312,13 @@ test('player fields: untrusted values are dropped, old cards stay without contro
     isCardActionMessage({ msgtype: 'm.text', body: '!volume 120', 'dev.diddy.card_action': true }),
     true
   );
+});
+
+test('player "more" menu takes up to 16 entries, other buttons stay at 10', () => {
+  const many = Array.from({ length: 20 }, (_, i) => ({ label: `L${i}`, send: `!c${i}` }));
+  const c = parseBotCard(
+    card({ kind: 'track', state: 'playing', title: 't', controls: {}, more: many, actions: many })
+  );
+  assert.equal(c.more.length, 16);
+  assert.equal(c.actions.length, 10);
 });
