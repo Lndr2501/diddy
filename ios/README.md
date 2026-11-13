@@ -6,7 +6,7 @@ Die App ist Beta: Alles in der Tabelle ist gebaut und läuft bei den ersten Test
 
 | | |
 |---|---|
-| Server (Spaces) links, Kanäle daneben, Unter-Spaces als Kategorien | 🧪 |
+| iPhone: Tabs unten (Chats, Servers, Activity, You), Chatliste mit Uhrzeit und letzter Nachricht, Server als Leiste oben im Servers-Tab. iPad: Server links, Kanäle daneben. Unter-Spaces als Kategorien | 🧪 |
 | Text- und Sprachkanäle, Direktnachrichten unter „Home“ | 🧪 |
 | Server beitreten und erstellen, Kanäle erstellen, Einladungen annehmen, „Alle Kanäle beitreten“, Server verlassen | 🧪 |
 | Mitgliederliste nach Rollen mit Suche, Profilkarte (Nachricht, Blockieren, Entfernen, Bannen) | 🧪 |

@@ -8,6 +8,12 @@
   - **Nichts springt mehr:** „Seen by“ sind kleine Profilbilder rechts unter der letzten Nachricht, in einer Zeile fester Höhe. „… is typing“ schwebt als Kapsel unten links über dem Chat.
   - **Bilder** bis 420 × 360 pt mit 14 pt Rundung. Ein Tipp zeigt sofort einen Ladekreis, bis das Original da ist.
   - **Eingabefeld:** eine runde Leiste mit Plus, Text, Emoji und Mikrofon, das zum Senden-Knopf wird, sobald etwas drinsteht.
+- **iOS-Redesign, Teil 3: Tabs auf dem iPhone:** Statt Server-Leiste plus Kanalliste nebeneinander hat das iPhone jetzt unten vier Tabs. Das iPad behält die geteilte Ansicht.
+  - **Chats:** großer Titel mit Knopf für neue Nachricht/Raum, eine Suche, darunter eine Karte für den laufenden Call („Return“) oder einen Call in einem deiner Räume („Join“). Die Liste enthält DMs und Räume ohne Server, Favoriten oben, sonst nach der neuesten Nachricht sortiert. Jede Zeile zeigt Bild, Name, Uhrzeit (heute die Uhrzeit, dann „Yesterday“, Wochentag, Datum) und die letzte Nachricht („You: …“, in Gruppen „Mia: …“). Ungelesen ist fett mit Punkt, Erwähnungen haben eine Zahl in der Akzentfarbe, Stummgeschaltetes ist blass. Die Vorschau gibt es jetzt auch für Gruppenräume, nicht nur für DMs.
+  - **Servers:** die Server als Leiste oben (Ring um den offenen, Punkt bei Ungelesenem, + und Explore am Ende), darunter der Servername mit seinem Menü, runde Knöpfe für Suche und Mitglieder und die Kanäle.
+  - **Activity:** Einladungen und alle Räume mit Erwähnungen oder Benachrichtigungen, neueste zuerst, Kanäle mit Servername. Leer: „You're all caught up“.
+  - **You:** großes Profilbild (Tippen ändert Status oder Profil), Name, Matrix-ID, Status, der laufende Call, Settings, Plugins.
+  - Ein Tipp auf eine Benachrichtigung öffnet den Raum im passenden Tab. Der Chat schiebt sich über die Tabs; zurück geht es mit dem Pfeil oder per Wischen.
 - **iOS-Redesign, Teil 2: langes Drücken:** Statt des System-Kontextmenüs dunkelt der Chat ab, die Nachricht erscheint hervorgehoben, darüber eine Leiste mit 6 Schnellreaktionen und „+“ für alle Emoji, unten gleiten die Aktionen als Liste herein (Löschen rot). Ein kurzer haptischer Stoß bestätigt das Drücken. Doppeltippen auf eine Textnachricht setzt oder entfernt ein ❤️. Text lässt sich im Chat nicht mehr markieren; „Copy Text“ kopiert ihn.
 
 - **Bot-Karten als Player, Bots erkennbar (macOS, Linux):** Für den Musikbot und andere Bots, angelehnt an die Jukebox der Website-Demo. Beschreibung in `docs/bot-cards.md`.

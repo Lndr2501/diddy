@@ -7,6 +7,9 @@ import SwiftUI
 struct ServerRail: View {
     @ObservedObject var account: MatrixAccount
     @Binding var selection: String?
+    /// The iPhone's Servers tab shows the rail as a row across the top, without the Home button
+    /// (direct messages have their own tab there).
+    var horizontal = false
     @State private var sheet: RailSheet?
     @State private var expanded: Set<String> = []
     @State private var leaving: String?
@@ -33,17 +36,20 @@ struct ServerRail: View {
     }
 
     var body: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(spacing: 8) {
-                railButton(
-                    id: nil,
-                    unread: account.directMessages.contains { $0.badge > 0 },
-                    badge: account.directMessages.reduce(UInt64(account.invites.count)) { $0 + $1.badge }
-                ) {
-                    Image("DiddyLogo").resizable().scaledToFill()
+        let layout = horizontal ? AnyLayout(HStackLayout(spacing: 10)) : AnyLayout(VStackLayout(spacing: 8))
+        return ScrollView(horizontal ? .horizontal : .vertical, showsIndicators: false) {
+            layout {
+                if !horizontal {
+                    railButton(
+                        id: nil,
+                        unread: account.directMessages.contains { $0.badge > 0 },
+                        badge: account.directMessages.reduce(UInt64(account.invites.count)) { $0 + $1.badge }
+                    ) {
+                        Image("DiddyLogo").resizable().scaledToFill()
+                    }
+                    .accessibilityLabel("Home")
+                    Capsule().fill(Theme.elevated).frame(width: 32, height: 2).padding(.vertical, 2)
                 }
-                .accessibilityLabel("Home")
-                Capsule().fill(Theme.elevated).frame(width: 32, height: 2).padding(.vertical, 2)
                 ForEach(entries) { entry in
                     switch entry {
                     case .space(let id):
@@ -55,10 +61,11 @@ struct ServerRail: View {
                 roundButton("plus", label: "Add a Server") { sheet = .add }
                 roundButton("safari", label: "Explore") { sheet = .explore }
             }
-            .padding(.vertical, 12)
+            .padding(.vertical, horizontal ? 8 : 12)
+            .padding(.horizontal, horizontal ? 16 : 0)
         }
-        .frame(width: 72)
-        .background(Theme.rail)
+        .frame(width: horizontal ? nil : 72)
+        .background(horizontal ? Theme.sidebar : Theme.rail)
         .task(id: account.spaces.map(\.roomId)) { await account.refreshRail() }
         .onChange(of: account.rooms.count) { _ in Task { await account.refreshRail() } }
         .sheet(item: $sheet) { sheet in
@@ -112,7 +119,7 @@ struct ServerRail: View {
             folderTile(folder, open: open)
         }
         .buttonStyle(.plain)
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: horizontal ? nil : .infinity)
         .accessibilityLabel(folder.name ?? "Folder")
         .accessibilityValue(open ? "Expanded, \(folder.content.count) servers" : "Collapsed, \(folder.content.count) servers")
         .contextMenu {
@@ -178,13 +185,29 @@ struct ServerRail: View {
                 }
         }
         .buttonStyle(.plain)
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: horizontal ? nil : .infinity)
         .overlay(alignment: .leading) {
-            Capsule()
-                .fill(Theme.text)
-                .frame(width: 4, height: selected ? 40 : (unread ? 8 : 0))
-                .offset(x: -2)
+            if !horizontal {
+                Capsule()
+                    .fill(Theme.text)
+                    .frame(width: 4, height: selected ? 40 : (unread ? 8 : 0))
+                    .offset(x: -2)
+            }
         }
+        .overlay {
+            // Across the top: a ring around the open server, a dot on one with something unread.
+            if horizontal && selected {
+                RoundedRectangle(cornerRadius: 19, style: .continuous).strokeBorder(Theme.text, lineWidth: 2).padding(-4)
+            }
+        }
+        .overlay(alignment: .topTrailing) {
+            if horizontal && unread && !selected && badge == 0 {
+                Circle().fill(Theme.text).frame(width: 10, height: 10)
+                    .overlay(Circle().stroke(Theme.sidebar, lineWidth: 2.5))
+                    .offset(x: 3, y: -3)
+            }
+        }
+        .padding(horizontal ? 4 : 0)
         .animation(.spring(response: 0.25), value: selected)
         .accessibilityAddTraits(selected ? .isSelected : [])
         .accessibilityValue(badge > 0 ? "\(badge) mentions" : (unread ? "Unread messages" : ""))

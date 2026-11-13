@@ -21,6 +21,8 @@ struct RoomSummary: Identifiable, Hashable {
     var memberCount: UInt64
     var inviterName: String?
     var lastMessage: String?
+    /// When the newest message was sent, for the time in the chat list.
+    var lastActivity: Date?
     var isVoiceRoom = false
     /// The other person of a direct message, when the room has exactly one other member.
     var dmUserId: String?
@@ -283,12 +285,12 @@ final class MatrixAccount: ObservableObject, Identifiable {
 
     private func apply(_ info: RoomInfo) {
         guard let index = rooms.firstIndex(where: { $0.id == info.id }) else { return }
-        let summary = makeSummary(info, lastMessage: rooms[index].lastMessage)
+        let summary = makeSummary(info, lastMessage: rooms[index].lastMessage, lastActivity: rooms[index].lastActivity)
         if rooms[index] != summary { rooms[index] = summary }
         resolveProfiles(summary.callParticipants, in: info.id)
     }
 
-    private func makeSummary(_ info: RoomInfo, lastMessage: String?) -> RoomSummary {
+    private func makeSummary(_ info: RoomInfo, lastMessage: String?, lastActivity: Date?) -> RoomSummary {
         var participants: [String] = []
         for userId in info.activeRoomCallParticipants where !participants.contains(userId) {
             participants.append(userId) // one entry per user, however many devices are in the call
@@ -315,6 +317,7 @@ final class MatrixAccount: ObservableObject, Identifiable {
             memberCount: info.joinedMembersCount,
             inviterName: info.inviter.map { $0.displayName ?? $0.userId },
             lastMessage: lastMessage,
+            lastActivity: lastActivity,
             isVoiceRoom: isVoiceChannel(info.id),
             dmUserId: info.isDirect && info.heroes.count == 1 ? info.heroes.first?.userId : nil,
             isFavourite: info.isFavourite
@@ -331,8 +334,11 @@ final class MatrixAccount: ObservableObject, Identifiable {
             result.reserveCapacity(snapshot.count)
             for room in snapshot {
                 guard let self, let info = try? await room.roomInfo() else { continue }
-                let last = info.isDirect ? Self.preview(of: await room.latestEvent()) : nil
-                result.append(self.makeSummary(info, lastMessage: last))
+                // Spaces have no messages; every other room shows its newest one in the chat list.
+                let latest: LatestEventValue? = info.isSpace ? nil : await room.latestEvent()
+                let last = latest.flatMap { Self.preview(of: $0, isDirect: info.isDirect) }
+                let date = latest.flatMap { Self.date(of: $0) }
+                result.append(self.makeSummary(info, lastMessage: last, lastActivity: date))
             }
             guard !Task.isCancelled, let self else { return }
             self.rooms = result
@@ -348,13 +354,26 @@ final class MatrixAccount: ObservableObject, Identifiable {
         }
     }
 
-    private static func preview(of event: LatestEventValue) -> String? {
+    /// The newest message for the chat list: "You: …" for your own, "Mia: …" in a group, the bare
+    /// text in a direct message (it is clear who wrote it).
+    private static func preview(of event: LatestEventValue, isDirect: Bool) -> String? {
         switch event {
-        case .remote(_, _, let isOwn, _, let content):
+        case .remote(_, let sender, let isOwn, let profile, let content):
             guard let text = TimelineController.preview(of: content) else { return nil }
-            return isOwn ? "You: \(text)" : text
+            var name = sender
+            if case .ready(let displayName?, _, _, _, _) = profile { name = displayName }
+            return ChatListLogic.preview(text, isOwn: isOwn, isDirect: isDirect, senderName: name)
         case .local(_, _, _, let content, _):
-            return TimelineController.preview(of: content).map { "You: \($0)" }
+            return TimelineController.preview(of: content).map { ChatListLogic.preview($0, isOwn: true, isDirect: isDirect, senderName: "") }
+        default:
+            return nil
+        }
+    }
+
+    private static func date(of event: LatestEventValue) -> Date? {
+        switch event {
+        case .remote(let timestamp, _, _, _, _), .local(let timestamp, _, _, _, _), .remoteInvite(let timestamp, _, _):
+            return Date(timeIntervalSince1970: TimeInterval(timestamp) / 1000)
         default:
             return nil
         }
