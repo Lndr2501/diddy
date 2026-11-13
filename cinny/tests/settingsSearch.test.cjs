@@ -17,7 +17,7 @@ const pagesFor = (query) =>
   Object.keys(index).filter((key) => mod.entryMatches(index[key], query));
 
 // Texts with a title prop that are not settings (empty states and the like).
-const NOT_SETTINGS = new Set(['No plugins yet', 'Close (Esc)']);
+const NOT_SETTINGS = new Set(['No plugins yet', 'Close (Esc)', 'Back']);
 
 const tsxFiles = (dir) =>
   fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {

@@ -14,6 +14,12 @@ import * as css from './style.css';
 /** Name of the settings window shown in front of the page title ("Settings / General"). */
 export const SettingsBreadcrumb = createContext<string | undefined>(undefined);
 
+/**
+ * True on phones, where a settings page covers the menu and `requestClose` goes back to it: the
+ * header then shows a back arrow instead of a close cross that seemed to close all of settings.
+ */
+export const SettingsCompact = createContext(false);
+
 type SettingsPageHeaderProps = {
   title: ReactNode;
   requestClose: () => void;
@@ -23,8 +29,22 @@ type SettingsPageHeaderProps = {
 /** The slim header every settings page shares: "Settings / Title", actions, close. */
 export function SettingsPageHeader({ title, requestClose, actions }: SettingsPageHeaderProps) {
   const crumb = useContext(SettingsBreadcrumb);
+  const compact = useContext(SettingsCompact);
   return (
     <PageHeader outlined={false} className={css.Header}>
+      {compact && (
+        <IconButton
+          onClick={requestClose}
+          variant="SurfaceVariant"
+          fill="None"
+          size="400"
+          radii="Pill"
+          aria-label="Back to settings"
+          title="Back"
+        >
+          <Icon size="200" src={Icons.ArrowLeft} />
+        </IconButton>
+      )}
       <div className={css.Crumbs}>
         {crumb && (
           <>
@@ -42,17 +62,19 @@ export function SettingsPageHeader({ title, requestClose, actions }: SettingsPag
       </div>
       <div className={css.HeaderActions}>
         {actions}
-        <IconButton
-          onClick={requestClose}
-          variant="SurfaceVariant"
-          fill="Soft"
-          size="400"
-          radii="Pill"
-          aria-label="Close settings"
-          title="Close (Esc)"
-        >
-          <Icon size="200" src={Icons.Cross} />
-        </IconButton>
+        {!compact && (
+          <IconButton
+            onClick={requestClose}
+            variant="SurfaceVariant"
+            fill="Soft"
+            size="400"
+            radii="Pill"
+            aria-label="Close settings"
+            title="Close (Esc)"
+          >
+            <Icon size="200" src={Icons.Cross} />
+          </IconButton>
+        )}
       </div>
     </PageHeader>
   );
