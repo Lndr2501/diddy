@@ -55,7 +55,6 @@ private struct ChatContent: View {
     @State private var selection = NSRange(location: 0, length: 0)
     @State private var restoredReplyId: String?
     @State private var pendingFiles: [ComposerPendingFile] = []
-    @State private var attachmentCaption = ""
     @State private var sending = false
     @State private var draftLoaded = false
     @AppStorage(ChatSettings.editorToolbarKey) private var showFormatToolbar = false
@@ -718,7 +717,7 @@ private struct ChatContent: View {
                 .frame(minHeight: ComposerEditor.minHeight)
                 .overlay(alignment: .leading) {
                     if draft.isEmpty {
-                        Text(editing == nil ? "Message \(title)" : "Edit message")
+                        Text(editing != nil ? "Edit message" : pendingFiles.isEmpty ? "Message \(title)" : "Add a caption…")
                             .font(ComposerEditor.font)
                             .foregroundStyle(Theme.faint)
                             .lineLimit(1)
@@ -764,7 +763,8 @@ private struct ChatContent: View {
         .padding(.bottom, 8)
     }
 
-    /// Files waiting to be sent: one chip each, a caption field and the upload state.
+    /// Files waiting to be sent, as thumbnails above the bar. The text in the bar is the caption,
+    /// like in WhatsApp; there is no second field.
     private var pendingAttachments: some View {
         VStack(alignment: .leading, spacing: 8) {
             ScrollView(.horizontal, showsIndicators: false) {
@@ -775,12 +775,9 @@ private struct ChatContent: View {
                         }
                     }
                 }
+                .padding(.top, 6)
+                .padding(.trailing, 6)
             }
-            TextField("Caption (optional)", text: $attachmentCaption)
-                .font(.subheadline)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(RoundedRectangle(cornerRadius: 10).fill(Theme.input))
             if controller.uploadingAttachment {
                 HStack(spacing: 8) {
                     ProgressView()
@@ -790,8 +787,8 @@ private struct ChatContent: View {
                 }
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.top, 8)
+        .padding(.horizontal, 14)
+        .padding(.top, 6)
     }
 
     /// Settings > Chat > Editor Toolbar: one icon per format.
@@ -871,13 +868,15 @@ private struct ChatContent: View {
             command: command?.sendsMessage == true ? command : nil, isReply: reply != nil,
             replyUserId: replyTo?.sender, ownUserId: account.userId)
         let files = pendingFiles
-        let caption = attachmentCaption.isEmpty ? original : attachmentCaption
+        let caption = original.trimmingCharacters(in: .whitespacesAndNewlines)
         sending = true
         Task {
             var success = true
             if !files.isEmpty {
-                for file in files {
-                    if await controller.sendAttachment(data: file.data, filename: file.name, mime: file.mime, caption: caption, replyTo: reply) {
+                // The caption goes with the first file only, so it is not repeated under every photo.
+                for (index, file) in files.enumerated() {
+                    if await controller.sendAttachment(data: file.data, filename: file.name, mime: file.mime,
+                                                       caption: index == 0 ? caption : "", replyTo: index == 0 ? reply : nil) {
                         pendingFiles.removeAll { $0.id == file.id }
                     } else { success = false; break }
                 }
@@ -891,7 +890,7 @@ private struct ChatContent: View {
             }
             if success, draft == original {
                 draft = ""; mentions = [:]; tokens = [:]; replyTo = nil; restoredReplyId = nil; editing = nil
-                attachmentCaption = ""; selection = NSRange(location: 0, length: 0)
+                selection = NSRange(location: 0, length: 0)
                 saveDraft()
             }
             sending = false
@@ -1547,11 +1546,13 @@ private struct ComposerSuggestionRow: View {
     }
 }
 
-/// A file waiting in the composer: kind, name, size and a button to take it out again.
+/// A file waiting in the composer: photos as a square thumbnail, everything else as a small
+/// card with kind, name and size. The cross sits on the top right corner.
 private struct PendingFileChip: View {
     let file: ComposerPendingFile
     let disabled: Bool
     let onRemove: () -> Void
+    @State private var thumbnail: UIImage?
 
     private var symbol: String {
         if file.mime.hasPrefix("image/") { return "photo" }
@@ -1561,22 +1562,49 @@ private struct PendingFileChip: View {
     }
 
     var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: symbol).foregroundStyle(Theme.accent).accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 0) {
-                Text(verbatim: file.name).font(.footnote).foregroundStyle(Theme.text).lineLimit(1).truncationMode(.middle)
-                Text(ComposerSize.text(Int64(file.data.count))).font(.caption2).foregroundStyle(Theme.muted)
+        content
+            .frame(width: 72, height: 72)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Theme.text.opacity(0.08), lineWidth: 1))
+            .overlay(alignment: .topTrailing) {
+                Button(action: onRemove) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 22, height: 22)
+                        .background(Circle().fill(Color.black.opacity(0.7)))
+                        .overlay(Circle().strokeBorder(Theme.chat, lineWidth: 1.5))
+                        .frame(width: 34, height: 34)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(disabled)
+                .offset(x: 10, y: -10)
+                .accessibilityLabel("Remove \(file.name)")
             }
-            .frame(maxWidth: 150, alignment: .leading)
-            Button(action: onRemove) {
-                Image(systemName: "xmark.circle.fill").font(.system(size: 18)).foregroundStyle(Theme.muted)
+            .task(id: file.id) {
+                guard file.mime.hasPrefix("image/") else { return }
+                let data = file.data
+                thumbnail = await Task.detached(priority: .userInitiated) {
+                    UIImage(data: data)?.preparingThumbnail(of: CGSize(width: 216, height: 216))
+                }.value
             }
-            .disabled(disabled)
-            .accessibilityLabel("Remove \(file.name)")
+    }
+
+    @ViewBuilder private var content: some View {
+        if let thumbnail {
+            Image(uiImage: thumbnail).resizable().scaledToFill()
+                .accessibilityLabel(file.name)
+        } else {
+            VStack(spacing: 4) {
+                Image(systemName: symbol).font(.system(size: 20)).foregroundStyle(Theme.muted).accessibilityHidden(true)
+                Text(verbatim: file.name).font(.system(size: 10)).foregroundStyle(Theme.text).lineLimit(1).truncationMode(.middle)
+                Text(ComposerSize.text(Int64(file.data.count))).font(.system(size: 9)).foregroundStyle(Theme.faint)
+            }
+            .padding(.horizontal, 6)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Theme.elevated)
+            .accessibilityElement(children: .combine)
         }
-        .padding(.leading, 10)
-        .padding(.trailing, 6)
-        .padding(.vertical, 6)
-        .background(RoundedRectangle(cornerRadius: 10).fill(Theme.elevated))
     }
 }
