@@ -249,6 +249,8 @@ const GLYPH = {
   music: 'M9 18V5.5l11-2V16M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM20 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0z',
 };
 
+const VOLUME_SETTLE_MS = 400;
+
 /** Closes a popover on a click outside of `ref` or on Escape. */
 function useDismiss(open: boolean, close: () => void): React.RefObject<HTMLDivElement> {
   const ref = React.useRef<HTMLDivElement>(null);
@@ -294,11 +296,25 @@ function VolumeControl({
   useEffect(() => {
     if (!open) setValue(Math.round(Math.min(volume ?? 0, max)));
   }, [volume, max, open]);
-  const commit = () => {
-    if (volume === undefined || Math.round(volume) !== value) send(`${command} ${value}`);
-  };
+  const sent = React.useRef<number | undefined>(undefined);
+  const commit = useCallback(() => {
+    if (sent.current === value) return;
+    if (volume !== undefined && Math.round(volume) === value) return;
+    sent.current = value;
+    send(`${command} ${value}`);
+  }, [command, send, value, volume]);
+  // Touch (iOS/WebKit) does not always end a slider drag with pointerup:
+  // also send shortly after the last change.
+  useEffect(() => {
+    if (!open) return undefined;
+    const t = window.setTimeout(commit, VOLUME_SETTLE_MS);
+    return () => window.clearTimeout(t);
+  }, [open, commit]);
+  useEffect(() => {
+    if (!open) sent.current = undefined;
+  }, [open]);
   return (
-    <div className={css.VolumeAnchor} ref={ref}>
+    <div className={css.PanelAnchor} ref={ref}>
       <button
         type="button"
         className={css.PlayerButton}
@@ -323,6 +339,8 @@ function VolumeControl({
             aria-label="Volume"
             onChange={(evt) => setValue(Number(evt.currentTarget.value))}
             onPointerUp={commit}
+            onPointerCancel={commit}
+            onTouchEnd={commit}
             onKeyUp={(evt) => {
               if (evt.key.startsWith('Arrow') || evt.key === 'Home' || evt.key === 'End') commit();
             }}
@@ -334,7 +352,7 @@ function VolumeControl({
   );
 }
 
-/** "⋯" menu with the extra commands of the player (`more`). */
+/** "⋯" menu with the extra commands of the player (`more`), opened as a row inside the card. */
 function MoreMenu({
   items,
   send,
@@ -348,7 +366,7 @@ function MoreMenu({
   const close = useCallback(() => setOpen(false), []);
   const ref = useDismiss(open, close);
   return (
-    <div className={css.PopAnchor} ref={ref}>
+    <div className={css.PanelAnchor} ref={ref}>
       <button
         type="button"
         className={css.PlayerButton}
@@ -360,7 +378,7 @@ function MoreMenu({
         <Glyph d={GLYPH.more} filled />
       </button>
       {open && (
-        <div className={css.Popover} role="menu" data-bot-popover="more">
+        <div className={css.MorePanel} role="menu" data-bot-popover="more">
           {items.map((a) => (
             <button
               key={a.send}
