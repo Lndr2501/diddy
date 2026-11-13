@@ -145,15 +145,26 @@ struct AvatarView: View {
     var size: CGFloat = 40
     var cornerRadius: CGFloat? = nil
     var account: MatrixAccount? = nil
+    /// False keeps an animated picture still here (a call tile while its owner is silent).
+    var animates = true
     @State private var image: UIImage?
+    @State private var moving: UIImage?
     /// Account and URL the shown picture belongs to.
     @State private var loadedKey: String?
+    @AppStorage(AvatarPrefs.picturesKey) private var picturesMove = true
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var key: String { "\(account?.id ?? "")|\(url ?? "")" }
+    /// Settings > Chat > Animated Profile Pictures; Reduce Motion and Low Power Mode stop them too.
+    private var shouldMove: Bool {
+        animates && picturesMove && !reduceMotion && !ProcessInfo.processInfo.isLowPowerModeEnabled
+    }
 
     var body: some View {
         ZStack {
-            if let image {
+            if let moving, shouldMove {
+                AnimatedPictureView(image: moving)
+            } else if let image {
                 Image(uiImage: image).resizable().scaledToFill()
             } else {
                 Theme.color(for: name)
@@ -162,15 +173,18 @@ struct AvatarView: View {
         }
         .frame(width: size, height: size)
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius ?? size / 2, style: .continuous))
-        .task(id: key) {
+        // Runs again when moving is switched on or off; the still picture stays up meanwhile.
+        .task(id: key + (shouldMove ? "|moving" : "")) {
             let key = self.key
+            let wantsMoving = shouldMove
             guard let url = AvatarChoice.usable(self.url), let account = self.account else {
                 image = nil
+                moving = nil
                 loadedKey = nil
                 return
             }
             // The picture of a previous URL must not stay up when the new one fails to load.
-            if loadedKey != key { image = nil }
+            if loadedKey != key { image = nil; moving = nil }
             // A failed download is tried again a few times: a view drawn before the connection
             // was up (app start, back from background) otherwise kept its initials until redrawn.
             var attempt = 1
@@ -178,12 +192,17 @@ struct AvatarView: View {
                 if let loaded = await MediaLoader.shared.thumbnail(url: url, size: Int(size * 3), accountId: account.id, client: account.client) {
                     image = loaded
                     loadedKey = key
-                    return
+                    break
                 }
                 guard let delay = AvatarChoice.retryDelay(afterAttempt: attempt) else { return }
                 try? await Task.sleep(nanoseconds: delay * 1_000_000_000)
                 attempt += 1
             }
+            // Then the moving version, if it is a GIF, WebP or APNG; the still one shows meanwhile.
+            guard wantsMoving, !Task.isCancelled else { return }
+            let pixels = min(360, max(48, Int(size * UIScreen.main.scale)))
+            let animated = await AnimatedAvatarMedia.shared.picture(mxc: url, pixels: pixels, client: account.client)
+            if !Task.isCancelled, self.key == key { moving = animated }
         }
     }
 

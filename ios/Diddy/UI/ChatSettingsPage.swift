@@ -21,6 +21,7 @@ struct ChatSettingsView: View {
     @AppStorage(ChatSettings.editorToolbarKey) private var editorToolbar = false
     @AppStorage(ChatSettings.shareActivityKey) private var shareActivity = true
 
+    @AppStorage(AvatarPrefs.picturesKey) private var pictures = true
     @AppStorage(AvatarPrefs.nameplatesKey) private var nameplates = true
     @AppStorage(AvatarPrefs.profileEffectsKey) private var profileEffects = true
     @AppStorage(AvatarPrefs.profileFramesKey) private var profileFrames = true
@@ -58,6 +59,13 @@ struct ChatSettingsView: View {
             }
 
             Section {
+                Toggle(isOn: $pictures) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Animated Profile Pictures")
+                        Text("GIF, WebP and APNG profile pictures move. In a call only while the person speaks.")
+                            .font(.caption).foregroundStyle(Theme.muted)
+                    }
+                }
                 Toggle(isOn: $nameplates) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Nameplates")
@@ -82,7 +90,7 @@ struct ChatSettingsView: View {
             } header: {
                 Text("Profile Decorations")
             } footer: {
-                Text("What other people add to their profile. Nameplates and effects that are off show a still picture, and with Reduce Motion turned on in iOS nothing moves. Profile pictures themselves stay still in Diddy for iOS.")
+                Text("What other people add to their profile. Nameplates and effects that are off show a still picture, and with Reduce Motion turned on in iOS nothing moves.")
             }
         }
         .scrollContentBackground(.hidden)

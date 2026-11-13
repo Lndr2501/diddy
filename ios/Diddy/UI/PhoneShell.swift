@@ -213,14 +213,21 @@ struct ChatListRow: View {
             }
         }
         .padding(.vertical, 8)
+        // A direct message carries the other person's nameplate, like the desktop DM list.
+        .diddyNameplate(room.dmUserId.flatMap { account.diddyProfiles[$0]?.nameplate }, account: account,
+                        bleed: EdgeInsets(top: 0, leading: 8, bottom: 0, trailing: 8))
         .opacity(muted ? 0.55 : 1)
     }
 
     @ViewBuilder private var name: some View {
         let weight: Font.Weight = unread ? .bold : .medium
         if let dm = room.dmUserId, let diddy = account.diddyProfiles[dm] {
-            DiddyName(name: room.name, profile: diddy, font: .body.weight(weight), size: 17, fallback: Theme.text)
-                .lineLimit(1)
+            // The other person's name style and badges, as in the chat.
+            HStack(spacing: 4) {
+                DiddyName(name: room.name, profile: diddy, font: .body.weight(weight), size: 17, fallback: Theme.text)
+                    .lineLimit(1)
+                if let badges = account.diddyBadges[dm] { DiddyBadges(badges: badges, size: 13, account: account) }
+            }
         } else {
             Text(room.name).font(.body.weight(weight)).foregroundStyle(Theme.text).lineLimit(1)
         }

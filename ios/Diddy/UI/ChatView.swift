@@ -1198,7 +1198,9 @@ struct MessageRowView: View {
                         .accessibilityHidden(true)
                     AvatarView(url: reply.avatar, name: reply.sender, size: 16, account: account)
                     // The name without "@", like the desktop.
-                    Text(reply.sender).font(.caption.weight(.semibold)).foregroundStyle(Theme.muted).lineLimit(1)
+                    DiddyName(name: reply.sender, profile: account.diddyProfiles[reply.senderId],
+                              font: .caption.weight(.semibold), size: 12, fallback: Theme.muted)
+                        .lineLimit(1)
                     Text(MentionText.readable(reply.text) { account.name(of: $0) }).font(.caption).foregroundStyle(Theme.faint).lineLimit(1)
                 }
                 .padding(.leading, ChatStyle.edgePadding + ChatStyle.avatarSize / 2 - 1)

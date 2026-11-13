@@ -224,7 +224,8 @@ private struct PersonTile: View {
                     .frame(width: size.width, height: size.height)
                     .clipped()
             } else {
-                AvatarView(url: member.avatarUrl, name: member.name, size: avatarSize, account: account)
+                // Like desktop: an animated picture moves only while its owner speaks.
+                AvatarView(url: member.avatarUrl, name: member.name, size: avatarSize, account: account, animates: speaking)
                     .offset(y: role == .thumb ? -6 : -avatarSize * 0.12)
             }
         }

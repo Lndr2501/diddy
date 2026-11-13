@@ -30,7 +30,7 @@ struct MessageRow: Identifiable {
     let body: Body
     let isOwn: Bool
     let isEdited: Bool
-    let reply: (sender: String, text: String, avatar: String?)?
+    let reply: (sender: String, senderId: String, text: String, avatar: String?)?
     let reactions: [ReactionChip]
     /// Discord shows name and avatar only on the first message of a burst from one sender.
     var showsHeader: Bool
@@ -424,7 +424,7 @@ final class TimelineController: ObservableObject {
         }()
         let body: MessageRow.Body
         var edited = false
-        var reply: (sender: String, text: String, avatar: String?)?
+        var reply: (sender: String, senderId: String, text: String, avatar: String?)?
         var card: BotCard?
         var membership: TimelineLayout.Membership?
         var extras = MessageExtras()
@@ -439,7 +439,7 @@ final class TimelineController: ObservableObject {
                     if let displayName { replyName = displayName }
                     replyAvatar = avatarUrl
                 }
-                reply = (sender: replyName, text: Self.preview(of: replied) ?? "…", avatar: replyAvatar)
+                reply = (sender: replyName, senderId: sender, text: Self.preview(of: replied) ?? "…", avatar: replyAvatar)
             }
             switch content.kind {
             case .message(let message):

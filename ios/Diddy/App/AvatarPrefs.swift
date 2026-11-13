@@ -1,10 +1,11 @@
 import Foundation
 
-/// Desktop's "Animated profile pictures" switches (`state/avatarPrefs.ts`) for what iOS shows: the
-/// nameplates, effects and frames of other people's Diddy profiles. Stored on this device.
-/// Pictures themselves are always still on iOS, so the desktop's per-place switches for them
-/// have nothing to switch here.
+/// Desktop's "Animated profile pictures" switches (`state/avatarPrefs.ts`): animated profile
+/// pictures, and the nameplates, effects and frames of other people's Diddy profiles. Stored on
+/// this device. iOS has one switch for the pictures instead of desktop's one per place.
 enum AvatarPrefs {
+    /// Animated (GIF, WebP, APNG) profile pictures move. Off shows their first frame.
+    static let picturesKey = "avatar.animate.pictures"
     /// Moving pictures, videos and gradients behind names. Off shows a still picture.
     static let nameplatesKey = "avatar.animate.nameplates"
     /// Animated overlays over profile cards. Off shows their still picture.
