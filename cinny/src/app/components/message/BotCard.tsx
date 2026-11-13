@@ -248,8 +248,7 @@ const GLYPH = {
   more: 'M4 12a1.5 1.5 0 1 0 3 0 1.5 1.5 0 1 0-3 0M10.5 12a1.5 1.5 0 1 0 3 0 1.5 1.5 0 1 0-3 0M17 12a1.5 1.5 0 1 0 3 0 1.5 1.5 0 1 0-3 0',
   music: 'M9 18V5.5l11-2V16M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM20 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0z',
   // four tiles of a dashboard
-  dashboard:
-    'M4.5 4.5h6v7h-6zM13.5 4.5h6v4h-6zM13.5 11.5h6v8h-6zM4.5 14.5h6v5h-6z',
+  dashboard: 'M4.5 4.5h6v7h-6zM13.5 4.5h6v4h-6zM13.5 11.5h6v8h-6zM4.5 14.5h6v5h-6z',
 };
 
 const VOLUME_SETTLE_MS = 400;
@@ -687,6 +686,21 @@ function NoteCard({ card }: { card: Extract<BotCard, { kind: 'note' }> }) {
         </span>
       )}
       <span>{card.text}</span>
+      {card.url && (
+        <a className={css.NoteLink} href={card.url} target="_blank" rel="noreferrer noopener">
+          {card.linkLabel ?? 'Open'}
+          <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden focusable="false">
+            <path
+              d="M3 1.5h5.5V7M8.5 1.5 1.5 8.5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </a>
+      )}
     </div>
   );
 }

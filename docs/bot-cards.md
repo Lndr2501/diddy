@@ -30,7 +30,7 @@ Eine normale Nachricht (`m.notice` oder `m.text`) mit einem Zusatzfeld im `conte
 | `help` | `groups[]` mit `title` und `items[]` (`usage`, `desc`), `note?` |
 | `list` | `title`, `items[]` (`title`, `subtitle?`, `duration?`), `total?`, `empty?` (Text bei leerer Liste), `actions?`. Für Favoriten, Playlists u. ä. |
 | `stats` | `title`, `charts[]` mit `title`, `unit?`, `items[]` (`label`, `value` ≥ 0, `sub?`), `actions?`. Diddy zeichnet Balkendiagramme (Balken relativ zum größten Wert). |
-| `note` | `text`, `tone` (`info`, `success`, `warning`, `error`), `icon?` (ein Emoji) |
+| `note` | `text`, `tone` (`info`, `success`, `warning`, `error`), `icon?` (ein Emoji), `url?` (http/https, als runder Link-Knopf rechts im Chip), `linkLabel?` (Beschriftung des Knopfs, höchstens 40 Zeichen, Standard „Open“) |
 
 `seek` (z. B. `"!seek"`) macht die Zeitleiste anklickbar: ein Klick sendet `<seek> mm:ss`, die Pfeiltasten auf der
 Zeitleiste `<seek> -10` / `<seek> +10`; beim Darüberfahren zeigt Diddy die Zeit unter dem Mauszeiger. `volume` ist die
@@ -149,6 +149,7 @@ PUT /_matrix/client/v3/rooms/{roomId}/state/dev.diddy.bot/{botUserId}
 6. Prüfe jede Karte mit `parseBotCard` (siehe unten): was Diddy verwirft, siehst du in den Tests von
    `cinny/tests/botCard.test.cjs`.
 
+Für `note` mit Link siehe den Issue-Bot ([Lndr2501/issuebotmatrix](https://github.com/Lndr2501/issuebotmatrix), `issuebot/cards.py`).
 Als Vorlage dient der Musikbot (`musikbot/cards.py`: Bausteine `track_card`, `queue_card`, `list_card`, `stats_card`,
 `note_card`, `help_card`, `commands_content`; Bearbeitung `edit_content`).
 
