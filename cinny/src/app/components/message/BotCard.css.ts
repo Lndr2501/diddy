@@ -257,6 +257,20 @@ export const Note = style({
 
 export const NoteIcon = style({ flexShrink: 0, fontSize: toRem(16), lineHeight: 1 });
 
+export const NoteLink = style({
+  flexShrink: 0,
+  whiteSpace: 'nowrap',
+  fontWeight: 600,
+  color: 'inherit',
+  textDecoration: 'underline',
+  textUnderlineOffset: toRem(2),
+  borderRadius: toRem(4),
+  selectors: {
+    '&:hover': { opacity: 0.8 },
+    '&:focus-visible': { outline: `${toRem(2)} solid currentColor`, outlineOffset: toRem(2) },
+  },
+});
+
 export const SectionTitle = style({
   margin: 0,
   fontSize: toRem(12),

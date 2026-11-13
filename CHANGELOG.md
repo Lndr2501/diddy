@@ -2,6 +2,7 @@
 
 ## Unveröffentlicht
 
+- **Bot-Karten: Link in Hinweis-Chips:** Eine `note`-Karte darf jetzt einen Link (`url`, nur http/https) und eine Beschriftung (`linkLabel`) mitschicken. Diddy zeigt ihn als kleinen Link-Knopf im Chip, z. B. „Issue öffnen ↗“ beim neuen Issue-Bot ([Lndr2501/issuebotmatrix](https://github.com/Lndr2501/issuebotmatrix)). Vorher war der Link nur in Element sichtbar.
 - **iOS-Redesign, Teil 1: Chat:** Der Chat bekommt ein neues, ruhiges Aussehen nach dem abgestimmten Entwurf (WhatsApp-Bedienung, Discord-Inhalte).
   - **Kopf:** eigener flacher Kopf statt der Systemleiste mit Glas-Kapseln. Zurück-Pfeil (nur iPhone), Bild bzw. #, Name und darunter der Status (DM) oder die Mitgliederzahl, dann Anruf und ⓘ mit dem bisherigen Menü (neu oben: „Details“). Wischen vom linken Rand geht weiter zurück.
   - **Verlauf:** Text 16 statt 15 pt, Namen weiß statt bunt (Diddy-Namensstile bleiben), mehr Abstand zwischen Gruppen. Aufeinanderfolgende Anrufzeilen werden zu einer („3 calls 19:22–19:34“). Antworten zeigen eine Linie vom Profilbild zum Zitat und das Bild des zitierten Absenders. „New Messages“ ist eine dünne Linie mit „NEW“ rechts.

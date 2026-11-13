@@ -32,7 +32,7 @@ for (const theme of THEMES) {
     const errors = [];
     page.on('pageerror', (e) => errors.push(String(e)));
     await page.goto(`/preview/bot-card.html?theme=${theme}`);
-    await expect(page.locator('[data-bot-card]')).toHaveCount(12);
+    await expect(page.locator('[data-bot-card]')).toHaveCount(13);
     expect(await page.getByText('invalid card').count()).toBe(0);
 
     const problems = await page.evaluate(() => {
@@ -54,6 +54,19 @@ for (const theme of THEMES) {
     expect(errors).toEqual([]);
   });
 }
+
+test('a note card shows its link, readable in every tone, opening in a new window', async ({ page }) => {
+  await page.goto('/preview/bot-card.html?theme=light-theme');
+  const link = page.locator('[data-bot-card="note"] a');
+  await expect(link).toHaveCount(1);
+  await expect(link).toHaveText('Issue öffnen ↗');
+  await expect(link).toHaveAttribute('href', 'https://github.com/Lndr2501/diddy/issues/42');
+  await expect(link).toHaveAttribute('target', '_blank');
+  await expect(link).toHaveAttribute('rel', /noopener/);
+  const box = await link.boundingBox();
+  const chip = await link.locator('xpath=..').boundingBox();
+  expect(box.x + box.width).toBeLessThanOrEqual(chip.x + chip.width + 1);
+});
 
 // The classic cards (no `controls`), so the old checks do not hit the player cards on top
 const classic = (page) => page.locator('[data-bot-card]:not([data-player])');

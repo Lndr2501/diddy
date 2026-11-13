@@ -687,6 +687,11 @@ function NoteCard({ card }: { card: Extract<BotCard, { kind: 'note' }> }) {
         </span>
       )}
       <span>{card.text}</span>
+      {card.url && (
+        <a className={css.NoteLink} href={card.url} target="_blank" rel="noreferrer noopener">
+          {card.linkLabel ?? 'Open'} ↗
+        </a>
+      )}
     </div>
   );
 }
