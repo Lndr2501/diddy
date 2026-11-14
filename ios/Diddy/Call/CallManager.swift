@@ -217,6 +217,10 @@ final class CallManager: ObservableObject {
 @MainActor
 final class CallSession: NSObject, ObservableObject {
     @Published private(set) var members: [CallMember] = []
+    /// Screen shares of others you opened with Watch (#206), by LiveKit identity. The others show
+    /// as a card: no video view, so adaptive stream pauses the picture on the server, and their
+    /// sound is switched off. Local to you; a share that ends starts as a card the next time.
+    @Published private(set) var watchedShares: Set<String> = []
     @Published private(set) var state: String = "Connecting…"
     @Published private(set) var connected = false
     @Published private(set) var microphoneOn = true
@@ -872,8 +876,44 @@ final class CallSession: NSObject, ObservableObject {
         Sounds.shared.play(sound)
     }
 
+    func watchShare(_ identity: String) {
+        guard !watchedShares.contains(identity) else { return }
+        watchedShares.insert(identity)
+        applyShareAudio()
+    }
+
+    func stopWatchingShare(_ identity: String) {
+        guard watchedShares.remove(identity) != nil else { return }
+        applyShareAudio()
+    }
+
+    /// The sound of a share plays only while you watch it (#206).
+    private func applyShareAudio() {
+        for participant in liveKitRoom.remoteParticipants.values {
+            guard let identity = participant.identity?.stringValue else { continue }
+            let wanted = watchedShares.contains(identity)
+            for case let publication as LiveKit.RemoteTrackPublication in participant.audioTracks
+                where publication.source == .screenShareAudio && publication.isEnabled != wanted {
+                Task { try? await publication.set(enabled: wanted) }
+            }
+        }
+    }
+
+    /// Forgets Watch for shares that ended, then applies the sound rule to new tracks.
+    private func pruneWatchedShares() {
+        var sharing = Set<String>()
+        for participant in liveKitRoom.remoteParticipants.values
+            where participant.videoTracks.contains(where: { $0.source == .screenShareVideo }) {
+            if let identity = participant.identity?.stringValue { sharing.insert(identity) }
+        }
+        let kept = watchedShares.intersection(sharing)
+        if kept != watchedShares { watchedShares = kept }
+        applyShareAudio()
+    }
+
     fileprivate func refreshMembers() {
         guard !closed else { return }
+        pruneWatchedShares()
         var result: [CallMember] = []
         let local = liveKitRoom.localParticipant
         // Speaking is held for 0.6 s after the server stops saying so (no flicker between words).

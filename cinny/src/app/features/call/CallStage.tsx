@@ -1,4 +1,11 @@
-import React, { MouseEvent, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  MouseEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import { Avatar, Text, toRem } from 'folds';
 import { CallEmbed, useCallControlState } from '../../plugins/call';
 import {
@@ -30,6 +37,15 @@ import {
   useStreamZoom,
 } from './useStreamView';
 import { isZoomed, ZOOM_MAX, zoomPercent, zoomTransform } from '../../plugins/call/streamZoom';
+import { cachedLiveKitRooms } from '../../plugins/call/callMute';
+import {
+  applyShareWatch,
+  installShareWatchStyle,
+  isOwnShare,
+  localIdentities,
+  releaseShareWatch,
+  shareWatch,
+} from '../../plugins/call/shareWatch';
 import * as css from './styles.css';
 
 /** Who is on the call, read from Element Call and kept up to date (cheap: only on change). */
@@ -159,6 +175,9 @@ function StageVideo({
 const ICON_MIC =
   'M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z M5 11a7 7 0 0 0 14 0 M12 18v3';
 const ICON_SCREEN = 'M3 5h18v11H3z M8 20h8 M12 16v4';
+/** eye with a slash: stop watching a stream (#206) */
+const ICON_STOP_WATCH =
+  'M3 3l18 18 M10.6 6.1A9.8 9.8 0 0 1 12 6c5 0 9 6 9 6a17 17 0 0 1-2.6 3.2 M6.5 7.6A16.6 16.6 0 0 0 3 12s4 6 9 6a8.7 8.7 0 0 0 4-.9 M9.9 9.9a3 3 0 0 0 4.2 4.2';
 const ICON_SPEAKER =
   'M4 9.5h3.5L12 6v12l-4.5-3.5H4z M15.5 9.5a3.5 3.5 0 0 1 0 5 M18 7a7 7 0 0 1 0 10';
 
@@ -277,7 +296,8 @@ export function PersonTile({
   );
 }
 
-const ICON_ZOOM_IN = 'M10.5 4a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13z M15.2 15.2L20 20 M10.5 7.5v6 M7.5 10.5h6';
+const ICON_ZOOM_IN =
+  'M10.5 4a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13z M15.2 15.2L20 20 M10.5 7.5v6 M7.5 10.5h6';
 const ICON_ZOOM_OUT = 'M10.5 4a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13z M15.2 15.2L20 20 M7.5 10.5h6';
 const ICON_FULLSCREEN = 'M4 9V4h5 M15 4h5v5 M20 15v5h-5 M9 20H4v-5';
 const ICON_FULLSCREEN_EXIT = 'M9 4v5H4 M20 9h-5V4 M15 20v-5h5 M4 15h5v5';
@@ -290,13 +310,25 @@ function ToolIcon({ d }: { d: string }) {
   );
 }
 
+type ShareTileProps = TileProps & {
+  share: StageShare;
+  doc: Document | undefined;
+  /** false: somebody else's share you have not opened, shown as a card (#206) */
+  watching?: boolean;
+  onWatch?: () => void;
+  onStopWatching?: () => void;
+};
+
 export function ShareTile({
   share,
   doc,
   focused,
   small,
   onSelect,
-}: TileProps & { share: StageShare; doc: Document | undefined }) {
+  watching = true,
+  onWatch,
+  onStopWatching,
+}: ShareTileProps) {
   const tileRef = useRef<HTMLDivElement>(null);
   const { fullscreen, toggleFullscreen } = useElementFullscreen(tileRef);
   const large = !!focused || fullscreen;
@@ -317,6 +349,10 @@ export function ShareTile({
   // a click ends a drag of the zoomed picture, or would close the large view: in full screen
   // and while zoomed in it does nothing (zoom back out or leave full screen first)
   const handleClick = () => {
+    if (!watching) {
+      onWatch?.();
+      return;
+    }
     if (wasDrag()) return;
     if (fullscreen || zoomed) return;
     onSelect();
@@ -338,7 +374,7 @@ export function ShareTile({
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [fullscreen, zoomIn, zoomOut, resetZoom, toggleFullscreen]);
 
-  let hitLabel = `Watch ${label}`;
+  let hitLabel = watching ? `Show ${label} large` : `Watch ${label}`;
   if (fullscreen) hitLabel = label;
   else if (focused) hitLabel = `Stop watching ${label} large`;
 
@@ -363,15 +399,36 @@ export function ShareTile({
         onContextMenu={handleContextMenu}
         aria-label={hitLabel}
       />
-      {share.video ? (
+      {!watching && (
+        <span className={css.StageShareCard} aria-hidden="true">
+          <svg viewBox="0 0 24 24" className={css.StageShareCardIcon}>
+            <path d={ICON_SCREEN} />
+          </svg>
+          <span className={css.StageShareCardText}>{share.name} is sharing their screen</span>
+          <span className={css.StageWatchPill}>Watch</span>
+        </span>
+      )}
+      {watching && share.video && (
         <StageVideo stream={share.video} fit="contain" transform={zoomTransform(zoom)} />
-      ) : (
+      )}
+      {watching && !share.video && (
         <Text size="T300" priority="300" className={css.StageWaiting}>
           Waiting for the stream…
         </Text>
       )}
       <span className={css.StageLive}>LIVE</span>
-      {large && (
+      {watching && !large && onStopWatching && (
+        <button
+          type="button"
+          className={css.StageStopWatch}
+          onClick={onStopWatching}
+          aria-label={`Stop watching ${label}`}
+          title="Stop watching"
+        >
+          Stop watching
+        </button>
+      )}
+      {watching && large && (
         <div
           className={css.StageToolbar}
           {...{ [STREAM_CONTROLS_ATTR]: true }}
@@ -417,6 +474,17 @@ export function ShareTile({
           >
             <ToolIcon d={fullscreen ? ICON_FULLSCREEN_EXIT : ICON_FULLSCREEN} />
           </button>
+          {onStopWatching && !fullscreen && (
+            <button
+              type="button"
+              className={css.StageToolButton}
+              onClick={onStopWatching}
+              aria-label={`Stop watching ${label}`}
+              title="Stop watching"
+            >
+              <ToolIcon d={ICON_STOP_WATCH} />
+            </button>
+          )}
         </div>
       )}
       <span className={css.StageTag}>
@@ -457,8 +525,45 @@ const gridColumns = (count: number): number => {
 export function CallStage({ callEmbed }: { callEmbed: CallEmbed }) {
   const model = useCallStage(callEmbed);
   const [focusKey, setFocusKey] = useState<string>();
+  const mx = useMatrixClient();
+  const myUserId = mx.getUserId() ?? undefined;
+  const watched = useSyncExternalStore(shareWatch.subscribe, shareWatch.getSnapshot);
 
   useEffect(() => enableCallStage(callEmbed.iframe), [callEmbed]);
+
+  // somebody else's share is received only after Watch (#206): keep Element Call in step with
+  // the choices, also for sound tracks that arrive after their tile
+  const shareIds = model.shares.map((share) => share.id).join('|');
+  useEffect(() => {
+    const apply = () => {
+      const doc = callEmbed.document;
+      const rooms = cachedLiveKitRooms(doc);
+      const local = localIdentities(rooms);
+      shareWatch.update(shareIds ? shareIds.split('|') : []);
+      installShareWatchStyle(doc);
+      applyShareWatch(
+        doc,
+        rooms,
+        (id) => isOwnShare(id, local, myUserId) || shareWatch.isWatched(id)
+      );
+    };
+    apply();
+    const timer = window.setInterval(apply, 1000);
+    return () => window.clearInterval(timer);
+  }, [callEmbed, shareIds, watched, myUserId]);
+  useEffect(
+    () => () => {
+      const doc = callEmbed.document;
+      releaseShareWatch(doc, cachedLiveKitRooms(doc));
+      shareWatch.clear();
+    },
+    [callEmbed]
+  );
+  const shareWatching = (share: StageShare): boolean => {
+    if (watched.has(share.id)) return true;
+    const rooms = cachedLiveKitRooms(callEmbed.document);
+    return isOwnShare(share.id, localIdentities(rooms), myUserId);
+  };
 
   // free the video elements of streams that ended, and all of them when the stage goes away
   useEffect(() => {
@@ -512,6 +617,16 @@ export function CallStage({ callEmbed }: { callEmbed: CallEmbed }) {
         focused={isFocused}
         small={small}
         onSelect={onSelect}
+        watching={shareWatching(item.share)}
+        onWatch={() => shareWatch.watch(item.share.id)}
+        onStopWatching={
+          watched.has(item.share.id)
+            ? () => {
+                shareWatch.stop(item.share.id);
+                if (isFocused) setFocusKey(undefined);
+              }
+            : undefined
+        }
       />
     );
   };
