@@ -153,7 +153,9 @@ enum RichSource: Hashable {
     static func choose(body: String, html: String?) -> RichSource? {
         if let html {
             guard RichText.accepts(html) else { return nil }
-            let document = RichText.parse(html: html)
+            // The timeline asks this for every HTML message on every change; the parsed document
+            // is kept, and the chat draws it from the same cache.
+            let document = RichDocumentCache.document(for: .html(html))
             return document.blocks.isEmpty ? nil : .html(html)
         }
         guard RichText.accepts(body), looksFormatted(body) else { return nil }
@@ -1015,5 +1017,31 @@ final class MarkdownParser {
         var j = start + prefix.count
         while j < chars.count, !chars[j].isWhitespace, chars[j] != ")" { j += 1 }
         return j > start + prefix.count ? j : nil
+    }
+}
+
+/// Parsed messages are kept, so scrolling the chat does not parse the same text again.
+enum RichDocumentCache {
+    private final class Box {
+        let document: RichDocument
+        init(_ document: RichDocument) { self.document = document }
+    }
+
+    private static let cache: NSCache<NSString, Box> = {
+        let cache = NSCache<NSString, Box>()
+        cache.countLimit = 500
+        return cache
+    }()
+
+    static func document(for source: RichSource) -> RichDocument {
+        let key: String
+        switch source {
+        case .html(let text): key = "h" + text
+        case .markdown(let text): key = "m" + text
+        }
+        if let hit = cache.object(forKey: key as NSString) { return hit.document }
+        let document = source.document
+        cache.setObject(Box(document), forKey: key as NSString)
+        return document
     }
 }

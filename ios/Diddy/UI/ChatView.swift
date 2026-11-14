@@ -158,7 +158,7 @@ private struct ChatContent: View {
             }
         }
         .animation(.easeOut(duration: 0.18), value: actionRow?.id)
-        .task { await account.refreshNotifyLevels() }
+        .task { await account.refreshNotifyLevel(roomId: roomId) }
         .alert("Notifications", isPresented: Binding(get: { notifyError != nil }, set: { if !$0 { notifyError = nil } })) {
             Button("OK", role: .cancel) {}
         } message: { Text(notifyError ?? "") }
