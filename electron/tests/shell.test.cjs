@@ -13,7 +13,7 @@ const connections = require('../lib/connections.cjs');
 const myinstants = require('../lib/myinstants.cjs');
 const linkPreview = require('../lib/linkPreview.cjs');
 const { fitIntoArea, parseWindowState } = require('../lib/windowFit.cjs');
-const { resolveFile, contentType, startStaticServer } = require('../lib/staticServer.cjs');
+const { cacheControl, resolveFile, contentType, startStaticServer } = require('../lib/staticServer.cjs');
 const { parseAgentVoiceLaunch, createAgentVoiceTrigger } = require('../lib/agentVoice.cjs');
 
 const tempDir = () => fs.mkdtempSync(path.join(os.tmpdir(), 'diddy-shell-'));
@@ -302,4 +302,17 @@ test('link previews: only public pages, redirects checked, HTML only, size cappe
 
   const big = async () => reply(200, { 'content-type': 'text/html' }, 'a'.repeat(linkPreview.MAX_BYTES + 5000));
   assert.equal((await linkPreview.fetchPage('https://example.com/a', big)).length, linkPreview.MAX_BYTES);
+});
+
+test('hashed build files stay cached, the page shell and config follow updates at once', () => {
+  assert.equal(cacheControl('/assets/index-BsyCF7gU.js'), 'public, max-age=31536000, immutable');
+  assert.equal(cacheControl('/assets/matrix_sdk_crypto_wasm_bg-DwIieW7K.wasm'), 'public, max-age=31536000, immutable');
+  assert.equal(cacheControl('/public/element-call/assets/index-Dul-9Slf.js?v=1'), 'public, max-age=31536000, immutable');
+  assert.equal(cacheControl('/'), 'no-cache');
+  assert.equal(cacheControl('/index.html'), 'no-cache');
+  assert.equal(cacheControl('/sw.js'), 'no-cache');
+  assert.equal(cacheControl('/config.json'), 'no-cache');
+  assert.equal(cacheControl('/public/element-call/index.html'), 'no-cache');
+  assert.equal(cacheControl('/assets/unhashed.js'), 'public, max-age=3600');
+  assert.equal(cacheControl('/manifest.json'), 'public, max-age=3600');
 });

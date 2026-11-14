@@ -23,6 +23,7 @@ import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { useRelations } from '../../../hooks/useRelations';
 import { Reaction } from '../../../components/message';
 import { getHexcodeForEmoji, getShortcodeFor } from '../../../plugins/emoji';
+import { useEmojiData } from '../../../hooks/useEmojiData';
 import { UserAvatar } from '../../../components/user-avatar';
 import { useMediaAuthentication } from '../../../hooks/useMediaAuthentication';
 import { useOpenUserRoomProfile } from '../../../state/hooks/userRoomProfile';
@@ -39,6 +40,7 @@ export const ReactionViewer = as<'div', ReactionViewerProps>(
   ({ className, room, initialKey, relations, requestClose, ...props }, ref) => {
     const mx = useMatrixClient();
     const useAuthentication = useMediaAuthentication();
+    useEmojiData(); // shortcodes load after start
     const reactions = useRelations(
       relations,
       useCallback((rel) => [...(rel.getSortedAnnotationsByKey() ?? [])], [])

@@ -44,6 +44,7 @@ import {
 import { getMemberDisplayName } from '../utils/room';
 import { EMOJI_PATTERN, sanitizeForRegex, URL_NEG_LB } from '../utils/regex';
 import { getHexcodeForEmoji, getShortcodeFor } from './emoji';
+import { useEmojiData } from '../hooks/useEmojiData';
 import { findAndReplace } from '../utils/findAndReplace';
 import {
   parseMatrixToRoom,
@@ -180,19 +181,28 @@ export const factoryRenderLinkifyWithMention = (
   return render;
 };
 
+/**
+ * `:shortcode:` of an emoji in a message tooltip. Read when the tooltip shows, so a message drawn
+ * before the emoji data loaded (plugins/emoji.ts) still names it.
+ */
+function EmojiShortcode({ emoji }: { emoji: string }) {
+  useEmojiData();
+  return <>:{getShortcodeFor(getHexcodeForEmoji(emoji)) ?? 'unknown'}:</>;
+}
+
 export const scaleSystemEmoji = (text: string): (string | JSX.Element)[] =>
   findAndReplace(
     text,
     EMOJI_REG_G,
-    (match, pushIndex) => {
-      const shortcode = getShortcodeFor(getHexcodeForEmoji(match[0])) ?? 'unknown';
-      return (
+    (match, pushIndex) => (
         <TooltipProvider
           key={`scaleSystemEmoji-${pushIndex}`}
           position="Top"
           tooltip={
             <Tooltip style={{ maxWidth: toRem(200) }}>
-              <Text size="T300">:{shortcode}:</Text>
+              <Text size="T300">
+                <EmojiShortcode emoji={match[0]} />
+              </Text>
             </Tooltip>
           }
         >
@@ -204,8 +214,7 @@ export const scaleSystemEmoji = (text: string): (string | JSX.Element)[] =>
             </span>
           )}
         </TooltipProvider>
-      );
-    },
+      ),
     (txt) => txt
   );
 

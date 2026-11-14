@@ -169,9 +169,10 @@ test('each LiveKit signal attempt is logged: open, or closed before open', () =>
   const other = new win.WebSocket('wss://matrix.example.org/other');
   other.dispatchEvent(new Event('open'));
   assert.deepEqual(lines, [
-    'call join: LiveKit signal 1 closed before open after 5000 ms (code 1006)',
-    'call join: LiveKit signal 2 open after 300 ms',
+    'call join: LiveKit signal 1 to sfu.example.org closed before open after 5000 ms (code 1006)',
+    'call join: LiveKit signal 2 to sfu.example.org open after 300 ms',
   ]);
+  assert.ok(!lines.join('\n').includes('access_token'), 'the token never reaches the log');
   assert.ok(second instanceof FakeSocket);
   const wrapped = win.WebSocket;
   watchLivekitSignal(win, () => {}, () => 0);

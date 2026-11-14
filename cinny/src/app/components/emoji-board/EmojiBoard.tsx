@@ -22,6 +22,7 @@ import { preventScrollWithArrowKey, stopPropagation } from '../../utils/keyboard
 import { useRelevantImagePacks } from '../../hooks/useImagePacks';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { useRecentEmoji } from '../../hooks/useRecentEmoji';
+import { useEmojiData } from '../../hooks/useEmojiData';
 import { isUserId, mxcUrlToHttp } from '../../utils/matrix';
 import { editableActiveElement, targetFromEvent } from '../../utils/dom';
 import { useAsyncSearch, UseAsyncSearchOptions } from '../../hooks/useAsyncSearch';
@@ -72,6 +73,8 @@ const useGroups = (
   imagePacks: ImagePack[]
 ): [EmojiGroupItem[], StickerGroupItem[]] => {
   const mx = useMatrixClient();
+  // the emoji groups fill in once the emoji data has loaded
+  const emojiData = useEmojiData();
 
   const recentEmojis = useRecentEmoji(mx, 21);
   const labels = useEmojiGroupLabels();
@@ -108,7 +111,8 @@ const useGroups = (
     });
 
     return g;
-  }, [mx, recentEmojis, labels, imagePacks, tab]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mx, recentEmojis, labels, imagePacks, tab, emojiData]);
 
   const stickerGroupItems = useMemo(() => {
     const g: StickerGroupItem[] = [];
@@ -392,12 +396,14 @@ export function EmojiBoard({
   const groups = emojiTab ? emojiGroupItems : stickerGroupItems;
   const renderItem = useItemRenderer(tab);
 
+  const emojiData = useEmojiData();
   const searchList = useMemo(() => {
     let list: Array<PackImageReader | IEmoji> = [];
     list = list.concat(imagePacks.flatMap((pack) => pack.getImages(usage)));
     if (emojiTab) list = list.concat(emojis);
     return list;
-  }, [emojiTab, usage, imagePacks]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [emojiTab, usage, imagePacks, emojiData]);
 
   const [result, search, resetSearch] = useAsyncSearch(
     searchList,

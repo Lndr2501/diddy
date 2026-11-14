@@ -7,6 +7,7 @@ export function SpecVersions({ baseUrl, children }: { baseUrl: string; children:
   return (
     <SpecVersionsLoader
       baseUrl={baseUrl}
+      useCache
       fallback={(retry) => (
         <ConnectionRecovery baseUrl={baseUrl} phase="connecting" onRetry={retry} />
       )}

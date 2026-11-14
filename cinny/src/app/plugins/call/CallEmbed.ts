@@ -449,16 +449,12 @@ export class CallEmbed {
       this.listenAction(ElementWidgetActions.JoinCall, this.onCallJoined.bind(this))
     );
 
-    // Populate the map of "read up to" events for this widget with the current event in every room.
-    // This is a bit inefficient, but should be okay. We do this for all rooms in case the widget
-    // requests timeline capabilities in other rooms down the road. It's just easier to manage here.
-    this.mx.getRooms().forEach((room) => {
-      // Timelines are most recent last
-      const events = room.getLiveTimeline()?.getEvents() || [];
-      const roomEvent = events[events.length - 1];
-      if (!roomEvent) return; // force later code to think the room is fresh
-      this.readUpToMap[room.roomId] = roomEvent.getId()!;
-    });
+    // The "read up to" marker starts at the newest event of the call's room. The widget is confined
+    // to this room (confineToRoom), so events of other rooms are never fed to it (feedEvent).
+    const ownRoom = this.mx.getRoom(this.roomId);
+    const ownEvents = ownRoom?.getLiveTimeline()?.getEvents() || [];
+    const newest = ownEvents[ownEvents.length - 1];
+    if (newest?.getId()) this.readUpToMap[this.roomId] = newest.getId()!;
 
     // Attach listeners for feeding events - the underlying widget classes handle permissions for us
     this.mx.on(ClientEvent.Event, this.boundOnEvent);
@@ -534,6 +530,7 @@ export class CallEmbed {
   }
 
   private onEvent(ev: MatrixEvent): void {
+    if (ev.getRoomId() !== this.roomId) return;
     this.mx.decryptEventIfNeeded(ev);
     this.feedEvent(ev);
   }
@@ -544,6 +541,8 @@ export class CallEmbed {
 
   private onStateUpdate(ev: MatrixEvent): void {
     if (this.call === null) return;
+    // confined to its room, like feedEvent
+    if (ev.getRoomId() !== this.roomId) return;
     const raw = ev.getEffectiveEvent();
     this.call.feedStateUpdate(raw as IRoomEvent).catch((e) => {
       console.error('Error sending state update to widget: ', e);
@@ -652,6 +651,9 @@ export class CallEmbed {
 
   private feedEvent(ev: MatrixEvent): void {
     if (this.call === null) return;
+    // Every event of every room arrives here, and the marker check below copies the room's
+    // timeline each time. The widget is confined to its room and would drop the others anyway.
+    if (ev.getRoomId() !== this.roomId) return;
     if (
       // If we had decided earlier to feed this event to the widget, but
       // it just wasn't ready, give it another try

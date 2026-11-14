@@ -7,6 +7,7 @@
 
 use tauri::{webview::{DownloadEvent, NewWindowResponse, PageLoadEvent, WebviewWindowBuilder}, Manager, WebviewUrl, TitleBarStyle};
 mod agent_voice;
+mod asset_cache;
 mod app_icon;
 mod diag;
 mod connections;
@@ -518,7 +519,16 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         // Profile export writes the file picked in the save dialog, file paste reads copied files (#179).
         .plugin(tauri_plugin_fs::init())
-        .plugin(tauri_plugin_localhost::Builder::new(app_port()).build())
+        // Hashed build files stay in the web view's cache across starts (asset_cache.rs).
+        .plugin(
+            tauri_plugin_localhost::Builder::new(app_port())
+                .on_request(|request, response| {
+                    if let Some(value) = asset_cache::cache_control(request.url()) {
+                        response.add_header("Cache-Control", value);
+                    }
+                })
+                .build(),
+        )
         // Without VISIBLE: the plugin would show every restored window right away (on window ready),
         // which defeats the hidden-until-loaded start (#25); reveal_window shows it instead.
         // The startup window is temporary and has no state worth keeping.
