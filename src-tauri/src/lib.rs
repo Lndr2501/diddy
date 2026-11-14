@@ -246,12 +246,22 @@ pub(crate) fn build_client_window(
         reveal_window(fallback);
     });
     keep_window_on_screen(&window);
-    // Dragging must never leave a collapsed window behind: repair it on every size change.
+    // Dragging must never leave a collapsed window behind: repair it after size changes. A drag
+    // sends many Resized events; the check runs once they stop for 300 ms.
     {
         let guarded = window.clone();
+        let generation = std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0));
         window.on_window_event(move |event| {
             if matches!(event, tauri::WindowEvent::Resized(_)) {
-                keep_window_on_screen(&guarded);
+                let mine = generation.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
+                let generation = generation.clone();
+                let guarded = guarded.clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_millis(300));
+                    if generation.load(std::sync::atomic::Ordering::SeqCst) == mine {
+                        keep_window_on_screen(&guarded);
+                    }
+                });
             }
         });
     }
@@ -509,6 +519,7 @@ pub fn run() {
             connections::account_labels,
             connections::set_account_label,
             agent_voice::agent_voice_state,
+            agent_voice::agent_voice_wait,
             updater::updater_state,
             updater::updater_action,
             updater::updater_open_release_page,

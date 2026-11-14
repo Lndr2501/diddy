@@ -2,6 +2,31 @@
 
 ## Unveröffentlicht
 
+- **iOS/iPadOS: Dateien in den Chat ziehen (#216):** Bilder, Videos und Dateien lassen sich aus Fotos, Dateien, Safari oder anderen Apps in einen Chat ziehen; sie landen wie beim Datei-Picker als Anhänge über dem Eingabefeld (auf dem iPad systemweit, auf dem iPhone mit Drag-and-Drop zwischen Apps). Gezogener Text geht wie bisher ins Eingabefeld. Am Desktop gab es das schon.
+- **Leistung, zweite Runde (macOS, Linux):**
+  - Agent Voice fragt die Taste nicht mehr alle 60 ms über die Brücke ab: Die App meldet sich erst, wenn sich Taste oder Auslöser ändern (`agent_voice_wait`, Tauri und Electron; ältere Apps werden weiter abgefragt).
+  - Eigene Sprech-Erkennung im Call misst alle 100 statt 60 ms, stumm nur noch alle 400 ms.
+  - Namensschilder: Der fließende Verlauf bewegt sich als Ebene (`transform`) statt jedes Bild neu zu malen; Videos laufen nur, solange die Zeile sichtbar ist.
+  - Link-Vorschauen laden erst, wenn sie in die Nähe des Bildschirms kommen. Die App liest von einer Seite höchstens 256 KB und hört nach `</head>` auf; Tauri nutzt dafür eine wiederverwendete Verbindung.
+  - Die Tages-Kapsel im Verlauf ist eine feste Fläche statt einer Unschärfe, die beim Scrollen ständig neu berechnet wurde.
+  - Fenstergröße und -position werden erst gespeichert bzw. geprüft, wenn das Ziehen aufhört.
+  - Start-Paket 3,43 → 3,00 MB: Einstellungen, Lobby, Explore, Login-Seiten, Raum-/Space-Einstellungen, die Erstellen- und Such-Dialoge und die Seiten der eingebauten Plugins werden erst beim ersten Öffnen geladen.
+  - Space-Scans (Options-Raum, Willkommen, Entdecken) teilen sich einen Cache (5 Minuten); eine Änderung der Unterräume eines Space leert seinen Eintrag sofort.
+  - Hintergrund-Prüfungen (Options-Raum, Space-Beitritte, Update-Hinweis) laufen nur, solange das Fenster sichtbar ist; beim Zurückkommen holt die App eine fällige Prüfung nach.
+  - Linux: Ein verstecktes Fenster ohne Call darf wieder gedrosselt werden; im Call bleibt die Drosselung aus.
+  - Diddy-Profile im Nachrichtenmodus: Die gelesenen Diddy-Ereignisse der Options-Räume bleiben zwischen den Starts gespeichert (IndexedDB). Ein Start liest nur noch, was seitdem dazukam, statt jedes Mal 300 Ereignisse zu holen und zu entschlüsseln; jedes gespeicherte Ereignis läuft beim Einlesen durch dieselben Prüfungen wie ein neues, und eigene Daten gelten weiter als „aktuell“, solange sie unter den neuesten 150 Ereignissen sind (kein erneutes Senden bei jedem Start).
+  - Call-Beitritt: OpenID-Token wird bis kurz vor Ablauf wiederverwendet und schon beim Klick geholt, ebenso die Olm-Sitzungen zu den Geräten im Raum und eine Verbindung zum LiveKit-Dienst des Servers.
+  - Start: Der gespeicherte Sync wird in einem eigenen Worker geladen und gespeichert (nicht mehr auf dem Haupt-Thread), und die Verschlüsselung (WASM und ihr Speicher) startet gleichzeitig damit statt danach.
+  - Verschlüsselte Bilder: Der Chat lädt und entschlüsselt das Vorschaubild, das der Absender mitschickt, statt des Originals; das Original kommt erst in der Großansicht. GIFs bleiben beim Original.
+  - Die nie genutzte Twemoji-Schrift (1,9 MB) ist raus. Der macOS-Release wird mit Link-Zeit-Optimierung und ohne Debug-Symbole gebaut.
+- **Leistung, zweite Runde (iOS):**
+  - Chat: Eine Nachrichtenzeile wird nur neu gezeichnet, wenn sich ihre Nachricht oder ihr Platz im Layout ändert. Tippen, Tippanzeige und Lesebestätigungen zeichneten bisher jede sichtbare Zeile neu. Der Entwurf wird erst gespeichert, wenn das Tippen pausiert.
+  - Chat-Aufbau: Jedes Timeline-Item geht nur einmal durch das SDK; bei einer neuen Nachricht oder Reaktion wird nur das geänderte umgerechnet statt alle geladenen.
+  - Bilder: Wenn der Absender ein Vorschaubild (ab 600 px) mitschickt, lädt der Chat dieses statt des Originals; die Großansicht zeigt weiter das Original.
+  - Raumliste: Eine Änderung fragt nur die Räume neu ab, die sich geändert haben, statt alle nacheinander (einmal pro Minute alles). Server-Badges werden pro Änderung der Kanäle einmal berechnet.
+  - Diddy-Profile: Welche Räume Options-Räume sind, bleibt auf dem Gerät gespeichert (ein „nein“ eine Woche); neue Räume werden zu fünft statt einzeln geprüft.
+  - Call-Beitritt: OpenID-Token und Mikrofon-Freigabe laufen parallel zur Serverwahl; nach dem Verbinden gehen Teilnahme, Schlüssel und Mikrofon gleichzeitig raus.
+  - Animierte Profilbilder werden erst geprüft, wenn das Bild knapp eine Sekunde sichtbar ist, höchstens zwei gleichzeitig.
 ## 1.8.0 (2026-11-14)
 
 - **Bot-Karten: Link in Hinweis-Chips:** Eine `note`-Karte darf jetzt einen Link (`url`, nur http/https) und eine Beschriftung (`linkLabel`) mitschicken. Diddy zeigt ihn als kleinen runden Knopf rechts im Chip, z. B. „Issue öffnen“ beim neuen Issue-Bot ([Lndr2501/issuebotmatrix](https://github.com/Lndr2501/issuebotmatrix)). Vorher war der Link nur in Element sichtbar. Auf iOS genauso (kleiner Knopf rechts im Chip, öffnet im Browser).

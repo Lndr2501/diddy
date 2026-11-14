@@ -8,6 +8,7 @@ import {
   runSpaceAutoJoin,
   setSpaceAutoJoin,
 } from '../utils/spaceJoin';
+import { setVisibleInterval } from '../utils/visibleInterval';
 
 const subscribe = (onChange: () => void) => {
   window.addEventListener(AUTO_JOIN_CHANGE_EVENT, onChange);
@@ -67,11 +68,11 @@ export const useSpaceAutoJoinWorker = () => {
         runAll();
       }
     }, 2000);
-    const interval = window.setInterval(runAll, RECHECK_INTERVAL_MS);
+    const stopRecheck = setVisibleInterval(runAll, RECHECK_INTERVAL_MS);
     return () => {
       window.clearTimeout(first);
       window.clearInterval(retryUntilSynced);
-      window.clearInterval(interval);
+      stopRecheck();
     };
   }, [mx, spaceIds, runAll]);
 

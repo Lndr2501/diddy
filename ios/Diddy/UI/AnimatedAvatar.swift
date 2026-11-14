@@ -66,6 +66,8 @@ actor AnimatedAvatarMedia {
         if let data = try? Data(contentsOf: url) { return data }
         if let task = running[mxc] { return await task.value }
         let task = Task<Data?, Never> {
+            await self.acquireDownload()
+            defer { Task { await self.releaseDownload() } }
             guard let source = try? MediaSource.fromUrl(url: mxc),
                   let data = try? await client.getMediaContent(mediaSource: source), !data.isEmpty else { return nil }
             return data
@@ -78,6 +80,22 @@ actor AnimatedAvatarMedia {
             try? data.write(to: url, options: .atomic)
         }
         return data
+    }
+
+    // At most two originals at a time, so they never crowd out chat pictures and thumbnails.
+    private static let maxDownloads = 2
+    private var downloads = 0
+
+    private func acquireDownload() async {
+        // the actor is free while waiting, so a finishing download can give its slot back
+        while downloads >= Self.maxDownloads {
+            try? await Task.sleep(nanoseconds: 100_000_000)
+        }
+        downloads += 1
+    }
+
+    private func releaseDownload() {
+        downloads = max(0, downloads - 1)
     }
 
     private func loadStills() {

@@ -326,21 +326,47 @@ extension MatrixAccount {
         defer { diddyLoading = false }
         diddyLoadedAt = Date()
 
-        // The marker is checked once per room and session; most rooms answer "not found". Only
-        // the marker counts, like desktop's `isOptionsRoom`: a room that merely carries the topic
-        // tag is no options room there, and reading it here would change which room comes first.
+        // The marker is checked once per room; most rooms answer "not found". Only the marker
+        // counts, like desktop's `isOptionsRoom`: a room that merely carries the topic tag is no
+        // options room there, and reading it here would change which room comes first. Answers are
+        // kept on the device (DiddyMarkerChecks), a "no" for a week, and up to 5 rooms are asked at
+        // the same time instead of up to 300 one after the other on every cold start.
+        if !diddyMarkerChecksLoaded {
+            diddyMarkerChecksLoaded = true
+            let known = DiddyMarkerChecks.load(accountId: id)
+            diddyOptionsRooms.formUnion(known.options)
+            diddyCheckedRooms.formUnion(known.checked)
+        }
         let candidates = rooms.filter { $0.isJoined && !$0.isSpace && !$0.isDirect && !diddyCheckedRooms.contains($0.id) }
-        for room in candidates.prefix(300) {
-            do {
-                _ = try await clientRequest("/_matrix/client/v3/rooms/\(Self.pathComponent(room.id))/state/\(DiddyEvents.marker)/")
-                diddyOptionsRooms.insert(room.id)
-                diddyCheckedRooms.insert(room.id)
-            } catch let error as ClientAPIError where error.errcode == "M_NOT_FOUND" {
-                diddyCheckedRooms.insert(room.id)
-            } catch {
-                // Offline or similar: asked again on the next load.
+        var answers: [(roomId: String, isOptions: Bool)] = []
+        await withTaskGroup(of: (String, Bool?).self) { group in
+            var pending = Array(candidates.prefix(300).map(\.id).reversed())
+            func next() {
+                guard let roomId = pending.popLast() else { return }
+                group.addTask { @MainActor [weak self] in
+                    guard let self else { return (roomId, nil) }
+                    do {
+                        _ = try await self.clientRequest("/_matrix/client/v3/rooms/\(Self.pathComponent(roomId))/state/\(DiddyEvents.marker)/")
+                        return (roomId, true)
+                    } catch let error as ClientAPIError where error.errcode == "M_NOT_FOUND" {
+                        return (roomId, false)
+                    } catch {
+                        // Offline or similar: asked again on the next load.
+                        return (roomId, nil)
+                    }
+                }
+            }
+            for _ in 0..<5 { next() }
+            while let answer = await group.next() {
+                if let result = answer.1 { answers.append((answer.0, result)) }
+                next()
             }
         }
+        for answer in answers {
+            if answer.isOptions { diddyOptionsRooms.insert(answer.roomId) }
+            diddyCheckedRooms.insert(answer.roomId)
+        }
+        if !answers.isEmpty { DiddyMarkerChecks.remember(answers, accountId: id) }
         let joined = Set(rooms.filter(\.isJoined).map(\.id))
         // Desktop's order (`localeCompare`), so the same room wins here and gets your writes.
         let optionsRooms = DiddyOptionsRoomLogic.sortedLikeDesktop(diddyOptionsRooms.union(diddyLightRoomIds).filter { joined.contains($0) })

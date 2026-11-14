@@ -68,6 +68,8 @@ import { RecentOwnData, RECENT_WINDOW_EVENTS } from './recentOwn';
 import { makeBadgeId, pickDefinition, resolveAwards } from './trust';
 import { diag } from '../diagnostics';
 import { badgeStateOpenToMembers, hardenBadgePowerLevels } from './badgePower';
+import { StoredEvent, takeUntil } from './backfillDelta';
+import { loadRoomHistory, RoomHistory, saveRoomHistory } from './backfillCache';
 
 // --- change tracking ---------------------------------------------------------------------------
 
@@ -327,29 +329,69 @@ const runLimited = async <T>(
   await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
 };
 
-type BackfillResult = { fetched: number; ingested: number };
+type BackfillResult = {
+  fetched: number;
+  ingested: number;
+  /** newest event of the room seen now (where the next start stops reading) */
+  newestId?: string;
+  /** the Diddy events read now, clear, for the stored history */
+  diddy: StoredEvent[];
+};
 
-/** Unencrypted room: the server filters by event type. */
-const backfillFiltered = async (mx: MatrixClient, room: Room): Promise<BackfillResult> => {
+/** The clear event as stored for the next start, if it is a Diddy event. */
+const toStored = (e: MatrixEvent, depth: number): StoredEvent | undefined => {
+  const id = e.getId();
+  const sender = e.getSender();
+  if (!id || !sender || !DIDDY_EVENTS.has(e.getType()) || e.isState()) return undefined;
+  return {
+    event_id: id,
+    type: e.getType(),
+    sender,
+    origin_server_ts: e.getTs(),
+    content: e.getContent() as Record<string, unknown>,
+    depth,
+  };
+};
+
+/** Unencrypted room: the server filters by event type. Stops at the history read last time. */
+const backfillFiltered = async (
+  mx: MatrixClient,
+  room: Room,
+  stopId?: string
+): Promise<BackfillResult> => {
   const filter = Filter.fromJson(mx.getUserId(), '', {
     room: { timeline: { types: [PROFILE_EVENT, BADGE_DEF_EVENT, BADGE_AWARD_EVENT] } },
   });
   const res = await mx.createMessagesRequest(room.roomId, null, 300, Direction.Backward, filter);
   const mapper = mx.getEventMapper();
+  const { events: fresh } = takeUntil(res.chunk, stopId);
   let ingested = 0;
+  const diddy: StoredEvent[] = [];
   // the server returns only Diddy events here, so the newest ones are counted among those
-  res.chunk.forEach((raw, i) => {
-    if (ingestEvent(mapper(raw), room.roomId, i < RECENT_WINDOW_EVENTS)) ingested += 1;
+  fresh.forEach((raw, i) => {
+    const event = mapper(raw);
+    if (ingestEvent(event, room.roomId, i < RECENT_WINDOW_EVENTS)) ingested += 1;
+    const stored = toStored(event, i);
+    if (stored) diddy.push(stored);
   });
-  return { fetched: res.chunk.length, ingested };
+  return { fetched: fresh.length, ingested, newestId: res.chunk[0]?.event_id ?? stopId, diddy };
 };
 
-/** Encrypted room: type filtering is impossible, fetch the last 300 events (2 pages) and decrypt. */
-const backfillEncrypted = async (mx: MatrixClient, room: Room): Promise<BackfillResult> => {
+/**
+ * Encrypted room: type filtering is impossible, fetch the last 300 events (2 pages) and decrypt,
+ * or only those newer than the history read last time.
+ */
+const backfillEncrypted = async (
+  mx: MatrixClient,
+  room: Room,
+  stopId?: string
+): Promise<BackfillResult> => {
   const mapper = mx.getEventMapper();
   let from: string | null = null;
   let fetched = 0;
   let ingested = 0;
+  let newestId: string | undefined;
+  const diddy: StoredEvent[] = [];
   for (let page = 0; page < 2; page += 1) {
     // eslint-disable-next-line no-await-in-loop
     const res = (await mx.createMessagesRequest(
@@ -358,10 +400,13 @@ const backfillEncrypted = async (mx: MatrixClient, room: Room): Promise<Backfill
       RECENT_WINDOW_EVENTS,
       Direction.Backward
     )) as unknown as {
-      chunk: Parameters<typeof mapper>[0][];
+      chunk: (Parameters<typeof mapper>[0] & { event_id?: string })[];
       end?: string;
     };
-    const events = res.chunk.map((raw) => mapper(raw)).filter((e) => !e.isState());
+    if (page === 0) newestId = res.chunk[0]?.event_id ?? stopId;
+    const { events: fresh, reached } = takeUntil(res.chunk, stopId);
+    const pageStart = fetched;
+    const events = fresh.map((raw) => mapper(raw)).filter((e) => !e.isState());
     fetched += events.length;
     const recent = page === 0;
     // eslint-disable-next-line no-await-in-loop
@@ -369,11 +414,39 @@ const backfillEncrypted = async (mx: MatrixClient, room: Room): Promise<Backfill
       await mx.decryptEventIfNeeded(e).catch(() => {});
       if (e.getType() === ENCRYPTED_TYPE) logDecryptFailure(e, room.roomId);
       if (ingestEvent(e, room.roomId, recent)) ingested += 1;
+      const stored = toStored(e, pageStart + events.indexOf(e));
+      if (stored) diddy.push(stored);
     });
-    if (!res.end || res.chunk.length === 0) break;
+    if (reached || !res.end || res.chunk.length === 0) break;
     from = res.end;
   }
-  return { fetched, ingested };
+  return { fetched, ingested, newestId, diddy };
+};
+
+/** Reads back what was stored at the last start (counted as older history until the delta is known). */
+const ingestStored = (mx: MatrixClient, roomId: string, history: RoomHistory | undefined): number => {
+  if (!history) return 0;
+  const mapper = mx.getEventMapper();
+  let ingested = 0;
+  history.events.forEach((raw) => {
+    if (ingestEvent(mapper({ ...raw, room_id: roomId }), roomId, false)) ingested += 1;
+  });
+  return ingested;
+};
+
+/**
+ * Own stored events that are still among the newest RECENT_WINDOW_EVENTS of the room now that
+ * `newer` events arrived above them: they count as recent, like after a full read, so coming online
+ * does not send them again.
+ */
+const noteStoredRecent = (roomId: string, history: RoomHistory | undefined, newer: number) => {
+  const me = attachedTo?.getUserId();
+  if (!history || !me) return;
+  history.events.forEach((e) => {
+    if (e.sender !== me || e.depth === undefined || e.depth + newer >= RECENT_WINDOW_EVENTS) return;
+    const key = e.content[KEY_FIELD];
+    if (typeof key === 'string') recentOwn.noteRecent(roomId, e.type, key, e.origin_server_ts);
+  });
 };
 
 const backfillRoom = (mx: MatrixClient, room: Room) => {
@@ -381,12 +454,25 @@ const backfillRoom = (mx: MatrixClient, room: Room) => {
   backfilled.add(room.roomId);
   backfillTries.set(room.roomId, (backfillTries.get(room.roomId) ?? 0) + 1);
   const encrypted = mx.isRoomEncrypted(room.roomId);
-  (encrypted ? backfillEncrypted(mx, room) : backfillFiltered(mx, room))
-    .then(({ fetched, ingested }) => {
+  const userId = mx.getUserId() ?? '';
+  let stored: RoomHistory | undefined;
+  loadRoomHistory(userId, room.roomId)
+    .catch(() => undefined)
+    .then((history) => {
+      stored = history;
+      if (ingestStored(mx, room.roomId, history) > 0) notify();
+      const stopId = history?.newestId;
+      return encrypted ? backfillEncrypted(mx, room, stopId) : backfillFiltered(mx, room, stopId);
+    })
+    .then(({ fetched, ingested, newestId, diddy }) => {
+      noteStoredRecent(room.roomId, stored, fetched);
+      saveRoomHistory(userId, room.roomId, stored, newestId, diddy, fetched).catch(() => undefined);
       recentOwn.markScanned(room.roomId);
       scannedRooms.add(room.roomId);
       diag(
-        `diddy: backfill done room=${room.roomId} encrypted=${encrypted} fetched=${fetched} ingested=${ingested}`
+        `diddy: backfill done room=${room.roomId} encrypted=${encrypted} fetched=${fetched} ingested=${ingested} stored=${
+          stored?.events.length ?? 0
+        }`
       );
       // also without new data: waiting profile writes may go ahead now
       notify();

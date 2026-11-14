@@ -161,6 +161,10 @@ export default defineConfig({
       ],
     },
   },
+  // Module workers (the sync store worker, src/client/indexeddbWorker.ts) are split like the app.
+  worker: {
+    format: 'es',
+  },
   build: {
     outDir: 'dist',
     sourcemap: 'hidden',

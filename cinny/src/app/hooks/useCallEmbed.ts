@@ -14,6 +14,7 @@ import { useResizeObserver } from './useResizeObserver';
 import { CallControlState } from '../plugins/call/CallControlState';
 import { useCallMembersChange, useCallSession } from './useCall';
 import { CallPreferences } from '../state/callPreferences';
+import { prewarmCall } from '../plugins/call/callPrewarm';
 
 const CallEmbedContext = createContext<CallEmbed | undefined>(undefined);
 
@@ -43,6 +44,8 @@ export const createCallEmbed = (
   container: HTMLElement,
   pref?: CallPreferences
 ): CallEmbed => {
+  // token, Olm sessions and the LiveKit connection start while the call page loads
+  prewarmCall(mx, room);
   const rtcSession = mx.matrixRTC.getRoomSession(room);
   const ongoing = rtcSession.memberships.length > 0;
 

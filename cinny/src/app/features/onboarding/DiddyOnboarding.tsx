@@ -5,7 +5,7 @@ import { MatrixClient } from 'matrix-js-sdk';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { stopPropagation } from '../../utils/keyboard';
 import { SettingsSheet } from '../../components/SettingsSheet';
-import { Settings, SettingsPages } from '../settings/Settings';
+import { Settings, SettingsPages } from '../settings';
 import { NAME_FONTS, DiddyStatus } from '../../plugins/diddy/types';
 import {
   adoptRoomAsOptionsRoom,

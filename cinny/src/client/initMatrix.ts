@@ -11,11 +11,18 @@ type Session = {
   deviceId: string;
 };
 
+/** The sync store's IndexedDB work in a worker, where the platform has module workers. */
+const storeWorker = (): (() => Worker) | undefined => {
+  if (typeof Worker === 'undefined') return undefined;
+  return () => new Worker(new URL('./indexeddbWorker.ts', import.meta.url), { type: 'module' });
+};
+
 export const initClient = async (session: Session): Promise<MatrixClient> => {
   const indexedDBStore = new IndexedDBStore({
     indexedDB: global.indexedDB,
     localStorage: global.localStorage,
     dbName: 'web-sync-store',
+    workerFactory: storeWorker(),
   });
 
   const legacyCryptoStore = new IndexedDBCryptoStore(global.indexedDB, 'crypto-store');
@@ -32,8 +39,8 @@ export const initClient = async (session: Session): Promise<MatrixClient> => {
     verificationMethods: ['m.sas.v1'],
   });
 
-  await indexedDBStore.startup();
-  await mx.initRustCrypto();
+  // The saved sync and the crypto (WASM and its store) load at the same time, not one after the other.
+  await Promise.all([indexedDBStore.startup(), mx.initRustCrypto()]);
 
   mx.setMaxListeners(50);
 

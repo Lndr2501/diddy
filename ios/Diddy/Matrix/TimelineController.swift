@@ -40,6 +40,12 @@ struct MessageRow: Identifiable {
     var card: BotCard? = nil
     /// A shared song (`app.diddy.music`), drawn like iMessage's lyrics card.
     var music: MusicCard? = nil
+    /// The sender's small version of a still picture; the chat shows it, the viewer the original.
+    var imageThumbnail: MediaSource? = nil
+    /// Goes up whenever the SDK hands over a changed version of this message (reaction, edit,
+    /// send state, read receipt...). The chat only draws a row again when this or its layout
+    /// changed (`MessageRowView`'s `Equatable`).
+    var revision = 0
     /// The change a membership line is about, for its symbol.
     var membership: TimelineLayout.Membership? = nil
     /// Formatted text (HTML or Markdown block syntax); nil keeps the plain rendering of `body`.
@@ -86,6 +92,23 @@ final class TimelineController: ObservableObject {
     private var navObserver: AnyCancellable?
     private(set) var timeline: Timeline?
     private(set) var items: [TimelineItem] = []
+    /// The item each row was last built from, and its revision. The SDK replaces an item object
+    /// whenever the message changes; the old object is kept here, so `===` is never fooled by a
+    /// new object at a reused address.
+    private var rowRevisions: [String: (item: TimelineItem, revision: Int)] = [:]
+
+    /// What one timeline item turned into, kept per item object: the SDK hands over a new object
+    /// when an item changes, so an object seen before needs no second trip through the FFI
+    /// (`asEvent`, the row) on the next diff (docs/performance.md #25). The item is held, so its
+    /// address cannot be reused by a new object.
+    private enum BuiltItem {
+        case day(Date)
+        case skip
+        case event(date: Date, isCreate: Bool, row: MessageRow?)
+    }
+    private var builtItems: [ObjectIdentifier: (item: TimelineItem, built: BuiltItem)] = [:]
+    /// The settings the cached rows were built with; a change builds everything again.
+    private var builtWith: (previews: Bool, encrypted: Bool, membership: Bool)?
     private var listener: TaskHandle?
     private var typingListener: TaskHandle?
     private var isTyping = false
@@ -366,25 +389,45 @@ final class TimelineController: ObservableObject {
         var createdAt: Date?
         var firstEventDate: Date?
         let previews = ChatSettings.urlPreviews(encrypted: roomEncrypted)
-        for item in items {
-            if let virtual = item.asVirtual() {
-                if case .dateDivider(let ts) = virtual {
-                    pendingDay = Date(timeIntervalSince1970: TimeInterval(ts) / 1000)
-                }
-                continue
-            }
-            guard let event = item.asEvent() else { continue }
-            let date = Date(timeIntervalSince1970: TimeInterval(event.timestamp) / 1000)
-            if firstEventDate == nil { firstEventDate = date }
-            if createdAt == nil, case .state(_, let content) = event.content, case .roomCreate = content {
-                createdAt = date
-            }
-            guard var row = Self.row(for: event, id: item.uniqueId().id, me: ownUserId, previews: previews) else { continue }
-            row.previewsLocal = roomEncrypted
-            row.dayDivider = pendingDay
-            pendingDay = nil
-            built.append(row)
+        let membership = ChatSettings.showMembership
+        if builtWith?.previews != previews || builtWith?.encrypted != roomEncrypted || builtWith?.membership != membership {
+            builtItems = [:]
         }
+        builtWith = (previews, roomEncrypted, membership)
+        var revisions: [String: (item: TimelineItem, revision: Int)] = [:]
+        var built_: [ObjectIdentifier: (item: TimelineItem, built: BuiltItem)] = [:]
+        built_.reserveCapacity(items.count)
+        for item in items {
+            let key = ObjectIdentifier(item)
+            let entry: BuiltItem
+            if let known = builtItems[key], known.item === item {
+                entry = known.built
+            } else {
+                entry = buildItem(item, previews: previews)
+            }
+            built_[key] = (item, entry)
+            switch entry {
+            case .day(let day):
+                pendingDay = day
+                continue
+            case .skip:
+                continue
+            case .event(let date, let isCreate, let cachedRow):
+                if firstEventDate == nil { firstEventDate = date }
+                if createdAt == nil, isCreate { createdAt = date }
+                guard var row = cachedRow else { continue }
+                if let known = rowRevisions[row.id], known.item === item {
+                    row.revision = known.revision
+                } else {
+                    row.revision = (rowRevisions[row.id]?.revision ?? 0) + 1
+                }
+                revisions[row.id] = (item, row.revision)
+                row.dayDivider = pendingDay
+                pendingDay = nil
+                built.append(row)
+            }
+        }
+        builtItems = built_
         // The creation event may be filtered out; the first event of a fully loaded room is as good.
         if createdAt == nil, reachedStart { createdAt = firstEventDate }
 
@@ -419,8 +462,24 @@ final class TimelineController: ObservableObject {
             previous = entry
             result.append(row)
         }
+        rowRevisions = revisions
         rows = result
         nav.update(items: items, rowIds: Set(result.map { $0.id }), me: ownUserId)
+    }
+
+    /// One item through the FFI: a day divider, nothing to show, or an event and its row.
+    private func buildItem(_ item: TimelineItem, previews: Bool) -> BuiltItem {
+        if let virtual = item.asVirtual() {
+            if case .dateDivider(let ts) = virtual { return .day(Date(timeIntervalSince1970: TimeInterval(ts) / 1000)) }
+            return .skip
+        }
+        guard let event = item.asEvent() else { return .skip }
+        let date = Date(timeIntervalSince1970: TimeInterval(event.timestamp) / 1000)
+        var isCreate = false
+        if case .state(_, let content) = event.content, case .roomCreate = content { isCreate = true }
+        var row = Self.row(for: event, id: item.uniqueId().id, me: ownUserId, previews: previews)
+        row?.previewsLocal = roomEncrypted
+        return .event(date: date, isCreate: isCreate, row: row)
     }
 
     private static func row(for event: EventTimelineItem, id: String, me: String, previews: Bool = false) -> MessageRow? {
@@ -435,6 +494,7 @@ final class TimelineController: ObservableObject {
         var reply: (sender: String, senderId: String, text: String, avatar: String?)?
         var card: BotCard?
         var music: MusicCard?
+        var imageThumbnail: MediaSource?
         var membership: TimelineLayout.Membership?
         var extras = MessageExtras()
         var isSticker = false
@@ -459,6 +519,12 @@ final class TimelineController: ObservableObject {
                 if inspection.hidden { return nil }
                 card = inspection.card
                 music = inspection.music
+                if case .image(let image) = message.msgType, image.info?.isAnimated != true,
+                   image.info?.mimetype?.lowercased().contains("gif") != true {
+                    // only a thumbnail big enough for the chat column (some clients send 320 px ones)
+                    let side = max(image.info?.thumbnailInfo?.width ?? 0, image.info?.thumbnailInfo?.height ?? 0)
+                    if side >= 600 { imageThumbnail = image.info?.thumbnailSource }
+                }
             case .sticker(let text, let info, let source):
                 isSticker = true
                 body = .image(source, filename: text, width: info.width.map { CGFloat($0) }, height: info.height.map { CGFloat($0) })
@@ -505,6 +571,7 @@ final class TimelineController: ObservableObject {
         )
         if isCall { row.callCount = 1 }
         row.music = card == nil ? music : nil
+        row.imageThumbnail = imageThumbnail
         // A bot card or a song keeps its own look; everything else gets the desktop's rendering.
         if card == nil && music == nil {
             row.rich = extras.rich

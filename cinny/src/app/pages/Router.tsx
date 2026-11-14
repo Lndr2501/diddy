@@ -9,7 +9,7 @@ import {
 } from 'react-router-dom';
 
 import { ClientConfig } from '../hooks/useClientConfig';
-import { AuthLayout, Login, Register, ResetPassword } from './auth';
+import { lazyNamed } from '../components/LazyPage';
 import {
   DIRECT_PATH,
   EXPLORE_PATH,
@@ -43,11 +43,9 @@ import { ClientBindAtoms, ClientLayout, ClientRoot } from './client';
 import { Home, HomeRouteRoomProvider, HomeSearch } from './client/home';
 import { DirectCreate, DirectRouteRoomProvider } from './client/direct';
 import { RouteSpaceProvider, Space, SpaceRouteRoomProvider, SpaceSearch } from './client/space';
-import { Explore, FeaturedRooms, PublicRooms } from './client/explore';
 import { Notifications, Inbox, Invites } from './client/inbox';
 import { setAfterLoginRedirectPath } from './afterLoginRedirectPath';
 import { Room } from '../features/room';
-import { Lobby } from '../features/lobby';
 import { WelcomePage } from './client/WelcomePage';
 import { SidebarNav } from './client/SidebarNav';
 import { PageRoot } from '../components/page';
@@ -58,18 +56,44 @@ import { ClientNonUIFeatures } from './client/ClientNonUIFeatures';
 import { AuthRouteThemeManager, UnAuthRouteThemeManager } from './ThemeManager';
 import { ReceiveSelfDeviceVerification } from '../components/DeviceVerification';
 import { AutoRestoreBackupOnVerification } from '../components/BackupRestore';
-import { RoomSettingsRenderer } from '../features/room-settings';
 import { ClientRoomsNotificationPreferences } from './client/ClientRoomsNotificationPreferences';
-import { SpaceSettingsRenderer } from '../features/space-settings';
 import { UserRoomProfileRenderer } from '../components/UserRoomProfileRenderer';
-import { CreateRoomModalRenderer } from '../features/create-room';
 import { HomeCreateRoom } from './client/home/CreateRoom';
 import { Create } from './client/create';
-import { CreateSpaceModalRenderer } from '../features/create-space';
-import { SearchModalRenderer } from '../features/search';
 import { getFallbackSession } from '../state/sessions';
 import { CallStatusRenderer } from './CallStatusRenderer';
 import { CallEmbedProvider } from '../components/CallEmbedProvider';
+
+// Screens most starts never show are fetched when first needed (smaller start bundle).
+const AuthLayout = lazyNamed(() => import('./auth'), 'AuthLayout');
+const Login = lazyNamed(() => import('./auth'), 'Login');
+const Register = lazyNamed(() => import('./auth'), 'Register');
+const ResetPassword = lazyNamed(() => import('./auth'), 'ResetPassword');
+const Explore = lazyNamed(() => import('./client/explore'), 'Explore');
+const FeaturedRooms = lazyNamed(() => import('./client/explore'), 'FeaturedRooms');
+const PublicRooms = lazyNamed(() => import('./client/explore'), 'PublicRooms');
+const Lobby = lazyNamed(() => import('../features/lobby'), 'Lobby');
+const RoomSettingsRenderer = lazyNamed(
+  () => import('../features/room-settings'),
+  'RoomSettingsRenderer',
+  null
+);
+const SpaceSettingsRenderer = lazyNamed(
+  () => import('../features/space-settings'),
+  'SpaceSettingsRenderer',
+  null
+);
+const CreateRoomModalRenderer = lazyNamed(
+  () => import('../features/create-room'),
+  'CreateRoomModalRenderer',
+  null
+);
+const CreateSpaceModalRenderer = lazyNamed(
+  () => import('../features/create-space'),
+  'CreateSpaceModalRenderer',
+  null
+);
+const SearchModalRenderer = lazyNamed(() => import('../features/search'), 'SearchModalRenderer', null);
 
 export const createRouter = (clientConfig: ClientConfig, screenSize: ScreenSize) => {
   const { hashRouter } = clientConfig;

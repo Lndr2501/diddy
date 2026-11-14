@@ -359,11 +359,17 @@ final class CallSession: NSObject, ObservableObject {
     // MARK: Connect / disconnect
 
     func connect() async throws {
+        // What does not depend on each other runs side by side (docs/performance.md #16): the
+        // OpenID token for the voice server and the microphone permission are asked for while the
+        // voice server is chosen, instead of one step after the other.
+        let client = account.client
+        async let openIdToken = client.requestOpenidToken()
+        let micPermission = Task { await AVCaptureDevice.requestAccess(for: .audio) }
         encrypted = await matrixRoom.isEncrypted()
         let transport = try await chooseTransport()
         self.transport = transport
         state = "Getting voice server access…"
-        let sfu = try await requestSFUConfig(serviceUrl: transport.serviceUrl)
+        let sfu = try await requestSFUConfig(serviceUrl: transport.serviceUrl, token: try await openIdToken)
 
         agentVoiceHandle = account.client.subscribeToCustomToDeviceMessages(
             eventTypes: [AgentVoice.eventType],
@@ -411,12 +417,16 @@ final class CallSession: NSObject, ObservableObject {
             keyProvider.setKey(keyData: ownKey, participantId: liveKitRoom.localParticipant.identity?.stringValue ?? ownIdentity, index: ownKeyIndex)
         }
         refreshMembers()
+        // Membership, keys and microphone go out together, so the others hear you sooner.
+        let microphone = Task { await self.startMicrophone(allowed: await micPermission.value) }
+        let present = Array(liveKitRoom.remoteParticipants.values)
+        let keys = Task { if self.encrypted { await self.distributeKey(to: present) } }
         do {
             try await sendMembership()
         } catch {
             throw DiddyError("You do not have permission to join a call in this room. An admin has to allow it.")
         }
-        if encrypted { await distributeKey(to: Array(liveKitRoom.remoteParticipants.values)) }
+        await keys.value
         reactionHandle = matrixRoom.subscribeToMessageLikeEvents(
             eventType: messageLikeEventTypeFromString(s: CallReactions.eventType),
             listener: CallReactionListener { [weak self] event in
@@ -424,18 +434,7 @@ final class CallSession: NSObject, ObservableObject {
             }
         )
 
-        // Without microphone access you still join and listen, as on Discord.
-        if await AVCaptureDevice.requestAccess(for: .audio) {
-            do {
-                _ = try await liveKitRoom.localParticipant.setMicrophone(enabled: true)
-            } catch {
-                microphoneOn = false
-                lastError = "The microphone could not be started: \(error.friendlyMessage)"
-            }
-        } else {
-            microphoneOn = false
-            lastError = "Microphone access is off. You can listen, and turn it on under Settings > Diddy."
-        }
+        await microphone.value
         connected = true
         state = "Voice connected"
         watchTogether.start()
@@ -670,12 +669,26 @@ final class CallSession: NSObject, ObservableObject {
         throw DiddyError("Your homeserver does not offer a MatrixRTC voice server (MSC4143 rtc_foci / LiveKit). Voice channels need one, like on the desktop app.")
     }
 
+    /// Without microphone access you still join and listen, as on Discord.
+    private func startMicrophone(allowed: Bool) async {
+        guard allowed else {
+            microphoneOn = false
+            lastError = "Microphone access is off. You can listen, and turn it on under Settings > Diddy."
+            return
+        }
+        do {
+            _ = try await liveKitRoom.localParticipant.setMicrophone(enabled: true)
+        } catch {
+            microphoneOn = false
+            lastError = "The microphone could not be started: \(error.friendlyMessage)"
+        }
+    }
+
     private struct SFUConfig: Decodable { let url: String; let jwt: String }
 
     /// The JWT service's legacy endpoint (what Element Call uses for its own connection in the
     /// default mode): our LiveKit identity becomes "@user:server:DEVICE".
-    private func requestSFUConfig(serviceUrl: String) async throws -> SFUConfig {
-        let token = try await account.client.requestOpenidToken()
+    private func requestSFUConfig(serviceUrl: String, token: OpenIdToken) async throws -> SFUConfig {
         let body: [String: Any] = [
             "room": roomId,
             "openid_token": [

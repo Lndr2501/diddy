@@ -1,6 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Box, Icon, IconButton, Icons, Spinner, Text } from 'folds';
-import { getBuiltinHtml } from '../../plugins/builtinPlugins';
+import {
+  builtinHtmlIfLoaded,
+  hasBuiltinPlugin,
+  loadBuiltinHtml,
+} from '../../plugins/builtinPlugins';
 import { getPluginData, setPluginData } from '../../state/pluginData';
 import { useLocalPluginRecord } from '../../state/localPlugins';
 import { DOCK_DEFAULT_HEIGHT, PluginStyle } from '../../state/pluginDock';
@@ -173,9 +177,21 @@ export function PluginFrame({ plugin, compact, look, previewHtml }: PluginFrameP
   const slug = builtinSlug(plugin.url);
   const localId = isPreview ? undefined : localPluginId(plugin.url);
   const localRecord = useLocalPluginRecord(localId);
+  // built-in pages load on first use; empty until then
+  const [builtinHtml, setBuiltinHtml] = useState(() => (slug ? builtinHtmlIfLoaded(slug) : undefined));
+  useEffect(() => {
+    if (!slug || builtinHtmlIfLoaded(slug) !== undefined) return undefined;
+    let cancelled = false;
+    loadBuiltinHtml(slug).then((html) => {
+      if (!cancelled) setBuiltinHtml(html);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [slug]);
   let srcDoc: string | undefined;
   if (isPreview) srcDoc = previewHtml;
-  else if (slug) srcDoc = getBuiltinHtml(slug) ?? MISSING_BUILTIN;
+  else if (slug) srcDoc = hasBuiltinPlugin(slug) ? builtinHtml ?? '' : MISSING_BUILTIN;
   else if (localId) {
     // empty while the stored content is read, a clear notice if there is none
     srcDoc = localRecord === null ? MISSING_LOCAL : localRecord?.html ?? '';
@@ -183,7 +199,7 @@ export function PluginFrame({ plugin, compact, look, previewHtml }: PluginFrameP
   const missingLocal = !!localId && localRecord === null;
   // a new version of a local plugin (or of the previewed code) loads the frame again
   const contentKey =
-    isPreview || localId ? `${srcDoc?.length ?? 0}:${localRecord?.sha256 ?? ''}` : '';
+    isPreview || localId || slug ? `${srcDoc?.length ?? 0}:${localRecord?.sha256 ?? ''}` : '';
 
   // reset whenever the page is (re)loaded and warn if it never answers
   useEffect(() => {

@@ -302,6 +302,16 @@ test('link previews: only public pages, redirects checked, HTML only, size cappe
 
   const big = async () => reply(200, { 'content-type': 'text/html' }, 'a'.repeat(linkPreview.MAX_BYTES + 5000));
   assert.equal((await linkPreview.fetchPage('https://example.com/a', big)).length, linkPreview.MAX_BYTES);
+
+  // reading stops after the head, also when </head> is split across chunks
+  const chunked = async () => {
+    const parts = ['<head><meta property="og:title" content="x"></HE', 'AD><body>', 'b'.repeat(100000), 'c'.repeat(100000)];
+    let i = 0;
+    const body = new ReadableStream({ pull(c) { if (i < parts.length) c.enqueue(new TextEncoder().encode(parts[i++])); else c.close(); } });
+    return new Response(body, { status: 200, headers: { 'content-type': 'text/html' } });
+  };
+  const page = await linkPreview.fetchPage('https://example.com/a', chunked);
+  assert.ok(page.includes('og:title') && page.length < 1000, `stopped after the head (${page.length})`);
 });
 
 test('hashed build files stay cached, the page shell and config follow updates at once', () => {

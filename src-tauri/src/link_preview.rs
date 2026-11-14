@@ -1,13 +1,15 @@
 //! Reads a web page's head for a link card under a chat message (#197). The page cannot fetch it
 //! itself (most sites send no CORS headers). Narrow on purpose: only http(s) to public hosts
 //! (no `localhost`, private addresses or local names, also after redirects), only HTML, at most
-//! 1 MB, 10 seconds. The page parses the answer (`cinny/src/app/plugins/linkEmbeds.ts`).
+//! 256 KB (reading stops at `</head>`), 10 seconds. The page parses the answer (`cinny/src/app/plugins/linkEmbeds.ts`).
 
 use std::net::IpAddr;
+use std::sync::OnceLock;
 use std::time::Duration;
 use tauri_plugin_http::reqwest;
 
-const MAX_BYTES: usize = 1024 * 1024;
+/// The OpenGraph tags sit in the head; nobody needs more of a page than this.
+const MAX_BYTES: usize = 256 * 1024;
 const MAX_REDIRECTS: usize = 5;
 
 /// Same rules as `isPublicHost` in linkEmbeds.ts.
@@ -62,19 +64,7 @@ pub async fn link_preview_fetch(url: String) -> Result<String, String> {
     if !allowed(&url) {
         return Err("only links to public web pages are read".to_string());
     }
-    let client = reqwest::Client::builder()
-        // Many sites (YouTube, Twitter) only put OpenGraph tags into pages for known crawlers.
-        .user_agent("Mozilla/5.0 (compatible; Diddy/1.0; +https://github.com/Lndr2501/diddy) facebookexternalhit/1.1")
-        .timeout(Duration::from_secs(10))
-        .redirect(reqwest::redirect::Policy::custom(|attempt| {
-            if attempt.previous().len() < MAX_REDIRECTS && allowed(attempt.url()) {
-                attempt.follow()
-            } else {
-                attempt.stop()
-            }
-        }))
-        .build()
-        .map_err(|e| e.to_string())?;
+    let client = client()?;
     let mut response = client
         .get(url)
         .header(reqwest::header::ACCEPT, "text/html,application/xhtml+xml")
@@ -96,18 +86,56 @@ pub async fn link_preview_fetch(url: String) -> Result<String, String> {
     // Read only the start: the head with the OpenGraph tags is at the top.
     let mut body: Vec<u8> = Vec::new();
     while let Some(chunk) = response.chunk().await.map_err(|e| e.to_string())? {
+        let searched_from = body.len().saturating_sub(7);
         body.extend_from_slice(&chunk);
         if body.len() >= MAX_BYTES {
             body.truncate(MAX_BYTES);
+            break;
+        }
+        if head_ended(&body[searched_from..]) {
             break;
         }
     }
     Ok(String::from_utf8_lossy(&body).into_owned())
 }
 
+/// One client for all link cards: connections and TLS sessions are reused.
+fn client() -> Result<&'static reqwest::Client, String> {
+    static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
+    if let Some(client) = CLIENT.get() {
+        return Ok(client);
+    }
+    let built = reqwest::Client::builder()
+        // Many sites (YouTube, Twitter) only put OpenGraph tags into pages for known crawlers.
+        .user_agent("Mozilla/5.0 (compatible; Diddy/1.0; +https://github.com/Lndr2501/diddy) facebookexternalhit/1.1")
+        .timeout(Duration::from_secs(10))
+        .redirect(reqwest::redirect::Policy::custom(|attempt| {
+            if attempt.previous().len() < MAX_REDIRECTS && allowed(attempt.url()) {
+                attempt.follow()
+            } else {
+                attempt.stop()
+            }
+        }))
+        .build()
+        .map_err(|e| e.to_string())?;
+    Ok(CLIENT.get_or_init(|| built))
+}
+
+/// Whether `bytes` contain the end of the head (`</head>`, any case).
+pub(crate) fn head_ended(bytes: &[u8]) -> bool {
+    bytes.windows(7).any(|w| w.eq_ignore_ascii_case(b"</head>"))
+}
+
 #[cfg(test)]
 mod tests {
-    use super::public_host;
+    use super::{head_ended, public_host};
+
+    #[test]
+    fn head_end_is_found_in_any_case() {
+        assert!(head_ended(b"<meta>\n</HEAD><body>"));
+        assert!(head_ended(b"</head>"));
+        assert!(!head_ended(b"<head><meta property=og:title>"));
+    }
 
     #[test]
     fn public_and_local_hosts() {

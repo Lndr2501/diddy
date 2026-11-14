@@ -42,16 +42,29 @@ function VideoLayer({ src, poster, play, pos, onError }: VideoLayerProps) {
     if (!video) return undefined;
     // set as a property too: autoplay policies look at it, React only sets the attribute late
     video.muted = true;
+    // Only rows in view play: a long member list no longer decodes videos nobody sees.
+    let inView = typeof IntersectionObserver === 'undefined';
     const sync = () => {
-      if (play && document.visibilityState === 'visible') {
+      if (play && inView && document.visibilityState === 'visible') {
         video.play().catch(() => undefined);
       } else {
         video.pause();
       }
     };
+    const observer =
+      typeof IntersectionObserver === 'undefined'
+        ? undefined
+        : new IntersectionObserver((entries) => {
+            inView = entries.some((e) => e.isIntersecting);
+            sync();
+          });
+    observer?.observe(video);
     sync();
     document.addEventListener('visibilitychange', sync);
-    return () => document.removeEventListener('visibilitychange', sync);
+    return () => {
+      observer?.disconnect();
+      document.removeEventListener('visibilitychange', sync);
+    };
   }, [play, src]);
 
   return (
@@ -128,9 +141,13 @@ export function NameplateBackdrop({ plate, animate }: NameplateBackdropProps) {
     <div aria-hidden className={css.Backdrop} data-fit={layers.fit}>
       <div
         className={css.Media}
-        data-flow={layers.flow}
-        style={layers.background ? { backgroundImage: layers.background } : undefined}
+        style={
+          layers.background && !layers.flow ? { backgroundImage: layers.background } : undefined
+        }
       >
+        {layers.background && layers.flow && (
+          <div className={css.Flow} style={{ backgroundImage: layers.background }} />
+        )}
         {media}
       </div>
       <div className={css.Scrim} />

@@ -16,21 +16,53 @@ const parseAgentVoiceLaunch = (argv) => {
   return { command };
 };
 
+/** The longest a wait() call is held open before it answers with the unchanged state. */
+const WAIT_MAX_MS = 25000;
+
 const createAgentVoiceTrigger = () => {
   let active = false;
   let key = null;
+  const waiters = new Set();
+  const state = () => ({ key, trigger: active });
+  const changed = () => {
+    const now = state();
+    waiters.forEach((resolve) => resolve(now));
+    waiters.clear();
+  };
   return {
     apply(command) {
+      const before = active;
       if (command === 'start') active = true;
       else if (command === 'stop') active = false;
       else if (command === 'toggle') active = !active;
+      if (active !== before) changed();
       return active;
     },
     /** The global shortcut is held (true) or not (false); null: cannot be read. */
     setKey(down) {
-      key = down === null ? null : !!down;
+      const next = down === null ? null : !!down;
+      if (next === key) return;
+      key = next;
+      changed();
     },
-    state: () => ({ key, trigger: active }),
+    state,
+    /**
+     * Answers as soon as the state differs from what the page last saw (or after `timeoutMs`), so
+     * the page does not have to ask every 60 ms.
+     */
+    wait(seen = {}, timeoutMs = WAIT_MAX_MS) {
+      const now = state();
+      if (seen.key !== now.key || seen.trigger !== now.trigger) return Promise.resolve(now);
+      return new Promise((resolve) => {
+        const done = (value) => {
+          clearTimeout(timer);
+          waiters.delete(done);
+          resolve(value);
+        };
+        const timer = setTimeout(() => done(state()), Math.min(timeoutMs, WAIT_MAX_MS));
+        waiters.add(done);
+      });
+    },
   };
 };
 

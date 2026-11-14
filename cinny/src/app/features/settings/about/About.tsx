@@ -253,31 +253,6 @@ export function About({ requestClose }: AboutProps) {
               <li>
                 <Text size="T300">
                   The{' '}
-                  <a
-                    href="https://github.com/mozilla/twemoji-colr"
-                    target="_blank"
-                    rel="noreferrer noopener"
-                  >
-                    twemoji-colr
-                  </a>{' '}
-                  font is ©{' '}
-                  <a href="https://mozilla.org/" target="_blank" rel="noreferrer noopener">
-                    Mozilla Foundation
-                  </a>{' '}
-                  used under the terms of{' '}
-                  <a
-                    href="http://www.apache.org/licenses/LICENSE-2.0"
-                    target="_blank"
-                    rel="noreferrer noopener"
-                  >
-                    Apache 2.0
-                  </a>
-                  .
-                </Text>
-              </li>
-              <li>
-                <Text size="T300">
-                  The{' '}
                   <a href="https://twemoji.twitter.com" target="_blank" rel="noreferrer noopener">
                     Twemoji
                   </a>{' '}

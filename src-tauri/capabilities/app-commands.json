@@ -30,6 +30,7 @@
     "allow-remove-connection-profile",
     "allow-account-labels",
     "allow-set-account-label",
-    "allow-agent-voice-state"
+    "allow-agent-voice-state",
+    "allow-agent-voice-wait"
   ]
 }

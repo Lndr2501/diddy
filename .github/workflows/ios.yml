@@ -149,6 +149,11 @@ jobs:
           swiftc -swift-version 5 Diddy/Matrix/BotCard.swift Tools/botcard_check/main.swift -o "$RUNNER_TEMP/diddy-botcard-check"
           "$RUNNER_TEMP/diddy-botcard-check"
 
+      - name: Options room marker checks
+        run: |
+          swiftc -swift-version 5 Diddy/Matrix/DiddyMarkerChecks.swift Tools/markerchecks_check/main.swift -o "$RUNNER_TEMP/diddy-markerchecks-check"
+          "$RUNNER_TEMP/diddy-markerchecks-check"
+
       - name: Music card and share hand-off checks
         run: |
           swiftc -swift-version 5 Diddy/Matrix/MusicCard.swift Diddy/App/ShareHandoff.swift Tools/musiccard_check/main.swift -o "$RUNNER_TEMP/diddy-musiccard-check"

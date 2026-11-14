@@ -230,9 +230,18 @@ const createClientWindow = (label, profile) => {
   // Never stay invisible if the page hangs while loading (#25).
   setTimeout(() => revealWindow(win), 10000);
   const persistState = () => saveWindowState(label, win);
-  win.on('resized', persistState);
-  win.on('moved', persistState);
-  win.on('close', persistState);
+  // Dragging and resizing send these events many times; the file is written once things settle.
+  let persistTimer;
+  const persistSoon = () => {
+    clearTimeout(persistTimer);
+    persistTimer = setTimeout(persistState, 500);
+  };
+  win.on('resized', persistSoon);
+  win.on('moved', persistSoon);
+  win.on('close', () => {
+    clearTimeout(persistTimer);
+    persistState();
+  });
   win.on('closed', () => {
     windows.delete(label);
     profilesByContents.delete(contentsId);
@@ -389,7 +398,13 @@ const commands = {
   open_connection_profile: (args) => openConnectionProfile(args),
   remove_connection_profile: (args) => removeConnectionProfile(args),
   set_app_icon: ({ id }) => appIcons.set(String(id), true),
+  // Background throttling only while no call runs in this window: a hidden window without a call
+  // may sleep, a call must keep going (#32 in docs/performance.md).
+  set_in_call: ({ active }, sender) => {
+    if (sender && !sender.isDestroyed()) sender.setBackgroundThrottling(!active);
+  },
   agent_voice_state: () => agentVoice.state(),
+  agent_voice_wait: (args) => agentVoice.wait({ key: args?.lastKey ?? null, trigger: !!args?.lastTrigger }, args?.timeoutMs),
   // Binds the page's hotkey globally (null: unbind). Answers { path: 'portal' | 'x11' | 'window', trigger?, reason? }.
   agent_voice_bind: ({ hotkey }) => agentVoiceHotkey.bind(sanitizeHotkey(hotkey)),
   agent_voice_hotkey_info: () => agentVoiceHotkey.info(),
@@ -432,7 +447,7 @@ ipcMain.handle('diddy:invoke', async (event, cmd, args) => {
   const command = Object.prototype.hasOwnProperty.call(commands, cmd) ? commands[cmd] : undefined;
   if (!command) return { ok: false, error: `unknown command: ${cmd}` };
   try {
-    const value = await command(args && typeof args === 'object' ? args : {});
+    const value = await command(args && typeof args === 'object' ? args : {}, event.sender);
     return { ok: true, value: value ?? null };
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : String(error) };

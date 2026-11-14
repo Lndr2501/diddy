@@ -23,6 +23,7 @@ import {
 } from './types';
 import { diag } from '../diagnostics';
 import { BADGE_STATE_LEVEL } from './badgePower';
+import { getHierarchyPage } from './hierarchyCache';
 
 /** Synchronous read of the "Developer Tools" setting (it lives in localStorage). */
 export const isDeveloperToolsOn = (): boolean => {
@@ -303,7 +304,7 @@ export const joinOptionsRoomOfSpace = async (mx: MatrixClient, spaceId: string):
   let space: IHierarchyRoom | undefined;
   for (let page = 0; page < MAX_PAGES; page += 1) {
     // eslint-disable-next-line no-await-in-loop
-    const hierarchy = await mx.getRoomHierarchy(spaceId, 50, 1, false, fromToken);
+    const hierarchy = await getHierarchyPage(mx, spaceId, fromToken);
     space = space ?? hierarchy.rooms.find((r) => r.room_id === spaceId);
     const candidate = hierarchy.rooms.find((r) => {
       if (r.room_id === spaceId) return false;
