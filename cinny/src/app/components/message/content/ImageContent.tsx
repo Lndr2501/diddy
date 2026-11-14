@@ -14,10 +14,14 @@ import {
 } from 'folds';
 import classNames from 'classnames';
 import { useSetAtom } from 'jotai';
-import { imageViewerAtom } from '../../../state/imageViewer';
 import { BlurhashCanvas } from 'react-blurhash';
 import { EncryptedAttachmentInfo } from 'browser-encrypt-attachment';
-import { IImageInfo, MATRIX_BLUR_HASH_PROPERTY_NAME } from '../../../../types/matrix/common';
+import { imageViewerAtom } from '../../../state/imageViewer';
+import {
+  IImageInfo,
+  IThumbnailContent,
+  MATRIX_BLUR_HASH_PROPERTY_NAME,
+} from '../../../../types/matrix/common';
 import { AsyncStatus, useAsyncCallback, ignoreRejection } from '../../../hooks/useAsyncCallback';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import * as css from './style.css';
@@ -46,7 +50,7 @@ export type ImageContentProps = {
   body: string;
   mimeType?: string;
   url: string;
-  info?: IImageInfo;
+  info?: IImageInfo & IThumbnailContent;
   encInfo?: EncryptedAttachmentInfo;
   autoPlay?: boolean;
   markedAsSpoiler?: boolean;
@@ -83,8 +87,50 @@ export const ImageContent = as<'div', ImageContentProps>(
     const setViewerImage = useSetAtom(imageViewerAtom);
     const [blurred, setBlurred] = useState(markedAsSpoiler ?? false);
 
+    // Encrypted pictures: the chat shows the sender's thumbnail (much smaller), the viewer the
+    // original. GIFs keep the original, a thumbnail would stand still.
+    const thumbFile = info?.thumbnail_file;
+    const useThumb =
+      !!encInfo && !!thumbFile?.url && !(mimeType ?? '').toLowerCase().includes('gif');
+    const loadOriginal = useCallback(async () => {
+      const mediaUrl = mxcUrlToHttp(mx, url, useAuthentication);
+      if (!mediaUrl) throw new Error('Invalid media URL');
+      if (!encInfo) return mediaUrl;
+      return cachedObjectUrl(url, () =>
+        downloadEncryptedMedia(mediaUrl, (encBuf) =>
+          decryptFile(encBuf, mimeType ?? FALLBACK_MIMETYPE, encInfo)
+        )
+      );
+    }, [mx, url, useAuthentication, mimeType, encInfo]);
+    const openViewer = useCallback(
+      (shown: string) => {
+        if (!useThumb) {
+          setViewerImage({ src: shown, alt: body });
+          return;
+        }
+        loadOriginal()
+          .then((original) => setViewerImage({ src: original, alt: body }))
+          .catch(() => setViewerImage({ src: shown, alt: body }));
+      },
+      [useThumb, loadOriginal, setViewerImage, body]
+    );
+
     const [srcState, loadSrc] = useAsyncCallback(
       useCallback(async () => {
+        if (useThumb && thumbFile) {
+          const thumbUrl = mxcUrlToHttp(mx, thumbFile.url, useAuthentication);
+          if (thumbUrl) {
+            try {
+              return await cachedObjectUrl(thumbFile.url, () =>
+                downloadEncryptedMedia(thumbUrl, (encBuf) =>
+                  decryptFile(encBuf, info?.thumbnail_info?.mimetype ?? FALLBACK_MIMETYPE, thumbFile)
+                )
+              );
+            } catch {
+              // a broken thumbnail: the original below
+            }
+          }
+        }
         const mediaUrl = mxcUrlToHttp(mx, url, useAuthentication);
         if (!mediaUrl) throw new Error('Invalid media URL');
         if (encInfo) {
@@ -95,7 +141,7 @@ export const ImageContent = as<'div', ImageContentProps>(
           );
         }
         return mediaUrl;
-      }, [mx, url, useAuthentication, mimeType, encInfo])
+      }, [mx, url, useAuthentication, mimeType, encInfo, useThumb, thumbFile, info])
     );
 
     const handleLoad = () => {
@@ -148,7 +194,7 @@ export const ImageContent = as<'div', ImageContentProps>(
               src: srcState.data,
               onLoad: handleLoad,
               onError: handleError,
-              onClick: () => setViewerImage({ src: srcState.data, alt: body }),
+              onClick: () => openViewer(srcState.data),
               tabIndex: 0,
             })}
           </Box>

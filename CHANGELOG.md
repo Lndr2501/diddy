@@ -16,6 +16,7 @@
   - Diddy-Profile im Nachrichtenmodus: Die gelesenen Diddy-Ereignisse der Options-Räume bleiben zwischen den Starts gespeichert (IndexedDB). Ein Start liest nur noch, was seitdem dazukam, statt jedes Mal 300 Ereignisse zu holen und zu entschlüsseln; jedes gespeicherte Ereignis läuft beim Einlesen durch dieselben Prüfungen wie ein neues, und eigene Daten gelten weiter als „aktuell“, solange sie unter den neuesten 150 Ereignissen sind (kein erneutes Senden bei jedem Start).
   - Call-Beitritt: OpenID-Token wird bis kurz vor Ablauf wiederverwendet und schon beim Klick geholt, ebenso die Olm-Sitzungen zu den Geräten im Raum und eine Verbindung zum LiveKit-Dienst des Servers.
   - Start: Der gespeicherte Sync wird in einem eigenen Worker geladen und gespeichert (nicht mehr auf dem Haupt-Thread), und die Verschlüsselung (WASM und ihr Speicher) startet gleichzeitig damit statt danach.
+  - Verschlüsselte Bilder: Der Chat lädt und entschlüsselt das Vorschaubild, das der Absender mitschickt, statt des Originals; das Original kommt erst in der Großansicht. GIFs bleiben beim Original.
   - Die nie genutzte Twemoji-Schrift (1,9 MB) ist raus. Der macOS-Release wird mit Link-Zeit-Optimierung und ohne Debug-Symbole gebaut.
 ## 1.8.0 (2026-11-14)
 
