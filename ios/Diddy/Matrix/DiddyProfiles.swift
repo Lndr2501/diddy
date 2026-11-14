@@ -283,6 +283,19 @@ extension DiddyBadge {
     }
 }
 
+/// Which stored profile of a person counts when several options rooms hold one (#207): the
+/// newest that parses; on equal times the earlier room (desktop order) wins. `profilePick.ts`.
+enum DiddyProfilePick {
+    static func newest<T>(_ candidates: [DiddyCandidate?], parse: (DiddyCandidate) -> T?) -> (value: T, candidate: DiddyCandidate)? {
+        var best: (value: T, candidate: DiddyCandidate)?
+        for case let candidate? in candidates {
+            if let best, candidate.ts <= best.candidate.ts { continue }
+            if let value = parse(candidate) { best = (value, candidate) }
+        }
+        return best
+    }
+}
+
 /// What one options room holds, already reduced to trusted candidates.
 private struct OptionsRoomData {
     var byKey: [String: [String: [DiddyCandidate]]] = [:] // type → key → candidates
@@ -305,10 +318,10 @@ private struct PendingMessage {
 
 extension MatrixAccount {
     /// Reads the Diddy profiles of everyone in the options rooms. Cheap to call often: it runs at
-    /// most once a minute unless `force` is set.
-    func loadDiddyProfiles(force: Bool = false) async {
+    /// most once per `staleAfter` seconds (a minute) unless `force` is set.
+    func loadDiddyProfiles(force: Bool = false, staleAfter: TimeInterval = 60) async {
         guard !diddyLoading, !rooms.isEmpty else { return }
-        if !force, let last = diddyLoadedAt, Date().timeIntervalSince(last) < 60 { return }
+        if !force, let last = diddyLoadedAt, Date().timeIntervalSince(last) < staleAfter { return }
         diddyLoading = true
         defer { diddyLoading = false }
         diddyLoadedAt = Date()
@@ -338,17 +351,24 @@ extension MatrixAccount {
         }
         diddyPrimaryRoom = loaded.first.map { (id: $0.id, encrypted: $0.encrypted) }
 
-        // Profiles: the first room (in desktop's order) with a valid profile of that user wins.
+        // Profiles: the newest valid one the user wrote, in any options room (#207). Each device
+        // has its own light rooms, so "the first room wins" let a phone keep an old profile from a
+        // room the desktop never reads. Desktop picks the same way (`profilePick.ts`).
         var profiles: [String: DiddyProfile] = [:]
         var ownRaw: [String: Any]?
         var rejected: Set<String> = []
+        var userIds: [String] = []
         for room in loaded {
-            for (userId, _) in room.data.byKey[DiddyEvents.profile] ?? [:] where profiles[userId] == nil {
-                guard let newest = room.data.newest(type: DiddyEvents.profile, key: userId, from: userId),
-                      let profile = DiddyProfile(newest.content) else { rejected.insert(userId); continue }
-                profiles[userId] = profile
-                if userId == self.userId { ownRaw = newest.content }
+            for userId in (room.data.byKey[DiddyEvents.profile] ?? [:]).keys where !userIds.contains(userId) { userIds.append(userId) }
+        }
+        for userId in userIds {
+            let perRoom = loaded.map { $0.data.newest(type: DiddyEvents.profile, key: userId, from: userId) }
+            guard let picked = DiddyProfilePick.newest(perRoom, parse: { DiddyProfile($0.content) }) else {
+                rejected.insert(userId)
+                continue
             }
+            profiles[userId] = picked.value
+            if userId == self.userId { ownRaw = picked.candidate.content }
         }
 
         // Awards: one per giver and badge, at most 200 per giver (the newest).

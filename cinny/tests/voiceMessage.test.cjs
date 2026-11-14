@@ -108,3 +108,22 @@ test('keys on the waveform seek within the message', () => {
   assert.equal(mod.keySeekTime('Enter', 30, 60), undefined);
   assert.equal(mod.keySeekTime('ArrowRight', 0, 0), undefined);
 });
+
+test('the speed button steps 1x, 1.5x, 2x and back to 1x (#204)', () => {
+  assert.equal(mod.nextVoiceRate(1), 1.5);
+  assert.equal(mod.nextVoiceRate(1.5), 2);
+  assert.equal(mod.nextVoiceRate(2), 1);
+  // unknown speeds start over at the first step after 1x
+  assert.equal(mod.nextVoiceRate(3), 1.5);
+  assert.deepEqual(arr([1, 1.5, 2].map(mod.voiceRateLabel)), ['1×', '1.5×', '2×']);
+});
+
+test('a stored speed is read defensively (#204)', () => {
+  assert.equal(mod.parseVoiceRate('1.5'), 1.5);
+  assert.equal(mod.parseVoiceRate('2'), 2);
+  assert.equal(mod.parseVoiceRate(2), 2);
+  assert.equal(mod.parseVoiceRate(null), 1);
+  assert.equal(mod.parseVoiceRate('fast'), 1);
+  assert.equal(mod.parseVoiceRate('16'), 1);
+  assert.equal(mod.parseVoiceRate(''), 1);
+});

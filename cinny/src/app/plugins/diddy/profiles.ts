@@ -58,6 +58,7 @@ import {
   LIGHT_ROOMS_EVENT,
 } from './optionsRoom';
 import { sanitizeBadgeDef, sanitizeProfile } from './sanitize';
+import { pickNewestProfile } from './profilePick';
 import { stampClientVersion } from './clientVersion';
 import { usePreviewOverride } from './previewOverride';
 import { APP_VERSION } from '../../appInfo';
@@ -914,16 +915,13 @@ const useDiddyVersion = (mx: MatrixClient): number => {
 
 // --- profiles ----------------------------------------------------------------------------------
 
-export const readProfile = (mx: MatrixClient, userId: string): DiddyProfile | undefined => {
-  const rooms = getOptionsRooms(mx);
-  for (let i = 0; i < rooms.length; i += 1) {
-    // a profile only counts when it was written by the user it belongs to
-    const data = readData(rooms[i], PROFILE_EVENT, userId, userId);
-    const profile = data ? sanitizeProfile(data.content) : undefined;
-    if (profile) return profile;
-  }
-  return undefined;
-};
+export const readProfile = (mx: MatrixClient, userId: string): DiddyProfile | undefined =>
+  // a profile only counts when it was written by the user it belongs to; the newest one of all
+  // options rooms wins, so devices that see different rooms still agree (#207)
+  pickNewestProfile(
+    getOptionsRooms(mx).map((room) => readData(room, PROFILE_EVENT, userId, userId)),
+    sanitizeProfile
+  );
 
 /** The customization of a user, or undefined if they have none / are not on Diddy. */
 export const useDiddyProfile = (

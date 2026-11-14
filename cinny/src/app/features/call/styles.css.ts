@@ -655,6 +655,83 @@ export const StageLive = style({
   letterSpacing: '0.05em',
 });
 
+// Somebody's screen share you have not opened yet (#206): a card with Watch instead of the picture
+export const StageShareCard = style({
+  position: 'relative',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  gap: toRem(10),
+  maxWidth: '80%',
+  padding: toRem(12),
+  textAlign: 'center',
+  color: '#F2F2F2',
+  pointerEvents: 'none',
+});
+export const StageShareCardIcon = style({
+  width: toRem(36),
+  height: toRem(36),
+  fill: 'none',
+  stroke: 'currentColor',
+  strokeWidth: 1.6,
+  strokeLinecap: 'round',
+  strokeLinejoin: 'round',
+  opacity: 0.8,
+  selectors: {
+    [`${StageTile}[data-small] &`]: { width: toRem(22), height: toRem(22) },
+  },
+});
+export const StageShareCardText = style({
+  fontSize: toRem(14),
+  fontWeight: 500,
+  lineHeight: 1.3,
+  selectors: {
+    [`${StageTile}[data-small] &`]: { display: 'none' },
+  },
+});
+export const StageWatchPill = style({
+  display: 'inline-flex',
+  alignItems: 'center',
+  height: toRem(30),
+  padding: `0 ${toRem(14)}`,
+  borderRadius: toRem(999),
+  backgroundColor: color.Primary.Main,
+  color: color.Primary.OnMain,
+  fontSize: toRem(13),
+  fontWeight: 600,
+  selectors: {
+    [`${StageTile}:hover &`]: { backgroundColor: color.Primary.MainHover },
+    [`${StageTile}[data-small] &`]: { height: toRem(24), padding: `0 ${toRem(10)}` },
+  },
+});
+// grid tile of a watched share: "Stop watching" in the corner while the pointer is on the tile
+export const StageStopWatch = style({
+  position: 'absolute',
+  zIndex: 2,
+  top: toRem(8),
+  right: toRem(8),
+  height: toRem(26),
+  padding: `0 ${toRem(10)}`,
+  border: 'none',
+  borderRadius: toRem(999),
+  backgroundColor: 'rgba(18, 18, 18, 0.66)',
+  color: '#F2F2F2',
+  font: 'inherit',
+  fontSize: toRem(12),
+  fontWeight: 600,
+  cursor: 'pointer',
+  opacity: 0,
+  transition: 'opacity 200ms ease',
+  selectors: {
+    [`${StageTile}:hover &, &:focus-visible`]: { opacity: 1 },
+    '&:hover': { backgroundColor: 'rgba(40, 40, 40, 0.85)' },
+    '&:focus-visible': t.focusOutline,
+  },
+  '@media': {
+    [REDUCED_MOTION]: { transition: 'none' },
+  },
+});
+
 // Zoom and full screen of the large stream (CallStage.tsx, streamZoom.ts)
 export const StageToolbar = style({
   position: 'absolute',

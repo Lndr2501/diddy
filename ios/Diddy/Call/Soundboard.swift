@@ -206,7 +206,7 @@ final class Soundboard: ObservableObject {
 
     /// Plays downloaded audio for you only (MyInstants preview). `id` tells the UI what plays.
     func preview(data: Data, id: String) throws {
-        stopAll()
+        stopPreview()
         prepareLocalPlayback()
         guard let player = try? AVAudioPlayer(data: data) else {
             throw DiddyError("This sound could not be played.")
@@ -239,7 +239,8 @@ final class Soundboard: ObservableObject {
         try? session.setActive(true)
     }
 
-    private func stopPreview() {
+    /// Stops only the MyInstants preview; clips playing into a call keep going.
+    func stopPreview() {
         guard previewing != nil || player != nil else { return }
         finished?.cancel()
         player?.stop()
