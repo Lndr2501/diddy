@@ -98,8 +98,10 @@ jobs:
           (cd cinny && HUSKY=0 npm ci --no-audit --no-fund)
           npm ci --no-audit --no-fund
 
-      - name: Trust the dev signing certificate (macOS dev builds, #164)
-        # The fixed dev identity is self-signed; codesign wants it trusted for code signing.
+      - name: Install the dev signing identity (macOS dev builds, #164)
+        # The fixed dev identity is self-signed. Tauri's own certificate import only accepts Apple
+        # certificates, so it goes into a keychain of its own here, trusted for code signing, and
+        # the build signs with it by name (APPLE_SIGNING_IDENTITY without APPLE_CERTIFICATE).
         if: ${{ matrix.name == 'macos' && inputs.dev }}
         env:
           DEV_SIGNING_CERTIFICATE: ${{ secrets.DEV_SIGNING_CERTIFICATE }}
@@ -111,6 +113,14 @@ jobs:
           openssl pkcs12 -in "$p12" -passin env:DEV_SIGNING_CERTIFICATE_PASSWORD -nokeys -clcerts -legacy -out "$pem" 2>/dev/null \
             || openssl pkcs12 -in "$p12" -passin env:DEV_SIGNING_CERTIFICATE_PASSWORD -nokeys -clcerts -out "$pem"
           sudo security add-trusted-cert -d -r trustRoot -p codeSign -k /Library/Keychains/System.keychain "$pem"
+          keychain="$RUNNER_TEMP/diddy-dev.keychain-db"; kpass=$(openssl rand -hex 16)
+          security create-keychain -p "$kpass" "$keychain"
+          security set-keychain-settings -t 3600 -u "$keychain"
+          security unlock-keychain -p "$kpass" "$keychain"
+          security import "$p12" -P "$DEV_SIGNING_CERTIFICATE_PASSWORD" -T /usr/bin/codesign -k "$keychain"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$kpass" "$keychain" > /dev/null
+          security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+          security find-identity -p codesigning "$keychain"
           rm -f "$p12" "$pem"
 
       - name: Build
@@ -134,20 +144,20 @@ jobs:
           # Dev build without a Developer ID: a fixed self-signed identity keeps the signature the
           # same from build to build, so the keychain does not ask again after each update (#164).
           if [ -z "${APPLE_CERTIFICATE:-}" ] && [ -n "$DEV_SIGNING_CERTIFICATE" ] && [ -n "$DEV_SIGNING_IDENTITY" ]; then
-            export APPLE_CERTIFICATE="$DEV_SIGNING_CERTIFICATE"
-            export APPLE_CERTIFICATE_PASSWORD="$DEV_SIGNING_CERTIFICATE_PASSWORD"
+            # installed into its own keychain by the step before
             export APPLE_SIGNING_IDENTITY="$DEV_SIGNING_IDENTITY"
+            dev_identity=1
             unset APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID
             echo "macOS signing: fixed dev identity"
           fi
           unset DEV_SIGNING_CERTIFICATE DEV_SIGNING_CERTIFICATE_PASSWORD DEV_SIGNING_IDENTITY
-          if [ -z "${APPLE_CERTIFICATE:-}" ]; then
+          if [ -z "${APPLE_CERTIFICATE:-}" ] && [ -z "${dev_identity:-}" ]; then
             # Ad-hoc sign the macOS bundle so its resources are sealed; without it
             # Gatekeeper reports the downloaded app as damaged.
             export APPLE_SIGNING_IDENTITY="-"
           fi
           if [ "${{ matrix.name }}" = "macos" ]; then
-            if [ -n "${APPLE_CERTIFICATE:-}" ]; then
+            if [ -n "${APPLE_CERTIFICATE:-}" ] || [ -n "${dev_identity:-}" ]; then
               echo "macOS signing: certificate ${APPLE_SIGNING_IDENTITY:-}${APPLE_ID:+, notarization on}"
             else
               echo "macOS signing: ad hoc (no certificate secrets set)"
