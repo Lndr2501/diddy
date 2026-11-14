@@ -35,6 +35,30 @@ enum VoiceFormat {
     }
 }
 
+/// Playback speed of voice messages (#204), the same steps as the desktop: 1x, 1.5x, 2x, then 1x.
+/// One choice for every message, remembered on this device.
+enum VoiceRate {
+    static let steps: [Float] = [1, 1.5, 2]
+    static let defaultsKey = "diddyVoiceRate"
+
+    /// A stored or remote value; anything unknown plays at 1x.
+    static func parse(_ value: Float?) -> Float {
+        guard let value, steps.contains(value) else { return 1 }
+        return value
+    }
+
+    static func next(after rate: Float) -> Float {
+        let index = steps.firstIndex(of: parse(rate)) ?? 0
+        return steps[(index + 1) % steps.count]
+    }
+
+    /// `1×`, `1.5×`, `2×`
+    static func label(_ rate: Float) -> String {
+        let value = parse(rate)
+        return value == value.rounded() ? "\(Int(value))×" : "\(value)×"
+    }
+}
+
 /// Playback position of the message that is playing. Kept apart from `VoicePlayer`, so only the
 /// player on screen redraws while the position moves.
 @MainActor
@@ -54,6 +78,8 @@ final class VoicePlayer: NSObject, ObservableObject, AVAudioPlayerDelegate {
     @Published private(set) var isLoading = false
     /// The message whose last attempt failed (download or a format iOS cannot play).
     @Published private(set) var failedId: String?
+    /// Speed for every voice message (#204); changing it also speeds up the one playing.
+    @Published private(set) var rate: Float = VoiceRate.parse(UserDefaults.standard.object(forKey: VoiceRate.defaultsKey) as? Float)
     let progress = PlaybackProgress()
 
     private let log = Logger(subsystem: "app.diddy.ios", category: "voice")
@@ -86,6 +112,12 @@ final class VoicePlayer: NSObject, ObservableObject, AVAudioPlayerDelegate {
         }
     }
 
+    func cycleRate() {
+        rate = VoiceRate.next(after: rate)
+        UserDefaults.standard.set(rate, forKey: VoiceRate.defaultsKey)
+        player?.rate = rate
+    }
+
     func seek(to fraction: Double) {
         guard let player else { return }
         player.currentTime = min(max(fraction, 0), 1) * player.duration
@@ -115,7 +147,10 @@ final class VoicePlayer: NSObject, ObservableObject, AVAudioPlayerDelegate {
             let hints: [String: AVFileType] = ["m4a": .m4a, "mp3": .mp3, "wav": .wav, "caf": .caf]
             let player = try AVAudioPlayer(contentsOf: url, fileTypeHint: hints[url.pathExtension]?.rawValue)
             player.delegate = self
+            // Must be on before prepareToPlay, or AVAudioPlayer ignores `rate`.
+            player.enableRate = true
             guard player.prepareToPlay() else { return false }
+            player.rate = rate
             try VoiceAudioSession.acquire(recording: false)
             holdsSession = true
             self.player = player
@@ -225,6 +260,7 @@ struct VoiceMessageView: View {
                             IdleWaveform(values: audio.waveform) { player.toggle(id: id, audio: audio, account: account) }
                             Text(audio.duration.map(VoiceFormat.time) ?? "").font(.caption.monospacedDigit()).foregroundStyle(Theme.muted)
                         }
+                        RateButton(rate: player.rate) { player.cycleRate() }
                     }
                 }
             }
@@ -234,6 +270,29 @@ struct VoiceMessageView: View {
         .frame(maxWidth: 320, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Theme.elevated))
         .accessibilityElement(children: .contain)
+    }
+}
+
+/// Speed pill after the time: 1x, 1.5x, 2x (#204).
+private struct RateButton: View {
+    let rate: Float
+    let action: () -> Void
+    var body: some View {
+        Button(action: action) {
+            Text(VoiceRate.label(rate))
+                .font(.caption.weight(.semibold).monospacedDigit())
+                .foregroundStyle(Theme.text)
+                .frame(minWidth: 34, minHeight: 22)
+                .padding(.horizontal, 4)
+                .background(Capsule().fill(Theme.faint.opacity(0.35)))
+                // 44 pt hit target around the small pill without making the bubble taller
+                .padding(.vertical, 11)
+                .contentShape(Rectangle())
+                .padding(.vertical, -11)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Playback speed")
+        .accessibilityValue(VoiceRate.label(rate))
     }
 }
 

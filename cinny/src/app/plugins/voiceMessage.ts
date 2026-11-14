@@ -128,3 +128,22 @@ export const keySeekTime = (key: string, current: number, duration: number): num
   else return undefined;
   return Math.min(Math.max(next, 0), duration);
 };
+
+/** Playback speeds for voice messages (#204); the button steps through them in order. */
+export const VOICE_RATES = [1, 1.5, 2];
+export const VOICE_RATE_KEY = 'diddyVoiceRate';
+
+/** The stored speed, or 1x for anything unknown (old values, hand-edited storage). */
+export const parseVoiceRate = (raw: unknown): number => {
+  const value = typeof raw === 'string' ? Number(raw) : raw;
+  return typeof value === 'number' && VOICE_RATES.includes(value) ? value : 1;
+};
+
+/** The speed after `rate`: 1x, 1.5x, 2x, then back to 1x. */
+export const nextVoiceRate = (rate: number): number => {
+  const index = VOICE_RATES.indexOf(parseVoiceRate(rate));
+  return VOICE_RATES[(index + 1) % VOICE_RATES.length];
+};
+
+/** Button text: `1×`, `1.5×`, `2×`. */
+export const voiceRateLabel = (rate: number): string => `${parseVoiceRate(rate)}×`;
