@@ -110,6 +110,7 @@ private struct ChatContent: View {
     @State private var userScrolled = false
     @State private var mentions: [String: String] = [:]
     @State private var canSend = true
+    @State private var dropTargeted = false
     /// Timeline navigation and the extra message actions (TimelineNavViews.swift).
     @State private var navSheet: TimelineNavSheet?
     @State private var jumpTarget: TimelineJumpTarget?
@@ -206,6 +207,17 @@ private struct ChatContent: View {
             }
         }
         .sheet(isPresented: $showCamera) { ComposerCamera { image in Task { await addFiles([], images: [image]) } } }
+        // Files dragged in from other apps become attachments (#216, ChatDrop.swift).
+        .onDrop(of: [.item], isTargeted: $dropTargeted) { providers in
+            guard canSend, editing == nil, ChatDrop.accepts(providers) else { return false }
+            Task {
+                for provider in providers {
+                    if let file = await ChatDrop.load(provider) { await addData(file.data, name: file.name, mime: file.mime) }
+                }
+            }
+            return true
+        }
+        .overlay { if dropTargeted && canSend && editing == nil { ChatDropHighlight() } }
         .sheet(isPresented: $showEmoji) {
             ComposerEmojiPicker(account: account, packs: packs, onEmoji: { emoji in insertText(emoji); showEmoji = false }, onCustom: { image, sticker in
                 showEmoji = false
