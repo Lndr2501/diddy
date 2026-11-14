@@ -56,6 +56,7 @@ import {
 } from './joinTiming';
 import { createThemeSync, ThemeSync } from './callThemeSync';
 import { diag } from '../diagnostics';
+import { createToDeviceBuffer, ToDeviceBuffer } from './toDeviceBuffer';
 
 /** How long a hung-up call page may take to send its leave event before it is removed. */
 const LEAVE_GRACE_MS = 5000;
@@ -104,6 +105,9 @@ export class CallEmbed {
   private readonly boundOnStateUpdate = this.onStateUpdate.bind(this);
 
   private readonly boundOnToDeviceEvent = this.onToDeviceEvent.bind(this);
+
+  /** To-device messages (call keys) that came before the page may receive them (#161). */
+  private readonly heldToDevice: ToDeviceBuffer<{ raw: IRoomEvent; encrypted: boolean }>;
 
   static getIntent(dm: boolean, ongoing: boolean, video?: boolean): ElementCallIntent {
     if (dm && ongoing) {
@@ -246,6 +250,9 @@ export class CallEmbed {
       diag
     );
     this.disposables.push(this.listenEvent('ready', () => this.themeSync.ready()));
+    this.heldToDevice = createToDeviceBuffer((m) => call.canReceiveToDeviceEvent(m.raw.type));
+    // Capabilities approved: hand over the call keys that arrived while the page was starting.
+    this.disposables.push(this.listenEvent('capabilitiesNotified', () => this.releaseHeldToDevice()));
 
     const controlState = initialControlState ?? new CallControlState(true, false, true);
     this.control = new CallControl(controlState, call, iframe);
@@ -562,6 +569,10 @@ export class CallEmbed {
       return;
     }
     const raw = ev.getEffectiveEvent() as IRoomEvent;
+    if (this.heldToDevice.hold({ raw, encrypted: ev.isEncrypted() })) {
+      diag(`call to-device ${ev.getType()} held until the call page may receive it`);
+      return;
+    }
     try {
       await this.call?.feedToDevice(raw, ev.isEncrypted());
     } catch (e) {
@@ -582,6 +593,17 @@ export class CallEmbed {
         diag(`call to-device ${ev.getType()} retry failed: ${String(retry)}`);
       }
     }
+  }
+
+  private releaseHeldToDevice(): void {
+    const held = this.heldToDevice.take();
+    if (held.length === 0 || this.disposed) return;
+    diag(`call to-device: handing ${held.length} held message(s) to the call page`);
+    held.forEach(({ raw, encrypted }) => {
+      this.call.feedToDevice(raw, encrypted).catch((e) => {
+        diag(`call to-device ${raw.type} (held) not acknowledged: ${String(e)}`);
+      });
+    });
   }
 
   /**
