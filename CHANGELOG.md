@@ -2,6 +2,7 @@
 
 ## Unveröffentlicht
 
+- **Calls: Teilnehmer erschienen spät (#161, macOS, Linux):** Call-Schlüssel, die ankamen, während Element Call noch startete, verwarf die Widget-Schnittstelle stillschweigend (die Seite durfte sie noch nicht empfangen). Die Person blieb dann schwarz oder stumm, bis sie einen neuen Schlüssel schickte. Diddy hält solche Nachrichten jetzt fest und reicht sie nach, sobald die Seite bereit ist (Log: `held until the call page may receive it`). iOS betrifft das nicht, dort gibt es keine Call-Seite.
 - **iOS: Hochscrollen ruckelte und sprang:** Wer schnell nach oben scrollte, kam an den Ladekreis, dann sprang der Chat an eine zufällige Stelle. Jetzt laden ältere Nachrichten schon vorher, und was auf dem Bildschirm steht, bleibt beim Nachladen stehen, auch mitten im Schwung.
 - **Desktop: Media & Files (#189):** Wie auf iOS gibt es in den Raumeinstellungen und im Raummenü eine Übersicht mit Bildern, Videos und Dateien des Raums, neueste zuerst, auch in verschlüsselten Räumen. Bilder öffnen sich in der Bildansicht, Videos und Dateien springen zu ihrer Nachricht, Dateien lassen sich direkt laden.
 - **iOS: Profil-Links (#177):** zeigen wie am Desktop den Dienstnamen („GitHub“) statt der Adresse.
