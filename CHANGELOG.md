@@ -2,6 +2,9 @@
 
 ## Unveröffentlicht
 
+- **iOS: Hochscrollen ruckelte und sprang:** Wer schnell nach oben scrollte, kam an den Ladekreis, dann sprang der Chat an eine zufällige Stelle. Jetzt laden ältere Nachrichten schon vorher, und was auf dem Bildschirm steht, bleibt beim Nachladen stehen, auch mitten im Schwung.
+- **Desktop: Media & Files (#189):** Wie auf iOS gibt es in den Raumeinstellungen und im Raummenü eine Übersicht mit Bildern, Videos und Dateien des Raums, neueste zuerst, auch in verschlüsselten Räumen. Bilder öffnen sich in der Bildansicht, Videos und Dateien springen zu ihrer Nachricht, Dateien lassen sich direkt laden.
+- **iOS: Profil-Links (#177):** zeigen wie am Desktop den Dienstnamen („GitHub“) statt der Adresse.
 - **iOS: Text zu Fotos fehlte:** Wer ein Foto oder eine Datei mit Text schickte, sah den Text in der iOS-App nicht. Er ging als Bildunterschrift mit, iOS zeigte aber nur bei Videos eine an. Jetzt steht er unter Fotos, Dateien und Audios, wie am Desktop. Der Jump-to-Unread-Knopf oben im Chat ist entfernt, die NEW-Linie bleibt. Nicht mit dem iOS-SDK kompiliert.
 - **macOS: Threads (#188):** „Reply in Thread“ und das Thread-Zeichen an einer Antwort öffnen jetzt eine Thread-Ansicht rechts neben dem Raum (Ursprungsnachricht, alle Antworten, Antwortfeld). Ältere Antworten holt sie vom Server. Vorher gab es keine Ansicht, Thread-Antworten standen nur mitten im Chat. Die Mitgliederliste weicht, solange ein Thread offen ist.
 - **Profil (#177):** Links zeigen neben dem Symbol ihren Namen (GitHub, YouTube, bei Webseiten die Adresse). Die Symbole der Fakten (Ort, Alter, Schule, Beruf) sind deutlicher.
