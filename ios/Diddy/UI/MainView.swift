@@ -40,6 +40,8 @@ struct MainView: View {
     @State private var showQuickSwitch = false
     @State private var showWelcome = false
     @ObservedObject private var themes = ThemeStore.shared
+    /// Things shared from other apps through the share sheet (App/ShareInbox.swift).
+    @ObservedObject private var inbox = ShareInbox.shared
     @Environment(\.horizontalSizeClass) private var sizeClass
 
     var body: some View {
@@ -116,7 +118,12 @@ struct MainView: View {
         .onAppear { openRequestedRoom() }
         .onChange(of: app.openRequest) { _ in openRequestedRoom() }
         .onChange(of: scenePhase) { phase in
-            if phase == .active { Task { await account.resume() } }
+            guard phase == .active else { return }
+            Task {
+                await account.resume()
+                // Back in the app: pick up profile changes made on another device meanwhile (#207).
+                await account.loadDiddyProfiles(staleAfter: 15)
+            }
         }
         // Online status of DM partners and others, and your own (PresenceViews.swift).
         .presenceUpdates(account: account)
@@ -128,6 +135,15 @@ struct MainView: View {
             DiddyWelcomeView(account: account, onFinish: { finishWelcome(); showWelcome = false }).diddySheetAppearance()
         }
         .sheet(item: $navigator.shellLink) { ShellJoinRoomView(account: account, link: $0).environmentObject(navigator).diddySheetAppearance() }
+        // "Send to …" after sharing from Photos, Apple Music, Safari, …: the picked chat opens
+        // with the share in its composer.
+        .sheet(item: $inbox.incoming) { share in
+            ShareTargetSheet(account: account, inbox: inbox, share: share) { roomId in
+                inbox.stage(inbox.incoming ?? share, roomId: roomId)
+                navigator.open(roomId, account: account)
+            }
+            .diddySheetAppearance()
+        }
         .task(id: account.id) { showWelcome = !UserDefaults.standard.bool(forKey: "diddy.welcome.done.\(account.id)") }
     }
 }

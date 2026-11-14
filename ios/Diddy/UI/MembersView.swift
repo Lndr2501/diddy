@@ -77,12 +77,14 @@ final class MemberStore: ObservableObject {
             let iterator: RoomMembersIterator
             if let fresh = try? await room.members() { iterator = fresh } else { iterator = try await room.membersNoSync() }
             var result: [MemberEntry] = []
+            var people: [(userId: String, name: String?, avatarUrl: String?)] = []
             while let chunk = iterator.nextChunk(chunkSize: 500), !chunk.isEmpty {
                 for member in chunk where !member.isServiceMember && (member.membership == .join || member.membership == .invite) {
                     result.append(MemberEntry(member))
-                    account.remember(userId: member.userId, name: member.displayName, avatarUrl: member.avatarUrl)
+                    people.append((userId: member.userId, name: member.displayName, avatarUrl: member.avatarUrl))
                 }
             }
+            account.remember(people)
             members = result.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
             error = nil
         } catch {
@@ -91,10 +93,18 @@ final class MemberStore: ObservableObject {
     }
 }
 
+/// The member list as a column on the right of the chat on iPad (#187), like the people drawer on
+/// macOS. On iPhone (compact width) the members stay a sheet. The choice is remembered.
+enum MemberPanel {
+    static let key = "diddy.memberPanelOpen"
+}
+
 struct MembersView: View {
     @ObservedObject var account: MatrixAccount
     let roomId: String
     var title = "Members"
+    /// Set when shown as the column next to the chat: the button hides the column, nothing is dismissed.
+    var onClose: (() -> Void)?
     @StateObject private var store = MemberStore()
     @Environment(\.dismiss) private var dismiss
     @State private var search = ""
@@ -158,7 +168,14 @@ struct MembersView: View {
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    if let onClose {
+                        Button { onClose() } label: { Image(systemName: "sidebar.right") }
+                            .accessibilityLabel("Hide member list")
+                    } else {
+                        Button("Done") { dismiss() }
+                    }
+                }
                 if canInvite {
                     ToolbarItem(placement: .navigationBarLeading) {
                         Button { inviting = true } label: { Image(systemName: "person.badge.plus") }

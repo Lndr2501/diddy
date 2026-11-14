@@ -26,6 +26,7 @@ import { FALLBACK_MIMETYPE } from '../../../utils/mimeTypes';
 import { decryptFile, downloadEncryptedMedia, mxcUrlToHttp } from '../../../utils/matrix';
 import { useMediaAuthentication } from '../../../hooks/useMediaAuthentication';
 import { validBlurHash } from '../../../utils/blurHash';
+import { cachedObjectUrl } from '../../../utils/mediaCache';
 
 type RenderViewerProps = {
   src: string;
@@ -87,10 +88,11 @@ export const ImageContent = as<'div', ImageContentProps>(
         const mediaUrl = mxcUrlToHttp(mx, url, useAuthentication);
         if (!mediaUrl) throw new Error('Invalid media URL');
         if (encInfo) {
-          const fileContent = await downloadEncryptedMedia(mediaUrl, (encBuf) =>
-            decryptFile(encBuf, mimeType ?? FALLBACK_MIMETYPE, encInfo)
+          return cachedObjectUrl(url, () =>
+            downloadEncryptedMedia(mediaUrl, (encBuf) =>
+              decryptFile(encBuf, mimeType ?? FALLBACK_MIMETYPE, encInfo)
+            )
           );
-          return URL.createObjectURL(fileContent);
         }
         return mediaUrl;
       }, [mx, url, useAuthentication, mimeType, encInfo])

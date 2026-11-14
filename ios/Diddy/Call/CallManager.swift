@@ -25,6 +25,25 @@ struct CallMember: Identifiable {
     var shareHasAudio = false
 }
 
+extension CallMember: Equatable {
+    /// Video tracks are the same when they are the same object.
+    static func == (a: CallMember, b: CallMember) -> Bool {
+        a.id == b.id && a.userId == b.userId && a.name == b.name && a.avatarUrl == b.avatarUrl
+            && a.isLocal == b.isLocal && a.isSpeaking == b.isSpeaking && a.microphoneOn == b.microphoneOn
+            && a.isConnecting == b.isConnecting && a.talkingToAgent == b.talkingToAgent
+            && a.shareHasAudio == b.shareHasAudio
+            && sameTrack(a.screenShare, b.screenShare) && sameTrack(a.camera, b.camera)
+    }
+
+    private static func sameTrack(_ a: LiveKit.VideoTrack?, _ b: LiveKit.VideoTrack?) -> Bool {
+        switch (a, b) {
+        case (nil, nil): return true
+        case let (a?, b?): return (a as AnyObject) === (b as AnyObject)
+        default: return false
+        }
+    }
+}
+
 /// A join that waits for "Leave your current call?" (desktop `call-switch`).
 struct CallSwitchRequest: Identifiable {
     let id = UUID()
@@ -217,11 +236,19 @@ final class CallManager: ObservableObject {
 @MainActor
 final class CallSession: NSObject, ObservableObject {
     @Published private(set) var members: [CallMember] = []
+    /// Screen shares of others you opened with Watch (#206), by LiveKit identity. The others show
+    /// as a card: no video view, so adaptive stream pauses the picture on the server, and their
+    /// sound is switched off. Local to you; a share that ends starts as a card the next time.
+    @Published private(set) var watchedShares: Set<String> = []
     @Published private(set) var state: String = "Connecting…"
     @Published private(set) var connected = false
     @Published private(set) var microphoneOn = true
     @Published private(set) var deafened = false
     @Published private(set) var cameraOn = false
+    /// The cameras of this device for the camera menu (#201); filled by `loadCameras()`.
+    @Published private(set) var cameras: [CameraChoice] = []
+    /// The camera picked in the menu (`AVCaptureDevice.uniqueID`), kept for later calls.
+    @Published private(set) var cameraId: String? = UserDefaults.standard.string(forKey: CallSession.cameraKey)
     @Published private(set) var screenSharing = false
     @Published private(set) var speakerOn = true
     @Published private(set) var outgoing: OutgoingRing = .none
@@ -498,9 +525,46 @@ final class CallSession: NSObject, ObservableObject {
         AudioManager.shared.isSpeakerOutputPreferred = speakerOn
     }
 
+    static let cameraKey = "call.cameraId"
+
+    /// The camera that is (or will be) used: the picked one, else the front camera LiveKit opens.
+    var activeCameraId: String? {
+        cameraId ?? cameras.first(where: { $0.name == "Front camera" })?.id ?? cameras.first?.id
+    }
+
+    /// Lists the cameras for the camera menu.
+    func loadCameras() async {
+        let devices = (try? await CameraCapturer.captureDevices()) ?? []
+        cameras = devices.map { CameraChoice(id: $0.uniqueID, name: CameraChoice.name(for: $0)) }
+    }
+
+    /// Camera options for the picked camera, nil for the system's default (front) camera.
+    private func pickedCameraOptions() async -> CameraCaptureOptions? {
+        guard let cameraId,
+              let device = try? await CameraCapturer.captureDevices().first(where: { $0.uniqueID == cameraId }) else { return nil }
+        return CameraCaptureOptions(device: device)
+    }
+
+    /// Picks the camera (#201) and switches a running camera to it right away.
+    func selectCamera(_ id: String) async {
+        cameraId = id
+        UserDefaults.standard.set(id, forKey: Self.cameraKey)
+        guard cameraOn,
+              let track = liveKitRoom.localParticipant.firstCameraPublication?.track as? LocalVideoTrack,
+              let capturer = track.capturer as? CameraCapturer,
+              let options = await pickedCameraOptions() else { return }
+        do {
+            _ = try await capturer.set(options: options)
+        } catch {
+            lastError = "Could not switch the camera."
+        }
+        refreshMembers()
+    }
+
     func toggleCamera() async {
         do {
-            _ = try await liveKitRoom.localParticipant.setCamera(enabled: !cameraOn)
+            let options = cameraOn ? nil : await pickedCameraOptions()
+            _ = try await liveKitRoom.localParticipant.setCamera(enabled: !cameraOn, captureOptions: options)
             cameraOn.toggle()
             Sounds.shared.play(cameraOn ? .cameraOn : .cameraOff)
         } catch {
@@ -831,8 +895,44 @@ final class CallSession: NSObject, ObservableObject {
         Sounds.shared.play(sound)
     }
 
+    func watchShare(_ identity: String) {
+        guard !watchedShares.contains(identity) else { return }
+        watchedShares.insert(identity)
+        applyShareAudio()
+    }
+
+    func stopWatchingShare(_ identity: String) {
+        guard watchedShares.remove(identity) != nil else { return }
+        applyShareAudio()
+    }
+
+    /// The sound of a share plays only while you watch it (#206).
+    private func applyShareAudio() {
+        for participant in liveKitRoom.remoteParticipants.values {
+            guard let identity = participant.identity?.stringValue else { continue }
+            let wanted = watchedShares.contains(identity)
+            for case let publication as LiveKit.RemoteTrackPublication in participant.audioTracks
+                where publication.source == .screenShareAudio && publication.isEnabled != wanted {
+                Task { try? await publication.set(enabled: wanted) }
+            }
+        }
+    }
+
+    /// Forgets Watch for shares that ended, then applies the sound rule to new tracks.
+    private func pruneWatchedShares() {
+        var sharing = Set<String>()
+        for participant in liveKitRoom.remoteParticipants.values
+            where participant.videoTracks.contains(where: { $0.source == .screenShareVideo }) {
+            if let identity = participant.identity?.stringValue { sharing.insert(identity) }
+        }
+        let kept = watchedShares.intersection(sharing)
+        if kept != watchedShares { watchedShares = kept }
+        applyShareAudio()
+    }
+
     fileprivate func refreshMembers() {
         guard !closed else { return }
+        pruneWatchedShares()
         var result: [CallMember] = []
         let local = liveKitRoom.localParticipant
         // Speaking is held for 0.6 s after the server stops saying so (no flicker between words).
@@ -865,8 +965,11 @@ final class CallSession: NSObject, ObservableObject {
             }
         }
         account.resolveProfiles(result.map(\.userId), in: roomId)
-        members = result
-        screenSharing = local.isScreenShareEnabled()
+        // LiveKit reports speaking several times a second; publishing an unchanged list redrew
+        // the whole call stage with its video views every time.
+        if result != members { members = result }
+        let sharing = local.isScreenShareEnabled()
+        if sharing != screenSharing { screenSharing = sharing }
         if outgoing != .none, someoneElseIsHere { stopOutgoingRing() }
     }
 
@@ -976,6 +1079,26 @@ extension CallSession: LiveKit.RoomDelegate {
             case .disconnected: self.state = "Disconnected"
             default: break
             }
+        }
+    }
+}
+
+/// One camera in the call's camera menu (#201).
+struct CameraChoice: Identifiable, Hashable {
+    let id: String
+    let name: String
+
+    /// "Front camera", "Back camera", "Back ultra wide camera" instead of the system's long names.
+    static func name(for device: AVCaptureDevice) -> String {
+        switch device.position {
+        case .front: return "Front camera"
+        case .back:
+            switch device.deviceType {
+            case .builtInUltraWideCamera: return "Back ultra wide camera"
+            case .builtInTelephotoCamera: return "Back telephoto camera"
+            default: return "Back camera"
+            }
+        default: return device.localizedName
         }
     }
 }

@@ -82,6 +82,11 @@ struct CallStageView: View {
         }
     }
 
+    private func stopWatching(_ item: StageItem) {
+        if focusKey == item.id { focusKey = nil }
+        session.stopWatchingShare(item.member.id)
+    }
+
     private func select(_ item: StageItem) {
         withAnimation(.easeInOut(duration: 0.2)) {
             focusKey = focusKey == item.id ? nil : item.id
@@ -140,8 +145,15 @@ struct CallStageView: View {
                 .onTapGesture { select(item) }
                 .contextMenu { personMenu(item.member) }
         case .share:
-            ShareTile(member: item.member, size: size, role: role, onSelect: { select(item) }, onBack: { select(item) })
-                .contextMenu { shareMenu(item.member) }
+            // your own share always shows; somebody else's only after Watch (#206)
+            let watching = item.member.isLocal || session.watchedShares.contains(item.member.id)
+            ShareTile(
+                member: item.member, size: size, role: role, watching: watching,
+                onSelect: { select(item) }, onBack: { select(item) },
+                onWatch: { session.watchShare(item.member.id) },
+                onStopWatching: { stopWatching(item) }
+            )
+            .contextMenu { shareMenu(item.member) }
         }
     }
 
@@ -171,6 +183,13 @@ struct CallStageView: View {
     @ViewBuilder
     private func shareMenu(_ member: CallMember) -> some View {
         if !member.isLocal {
+            if session.watchedShares.contains(member.id) {
+                Button { stopWatching(StageItem(kind: .share, member: member)) } label: {
+                    Label("Stop Watching", systemImage: "eye.slash")
+                }
+            } else {
+                Button { session.watchShare(member.id) } label: { Label("Watch Stream", systemImage: "eye") }
+            }
             if member.shareHasAudio {
                 let muted = extras.isMuted(member.userId, kind: .stream)
                 Button { extras.toggleMuted(member.userId, kind: .stream) } label: {
@@ -289,16 +308,22 @@ private struct ShareTile: View {
     let member: CallMember
     let size: CGSize
     let role: StageTileRole
+    /// false: somebody else's share not opened yet, a card with Watch instead of the picture (#206)
+    let watching: Bool
     /// Tap on the tile: show it large, or back to the grid when it already is.
     let onSelect: () -> Void
     let onBack: () -> Void
+    let onWatch: () -> Void
+    let onStopWatching: () -> Void
     @State private var fullscreen = false
     @State private var zoom = StreamZoom.none
 
     var body: some View {
         ZStack {
             Color.black
-            if let track = member.screenShare {
+            if !watching {
+                watchCard
+            } else if let track = member.screenShare {
                 if role == .focus {
                     ZoomableShareVideo(track: track, size: size, zoom: $zoom, onSingleTap: {
                         // while zoomed a tap must not throw the large view away
@@ -322,23 +347,58 @@ private struct ShareTile: View {
                     if zoom.isZoomed {
                         ZoomResetButton(zoom: $zoom)
                     }
-                    StageIconButton(icon: "arrow.up.left.and.arrow.down.right", label: "Full screen") { fullscreen = true }
+                    if watching {
+                        StageIconButton(icon: "arrow.up.left.and.arrow.down.right", label: "Full screen") { fullscreen = true }
+                        if !member.isLocal {
+                            StageIconButton(icon: "eye.slash", label: "Stop watching", action: onStopWatching)
+                        }
+                    }
                     StageIconButton(icon: "square.grid.2x2", label: "Back to grid", action: onBack)
                 }
             }
         }
         .contentShape(RoundedRectangle(cornerRadius: 12))
         .onTapGesture {
+            if !watching { onWatch(); return }
             // the large stream handles its own taps (ZoomableShareVideo)
             if role != .focus { onSelect() }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(member.name)'s screen")
+        .accessibilityLabel(watching ? "\(member.name)'s screen" : "\(member.name) is sharing their screen")
         .accessibilityAddTraits(.isButton)
-        .accessibilityHint(role == .focus ? "Back to the grid. Pinch or double tap to zoom." : "Show large")
+        .accessibilityHint(watchHint)
         .fullScreenCover(isPresented: $fullscreen) {
             FullscreenShare(member: member, isPresented: $fullscreen)
         }
+    }
+
+    private var watchHint: String {
+        if !watching { return "Watch the stream" }
+        return role == .focus ? "Back to the grid. Pinch or double tap to zoom." : "Show large"
+    }
+
+    /// Instead of the picture until you tap Watch.
+    private var watchCard: some View {
+        VStack(spacing: role == .thumb ? 4 : 10) {
+            Image(systemName: "display")
+                .font(.system(size: role == .thumb ? 18 : 30, weight: .regular))
+                .foregroundStyle(.white.opacity(0.8))
+            if role != .thumb {
+                Text("\(member.name) is sharing their screen")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+            }
+            Text("Watch")
+                .font((role == .thumb ? Font.caption2 : Font.footnote).weight(.semibold))
+                .foregroundStyle(.white)
+                .padding(.horizontal, role == .thumb ? 8 : 14)
+                .padding(.vertical, role == .thumb ? 3 : 6)
+                .background(Capsule().fill(Theme.accent))
+        }
+        .padding(12)
+        .frame(width: size.width, height: size.height)
     }
 
     private var nameBadge: some View {

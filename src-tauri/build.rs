@@ -16,6 +16,7 @@ fn main() {
                 "open_log_folder",
                 "myinstants_fetch_text",
                 "myinstants_fetch_audio",
+                "link_preview_fetch",
                 "connection_profiles",
                 "open_connection_profile",
                 "remove_connection_profile",

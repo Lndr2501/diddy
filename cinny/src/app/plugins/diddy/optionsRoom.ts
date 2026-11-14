@@ -49,7 +49,22 @@ export const getLightRoomIds = (): string[] => {
   }
 };
 
+// isOptionsRoom runs for every encrypted event and every profile lookup; reading and parsing
+// localStorage each time was a large part of drawing a busy timeline. The set is kept in memory
+// and dropped when it changes here or in another window.
+let lightRoomCache: Set<string> | undefined;
+const lightRoomSet = (): Set<string> => {
+  if (!lightRoomCache) lightRoomCache = new Set(getLightRoomIds());
+  return lightRoomCache;
+};
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+  window.addEventListener('storage', (e) => {
+    if (e.key === null || e.key === LIGHT_ROOMS_KEY) lightRoomCache = undefined;
+  });
+}
+
 const setLightRoomIds = (ids: string[]) => {
+  lightRoomCache = undefined;
   try {
     localStorage.setItem(LIGHT_ROOMS_KEY, JSON.stringify(ids));
   } catch {
@@ -72,7 +87,7 @@ export const removeLightOptionsRoom = (roomId: string): void => {
 };
 
 export const isLightOptionsRoom = (room: Room | null | undefined): boolean =>
-  !!room && getLightRoomIds().includes(room.roomId);
+  !!room && lightRoomSet().has(room.roomId);
 
 // --- rooms the user left on purpose ------------------------------------------------------------
 // Those are never joined automatically again.

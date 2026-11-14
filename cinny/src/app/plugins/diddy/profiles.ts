@@ -58,6 +58,7 @@ import {
   LIGHT_ROOMS_EVENT,
 } from './optionsRoom';
 import { sanitizeBadgeDef, sanitizeProfile } from './sanitize';
+import { pickNewestProfile } from './profilePick';
 import { stampClientVersion } from './clientVersion';
 import { usePreviewOverride } from './previewOverride';
 import { APP_VERSION } from '../../appInfo';
@@ -914,15 +915,29 @@ const useDiddyVersion = (mx: MatrixClient): number => {
 
 // --- profiles ----------------------------------------------------------------------------------
 
-export const readProfile = (mx: MatrixClient, userId: string): DiddyProfile | undefined => {
-  const rooms = getOptionsRooms(mx);
-  for (let i = 0; i < rooms.length; i += 1) {
-    // a profile only counts when it was written by the user it belongs to
-    const data = readData(rooms[i], PROFILE_EVENT, userId, userId);
-    const profile = data ? sanitizeProfile(data.content) : undefined;
-    if (profile) return profile;
+export const readProfile = (mx: MatrixClient, userId: string): DiddyProfile | undefined =>
+  // a profile only counts when it was written by the user it belongs to; the newest one of all
+  // options rooms wins, so devices that see different rooms still agree (#207)
+  pickNewestProfile(
+    getOptionsRooms(mx).map((room) => readData(room, PROFILE_EVENT, userId, userId)),
+    sanitizeProfile
+  );
+
+/**
+ * readProfile for drawing, kept per data version: every message header reads its sender's profile
+ * when it mounts, and each read filtered and sorted all rooms (most of the time spent scrolling a
+ * busy chat). Writes keep using readProfile, which always looks at the rooms as they are now.
+ */
+let profileCache: { mx: MatrixClient; v: number; byUser: Map<string, DiddyProfile | undefined> } | undefined;
+const readProfileForView = (mx: MatrixClient, userId: string): DiddyProfile | undefined => {
+  if (!profileCache || profileCache.mx !== mx || profileCache.v !== version) {
+    profileCache = { mx, v: version, byUser: new Map() };
   }
-  return undefined;
+  const { byUser } = profileCache;
+  if (byUser.has(userId)) return byUser.get(userId);
+  const profile = readProfile(mx, userId);
+  byUser.set(userId, profile);
+  return profile;
 };
 
 /** The customization of a user, or undefined if they have none / are not on Diddy. */
@@ -934,7 +949,7 @@ export const useDiddyProfile = (
   // the profile editor's previews show the unsaved draft here (#105)
   const override = usePreviewOverride(userId);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const stored = useMemo(() => (userId ? readProfile(mx, userId) : undefined), [mx, userId, v]);
+  const stored = useMemo(() => (userId ? readProfileForView(mx, userId) : undefined), [mx, userId, v]);
   return override ? override.profile : stored;
 };
 

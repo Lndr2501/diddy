@@ -111,3 +111,11 @@ test('big profile settings keep only known values', () => {
   assert.equal(mod.sanitizeCardLayout({ big: { layout: 'huge', banner: 9 } }), undefined);
   assert.equal(mod.sanitizeCardLayout({ big: 'tall' }), undefined);
 });
+
+test('a link shows the service name, or the host of a website (#177)', () => {
+  assert.equal(mod.linkDisplayName('github', 'https://github.com/lndr'), 'GitHub');
+  assert.equal(mod.linkDisplayName('youtube', 'https://youtu.be/x'), 'YouTube');
+  assert.equal(mod.linkDisplayName('web', 'https://www.example.org/about'), 'example.org');
+  assert.equal(mod.linkDisplayName('web', 'https://blog.example.org/'), 'blog.example.org');
+  assert.equal(mod.linkDisplayName('web', 'not a url'), 'Website');
+});

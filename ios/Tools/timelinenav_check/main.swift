@@ -26,12 +26,6 @@ check(TimelineNav.newDividerRowId(entries, readUpTo: "$b", me: me) == "rd", "div
 check(TimelineNav.newDividerRowId(entries, readUpTo: "$e", me: me) == nil, "no divider when the newest is read")
 check(TimelineNav.newDividerRowId(entries, readUpTo: nil, me: me) == nil, "no divider without receipt")
 check(TimelineNav.newDividerRowId(entries, readUpTo: "$a", me: me) == "rb", "divider right after the read message")
-check(TimelineNav.unread(entries, readUpTo: "$b", me: me, reachedStart: false) == .divider(rowId: "rd"), "unread with divider")
-check(TimelineNav.unread(entries, readUpTo: "$old", me: me, reachedStart: false) == .notLoaded, "older than loaded")
-check(TimelineNav.unread(entries, readUpTo: "$old", me: me, reachedStart: true) == .none, "not there at all once the start is loaded")
-check(TimelineNav.unread(entries, readUpTo: "~local", me: me, reachedStart: false) == .none, "local echo has no receipt")
-check(TimelineNav.unread([], readUpTo: "$b", me: me, reachedStart: false) == .none, "nothing while loading")
-check(TimelineNav.unread(entries, readUpTo: "$e", me: me, reachedStart: false) == .none, "all read")
 
 // Seen by: everyone at the event or later, latest first, once each.
 check(TimelineNav.readers(of: "$d", in: entries) == ["@x:x", "@y:x", "@z:x"], "readers of $d: \(TimelineNav.readers(of: "$d", in: entries))")

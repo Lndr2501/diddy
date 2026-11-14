@@ -172,16 +172,23 @@ struct ChatHeader<MenuContent: View>: View {
     let onBack: (() -> Void)?
     let onInfo: () -> Void
     let onCall: () -> Void
+    /// Whether the iPad's member column is shown; nil hides the button (iPhone opens a sheet from the menu).
+    let membersOpen: Bool?
+    let onToggleMembers: () -> Void
     let menu: () -> MenuContent
 
     init(account: MatrixAccount, summary: RoomSummary?, title: String, onBack: (() -> Void)?,
-         onInfo: @escaping () -> Void, onCall: @escaping () -> Void, @ViewBuilder menu: @escaping () -> MenuContent) {
+         onInfo: @escaping () -> Void, onCall: @escaping () -> Void,
+         membersOpen: Bool? = nil, onToggleMembers: @escaping () -> Void = {},
+         @ViewBuilder menu: @escaping () -> MenuContent) {
         self.account = account
         self.summary = summary
         self.title = title
         self.onBack = onBack
         self.onInfo = onInfo
         self.onCall = onCall
+        self.membersOpen = membersOpen
+        self.onToggleMembers = onToggleMembers
         self.menu = menu
     }
 
@@ -215,6 +222,11 @@ struct ChatHeader<MenuContent: View>: View {
             .accessibilityElement(children: .combine)
             .accessibilityLabel("\(title), channel details")
             .accessibilityAddTraits(.isButton)
+            if let membersOpen {
+                Button(action: onToggleMembers) { icon(membersOpen ? "person.2.fill" : "person.2") }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(membersOpen ? "Hide member list" : "Show member list")
+            }
             Button(action: onCall) { icon("phone") }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Start voice call")

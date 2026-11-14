@@ -73,3 +73,75 @@ export const watchMediaConnected = (pc: RTCPeerConnection, connected: () => void
   onChange();
   return () => pc.removeEventListener('connectionstatechange', onChange);
 };
+
+/**
+ * The LiveKit signal connection (a WebSocket to `<sfu>/rtc`, newer servers `/rtc/v1`). In a slow
+ * join on macOS the time went between the token and the first tile, with the call page starting
+ * its encryption worker twice (#161): logging each attempt shows whether the first connection to
+ * the media server hangs and is retried.
+ */
+export const isLivekitSignalUrl = (url: string): boolean => {
+  try {
+    const { protocol, pathname } = new URL(url);
+    return (protocol === 'wss:' || protocol === 'ws:') && /\/rtc(\/v\d+)?\/?$/.test(pathname);
+  } catch {
+    return false;
+  }
+};
+
+/** The host of a signal URL, without path or query (the query carries the access token). */
+export const signalHost = (url: string): string => {
+  try {
+    return new URL(url).host || '?';
+  } catch {
+    return '?';
+  }
+};
+
+type SocketWindow = { WebSocket?: typeof WebSocket & { __diddyJoinWatch?: boolean } };
+
+/**
+ * Logs every LiveKit signal attempt of the call page: when it opened (with how long that took)
+ * or why it failed. Wraps the page's WebSocket by subclassing, so everything else behaves the same.
+ */
+export const watchLivekitSignal = (
+  win: Window | null | undefined,
+  log: (message: string) => void,
+  now: () => number = () => performance.now()
+) => {
+  const w = win as unknown as SocketWindow | null | undefined;
+  const Original = w?.WebSocket;
+  if (!w || !Original || Original.__diddyJoinWatch) return;
+  let attempts = 0;
+  class WatchedWebSocket extends Original {
+    constructor(url: string | URL, protocols?: string | string[]) {
+      super(url, protocols);
+      const href = String(url);
+      if (!isLivekitSignalUrl(href)) return;
+      attempts += 1;
+      const attempt = attempts;
+      const started = now();
+      let opened = false;
+      const since = () => `${Math.round(now() - started)} ms`;
+      // Element Call can connect to several media servers at once ("multi_sfu"): the host tells a
+      // second server apart from a retry of the first. Only the host, never the token in the query.
+      const host = signalHost(href);
+      this.addEventListener('open', () => {
+        opened = true;
+        log(`call join: LiveKit signal ${attempt} to ${host} open after ${since()}`);
+      });
+      this.addEventListener('close', (evt) => {
+        if (!opened)
+          log(
+            `call join: LiveKit signal ${attempt} to ${host} closed before open after ${since()} (code ${evt.code})`
+          );
+      });
+    }
+  }
+  Object.defineProperty(WatchedWebSocket, '__diddyJoinWatch', { value: true });
+  try {
+    Object.defineProperty(w, 'WebSocket', { value: WatchedWebSocket, configurable: true, writable: true });
+  } catch {
+    // A page that froze its globals: no signal timing then.
+  }
+};

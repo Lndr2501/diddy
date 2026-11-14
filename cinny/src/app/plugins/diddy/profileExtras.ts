@@ -125,6 +125,24 @@ export const safeLinkUrl = (kind: LinkKind, raw: unknown): string | undefined =>
   return url.toString();
 };
 
+const LINK_NAMES: Record<Exclude<LinkKind, 'web'>, string> = {
+  github: 'GitHub',
+  gitlab: 'GitLab',
+  linkedin: 'LinkedIn',
+  spotify: 'Spotify',
+  youtube: 'YouTube',
+};
+
+/** The name shown next to a link's icon (#177): the service, or the site's host for a website. */
+export const linkDisplayName = (kind: LinkKind, raw: string): string => {
+  if (kind !== 'web') return LINK_NAMES[kind];
+  try {
+    return new URL(raw.trim()).hostname.toLowerCase().replace(/^www\./, '');
+  } catch {
+    return 'Website';
+  }
+};
+
 /** The link kind a pasted address most likely belongs to. */
 export const guessLinkKind = (raw: string): LinkKind => {
   try {

@@ -147,7 +147,7 @@ struct DiddyCardModules: View {
         VStack(alignment: .leading, spacing: 6) {
             ForEach(profile.links, id: \.url) { link in
                 Link(destination: link.url) {
-                    Label(link.url.host ?? link.url.absoluteString, systemImage: link.kind == "web" ? "globe" : "link")
+                    Label(DiddyLinkName.name(kind: link.kind, url: link.url), systemImage: link.kind == "web" ? "globe" : "link")
                         .lineLimit(1)
                 }
                 .tint(accent ?? Theme.accent)

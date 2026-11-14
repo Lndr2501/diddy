@@ -32,6 +32,7 @@ import { installContextMenuGuard } from '../contextMenu';
 import { installCallFrameMenu } from '../callFrameMenu';
 import { installSoundboard, releaseCallMicrophones } from './soundboard';
 import { installLocalSpeaking, stopLocalSpeaking } from './localSpeaking';
+import { installCameraChoice } from './cameraDevices';
 import { installCallTheme } from './callTheme';
 import { installScreenShareGrid } from './screenShareGrid';
 import { installVoiceBoost } from './voiceBoost';
@@ -50,6 +51,7 @@ import {
   isLivekitTokenRequest,
   JoinTimer,
   TO_DEVICE_RETRY_MS,
+  watchLivekitSignal,
   watchMediaConnected,
 } from './joinTiming';
 import { createThemeSync, ThemeSync } from './callThemeSync';
@@ -257,6 +259,8 @@ export class CallEmbed {
     const installMediaPatches = () => {
       // the call's peer connections: stream diagnostics and the "connection lost" sound
       trackPeerConnections(iframe.contentWindow);
+      // #161: every LiveKit signal attempt (open or failed) in the join timeline
+      watchLivekitSignal(iframe.contentWindow, diag);
       // E2EE worker of the call: logs decryption trouble and sets a missing decrypt flag (#74)
       installE2eeWatch(iframe.contentWindow);
       // received audio stuck near full scale (undecrypted noise) gets a log line (#74)
@@ -275,6 +279,8 @@ export class CallEmbed {
       installSoundboard(iframe.contentWindow);
       // after the soundboard: measures the microphone exactly as the call gets it (#76)
       installLocalSpeaking(iframe.contentWindow);
+      // #201: the camera picked in Diddy, also switched while the call runs
+      installCameraChoice(iframe.contentWindow);
       installVideoCodecPreference(iframe.contentWindow);
       // Restyle the Element Call tiles to match the app theme.
       installCallTheme(iframe.contentWindow);
@@ -385,12 +391,18 @@ export class CallEmbed {
         this.disposables.push(watchMediaConnected(pc, () => timer.mark('media connected')));
       })
     );
+    let giveUp = 0;
     const poll = window.setInterval(() => {
       const tiles = countTiles(this.document);
       if (tiles > 0) timer.mark('first tile shown');
-      if (tiles > 1) timer.mark('another person shown');
+      if (tiles > 1) {
+        timer.mark('another person shown');
+        // Done: without this every join ended with a misleading "gave up" line.
+        window.clearInterval(poll);
+        window.clearTimeout(giveUp);
+      }
     }, 250);
-    const giveUp = window.setTimeout(() => {
+    giveUp = window.setTimeout(() => {
       window.clearInterval(poll);
       timer.mark('gave up waiting for tiles (60 s)');
     }, 60000);
@@ -437,16 +449,12 @@ export class CallEmbed {
       this.listenAction(ElementWidgetActions.JoinCall, this.onCallJoined.bind(this))
     );
 
-    // Populate the map of "read up to" events for this widget with the current event in every room.
-    // This is a bit inefficient, but should be okay. We do this for all rooms in case the widget
-    // requests timeline capabilities in other rooms down the road. It's just easier to manage here.
-    this.mx.getRooms().forEach((room) => {
-      // Timelines are most recent last
-      const events = room.getLiveTimeline()?.getEvents() || [];
-      const roomEvent = events[events.length - 1];
-      if (!roomEvent) return; // force later code to think the room is fresh
-      this.readUpToMap[room.roomId] = roomEvent.getId()!;
-    });
+    // The "read up to" marker starts at the newest event of the call's room. The widget is confined
+    // to this room (confineToRoom), so events of other rooms are never fed to it (feedEvent).
+    const ownRoom = this.mx.getRoom(this.roomId);
+    const ownEvents = ownRoom?.getLiveTimeline()?.getEvents() || [];
+    const newest = ownEvents[ownEvents.length - 1];
+    if (newest?.getId()) this.readUpToMap[this.roomId] = newest.getId()!;
 
     // Attach listeners for feeding events - the underlying widget classes handle permissions for us
     this.mx.on(ClientEvent.Event, this.boundOnEvent);
@@ -522,6 +530,7 @@ export class CallEmbed {
   }
 
   private onEvent(ev: MatrixEvent): void {
+    if (ev.getRoomId() !== this.roomId) return;
     this.mx.decryptEventIfNeeded(ev);
     this.feedEvent(ev);
   }
@@ -532,6 +541,8 @@ export class CallEmbed {
 
   private onStateUpdate(ev: MatrixEvent): void {
     if (this.call === null) return;
+    // confined to its room, like feedEvent
+    if (ev.getRoomId() !== this.roomId) return;
     const raw = ev.getEffectiveEvent();
     this.call.feedStateUpdate(raw as IRoomEvent).catch((e) => {
       console.error('Error sending state update to widget: ', e);
@@ -640,6 +651,9 @@ export class CallEmbed {
 
   private feedEvent(ev: MatrixEvent): void {
     if (this.call === null) return;
+    // Every event of every room arrives here, and the marker check below copies the room's
+    // timeline each time. The widget is confined to its room and would drop the others anyway.
+    if (ev.getRoomId() !== this.roomId) return;
     if (
       // If we had decided earlier to feed this event to the widget, but
       // it just wasn't ready, give it another try

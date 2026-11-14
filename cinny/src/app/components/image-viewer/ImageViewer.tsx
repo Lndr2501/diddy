@@ -50,6 +50,10 @@ export const ImageViewer = as<'div', ImageViewerProps>(
           className={css.ImageViewerContent}
           justifyContent="Center"
           alignItems="Center"
+          onClick={(evt: React.MouseEvent<HTMLDivElement>) => {
+            // A click next to the picture closes the viewer, like other chat apps.
+            if (evt.target === evt.currentTarget && zoom === 1) requestClose();
+          }}
         >
           <img
             className={css.ImageViewerImg}

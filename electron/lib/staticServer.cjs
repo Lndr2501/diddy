@@ -88,13 +88,11 @@ const handler = (root, port) => {
         res.writeHead(404).end();
         return;
       }
-      const name = path.basename(file);
       res.writeHead(200, {
         'content-type': contentType(file),
         'content-length': stat.size,
         'x-content-type-options': 'nosniff',
-        // The page shell and the service worker must update with the app; hashed assets may cache.
-        'cache-control': name === 'index.html' || name === 'sw.js' ? 'no-cache' : 'public, max-age=3600',
+        'cache-control': cacheControl(req.url ?? '/'),
       });
       if (req.method === 'HEAD') {
         res.end();
@@ -103,6 +101,21 @@ const handler = (root, port) => {
       fs.createReadStream(file).pipe(res);
     });
   };
+};
+
+/**
+ * Build output with a content hash in its name (`/assets/index-BsyCF7gU.js`, also Element Call's)
+ * never changes under that name: it may stay in the cache for good, so a start reads the ~10 MB of
+ * scripts and crypto code from the cache instead of the server again. Before, everything expired
+ * after an hour. The page shell, the service worker and the config must follow an update at once.
+ */
+const HASHED_ASSET = /^\/(?:public\/element-call\/)?assets\/[^/]+-[A-Za-z0-9_-]{8}\.[A-Za-z0-9]+$/;
+const cacheControl = (url) => {
+  const pathname = String(url).split(/[?#]/)[0];
+  if (HASHED_ASSET.test(pathname)) return 'public, max-age=31536000, immutable';
+  const name = path.posix.basename(pathname);
+  if (name === '' || name === 'index.html' || name === 'sw.js' || name === 'config.json') return 'no-cache';
+  return 'public, max-age=3600';
 };
 
 /** Starts the server on 127.0.0.1:<port>; resolves with the server, rejects if the port is taken. */
@@ -116,4 +129,4 @@ const startStaticServer = (root, port) =>
     });
   });
 
-module.exports = { contentType, resolveFile, startStaticServer };
+module.exports = { cacheControl, contentType, resolveFile, startStaticServer };

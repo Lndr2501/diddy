@@ -17,6 +17,7 @@ import { Permissions } from './permissions';
 import { RoomSettingsPage } from '../../state/roomSettings';
 import { useRoom } from '../../hooks/useRoom';
 import { DeveloperTools } from '../common-settings/developer-tools';
+import { MediaFiles } from './media-files';
 
 type RoomSettingsMenuItem = SettingsNavItem<RoomSettingsPage>;
 
@@ -32,6 +33,11 @@ const useRoomSettingsMenuItems = (): RoomSettingsMenuItem[] =>
         page: RoomSettingsPage.MembersPage,
         name: 'Members',
         icon: Icons.User,
+      },
+      {
+        page: RoomSettingsPage.MediaFilesPage,
+        name: 'Media & Files',
+        icon: Icons.Photo,
       },
       {
         page: RoomSettingsPage.PermissionsPage,
@@ -127,6 +133,9 @@ export function RoomSettings({ initialPage, requestClose }: RoomSettingsProps) {
       )}
       {activePage === RoomSettingsPage.EmojisStickersPage && (
         <EmojisStickers requestClose={handlePageRequestClose} />
+      )}
+      {activePage === RoomSettingsPage.MediaFilesPage && (
+        <MediaFiles requestClose={handlePageRequestClose} />
       )}
       {activePage === RoomSettingsPage.DeveloperToolsPage && (
         <DeveloperTools requestClose={handlePageRequestClose} />

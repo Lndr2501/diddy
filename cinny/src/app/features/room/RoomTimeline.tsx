@@ -2,6 +2,7 @@
 import React, {
   Dispatch,
   MouseEventHandler,
+  ReactElement,
   RefObject,
   SetStateAction,
   useCallback,
@@ -81,11 +82,14 @@ import {
   getEditedEvent,
   getEventReactions,
   getLatestEditableEvt,
+  getMemberAvatarMxc,
   getMemberDisplayName,
   getReactionContent,
   isMembershipChanged,
   reactionOrEditEvent,
 } from '../../utils/room';
+import { isRoomBot } from '../../hooks/useRoomBots';
+import { TimelineRowMemo } from './TimelineRowMemo';
 import { isCardActionMessage } from '../../plugins/botCard';
 import { findUpdateRuns, summarizeUpdates, TimelineKind } from '../../plugins/timelineGroups';
 import { useSetting } from '../../state/hooks/settings';
@@ -120,6 +124,7 @@ import { useMentionClickHandler } from '../../hooks/useMentionClickHandler';
 import { useSpoilerClickHandler } from '../../hooks/useSpoilerClickHandler';
 import { useRoomNavigate } from '../../hooks/useRoomNavigate';
 import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
+import { openThreadAtom } from '../../state/openThread';
 import { useIgnoredUsers } from '../../hooks/useIgnoredUsers';
 import { useImagePackRooms } from '../../hooks/useImagePackRooms';
 import { useIsDirectRoom } from '../../hooks/useRoom';
@@ -671,6 +676,9 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
   const [timeline, setTimeline] = useState<Timeline>(() =>
     eventId ? getEmptyTimeline() : getInitialTimeline(room)
   );
+  // the timeline as rendered last, for looking up rows by index (getItemElement)
+  const timelineRef = useRef(timeline);
+  timelineRef.current = timeline;
   const eventsLength = getTimelinesEventsCount(timeline.linkedTimelines);
   const liveTimelineLinked =
     timeline.linkedTimelines[timeline.linkedTimelines.length - 1] === getLiveTimeline(room);
@@ -697,12 +705,23 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
       range: timeline.range,
       onRangeChange: useCallback((r) => setTimeline((cs) => ({ ...cs, range: r })), []),
       getScrollElement,
-      getItemElement: useCallback(
-        (index: number) =>
-          (scrollRef.current?.querySelector(`[data-message-item="${index}"]`) as HTMLElement) ??
-          undefined,
-        []
-      ),
+      // By event id, not by the item's index: memoized rows (TimelineRowMemo) keep the index
+      // they were drawn with, which shifts when older events are added in front.
+      getItemElement: useCallback((index: number) => {
+        const [eventTimeline, baseIndex] = getTimelineAndBaseIndex(
+          timelineRef.current.linkedTimelines,
+          index
+        );
+        const eventId =
+          eventTimeline &&
+          getTimelineEvent(eventTimeline, getTimelineRelativeIndex(index, baseIndex))?.getId();
+        if (!eventId) return undefined;
+        return (
+          (scrollRef.current?.querySelector(
+            `[data-message-id="${CSS.escape(eventId)}"]`
+          ) as HTMLElement) ?? undefined
+        );
+      }, []),
       onEnd: handleTimelinePagination,
     });
 
@@ -1061,13 +1080,24 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
     markAsRead(mx, room.roomId, hideActivity);
   };
 
-  const handleOpenReply: MouseEventHandler = useCallback(
-    async (evt) => {
-      const targetId = evt.currentTarget.getAttribute('data-event-id');
-      if (!targetId) return;
-      handleOpenEvent(targetId);
+  // Stable for the message rows (TimelineRowMemo): handleOpenEvent changes with every timeline
+  // change, and a new reply handler drew every loaded message again on each new event.
+  const handleOpenEventRef = useRef(handleOpenEvent);
+  handleOpenEventRef.current = handleOpenEvent;
+  const handleOpenReply: MouseEventHandler = useCallback(async (evt) => {
+    const targetId = evt.currentTarget.getAttribute('data-event-id');
+    if (!targetId) return;
+    handleOpenEventRef.current(targetId);
+  }, []);
+
+  const setOpenThread = useSetAtom(openThreadAtom);
+  const handleOpenThread: MouseEventHandler = useCallback(
+    (evt) => {
+      const rootId = evt.currentTarget.getAttribute('data-event-id');
+      if (!rootId) return;
+      setOpenThread({ roomId: room.roomId, eventId: rootId });
     },
-    [handleOpenEvent]
+    [room.roomId, setOpenThread]
   );
 
   const handleUserClick: MouseEventHandler<HTMLButtonElement> = useCallback(
@@ -1117,6 +1147,11 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
         console.warn('Button should have "data-event-id" attribute!');
         return;
       }
+      if (startThread) {
+        // "Reply in thread" opens the thread next to the room (#188)
+        setOpenThread({ roomId: room.roomId, eventId: replyId });
+        return;
+      }
       const replyEvt = room.findEventById(replyId);
       if (!replyEvt) return;
       const editedReply = getEditedEvent(replyId, replyEvt, room.getUnfilteredTimelineSet());
@@ -1137,7 +1172,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
         setTimeout(() => ReactEditor.focus(editor), 100);
       }
     },
-    [room, setReplyDraft, editor]
+    [room, setReplyDraft, setOpenThread, editor]
   );
 
   const handleReactionToggle = useCallback(
@@ -1177,6 +1212,91 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
   );
   const { t } = useTranslation();
 
+  // Changes whenever anything every message row depends on changes (settings, permissions,
+  // callbacks): then all rows are drawn again. Kept apart from what one event changes.
+  const rowContext = useMemo(
+    () => ({}),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      room,
+      messageSpacing,
+      messageLayout,
+      canRedact,
+      canDeleteOwn,
+      canSendReaction,
+      canPinEvent,
+      imagePackRooms,
+      handleUserClick,
+      handleUsernameClick,
+      handleReplyClick,
+      handleReactionToggle,
+      handleEdit,
+      handleOpenReply,
+      handleOpenThread,
+      getMemberPowerTag,
+      accessiblePowerTagColors,
+      legacyUsernameColor,
+      direct,
+      hideActivity,
+      showDeveloperTools,
+      hour24Clock,
+      dateFormatString,
+      mediaAutoLoad,
+      showUrlPreview,
+      htmlReactParserOptions,
+      linkifyOpts,
+    ]
+  );
+
+  /**
+   * A message row that is only drawn again when something it shows changed (TimelineRowMemo).
+   * Everything a row reads from its event and the room must be in here; reactions, read
+   * receipts, replies and decryption update themselves.
+   */
+  const memoRow = (
+    mEventId: string,
+    mEvent: MatrixEvent,
+    item: number,
+    timelineSet: EventTimelineSet,
+    collapse: boolean,
+    hasReactions: boolean | null | undefined,
+    reactionRelations: unknown,
+    element: ReactElement
+  ) => {
+    const senderId = mEvent.getSender() ?? '';
+    const editedEvent = getEditedEvent(mEventId, mEvent, timelineSet);
+    const deps = [
+      rowContext,
+      mEventId,
+      mEvent,
+      mEvent.status,
+      mEvent.isRedacted(),
+      mEvent.getType(),
+      mEvent.getContent(),
+      mEvent.isDecryptionFailure(),
+      mEvent.isBeingDecrypted(),
+      mEvent.replyEventId,
+      mEvent.threadRootId,
+      editedEvent,
+      editedEvent?.getContent(),
+      timelineSet,
+      collapse,
+      focusItem?.index === item && focusItem.highlight,
+      editId === mEventId,
+      !!hasReactions,
+      reactionRelations,
+      getMemberDisplayName(room, senderId),
+      getMemberAvatarMxc(room, senderId),
+      isRoomBot(room, senderId),
+      getMemberPowerTag(senderId),
+    ];
+    return (
+      <TimelineRowMemo key={mEvent.getId()} deps={deps}>
+        {element}
+      </TimelineRowMemo>
+    );
+  };
+
   const renderMatrixEvent = useMatrixEventRenderer<
     [string, MatrixEvent, number, EventTimelineSet, boolean]
   >(
@@ -1196,9 +1316,15 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
         const senderDisplayName =
           getMemberDisplayName(room, senderId) ?? getMxIdLocalPart(senderId) ?? senderId;
 
-        return (
+        return memoRow(
+          mEventId,
+          mEvent,
+          item,
+          timelineSet,
+          collapse,
+          hasReactions,
+          reactionRelations,
           <Message
-            key={mEvent.getId()}
             data-message-item={item}
             data-message-id={mEventId}
             room={room}
@@ -1227,6 +1353,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
                   replyEventId={replyEventId}
                   threadRootId={threadRootId}
                   onClick={handleOpenReply}
+                  onThreadClick={handleOpenThread}
                   getMemberPowerTag={getMemberPowerTag}
                   accessibleTagColors={accessiblePowerTagColors}
                   legacyUsernameColor={legacyUsernameColor || direct}
@@ -1279,9 +1406,15 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
         const { replyEventId, threadRootId } = mEvent;
         const highlighted = focusItem?.index === item && focusItem.highlight;
 
-        return (
+        return memoRow(
+          mEventId,
+          mEvent,
+          item,
+          timelineSet,
+          collapse,
+          hasReactions,
+          reactionRelations,
           <Message
-            key={mEvent.getId()}
             data-message-item={item}
             data-message-id={mEventId}
             room={room}
@@ -1309,6 +1442,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
                   replyEventId={replyEventId}
                   threadRootId={threadRootId}
                   onClick={handleOpenReply}
+                  onThreadClick={handleOpenThread}
                   getMemberPowerTag={getMemberPowerTag}
                   accessibleTagColors={accessiblePowerTagColors}
                   legacyUsernameColor={legacyUsernameColor || direct}
@@ -1427,6 +1561,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
                   replyEventId={replyEventId}
                   threadRootId={threadRootId}
                   onClick={handleOpenReply}
+                  onThreadClick={handleOpenThread}
                   getMemberPowerTag={getMemberPowerTag}
                   accessibleTagColors={accessiblePowerTagColors}
                   legacyUsernameColor={legacyUsernameColor || direct}

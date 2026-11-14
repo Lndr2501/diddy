@@ -1,32 +1,6 @@
 import SwiftUI
 import UIKit
 
-/// Parsed messages are kept, so scrolling the chat does not parse the same text again.
-enum RichDocumentCache {
-    private final class Box {
-        let document: RichDocument
-        init(_ document: RichDocument) { self.document = document }
-    }
-
-    private static let cache: NSCache<NSString, Box> = {
-        let cache = NSCache<NSString, Box>()
-        cache.countLimit = 500
-        return cache
-    }()
-
-    static func document(for source: RichSource) -> RichDocument {
-        let key: String
-        switch source {
-        case .html(let text): key = "h" + text
-        case .markdown(let text): key = "m" + text
-        }
-        if let hit = cache.object(forKey: key as NSString) { return hit.document }
-        let document = source.document
-        cache.setObject(Box(document), forKey: key as NSString)
-        return document
-    }
-}
-
 /// What the rendering of one message shares between its blocks: which spoilers are open and the
 /// pictures of its custom emoji.
 @MainActor

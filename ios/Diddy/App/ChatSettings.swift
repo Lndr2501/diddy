@@ -107,8 +107,9 @@ enum ChatSettings {
     /// Link previews in chats without encryption (desktop's Url Preview, on by default).
     static var urlPreviews: Bool { bool(urlPreviewsKey) }
 
-    /// Link previews in encrypted chats: the server learns the links, so off by default like desktop.
-    static var encryptedUrlPreviews: Bool { bool(encryptedUrlPreviewsKey, default: false) }
+    /// Link previews in encrypted chats. The app reads the pages itself there, the homeserver never
+    /// learns the links, so they are on by default like on desktop (#197).
+    static var encryptedUrlPreviews: Bool { bool(encryptedUrlPreviewsKey) }
 
     /// Whether link previews show in a chat, by its encryption.
     static func urlPreviews(encrypted: Bool) -> Bool {

@@ -38,6 +38,8 @@ struct MessageRow: Identifiable {
     let isPending: Bool
     /// Structured card of a bot message (`dev.diddy.card`); the plain text stays in `body`.
     var card: BotCard? = nil
+    /// A shared song (`app.diddy.music`), drawn like iMessage's lyrics card.
+    var music: MusicCard? = nil
     /// The change a membership line is about, for its symbol.
     var membership: TimelineLayout.Membership? = nil
     /// Formatted text (HTML or Markdown block syntax); nil keeps the plain rendering of `body`.
@@ -45,9 +47,14 @@ struct MessageRow: Identifiable {
     var richItalic = false
     /// Web links to preview under the message (empty when previews are off).
     var previewURLs: [String] = []
+    /// The chat is encrypted: the app reads the previews itself instead of asking the homeserver.
+    var previewsLocal = false
     /// A video message; `body` is its file line, which a client without a player shows.
     var video: VideoAttachment? = nil
     var location: LocationAttachment? = nil
+    /// Text sent with a photo, file or audio, shown under it.
+    var caption: String? = nil
+    var captionRich: RichSource? = nil
     var isSticker = false
     /// Calls this line stands for: 0 for anything but a call, more than 1 for a folded run.
     var callCount = 0
@@ -373,6 +380,7 @@ final class TimelineController: ObservableObject {
                 createdAt = date
             }
             guard var row = Self.row(for: event, id: item.uniqueId().id, me: ownUserId, previews: previews) else { continue }
+            row.previewsLocal = roomEncrypted
             row.dayDivider = pendingDay
             pendingDay = nil
             built.append(row)
@@ -426,6 +434,7 @@ final class TimelineController: ObservableObject {
         var edited = false
         var reply: (sender: String, senderId: String, text: String, avatar: String?)?
         var card: BotCard?
+        var music: MusicCard?
         var membership: TimelineLayout.Membership?
         var extras = MessageExtras()
         var isSticker = false
@@ -449,6 +458,7 @@ final class TimelineController: ObservableObject {
                 let inspection = BotCardLookup.inspect(event, id: id, message: message)
                 if inspection.hidden { return nil }
                 card = inspection.card
+                music = inspection.music
             case .sticker(let text, let info, let source):
                 isSticker = true
                 body = .image(source, filename: text, width: info.width.map { CGFloat($0) }, height: info.height.map { CGFloat($0) })
@@ -494,12 +504,14 @@ final class TimelineController: ObservableObject {
             membership: membership
         )
         if isCall { row.callCount = 1 }
-        // A bot card keeps its own look; everything else gets the desktop's rendering.
-        if card == nil {
+        row.music = card == nil ? music : nil
+        // A bot card or a song keeps its own look; everything else gets the desktop's rendering.
+        if card == nil && music == nil {
             row.rich = extras.rich
             row.richItalic = extras.italic
             row.video = extras.video
             row.location = extras.location
+            if !isSticker { row.caption = extras.caption; row.captionRich = extras.captionRich }
             if previews, let text = extras.previewText { row.previewURLs = LinkPreviewURLs.find(in: text) }
         }
         row.isSticker = isSticker

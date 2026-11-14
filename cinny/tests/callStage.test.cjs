@@ -182,3 +182,12 @@ test('markSpeaking never clears a ring Element Call shows', () => {
   const model = readCallStage(doc([tile({ userId: '@me:x.eu', name: 'me', speaking: true })]));
   assert.deepEqual([...stageSpeakers(markSpeaking(model, '@me:x.eu', false))], ['@me:x.eu']);
 });
+
+test('only style changes of a video re-read the stage; every other change does', () => {
+  const { stageMutationMatters } = load();
+  const style = (nodeName) => ({ type: 'attributes', attributeName: 'style', target: { nodeName } });
+  assert.equal(stageMutationMatters(style('DIV')), false, 'tile animation');
+  assert.equal(stageMutationMatters(style('VIDEO')), true, 'camera hidden (#145)');
+  assert.equal(stageMutationMatters({ type: 'attributes', attributeName: 'class', target: { nodeName: 'DIV' } }), true);
+  assert.equal(stageMutationMatters({ type: 'childList', target: { nodeName: 'DIV' } }), true);
+});

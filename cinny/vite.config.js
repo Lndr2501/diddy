@@ -11,6 +11,39 @@ import fs from 'fs';
 import path from 'path';
 import buildConfig from './build.config';
 
+/**
+ * Source maps are written next to the build, not into it: in `dist` they were 22 MB of the app
+ * (embedded in the macOS binary, packed into the Linux one) that nobody loads at runtime. They
+ * stay in `dist-maps/` (same paths) for reading stack traces. `sourcemap: 'hidden'` drops the
+ * references from the bundles.
+ */
+function moveSourceMaps() {
+  return {
+    name: 'diddy-move-source-maps',
+    apply: 'build',
+    async closeBundle() {
+      const fs = await import('node:fs');
+      const path = await import('node:path');
+      const dist = path.resolve('dist');
+      const target = path.resolve('dist-maps');
+      if (!fs.existsSync(dist)) return;
+      fs.rmSync(target, { recursive: true, force: true });
+      const walk = (dir) =>
+        fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+          const p = path.join(dir, e.name);
+          return e.isDirectory() ? walk(p) : [p];
+        });
+      walk(dist)
+        .filter((file) => file.endsWith('.map'))
+        .forEach((file) => {
+          const to = path.join(target, path.relative(dist, file));
+          fs.mkdirSync(path.dirname(to), { recursive: true });
+          fs.renameSync(file, to);
+        });
+    },
+  };
+}
+
 const copyFiles = {
   targets: [
     {
@@ -112,6 +145,7 @@ export default defineConfig({
         type: 'module',
       },
     }),
+    moveSourceMaps(),
   ],
   optimizeDeps: {
     esbuildOptions: {
@@ -129,7 +163,7 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: true,
+    sourcemap: 'hidden',
     copyPublicDir: false,
     rollupOptions: {
       plugins: [inject({ Buffer: ['buffer', 'Buffer'] })],

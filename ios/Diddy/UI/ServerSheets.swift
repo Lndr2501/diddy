@@ -286,6 +286,9 @@ struct ChannelInfoView: View {
                         Button { showInvite = true } label: { Label("Invite People", systemImage: "person.badge.plus") }
                         Button { showSettings = true } label: { Label("Channel Settings", systemImage: "gearshape") }
                     }
+                    NavigationLink {
+                        MediaOverviewView(account: account, roomId: roomId)
+                    } label: { Label("Media & Files", systemImage: "photo.on.rectangle") }
                 }
                 if let error { Text(error).foregroundStyle(Theme.danger) }
                 Section {

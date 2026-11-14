@@ -8,8 +8,22 @@ struct ChatView: View {
     @ObservedObject var account: MatrixAccount
     let roomId: String
     @StateObject private var holder = TimelineHolder()
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @AppStorage(MemberPanel.key) private var memberPanelOpen = true
 
     var body: some View {
+        HStack(spacing: 0) {
+            chat
+            // iPad: the members on the right like on macOS (#187); iPhone keeps the sheet.
+            if horizontalSizeClass == .regular, memberPanelOpen, holder.controller != nil {
+                Divider()
+                MembersView(account: account, roomId: roomId, onClose: { memberPanelOpen = false })
+                    .frame(width: 300)
+            }
+        }
+    }
+
+    private var chat: some View {
         Group {
             if let controller = holder.controller {
                 ChatContent(account: account, controller: controller, summary: account.summary(for: roomId))
@@ -55,11 +69,16 @@ private struct ChatContent: View {
     @State private var selection = NSRange(location: 0, length: 0)
     @State private var restoredReplyId: String?
     @State private var pendingFiles: [ComposerPendingFile] = []
+    /// A song shared from Apple Music or Spotify, sent as a music card with the next send.
+    @State private var pendingMusic: MusicCard?
+    @ObservedObject private var inbox = ShareInbox.shared
     @State private var sending = false
     @State private var draftLoaded = false
     @AppStorage(ChatSettings.editorToolbarKey) private var showFormatToolbar = false
     @StateObject private var recorder = VoiceRecorder()
     @State private var showMembers = false
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @AppStorage(MemberPanel.key) private var memberPanelOpen = true
     @State private var showInfo = false
     @State private var showSearch = false
     @State private var searchContext: SearchEventTarget?
@@ -74,6 +93,9 @@ private struct ChatContent: View {
     @State private var actionRow: MessageRow?
     /// Whether the chat follows the newest message. Only the user scrolling up turns this off.
     @State private var atBottom = true
+    /// Keeps the visible messages still while older ones are added above (ChatScrollAnchor.swift).
+    @State private var scrollAnchor = ChatScrollAnchor()
+    @State private var loadingOlder = false
     /// The composer's height: when it shrinks (a photo taken out, the reply bar closed) the list
     /// grows and would show an empty gap below the last message until scrolled.
     @State private var composerHeight: CGFloat = 0
@@ -86,10 +108,10 @@ private struct ChatContent: View {
     @State private var navSheet: TimelineNavSheet?
     @State private var jumpTarget: TimelineJumpTarget?
     @State private var highlightedRowId: String?
-    @State private var unreadSeen = false
-    @State private var unreadDismissed = false
     @State private var notifyError: String?
     @FocusState private var composerFocused: Bool
+    /// Raised by a reply, so the keyboard comes up even after a swipe (see ComposerEditor.focusToken).
+    @State private var composerFocusToken = 0
 
     private var title: String { summary?.name ?? "Channel" }
     private var roomId: String { controller.room.id() }
@@ -136,7 +158,7 @@ private struct ChatContent: View {
             }
         }
         .animation(.easeOut(duration: 0.18), value: actionRow?.id)
-        .task { await account.refreshNotifyLevels() }
+        .task { await account.refreshNotifyLevel(roomId: roomId) }
         .alert("Notifications", isPresented: Binding(get: { notifyError != nil }, set: { if !$0 { notifyError = nil } })) {
             Button("OK", role: .cancel) {}
         } message: { Text(notifyError ?? "") }
@@ -212,7 +234,10 @@ private struct ChatContent: View {
                 }
                 draftLoaded = true
             }
+            takeShare()
         }
+        // Shared from another app while this chat is already open.
+        .onReceive(inbox.$staged) { _ in if draftLoaded { takeShare() } }
         .onDisappear {
             saveDraft()
             controller.setTyping(false)
@@ -230,6 +255,9 @@ private struct ChatContent: View {
 
     private var messages: some View {
         ScrollViewReader { proxy in
+            // Older messages load while these first rows come into view, so a fast fling up
+            // rarely reaches the top and has to wait.
+            let earlyRows = Set(controller.rows.prefix(10).map(\.id))
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     if controller.reachedStart {
@@ -239,16 +267,10 @@ private struct ChatContent: View {
                             .frame(maxWidth: .infinity)
                             .padding()
                             // Runs again after each page, in case the spinner is still in view.
-                            .task(id: controller.rows.count) {
-                                let top = controller.rows.first?.id
-                                await controller.loadOlderMessages()
-                                if let top, !atBottom { proxy.scrollTo(top, anchor: .top) }
-                            }
+                            .task(id: controller.rows.count) { await loadOlder() }
                     }
                     ForEach(controller.rows) { row in
-                        if !unreadDismissed, dividerRowId == row.id {
-                            NewMessagesDivider().onAppear { unreadSeen = true }
-                        }
+                        if dividerRowId == row.id { NewMessagesDivider() }
                         MessageRowView(
                             row: row,
                             account: account,
@@ -263,6 +285,7 @@ private struct ChatContent: View {
                             onReactionInfo: { key in showReactors(of: row, key: key) }
                         )
                         .id(row.id)
+                        .onAppear { if earlyRows.contains(row.id) { Task { await loadOlder() } } }
                         .background(highlightedRowId == row.id ? Theme.accent.opacity(0.18) : Color.clear)
                         .swipeToReply {
                             // The swipe is also a drag of the chat; at the end it must keep following.
@@ -300,6 +323,7 @@ private struct ChatContent: View {
                             }
                         }
                 }
+                .background(ChatScrollAnchorView(anchor: scrollAnchor))
             }
             .stickToBottom()
             .scrollDismissesKeyboard(.interactively)
@@ -350,18 +374,6 @@ private struct ChatContent: View {
                 guard let target = jumpTarget else { return }
                 await jump(to: target.eventId, proxy: proxy)
             }
-            .overlay(alignment: .top) {
-                ZStack {
-                    if showsUnreadPill {
-                        JumpToUnreadPill(
-                            onJump: { Task { await jumpToUnread(proxy: proxy) } },
-                            onMarkRead: { unreadDismissed = true; controller.markRead() }
-                        )
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                    }
-                }
-                .animation(.easeOut(duration: 0.15), value: showsUnreadPill)
-            }
             .overlay(alignment: .bottomTrailing) {
                 ZStack {
                     if !atBottom { jumpToLatestButton(proxy: proxy) }
@@ -372,7 +384,7 @@ private struct ChatContent: View {
         }
     }
 
-    /// Bottom right of the chat, above the composer; the unread pill sits at the top, so they never meet.
+    /// Bottom right of the chat, above the composer.
     private func jumpToLatestButton(proxy: ScrollViewProxy) -> some View {
         Button {
             withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo("bottom", anchor: .bottom) }
@@ -395,7 +407,9 @@ private struct ChatContent: View {
     private var headerMenu: some View {
         Button { showInfo = true } label: { Label("Details", systemImage: "info.circle") }
         Button { showSearch = true } label: { Label("Search Messages", systemImage: "magnifyingglass") }
-        Button { showMembers = true } label: { Label("Members", systemImage: "person.2") }
+        Button {
+            if horizontalSizeClass == .regular { memberPanelOpen.toggle() } else { showMembers = true }
+        } label: { Label("Members", systemImage: "person.2") }
         Divider()
         Button { navSheet = .pinned } label: { Label("Pinned Messages", systemImage: "pin") }
         Button { navSheet = .jumpToDate } label: { Label("Jump to Time", systemImage: "calendar") }
@@ -411,13 +425,13 @@ private struct ChatContent: View {
 
     private var dividerRowId: String? { controller.nav.dividerRowId(me: account.userId) }
 
-    private var unread: TimelineNav.Unread {
-        controller.nav.unread(me: account.userId, reachedStart: controller.reachedStart)
-    }
-
-    private var showsUnreadPill: Bool {
-        guard !unreadDismissed, !unreadSeen else { return false }
-        return unread != .none
+    /// One page of older messages at a time; the anchor keeps what is on screen where it is, also
+    /// during a fling, instead of jumping back to the old top row afterwards.
+    private func loadOlder() async {
+        guard !loadingOlder, !controller.loading, !controller.reachedStart else { return }
+        loadingOlder = true
+        await scrollAnchor.keepingPosition { await controller.loadOlderMessages() }
+        loadingOlder = false
     }
 
     /// Shows a message, loading older ones first when it is further back; the sheet of the
@@ -436,18 +450,6 @@ private struct ChatContent: View {
         proxy.scrollTo(rowId, anchor: .center)
         try? await Task.sleep(nanoseconds: 1_700_000_000)
         if highlightedRowId == rowId { highlightedRowId = nil }
-    }
-
-    private func jumpToUnread(proxy: ScrollViewProxy) async {
-        if unread == .notLoaded, let readUpTo = controller.nav.readUpTo {
-            _ = await controller.loadRowId(forEvent: readUpTo)
-        }
-        guard case .divider(let rowId) = unread else { return }
-        userScrolled = true
-        atBottom = false
-        proxy.scrollTo(rowId, anchor: .top)
-        try? await Task.sleep(nanoseconds: 300_000_000)
-        proxy.scrollTo(rowId, anchor: .top)
     }
 
     private func openReply(of row: MessageRow) {
@@ -480,6 +482,7 @@ private struct ChatContent: View {
         restoredReplyId = nil
         editing = nil
         composerFocused = true
+        composerFocusToken += 1
     }
 
     private func startEditing(_ row: MessageRow, text: String) {
@@ -509,7 +512,7 @@ private struct ChatContent: View {
     /// Double tap gives a text message a ❤️ (or takes yours away); pictures and files keep their tap.
     private static func doubleTapReacts(_ row: MessageRow) -> Bool {
         guard row.layoutKind == .message, !row.isRedactedMessage, case .text = row.body else { return false }
-        return row.card == nil
+        return row.card == nil && row.music == nil
     }
 
     private func quickLove(_ row: MessageRow) {
@@ -612,7 +615,10 @@ private struct ChatContent: View {
             title: title,
             onBack: backAction,
             onInfo: { showInfo = true },
-            onCall: { Task { await calls.requestJoin(account: account, roomId: roomId, roomName: title, showCallScreen: true) } }
+            onCall: { Task { await calls.requestJoin(account: account, roomId: roomId, roomName: title, showCallScreen: true) } },
+            // iPad: the member list is a column beside the chat (ChatView), shown and hidden here.
+            membersOpen: horizontalSizeClass == .regular ? memberPanelOpen : nil,
+            onToggleMembers: { memberPanelOpen.toggle() }
         ) {
             headerMenu
         }
@@ -664,6 +670,7 @@ private struct ChatContent: View {
                 .background(Theme.elevated)
             }
             composerSuggestions
+            if let pendingMusic { pendingMusicPreview(pendingMusic) }
             if !pendingFiles.isEmpty { pendingAttachments }
             if showFormatToolbar { formatToolbar }
             if replyTo == nil, restoredReplyId != nil {
@@ -723,13 +730,13 @@ private struct ChatContent: View {
                 }
                 .accessibilityLabel("Add attachment")
             }
-            ComposerEditor(text: $draft, selection: $selection, isFocused: composerFocused, onFocus: { composerFocused = $0 }, onSend: send, onFiles: { urls, images in
+            ComposerEditor(text: $draft, selection: $selection, isFocused: composerFocused, focusToken: composerFocusToken, onFocus: { composerFocused = $0 }, onSend: send, onFiles: { urls, images in
                 Task { await addFiles(urls, images: images) }
             })
                 .frame(minHeight: ComposerEditor.minHeight)
                 .overlay(alignment: .leading) {
                     if draft.isEmpty {
-                        Text(editing != nil ? "Edit message" : pendingFiles.isEmpty ? "Message \(title)" : "Add a caption…")
+                        Text(editing != nil ? "Edit message" : pendingMusic != nil ? "Add a message…" : pendingFiles.isEmpty ? "Message \(title)" : "Add a caption…")
                             .font(ComposerEditor.font)
                             .foregroundStyle(Theme.faint)
                             .lineLimit(1)
@@ -749,7 +756,7 @@ private struct ChatContent: View {
                 }
                 .accessibilityLabel("Emoji and stickers")
             }
-            if !trimmedDraft.isEmpty || !pendingFiles.isEmpty {
+            if !trimmedDraft.isEmpty || !pendingFiles.isEmpty || pendingMusic != nil {
                 Button(action: send) {
                     Image(systemName: editing == nil ? "arrow.up" : "checkmark")
                         .font(.system(size: 15, weight: .bold))
@@ -773,6 +780,49 @@ private struct ChatContent: View {
         .padding(.horizontal, 10)
         .padding(.top, 6)
         .padding(.bottom, 8)
+    }
+
+    /// A shared song waiting to be sent: the card as it will look, with a cross to drop it.
+    private func pendingMusicPreview(_ music: MusicCard) -> some View {
+        HStack {
+            MusicCardView(card: music, account: account, interactive: false)
+                .frame(maxWidth: 260)
+                .overlay(alignment: .topTrailing) {
+                    Button { pendingMusic = nil } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(.white)
+                            .frame(width: 22, height: 22)
+                            .background(Circle().fill(Color.black.opacity(0.7)))
+                            .frame(width: 34, height: 34)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(sending)
+                    .offset(x: 10, y: -10)
+                    .accessibilityLabel("Remove song")
+                }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 14)
+        .padding(.top, 12)
+    }
+
+    /// Something shared from another app (ShareInbox) for this chat: files and the song go into
+    /// the composer, the text into the draft. Nothing is sent before you tap send.
+    private func takeShare() {
+        guard editing == nil, let share = inbox.take(for: roomId) else { return }
+        if let music = share.music { pendingMusic = music }
+        let text = share.draftText
+        if !text.isEmpty {
+            draft = draft.isEmpty ? text : draft + "\n" + text
+            selection = NSRange(location: (draft as NSString).length, length: 0)
+        }
+        Task {
+            for file in await ShareInbox.composerFiles(of: share) {
+                await addData(file.data, name: file.name, mime: file.mime)
+            }
+        }
     }
 
     /// Files waiting to be sent, as thumbnails above the bar. The text in the bar is the caption,
@@ -868,7 +918,7 @@ private struct ChatContent: View {
     }
 
     private func send() {
-        guard !sending, !trimmedDraft.isEmpty || !pendingFiles.isEmpty else { return }
+        guard !sending, !trimmedDraft.isEmpty || !pendingFiles.isEmpty || pendingMusic != nil else { return }
         let original = draft
         var allTokens = tokens
         for (name, id) in mentions { allTokens["@" + name] = .user(id: id) }
@@ -881,10 +931,18 @@ private struct ChatContent: View {
             replyUserId: replyTo?.sender, ownUserId: account.userId)
         let files = pendingFiles
         let caption = original.trimmingCharacters(in: .whitespacesAndNewlines)
+        let music = editing == nil ? pendingMusic : nil
         sending = true
         Task {
             var success = true
-            if !files.isEmpty {
+            // The song first, then what was typed as its own message (like iMessage).
+            if let music {
+                guard await controller.sendMusic(music, client: account.client) else { sending = false; return }
+                pendingMusic = nil
+            }
+            if music != nil && files.isEmpty && caption.isEmpty {
+                // nothing else to send
+            } else if !files.isEmpty {
                 // The caption goes with the first file only, so it is not repeated under every photo.
                 for (index, file) in files.enumerated() {
                     if await controller.sendAttachment(data: file.data, filename: file.name, mime: file.mime,
@@ -1030,7 +1088,7 @@ struct ViewedImage: Identifiable {
 }
 
 /// Full screen photo: pinch to zoom, drag when zoomed, share or save.
-private struct ImageViewer: View {
+struct ImageViewer: View {
     let image: UIImage
     @Environment(\.dismiss) private var dismiss
     @State private var scale: CGFloat = 1
@@ -1245,7 +1303,10 @@ struct MessageRowView: View {
                         }
                     }
                     content
-                    if !row.previewURLs.isEmpty { LinkPreviewStrip(urls: row.previewURLs, account: account) }
+                    if !row.previewURLs.isEmpty {
+                        LinkPreviewStrip(urls: row.previewURLs, account: account, encrypted: row.previewsLocal,
+                                         onImage: onImage)
+                    }
                     if !row.reactions.isEmpty { reactions }
                 }
                 Spacer(minLength: 0)
@@ -1266,33 +1327,31 @@ struct MessageRowView: View {
         switch row.body {
         case .text where row.card != nil:
             if let card = row.card { BotCardView(card: card, account: account, onCommand: onCardCommand) }
+        case .text where row.music != nil:
+            if let music = row.music { MusicCardView(card: music, account: account) }
         case .text where row.location != nil:
             if let location = row.location { LocationMessageView(location: location) }
         case .text(let text):
-            Group {
-                if let rich = row.rich {
-                    RichMessageBody(source: rich, italic: row.richItalic, edited: row.isEdited, account: account, onLink: handleLink)
-                } else {
-                    (Text(rendered(text)) + Text(row.isEdited ? " (edited)" : "").font(.caption2).foregroundColor(Theme.faint))
-                        .font(ChatStyle.bodyFont)
-                        .foregroundStyle(Theme.text)
-                        .environment(\.openURL, OpenURLAction { handleLink($0) })
-                }
-            }
-            .onAppear {
-                let unknown = MentionText.userIds(in: text).filter { account.profiles[$0] == nil }
-                if !unknown.isEmpty { account.resolveProfiles(unknown, in: roomId) }
-            }
+            textBody(text, rich: row.rich, italic: row.richItalic)
         case .image(let source, let name, let width, let height) where row.isSticker:
             StickerView(source: source, name: name, width: width, height: height, account: account)
         case .image(let source, _, let width, let height):
-            ChatImage(source: source, account: account, aspect: (width ?? 4) / max(height ?? 3, 1), onTap: onImage)
+            VStack(alignment: .leading, spacing: 6) {
+                ChatImage(source: source, account: account, aspect: (width ?? 4) / max(height ?? 3, 1), onTap: onImage)
+                captionView
+            }
         case .audio(let audio):
-            VoiceMessageView(id: row.id, audio: audio, account: account)
+            VStack(alignment: .leading, spacing: 6) {
+                VoiceMessageView(id: row.id, audio: audio, account: account)
+                captionView
+            }
         case .file where row.video != nil:
             if let video = row.video { VideoMessageView(video: video, account: account, onFile: onFile) }
         case .file(let name, let source, _):
-            FileAttachment(name: name, source: source, client: account.client, onOpen: onFile)
+            VStack(alignment: .leading, spacing: 6) {
+                FileAttachment(name: name, source: source, client: account.client, onOpen: onFile)
+                captionView
+            }
         case .undecryptable:
             Label("Waiting for this message's key. Verify this device in Settings.", systemImage: "lock")
                 .font(.footnote).foregroundStyle(Theme.faint)
@@ -1301,6 +1360,30 @@ struct MessageRowView: View {
         case .notice(let text):
             Text(text).font(ChatStyle.bodyFont).foregroundStyle(Theme.muted)
         }
+    }
+
+    /// A message's text, formatted when it has formatting, with "(edited)" after it.
+    private func textBody(_ text: String, rich: RichSource?, italic: Bool) -> some View {
+        Group {
+            if let rich {
+                RichMessageBody(source: rich, italic: italic, edited: row.isEdited, account: account, onLink: handleLink)
+            } else {
+                (Text(rendered(text)) + Text(row.isEdited ? " (edited)" : "").font(.caption2).foregroundColor(Theme.faint))
+                    .font(ChatStyle.bodyFont)
+                    .foregroundStyle(Theme.text)
+                    .environment(\.openURL, OpenURLAction { handleLink($0) })
+            }
+        }
+        .onAppear {
+            let unknown = MentionText.userIds(in: text).filter { account.profiles[$0] == nil }
+            if !unknown.isEmpty { account.resolveProfiles(unknown, in: roomId) }
+        }
+    }
+
+    /// What was typed with a photo, file or audio, under it like on the desktop.
+    @ViewBuilder
+    private var captionView: some View {
+        if let caption = row.caption { textBody(caption, rich: row.captionRich, italic: false) }
     }
 
     /// Taps on links in a message: rooms and events open in the app, people open their profile,
@@ -1475,7 +1558,7 @@ private struct ChatImage: View {
     }
 }
 
-private struct FileAttachment: View {
+struct FileAttachment: View {
     let name: String
     let source: MediaSource
     let client: Client

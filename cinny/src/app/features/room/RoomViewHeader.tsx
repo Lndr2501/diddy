@@ -124,6 +124,10 @@ const RoomMenu = forwardRef<HTMLDivElement, RoomMenuProps>(
       openSettings(room.roomId, parentSpace?.roomId);
       requestClose();
     };
+    const handleOpenMedia = () => {
+      openSettings(room.roomId, parentSpace?.roomId, RoomSettingsPage.MediaFilesPage);
+      requestClose();
+    };
 
     return (
       <Menu ref={ref} style={{ maxWidth: toRem(160), width: '100vw' }}>
@@ -219,6 +223,16 @@ const RoomMenu = forwardRef<HTMLDivElement, RoomMenuProps>(
           >
             <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
               Room Settings
+            </Text>
+          </MenuItem>
+          <MenuItem
+            onClick={handleOpenMedia}
+            size="300"
+            after={<Icon size="100" src={Icons.Photo} />}
+            radii="300"
+          >
+            <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
+              Media & Files
             </Text>
           </MenuItem>
           <UseStateProvider initial={false}>

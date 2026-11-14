@@ -1,4 +1,5 @@
 import sanitizeHtml, { Transformer } from 'sanitize-html';
+import { memoizeString } from './lruCache';
 
 const MAX_TAG_NESTING = 100;
 
@@ -126,7 +127,7 @@ const transformImgTag: Transformer = (tagName, attribs) => {
   };
 };
 
-export const sanitizeCustomHtml = (customHtml: string): string =>
+const sanitizeCustomHtmlUncached = (customHtml: string): string =>
   sanitizeHtml(customHtml, {
     allowedTags: permittedHtmlTags,
     allowedAttributes: permittedTagToAttributes,
@@ -155,6 +156,13 @@ export const sanitizeCustomHtml = (customHtml: string): string =>
     nonTextTags: ['style', 'script', 'textarea', 'option', 'noscript', 'mx-reply'],
     nestingLimit: MAX_TAG_NESTING,
   });
+
+/**
+ * The timeline sanitizes the same message bodies again on every render and room switch; the
+ * result only depends on the input, so it is kept (sanitize-html is among the costliest steps of
+ * drawing a message).
+ */
+export const sanitizeCustomHtml = memoizeString(sanitizeCustomHtmlUncached, 2000);
 
 export const sanitizeText = (body: string) => {
   const tagsToReplace: Record<string, string> = {

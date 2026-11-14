@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import {
   Box,
   Button,
@@ -47,6 +47,13 @@ export function MyInstantsImport({ onClose }: MyInstantsImportProps) {
   const [status, setStatus] = useState<string>();
   const [error, setError] = useState<string>();
   const cancelRef = useRef(false);
+  const preview = useSyncExternalStore(
+    soundboard.previews.subscribe,
+    soundboard.previews.getSnapshot
+  );
+
+  // closing the dialog (button, Escape, a parent unmounting it) stops the preview (#205)
+  useEffect(() => () => soundboard.stopPreview(), []);
 
   const reset = () => {
     setResults([]);
@@ -114,7 +121,7 @@ export function MyInstantsImport({ onClose }: MyInstantsImportProps) {
   const handlePreview = async (item: MyInstant) => {
     setError(undefined);
     try {
-      await soundboard.preview(await downloadMyInstant(item));
+      await soundboard.previewToggle(item.path, () => downloadMyInstant(item));
     } catch (e) {
       setError(`Preview failed: ${messageOf(e)}`);
     }
@@ -185,6 +192,7 @@ export function MyInstantsImport({ onClose }: MyInstantsImportProps) {
 
   const handleClose = () => {
     cancelRef.current = true;
+    soundboard.stopPreview();
     onClose();
   };
 
@@ -304,11 +312,23 @@ export function MyInstantsImport({ onClose }: MyInstantsImportProps) {
                             variant="Surface"
                             fill="None"
                             radii="300"
-                            aria-label={`Preview ${item.name}`}
+                            aria-label={
+                              preview.key === item.path
+                                ? `Stop preview of ${item.name}`
+                                : `Preview ${item.name}`
+                            }
+                            aria-pressed={preview.key === item.path}
                             disabled={busy}
                             onClick={() => handlePreview(item)}
                           >
-                            <Icon size="100" src={Icons.Play} />
+                            {preview.key === item.path && preview.loading ? (
+                              <Spinner size="100" />
+                            ) : (
+                              <Icon
+                                size="100"
+                                src={preview.key === item.path ? Icons.Pause : Icons.Play}
+                              />
+                            )}
                           </IconButton>
                         </Box>
                       );

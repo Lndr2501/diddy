@@ -10,6 +10,7 @@ import {
   LinkKind,
   ProfileAbout,
   safeLinkUrl,
+  linkDisplayName,
   visibleModules,
 } from '../../plugins/diddy/profileExtras';
 import { safeText } from '../../plugins/diddy/sanitize';
@@ -32,10 +33,10 @@ export const readableTextOn = (hex: string): string => {
 
 const ABOUT_ICON: Record<keyof ProfileAbout, IconSrc> = {
   pronouns: Icons.User,
-  location: Icons.Pin,
-  age: Icons.Clock,
-  education: Icons.Bookmark,
-  work: Icons.Terminal,
+  location: Icons.Explore,
+  age: Icons.Cup,
+  education: Icons.Bulb,
+  work: Icons.Category,
 };
 
 const LINK_LABEL: Record<LinkKind, string> = {
@@ -245,6 +246,9 @@ export function LinksModule({ links, accent }: { links?: DiddyProfile['links']; 
                 style={tint(accent)}
               >
                 <Icon size="100" src={LINK_ICON[link.kind]} />
+                <Text as="span" size="T200" truncate>
+                  {linkDisplayName(link.kind, link.href)}
+                </Text>
               </a>
             )}
           </TooltipProvider>

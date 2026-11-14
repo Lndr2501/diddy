@@ -149,6 +149,11 @@ jobs:
           swiftc -swift-version 5 Diddy/Matrix/BotCard.swift Tools/botcard_check/main.swift -o "$RUNNER_TEMP/diddy-botcard-check"
           "$RUNNER_TEMP/diddy-botcard-check"
 
+      - name: Music card and share hand-off checks
+        run: |
+          swiftc -swift-version 5 Diddy/Matrix/MusicCard.swift Diddy/App/ShareHandoff.swift Tools/musiccard_check/main.swift -o "$RUNNER_TEMP/diddy-musiccard-check"
+          "$RUNNER_TEMP/diddy-musiccard-check"
+
       - name: Check composer rules
         run: |
           swiftc -swift-version 5 Diddy/Matrix/DesktopMarkdown.swift Diddy/Matrix/EmojiData.swift Diddy/Matrix/ComposerLogic.swift Tools/composer_check/main.swift -o "$RUNNER_TEMP/diddy-composer-check"
@@ -348,10 +353,11 @@ jobs:
           app=build/check/Payload/Diddy.app
           plutil -lint "$app/PrivacyInfo.xcprivacy"
           ls "$app/Frameworks"
-          # Every extension would need its own App ID when sideloading.
-          if [ -d "$app/PlugIns" ] || [ -d "$app/Extensions" ]; then
-            echo "::error::The IPA contains app extensions:"; ls "$app/PlugIns" "$app/Extensions" 2>/dev/null; exit 1
+          # Only the share extension: every other one would cost sideloaders another App ID.
+          if [ -d "$app/Extensions" ] || [ "$(ls "$app/PlugIns" 2>/dev/null | grep -vx 'DiddyShare.appex')" != "" ]; then
+            echo "::error::The IPA contains unexpected app extensions:"; ls "$app/PlugIns" "$app/Extensions" 2>/dev/null; exit 1
           fi
+          test -f "$app/PlugIns/DiddyShare.appex/DiddyShare" || { echo "::error::The share extension is missing"; exit 1; }
           missing=0
           for binary in "$app/Diddy" "$app"/Frameworks/*.framework/*; do
             if [ ! -f "$binary" ] || ! file "$binary" | grep -q Mach-O; then

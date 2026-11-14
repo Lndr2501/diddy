@@ -70,4 +70,19 @@ check(short.ticks == 0 && !short.reply, "short swipe: no tick, no reply")
 let back = simulate([-10, -40, -70, -40, -20])
 check(back.ticks == 1 && !back.reply, "dragged back before letting go: no reply")
 
+// Swipe to the right (iPad only, #190): off by default, never from the leading screen edge.
+check(!M.shouldBegin(velocityX: 400, velocityY: 0, translationX: 12, translationY: 0, allowRight: false, startX: 200), "right swipe stays off on iPhone")
+check(M.shouldBegin(velocityX: 400, velocityY: 30, translationX: 12, translationY: 1, allowRight: true, startX: 200), "right swipe begins on iPad")
+check(!M.shouldBegin(velocityX: 400, velocityY: 0, translationX: 12, translationY: 0, allowRight: true, startX: 10), "right swipe from the screen edge is left to the system")
+check(!M.shouldBegin(velocityX: 300, velocityY: 250, translationX: 10, translationY: 8, allowRight: true, startX: 200), "diagonal right does not begin")
+check(!M.shouldBegin(velocityX: 0, velocityY: 700, translationX: 1, translationY: 14, allowRight: true, startX: 200), "scrolling is left to the list on iPad too")
+check(M.side(velocityX: -400, velocityY: 0, translationX: -12, translationY: 0, allowRight: true, startX: 200) == -1, "left stays left on iPad")
+check(M.side(velocityX: 400, velocityY: 0, translationX: 12, translationY: 0, allowRight: true, startX: 200) == 1, "right is +1")
+check(M.offset(translationX: 40, side: 1) > 0 && M.offset(translationX: 40, side: 1) < 40, "row follows a right swipe with resistance")
+check(M.offset(translationX: -40, side: 1) == 0, "dragging back past the start does not move the row")
+check(M.offset(translationX: 600, side: 1) < M.maxOffset, "right swipe stops short of the limit")
+check(M.progress(translationX: M.threshold, side: 1) == 1, "full arrow at the threshold to the right")
+check(M.isArmed(translationX: M.threshold, wasArmed: false, side: 1), "armed at the threshold to the right")
+check(!M.isArmed(translationX: -M.threshold, wasArmed: false, side: 1), "a leftward drag does not arm a right swipe")
+
 if failures == 0 { print("ALL OK") } else { print("\(failures) FAILED"); exit(1) }

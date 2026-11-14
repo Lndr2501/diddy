@@ -87,43 +87,6 @@ struct NewMessagesDivider: View {
     }
 }
 
-/// "Jump to Unread" and "Mark as Read" at the top of the chat, as one capsule so it stays small.
-struct JumpToUnreadPill: View {
-    let onJump: () -> Void
-    let onMarkRead: () -> Void
-
-    var body: some View {
-        HStack(spacing: 0) {
-            Button(action: onJump) {
-                Label("Jump to Unread", systemImage: "arrow.up")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Theme.accent)
-                    .lineLimit(1)
-                    .padding(.leading, 14)
-                    .padding(.trailing, 10)
-                    .padding(.vertical, 8)
-                    .contentShape(Rectangle())
-            }
-            Rectangle().fill(Theme.faint.opacity(0.4)).frame(width: 1, height: 18)
-            Button(action: onMarkRead) {
-                Image(systemName: "checkmark")
-                    .font(.footnote.weight(.bold))
-                    .foregroundStyle(Theme.muted)
-                    .padding(.leading, 10)
-                    .padding(.trailing, 14)
-                    .padding(.vertical, 8)
-                    .contentShape(Rectangle())
-            }
-            .accessibilityLabel("Mark as Read")
-        }
-        .buttonStyle(.plain)
-        .background(Capsule().fill(Theme.elevated))
-        .overlay(Capsule().stroke(Theme.faint.opacity(0.3), lineWidth: 1))
-        .shadow(color: Color.black.opacity(0.2), radius: 6, y: 2)
-        .padding(.top, 8)
-    }
-}
-
 /// Under a thread's first message: how many answers it has and the last one.
 struct ThreadSummaryButton: View {
     let info: ThreadInfo

@@ -228,6 +228,12 @@ check(DiddyImageSniff.mimeType(of: Data(Array("RIFF".utf8) + [0, 0, 0, 0] + Arra
 check(DiddyImageSniff.mimeType(of: Data(Array("<svg onload=alert(1)>".utf8))) == nil, "SVG refused")
 check(DiddyImageSniff.mimeType(of: Data([0x89, 0x50])) == nil, "too short")
 
+// Profile link names, like desktop linkDisplayName (#177).
+check(DiddyLinkName.name(kind: "github", url: URL(string: "https://github.com/x")!) == "GitHub", "service name")
+check(DiddyLinkName.name(kind: "youtube", url: URL(string: "https://youtu.be/x")!) == "YouTube", "service name for short host")
+check(DiddyLinkName.name(kind: "web", url: URL(string: "https://www.Example.org/a")!) == "example.org", "website host without www")
+check(DiddyLinkName.name(kind: "odd", url: URL(string: "https://site.dev")!) == "site.dev", "unknown kind falls back to host")
+
 if failures > 0 {
     print("\(failures) check(s) failed")
     exit(1)

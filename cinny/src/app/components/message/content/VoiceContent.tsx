@@ -9,6 +9,7 @@ import React, {
   useState,
 } from 'react';
 import { EncryptedAttachmentInfo } from 'browser-encrypt-attachment';
+import { useAtom } from 'jotai';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { AsyncStatus, useAsyncCallback } from '../../../hooks/useAsyncCallback';
 import { IAudioInfo } from '../../../../types/matrix/common';
@@ -30,10 +31,13 @@ import {
 import { useMediaAuthentication } from '../../../hooks/useMediaAuthentication';
 import {
   keySeekTime,
+  nextVoiceRate,
   seekFraction,
   VoiceInfo,
+  voiceRateLabel,
   waveformBars,
 } from '../../../plugins/voiceMessage';
+import { voiceRateAtom } from '../../../state/voiceRate';
 import * as css from './VoiceContent.css';
 
 const BAR_COUNT = 40;
@@ -91,6 +95,15 @@ export function VoiceContent({ mimeType, url, info, voice, encInfo }: VoiceConte
     setCurrentTime(ct);
   }, []);
   useMediaPlayTimeCallback(getAudioRef, useThrottle(handlePlayTime, PLAY_TIME_THROTTLE_OPS));
+
+  // one speed for all voice messages (#204); loading a source resets playbackRate to the default
+  const [rate, setRate] = useAtom(voiceRateAtom);
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.defaultPlaybackRate = rate;
+    audio.playbackRate = rate;
+  }, [rate, srcState.status]);
 
   const bars = useMemo(() => waveformBars(voice.waveform, BAR_COUNT), [voice.waveform]);
   const ready = srcState.status === AsyncStatus.Success;
@@ -209,6 +222,15 @@ export function VoiceContent({ mimeType, url, info, voice, encInfo }: VoiceConte
       ) : (
         <span className={css.Time}>{secondsToMinutesAndSeconds(shown)}</span>
       )}
+      <button
+        type="button"
+        className={css.RateButton}
+        onClick={() => setRate(nextVoiceRate(rate))}
+        aria-label={`Playback speed ${voiceRateLabel(rate)}`}
+        title="Playback speed"
+      >
+        {voiceRateLabel(rate)}
+      </button>
       <audio controls={false} autoPlay ref={audioRef}>
         {ready && <source src={srcState.data} type={mimeType} />}
       </audio>

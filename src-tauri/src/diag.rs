@@ -62,7 +62,10 @@ pub fn write_line(line: &str) {
     }
 }
 
-#[tauri::command]
+/// Lines from the page. Not on the main thread: a synchronous command runs there, and each line
+/// costs a few file system calls while the page sends hundreds at start (profiles, media). The
+/// Rust side (panics included) keeps writing synchronously through `write_line`.
+#[tauri::command(async)]
 pub fn diag_log(line: String) {
     write_line(&line);
 }

@@ -34,8 +34,18 @@ final class AppModel: ObservableObject {
 
     func restore() async {
         defer { restoring = false }
-        for record in AccountList.load() where await restoreAccount(record) == false { unreachable.append(record) }
-        activeAccountId = AccountList.activeAccountId.flatMap { id in accounts.contains { $0.id == id } ? id : nil }
+        let records = AccountList.load()
+        let preferred = AccountList.activeAccountId
+        // The account shown first is restored first, and the splash only waits for it (or, when
+        // it cannot be reached, for the next one that can). Building a client asks the server, so
+        // every further login used to add its round trips to the start of the app.
+        var pending = records
+        if let index = pending.firstIndex(where: { $0.id == preferred }) { pending.insert(pending.remove(at: index), at: 0) }
+        while !pending.isEmpty, accounts.isEmpty {
+            let record = pending.removeFirst()
+            if await restoreAccount(record) == false { unreachable.append(record) }
+        }
+        activeAccountId = preferred.flatMap { id in accounts.contains { $0.id == id } ? id : nil }
             ?? accounts.first?.id
         LocalNotifications.shared.onOpen = { [weak self] accountId, roomId in
             Task { await self?.open(roomId: roomId, accountId: accountId) }
@@ -45,6 +55,12 @@ final class AppModel: ObservableObject {
             await self.switchTo(account)
         }
         if let active = activeAccount { await active.start() }
+        guard !pending.isEmpty else { return }
+        restoring = false
+        for record in pending where await restoreAccount(record) == false { unreachable.append(record) }
+        // The account switcher keeps the saved order.
+        let order = records.map(\.id)
+        accounts.sort { (order.firstIndex(of: $0.id) ?? Int.max) < (order.firstIndex(of: $1.id) ?? Int.max) }
     }
 
     /// False when the server could not be reached, which is worth trying again. Other failures

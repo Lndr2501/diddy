@@ -18,6 +18,7 @@ import { applyAudioProcessingPolicy } from './audioConstraints';
 import { getSharedAudioContext } from './sharedAudio';
 import { createNoiseSuppressor, releaseNoiseSuppressor } from './noiseSuppression';
 import { isNativeMic, nativeMicAvailable, openNativeMic, preferredNativeMic } from './nativeMic';
+import { PreviewContext, SoundPreview } from './soundPreview';
 
 export type Clip = {
   id: string;
@@ -199,21 +200,16 @@ class Soundboard {
     return true;
   }
 
-  /** Plays raw audio bytes for you only (preview before importing). */
-  public async preview(bytes: ArrayBuffer): Promise<void> {
-    const ctx = this.getContext();
-    const buffer = await ctx.decodeAudioData(bytes.slice(0));
-    const source = ctx.createBufferSource();
-    const gain = ctx.createGain();
-    gain.gain.value = this.volume;
-    source.buffer = buffer;
-    source.connect(gain);
-    gain.connect(ctx.destination);
-    source.onended = () => {
-      source.disconnect();
-      gain.disconnect();
-    };
-    source.start();
+  /** Previews of sounds not imported yet, for you only; one at a time (#205). */
+  public readonly previews = new SoundPreview(() => this.getContext() as unknown as PreviewContext);
+
+  /** Plays (or, for the sound already previewing, stops) audio for you only before importing. */
+  public previewToggle(key: string, load: () => Promise<ArrayBuffer>): Promise<void> {
+    return this.previews.toggle(key, load, this.volume);
+  }
+
+  public stopPreview() {
+    this.previews.stop();
   }
 
   public async removeClip(id: string): Promise<void> {

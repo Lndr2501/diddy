@@ -33,7 +33,9 @@ import { testMatrixTo } from '../plugins/matrix-to';
 import { IImageContent } from '../../types/matrix/common';
 import { VoiceContent } from './message/content/VoiceContent';
 import { BotCardView } from './message/BotCard';
+import { MusicCardView } from './message/MusicCard';
 import { parseBotCard } from '../plugins/botCard';
+import { parseMusicCard } from '../plugins/musicCard';
 
 type RenderMessageContentProps = {
   displayName: string;
@@ -173,6 +175,11 @@ export function RenderMessageContent({
   if (msgType === MsgType.Notice || msgType === MsgType.Text) {
     const botCard = parseBotCard(getContent());
     if (botCard) return <BotCardView card={botCard} />;
+  }
+  // A song shared from iOS (app.diddy.music), drawn like iMessage's lyrics card.
+  if (msgType === MsgType.Text) {
+    const musicCard = parseMusicCard(getContent());
+    if (musicCard) return <MusicCardView card={musicCard} />;
   }
 
   if (msgType === MsgType.Notice) {

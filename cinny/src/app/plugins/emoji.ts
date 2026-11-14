@@ -1,7 +1,14 @@
 import { CompactEmoji, fromUnicodeToHexcode } from 'emojibase';
-import emojisData from 'emojibase-data/en/compact.json';
-import joypixels from 'emojibase-data/en/shortcodes/joypixels.json';
-import emojibase from 'emojibase-data/en/shortcodes/emojibase.json';
+
+/**
+ * The emoji list and shortcodes (~880 KB of data) are not part of the start bundle: they load
+ * as their own chunk right after start (and at once when the emoji board or autocomplete opens).
+ * Until then `emojis` and the groups are empty and `getShortcodeFor` has no answer; components
+ * that show them re-render through `useEmojiData` when the data is there.
+ */
+type ShortcodeMap = Record<string, string | string[]>;
+let joypixels: ShortcodeMap = {};
+let emojibase: ShortcodeMap = {};
 
 export type IEmoji = CompactEmoji & {
   shortcode: string;
@@ -95,20 +102,71 @@ function getGroupIndex(emoji: IEmoji): number | undefined {
   return undefined;
 }
 
-emojisData.forEach((emoji) => {
-  const myShortCodes = getShortcodesFor(emoji.hexcode);
-  if (!myShortCodes) return;
-  if (Array.isArray(myShortCodes) && myShortCodes.length === 0) return;
+const addEmojis = (emojisData: CompactEmoji[]) =>
+  emojisData.forEach((emoji) => {
+    const myShortCodes = getShortcodesFor(emoji.hexcode);
+    if (!myShortCodes) return;
+    if (Array.isArray(myShortCodes) && myShortCodes.length === 0) return;
 
-  const em: IEmoji = {
-    ...emoji,
-    shortcode: Array.isArray(myShortCodes) ? myShortCodes[0] : myShortCodes,
-    shortcodes: Array.isArray(myShortCodes) ? myShortCodes : emoji.shortcodes,
+    const em: IEmoji = {
+      ...emoji,
+      shortcode: Array.isArray(myShortCodes) ? myShortCodes[0] : myShortCodes,
+      shortcodes: Array.isArray(myShortCodes) ? myShortCodes : emoji.shortcodes,
+    };
+
+    const groupIndex = getGroupIndex(em);
+    if (groupIndex !== undefined) {
+      addEmojiToGroup(groupIndex, em);
+      emojis.push(em);
+    }
+  });
+
+let loading: Promise<void> | undefined;
+let dataVersion = 0;
+const listeners = new Set<() => void>();
+
+export const getEmojiDataVersion = (): number => dataVersion;
+export const isEmojiDataLoaded = (): boolean => dataVersion > 0;
+
+export const subscribeEmojiData = (listener: () => void): (() => void) => {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
   };
+};
 
-  const groupIndex = getGroupIndex(em);
-  if (groupIndex !== undefined) {
-    addEmojiToGroup(groupIndex, em);
-    emojis.push(em);
+/** Loads the emoji data once; a failed load is tried again on the next call. */
+export const loadEmojiData = (): Promise<void> => {
+  if (!loading) {
+    loading = Promise.all([
+      import('emojibase-data/en/compact.json'),
+      import('emojibase-data/en/shortcodes/joypixels.json'),
+      import('emojibase-data/en/shortcodes/emojibase.json'),
+    ])
+      .then(([data, joy, base]) => {
+        if (dataVersion > 0) return;
+        joypixels = joy.default as ShortcodeMap;
+        emojibase = base.default as ShortcodeMap;
+        addEmojis(data.default as CompactEmoji[]);
+        dataVersion += 1;
+        listeners.forEach((l) => l());
+      })
+      .catch((err) => {
+        loading = undefined;
+        throw err;
+      });
   }
-});
+  return loading;
+};
+
+// Soon after start, when the app is idle; WebKit has no requestIdleCallback.
+if (typeof window !== 'undefined') {
+  const start = () => {
+    loadEmojiData().catch(() => undefined);
+  };
+  const idle = (
+    window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }
+  ).requestIdleCallback;
+  if (idle) idle(start, { timeout: 3000 });
+  else window.setTimeout(start, 1500);
+}

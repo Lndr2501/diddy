@@ -171,6 +171,30 @@ export const Time = style({
   opacity: 0.7,
 });
 
+/* speed pill after the time: 1x, 1.5x, 2x (#204) */
+export const RateButton = style({
+  flexShrink: 0,
+  minWidth: 34,
+  height: 22,
+  margin: 0,
+  padding: '0 6px',
+  border: 'none',
+  borderRadius: 11,
+  background: `color-mix(in srgb, ${color.SurfaceVariant.OnContainer} 10%, transparent)`,
+  color: 'inherit',
+  fontSize: 12,
+  fontWeight: 600,
+  lineHeight: '22px',
+  fontVariantNumeric: 'tabular-nums',
+  cursor: 'pointer',
+  selectors: {
+    '&:hover': {
+      background: `color-mix(in srgb, ${color.SurfaceVariant.OnContainer} 16%, transparent)`,
+    },
+    '&:focus-visible': { outline: `2px solid ${color.Primary.Main}`, outlineOffset: 1 },
+  },
+});
+
 const spin = keyframes({ to: { transform: 'rotate(360deg)' } });
 export const Spinner = style({
   width: 16,
