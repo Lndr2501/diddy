@@ -240,6 +240,10 @@ struct AvatarView: View {
             }
             // Then the moving version, if it is a GIF, WebP or APNG; the still one shows meanwhile.
             guard wantsMoving, !Task.isCancelled else { return }
+            // Only for avatars that stay on screen a moment: scrolling past a chat full of avatars
+            // otherwise started a download of every original (docs/performance.md, iOS).
+            try? await Task.sleep(nanoseconds: 800_000_000)
+            guard !Task.isCancelled else { return }
             let pixels = min(360, max(48, Int(size * UIScreen.main.scale)))
             let animated = await AnimatedAvatarMedia.shared.picture(mxc: url, pixels: pixels, client: account.client)
             if !Task.isCancelled, self.key == key { moving = animated }

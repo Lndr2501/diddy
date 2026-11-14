@@ -7,6 +7,16 @@ Plattformen, auf denen das Problem besteht (siehe Spalte).
 
 Abkürzungen: D = Desktop (macOS + Linux, `cinny/`), M = nur macOS (Tauri), L = nur Linux (Electron), I = iOS.
 
+## Stand (2026-11-14)
+
+Umgesetzt in #210, #213 und #215: alle Punkte unten außer den folgenden.
+
+- **#18 (`getStats` seltener):** nicht umgesetzt. Die Wächter berechnen Raten aus aufeinanderfolgenden Berichten; längeres Teilen verfälscht sie.
+- **#20 (H.264 nur auf dem Mac):** nicht umgesetzt. Linux würde dann VP8 senden, das die Macs im Call in Software dekodieren müssten (die CPU-Last aus #144).
+- **#34 (eigener 48-kHz-Context fürs Mikrofon):** offen. CoreAudio stellt beim Öffnen eines Contexts das Gerät um (deshalb wurde das einmal zurückgebaut); das muss auf dem Mac gemessen und gehört werden.
+- **#35 (Videoebene nach unsichtbaren Kacheln):** offen. Erst mit den `receive watch`-Zeilen auf dem Mac messen, ob überhaupt eine falsche Ebene ankommt.
+- **Update-Check vor dem Start:** Entscheidung aus #120, bleibt.
+
 ## 1. Schnelle Gewinne (großer Nutzen, kleiner Eingriff)
 
 | # | Wo | Was | Plattform |

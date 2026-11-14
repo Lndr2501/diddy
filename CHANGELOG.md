@@ -18,6 +18,14 @@
   - Start: Der gespeicherte Sync wird in einem eigenen Worker geladen und gespeichert (nicht mehr auf dem Haupt-Thread), und die Verschlüsselung (WASM und ihr Speicher) startet gleichzeitig damit statt danach.
   - Verschlüsselte Bilder: Der Chat lädt und entschlüsselt das Vorschaubild, das der Absender mitschickt, statt des Originals; das Original kommt erst in der Großansicht. GIFs bleiben beim Original.
   - Die nie genutzte Twemoji-Schrift (1,9 MB) ist raus. Der macOS-Release wird mit Link-Zeit-Optimierung und ohne Debug-Symbole gebaut.
+- **Leistung, zweite Runde (iOS):**
+  - Chat: Eine Nachrichtenzeile wird nur neu gezeichnet, wenn sich ihre Nachricht oder ihr Platz im Layout ändert. Tippen, Tippanzeige und Lesebestätigungen zeichneten bisher jede sichtbare Zeile neu. Der Entwurf wird erst gespeichert, wenn das Tippen pausiert.
+  - Chat-Aufbau: Jedes Timeline-Item geht nur einmal durch das SDK; bei einer neuen Nachricht oder Reaktion wird nur das geänderte umgerechnet statt alle geladenen.
+  - Bilder: Wenn der Absender ein Vorschaubild (ab 600 px) mitschickt, lädt der Chat dieses statt des Originals; die Großansicht zeigt weiter das Original.
+  - Raumliste: Eine Änderung fragt nur die Räume neu ab, die sich geändert haben, statt alle nacheinander (einmal pro Minute alles). Server-Badges werden pro Änderung der Kanäle einmal berechnet.
+  - Diddy-Profile: Welche Räume Options-Räume sind, bleibt auf dem Gerät gespeichert (ein „nein“ eine Woche); neue Räume werden zu fünft statt einzeln geprüft.
+  - Call-Beitritt: OpenID-Token und Mikrofon-Freigabe laufen parallel zur Serverwahl; nach dem Verbinden gehen Teilnahme, Schlüssel und Mikrofon gleichzeitig raus.
+  - Animierte Profilbilder werden erst geprüft, wenn das Bild knapp eine Sekunde sichtbar ist, höchstens zwei gleichzeitig.
 ## 1.8.0 (2026-11-14)
 
 - **Bot-Karten: Link in Hinweis-Chips:** Eine `note`-Karte darf jetzt einen Link (`url`, nur http/https) und eine Beschriftung (`linkLabel`) mitschicken. Diddy zeigt ihn als kleinen runden Knopf rechts im Chip, z. B. „Issue öffnen“ beim neuen Issue-Bot ([Lndr2501/issuebotmatrix](https://github.com/Lndr2501/issuebotmatrix)). Vorher war der Link nur in Element sichtbar. Auf iOS genauso (kleiner Knopf rechts im Chip, öffnet im Browser).

@@ -103,9 +103,20 @@ final class MatrixAccount: ObservableObject, Identifiable {
     private var channelsLoadedAt: Date?
     /// Cinny/Diddy voice channels are rooms of the MSC3417 call room type. `SpaceRoom.roomType`
     /// reports those as plain rooms, so the type is read from the server's hierarchy instead.
-    @Published private(set) var voiceRoomIds: Set<String> = []
+    @Published private(set) var voiceRoomIds: Set<String> = [] {
+        didSet { if voiceRoomIds != oldValue { summarizedRooms = [:] } }
+    }
     @Published private(set) var spaces: [SpaceRoom] = []
-    @Published private(set) var categories: [String: [ChannelCategory]] = [:]
+    @Published private(set) var categories: [String: [ChannelCategory]] = [:] {
+        didSet {
+            channelIdsCache = [:]
+            serverRoomIdsCache = nil
+        }
+    }
+    /// Channel ids per server and of all servers, worked out once per change of `categories`:
+    /// the rail asks for every server's badges on every redraw.
+    private var channelIdsCache: [String: Set<String>] = [:]
+    private var serverRoomIdsCache: Set<String>?
     /// Rooms with their own notification setting (RoomPrefs.swift); the others follow the default.
     @Published var roomNotifyLevels: [String: RoomNotifyLevel] = [:]
     /// The server rail in the order of the account data `in.cinny.spaces` (ServerManagement.swift).
@@ -126,6 +137,8 @@ final class MatrixAccount: ObservableObject, Identifiable {
     @Published var diddyBadgeLibrary: [DiddyBadge] = []
     var diddyOptionsRooms: Set<String> = []
     var diddyCheckedRooms: Set<String> = []
+    /// Whether the stored marker answers (DiddyMarkerChecks) were read this session.
+    var diddyMarkerChecksLoaded = false
     var diddyPrimaryRoom: (id: String, encrypted: Bool)?
     /// Your own profile event as written, so an edit here keeps the fields only desktop knows.
     var diddyOwnProfileRaw: [String: Any]?
@@ -143,6 +156,13 @@ final class MatrixAccount: ObservableObject, Identifiable {
     private var handles: [TaskHandle] = []
     private var roomObjects: [Room] = []
     private var summaryTask: Task<Void, Never>?
+    /// The room objects the room list was last built from. The SDK hands over a new object for a
+    /// room that changed; the others keep their summary instead of asking every room again on
+    /// each change (docs/performance.md #27).
+    private var summarizedRooms: [String: Room] = [:]
+    /// Rooms whose info changed since (unread counts, call...); their newest message is read again.
+    private var dirtySummaryIds: Set<String> = []
+    private var lastFullSummary: Date?
     private var roomsById: [String: RoomSummary] = [:]
     /// RoomInfo subscriptions per room. The room list only fires for "notable" changes, and people
     /// joining or leaving a call are not among them, so these keep the voice rosters live.
@@ -294,6 +314,7 @@ final class MatrixAccount: ObservableObject, Identifiable {
     }
 
     private func apply(_ info: RoomInfo) {
+        dirtySummaryIds.insert(info.id)
         guard let index = rooms.firstIndex(where: { $0.id == info.id }) else { return }
         let summary = makeSummary(info, lastMessage: rooms[index].lastMessage, lastActivity: rooms[index].lastActivity)
         if rooms[index] != summary { rooms[index] = summary }
@@ -339,10 +360,20 @@ final class MatrixAccount: ObservableObject, Identifiable {
         let snapshot = roomObjects
         summaryTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: 250_000_000)
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled, let owner = self else { return }
+            // Once a minute everything is read again (names and pictures of people in DMs).
+            let full = owner.lastFullSummary.map { Date().timeIntervalSince($0) > 60 } ?? true
+            let known = full ? [:] : owner.summarizedRooms
+            let dirty = owner.dirtySummaryIds
             var result: [RoomSummary] = []
             result.reserveCapacity(snapshot.count)
             for room in snapshot {
+                let roomId = room.id()
+                if let previous = known[roomId], previous === room, !dirty.contains(roomId),
+                   let existing = owner.roomsById[roomId] {
+                    result.append(existing)
+                    continue
+                }
                 guard let self, let info = try? await room.roomInfo() else { continue }
                 // Spaces have no messages; every other room shows its newest one in the chat list.
                 let latest: LatestEventValue? = info.isSpace ? nil : await room.latestEvent()
@@ -351,6 +382,10 @@ final class MatrixAccount: ObservableObject, Identifiable {
                 result.append(self.makeSummary(info, lastMessage: last, lastActivity: date))
             }
             guard !Task.isCancelled, let self else { return }
+            self.summarizedRooms = Dictionary(snapshot.map { ($0.id(), $0) }, uniquingKeysWith: { first, _ in first })
+            if full { self.lastFullSummary = Date() }
+            // only what this run read again; changes that came in meanwhile stay marked
+            self.dirtySummaryIds.subtract(dirty)
             self.rooms = result
             for summary in result where !summary.callParticipants.isEmpty {
                 self.resolveProfiles(summary.callParticipants, in: summary.id)
@@ -408,24 +443,26 @@ final class MatrixAccount: ObservableObject, Identifiable {
 
     /// Group rooms that are not part of any loaded server, shown under Home like Discord's DMs.
     var roomsOutsideServers: [RoomSummary] {
-        let inServers = Set(categories.values.flatMap { $0.flatMap { $0.channels.map(\.roomId) } })
+        let inServers = serverRoomIdsCache ?? Set(categories.values.flatMap { $0.flatMap { $0.channels.map(\.roomId) } })
+        serverRoomIdsCache = inServers
         return rooms.filter {
             !$0.isDirect && !$0.isSpace && $0.isJoined && !inServers.contains($0.id) && !isDiddyOptionsRoom($0.id, topic: $0.topic)
         }
     }
 
     private func channelIds(inSpace spaceId: String) -> Set<String> {
-        Set((categories[spaceId] ?? []).flatMap { $0.channels.map(\.roomId) })
+        if let known = channelIdsCache[spaceId] { return known }
+        let ids = Set((categories[spaceId] ?? []).flatMap { $0.channels.map(\.roomId) })
+        channelIdsCache[spaceId] = ids
+        return ids
     }
 
     func unreadCount(inSpace spaceId: String) -> UInt64 {
-        let ids = channelIds(inSpace: spaceId)
-        return rooms.filter { ids.contains($0.id) }.reduce(0) { $0 + $1.unread }
+        channelIds(inSpace: spaceId).reduce(0) { $0 + (roomsById[$1]?.unread ?? 0) }
     }
 
     func mentionCount(inSpace spaceId: String) -> UInt64 {
-        let ids = channelIds(inSpace: spaceId)
-        return rooms.filter { ids.contains($0.id) }.reduce(0) { $0 + $1.mentions }
+        channelIds(inSpace: spaceId).reduce(0) { $0 + (roomsById[$1]?.mentions ?? 0) }
     }
 
     func isJoined(_ channel: SpaceRoom) -> Bool {

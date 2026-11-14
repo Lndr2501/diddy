@@ -96,6 +96,9 @@ private struct ChatContent: View {
     @State private var actionRow: MessageRow?
     /// Whether the chat follows the newest message. Only the user scrolling up turns this off.
     @State private var atBottom = true
+    /// The pending write of the draft (see onChange of draft).
+    @State private var draftSave: Task<Void, Never>?
+    @Environment(\.scenePhase) private var scenePhase
     /// Keeps the visible messages still while older ones are added above (ChatScrollAnchor.swift).
     @State private var scrollAnchor = ChatScrollAnchor()
     @State private var loadingOlder = false
@@ -236,7 +239,16 @@ private struct ChatContent: View {
         }
         .onChange(of: draft) { text in
             controller.setTyping(!text.isEmpty && editing == nil)
-            saveDraft()
+            // Written once typing pauses, not for every key (JSON into the defaults each time).
+            draftSave?.cancel()
+            draftSave = Task {
+                try? await Task.sleep(nanoseconds: 600_000_000)
+                guard !Task.isCancelled else { return }
+                saveDraft()
+            }
+        }
+        .onChange(of: scenePhase) { phase in
+            if phase != .active { draftSave?.cancel(); saveDraft() }
         }
         .onChange(of: replyTo?.id) { _ in saveDraft() }
         .onAppear {
@@ -253,6 +265,7 @@ private struct ChatContent: View {
         // Shared from another app while this chat is already open.
         .onReceive(inbox.$staged) { _ in if draftLoaded { takeShare() } }
         .onDisappear {
+            draftSave?.cancel()
             saveDraft()
             controller.setTyping(false)
             if Sounds.shared.openRoomId == roomId { Sounds.shared.openRoomId = nil }
@@ -298,6 +311,7 @@ private struct ChatContent: View {
                             onReplyTap: { openReply(of: row) },
                             onReactionInfo: { key in showReactors(of: row, key: key) }
                         )
+                        .equatable()
                         .id(row.id)
                         .onAppear { if earlyRows.contains(row.id) { Task { await loadOlder() } } }
                         .background(highlightedRowId == row.id ? Theme.accent.opacity(0.18) : Color.clear)
@@ -1192,11 +1206,13 @@ private struct ChannelIntro: View {
     }
 }
 
-struct MessageRowView: View {
+struct MessageRowView: View, Equatable {
     @EnvironmentObject private var navigator: AppNavigator
     let row: MessageRow
-    /// The account this timeline belongs to; its client loads the avatars and images.
-    let account: MatrixAccount
+    /// The account this timeline belongs to; its client loads the avatars and images. Watched
+    /// here, so names and profiles that arrive later still show although the chat skips rows
+    /// that did not change (see `==`).
+    @ObservedObject var account: MatrixAccount
     /// Where names of mentioned people are looked up first.
     var roomId = ""
     var onProfile: () -> Void = {}
@@ -1211,6 +1227,18 @@ struct MessageRowView: View {
     var onReactionInfo: (String) -> Void = { _ in }
     /// Badges grow with the name next to them when the text size changes.
     @ScaledMetric(relativeTo: .subheadline) private var badgeSize: CGFloat = 13
+
+    /// The chat redraws all of its rows for every key typed, read receipt and typing notice; a
+    /// row is only drawn again when its message changed (`revision`) or its place in the layout.
+    /// The actions are left out: they act on the message by id, which a row keeps.
+    static func == (a: MessageRowView, b: MessageRowView) -> Bool {
+        a.row.id == b.row.id && a.row.revision == b.row.revision
+            && a.row.showsHeader == b.row.showsHeader && a.row.dayDivider == b.row.dayDivider
+            && a.row.callCount == b.row.callCount && a.row.lastCallDate == b.row.lastCallDate
+            && a.row.isPending == b.row.isPending && a.row.previewURLs == b.row.previewURLs
+            && a.row.previewsLocal == b.row.previewsLocal
+            && a.account === b.account && a.roomId == b.roomId
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -1351,7 +1379,8 @@ struct MessageRowView: View {
             StickerView(source: source, name: name, width: width, height: height, account: account)
         case .image(let source, _, let width, let height):
             VStack(alignment: .leading, spacing: 6) {
-                ChatImage(source: source, account: account, aspect: (width ?? 4) / max(height ?? 3, 1), onTap: onImage)
+                ChatImage(source: source, thumbnail: row.imageThumbnail, account: account,
+                          aspect: (width ?? 4) / max(height ?? 3, 1), onTap: onImage)
                 captionView
             }
         case .audio(let audio):
@@ -1518,6 +1547,8 @@ struct MessageRowView: View {
 
 private struct ChatImage: View {
     let source: MediaSource
+    /// The sender's thumbnail: much smaller to fetch (and decrypt) than the original.
+    var thumbnail: MediaSource? = nil
     let account: MatrixAccount
     let aspect: CGFloat
     let onTap: (UIImage) -> Void
@@ -1565,7 +1596,12 @@ private struct ChatImage: View {
         }
         .task(id: requested) {
             guard requested else { return }
-            image = await MediaLoader.shared.image(source: source, size: 800, accountId: account.id, client: account.client)
+            if let thumbnail {
+                image = await MediaLoader.shared.image(source: thumbnail, size: 800, accountId: account.id, client: account.client)
+            }
+            if image == nil {
+                image = await MediaLoader.shared.image(source: source, size: 800, accountId: account.id, client: account.client)
+            }
             failed = image == nil
         }
         .accessibilityHint(requested ? "" : "Loads the picture")
