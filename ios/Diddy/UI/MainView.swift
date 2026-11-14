@@ -118,7 +118,12 @@ struct MainView: View {
         .onAppear { openRequestedRoom() }
         .onChange(of: app.openRequest) { _ in openRequestedRoom() }
         .onChange(of: scenePhase) { phase in
-            if phase == .active { Task { await account.resume() } }
+            guard phase == .active else { return }
+            Task {
+                await account.resume()
+                // Back in the app: pick up profile changes made on another device meanwhile (#207).
+                await account.loadDiddyProfiles(staleAfter: 15)
+            }
         }
         // Online status of DM partners and others, and your own (PresenceViews.swift).
         .presenceUpdates(account: account)
