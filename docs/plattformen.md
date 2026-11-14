@@ -1,6 +1,6 @@
 # Features pro Plattform
 
-Stand 2026-11-10, aus dem Code abgeleitet (`src-tauri/`, `electron/`, `ios/`, `cinny/src/app`), README und CHANGELOG. Nicht auf Geräten geprüft.
+Stand 2026-11-14, aus dem Code abgeleitet (`src-tauri/`, `electron/`, `ios/`, `cinny/src/app`), README und CHANGELOG. Nicht auf Geräten geprüft.
 
 - **macOS:** Tauri mit der Cinny-Oberfläche.
 - **Linux:** Electron mit derselben Oberfläche.
@@ -22,9 +22,9 @@ Stand 2026-11-10, aus dem Code abgeleitet (`src-tauri/`, `electron/`, `ios/`, `c
 | Call-Töne und Soundpack | ✅ | ✅ | ✅ |
 | Calls wie bei Discord (Kacheln, großer Stream) | ✅ | ✅ | 🧪 |
 | Soundboard, MyInstants-Import | ✅ | ✅ | 🧪 |
-| Sprachnachrichten | ✅ | 🧪 | 🧪 (Ogg/Opus vom Linux-Desktop spielt iOS nicht ab) |
+| Sprachnachrichten | ✅ | 🧪 (Chromium-Aufnahmepfad automatisch geprüft) | 🧪 (spielt auch Ogg/WebM-Opus vom Linux-Desktop) |
 | Bot-Karten (`dev.diddy.card`) und Befehlsvorschläge | ✅ | ✅ | 🧪 |
-| Diddy-Profile, Badges, Namensschilder | ✅ | ✅ | 🧪 (anzeigen; Badges erstellen nur am Desktop) |
+| Diddy-Profile, Badges, Namensschilder | ✅ | ✅ | 🧪 (anzeigen, bearbeiten, Badges erstellen, Datenraum wählen) |
 | Themes | 9 | 9 | 🧪 9 |
 | Plugins und Plugin-Galerie | ✅ | ✅ | 🧪 (ohne Seitenleisten-Dock) |
 | Redet mit Agent (Agent Voice) | ✅ | ✅ | 🧪 (Button und Kurzbefehl) |
@@ -33,8 +33,10 @@ Stand 2026-11-10, aus dem Code abgeleitet (`src-tauri/`, `electron/`, `ios/`, `c
 | App-Icon wechseln | ✅ | 🧪 | ✅ |
 | Logdatei und Diagnose | ✅ | ✅ | 🧪 (Export über das Teilen-Menü) |
 | Hintergrund-Benachrichtigungen | ✅ | ✅ ¹ | 🧪 |
-| Push bei geschlossener App | – | – | ❌ |
-| Online-Status (Presence) | ✅ | ✅ | ❌ (Sliding Sync liefert ihn nicht) |
+| Push bei geschlossener App | – | – | ❌ (braucht ein bezahltes Apple-Konto für APNs) |
+| Teilen aus anderen Apps (Teilen-Menü), Musik-Karten | – | – (Karten werden angezeigt) | 🧪 |
+| Animierte Profilbilder | ✅ | ✅ | 🧪 |
+| Online-Status (Presence) | ✅ | ✅ | 🧪 (eigener Abruf, da Sliding Sync ihn nicht liefert) |
 
 Anmerkungen:
 - ¹ Linux: gilt nur, solange ein Diddy-Fenster offen ist (auch im Hintergrund oder minimiert). Schließt du das letzte Fenster, beendet sich die App (`window-all-closed` in `electron/main.cjs`), und es kommen keine Benachrichtigungen und kein Klingeln mehr.

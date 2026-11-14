@@ -43,44 +43,18 @@ struct MainView: View {
     /// Things shared from other apps through the share sheet (App/ShareInbox.swift).
     @ObservedObject private var inbox = ShareInbox.shared
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     var body: some View {
-        NavigationSplitView {
-            Group {
-                if sizeClass == .compact {
-                    // iPhone: tabs at the bottom (Chats, Servers, Activity, You), the chat pushed over them.
-                    PhoneHome(account: account, showSettings: $showSettings, showSearch: $showQuickSwitch)
-                } else {
-                    HStack(spacing: 0) {
-                        ServerRail(account: account, selection: $navigator.server)
-                        ChannelSidebar(
-                            account: account,
-                            server: navigator.server,
-                            destination: $navigator.destination,
-                            showSettings: $showSettings,
-                            showSearch: $showQuickSwitch
-                        )
-                    }
-                }
-            }
-            .background(Theme.sidebar)
-            .toolbar(.hidden, for: .navigationBar)
-            .navigationSplitViewColumnWidth(min: 320, ideal: 360, max: 420)
-        } detail: {
-            NavigationStack {
-                switch navigator.destination {
-                case .text(let roomId)?:
-                    ChatView(account: account, roomId: roomId)
-                        .id(roomId)
-                case .voice(let roomId)?:
-                    VoiceChannelView(account: account, roomId: roomId)
-                        .id(roomId)
-                case nil:
-                    EmptyChannelView()
-                }
+        GeometryReader { proxy in
+            // iPhone in landscape (#212): the list and the chat side by side like on the iPad, instead
+            // of the portrait tabs stretched across the whole width.
+            if sizeClass == .compact, verticalSizeClass == .compact, proxy.size.width >= 600 {
+                landscapeLayout
+            } else {
+                splitLayout
             }
         }
-        .navigationSplitViewStyle(.balanced)
         // A new theme rebuilds the screens (the Theme colours are plain values); the sheets and
         // the navigator stay, so Settings remains open while you pick. The sheets below are their
         // own presentations and rebuild themselves (diddySheetAppearance).
@@ -149,6 +123,69 @@ struct MainView: View {
 }
 
 extension MainView {
+    private var splitLayout: some View {
+        NavigationSplitView {
+            Group {
+                if sizeClass == .compact {
+                    // iPhone: tabs at the bottom (Chats, Servers, Activity, You), the chat pushed over them.
+                    PhoneHome(account: account, showSettings: $showSettings, showSearch: $showQuickSwitch)
+                } else {
+                    HStack(spacing: 0) {
+                        ServerRail(account: account, selection: $navigator.server)
+                        ChannelSidebar(
+                            account: account,
+                            server: navigator.server,
+                            destination: $navigator.destination,
+                            showSettings: $showSettings,
+                            showSearch: $showQuickSwitch
+                        )
+                    }
+                }
+            }
+            .background(Theme.sidebar)
+            .toolbar(.hidden, for: .navigationBar)
+            .navigationSplitViewColumnWidth(min: 320, ideal: 360, max: 420)
+        } detail: {
+            NavigationStack {
+                switch navigator.destination {
+                case .text(let roomId)?:
+                    ChatView(account: account, roomId: roomId)
+                        .id(roomId)
+                case .voice(let roomId)?:
+                    VoiceChannelView(account: account, roomId: roomId)
+                        .id(roomId)
+                case nil:
+                    EmptyChannelView()
+                }
+            }
+        }
+        .navigationSplitViewStyle(.balanced)
+    }
+
+    /// iPhone in landscape: tabs and lists on the left, the open chat (or channel) on the right.
+    private var landscapeLayout: some View {
+        HStack(spacing: 0) {
+            PhoneHome(account: account, showSettings: $showSettings, showSearch: $showQuickSwitch)
+                .frame(width: 340)
+                .background(Theme.sidebar)
+            Divider()
+            NavigationStack {
+                switch navigator.destination {
+                case .text(let roomId)?:
+                    ChatView(account: account, roomId: roomId)
+                        .id(roomId)
+                case .voice(let roomId)?:
+                    VoiceChannelView(account: account, roomId: roomId)
+                        .id(roomId)
+                case nil:
+                    EmptyChannelView()
+                }
+            }
+            .environment(\.chatBesideList, true)
+        }
+        .background(Theme.chat.ignoresSafeArea())
+    }
+
     private func finishWelcome() { UserDefaults.standard.set(true, forKey: "diddy.welcome.done.\(account.id)") }
     private var shortcuts: some View {
         Group {
