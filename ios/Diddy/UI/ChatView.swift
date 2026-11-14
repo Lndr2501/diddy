@@ -93,6 +93,9 @@ private struct ChatContent: View {
     @State private var actionRow: MessageRow?
     /// Whether the chat follows the newest message. Only the user scrolling up turns this off.
     @State private var atBottom = true
+    /// Keeps the visible messages still while older ones are added above (ChatScrollAnchor.swift).
+    @State private var scrollAnchor = ChatScrollAnchor()
+    @State private var loadingOlder = false
     /// The composer's height: when it shrinks (a photo taken out, the reply bar closed) the list
     /// grows and would show an empty gap below the last message until scrolled.
     @State private var composerHeight: CGFloat = 0
@@ -252,6 +255,9 @@ private struct ChatContent: View {
 
     private var messages: some View {
         ScrollViewReader { proxy in
+            // Older messages load while these first rows come into view, so a fast fling up
+            // rarely reaches the top and has to wait.
+            let earlyRows = Set(controller.rows.prefix(10).map(\.id))
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     if controller.reachedStart {
@@ -261,11 +267,7 @@ private struct ChatContent: View {
                             .frame(maxWidth: .infinity)
                             .padding()
                             // Runs again after each page, in case the spinner is still in view.
-                            .task(id: controller.rows.count) {
-                                let top = controller.rows.first?.id
-                                await controller.loadOlderMessages()
-                                if let top, !atBottom { proxy.scrollTo(top, anchor: .top) }
-                            }
+                            .task(id: controller.rows.count) { await loadOlder() }
                     }
                     ForEach(controller.rows) { row in
                         if dividerRowId == row.id { NewMessagesDivider() }
@@ -283,6 +285,7 @@ private struct ChatContent: View {
                             onReactionInfo: { key in showReactors(of: row, key: key) }
                         )
                         .id(row.id)
+                        .onAppear { if earlyRows.contains(row.id) { Task { await loadOlder() } } }
                         .background(highlightedRowId == row.id ? Theme.accent.opacity(0.18) : Color.clear)
                         .swipeToReply {
                             // The swipe is also a drag of the chat; at the end it must keep following.
@@ -320,6 +323,7 @@ private struct ChatContent: View {
                             }
                         }
                 }
+                .background(ChatScrollAnchorView(anchor: scrollAnchor))
             }
             .stickToBottom()
             .scrollDismissesKeyboard(.interactively)
@@ -420,6 +424,15 @@ private struct ChatContent: View {
     // MARK: Moving around the chat
 
     private var dividerRowId: String? { controller.nav.dividerRowId(me: account.userId) }
+
+    /// One page of older messages at a time; the anchor keeps what is on screen where it is, also
+    /// during a fling, instead of jumping back to the old top row afterwards.
+    private func loadOlder() async {
+        guard !loadingOlder, !controller.loading, !controller.reachedStart else { return }
+        loadingOlder = true
+        await scrollAnchor.keepingPosition { await controller.loadOlderMessages() }
+        loadingOlder = false
+    }
 
     /// Shows a message, loading older ones first when it is further back; the sheet of the
     /// surrounding messages is the way out for a message that cannot be reached.
