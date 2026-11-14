@@ -84,6 +84,9 @@ private struct ChatContent: View {
     @State private var searchContext: SearchEventTarget?
     @EnvironmentObject private var navigator: AppNavigator
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.chatBesideList) private var besideList
+    /// How far the edge swipe back has moved the chat (EdgeSwipeBack).
+    @State private var edgeOffset: CGFloat = 0
     @State private var profile: ProfileTarget?
     @State private var viewedImage: ViewedImage?
     @State private var openedFile: URL?
@@ -136,6 +139,17 @@ private struct ChatContent: View {
             }
         }
         .background(Theme.chat.ignoresSafeArea())
+        // Swipe from the left edge back to the list (#211); clear of the header's back button
+        // and the composer's plus.
+        .overlay(alignment: .leading) {
+            if let backAction {
+                EdgeSwipeBack(offset: $edgeOffset, onBack: backAction)
+                    .padding(.top, 60)
+                    .padding(.bottom, 72)
+            }
+        }
+        .shadow(color: .black.opacity(edgeOffset > 0 ? 0.35 : 0), radius: 14)
+        .offset(x: edgeOffset)
         .navigationTitle(title)
         // Our own flat header (ChatHeader) instead of the system bar and its glass buttons; the
         // swipe back from the edge still works (ChatChrome.swift).
@@ -604,7 +618,7 @@ private struct ChatContent: View {
 
     /// Back to the list on iPhone; the iPad shows the list beside the chat.
     private var backAction: (() -> Void)? {
-        guard sizeClass == .compact else { return nil }
+        guard sizeClass == .compact, !besideList else { return nil }
         return { navigator.destination = nil }
     }
 

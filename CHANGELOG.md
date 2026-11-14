@@ -2,6 +2,8 @@
 
 ## Unveröffentlicht
 
+- **iOS: Zurück per Wisch vom linken Rand (#211):** Im Chat führt ein Wisch vom linken Bildschirmrand zurück zur Chatliste. Der Chat folgt dem Finger, ab einem Drittel der Breite oder mit Schwung gleitet er hinaus. Die System-Geste erreichte die Liste nicht, weil der Chat in einem eigenen Navigationsstapel steckt.
+- **iOS: Querformat auf dem iPhone (#212):** Gedreht stehen Liste (mit den Tabs) und Chat nebeneinander wie auf dem iPad, statt die Hochformat-Ansicht in die Breite zu ziehen. Der Chat hat dort keinen Zurück-Knopf.
 - **iOS: Hochscrollen ruckelte und sprang:** Wer schnell nach oben scrollte, kam an den Ladekreis, dann sprang der Chat an eine zufällige Stelle. Jetzt laden ältere Nachrichten schon vorher, und was auf dem Bildschirm steht, bleibt beim Nachladen stehen, auch mitten im Schwung.
 - **Desktop: Media & Files (#189):** Wie auf iOS gibt es in den Raumeinstellungen und im Raummenü eine Übersicht mit Bildern, Videos und Dateien des Raums, neueste zuerst, auch in verschlüsselten Räumen. Bilder öffnen sich in der Bildansicht, Videos und Dateien springen zu ihrer Nachricht, Dateien lassen sich direkt laden.
 - **iOS: Profil-Links (#177):** zeigen wie am Desktop den Dienstnamen („GitHub“) statt der Adresse.

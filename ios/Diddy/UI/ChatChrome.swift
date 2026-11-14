@@ -301,6 +301,58 @@ extension UINavigationController: UIGestureRecognizerDelegate {
     }
 }
 
+/// Swipe from the left edge back to the chat list (#211). On iPhone the chat sits in the
+/// detail's own NavigationStack, whose root cannot pop, so the system swipe above does not reach
+/// the split view behind it. This strip at the edge does it instead: the chat follows the finger,
+/// and past a third of the width (or with a flick) it slides out and the list comes back.
+struct EdgeSwipeBack: View {
+    @Binding var offset: CGFloat
+    let onBack: () -> Void
+
+    var body: some View {
+        Color.clear
+            .frame(width: 20)
+            .frame(maxHeight: .infinity)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 6, coordinateSpace: .global)
+                    .onChanged { value in
+                        offset = max(0, value.translation.width)
+                    }
+                    .onEnded { value in
+                        let width = UIScreen.main.bounds.width
+                        let done = value.translation.width > width / 3 || value.predictedEndTranslation.width > width * 0.6
+                        guard done else {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.9)) { offset = 0 }
+                            return
+                        }
+                        withAnimation(.easeOut(duration: 0.18)) { offset = width }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+                            // The chat is already gone; the pop itself must not slide it again.
+                            var transaction = Transaction()
+                            transaction.disablesAnimations = true
+                            withTransaction(transaction) { onBack() }
+                            offset = 0
+                        }
+                    }
+            )
+            .accessibilityHidden(true)
+    }
+}
+
+/// True where the chat stands beside the chat list (iPhone in landscape, MainView): no back button
+/// and no edge swipe, the list is right there.
+private struct ChatBesideListKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    var chatBesideList: Bool {
+        get { self[ChatBesideListKey.self] }
+        set { self[ChatBesideListKey.self] = newValue }
+    }
+}
+
 // MARK: Timeline extras
 
 /// "Lndr is typing" floating over the bottom left of the chat, so nothing below it moves.
