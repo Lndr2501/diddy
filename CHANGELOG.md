@@ -2,7 +2,7 @@
 
 ## Unveröffentlicht
 
-- **Bot-Karten: Link in Hinweis-Chips:** Eine `note`-Karte darf jetzt einen Link (`url`, nur http/https) und eine Beschriftung (`linkLabel`) mitschicken. Diddy zeigt ihn als kleinen runden Knopf rechts im Chip, z. B. „Issue öffnen“ beim neuen Issue-Bot ([Lndr2501/issuebotmatrix](https://github.com/Lndr2501/issuebotmatrix)). Vorher war der Link nur in Element sichtbar.
+- **Bot-Karten: Link in Hinweis-Chips:** Eine `note`-Karte darf jetzt einen Link (`url`, nur http/https) und eine Beschriftung (`linkLabel`) mitschicken. Diddy zeigt ihn als kleinen runden Knopf rechts im Chip, z. B. „Issue öffnen“ beim neuen Issue-Bot ([Lndr2501/issuebotmatrix](https://github.com/Lndr2501/issuebotmatrix)). Vorher war der Link nur in Element sichtbar. Auf iOS genauso (kleiner Knopf rechts im Chip, öffnet im Browser).
 - **iOS: Hochscrollen ruckelte und sprang:** Wer schnell nach oben scrollte, kam an den Ladekreis, dann sprang der Chat an eine zufällige Stelle. Jetzt laden ältere Nachrichten schon vorher, und was auf dem Bildschirm steht, bleibt beim Nachladen stehen, auch mitten im Schwung.
 - **Desktop: Media & Files (#189):** Wie auf iOS gibt es in den Raumeinstellungen und im Raummenü eine Übersicht mit Bildern, Videos und Dateien des Raums, neueste zuerst, auch in verschlüsselten Räumen. Bilder öffnen sich in der Bildansicht, Videos und Dateien springen zu ihrer Nachricht, Dateien lassen sich direkt laden.
 - **iOS: Profil-Links (#177):** zeigen wie am Desktop den Dienstnamen („GitHub“) statt der Adresse.

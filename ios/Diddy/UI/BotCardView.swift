@@ -25,7 +25,8 @@ struct BotCardView: View {
             case .list(let title, let items, let total, let empty, let actions):
                 listCard(title: title, items: items, total: total, empty: empty, actions: actions)
             case .stats(let title, let charts, let actions): statsCard(title: title, charts: charts, actions: actions)
-            case .note(let text, let tone, let icon): noteCard(text: text, tone: tone, icon: icon)
+            case .note(let text, let tone, let icon, let url, let linkLabel):
+                noteCard(text: text, tone: tone, icon: icon, url: url.flatMap(URL.init(string:)), linkLabel: linkLabel)
             }
         }
         .frame(maxWidth: 380, alignment: .leading)
@@ -457,7 +458,7 @@ struct BotCardView: View {
 
     // MARK: Note
 
-    private func noteCard(text: String, tone: BotCardTone, icon: String?) -> some View {
+    private func noteCard(text: String, tone: BotCardTone, icon: String?, url: URL?, linkLabel: String?) -> some View {
         let color: Color = {
             switch tone {
             case .info: return Theme.accent
@@ -469,6 +470,20 @@ struct BotCardView: View {
         return HStack(alignment: .top, spacing: 8) {
             if let icon { Text(icon).accessibilityHidden(true) }
             Text(text).font(.footnote).foregroundStyle(Theme.text)
+            if let url {
+                Spacer(minLength: 6)
+                // The bot's link (e.g. the GitHub issue it created) as a small pill, like desktop.
+                Link(destination: url) {
+                    Text((linkLabel ?? "Open") + " ↗")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(color)
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 3)
+                        .background(Capsule().fill(color.opacity(0.18)))
+                        .fixedSize()
+                }
+                .accessibilityLabel(linkLabel ?? "Open link")
+            }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 9)
