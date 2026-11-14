@@ -503,3 +503,16 @@ enum DiddyImageSniff {
         return nil
     }
 }
+
+/// The name shown next to a profile link (#177, desktop `linkDisplayName` in `profileExtras.ts`):
+/// the service, or the site's host without "www." for a website.
+enum DiddyLinkName {
+    private static let names = ["github": "GitHub", "gitlab": "GitLab", "linkedin": "LinkedIn",
+                                "spotify": "Spotify", "youtube": "YouTube"]
+
+    static func name(kind: String, url: URL) -> String {
+        if kind != "web", let name = names[kind] { return name }
+        guard let host = url.host?.lowercased(), !host.isEmpty else { return "Website" }
+        return host.hasPrefix("www.") ? String(host.dropFirst(4)) : host
+    }
+}
