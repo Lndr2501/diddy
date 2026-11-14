@@ -10,6 +10,7 @@ import { UseAsyncSearchOptions, useAsyncSearch } from '../../../hooks/useAsyncSe
 import { onTabPress } from '../../../utils/keyboard';
 import { createEmoticonElement, moveCursor, replaceWithElement } from '../utils';
 import { useRecentEmoji } from '../../../hooks/useRecentEmoji';
+import { useEmojiData } from '../../../hooks/useEmojiData';
 import { useRelevantImagePacks } from '../../../hooks/useImagePacks';
 import { IEmoji, emojis } from '../../../plugins/emoji';
 import { useKeyDown } from '../../../hooks/useKeyDown';
@@ -47,13 +48,15 @@ export function EmoticonAutocomplete({
   const imagePacks = useRelevantImagePacks(ImageUsage.Emoticon, imagePackRooms);
   const recentEmoji = useRecentEmoji(mx, 20);
 
+  const emojiData = useEmojiData();
   const searchList = useMemo(() => {
     const list: Array<EmoticonSearchItem> = [];
     return list.concat(
       imagePacks.flatMap((pack) => pack.getImages(ImageUsage.Emoticon)),
       emojis
     );
-  }, [imagePacks]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imagePacks, emojiData]);
 
   const [result, search, resetSearch] = useAsyncSearch(
     searchList,

@@ -89,6 +89,15 @@ export const isLivekitSignalUrl = (url: string): boolean => {
   }
 };
 
+/** The host of a signal URL, without path or query (the query carries the access token). */
+export const signalHost = (url: string): string => {
+  try {
+    return new URL(url).host || '?';
+  } catch {
+    return '?';
+  }
+};
+
 type SocketWindow = { WebSocket?: typeof WebSocket & { __diddyJoinWatch?: boolean } };
 
 /**
@@ -114,12 +123,18 @@ export const watchLivekitSignal = (
       const started = now();
       let opened = false;
       const since = () => `${Math.round(now() - started)} ms`;
+      // Element Call can connect to several media servers at once ("multi_sfu"): the host tells a
+      // second server apart from a retry of the first. Only the host, never the token in the query.
+      const host = signalHost(href);
       this.addEventListener('open', () => {
         opened = true;
-        log(`call join: LiveKit signal ${attempt} open after ${since()}`);
+        log(`call join: LiveKit signal ${attempt} to ${host} open after ${since()}`);
       });
       this.addEventListener('close', (evt) => {
-        if (!opened) log(`call join: LiveKit signal ${attempt} closed before open after ${since()} (code ${evt.code})`);
+        if (!opened)
+          log(
+            `call join: LiveKit signal ${attempt} to ${host} closed before open after ${since()} (code ${evt.code})`
+          );
       });
     }
   }

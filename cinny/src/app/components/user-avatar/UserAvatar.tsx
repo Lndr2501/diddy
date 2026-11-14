@@ -8,7 +8,7 @@ import { useMatrixClientOptional } from '../../hooks/useMatrixClient';
 import { animatedThumbnailUrl, isOriginalMedia } from '../../plugins/diddy/avatar';
 import { PositionedImg } from '../diddy/PositionedImg';
 import { AvatarSurface, useAvatarPrefs } from '../../state/avatarPrefs';
-import { speakingUsersAtom } from '../../state/speakingUsers';
+import { userSpeakingAtom } from '../../state/speakingUsers';
 import { usePreviewOverride } from '../../plugins/diddy/previewOverride';
 
 type UserAvatarProps = {
@@ -103,7 +103,7 @@ function useSettledSrc(wanted: string | undefined, onFail?: () => void): string 
 function AnimatedUserAvatar(props: UserAvatarProps) {
   const { src, userId, className, alt, surface = 'chat' } = props;
   const prefs = useAvatarPrefs();
-  const speakingNow = useAtomValue(speakingUsersAtom).has(userId);
+  const speakingNow = useAtomValue(userSpeakingAtom(userId));
   // the profile editor's call preview can show you as speaking (#105)
   const previewSpeaking = usePreviewOverride(userId)?.speaking;
   const speaking = previewSpeaking ?? speakingNow;

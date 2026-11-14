@@ -190,3 +190,16 @@ export const enableCallStage = (iframe: HTMLIFrameElement | null | undefined): (
     container.removeAttribute(CALL_OVERLAY_ATTR);
   };
 };
+
+/**
+ * Whether a change in Element Call's page can change the stage. Element Call animates its tiles
+ * through inline styles, which re-read the whole stage every frame; of the style changes only a
+ * <video>'s matters (it is hidden while the camera is off, #145). Everything else counts.
+ */
+export const stageMutationMatters = (record: {
+  type: string;
+  attributeName?: string | null;
+  target: { nodeName?: string };
+}): boolean =>
+  !(record.type === 'attributes' && record.attributeName === 'style') ||
+  record.target.nodeName === 'VIDEO';

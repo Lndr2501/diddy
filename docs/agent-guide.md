@@ -96,8 +96,8 @@ einmalig auf dem Mac `.github/scripts/dev-signing-secrets.sh` ausführen (export
 Logs der laufenden App: `~/Library/Logs/Diddy/app.log` (z. B. `noise suppression on (RNNoise)`).
 Langsamer Call-Beitritt (#161): `grep 'call join:' ~/Library/Logs/Diddy/app.log`. Ungefähre Reihenfolge: `widget created`,
 `call page loaded`, `widget ready`, `OpenID requested` und `call joined` (Element Call ist bereit, noch ohne LiveKit),
-`LiveKit token request done` (Dauer des JWT-Abrufs), `LiveKit signal 1 open after … ms` (jeder Verbindungsversuch
-zum Medienserver, gescheiterte als `closed before open`), `media connected`, `first tile shown`, `another person shown`.
+`LiveKit token request done` (Dauer des JWT-Abrufs), `LiveKit signal 1 to <host> open after … ms` (jeder Verbindungsversuch
+zum Medienserver mit dessen Host, gescheiterte als `closed before open`), `media connected`, `first tile shown`, `another person shown`.
 Große `+ms`-Werte grenzen auffällige Lücken ein; mehrere Schritte können parallel laufen.
 Die Ressourcendauer beim Token-Abruf kann bei fehlenden Cross-Origin-Timingrechten eingeschränkt sein.
 Messung vom 13.11.: meist 0,3–1,5 s bis zur zweiten Person; Ausreißer bis 10 s lagen zwischen Token und erster Kachel,

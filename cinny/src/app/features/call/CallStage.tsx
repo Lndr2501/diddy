@@ -16,6 +16,7 @@ import {
   StageModel,
   StagePerson,
   StageShare,
+  stageMutationMatters,
   stageSignature,
 } from '../../plugins/call/callStage';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
@@ -77,7 +78,11 @@ function useCallStage(callEmbed: CallEmbed): StageModel {
     // tiles come and go, speaking / mute change classes and attributes; a camera that starts
     // or stops sending and somebody else's LiveKit mute change nothing in the DOM, so a slow
     // poll catches that
-    const observer = new MutationObserver(schedule);
+    // Element Call animates its tiles through inline styles, which re-read the whole stage every
+    // frame; only a style change of a <video> matters (hidden camera, #145).
+    const observer = new MutationObserver((records) => {
+      if (records.some(stageMutationMatters)) schedule();
+    });
     if (doc?.body) {
       observer.observe(doc.body, {
         childList: true,

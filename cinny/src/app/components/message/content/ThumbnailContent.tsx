@@ -5,6 +5,7 @@ import { AsyncStatus, useAsyncCallback } from '../../../hooks/useAsyncCallback';
 import { decryptFile, downloadEncryptedMedia, mxcUrlToHttp } from '../../../utils/matrix';
 import { useMediaAuthentication } from '../../../hooks/useMediaAuthentication';
 import { FALLBACK_MIMETYPE } from '../../../utils/mimeTypes';
+import { cachedObjectUrl } from '../../../utils/mediaCache';
 
 export type ThumbnailContentProps = {
   info: IThumbnailContent;
@@ -26,10 +27,11 @@ export function ThumbnailContent({ info, renderImage }: ThumbnailContentProps) {
       const mediaUrl = mxcUrlToHttp(mx, thumbMxcUrl, useAuthentication);
       if (!mediaUrl) throw new Error('Invalid media URL');
       if (encInfo) {
-        const fileContent = await downloadEncryptedMedia(mediaUrl, (encBuf) =>
-          decryptFile(encBuf, thumbInfo.mimetype ?? FALLBACK_MIMETYPE, encInfo)
+        return cachedObjectUrl(thumbMxcUrl, () =>
+          downloadEncryptedMedia(mediaUrl, (encBuf) =>
+            decryptFile(encBuf, thumbInfo.mimetype ?? FALLBACK_MIMETYPE, encInfo)
+          )
         );
-        return URL.createObjectURL(fileContent);
       }
 
       return mediaUrl;
