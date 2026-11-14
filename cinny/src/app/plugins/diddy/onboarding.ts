@@ -7,6 +7,8 @@ import { MatrixClient, Room } from 'matrix-js-sdk';
 import type { IHierarchyRoom } from 'matrix-js-sdk/lib/@types/spaces';
 import { OPTIONS_ROOM_NAME } from './types';
 import { TOPIC_TAG, isOptionsRoom } from './optionsRoom';
+import { getHierarchyPage } from './hierarchyCache';
+import { setVisibleInterval } from '../../utils/visibleInterval';
 
 export type DiddyRoomInfo = {
   roomId: string;
@@ -60,7 +62,7 @@ export const findDiddyRoomsInSpaces = async (mx: MatrixClient): Promise<DiddyRoo
         let spaceRoom: IHierarchyRoom | undefined;
         for (let page = 0; page < MAX_PAGES; page += 1) {
           // eslint-disable-next-line no-await-in-loop
-          const hierarchy = await mx.getRoomHierarchy(space.roomId, 100, 1, false, fromToken);
+          const hierarchy = await getHierarchyPage(mx, space.roomId, fromToken);
           spaceRoom = spaceRoom ?? hierarchy.rooms.find((r) => r.room_id === space.roomId);
           hierarchy.rooms.forEach((r) => {
             if (r.room_id === space.roomId) return;
@@ -223,8 +225,7 @@ export const useDiddyOnboardingState = (mx: MatrixClient): DiddyOnboardingState 
   useEffect(() => {
     if (!synced || !userId) return undefined;
     scan();
-    const timer = window.setInterval(scan, SCAN_INTERVAL_MS);
-    return () => window.clearInterval(timer);
+    return setVisibleInterval(scan, SCAN_INTERVAL_MS);
   }, [synced, userId, scan]);
 
   if (!synced || !userId) return { show: undefined, rooms: [] };

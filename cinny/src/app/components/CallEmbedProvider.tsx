@@ -55,6 +55,8 @@ import { diag } from '../plugins/diagnostics';
 import { IncomingCall, IncomingCallInfo } from './incoming-call/IncomingCall';
 import { callBannerShownAtom } from '../state/toasts';
 import { INCOMING_CALL_LEAVE_MS } from '../plugins/call/incomingCallText';
+import { canInvoke, invoke } from '../plugins/tauri';
+import { isMacOS } from '../utils/user-agent';
 
 type IncomingCallListenerProps = {
   callEmbed?: CallEmbed;
@@ -436,6 +438,14 @@ export function CallEmbedProvider({ children }: CallEmbedProviderProps) {
   const chatOnlyView = chat && screenSize !== ScreenSize.Desktop;
 
   const callVisible = callEmbed && selectedRoom === callEmbed.roomId && joined && !chatOnlyView;
+
+  // Linux shell: let a hidden window without a call be throttled; a call keeps it awake (the macOS
+  // shell keeps its own setting and has no such command).
+  const inCall = !!callEmbed;
+  useEffect(() => {
+    if (!canInvoke() || isMacOS()) return;
+    invoke('set_in_call', { active: inCall }).catch(() => undefined);
+  }, [inCall]);
 
   return (
     <CallEmbedContextProvider value={callEmbed}>

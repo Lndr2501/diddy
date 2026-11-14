@@ -11,6 +11,7 @@ import {
   parseRelease,
   releasesApiUrl,
 } from '../../utils/updateCheck';
+import { setVisibleInterval } from '../../utils/visibleInterval';
 
 const DISMISSED_KEY = 'diddyUpdateDismissed';
 const CHECK_DELAY_MS = 10_000;
@@ -60,11 +61,11 @@ export function UpdateNotice() {
       }
     };
     const first = window.setTimeout(check, CHECK_DELAY_MS);
-    const timer = window.setInterval(check, CHECK_INTERVAL_MS);
+    const stopChecks = setVisibleInterval(check, CHECK_INTERVAL_MS);
     return () => {
       cancelled = true;
       window.clearTimeout(first);
-      window.clearInterval(timer);
+      stopChecks();
     };
   }, [checkUpdatesAtStart, repo]);
 

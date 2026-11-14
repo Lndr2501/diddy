@@ -4,6 +4,7 @@
  */
 import type { MatrixClient } from 'matrix-js-sdk';
 import { OPTIONS_ROOM_NAME } from './types';
+import { getHierarchyPage } from './hierarchyCache';
 
 export type DiscoveredRoom = {
   roomId: string;
@@ -36,7 +37,7 @@ export const discoverSpaceRooms = async (mx: MatrixClient): Promise<DiscoveredRo
         let spaceEntryChildren: { state_key?: string; content?: { via?: string[] } }[] | undefined;
         for (let page = 0; page < MAX_PAGES; page += 1) {
           // eslint-disable-next-line no-await-in-loop
-          const hierarchy = await mx.getRoomHierarchy(space.roomId, 100, 1, false, fromToken);
+          const hierarchy = await getHierarchyPage(mx, space.roomId, fromToken);
           const own = hierarchy.rooms.find((r) => r.room_id === space.roomId);
           if (own && !spaceEntryChildren) {
             spaceEntryChildren = own.children_state as unknown as {

@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { joinOptionsRoomOfSpace } from './optionsRoom';
+import { setVisibleInterval } from '../../utils/visibleInterval';
 
 const RECHECK_INTERVAL_MS = 10 * 60 * 1000;
 const SYNC_POLL_MS = 2000;
@@ -40,11 +41,11 @@ export const useDiddyOptionsAutoJoin = (): void => {
         runAll();
       }
     }, SYNC_POLL_MS);
-    const interval = window.setInterval(runAll, RECHECK_INTERVAL_MS);
+    const stopRecheck = setVisibleInterval(runAll, RECHECK_INTERVAL_MS);
     return () => {
       disposed = true;
       window.clearInterval(retryUntilSynced);
-      window.clearInterval(interval);
+      stopRecheck();
     };
   }, [mx]);
 };
