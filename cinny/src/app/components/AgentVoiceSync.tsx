@@ -151,9 +151,26 @@ export function AgentVoiceSync() {
     let lastKey: boolean | null = null;
     let lastTrigger = false;
     const nativeKey = canReadNatively(hotkey) ? hotkey?.code ?? '' : '';
+    // The shell answers agent_voice_wait only when something changed (or after 25 s); an older shell
+    // without it is asked with agent_voice_state every NATIVE_POLL_MS instead.
+    let canWait = true;
     const poll = async () => {
       try {
-        const state = parseNativeState(await invoke('agent_voice_state', { key: nativeKey }));
+        let raw: unknown;
+        if (canWait) {
+          try {
+            raw = await invoke('agent_voice_wait', {
+              key: nativeKey,
+              lastKey,
+              lastTrigger,
+              timeoutMs: 25000,
+            });
+          } catch {
+            canWait = false;
+          }
+        }
+        if (!canWait) raw = await invoke('agent_voice_state', { key: nativeKey });
+        const state = parseNativeState(raw);
         if (stopped || !state) return;
         if (state.key !== null && state.key !== lastKey) {
           gate.setNativeKey(state.key);
@@ -168,7 +185,7 @@ export function AgentVoiceSync() {
         diag(`agentVoice: native state unavailable: ${String(error)}`);
         return;
       }
-      if (!stopped) timer = window.setTimeout(poll, NATIVE_POLL_MS);
+      if (!stopped) timer = window.setTimeout(poll, canWait ? 0 : NATIVE_POLL_MS);
     };
     if (canInvoke()) poll();
 

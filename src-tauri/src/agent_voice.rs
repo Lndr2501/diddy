@@ -6,7 +6,8 @@
 //!   launch is forwarded to the running app by the single-instance plugin, so key-remapping tools
 //!   (Karabiner, Hammerspoon, skhd, ...) can drive it.
 //!
-//! The page polls `agent_voice_state` while the feature is switched on.
+//! The page asks `agent_voice_wait`, which answers only when the key or the trigger changed (the
+//! key is read here every 30 ms, without a round trip to the page each time), or after 25 s.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -67,6 +68,34 @@ pub struct AgentVoiceState {
 #[tauri::command]
 pub fn agent_voice_state(key: String) -> AgentVoiceState {
     AgentVoiceState { key: native::key_down(&key), trigger: TRIGGER.load(Ordering::SeqCst) }
+}
+
+/// Longest a wait is held open before it answers with the unchanged state.
+const WAIT_MAX_MS: u64 = 25_000;
+const WAIT_STEP_MS: u64 = 30;
+
+/// Like `agent_voice_state`, but answers only once the state differs from what the page last saw
+/// (`last_key`, `last_trigger`) or `timeout_ms` passed.
+#[tauri::command]
+pub async fn agent_voice_wait(
+    key: String,
+    last_key: Option<bool>,
+    last_trigger: bool,
+    timeout_ms: Option<u64>,
+) -> AgentVoiceState {
+    let limit = timeout_ms.unwrap_or(WAIT_MAX_MS).min(WAIT_MAX_MS);
+    tauri::async_runtime::spawn_blocking(move || {
+        let start = std::time::Instant::now();
+        loop {
+            let now = AgentVoiceState { key: native::key_down(&key), trigger: TRIGGER.load(Ordering::SeqCst) };
+            if now.key != last_key || now.trigger != last_trigger || start.elapsed().as_millis() as u64 >= limit {
+                return now;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(WAIT_STEP_MS));
+        }
+    })
+    .await
+    .unwrap_or(AgentVoiceState { key: None, trigger: TRIGGER.load(Ordering::SeqCst) })
 }
 
 /// macOS virtual key codes (kVK_*) of the keys that can be read natively. Keep in sync with

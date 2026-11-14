@@ -372,3 +372,21 @@ test('native helper talks to a fake portal: bind, press, release, close, no port
   result.stop();
   await portal.waitFor('session-closed-by-client');
 });
+
+test('agent voice wait answers on a change instead of being polled', async () => {
+  const trigger = createAgentVoiceTrigger();
+  // already different from what the page saw: answers at once
+  assert.deepEqual(await trigger.wait({ key: true, trigger: false }), { key: null, trigger: false });
+  // unchanged: held open until the trigger flips
+  const pending = trigger.wait({ key: null, trigger: false });
+  trigger.apply('start');
+  assert.deepEqual(await pending, { key: null, trigger: true });
+  // a key change wakes it too
+  const keyWait = trigger.wait({ key: null, trigger: true });
+  trigger.setKey(true);
+  assert.deepEqual(await keyWait, { key: true, trigger: true });
+  // nothing happens: answers after the timeout with the same state
+  const t0 = Date.now();
+  assert.deepEqual(await trigger.wait({ key: true, trigger: true }, 50), { key: true, trigger: true });
+  assert.ok(Date.now() - t0 >= 40);
+});

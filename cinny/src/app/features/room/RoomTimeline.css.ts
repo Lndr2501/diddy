@@ -59,14 +59,13 @@ export const DividerLine = style({
   opacity: 0.6,
 });
 
-// Date separator: a small centered capsule, quiet secondary text.
+// Date separator: a small centered capsule, quiet secondary text. A solid surface instead of a
+// blurred one: it scrolls with the messages, and a backdrop blur there is repainted on every frame.
 export const DayPill = style({
   selectors: {
     '&&': {
       padding: `${toRem(3)} ${toRem(10)}`,
-      backgroundColor: MATERIAL,
-      backdropFilter: 'saturate(180%) blur(20px)',
-      WebkitBackdropFilter: 'saturate(180%) blur(20px)',
+      backgroundColor: color.SurfaceVariant.Container,
       border: HAIRLINE,
       color: color.Surface.OnContainer,
     },

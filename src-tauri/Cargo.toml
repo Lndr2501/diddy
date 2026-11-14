@@ -71,3 +71,10 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 [[test]]
 name = "webkit_isolation"
 harness = false
+
+# Smaller, faster release binary (longer build): link-time optimization across crates, one codegen
+# unit, no debug symbols in the shipped app (panics are still logged with their message).
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true

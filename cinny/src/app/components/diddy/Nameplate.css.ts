@@ -36,9 +36,27 @@ export const Backdrop = style({
   borderRadius: 'inherit',
 });
 
+/**
+ * The flowing gradient moves as a layer (transform) instead of animating background-position, which
+ * repainted the whole row on every frame. The layer is 220 % wide; -54.5 % of its own width is the
+ * same travel as background-position 0 % to 100 %.
+ */
 const flow = keyframes({
-  '0%': { backgroundPosition: '0% 50%' },
-  '100%': { backgroundPosition: '100% 50%' },
+  '0%': { transform: 'translate3d(0, 0, 0)' },
+  '100%': { transform: 'translate3d(-54.5%, 0, 0)' },
+});
+
+export const Flow = style({
+  position: 'absolute',
+  top: 0,
+  bottom: 0,
+  left: 0,
+  width: '220%',
+  willChange: 'transform',
+  animation: `${flow} 9s ease-in-out infinite alternate`,
+  '@media': {
+    [REDUCED_MOTION]: { animation: 'none' },
+  },
 });
 
 export const Media = style({
@@ -49,17 +67,6 @@ export const Media = style({
     [`${Backdrop}[data-fit="fade"] &`]: {
       maskImage: FADE_MASK,
       WebkitMaskImage: FADE_MASK,
-    },
-    '&[data-flow="true"]': {
-      backgroundSize: '220% 100%',
-      animation: `${flow} 9s ease-in-out infinite alternate`,
-    },
-  },
-  '@media': {
-    [REDUCED_MOTION]: {
-      selectors: {
-        '&[data-flow="true"]': { animation: 'none' },
-      },
     },
   },
 });

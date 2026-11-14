@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-agent-voice-wait"
+description = "Enables the agent_voice_wait command without any pre-configured scope."
+commands.allow = ["agent_voice_wait"]
+
+[[permission]]
+identifier = "deny-agent-voice-wait"
+description = "Denies the agent_voice_wait command without any pre-configured scope."
+commands.deny = ["agent_voice_wait"]

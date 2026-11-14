@@ -9,7 +9,10 @@ import { useSyncExternalStore } from 'react';
 import { getSharedAudioContext } from './sharedAudio';
 import { createVoiceActivity, levelDb, SILENCE_DB } from './voiceActivity';
 
-const POLL_MS = 60;
+/** Measuring interval while the microphone is live; 100 ms still follows speech closely. */
+const POLL_MS = 100;
+/** While muted only the end of the track and unmuting are noticed, so it is checked less often. */
+const MUTED_POLL_MS = 400;
 
 let speaking = false;
 const listeners = new Set<() => void>();
@@ -67,21 +70,25 @@ export const watchLocalMicrophone = (track: MediaStreamTrack, win?: Window): voi
   }
   const samples = new Float32Array(analyser.fftSize);
   const activity = createVoiceActivity();
-  const timer = window.setInterval(() => {
+  let timer = 0;
+  const tick = () => {
     if (track.readyState === 'ended') {
       // only the current watch has a running timer: a replaced one was stopped
       stopLocalSpeaking();
       return;
     }
+    const live = track.enabled && !track.muted;
     let db = SILENCE_DB;
-    if (track.enabled && !track.muted) {
+    if (live) {
       analyser.getFloatTimeDomainData(samples);
       db = levelDb(samples);
     }
     setSpeaking(activity.update(db, performance.now()));
-  }, POLL_MS);
+    timer = window.setTimeout(tick, live ? POLL_MS : MUTED_POLL_MS);
+  };
+  timer = window.setTimeout(tick, POLL_MS);
   stopWatch = () => {
-    window.clearInterval(timer);
+    window.clearTimeout(timer);
     try {
       source.disconnect();
       analyser.disconnect();

@@ -2,6 +2,14 @@
 
 ## Unveröffentlicht
 
+- **Leistung, zweite Runde (macOS, Linux):**
+  - Agent Voice fragt die Taste nicht mehr alle 60 ms über die Brücke ab: Die App meldet sich erst, wenn sich Taste oder Auslöser ändern (`agent_voice_wait`, Tauri und Electron; ältere Apps werden weiter abgefragt).
+  - Eigene Sprech-Erkennung im Call misst alle 100 statt 60 ms, stumm nur noch alle 400 ms.
+  - Namensschilder: Der fließende Verlauf bewegt sich als Ebene (`transform`) statt jedes Bild neu zu malen; Videos laufen nur, solange die Zeile sichtbar ist.
+  - Link-Vorschauen laden erst, wenn sie in die Nähe des Bildschirms kommen. Die App liest von einer Seite höchstens 256 KB und hört nach `</head>` auf; Tauri nutzt dafür eine wiederverwendete Verbindung.
+  - Die Tages-Kapsel im Verlauf ist eine feste Fläche statt einer Unschärfe, die beim Scrollen ständig neu berechnet wurde.
+  - Fenstergröße und -position werden erst gespeichert bzw. geprüft, wenn das Ziehen aufhört.
+  - Die nie genutzte Twemoji-Schrift (1,9 MB) ist raus. Der macOS-Release wird mit Link-Zeit-Optimierung und ohne Debug-Symbole gebaut.
 ## 1.8.0 (2026-11-14)
 
 - **Bot-Karten: Link in Hinweis-Chips:** Eine `note`-Karte darf jetzt einen Link (`url`, nur http/https) und eine Beschriftung (`linkLabel`) mitschicken. Diddy zeigt ihn als kleinen runden Knopf rechts im Chip, z. B. „Issue öffnen“ beim neuen Issue-Bot ([Lndr2501/issuebotmatrix](https://github.com/Lndr2501/issuebotmatrix)). Vorher war der Link nur in Element sichtbar. Auf iOS genauso (kleiner Knopf rechts im Chip, öffnet im Browser).

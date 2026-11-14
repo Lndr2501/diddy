@@ -82,9 +82,25 @@ const LinkCard = as<'div', { url: string; ts: number }>(({ url, ts, style, ...pr
   const useAuthentication = useMediaAuthentication();
   const [viewer, setViewer] = useState(false);
   const [previewStatus, loadPreview] = useLinkMeta(url, ts);
+  // Loaded once the card comes near the screen, not for every link in the loaded history.
+  const probeRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    loadPreview();
+    const probe = probeRef.current;
+    if (!probe || typeof IntersectionObserver === 'undefined') {
+      loadPreview();
+      return undefined;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((e) => e.isIntersecting)) return;
+        observer.disconnect();
+        loadPreview();
+      },
+      { rootMargin: '600px 0px' }
+    );
+    observer.observe(probe);
+    return () => observer.disconnect();
   }, [loadPreview]);
 
   if (previewStatus.status === AsyncStatus.Error) return null;
@@ -171,7 +187,13 @@ const LinkCard = as<'div', { url: string; ts: number }>(({ url, ts, style, ...pr
       {previewStatus.status === AsyncStatus.Success && previewStatus.data ? (
         renderContent(previewStatus.data)
       ) : (
-        <Box grow="Yes" alignItems="Center" justifyContent="Center" style={{ minHeight: 80 }}>
+        <Box
+          ref={probeRef}
+          grow="Yes"
+          alignItems="Center"
+          justifyContent="Center"
+          style={{ minHeight: 80 }}
+        >
           <Spinner variant="Secondary" size="400" />
         </Box>
       )}
