@@ -27,6 +27,7 @@ import { getCallCapabilities } from './utils';
 import { downloadMedia, mxcUrlToHttp } from '../../utils/matrix';
 import { sendCallPush } from '../diddy/callPush';
 import { diag } from '../diagnostics';
+import { getCallOpenIdToken } from './callPrewarm';
 
 export class CallWidgetDriver extends WidgetDriver {
   private allowedCapabilities: Set<Capability>;
@@ -236,7 +237,7 @@ export class CallWidgetDriver extends WidgetDriver {
     try {
       observer.update({
         state: OpenIDRequestState.Allowed,
-        token: await this.mx.getOpenIdToken(),
+        token: await getCallOpenIdToken(this.mx),
       });
     } catch (e) {
       diag(`call: OpenID token failed: ${e instanceof Error ? e.message : String(e)}`);

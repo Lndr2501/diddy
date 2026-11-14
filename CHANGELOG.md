@@ -13,6 +13,8 @@
   - Space-Scans (Options-Raum, Willkommen, Entdecken) teilen sich einen Cache (5 Minuten); eine Änderung der Unterräume eines Space leert seinen Eintrag sofort.
   - Hintergrund-Prüfungen (Options-Raum, Space-Beitritte, Update-Hinweis) laufen nur, solange das Fenster sichtbar ist; beim Zurückkommen holt die App eine fällige Prüfung nach.
   - Linux: Ein verstecktes Fenster ohne Call darf wieder gedrosselt werden; im Call bleibt die Drosselung aus.
+  - Diddy-Profile im Nachrichtenmodus: Die gelesenen Diddy-Ereignisse der Options-Räume bleiben zwischen den Starts gespeichert (IndexedDB). Ein Start liest nur noch, was seitdem dazukam, statt jedes Mal 300 Ereignisse zu holen und zu entschlüsseln; jedes gespeicherte Ereignis läuft beim Einlesen durch dieselben Prüfungen wie ein neues, und eigene Daten gelten weiter als „aktuell“, solange sie unter den neuesten 150 Ereignissen sind (kein erneutes Senden bei jedem Start).
+  - Call-Beitritt: OpenID-Token wird bis kurz vor Ablauf wiederverwendet und schon beim Klick geholt, ebenso die Olm-Sitzungen zu den Geräten im Raum und eine Verbindung zum LiveKit-Dienst des Servers.
   - Die nie genutzte Twemoji-Schrift (1,9 MB) ist raus. Der macOS-Release wird mit Link-Zeit-Optimierung und ohne Debug-Symbole gebaut.
 ## 1.8.0 (2026-11-14)
 
