@@ -77,12 +77,14 @@ final class MemberStore: ObservableObject {
             let iterator: RoomMembersIterator
             if let fresh = try? await room.members() { iterator = fresh } else { iterator = try await room.membersNoSync() }
             var result: [MemberEntry] = []
+            var people: [(userId: String, name: String?, avatarUrl: String?)] = []
             while let chunk = iterator.nextChunk(chunkSize: 500), !chunk.isEmpty {
                 for member in chunk where !member.isServiceMember && (member.membership == .join || member.membership == .invite) {
                     result.append(MemberEntry(member))
-                    account.remember(userId: member.userId, name: member.displayName, avatarUrl: member.avatarUrl)
+                    people.append((userId: member.userId, name: member.displayName, avatarUrl: member.avatarUrl))
                 }
             }
+            account.remember(people)
             members = result.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
             error = nil
         } catch {

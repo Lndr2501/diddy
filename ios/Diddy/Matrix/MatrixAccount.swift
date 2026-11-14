@@ -96,6 +96,11 @@ final class MatrixAccount: ObservableObject, Identifiable {
     @Published private(set) var profiles: [String: UserSummary] = [:]
     /// Servers whose channel list finished loading, so an empty server is not an endless spinner.
     @Published private(set) var loadedServers: Set<String> = []
+    /// One `loadAllChannels` run at a time (see there).
+    private var channelsTask: Task<Void, Never>?
+    private var channelsRequested = 0
+    private var channelsDone = 0
+    private var channelsLoadedAt: Date?
     /// Cinny/Diddy voice channels are rooms of the MSC3417 call room type. `SpaceRoom.roomType`
     /// reports those as plain rooms, so the type is read from the server's hierarchy instead.
     @Published private(set) var voiceRoomIds: Set<String> = []
@@ -203,7 +208,8 @@ final class MatrixAccount: ObservableObject, Identifiable {
             }))
 
             await sync.start()
-            await refreshProfile()
+            // Name and picture come from the server; the app must not wait for them to open.
+            Task { await self.refreshProfile() }
         } catch {
             syncState = .error
         }
@@ -226,7 +232,9 @@ final class MatrixAccount: ObservableObject, Identifiable {
         restartTask?.cancel()
         if syncState != .running { await syncService?.start() }
         await reloadSpaces()
-        await loadAllChannels()
+        // Coming back often happens many times an hour; the channel lists only need a fresh look
+        // now and then (joins and server changes reload them on their own).
+        if channelsLoadedAt.map({ Date().timeIntervalSince($0) > 120 }) ?? true { await loadAllChannels() }
         await refreshRail()
     }
 
@@ -471,6 +479,22 @@ final class MatrixAccount: ObservableObject, Identifiable {
         if profiles[userId] != summary { profiles[userId] = summary }
     }
 
+    /// Many people at once (a member list): one change of `profiles` instead of one per person.
+    /// Each change redraws every view that watches the account, and during a call rebuilds the
+    /// call's member list.
+    func remember(_ people: [(userId: String, name: String?, avatarUrl: String?)]) {
+        var changed = profiles
+        var any = false
+        for person in people {
+            let summary = UserSummary(name: person.name ?? Self.localpart(person.userId), avatarUrl: person.avatarUrl)
+            if changed[person.userId] != summary {
+                changed[person.userId] = summary
+                any = true
+            }
+        }
+        if any { profiles = changed }
+    }
+
     /// Opens the existing direct message with someone or starts a new one.
     func directMessage(with userId: String) async throws -> String {
         if let existing = try? client.getDmRoom(userId: userId) { return existing.id() }
@@ -558,8 +582,44 @@ final class MatrixAccount: ObservableObject, Identifiable {
         return result
     }
 
+    /// The channels of every server. Many places ask for this (start, a changed server list,
+    /// coming back to the app, joins). Only one run goes at a time: a request during a run gets one
+    /// more run afterwards instead of a second one alongside, and the servers load side by side.
     func loadAllChannels() async {
-        for space in spaces { await loadChannels(spaceId: space.roomId) }
+        channelsRequested += 1
+        let wanted = channelsRequested
+        while channelsDone < wanted {
+            if let running = channelsTask {
+                await running.value
+                continue
+            }
+            let generation = channelsRequested
+            let task = Task { @MainActor in
+                await self.loadEveryServersChannels()
+                self.channelsDone = max(self.channelsDone, generation)
+                self.channelsLoadedAt = Date()
+                self.channelsTask = nil
+            }
+            channelsTask = task
+            await task.value
+        }
+    }
+
+    private func loadEveryServersChannels() async {
+        let ids = spaces.map(\.roomId)
+        await withTaskGroup(of: Void.self) { group in
+            var next = 0
+            while next < min(4, ids.count) {
+                let id = ids[next]
+                next += 1
+                group.addTask { await self.loadChannels(spaceId: id) }
+            }
+            while await group.next() != nil, next < ids.count {
+                let id = ids[next]
+                next += 1
+                group.addTask { await self.loadChannels(spaceId: id) }
+            }
+        }
     }
 
     private func children(of spaceId: String, service: SpaceService) async -> [SpaceRoom] {

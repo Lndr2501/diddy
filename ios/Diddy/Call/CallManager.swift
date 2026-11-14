@@ -25,6 +25,25 @@ struct CallMember: Identifiable {
     var shareHasAudio = false
 }
 
+extension CallMember: Equatable {
+    /// Video tracks are the same when they are the same object.
+    static func == (a: CallMember, b: CallMember) -> Bool {
+        a.id == b.id && a.userId == b.userId && a.name == b.name && a.avatarUrl == b.avatarUrl
+            && a.isLocal == b.isLocal && a.isSpeaking == b.isSpeaking && a.microphoneOn == b.microphoneOn
+            && a.isConnecting == b.isConnecting && a.talkingToAgent == b.talkingToAgent
+            && a.shareHasAudio == b.shareHasAudio
+            && sameTrack(a.screenShare, b.screenShare) && sameTrack(a.camera, b.camera)
+    }
+
+    private static func sameTrack(_ a: LiveKit.VideoTrack?, _ b: LiveKit.VideoTrack?) -> Bool {
+        switch (a, b) {
+        case (nil, nil): return true
+        case let (a?, b?): return (a as AnyObject) === (b as AnyObject)
+        default: return false
+        }
+    }
+}
+
 /// A join that waits for "Leave your current call?" (desktop `call-switch`).
 struct CallSwitchRequest: Identifiable {
     let id = UUID()
@@ -946,8 +965,11 @@ final class CallSession: NSObject, ObservableObject {
             }
         }
         account.resolveProfiles(result.map(\.userId), in: roomId)
-        members = result
-        screenSharing = local.isScreenShareEnabled()
+        // LiveKit reports speaking several times a second; publishing an unchanged list redrew
+        // the whole call stage with its video views every time.
+        if result != members { members = result }
+        let sharing = local.isScreenShareEnabled()
+        if sharing != screenSharing { screenSharing = sharing }
         if outgoing != .none, someoneElseIsHere { stopOutgoingRing() }
     }
 

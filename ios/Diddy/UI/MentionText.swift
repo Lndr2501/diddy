@@ -77,6 +77,25 @@ enum MentionText {
     /// may lack (Element). Everything else keeps using the plain body, which every client fills.
     static func markdown(fromHTML html: String) -> String? {
         guard html.contains("matrix.to/#/@") || html.contains("matrix.to/#/%40") else { return nil }
+        // The timeline converts every message on every change; a dozen regex passes each time.
+        if let hit = markdownCache.object(forKey: html as NSString) { return hit.value }
+        let result = convertToMarkdown(html)
+        markdownCache.setObject(MarkdownBox(result), forKey: html as NSString)
+        return result
+    }
+
+    private final class MarkdownBox {
+        let value: String?
+        init(_ value: String?) { self.value = value }
+    }
+
+    private static let markdownCache: NSCache<NSString, MarkdownBox> = {
+        let cache = NSCache<NSString, MarkdownBox>()
+        cache.countLimit = 1000
+        return cache
+    }()
+
+    private static func convertToMarkdown(_ html: String) -> String? {
         var text = html
         // The quoted message of a reply is shown separately.
         text = text.replacing(#/(?s)<mx-reply>.*?</mx-reply>/#, with: "")

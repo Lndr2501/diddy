@@ -33,6 +33,15 @@ extension MatrixAccount {
         if levels != roomNotifyLevels { roomNotifyLevels = levels }
     }
 
+    /// Reads one room's own notification setting. Opening a chat only needs its room; reading all
+    /// joined rooms one after the other on every chat switch took a round trip into the SDK per room.
+    func refreshNotifyLevel(roomId: String) async {
+        let settings = await client.getNotificationSettings()
+        let mode = try? await settings.getUserDefinedRoomNotificationMode(roomId: roomId)
+        let level = mode.map { Self.notifyLevel(of: $0) }
+        if roomNotifyLevels[roomId] != level { roomNotifyLevels[roomId] = level }
+    }
+
     /// Reload when the push rules change elsewhere, such as in the desktop app.
     func watchNotificationSettings() async {
         let settings = await client.getNotificationSettings()

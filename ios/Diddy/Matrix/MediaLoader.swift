@@ -1,5 +1,6 @@
 import CryptoKit
 import Foundation
+import ImageIO
 import MatrixRustSDK
 import SwiftUI
 import UIKit
@@ -15,7 +16,12 @@ actor MediaLoader {
     private var inFlight: [String: Task<Fetched, Never>] = [:]
     private var audioInFlight: [String: Task<URL?, Never>] = [:]
 
-    init() { cache.countLimit = 400 }
+    init() {
+        cache.countLimit = 400
+        // Decoded pictures are big (a 12 MP photo is ~48 MB); the count alone let a few dozen
+        // photos fill the memory. The cost is the decoded size in bytes.
+        cache.totalCostLimit = 160 * 1024 * 1024
+    }
 
     func thumbnail(url: String, size: Int, accountId: String, client: Client) async -> UIImage? {
         guard let source = try? MediaSource.fromUrl(url: url) else { return nil }
@@ -93,21 +99,25 @@ actor MediaLoader {
     private func image(key: String, source: MediaSource, size: Int?, client: Client) async -> UIImage? {
         if let cached = cache.object(forKey: key as NSString) { return cached }
         if let running = inFlight[key] { return await running.value.image }
+        // An encrypted file is an object with key and iv; the server cannot make a thumbnail of
+        // it, so asking for one only cost a round trip before every encrypted picture.
+        let encrypted = source.toJson().hasPrefix("{")
         let task = Task<Fetched, Never> {
             var failure = ""
-            if let size {
+            if let size, !encrypted {
                 do {
                     let data = try await client.getMediaThumbnail(mediaSource: source, width: UInt64(size), height: UInt64(size))
-                    if let image = UIImage(data: data) { return Fetched(image: image, failure: nil) }
+                    if let image = await Self.decoded(data, maxPixel: size * 2) { return Fetched(image: image, failure: nil) }
                     failure = "thumbnail not an image (\(data.count) bytes); "
                 } catch {
                     failure = "thumbnail: \(error.friendlyMessage); "
                 }
             }
-            // Servers without thumbnails (and encrypted media) fall back to the full file.
+            // Servers without thumbnails (and encrypted media) fall back to the full file, scaled
+            // down to what the place needs.
             do {
                 let data = try await client.getMediaContent(mediaSource: source)
-                if let image = UIImage(data: data) { return Fetched(image: image, failure: nil) }
+                if let image = await Self.decoded(data, maxPixel: size.map { $0 * 2 }) { return Fetched(image: image, failure: nil) }
                 failure += "content not an image (\(data.count) bytes)"
             } catch {
                 failure += "content: \(error.friendlyMessage)"
@@ -118,7 +128,7 @@ actor MediaLoader {
         let fetched = await task.value
         inFlight[key] = nil
         if let image = fetched.image {
-            cache.setObject(image, forKey: key as NSString)
+            cache.setObject(image, forKey: key as NSString, cost: Self.cost(of: image))
         } else if let failure = fetched.failure, loggedFailures < Self.maxLoggedFailures {
             // Without this a missing picture leaves no trace in the diagnostics.
             loggedFailures += 1
@@ -130,6 +140,36 @@ actor MediaLoader {
     private struct Fetched {
         let image: UIImage?
         let failure: String?
+    }
+
+    /// Decodes a picture away from the main thread. `UIImage(data:)` only decodes when the picture
+    /// is first drawn, which happened on the main thread while scrolling and at full size. With a
+    /// limit the picture is scaled down while decoding (ImageIO), so a phone photo shown 400 pt
+    /// wide no longer takes ~48 MB.
+    private static func decoded(_ data: Data, maxPixel: Int?) async -> UIImage? {
+        await Task.detached(priority: .userInitiated) { () -> UIImage? in
+            guard let source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary) else {
+                return nil
+            }
+            if let maxPixel {
+                let options: [CFString: Any] = [
+                    kCGImageSourceCreateThumbnailFromImageAlways: true,
+                    kCGImageSourceCreateThumbnailWithTransform: true,
+                    kCGImageSourceShouldCacheImmediately: true,
+                    kCGImageSourceThumbnailMaxPixelSize: maxPixel,
+                ]
+                if let cg = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) {
+                    return UIImage(cgImage: cg)
+                }
+            }
+            guard let image = UIImage(data: data) else { return nil }
+            return image.preparingForDisplay() ?? image
+        }.value
+    }
+
+    private static func cost(of image: UIImage) -> Int {
+        if let cg = image.cgImage { return cg.bytesPerRow * cg.height }
+        return Int(image.size.width * image.scale * image.size.height * image.scale * 4)
     }
 
     private var loggedFailures = 0
