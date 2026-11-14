@@ -2,6 +2,8 @@
 
 ## Unveröffentlicht
 
+## 1.9.0 (2026-11-14)
+
 - **iOS/iPadOS: Dateien in den Chat ziehen (#216):** Bilder, Videos und Dateien lassen sich aus Fotos, Dateien, Safari oder anderen Apps in einen Chat ziehen; sie landen wie beim Datei-Picker als Anhänge über dem Eingabefeld (auf dem iPad systemweit, auf dem iPhone mit Drag-and-Drop zwischen Apps). Gezogener Text geht wie bisher ins Eingabefeld. Am Desktop gab es das schon.
 - **Leistung, zweite Runde (macOS, Linux):**
   - Agent Voice fragt die Taste nicht mehr alle 60 ms über die Brücke ab: Die App meldet sich erst, wenn sich Taste oder Auslöser ändern (`agent_voice_wait`, Tauri und Electron; ältere Apps werden weiter abgefragt).
