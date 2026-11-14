@@ -52,6 +52,9 @@ struct MessageRow: Identifiable {
     /// A video message; `body` is its file line, which a client without a player shows.
     var video: VideoAttachment? = nil
     var location: LocationAttachment? = nil
+    /// Text sent with a photo, file or audio, shown under it.
+    var caption: String? = nil
+    var captionRich: RichSource? = nil
     var isSticker = false
     /// Calls this line stands for: 0 for anything but a call, more than 1 for a folded run.
     var callCount = 0
@@ -508,6 +511,7 @@ final class TimelineController: ObservableObject {
             row.richItalic = extras.italic
             row.video = extras.video
             row.location = extras.location
+            if !isSticker { row.caption = extras.caption; row.captionRich = extras.captionRich }
             if previews, let text = extras.previewText { row.previewURLs = LinkPreviewURLs.find(in: text) }
         }
         row.isSticker = isSticker

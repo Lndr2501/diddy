@@ -53,6 +53,9 @@ struct MessageExtras {
     var location: LocationAttachment?
     /// The text link previews are looked for in (desktop uses the plain body).
     var previewText: String?
+    /// The text sent with a photo, file or audio (desktop `renderCaption`); videos keep theirs in `video`.
+    var caption: String?
+    var captionRich: RichSource?
 }
 
 enum MessageRendering {
@@ -69,6 +72,12 @@ enum MessageRendering {
             extras.rich = source(body: emote.body, formatted: emote.formatted)
             extras.italic = true
             extras.previewText = emote.body
+        case .image(let image):
+            extras.setCaption(image.caption, formatted: image.formattedCaption)
+        case .file(let file):
+            extras.setCaption(file.caption, formatted: file.formattedCaption)
+        case .audio(let audio):
+            extras.setCaption(audio.caption, formatted: audio.formattedCaption)
         case .video(let video):
             extras.video = VideoAttachment(video)
         case .location(let location):
@@ -79,9 +88,19 @@ enum MessageRendering {
         return extras
     }
 
-    private static func source(body: String, formatted: FormattedBody?) -> RichSource? {
+    fileprivate static func source(body: String, formatted: FormattedBody?) -> RichSource? {
         var html: String?
         if let formatted, case .html = formatted.format { html = formatted.body }
         return RichSource.choose(body: body, html: html)
+    }
+}
+
+extension MessageExtras {
+    /// The SDK only gives a caption when the body differs from the file name, like the desktop's check.
+    mutating func setCaption(_ text: String?, formatted: FormattedBody?) {
+        guard let text = text?.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty else { return }
+        caption = text
+        captionRich = MessageRendering.source(body: text, formatted: formatted)
+        previewText = text
     }
 }

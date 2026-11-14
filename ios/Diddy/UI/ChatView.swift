@@ -1319,30 +1319,26 @@ struct MessageRowView: View {
         case .text where row.location != nil:
             if let location = row.location { LocationMessageView(location: location) }
         case .text(let text):
-            Group {
-                if let rich = row.rich {
-                    RichMessageBody(source: rich, italic: row.richItalic, edited: row.isEdited, account: account, onLink: handleLink)
-                } else {
-                    (Text(rendered(text)) + Text(row.isEdited ? " (edited)" : "").font(.caption2).foregroundColor(Theme.faint))
-                        .font(ChatStyle.bodyFont)
-                        .foregroundStyle(Theme.text)
-                        .environment(\.openURL, OpenURLAction { handleLink($0) })
-                }
-            }
-            .onAppear {
-                let unknown = MentionText.userIds(in: text).filter { account.profiles[$0] == nil }
-                if !unknown.isEmpty { account.resolveProfiles(unknown, in: roomId) }
-            }
+            textBody(text, rich: row.rich, italic: row.richItalic)
         case .image(let source, let name, let width, let height) where row.isSticker:
             StickerView(source: source, name: name, width: width, height: height, account: account)
         case .image(let source, _, let width, let height):
-            ChatImage(source: source, account: account, aspect: (width ?? 4) / max(height ?? 3, 1), onTap: onImage)
+            VStack(alignment: .leading, spacing: 6) {
+                ChatImage(source: source, account: account, aspect: (width ?? 4) / max(height ?? 3, 1), onTap: onImage)
+                captionView
+            }
         case .audio(let audio):
-            VoiceMessageView(id: row.id, audio: audio, account: account)
+            VStack(alignment: .leading, spacing: 6) {
+                VoiceMessageView(id: row.id, audio: audio, account: account)
+                captionView
+            }
         case .file where row.video != nil:
             if let video = row.video { VideoMessageView(video: video, account: account, onFile: onFile) }
         case .file(let name, let source, _):
-            FileAttachment(name: name, source: source, client: account.client, onOpen: onFile)
+            VStack(alignment: .leading, spacing: 6) {
+                FileAttachment(name: name, source: source, client: account.client, onOpen: onFile)
+                captionView
+            }
         case .undecryptable:
             Label("Waiting for this message's key. Verify this device in Settings.", systemImage: "lock")
                 .font(.footnote).foregroundStyle(Theme.faint)
@@ -1351,6 +1347,30 @@ struct MessageRowView: View {
         case .notice(let text):
             Text(text).font(ChatStyle.bodyFont).foregroundStyle(Theme.muted)
         }
+    }
+
+    /// A message's text, formatted when it has formatting, with "(edited)" after it.
+    private func textBody(_ text: String, rich: RichSource?, italic: Bool) -> some View {
+        Group {
+            if let rich {
+                RichMessageBody(source: rich, italic: italic, edited: row.isEdited, account: account, onLink: handleLink)
+            } else {
+                (Text(rendered(text)) + Text(row.isEdited ? " (edited)" : "").font(.caption2).foregroundColor(Theme.faint))
+                    .font(ChatStyle.bodyFont)
+                    .foregroundStyle(Theme.text)
+                    .environment(\.openURL, OpenURLAction { handleLink($0) })
+            }
+        }
+        .onAppear {
+            let unknown = MentionText.userIds(in: text).filter { account.profiles[$0] == nil }
+            if !unknown.isEmpty { account.resolveProfiles(unknown, in: roomId) }
+        }
+    }
+
+    /// What was typed with a photo, file or audio, under it like on the desktop.
+    @ViewBuilder
+    private var captionView: some View {
+        if let caption = row.caption { textBody(caption, rich: row.captionRich, italic: false) }
     }
 
     /// Taps on links in a message: rooms and events open in the app, people open their profile,

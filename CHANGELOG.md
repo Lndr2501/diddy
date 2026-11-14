@@ -2,6 +2,7 @@
 
 ## Unveröffentlicht
 
+- **iOS: Text zu Fotos fehlte:** Wer ein Foto oder eine Datei mit Text schickte, sah den Text in der iOS-App nicht. Er ging als Bildunterschrift mit, iOS zeigte aber nur bei Videos eine an. Jetzt steht er unter Fotos, Dateien und Audios, wie am Desktop. Der Jump-to-Unread-Knopf oben im Chat ist entfernt, die NEW-Linie bleibt. Nicht mit dem iOS-SDK kompiliert.
 - **macOS: Threads (#188):** „Reply in Thread“ und das Thread-Zeichen an einer Antwort öffnen jetzt eine Thread-Ansicht rechts neben dem Raum (Ursprungsnachricht, alle Antworten, Antwortfeld). Ältere Antworten holt sie vom Server. Vorher gab es keine Ansicht, Thread-Antworten standen nur mitten im Chat. Die Mitgliederliste weicht, solange ein Thread offen ist.
 - **Profil (#177):** Links zeigen neben dem Symbol ihren Namen (GitHub, YouTube, bei Webseiten die Adresse). Die Symbole der Fakten (Ort, Alter, Schule, Beruf) sind deutlicher.
 - **Linux (#137):** Neun Hotkey-Tests liefen unbemerkt als „cancelled“ (der Timer des Portal-Helfers war `unref`-t) und zählten nicht als Fehler. Jetzt laufen alle 86 Electron-Tests.
