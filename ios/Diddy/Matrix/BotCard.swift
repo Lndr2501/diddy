@@ -110,7 +110,8 @@ enum BotCard: Equatable {
     case help(groups: [BotCardHelpGroup], note: String?)
     case list(title: String, items: [BotCardQueueItem], total: Int, empty: String?, actions: [BotCardAction])
     case stats(title: String, charts: [BotCardChart], actions: [BotCardAction])
-    case note(text: String, tone: BotCardTone, icon: String?)
+    /// `url` (http/https only) and its `linkLabel` show as a small button in the chip.
+    case note(text: String, tone: BotCardTone, icon: String?, url: String? = nil, linkLabel: String? = nil)
 }
 
 enum BotCardParser {
@@ -331,7 +332,9 @@ enum BotCardParser {
         case "note":
             guard let body = text(raw["text"], 300) else { return nil }
             let tone = (raw["tone"] as? String).flatMap(BotCardTone.init(rawValue:)) ?? .info
-            return .note(text: body, tone: tone, icon: text(raw["icon"], 8))
+            let url = httpUrl(raw["url"])
+            return .note(text: body, tone: tone, icon: text(raw["icon"], 8), url: url,
+                         linkLabel: url == nil ? nil : text(raw["linkLabel"], 40))
 
         default:
             return nil

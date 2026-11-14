@@ -211,6 +211,14 @@ const samples = [
   wrap({ kind: 'note', icon: '🔊', text: 'Lautstärke: 80', tone: 'info' }),
   wrap({
     kind: 'note',
+    icon: '✅',
+    text: '#42 angelegt: Login geht nicht',
+    tone: 'success',
+    url: 'https://github.com/Lndr2501/diddy/issues/42',
+    linkLabel: 'Issue öffnen',
+  }),
+  wrap({
+    kind: 'note',
     icon: '⚠️',
     text: 'Download fehlgeschlagen: Video ist nicht verfügbar',
     tone: 'error',

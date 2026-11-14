@@ -122,6 +122,30 @@ test('queue, help and note cards', () => {
   assert.equal(n.icon, '⏸');
 });
 
+test('note cards keep only http(s) links', () => {
+  const n = parseBotCard(
+    card({
+      kind: 'note',
+      text: 'Issue #42 angelegt',
+      tone: 'success',
+      url: 'https://github.com/o/r/issues/42',
+      linkLabel: 'Issue öffnen',
+    })
+  );
+  assert.equal(n.url, 'https://github.com/o/r/issues/42');
+  assert.equal(n.linkLabel, 'Issue öffnen');
+  // "javascript" is split so the linter does not read the test data as a script url
+  [['java', 'script:alert(1)'].join(''), 'file:///etc/passwd', 'mxc://x/y', 42, 'nope'].forEach((bad) => {
+    const b = parseBotCard(card({ kind: 'note', text: 'x', url: bad, linkLabel: 'Klick' }));
+    assert.equal(b.url, undefined, String(bad));
+    assert.equal(b.linkLabel, undefined, 'no label without a link');
+  });
+  const long = parseBotCard(
+    card({ kind: 'note', text: 'x', url: 'https://a.de', linkLabel: 'y'.repeat(100) })
+  );
+  assert.ok(long.linkLabel.length <= 40);
+});
+
 test('list and stats cards are cleaned', () => {
   const l = parseBotCard(
     card({ kind: 'list', title: 'Favoriten', items: [{ title: 'A', subtitle: 'x' }, { nope: 1 }] })

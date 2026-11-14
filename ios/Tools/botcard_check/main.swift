@@ -89,14 +89,20 @@ if case .stats(_, let charts, _)? = parse(#"{"v":1,"kind":"stats","title":"S","c
 check(parse(#"{"v":1,"kind":"stats","title":"S","charts":[]}"#) == nil, "stats without charts")
 
 // note
-if case .note(let text, let tone, let icon)? = parse(#"{"v":1,"kind":"note","text":"hi\u0001there","tone":"bad","icon":"👋"}"#) {
-    check(text == "hithere" && tone == .info && icon == "👋", "note")
+if case .note(let text, let tone, let icon, let url, _)? = parse(#"{"v":1,"kind":"note","text":"hi\u0001there","tone":"bad","icon":"👋"}"#) {
+    check(text == "hithere" && tone == .info && icon == "👋" && url == nil, "note")
 } else { check(false, "note parses") }
+if case .note(_, _, _, let url, let label)? = parse(#"{"v":1,"kind":"note","text":"Issue","url":"https://github.com/x/y/issues/1","linkLabel":"Issue öffnen"}"#) {
+    check(url == "https://github.com/x/y/issues/1" && label == "Issue öffnen", "note link")
+} else { check(false, "note with link parses") }
+if case .note(_, _, _, let url, let label)? = parse(#"{"v":1,"kind":"note","text":"x","url":"javascript:alert(1)","linkLabel":"Click"}"#) {
+    check(url == nil && label == nil, "note drops non-http links and their label")
+} else { check(false, "note with bad link parses") }
 
 // edits
 let original = event(#"{"v":1,"kind":"note","text":"old"}"#)
 let edit = #"{"content":{"msgtype":"m.notice","body":"* new","m.new_content":{"msgtype":"m.notice","body":"new","dev.diddy.card":{"v":1,"kind":"note","text":"new"}},"m.relates_to":{"rel_type":"m.replace"}}}"#
-if case .note(let text, _, _)? = BotCardParser.card(originalJson: original, latestEditJson: edit) { check(text == "new", "edit replaces card") } else { check(false, "edit card parses") }
+if case .note(let text, _, _, _, _)? = BotCardParser.card(originalJson: original, latestEditJson: edit) { check(text == "new", "edit replaces card") } else { check(false, "edit card parses") }
 let editWithout = #"{"content":{"m.new_content":{"msgtype":"m.notice","body":"new"}}}"#
 check(BotCardParser.card(originalJson: original, latestEditJson: editWithout) == nil, "edit without card removes it")
 check(BotCardParser.card(originalJson: nil, latestEditJson: nil) == nil, "no json")

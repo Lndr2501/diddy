@@ -78,7 +78,15 @@ export type BotCard =
       actions: CardAction[];
     }
   | { kind: 'stats'; title: string; charts: Chart[]; actions: CardAction[] }
-  | { kind: 'note'; text: string; tone: CardTone; icon?: string };
+  | {
+      kind: 'note';
+      text: string;
+      tone: CardTone;
+      icon?: string;
+      /** http(s) link shown as a small button in the chip (e.g. the created GitHub issue) */
+      url?: string;
+      linkLabel?: string;
+    };
 
 const TRACK_STATES: TrackState[] = [
   'searching',
@@ -278,7 +286,15 @@ export const parseBotCard = (content: unknown): BotCard | undefined => {
     const body = text(raw.text, 300);
     if (!body) return undefined;
     const tone = TONES.find((t) => t === raw.tone) ?? 'info';
-    return { kind: 'note', text: body, tone, icon: text(raw.icon, 8) };
+    const url = httpUrl(raw.url);
+    return {
+      kind: 'note',
+      text: body,
+      tone,
+      icon: text(raw.icon, 8),
+      url,
+      linkLabel: url ? text(raw.linkLabel, 40) : undefined,
+    };
   }
 
   return undefined;

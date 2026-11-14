@@ -2,6 +2,7 @@
 
 ## Unveröffentlicht
 
+- **Bot-Karten: Link in Hinweis-Chips:** Eine `note`-Karte darf jetzt einen Link (`url`, nur http/https) und eine Beschriftung (`linkLabel`) mitschicken. Diddy zeigt ihn als kleinen runden Knopf rechts im Chip, z. B. „Issue öffnen“ beim neuen Issue-Bot ([Lndr2501/issuebotmatrix](https://github.com/Lndr2501/issuebotmatrix)). Vorher war der Link nur in Element sichtbar. Auf iOS genauso (kleiner Knopf rechts im Chip, öffnet im Browser).
 - **iOS: Zurück per Wisch vom linken Rand (#211):** Im Chat führt ein Wisch vom linken Bildschirmrand zurück zur Chatliste. Der Chat folgt dem Finger, ab einem Drittel der Breite oder mit Schwung gleitet er hinaus. Die System-Geste erreichte die Liste nicht, weil der Chat in einem eigenen Navigationsstapel steckt.
 - **iOS: Querformat auf dem iPhone (#212):** Gedreht stehen Liste (mit den Tabs) und Chat nebeneinander wie auf dem iPad, statt die Hochformat-Ansicht in die Breite zu ziehen. Der Chat hat dort keinen Zurück-Knopf.
 - **Calls: Teilnehmer erschienen spät (#161, macOS, Linux):** Call-Schlüssel, die ankamen, während Element Call noch startete, verwarf die Widget-Schnittstelle stillschweigend (die Seite durfte sie noch nicht empfangen). Die Person blieb dann schwarz oder stumm, bis sie einen neuen Schlüssel schickte. Diddy hält solche Nachrichten jetzt fest und reicht sie nach, sobald die Seite bereit ist (Log: `held until the call page may receive it`). iOS betrifft das nicht, dort gibt es keine Call-Seite.

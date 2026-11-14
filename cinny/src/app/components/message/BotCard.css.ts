@@ -257,6 +257,26 @@ export const Note = style({
 
 export const NoteIcon = style({ flexShrink: 0, fontSize: toRem(16), lineHeight: 1 });
 
+export const NoteLink = style({
+  flexShrink: 0,
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: toRem(4),
+  padding: `${toRem(3)} ${toRem(10)}`,
+  borderRadius: toRem(999),
+  border: `${config.borderWidth.B300} solid currentColor`,
+  color: 'inherit',
+  fontSize: toRem(13),
+  fontWeight: 600,
+  whiteSpace: 'nowrap',
+  textDecoration: 'none',
+  selectors: {
+    '&:hover': { backgroundColor: 'rgba(127, 127, 127, 0.18)', textDecoration: 'none' },
+    '&:active': { backgroundColor: 'rgba(127, 127, 127, 0.28)', textDecoration: 'none' },
+    '&:focus-visible': { outline: `${toRem(2)} solid currentColor`, outlineOffset: toRem(2) },
+  },
+});
+
 export const SectionTitle = style({
   margin: 0,
   fontSize: toRem(12),
