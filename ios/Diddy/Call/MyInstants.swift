@@ -97,6 +97,8 @@ final class MyInstantsModel: ObservableObject {
     private var searchID = 0
     private var audio: [String: Data] = [:]
     private var importTask: Task<Void, Never>?
+    /// The preview being downloaded; cancelled by a second tap, another preview or closing (#205).
+    private var previewTask: Task<Void, Never>?
 
     func search() {
         guard !searching else { return }
@@ -106,7 +108,7 @@ final class MyInstantsModel: ObservableObject {
             error = "Enter a search term or a myinstants.com link."
             return
         }
-        board.stop()
+        stopPreview()
         searchID += 1
         let id = searchID
         searching = true
@@ -188,29 +190,41 @@ final class MyInstantsModel: ObservableObject {
         return data
     }
 
+    /// Tap on a result: plays it, or stops it when it is the one loading or playing. Another
+    /// result replaces the current preview, also while that one is still downloading.
     func togglePreview(_ item: MyInstantsParser.Item) {
-        if board.previewing == item.path {
-            board.stop()
-            return
-        }
-        guard loadingPreview == nil else { return }
+        let same = board.previewing == item.path || loadingPreview == item.path
+        stopPreview()
+        if same { return }
         error = nil
         loadingPreview = item.path
-        Task {
-            defer { loadingPreview = nil }
+        previewTask = Task {
             do {
                 let bytes = try await data(for: item)
+                // Stopped or replaced while downloading: never start late.
+                guard !Task.isCancelled, loadingPreview == item.path else { return }
+                loadingPreview = nil
                 try board.preview(data: bytes, id: item.path)
             } catch {
+                guard !Task.isCancelled, loadingPreview == item.path else { return }
+                loadingPreview = nil
                 self.error = error.friendlyMessage
             }
         }
     }
 
+    /// Stops the preview (loading or playing) without touching soundboard clips in a call.
+    func stopPreview() {
+        previewTask?.cancel()
+        previewTask = nil
+        loadingPreview = nil
+        board.stopPreview()
+    }
+
     func importSelected() {
         let items = results.filter { selected.contains($0.path) }
         guard !items.isEmpty, !importing else { return }
-        board.stop()
+        stopPreview()
         importing = true
         error = nil
         importTask = Task {
@@ -241,7 +255,7 @@ final class MyInstantsModel: ObservableObject {
 
     func close() {
         importTask?.cancel()
-        if board.previewing != nil { board.stop() }
+        stopPreview()
     }
 }
 
