@@ -9,6 +9,7 @@
   - Link-Vorschauen laden erst, wenn sie in die Nähe des Bildschirms kommen. Die App liest von einer Seite höchstens 256 KB und hört nach `</head>` auf; Tauri nutzt dafür eine wiederverwendete Verbindung.
   - Die Tages-Kapsel im Verlauf ist eine feste Fläche statt einer Unschärfe, die beim Scrollen ständig neu berechnet wurde.
   - Fenstergröße und -position werden erst gespeichert bzw. geprüft, wenn das Ziehen aufhört.
+  - Start-Paket 3,43 → 3,00 MB: Einstellungen, Lobby, Explore, Login-Seiten, Raum-/Space-Einstellungen, die Erstellen- und Such-Dialoge und die Seiten der eingebauten Plugins werden erst beim ersten Öffnen geladen.
   - Die nie genutzte Twemoji-Schrift (1,9 MB) ist raus. Der macOS-Release wird mit Link-Zeit-Optimierung und ohne Debug-Symbole gebaut.
 ## 1.8.0 (2026-11-14)
 

@@ -40,20 +40,8 @@ import {
   entryMatches,
   matchingTitles,
 } from './settingsSearch';
+import { SettingsPages } from './settingsPages';
 
-export enum SettingsPages {
-  ChatPage,
-  CallsPage,
-  AppearancePage,
-  ProfilePage,
-  AccountPage,
-  NotificationPage,
-  DevicesPage,
-  EmojisStickersPage,
-  DeveloperToolsPage,
-  AboutPage,
-  PluginsPage,
-}
 
 type SettingsMenuItem = {
   page: SettingsPages;
@@ -198,6 +186,8 @@ type SettingsProps = {
   initialPage?: SettingsPages;
   requestClose: () => void;
 };
+export { SettingsPages };
+
 export function Settings({ initialPage, requestClose }: SettingsProps) {
   const screenSize = useScreenSizeContext();
   const isMobile = screenSize === ScreenSize.Mobile;

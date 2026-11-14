@@ -17,15 +17,35 @@ const CATALOG: BuiltinPlugin[] = [
   { slug: 'calendar', name: 'Calendar', description: 'A month at a glance.' },
 ];
 
-// bundled at build time; a page that does not exist yet is simply not offered
+// Bundled at build time, each page in its own small file that is loaded when the plugin opens
+// (they were ~100 KB of the start bundle). A page that does not exist yet is simply not offered.
 const PAGES = import.meta.glob('./builtin/*.html', {
   query: '?raw',
   import: 'default',
-  eager: true,
-}) as Record<string, string>;
+}) as Record<string, () => Promise<string>>;
 
-const pageFor = (slug: string): string | undefined => PAGES[`./builtin/${slug}.html`];
+const loaderFor = (slug: string): (() => Promise<string>) | undefined =>
+  PAGES[`./builtin/${slug}.html`];
 
-export const getBuiltinPlugins = (): BuiltinPlugin[] => CATALOG.filter((p) => pageFor(p.slug));
+const loaded = new Map<string, string>();
 
-export const getBuiltinHtml = (slug: string): string | undefined => pageFor(slug);
+export const getBuiltinPlugins = (): BuiltinPlugin[] => CATALOG.filter((p) => loaderFor(p.slug));
+
+/** The page of a built-in plugin, or undefined when there is no such plugin. */
+export const loadBuiltinHtml = async (slug: string): Promise<string | undefined> => {
+  const known = loaded.get(slug);
+  if (known !== undefined) return known;
+  const load = loaderFor(slug);
+  if (!load) return undefined;
+  const html = await load();
+  loaded.set(slug, html);
+  return html;
+};
+
+/** Already loaded page of a built-in plugin (undefined while not loaded yet). */
+export const builtinHtmlIfLoaded = (slug: string): string | undefined => loaded.get(slug);
+
+/** Whether a built-in plugin with this slug exists. */
+export const hasBuiltinPlugin = (slug: string): boolean => !!loaderFor(slug);
+
+
