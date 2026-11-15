@@ -2,6 +2,7 @@
 
 ## Unveröffentlicht
 
+- **iOS: Aufnahme einer Sprachnachricht ruckelte:** Zeit und Pegel kamen zehnmal pro Sekunde, und jedes Mal wurde der ganze Chat neu ausgewertet statt nur der Aufnahme-Leiste. Jetzt aktualisiert sich nur noch die Leiste; die Pegelbalken gleiten flüssig mit der Bildwiederholrate statt in 4-Punkt-Sprüngen, und die Aufnahme-Anzeige läuft auch beim Scrollen weiter. Nur iOS betroffen; am Desktop ist die Aufnahme eine eigene Komponente.
 - **iOS: Zurückwischen zeigt die Chatliste sofort:** Beim Wisch vom linken Rand war hinter dem Chat alles schwarz, die Liste erschien erst, wenn der Chat ganz weg war. Auf dem iPhone im Hochformat liegt der Chat jetzt über der Liste: Sie bleibt darunter gezeichnet und gleitet beim Wischen leicht abgedunkelt mit herein, wie bei den System-Apps. Sprachkanäle haben dort einen eigenen Zurück-Pfeil. iPad und Querformat sind unverändert; macOS, Linux und Windows haben diese Geste nicht.
 
 ## 1.10.0 (2026-11-15)

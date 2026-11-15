@@ -384,8 +384,6 @@ struct VoiceRecordingBar: View {
     let onSend: () async -> Void
     @State private var sending = false
 
-    private var time: TimeInterval { recorder.pending?.duration ?? recorder.elapsed }
-
     var body: some View {
         HStack(spacing: 10) {
             Button { recorder.cancel() } label: {
@@ -395,18 +393,10 @@ struct VoiceRecordingBar: View {
             }
             .disabled(sending)
             .accessibilityLabel("Discard recording")
-            HStack(spacing: 8) {
-                Circle().fill(Theme.danger).frame(width: 9, height: 9)
-                    .opacity(recorder.pending == nil ? 1 : 0.4)
-                Text(VoiceFormat.time(time)).font(.subheadline.monospacedDigit()).foregroundStyle(Theme.text)
-                LiveMeter(levels: recorder.recentLevels)
-                    .frame(height: 22)
-            }
-            .padding(.horizontal, 14)
-            .frame(maxWidth: .infinity, minHeight: 36, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: 20).fill(Theme.input))
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Recording, \(VoiceFormat.time(time))")
+            RecordingLevel(meter: recorder.meter, pendingDuration: recorder.pending?.duration)
+                .padding(.horizontal, 14)
+                .frame(maxWidth: .infinity, minHeight: 36, alignment: .leading)
+                .background(RoundedRectangle(cornerRadius: 20).fill(Theme.input))
             Button {
                 guard !sending else { return }
                 sending = true
@@ -434,19 +424,51 @@ struct VoiceRecordingBar: View {
     }
 }
 
+/// Dot, time and live level of the recording bar: the only views that follow the ten updates a
+/// second (VoiceMeter), so the chat around them stays still.
+private struct RecordingLevel: View {
+    @ObservedObject var meter: VoiceMeter
+    /// Set when the length limit stopped the recording: the time stands still, the dot dims.
+    let pendingDuration: TimeInterval?
+
+    private var time: TimeInterval { pendingDuration ?? meter.elapsed }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Circle().fill(Theme.danger).frame(width: 9, height: 9)
+                .opacity(pendingDuration == nil ? 1 : 0.4)
+            Text(VoiceFormat.time(time)).font(.subheadline.monospacedDigit()).foregroundStyle(Theme.text)
+            LiveMeter(levels: meter.levels, lastSample: meter.lastSample)
+                .frame(height: 22)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Recording, \(VoiceFormat.time(time))")
+    }
+}
+
+/// The last levels as bars entering on the right. Between two samples (100 ms) the bars glide one
+/// step to the left with the display, instead of jumping 4 points ten times a second.
 private struct LiveMeter: View {
     let levels: [Float]
+    let lastSample: Date
+
     var body: some View {
-        Canvas { context, size in
-            let step: CGFloat = 4
-            let count = max(Int(size.width / step), 1)
-            let shown = Array(levels.suffix(count))
-            for (i, level) in shown.enumerated() {
-                // Speech sits low on a linear scale; the square root makes it readable.
-                let height = max(CGFloat(level.squareRoot()) * size.height, 3)
-                let x = size.width - CGFloat(shown.count - i) * step
-                let rect = CGRect(x: x, y: (size.height - height) / 2, width: 2.5, height: height)
-                context.fill(Path(roundedRect: rect, cornerRadius: 1.25), with: .color(Theme.muted))
+        TimelineView(.animation(minimumInterval: nil, paused: levels.isEmpty)) { timeline in
+            let progress = min(max(timeline.date.timeIntervalSince(lastSample) / VoiceRecorder.interval, 0), 1)
+            Canvas { context, size in
+                let step: CGFloat = 4
+                let count = max(Int(size.width / step), 1) + 1
+                let shown = levels.suffix(count)
+                let shift = CGFloat(progress) * step
+                // the newest bar slides in from behind the right edge
+                context.clip(to: Path(CGRect(origin: .zero, size: size)))
+                for (i, level) in shown.enumerated() {
+                    // Speech sits low on a linear scale; the square root makes it readable.
+                    let height = max(CGFloat(level.squareRoot()) * size.height, 3)
+                    let x = size.width - CGFloat(shown.count - i) * step + step - shift
+                    let rect = CGRect(x: x, y: (size.height - height) / 2, width: 2.5, height: height)
+                    context.fill(Path(roundedRect: rect, cornerRadius: 1.25), with: .color(Theme.muted))
+                }
             }
         }
     }
