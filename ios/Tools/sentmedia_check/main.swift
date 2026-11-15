@@ -10,17 +10,16 @@ func check(_ condition: Bool, _ message: String, line: Int = #line) {
     if !condition { failures += 1; print("FAIL (line \(line)): \(message)") }
 }
 
-/// A noisy PNG (so the JPEG preview is clearly smaller), optionally with an EXIF orientation.
+/// A PNG of per-pixel noise like a photo (compresses badly, so the JPEG preview is much smaller),
+/// optionally with an EXIF orientation.
 func png(width: Int, height: Int, orientation: Int = 1) -> Data {
-    let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
-                            space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+    let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
+                            space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)!
+    let pixels = context.data!.bindMemory(to: UInt8.self, capacity: width * height * 4)
     var seed: UInt32 = 7
-    for y in stride(from: 0, to: height, by: 8) {
-        for x in stride(from: 0, to: width, by: 8) {
-            seed = seed &* 1_103_515_245 &+ 12345
-            context.setFillColor(red: CGFloat(seed % 255) / 255, green: CGFloat((seed >> 8) % 255) / 255, blue: CGFloat((seed >> 16) % 255) / 255, alpha: 1)
-            context.fill(CGRect(x: x, y: y, width: 8, height: 8))
-        }
+    for i in 0..<(width * height * 4) {
+        seed = seed &* 1_103_515_245 &+ 12345
+        pixels[i] = UInt8(truncatingIfNeeded: seed >> 16)
     }
     let image = context.makeImage()!
     let output = NSMutableData()
