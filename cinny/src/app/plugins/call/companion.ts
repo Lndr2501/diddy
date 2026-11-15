@@ -16,6 +16,7 @@ import {
   CompanionControl,
   CompanionMedia,
   CompanionSnapshot,
+  companionLost,
   IDLE,
   makeCompanionControl,
   makeCompanionRequest,
@@ -25,14 +26,34 @@ import {
 /** How long the computer waits for the phone to answer. */
 const ANSWER_TIMEOUT_MS = 2 * 60 * 1000;
 
+/** How long the notice "your iPhone left" stays before it clears itself. */
+const ENDED_NOTICE_MS = 20 * 1000;
+/** How often a connected phone is checked for having gone silent. */
+const WATCH_MS = 10 * 1000;
+
 let snapshot: CompanionSnapshot = IDLE;
 const listeners = new Set<() => void>();
 let timeout: number | undefined;
+let endedTimer: number | undefined;
+let watch: number | undefined;
+/** when the phone last said something (its state comes at least every 20 s) */
+let lastHeard = 0;
 
 const set = (next: CompanionSnapshot) => {
   if (next === snapshot) return;
   snapshot = next;
   if (next.phase !== 'waiting') window.clearTimeout(timeout);
+  if (next.phase !== 'connected') {
+    window.clearInterval(watch);
+    watch = undefined;
+  }
+  window.clearTimeout(endedTimer);
+  if (next.phase === 'ended') {
+    const ended = next;
+    endedTimer = window.setTimeout(() => {
+      if (snapshot === ended) set(IDLE);
+    }, ENDED_NOTICE_MS);
+  }
   listeners.forEach((listener) => listener());
 };
 
@@ -145,9 +166,26 @@ export const endCompanion = async (mx: MatrixClient): Promise<void> => {
   set(IDLE);
 };
 
-/** Forgets a declined or unanswered request (the notice is closed). */
+/** Forgets a declined or unanswered request, or the notice that the phone left. */
 export const dismissCompanion = (): void => {
-  if (snapshot.phase === 'declined' || snapshot.phase === 'timeout') set(IDLE);
+  if (snapshot.phase === 'declined' || snapshot.phase === 'timeout' || snapshot.phase === 'ended') {
+    set(IDLE);
+  }
+};
+
+/**
+ * Watches a connected phone: when it says nothing for a while (app closed, crashed, no network),
+ * it is gone. This computer then takes its own microphone and camera back (CompanionSync.tsx),
+ * and a phone that is still there after all is told to leave, so there are never two microphones.
+ */
+const watchPhone = (mx: MatrixClient) => {
+  if (watch !== undefined) return;
+  watch = window.setInterval(() => {
+    if (!companionLost(snapshot, lastHeard, Date.now())) return;
+    diag('companion: no word from the iPhone, taking microphone and camera back');
+    controlCompanion(mx, { end: true });
+    set({ ...snapshot, phase: 'ended', endReason: 'lost' });
+  }, WATCH_MS);
 };
 
 /** A to-device message: the phone's answer, if it is one from your own device, encrypted. */
@@ -162,7 +200,15 @@ export const receiveCompanionMessage = (
   if (encryptionInfo.sender && encryptionInfo.sender !== mx.getSafeUserId()) return;
   const state = parseCompanionState(message.content);
   if (!state) return;
-  const before = snapshot.phase;
+  const before = snapshot;
   set(applyCompanionState(snapshot, state));
-  if (snapshot.phase !== before) diag(`companion: ${before} -> ${snapshot.phase}`);
+  if (
+    snapshot.phase === 'connected' &&
+    snapshot.requestId === state.requestId &&
+    snapshot.phoneDeviceId === state.deviceId
+  ) {
+    lastHeard = Date.now();
+    watchPhone(mx);
+  }
+  if (snapshot.phase !== before.phase) diag(`companion: ${before.phase} -> ${snapshot.phase}`);
 };

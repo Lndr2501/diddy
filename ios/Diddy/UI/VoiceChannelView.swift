@@ -29,7 +29,10 @@ struct VoiceChannelView: View {
     var body: some View {
         ZStack {
             Theme.rail.ignoresSafeArea()
-            if let session = calls.current, session.roomId == roomId {
+            if let session = calls.current, session.roomId == roomId, session.companion != nil {
+                // this iPhone works as the computer's camera and microphone: its own screen
+                CompanionCallView(session: session, title: title)
+            } else if let session = calls.current, session.roomId == roomId {
                 ConnectedVoiceView(
                     session: session,
                     title: title,
@@ -212,7 +215,6 @@ private struct ConnectedVoiceView: View {
 
     @ViewBuilder
     private var notices: some View {
-        if session.companion != nil { CompanionBanner() }
         if session.awaitingBroadcast {
             Label("Choose Diddy and tap Start Broadcast.", systemImage: "info.circle")
                 .font(.footnote)

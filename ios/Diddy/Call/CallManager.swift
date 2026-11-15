@@ -120,6 +120,11 @@ final class CallManager: ObservableObject {
             Sounds.shared.play(.connectionLost)
             Task { await self.leave(silently: true) }
         }
+        session.onCompanionComputerGone = { [weak self, weak session] in
+            guard let self, let session, self.current === session else { return }
+            self.error = "Your computer is no longer in the call, so this iPhone left too."
+            Task { await self.leave() }
+        }
         session.onDeclined = { [weak self, weak session] userId in
             guard let self, let session, self.current === session else { return }
             self.error = "\(account.name(of: userId)) declined the call."
@@ -269,6 +274,12 @@ final class CallSession: NSObject, ObservableObject {
         var media: CompanionProtocol.Media
     }
     var companion: Companion?
+    /// Checks that the computer is still in the call and tells it regularly that this phone is.
+    private var companionWatch: Task<Void, Never>?
+    /// Diddy is in the background: iOS pauses the camera, the computer says so.
+    private var appInBackground = false
+    /// The computer is no longer in the call (closed, crashed, offline): this phone leaves too.
+    var onCompanionComputerGone: (() -> Void)?
     /// The share comes from the broadcast extension: the whole screen, other apps too.
     var sharingWholeScreen: Bool { broadcastPublication != nil }
     @Published private(set) var speakerOn = true
@@ -487,6 +498,8 @@ final class CallSession: NSObject, ObservableObject {
         stopOutgoingRing()
         errorDismissal?.cancel()
         observers.removeAll()
+        companionWatch?.cancel()
+        companionWatch = nil
         guard !closed else { return }
         agentVoice.leave()
         closed = true
@@ -804,6 +817,52 @@ final class CallSession: NSObject, ObservableObject {
             .debounce(for: .milliseconds(300), scheduler: DispatchQueue.main)
             .sink { [weak self] _ in Task { await self?.sendCompanionState(joined: true) } }
             .store(in: &observers)
+        // Leaving the app on the phone: iOS pauses the camera, the microphone goes on.
+        appInBackground = UIApplication.shared.applicationState == .background
+        NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)
+            .merge(with: NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification))
+            .sink { [weak self] note in
+                let background = note.name == UIApplication.didEnterBackgroundNotification
+                Task { @MainActor in
+                    guard let self, !self.closed else { return }
+                    self.appInBackground = background
+                    DiagLog.shared.write(background ? "companion: app in the background" : "companion: app in front again")
+                    await self.sendCompanionState(joined: true)
+                }
+            }
+            .store(in: &observers)
+        watchCompanion()
+    }
+
+    /// Every 10 s: is the computer still in the call (its LiveKit identity "@you:server:DEVICE")?
+    /// Gone for 30 s after it was there, this phone leaves, so it never keeps sending on its own.
+    /// Every 20 s the computer hears that this phone is still there.
+    private func watchCompanion() {
+        companionWatch?.cancel()
+        companionWatch = Task { [weak self] in
+            var seconds: UInt64 = 0
+            var computerSeen = false
+            var missing: UInt64 = 0
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 10_000_000_000)
+                guard let self, !Task.isCancelled, !self.closed, let companion = self.companion else { return }
+                seconds += 10
+                if seconds % CompanionProtocol.heartbeatSeconds == 0 { await self.sendCompanionState(joined: true) }
+                let computer = "\(self.ownUserId):\(companion.deviceId)"
+                let present = self.liveKitRoom.remoteParticipants.values.contains { $0.identity?.stringValue == computer }
+                if present {
+                    computerSeen = true
+                    missing = 0
+                } else if computerSeen {
+                    missing += 10
+                }
+                if missing >= 30 {
+                    DiagLog.shared.write("companion: the computer left the call, leaving too")
+                    self.onCompanionComputerGone?()
+                    return
+                }
+            }
+        }
     }
 
     /// The computer switched the microphone or camera (its buttons work the phone now).
@@ -816,7 +875,7 @@ final class CallSession: NSObject, ObservableObject {
         guard let companion else { return }
         let media = CompanionProtocol.Media(camera: cameraOn, microphone: microphoneOn, screen: screenSharing)
         let content = CompanionProtocol.state(requestId: companion.requestId, deviceId: ownDeviceId,
-                                              joined: joined && !closed, media: media)
+                                              joined: joined && !closed, media: media, background: appInBackground)
         do {
             _ = try await account.client.sendEncryptedToDeviceMessage(
                 eventType: CompanionProtocol.stateType,

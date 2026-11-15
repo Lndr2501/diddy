@@ -168,6 +168,78 @@ export const ControlToast = style({
   },
 });
 
+// Step dots of the iPhone camera & mic dialog
+export const CompanionStep = style({
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: toRem(20),
+  height: toRem(20),
+  borderRadius: toRem(999),
+  fontSize: toRem(11),
+  fontWeight: 700,
+  border: `${toRem(1)} solid ${color.Surface.ContainerLine}`,
+  color: color.Surface.OnContainer,
+  selectors: {
+    '&[data-state=now]': {
+      backgroundColor: color.Primary.Main,
+      borderColor: color.Primary.Main,
+      color: color.Primary.OnMain,
+    },
+    '&[data-state=done]': {
+      backgroundColor: color.Success.Main,
+      borderColor: color.Success.Main,
+      color: color.Success.OnMain,
+    },
+  },
+});
+
+// The phone with a ring while the dialog waits for the iPhone
+export const CompanionHero = style({
+  position: 'relative',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: toRem(64),
+  height: toRem(64),
+  color: color.Primary.Main,
+});
+
+export const CompanionHeroSpinner = style({
+  position: 'absolute',
+  inset: 0,
+  width: '100%',
+  height: '100%',
+});
+
+// The live switches of a connected iPhone
+export const CompanionLive = style({
+  padding: config.space.S300,
+  borderRadius: toRem(12),
+  border: `${toRem(1)} solid ${color.Surface.ContainerLine}`,
+});
+
+// The small iPhone on the microphone/camera button while it works your iPhone.
+export const PhoneBadge = style({
+  position: 'absolute',
+  right: toRem(3),
+  bottom: toRem(3),
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: toRem(16),
+  height: toRem(16),
+  borderRadius: toRem(999),
+  backgroundColor: color.Success.Main,
+  color: color.Success.OnMain,
+  boxShadow: `0 0 0 ${toRem(2)} ${color.Surface.Container}`,
+  pointerEvents: 'none',
+});
+
+globalStyle(`${ControlButton}:has(${PhoneBadge})`, {
+  position: 'relative',
+});
+
 // A row of the iPhone camera & mic dialog: the whole row toggles its checkbox.
 export const CompanionRow = style({
   cursor: 'pointer',

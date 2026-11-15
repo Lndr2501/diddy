@@ -9,6 +9,7 @@ import {
   ControlDivider,
   MicrophoneButton,
   MoreButton,
+  PhoneButton,
   ReactionsButton,
   ScreenShareButton,
   ShareOptionsButton,
@@ -16,7 +17,12 @@ import {
   VideoButton,
 } from './Controls';
 import { CallEmbed, useCallControlState, useScreenShareAudio } from '../../plugins/call';
-import { controlCompanion, endCompanion, useCompanion } from '../../plugins/call/companion';
+import {
+  controlCompanion,
+  dismissCompanion,
+  endCompanion,
+  useCompanion,
+} from '../../plugins/call/companion';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { CompanionDialog } from './CompanionDialog';
 import { useResizeObserver } from '../../hooks/useResizeObserver';
@@ -50,6 +56,9 @@ export function CallControls({ callEmbed }: CallControlsProps) {
   const phone = companion.phase === 'connected' ? companion.phone : undefined;
   const phoneMic = !!phone && !!companion.wanted?.microphone;
   const phoneCamera = !!phone && !!companion.wanted?.camera;
+  let phoneState: 'idle' | 'waiting' | 'connected' = 'idle';
+  if (phone) phoneState = 'connected';
+  else if (companion.phase === 'waiting') phoneState = 'waiting';
 
   const handleSpotlightToggle = useCallback(() => callEmbed.control.toggleSpotlight(), [callEmbed]);
   const handleReactionsClick = useCallback(() => callEmbed.control.toggleReactions(), [callEmbed]);
@@ -104,15 +113,47 @@ export function CallControls({ callEmbed }: CallControlsProps) {
           </Text>
         </div>
       )}
-      {phone && (
-        <div className={css.ControlToast} data-kind="info" role="status">
-          <Icon size="100" src={Icons.Phone} />
+      {companion.phase === 'ended' && (
+        <div
+          className={css.ControlToast}
+          data-kind={companion.endReason === 'lost' ? 'warning' : 'info'}
+          role="status"
+        >
+          <Icon size="100" src={companion.endReason === 'lost' ? Icons.Warning : Icons.Phone} />
           <Text size="T200" truncate>
-            {`iPhone: ${
-              [phone.camera && 'camera', phone.microphone && 'microphone', phone.screen && 'screen']
-                .filter(Boolean)
-                .join(', ') || 'connected'
-            }`}
+            {companion.endReason === 'lost'
+              ? 'Lost your iPhone. Using this computer’s mic and camera again.'
+              : 'Your iPhone left. Using this computer’s mic and camera again.'}
+          </Text>
+          <button type="button" className={css.ToastAction} onClick={dismissCompanion}>
+            <Text as="span" size="T200">
+              OK
+            </Text>
+          </button>
+        </div>
+      )}
+      {phone && (
+        <div
+          className={css.ControlToast}
+          data-kind={companion.phoneBackground && phone.camera ? 'warning' : 'info'}
+          role="status"
+        >
+          <Icon
+            size="100"
+            src={companion.phoneBackground && phone.camera ? Icons.Warning : Icons.Phone}
+          />
+          <Text size="T200" truncate>
+            {companion.phoneBackground && phone.camera
+              ? 'iPhone camera paused: open Diddy on your iPhone'
+              : `iPhone: ${
+                  [
+                    phone.camera && 'camera',
+                    phone.microphone && 'microphone',
+                    phone.screen && 'screen',
+                  ]
+                    .filter(Boolean)
+                    .join(', ') || 'connected'
+                }`}
           </Text>
           <button type="button" className={css.ToastAction} onClick={() => endCompanion(mx)}>
             <Text as="span" size="T200">
@@ -129,6 +170,7 @@ export function CallControls({ callEmbed }: CallControlsProps) {
           <MicrophoneButton
             enabled={phoneMic ? !!phone?.microphone : microphone}
             onToggle={handleMicrophoneToggle}
+            phone={phoneMic}
           />
           <DeviceChevron kind="input" size="bar" className={css.ControlChevron} />
         </div>
@@ -140,6 +182,7 @@ export function CallControls({ callEmbed }: CallControlsProps) {
           <VideoButton
             enabled={phoneCamera ? !!phone?.camera : video}
             onToggle={handleVideoToggle}
+            phone={phoneCamera}
           />
           <DeviceChevron kind="camera" size="bar" className={css.ControlChevron} />
         </div>
@@ -158,6 +201,7 @@ export function CallControls({ callEmbed }: CallControlsProps) {
         ) : (
           <ScreenShareButton enabled={false} onToggle={toggleScreenshare} />
         )}
+        <PhoneButton state={phoneState} onClick={() => setCompanionOpen(true)} />
         {!compact && <ControlDivider />}
         <ReactionsButton onClick={handleReactionsClick} />
         <SoundboardButton />
@@ -167,7 +211,6 @@ export function CallControls({ callEmbed }: CallControlsProps) {
           spotlight={spotlight}
           onToggleSpotlight={handleSpotlightToggle}
           onSettings={handleSettingsClick}
-          onPhone={() => setCompanionOpen(true)}
         />
         {!compact && <ControlDivider />}
         <Button
