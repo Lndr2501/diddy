@@ -244,17 +244,36 @@ final class TimelineController: ObservableObject {
         let params = UploadParameters(source: .data(bytes: data, filename: filename),
                                       caption: caption.isEmpty ? nil : caption,
                                       formattedCaption: nil, mentions: nil, inReplyTo: replyId, extraContentJson: nil)
+        // Size and a preview of a picture, read away from the main thread (SentMedia.swift).
+        let picture: SentMedia.Picture? = mime.hasPrefix("image/")
+            ? await Task.detached(priority: .userInitiated) { SentMedia.picture(data, mime: mime) }.value
+            : nil
         do {
             let handle: SendAttachmentJoinHandle
-            if mime.hasPrefix("image/"), let image = UIImage(data: data) {
-                let info = ImageInfo(height: UInt64(image.size.height * image.scale), width: UInt64(image.size.width * image.scale),
-                                     mimetype: mime, size: UInt64(data.count), thumbnailInfo: nil, thumbnailSource: nil,
+            if let picture {
+                let thumbnailInfo = picture.thumbnail.map {
+                    ThumbnailInfo(height: UInt64(picture.thumbnailHeight), width: UInt64(picture.thumbnailWidth),
+                                  mimetype: "image/jpeg", size: UInt64($0.count))
+                }
+                let info = ImageInfo(height: UInt64(picture.height), width: UInt64(picture.width),
+                                     mimetype: mime, size: UInt64(data.count), thumbnailInfo: thumbnailInfo, thumbnailSource: nil,
                                      blurhash: nil, isAnimated: mime == "image/gif")
-                handle = try timeline.sendImage(params: params, thumbnailSource: nil, imageInfo: info)
+                handle = try timeline.sendImage(params: params,
+                                                thumbnailSource: picture.thumbnail.map { .data(bytes: $0, filename: "thumbnail.jpg") },
+                                                imageInfo: info)
             } else if mime.hasPrefix("video/") {
-                let info = VideoInfo(duration: nil, height: nil, width: nil, mimetype: mime, size: UInt64(data.count),
-                                     thumbnailInfo: nil, thumbnailSource: nil, blurhash: nil)
-                handle = try timeline.sendVideo(params: params, thumbnailSource: nil, videoInfo: info)
+                // Size, length and first frame, so other apps show a still instead of an empty box.
+                let video = await SentMedia.video(data, mime: mime)
+                let thumbnailInfo = video.thumbnail.map {
+                    ThumbnailInfo(height: UInt64(video.thumbnailHeight), width: UInt64(video.thumbnailWidth),
+                                  mimetype: "image/jpeg", size: UInt64($0.count))
+                }
+                let info = VideoInfo(duration: video.duration, height: video.height.map(UInt64.init), width: video.width.map(UInt64.init),
+                                     mimetype: mime, size: UInt64(data.count),
+                                     thumbnailInfo: thumbnailInfo, thumbnailSource: nil, blurhash: nil)
+                handle = try timeline.sendVideo(params: params,
+                                                thumbnailSource: video.thumbnail.map { .data(bytes: $0, filename: "thumbnail.jpg") },
+                                                videoInfo: info)
             } else {
                 handle = try timeline.sendFile(params: params, fileInfo: FileInfo(mimetype: mime, size: UInt64(data.count), thumbnailInfo: nil, thumbnailSource: nil))
             }
