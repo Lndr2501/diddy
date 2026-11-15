@@ -5,12 +5,12 @@
 # Diddy
 
 **A Matrix chat client with voice calls that just work.**<br>
-Themes, profiles, plugins and a calm interface. Built for macOS, Linux and iPhone/iPad.
+Themes, profiles, plugins and a calm interface. Built for macOS, Windows, Linux and iPhone/iPad.
 
 [![Release](https://img.shields.io/github/v/release/Lndr2501/diddy?label=release&color=e5517c&style=flat-square)](../../releases/latest)
 [![Tests](https://img.shields.io/github/actions/workflow/status/Lndr2501/diddy/test.yml?label=tests&style=flat-square)](../../actions/workflows/test.yml)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=flat-square)](LICENSE)
-![Platforms](https://img.shields.io/badge/macOS%20%C2%B7%20Linux%20%C2%B7%20iOS-lightgrey?style=flat-square)
+![Platforms](https://img.shields.io/badge/macOS%20%C2%B7%20Windows%20%C2%B7%20Linux%20%C2%B7%20iOS-lightgrey?style=flat-square)
 
 [**Download**](../../releases/latest) · [Features](#features) · [Install](#install) · [Build from source](#build-from-source) · [Changelog](CHANGELOG.md)
 
@@ -105,23 +105,26 @@ All images show example data and are generated from the real app, see [docs/scre
 
 ## Platforms
 
-| | macOS | Linux | iPhone / iPad |
-|---|:---:|:---:|:---:|
-| Chat, rooms, encryption | ✅ | ✅ Electron | 🧪 native app, new |
-| Voice calls | ✅ | ✅ also encrypted | 🧪 |
-| Screen sharing | ✅ | 🧪 Wayland portal / X11 picker | 🧪 full screen on iOS 27+, otherwise Diddy only |
-| …with system sound | ✅ macOS 14.2+ | 🧪 other apps, not Diddy's own sound | 🧪 app sound |
-| Connection profiles | ✅ macOS 14+ | 🧪 untested | 🧪 multiple accounts |
-| Voice messages | ✅ | 🧪 | 🧪 m4a, no Ogg/Opus playback |
-| Change app icon | ✅ | 🧪 | 🧪 |
-| Call tiles, soundboard, MyInstants | ✅ | ✅ | 🧪 |
-| Bot cards, profiles and badges, themes, plugins, agent voice | ✅ | ✅ | 🧪 |
+| | macOS | Linux | Windows | iPhone / iPad |
+|---|:---:|:---:|:---:|:---:|
+| Create an account | 🧪 | 🧪 | 🧪 | 🧪 |
+| Chat, rooms, encryption | ✅ | ✅ Electron | 🧪 Electron, new | 🧪 native app, new |
+| Voice calls | ✅ | ✅ also encrypted | 🧪 | 🧪 |
+| Screen sharing | ✅ | 🧪 Wayland portal / X11 picker | 🧪 picker | 🧪 full screen on iOS 27+, otherwise Diddy only |
+| …with system sound | ✅ macOS 14.2+ | 🧪 other apps, not Diddy's own sound | ❌ not yet | 🧪 app sound |
+| Connection profiles | ✅ macOS 14+ | 🧪 untested | 🧪 | 🧪 multiple accounts |
+| Voice messages | ✅ | 🧪 | 🧪 | 🧪 m4a, no Ogg/Opus playback |
+| Change app icon | ✅ | 🧪 | 🧪 window icon | 🧪 |
+| Call tiles, soundboard, MyInstants | ✅ | ✅ | 🧪 | 🧪 |
+| Bot cards, profiles and badges, themes, plugins, agent voice | ✅ | ✅ | 🧪 | 🧪 |
 
 ✅ works and is tested · 🧪 built, but not yet tested in daily use · ❌ not supported (yet)
 
 ## Install
 
-Downloads are on the [Releases](../../releases/latest) page. Pushing a version tag (`vX.Y.Z`) builds everything automatically: the macOS DMG, Linux AppImage, DEB and RPM, the iOS IPA and `SHA256SUMS`.
+Downloads are on the [Releases](../../releases/latest) page. Pushing a version tag (`vX.Y.Z`) builds everything automatically: the macOS DMG, the Windows installer, Linux AppImage, DEB and RPM, the iOS IPA and `SHA256SUMS`.
+
+No Matrix account yet? Choose *Create an account* on the login screen: Diddy checks the name while you type and signs you in when the account is ready. Servers with their own sign-in page, such as matrix.org, open it in create mode.
 
 <details open>
 <summary><b>macOS (Apple Silicon)</b></summary>
@@ -132,6 +135,18 @@ Downloads are on the [Releases](../../releases/latest) page. Pushing a version t
    xattr -cr /Applications/Diddy.app
    ```
 3. Start Diddy and allow the microphone. For stream sound, also allow *Screen & System Audio Recording*.
+
+</details>
+
+<details>
+<summary><b>Windows 10 / 11 (x64)</b></summary>
+
+1. Run `Diddy_*_x64-setup.exe`. It installs for your user only (no administrator rights) and adds Diddy to the Start menu and the desktop.
+2. The installer is not code-signed yet. If Windows SmartScreen says *Windows protected your PC*, click *More info*, then *Run anyway*.
+3. Start Diddy and allow the microphone when asked.
+
+> [!NOTE]
+> Same Electron (Chromium) app as on Linux. Screen sharing works with the picker; sharing the system sound is not available on Windows yet, because Chromium's capture would include the call itself and the others would hear themselves. Settings live in `%APPDATA%\app.diddy.desktop`, the log in `%LOCALAPPDATA%\app.diddy.desktop\logs`.
 
 </details>
 
@@ -187,7 +202,7 @@ fonts.packages = [ inputs.diddy.packages.${pkgs.system}.apple-color-emoji ];
 
 ## Report a bug
 
-The most helpful thing is the log file. It lives at `~/Library/Logs/Diddy/app.log` on macOS, `~/.local/state/diddy/app.log` on Linux and `%LOCALAPPDATA%\Diddy\Logs\app.log` on Windows. In the app, *Settings → About → Diagnostics → Open Folder* opens the folder. The log contains technical events and errors, never message text.
+The most helpful thing is the log file. It lives at `~/Library/Logs/Diddy/app.log` on macOS, `~/.local/state/diddy/app.log` on Linux and `%LOCALAPPDATA%\app.diddy.desktop\logs\app.log` on Windows. In the app, *Settings → About → Diagnostics → Open Folder* opens the folder. The log contains technical events and errors, never message text.
 
 ## Build from source
 

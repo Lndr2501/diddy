@@ -32,10 +32,10 @@ ESLint hat viele Altlasten; neue Dateien trotzdem sauber halten (`npx eslint <da
   Passwörter, Schlüssel, Keychain-Inhalte.
 - Signierte `.app` nie nachträglich verändern. Laufende Diddy-App des Nutzers nicht beenden oder ersetzen, ohne zu fragen.
 - Release, Tag, Issue schließen, Kommentare auf GitHub nur auf ausdrückliche Bitte.
-- Jede neue Funktion und jeder Fix gilt für alle Plattformen: macOS (Tauri), Linux (Electron) und iOS (Swift in `ios/`).
-  Die Web-Oberfläche in `cinny/` deckt macOS und Linux ab; iOS ist eigener Swift-Code und muss im selben Zug mitgebaut
+- Jede neue Funktion und jeder Fix gilt für alle Plattformen: macOS (Tauri), Linux und Windows (beide Electron, `electron/`) und iOS (Swift in `ios/`).
+  Die Web-Oberfläche in `cinny/` deckt macOS, Linux und Windows ab; iOS ist eigener Swift-Code und muss im selben Zug mitgebaut
   werden. Geht das nicht (z. B. kein Xcode erreichbar, API fehlt auf einer Plattform), im Commit und im Issue/PR
-  ausdrücklich nennen, welche Plattform fehlt und warum. Plattform-Labels auf GitHub: iOS, Linux, macOS.
+  ausdrücklich nennen, welche Plattform fehlt und warum. Plattform-Labels auf GitHub: iOS, Linux, macOS (Windows läuft über `electron/` mit Linux).
 - iOS bauen: auf dem Mac (`xcodebuild`, siehe `ios/README.md`) oder in der CI (`Build iOS`, läuft bei Pull Requests).
   Ohne Mac-Zugang iOS-Änderungen über einen PR prüfen lassen, nicht ungebaut nach `main` pushen.
 - Build auf dem Mac immer mit `nice -n 19`, `CARGO_BUILD_JOBS=2`, `NODE_OPTIONS=--max_old_space_size=4096`.
