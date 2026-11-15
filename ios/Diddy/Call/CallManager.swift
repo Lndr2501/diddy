@@ -1227,13 +1227,48 @@ final class CallSession: NSObject, ObservableObject {
                 ))
             }
         }
+        result = Self.onePerPerson(result)
         account.resolveProfiles(result.map(\.userId), in: roomId)
         // LiveKit reports speaking several times a second; publishing an unchanged list redrew
         // the whole call stage with its video views every time.
         if result != members { members = result }
-        let sharing = local.isScreenShareEnabled()
+        // the whole-screen share (broadcast extension) is a track of its own, not LiveKit's capture
+        let sharing = local.isScreenShareEnabled() || broadcastPublication != nil
         if sharing != screenSharing { screenSharing = sharing }
         if outgoing != .none, someoneElseIsHere { stopOutgoingRing() }
+    }
+
+    /// One tile per person: your computer and the iPhone that works as its camera and microphone
+    /// are two devices of one person (like the desktop's stage). The device that shares its screen
+    /// keeps the tile's id (Watch and the share volume go to it), otherwise your own device, then
+    /// the first; the camera comes from whichever sends one, the microphone counts as on when one is.
+    static func onePerPerson(_ members: [CallMember]) -> [CallMember] {
+        var order: [String] = []
+        var byUser: [String: CallMember] = [:]
+        for member in members {
+            guard let known = byUser[member.userId] else {
+                order.append(member.userId)
+                byUser[member.userId] = member
+                continue
+            }
+            let memberFirst: Bool
+            if (known.screenShare == nil) != (member.screenShare == nil) {
+                memberFirst = member.screenShare != nil
+            } else {
+                memberFirst = member.isLocal && !known.isLocal
+            }
+            let primary = memberFirst ? member : known
+            let other = memberFirst ? known : member
+            var merged = primary
+            merged.camera = primary.camera ?? other.camera
+            merged.screenShare = primary.screenShare ?? other.screenShare
+            merged.isSpeaking = primary.isSpeaking || other.isSpeaking
+            merged.microphoneOn = primary.microphoneOn || other.microphoneOn
+            merged.isConnecting = primary.isConnecting && other.isConnecting
+            merged.talkingToAgent = primary.talkingToAgent || other.talkingToAgent
+            byUser[member.userId] = merged
+        }
+        return order.compactMap { byUser[$0] }
     }
 
     private func member(for participant: LiveKit.Participant, isLocal: Bool, speaking: Set<String>) -> CallMember {

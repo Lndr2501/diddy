@@ -5,9 +5,10 @@ import {
   MatrixRTCSessionEventHandlerMap,
 } from 'matrix-js-sdk/lib/matrixrtc/MatrixRTCSession';
 import { CallMembership } from 'matrix-js-sdk/lib/matrixrtc/CallMembership';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { MatrixRTCSessionManagerEvents } from 'matrix-js-sdk/lib/matrixrtc/MatrixRTCSessionManager';
 import { useMatrixClient } from './useMatrixClient';
+import { onePerPerson } from '../plugins/call/callPeople';
 
 export const useCallSession = (room: Room): MatrixRTCSession => {
   const mx = useMatrixClient();
@@ -79,5 +80,6 @@ export const useCallMembers = (session: MatrixRTCSession): CallMembership[] => {
   );
   useCallMembersChange(session, handleChange);
 
-  return members;
+  // one per person: your computer and your iPhone as its camera are two devices, one person
+  return useMemo(() => onePerPerson(members), [members]);
 };
