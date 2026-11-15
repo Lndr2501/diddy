@@ -386,7 +386,9 @@ final class MatrixAccount: ObservableObject, Identifiable {
             if full { self.lastFullSummary = Date() }
             // only what this run read again; changes that came in meanwhile stay marked
             self.dirtySummaryIds.subtract(dirty)
-            self.rooms = result
+            // Setting publishes even an identical list, and every view of the account (chat list,
+            // open chat, tabs) is re-evaluated; most rebuilds change nothing.
+            if result != self.rooms { self.rooms = result }
             for summary in result where !summary.callParticipants.isEmpty {
                 self.resolveProfiles(summary.callParticipants, in: summary.id)
             }
