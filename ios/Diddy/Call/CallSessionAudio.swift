@@ -20,8 +20,11 @@ extension CallSession {
         for participant in liveKitRoom.remoteParticipants.values {
             let userId = participant.identity.flatMap { Self.split(identity: $0.stringValue)?.userId }
                 ?? participant.identity?.stringValue ?? ""
-            let voice = deafened ? 0 : extras.voices.playbackLevel(userId) * master
-            let stream = deafened ? 0 : extras.streams.playbackLevel(userId) * master
+            // Your own other device (e.g. your computer in the same call) is never played: it is your
+            // own voice, back with a delay. Desktop does the same (userVolume.ts).
+            let ownDevice = userId == ownUserIdForUI
+            let voice = deafened || ownDevice ? 0 : extras.voices.playbackLevel(userId) * master
+            let stream = deafened || ownDevice ? 0 : extras.streams.playbackLevel(userId) * master
             for publication in participant.audioTracks {
                 guard let track = publication.track as? LiveKit.RemoteAudioTrack else { continue }
                 track.volume = publication.source == .screenShareAudio ? stream : voice
