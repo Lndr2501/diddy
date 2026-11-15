@@ -37,7 +37,7 @@ const { shouldReloadAfter, createRateLimiter, describeError } = require('./lib/c
 const { startStaticServer } = require('./lib/staticServer.cjs');
 const { isSsoStart, openSsoWindow } = require('./lib/ssoWindow.cjs');
 const { createSystemAudio } = require('./lib/systemAudio.cjs');
-const { createScreenPicker } = require('./lib/screenPicker.cjs');
+const { createScreenPicker, screenSourceOptions } = require('./lib/screenPicker.cjs');
 const { parseAgentVoiceLaunch, createAgentVoiceTrigger } = require('./lib/agentVoice.cjs');
 const { createAgentVoiceHotkey } = require('./lib/agentVoiceHotkey.cjs');
 const { sanitizeHotkey } = require('./lib/globalHotkey.cjs');
@@ -92,6 +92,7 @@ const logUncaught = (kind, error) => {
   diag.writeLine(`main: ${kind}: ${describeError(error)}`);
   if (!uncaughtLimiter.allow()) {
     diag.writeLine('main: too many uncaught errors, exiting');
+    diag.flushSync();
     app.exit(1);
   }
 };
@@ -103,6 +104,8 @@ app.on('child-process-gone', (_event, details) => {
 });
 let quitting = false;
 app.on('before-quit', () => { quitting = true; });
+// Queued log lines reach the file before Electron ends the process (lib/diag.cjs).
+app.on('will-quit', () => diag.flushSync());
 /** At most 3 renderer reloads per window and minute, so a page that dies on load does not loop. */
 const reloadLimiters = new WeakMap();
 
@@ -178,7 +181,7 @@ const configureSession = (ses) => {
     let source;
     try {
       const owner = BrowserWindow.getAllWindows().find((win) => win.webContents.mainFrame === request.frame?.top);
-      const sources = await desktopCapturer.getSources({ types: ['screen', 'window'], thumbnailSize: { width: 320, height: 180 } });
+      const sources = await desktopCapturer.getSources(screenSourceOptions(isWayland));
       diag.writeLine(`screenshare: ${sources.length} sources (${isWayland ? 'Wayland' : 'X11'})`);
       if (owner && !owner.isDestroyed() && sources.length) source = isWayland ? sources[0] : await pickScreen(sources, owner);
     } catch (error) {

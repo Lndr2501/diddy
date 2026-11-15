@@ -53,17 +53,49 @@ test('log lines have a timestamp, no newlines and a length limit', () => {
   assert.equal(long.length, '0.000 '.length + diag.MAX_LINE + 1);
 });
 
-test('log file is written and rotated', () => {
+test('log file is written and rotated', async () => {
   const dir = tempDir();
   const env = { HOME: dir, XDG_STATE_HOME: dir, LOCALAPPDATA: dir };
   diag.writeLine('hello', env);
+  await diag.flush();
   const file = diag.logFile(env);
   assert.ok(file.startsWith(dir));
   assert.match(fs.readFileSync(file, 'utf8'), /^\d+\.\d{3} hello\n$/);
   fs.writeFileSync(file, Buffer.alloc(2 * 1024 * 1024 + 1));
   diag.writeLine('after rotation', env);
+  await diag.flush();
   assert.ok(fs.existsSync(path.join(path.dirname(file), 'app.log.old')));
   assert.match(fs.readFileSync(file, 'utf8'), /after rotation/);
+});
+
+test('log lines are written later and in order, without blocking the caller', async () => {
+  const dir = tempDir();
+  const env = { HOME: dir, XDG_STATE_HOME: dir, LOCALAPPDATA: dir };
+  const file = diag.logFile(env);
+  for (let i = 0; i < 300; i += 1) diag.writeLine(`line ${i}`, env);
+  assert.equal(fs.existsSync(file), false);
+  await diag.flush();
+  const lines = fs.readFileSync(file, 'utf8').trim().split('\n');
+  assert.equal(lines.length, 300);
+  lines.forEach((line, i) => assert.ok(line.endsWith(` line ${i}`)));
+});
+
+test('flushSync writes queued log lines at once (process exit)', () => {
+  const dir = tempDir();
+  const env = { HOME: dir, XDG_STATE_HOME: dir, LOCALAPPDATA: dir };
+  diag.writeLine('last words', env);
+  diag.flushSync();
+  assert.match(fs.readFileSync(diag.logFile(env), 'utf8'), /last words\n$/);
+});
+
+test('a stuck disk cannot grow the log queue without bound', async () => {
+  const dir = tempDir();
+  const env = { HOME: dir, XDG_STATE_HOME: dir, LOCALAPPDATA: dir };
+  for (let i = 0; i < diag.MAX_QUEUED + 25; i += 1) diag.writeLine(`l${i}`, env);
+  await diag.flush();
+  const lines = fs.readFileSync(diag.logFile(env), 'utf8').trim().split('\n');
+  assert.equal(lines.length, diag.MAX_QUEUED + 1);
+  assert.match(lines.at(-1), /25 lines dropped/);
 });
 
 test('profile ids cannot escape storage or alias the default login', () => {

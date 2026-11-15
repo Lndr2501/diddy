@@ -2,6 +2,7 @@
 
 ## Unveröffentlicht
 
+- **Linux/Windows: weniger Last im Hauptprozess.** Das App-Log schreibt gesammelt und asynchron, statt bei jeder Zeile synchron Ordner, Größe und Datei anzufassen. Beim Start schickt die Oberfläche Hunderte Zeilen, und der Hauptprozess beantwortet in der Zeit keine anderen Anfragen. Beim Beenden wird der Rest sofort geschrieben. Systemton beim Bildschirmteilen (Linux) geht in 20-ms- statt 10-ms-Stücken über die Brücke, halb so viele Nachrichten. Unter Wayland erzeugt das Teilen keine Vorschaubilder mehr, die ohnehin niemand sah (der Portal-Dialog wählt). macOS (Tauri schreibt das Log schon abseits des Hauptthreads, Systemton läuft dort anders) und iOS sind nicht betroffen.
 - **iOS: Zurückwischen zeigt die Chatliste sofort:** Beim Wisch vom linken Rand war hinter dem Chat alles schwarz, die Liste erschien erst, wenn der Chat ganz weg war. Auf dem iPhone im Hochformat liegt der Chat jetzt über der Liste: Sie bleibt darunter gezeichnet und gleitet beim Wischen leicht abgedunkelt mit herein, wie bei den System-Apps. Sprachkanäle haben dort einen eigenen Zurück-Pfeil. iPad und Querformat sind unverändert; macOS, Linux und Windows haben diese Geste nicht.
 
 ## 1.10.0 (2026-11-15)

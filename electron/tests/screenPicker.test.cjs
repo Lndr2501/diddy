@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { EventEmitter } = require('node:events');
-const { createScreenPicker } = require('../lib/screenPicker.cjs');
+const { createScreenPicker, screenSourceOptions } = require('../lib/screenPicker.cjs');
 function setup() {
   const handlers = {}, windows = [];
   const ipcMain = { handle: (key, fn) => { handlers[key] = fn; }, on: (key, fn) => { handlers[key] = fn; } };
@@ -40,4 +40,8 @@ test('closing the requesting window cancels its picker and removes the lifecycle
   owner.emit('closed');
   assert.equal(await result, undefined);
   assert.equal(owner.listenerCount('closed'), 0);
+});
+test('Wayland skips source thumbnails, X11 keeps them for the picker', () => {
+  assert.deepEqual(screenSourceOptions(true), { types: ['screen', 'window'], thumbnailSize: { width: 0, height: 0 } });
+  assert.deepEqual(screenSourceOptions(false), { types: ['screen', 'window'], thumbnailSize: { width: 320, height: 180 } });
 });

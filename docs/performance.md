@@ -16,6 +16,7 @@ Umgesetzt in #210, #213 und #215: alle Punkte unten außer den folgenden.
 - **#34 (eigener 48-kHz-Context fürs Mikrofon):** offen. CoreAudio stellt beim Öffnen eines Contexts das Gerät um (deshalb wurde das einmal zurückgebaut); das muss auf dem Mac gemessen und gehört werden.
 - **#35 (Videoebene nach unsichtbaren Kacheln):** offen. Erst mit den `receive watch`-Zeilen auf dem Mac messen, ob überhaupt eine falsche Ebene ankommt.
 - **Update-Check vor dem Start:** Entscheidung aus #120, bleibt.
+- **#5 Electron:** umgesetzt (Log gesammelt und asynchron, `electron/lib/diag.cjs`). Dazu unter Linux: Systemton beim Teilen in 20-ms-Nachrichten, keine Vorschaubilder der Quellen unter Wayland.
 
 ## 1. Schnelle Gewinne (großer Nutzen, kleiner Eingriff)
 

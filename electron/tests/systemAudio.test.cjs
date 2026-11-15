@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { EventEmitter } = require('node:events');
-const { createSystemAudio, BLOCK_BYTES } = require('../lib/systemAudio.cjs');
+const { createSystemAudio, BLOCK_BYTES, MESSAGE_BYTES, MAX_IN_FLIGHT } = require('../lib/systemAudio.cjs');
 function setup(options = {}) {
   const children = [], sent = [];
   const capture = createSystemAudio({ helper: '/fixed/helper', send: (data) => sent.push(data), ...options, spawnProcess: (file, args) => {
@@ -25,24 +25,36 @@ test('PCM is reframed across arbitrary pipe boundaries, bounded and acknowledged
   const env = setup(); const { id, child } = await env.start();
   child.stdout.emit('data', Buffer.alloc(7, 1));
   assert.equal(env.sent.length, 0);
-  child.stdout.emit('data', Buffer.alloc(BLOCK_BYTES - 7, 2));
-  assert.equal(env.sent[0].pcm.length, BLOCK_BYTES);
+  child.stdout.emit('data', Buffer.alloc(MESSAGE_BYTES - 7, 2));
+  assert.equal(env.sent[0].pcm.length, MESSAGE_BYTES);
   assert.equal(env.sent[0].pcm[6], 1); assert.equal(env.sent[0].pcm[7], 2);
-  child.stdout.emit('data', Buffer.alloc(BLOCK_BYTES * 100));
-  assert.equal(env.sent.length, 8);
+  child.stdout.emit('data', Buffer.alloc(MESSAGE_BYTES * 100));
+  assert.equal(env.sent.length, MAX_IN_FLIGHT);
   env.capture.ack('wrong-session');
-  child.stdout.emit('data', Buffer.alloc(BLOCK_BYTES)); assert.equal(env.sent.length, 8);
+  child.stdout.emit('data', Buffer.alloc(MESSAGE_BYTES)); assert.equal(env.sent.length, MAX_IN_FLIGHT);
   env.capture.ack(id);
-  child.stdout.emit('data', Buffer.alloc(BLOCK_BYTES)); assert.equal(env.sent.length, 9);
+  child.stdout.emit('data', Buffer.alloc(MESSAGE_BYTES)); assert.equal(env.sent.length, MAX_IN_FLIGHT + 1);
+  env.capture.close();
+});
+test('two 10 ms helper blocks go out as one 20 ms message', async () => {
+  const env = setup(); const { child } = await env.start();
+  assert.equal(MESSAGE_BYTES, 2 * BLOCK_BYTES);
+  child.stdout.emit('data', Buffer.alloc(BLOCK_BYTES, 1));
+  assert.equal(env.sent.length, 0);
+  child.stdout.emit('data', Buffer.alloc(BLOCK_BYTES, 2));
+  assert.equal(env.sent.length, 1);
+  assert.equal(env.sent[0].pcm[BLOCK_BYTES - 1], 1); assert.equal(env.sent[0].pcm[BLOCK_BYTES], 2);
+  // the copy owns exactly its bytes, not the pipe's pooled buffer
+  assert.equal(env.sent[0].pcm.buffer.byteLength, MESSAGE_BYTES);
   env.capture.close();
 });
 test('old stops, exits and PCM cannot interfere with a newer share', async () => {
   const env = setup(); const first = await env.start(); const second = await env.start();
   env.capture.stop(first.id);
-  first.child.stdout.emit('data', Buffer.alloc(BLOCK_BYTES));
+  first.child.stdout.emit('data', Buffer.alloc(MESSAGE_BYTES));
   first.child.emit('exit', 0);
   assert.equal(second.child.killed.length, 0);
-  second.child.stdout.emit('data', Buffer.alloc(BLOCK_BYTES));
+  second.child.stdout.emit('data', Buffer.alloc(MESSAGE_BYTES));
   assert.equal(env.sent.at(-1).id, second.id);
   env.capture.close();
 });
@@ -71,7 +83,7 @@ test('INFO and WARN helper lines are logged but keep the capture and its audio r
   child.stderr.emit('data', Buffer.from('WARN split '));
   child.stderr.emit('data', Buffer.from('line\n'));
   assert.equal(env.sent.length, 0); assert.equal(child.killed.length, 0);
-  child.stdout.emit('data', Buffer.alloc(BLOCK_BYTES));
+  child.stdout.emit('data', Buffer.alloc(MESSAGE_BYTES));
   assert.equal(env.sent.length, 1); assert.equal(env.sent[0].id, id); assert.ok(env.sent[0].pcm);
   assert.ok(lines.some((line) => line.includes('Entity killed') && line.includes('easyeffects_sink') && line.includes('WARN')));
   assert.ok(lines.some((line) => line.includes('INFO Monitoring sink input 8')));
@@ -93,7 +105,7 @@ test('an ERROR helper line is logged and still ends the capture with its reason'
   assert.deepEqual(env.sent.at(-1), { id, error: 'Audio server disconnected or unavailable: Connection terminated' });
   assert.equal(child.killed[0], 'SIGTERM');
   assert.ok(lines.some((line) => line.includes('Connection terminated')));
-  child.stdout.emit('data', Buffer.alloc(BLOCK_BYTES));
+  child.stdout.emit('data', Buffer.alloc(MESSAGE_BYTES));
   assert.equal(env.sent.filter((m) => m.pcm).length, 0);
 });
 test('an unexpected helper exit is logged and reported', async () => {

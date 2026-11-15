@@ -1,7 +1,16 @@
 // Own one bounded native capture per window. Session ids prevent a late stop from ending a new share.
 const { spawn } = require('node:child_process');
 const { randomUUID } = require('node:crypto');
+/** One helper block: 480 stereo float frames, 10 ms at 48 kHz. */
 const BLOCK_BYTES = 480 * 2 * 4;
+/**
+ * Blocks per IPC message: 20 ms. One message per block meant ~100 messages plus ~100 acks a second
+ * through the main process. The page's player buffers 40 ms before it starts, so this is inaudible.
+ */
+const BLOCKS_PER_MESSAGE = 2;
+const MESSAGE_BYTES = BLOCK_BYTES * BLOCKS_PER_MESSAGE;
+/** Unacknowledged messages per capture (80 ms of audio); more is dropped instead of queued. */
+const MAX_IN_FLIGHT = 4;
 
 function createSystemAudio({ helper, send, spawnProcess = spawn, rootPid = process.pid, timeoutMs = 10000, log = () => {} }) {
   let current;
@@ -54,12 +63,13 @@ function createSystemAudio({ helper, send, spawnProcess = spawn, rootPid = proce
       if (current !== session || !session.ready) return;
       const bytes = Buffer.concat([session.pending, data]);
       let offset = 0;
-      while (offset + BLOCK_BYTES <= bytes.length) {
-        if (session.inFlight < 8) {
+      while (offset + MESSAGE_BYTES <= bytes.length) {
+        if (session.inFlight < MAX_IN_FLIGHT) {
           session.inFlight++;
-          send({ id, pcm: Uint8Array.from(bytes.subarray(offset, offset + BLOCK_BYTES)) });
+          // A copy: a view into the pipe's pooled buffer would serialize the whole pool.
+          send({ id, pcm: Uint8Array.from(bytes.subarray(offset, offset + MESSAGE_BYTES)) });
         }
-        offset += BLOCK_BYTES;
+        offset += MESSAGE_BYTES;
       }
       session.pending = Buffer.from(bytes.subarray(offset));
     });
@@ -76,4 +86,4 @@ function createSystemAudio({ helper, send, spawnProcess = spawn, rootPid = proce
     close: () => { if (current) stop(current.id); },
   };
 }
-module.exports = { createSystemAudio, BLOCK_BYTES };
+module.exports = { createSystemAudio, BLOCK_BYTES, MESSAGE_BYTES, MAX_IN_FLIGHT };
