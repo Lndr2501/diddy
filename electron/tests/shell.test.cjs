@@ -55,13 +55,14 @@ test('log lines have a timestamp, no newlines and a length limit', () => {
 
 test('log file is written and rotated', () => {
   const dir = tempDir();
-  const env = { HOME: dir, XDG_STATE_HOME: dir };
+  const env = { HOME: dir, XDG_STATE_HOME: dir, LOCALAPPDATA: dir };
   diag.writeLine('hello', env);
-  const file = path.join(dir, 'diddy', 'app.log');
+  const file = diag.logFile(env);
+  assert.ok(file.startsWith(dir));
   assert.match(fs.readFileSync(file, 'utf8'), /^\d+\.\d{3} hello\n$/);
   fs.writeFileSync(file, Buffer.alloc(2 * 1024 * 1024 + 1));
   diag.writeLine('after rotation', env);
-  assert.ok(fs.existsSync(path.join(dir, 'diddy', 'app.log.old')));
+  assert.ok(fs.existsSync(path.join(path.dirname(file), 'app.log.old')));
   assert.match(fs.readFileSync(file, 'utf8'), /after rotation/);
 });
 
@@ -103,7 +104,8 @@ test('profiles are saved, read back and validated', () => {
   const profiles = [{ id: ID, server: 'https://matrix.example.org' }];
   connections.saveProfiles(dir, profiles);
   assert.deepEqual(connections.readProfiles(dir), profiles);
-  assert.equal(fs.statSync(path.join(dir, 'connections.json')).mode & 0o777, 0o600);
+  // Windows has no POSIX file modes (the profile folder protects the file there)
+  if (process.platform !== 'win32') assert.equal(fs.statSync(path.join(dir, 'connections.json')).mode & 0o777, 0o600);
   fs.writeFileSync(path.join(dir, 'connections.json'), JSON.stringify([{ id: ID, server: 'http://evil.example' }]));
   assert.throws(() => connections.readProfiles(dir));
   fs.writeFileSync(path.join(dir, 'connections.json'), JSON.stringify([...profiles, ...profiles]));

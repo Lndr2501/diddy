@@ -23,7 +23,7 @@ test('account labels persist separately from profiles, update and do not rewrite
   const before = fs.statSync(file);
   setAccountLabel(dir, A, '@second:example.org');
   assert.equal(fs.statSync(file).ino, before.ino);
-  assert.equal(fs.statSync(file).mode & 0o777, 0o600);
+  if (process.platform !== 'win32') assert.equal(fs.statSync(file).mode & 0o777, 0o600);
   assert.equal(fs.existsSync(`${file}.new`), false);
 });
 
