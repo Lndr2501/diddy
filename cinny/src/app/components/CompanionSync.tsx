@@ -19,7 +19,8 @@ import {
  * - switches this computer's own microphone and camera off while the phone sends them (two
  *   microphones of one person would echo) and back on afterwards,
  * - full mute here silences the phone's microphone too,
- * - leaving the call (or switching to another) ends it on the phone.
+ * - leaving the call (or switching to another) ends it on the phone,
+ * - when the phone leaves by itself or goes silent (companion.ts), takes them back.
  */
 export function CompanionSync() {
   const mx = useMatrixClient();
@@ -58,7 +59,8 @@ export function CompanionSync() {
       }
       return;
     }
-    if (companion.phase === 'idle') {
+    // ended here, or the iPhone left or went silent: this computer's own back on
+    if (companion.phase === 'idle' || companion.phase === 'ended') {
       if (restore.current.microphone && !control.microphone && control.sound) {
         control.toggleMicrophone(true);
       }

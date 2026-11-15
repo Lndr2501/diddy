@@ -28,6 +28,11 @@ let parsed = (try? JSONSerialization.jsonObject(with: Data(state.utf8))) as? [St
 check(parsed?["joined"] as? Bool == true && parsed?["device_id"] as? String == "PHONE", "state written")
 check(parsed?["microphone"] as? Bool == true && parsed?["camera"] as? Bool == false && parsed?["screen"] as? Bool == true, "state media")
 check((parsed?["v"] as? NSNumber)?.intValue == 1, "state version")
+check(parsed?["background"] as? Bool == false, "state in front by default")
+let away = C.state(requestId: "r1", deviceId: "PHONE", joined: true, media: C.Media(camera: true, microphone: true, screen: false), background: true)
+let awayParsed = (try? JSONSerialization.jsonObject(with: Data(away.utf8))) as? [String: Any]
+check(awayParsed?["background"] as? Bool == true, "state in the background")
+check(C.heartbeatSeconds * 3 <= 70, "the phone says it is there well within the computer's 70 s")
 
 check(C.accepts(sender: "@me:hs", ownUserId: "@me:hs", encrypted: true, requestDevice: "DESK", ownDeviceId: "PHONE"), "own other device accepted")
 check(!C.accepts(sender: "@other:hs", ownUserId: "@me:hs", encrypted: true, requestDevice: "DESK", ownDeviceId: "PHONE"), "someone else refused")

@@ -56,13 +56,19 @@ enum CompanionProtocol {
                        camera: content["camera"] as? Bool, end: content["end"] as? Bool ?? false)
     }
 
-    /// What the phone tells the computer: joined or not, and what it sends right now.
-    static func state(requestId: String, deviceId: String, joined: Bool, media: Media) -> String {
+    /// While connected the phone says it is there this often, also when nothing changed: the
+    /// computer takes its own microphone and camera back when it hears nothing for 70 seconds.
+    static let heartbeatSeconds: UInt64 = 20
+
+    /// What the phone tells the computer: joined or not, what it sends right now, and whether
+    /// Diddy is in the background (iOS pauses the camera there).
+    static func state(requestId: String, deviceId: String, joined: Bool, media: Media, background: Bool = false) -> String {
         let content: [String: Any] = [
             "v": 1,
             "request_id": requestId,
             "device_id": deviceId,
             "joined": joined,
+            "background": background,
             "camera": media.camera,
             "microphone": media.microphone,
             "screen": media.screen,

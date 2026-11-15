@@ -15,7 +15,15 @@ export type CompanionMedia = { camera: boolean; microphone: boolean; screen: boo
 
 export const NO_MEDIA: CompanionMedia = { camera: false, microphone: false, screen: false };
 
-export type CompanionPhase = 'idle' | 'waiting' | 'connected' | 'declined' | 'timeout';
+export type CompanionPhase = 'idle' | 'waiting' | 'connected' | 'declined' | 'timeout' | 'ended';
+
+/** Why it ended without you ending it here: the iPhone left, or it went silent. */
+export type CompanionEndReason = 'left' | 'lost';
+
+/** While connected the phone says it is there this often (also when nothing changed). */
+export const COMPANION_HEARTBEAT_MS = 20 * 1000;
+/** No word from the phone for this long: it is gone (app closed, no network). */
+export const COMPANION_LOST_MS = 70 * 1000;
 
 export type CompanionSnapshot = {
   phase: CompanionPhase;
@@ -27,6 +35,12 @@ export type CompanionSnapshot = {
   phoneDeviceId?: string;
   /** what the phone sends right now */
   phone?: CompanionMedia;
+  /** Diddy is in the background on the phone: iOS pauses its camera there */
+  phoneBackground?: boolean;
+  /** the phone says regularly that it is there (older phones did not; they are never "lost") */
+  phoneBeats?: boolean;
+  /** set when the phase is 'ended' */
+  endReason?: CompanionEndReason;
 };
 
 export const IDLE: CompanionSnapshot = { phase: 'idle' };
@@ -60,6 +74,9 @@ export type CompanionState = {
   deviceId: string;
   joined: boolean;
   media: CompanionMedia;
+  background: boolean;
+  /** sent by phones that say regularly that they are there (they send `background`) */
+  beats: boolean;
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -77,6 +94,8 @@ export const parseCompanionState = (content: unknown): CompanionState | undefine
     requestId,
     deviceId,
     joined: content.joined === true,
+    background: content.background === true,
+    beats: typeof content.background === 'boolean',
     media: {
       camera: content.camera === true,
       microphone: content.microphone === true,
@@ -97,7 +116,32 @@ export const applyCompanionState = (
   if (!state.joined) {
     return snapshot.phase === 'waiting'
       ? { ...snapshot, phase: 'declined', phoneDeviceId: state.deviceId }
-      : IDLE;
+      : { ...snapshot, phase: 'ended', endReason: 'left' };
   }
-  return { ...snapshot, phase: 'connected', phoneDeviceId: state.deviceId, phone: state.media };
+  const same = (a?: CompanionMedia, b?: CompanionMedia) =>
+    !!a && !!b && a.camera === b.camera && a.microphone === b.microphone && a.screen === b.screen;
+  // the phone's regular "still here" changes nothing
+  if (
+    snapshot.phase === 'connected' &&
+    same(snapshot.phone, state.media) &&
+    !!snapshot.phoneBackground === state.background
+  ) {
+    return snapshot;
+  }
+  return {
+    ...snapshot,
+    phase: 'connected',
+    phoneDeviceId: state.deviceId,
+    phone: state.media,
+    phoneBackground: state.background,
+    phoneBeats: state.beats,
+  };
 };
+
+/** The phone was connected but has said nothing for too long (closed, crashed, no network). */
+export const companionLost = (
+  snapshot: CompanionSnapshot,
+  lastHeard: number,
+  now: number
+): boolean =>
+  snapshot.phase === 'connected' && !!snapshot.phoneBeats && now - lastHeard > COMPANION_LOST_MS;

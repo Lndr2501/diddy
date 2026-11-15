@@ -10,6 +10,7 @@ import {
   MenuItem,
   PopOut,
   RectCords,
+  Spinner,
   Text,
   toRem,
   Tooltip,
@@ -29,13 +30,25 @@ export function ControlDivider() {
   );
 }
 
+/** A small iPhone on a button that works your iPhone instead of this computer. */
+function PhoneBadge() {
+  return (
+    <span className={css.PhoneBadge} aria-hidden>
+      <Icon size="50" src={Icons.Phone} filled />
+    </span>
+  );
+}
+
 type MicrophoneButtonProps = {
   enabled: boolean;
   onToggle: () => Promise<unknown>;
+  /** works your iPhone (camera & mic) instead of this computer */
+  phone?: boolean;
 };
-export function MicrophoneButton({ enabled, onToggle }: MicrophoneButtonProps) {
+export function MicrophoneButton({ enabled, onToggle, phone }: MicrophoneButtonProps) {
   const [micState, toggleMic] = useAsyncCallback(onToggle);
   const loading = micState.status === AsyncStatus.Loading;
+  const what = phone ? 'iPhone Microphone' : 'Microphone';
 
   return (
     <TooltipProvider
@@ -43,7 +56,7 @@ export function MicrophoneButton({ enabled, onToggle }: MicrophoneButtonProps) {
       delay={500}
       tooltip={
         <Tooltip>
-          <Text size="T200">{enabled ? 'Turn Off Microphone' : 'Turn On Microphone'}</Text>
+          <Text size="T200">{enabled ? `Turn Off ${what}` : `Turn On ${what}`}</Text>
         </Tooltip>
       }
     >
@@ -57,8 +70,10 @@ export function MicrophoneButton({ enabled, onToggle }: MicrophoneButtonProps) {
           className={css.ControlButton}
           onClick={ignoreRejection(toggleMic)}
           disabled={loading}
+          aria-label={enabled ? `Turn off ${what.toLowerCase()}` : `Turn on ${what.toLowerCase()}`}
         >
           <Icon size="400" src={enabled ? Icons.Mic : Icons.MicMute} filled={!enabled} />
+          {phone && <PhoneBadge />}
         </IconButton>
       )}
     </TooltipProvider>
@@ -104,10 +119,13 @@ export function SoundButton({ enabled, onToggle }: SoundButtonProps) {
 type VideoButtonProps = {
   enabled: boolean;
   onToggle: () => Promise<unknown>;
+  /** works your iPhone (camera & mic) instead of this computer */
+  phone?: boolean;
 };
-export function VideoButton({ enabled, onToggle }: VideoButtonProps) {
+export function VideoButton({ enabled, onToggle, phone }: VideoButtonProps) {
   const [videoState, toggleVideo] = useAsyncCallback(onToggle);
   const loading = videoState.status === AsyncStatus.Loading;
+  const what = phone ? 'iPhone Camera' : 'Camera';
 
   return (
     <TooltipProvider
@@ -115,7 +133,7 @@ export function VideoButton({ enabled, onToggle }: VideoButtonProps) {
       delay={500}
       tooltip={
         <Tooltip>
-          <Text size="T200">{enabled ? 'Stop Camera' : 'Start Camera'}</Text>
+          <Text size="T200">{enabled ? `Stop ${what}` : `Start ${what}`}</Text>
         </Tooltip>
       }
     >
@@ -135,6 +153,7 @@ export function VideoButton({ enabled, onToggle }: VideoButtonProps) {
             src={enabled ? Icons.VideoCamera : Icons.VideoCameraMute}
             filled={enabled}
           />
+          {phone && <PhoneBadge />}
         </IconButton>
       )}
     </TooltipProvider>
@@ -318,6 +337,47 @@ export function ShareOptionsButton({ audio, onStop }: ShareOptionsButtonProps) {
         <Icon size="50" src={Icons.ChevronTop} />
       </IconButton>
     </PopOut>
+  );
+}
+
+export type PhoneButtonState = 'idle' | 'waiting' | 'connected';
+
+/** "iPhone as camera & mic": opens the dialog; shows waiting and connected (CompanionDialog.tsx). */
+export function PhoneButton({ state, onClick }: { state: PhoneButtonState; onClick: () => void }) {
+  let label = 'Use iPhone as Camera & Mic';
+  if (state === 'waiting') label = 'Waiting for Your iPhone…';
+  if (state === 'connected') label = 'iPhone Connected';
+  return (
+    <TooltipProvider
+      position="Top"
+      delay={500}
+      tooltip={
+        <Tooltip>
+          <Text size="T200">{label}</Text>
+        </Tooltip>
+      }
+    >
+      {(anchorRef) => (
+        <IconButton
+          ref={anchorRef}
+          variant={state === 'connected' ? 'Success' : 'SurfaceVariant'}
+          fill="Soft"
+          radii="400"
+          size="400"
+          className={css.ControlButton}
+          data-waiting={state === 'waiting' || undefined}
+          onClick={onClick}
+          aria-label={label}
+          aria-pressed={state === 'connected'}
+        >
+          {state === 'waiting' ? (
+            <Spinner size="200" variant="Secondary" />
+          ) : (
+            <Icon size="400" src={Icons.Phone} filled={state === 'connected'} />
+          )}
+        </IconButton>
+      )}
+    </TooltipProvider>
   );
 }
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { ReactNode, useState } from 'react';
 import {
   Box,
   Button,
@@ -8,10 +8,12 @@ import {
   Icon,
   IconButton,
   Icons,
+  IconSrc,
   Overlay,
   OverlayBackdrop,
   OverlayCenter,
   Spinner,
+  Switch,
   Text,
   color,
   config,
@@ -20,6 +22,7 @@ import {
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { CallEmbed } from '../../plugins/call';
 import {
+  controlCompanion,
   dismissCompanion,
   endCompanion,
   requestCompanion,
@@ -28,17 +31,66 @@ import {
 import { CompanionMedia } from '../../plugins/call/companionProtocol';
 import * as css from './styles.css';
 
-const MEDIA_ROWS: { key: keyof CompanionMedia; label: string; hint: string }[] = [
-  { key: 'camera', label: 'Camera', hint: 'You can turn it around on the iPhone.' },
+const MEDIA_ROWS: { key: keyof CompanionMedia; label: string; hint: string; icon: IconSrc }[] = [
+  {
+    key: 'camera',
+    label: 'Camera',
+    hint: 'You can turn it around on the iPhone.',
+    icon: Icons.VideoCamera,
+  },
   {
     key: 'microphone',
     label: 'Microphone',
-    hint: "This computer's microphone goes off meanwhile.",
+    hint: "Usually much better than a computer's microphone.",
+    icon: Icons.Mic,
   },
-  { key: 'screen', label: 'Screen', hint: 'The iPhone shares its whole screen.' },
+  {
+    key: 'screen',
+    label: 'Screen',
+    hint: 'The iPhone shares its whole screen, apps and games included.',
+    icon: Icons.ScreenShare,
+  },
 ];
 
-/** "Use iPhone as Camera & Mic": pick what the phone sends and ask it (CompanionSync.tsx). */
+const STEPS = ['Choose', 'Confirm on iPhone', 'Connected'];
+
+const stepState = (i: number, current: number): 'done' | 'now' | 'next' => {
+  if (i < current) return 'done';
+  return i === current ? 'now' : 'next';
+};
+
+function Steps({ current }: { current: number }) {
+  return (
+    <Box alignItems="Center" gap="200" aria-label={`Step ${current + 1} of ${STEPS.length}`}>
+      {STEPS.map((step, i) => (
+        <Box key={step} alignItems="Center" gap="100">
+          <span className={css.CompanionStep} data-state={stepState(i, current)}>
+            {i < current ? <Icon size="50" src={Icons.Check} /> : i + 1}
+          </span>
+          <Text size="T200" priority={i === current ? '500' : '300'}>
+            {step}
+          </Text>
+        </Box>
+      ))}
+    </Box>
+  );
+}
+
+function Fact({ icon, children }: { icon: IconSrc; children: ReactNode }) {
+  return (
+    <Box alignItems="Start" gap="200">
+      <Icon size="100" src={icon} />
+      <Text size="T300" priority="300">
+        {children}
+      </Text>
+    </Box>
+  );
+}
+
+/**
+ * "iPhone as camera & mic" in three steps: pick what the iPhone sends, confirm on the iPhone,
+ * connected (with its switches). The sync with the call: components/CompanionSync.tsx.
+ */
 export function CompanionDialog({
   callEmbed,
   onClose,
@@ -74,60 +126,148 @@ export function CompanionDialog({
     onClose();
   };
 
-  let body: React.ReactNode;
-  if (companion.phase === 'waiting') {
+  let step = 0;
+  if (companion.phase === 'waiting') step = 1;
+  if (companion.phase === 'connected') step = 2;
+
+  let body: ReactNode;
+  let actions: ReactNode;
+  if (step === 1) {
     body = (
-      <Box alignItems="Center" gap="300">
-        <Spinner size="200" variant="Secondary" />
-        <Text size="T300">
-          Open Diddy on your iPhone and tap Join. It also shows as a notification while Diddy runs
-          there.
+      <Box direction="Column" alignItems="Center" gap="300" style={{ padding: config.space.S400 }}>
+        <span className={css.CompanionHero}>
+          <Icon size="600" src={Icons.Phone} />
+          <Spinner className={css.CompanionHeroSpinner} size="600" variant="Secondary" />
+        </span>
+        <Text size="H4" align="Center">
+          Look at your iPhone
+        </Text>
+        <Text size="T300" priority="300" align="Center">
+          Diddy on your iPhone asks to join this call. Tap Join there. If Diddy is closed on the
+          iPhone, open it: the request waits two minutes.
         </Text>
       </Box>
     );
-  } else if (companion.phase === 'connected') {
-    const sends = MEDIA_ROWS.filter((row) => companion.phone?.[row.key]).map((row) => row.label);
+    actions = (
+      <Button variant="Secondary" fill="Soft" size="400" onClick={() => endCompanion(mx)}>
+        <Text size="B400">Cancel</Text>
+      </Button>
+    );
+  } else if (step === 2) {
+    const phone = companion.phone ?? { camera: false, microphone: false, screen: false };
     body = (
-      <Text size="T300">
-        {`Your iPhone is in the call${
-          sends.length ? ` and sends: ${sends.join(', ')}` : ''
-        }. The microphone and camera buttons of the call bar work the iPhone now.`}
-      </Text>
+      <Box direction="Column" gap="300">
+        <Box alignItems="Center" gap="200">
+          <Icon size="200" src={Icons.Check} style={{ color: color.Success.Main }} />
+          <Text size="H4">Your iPhone is in the call</Text>
+        </Box>
+        <Box direction="Column" gap="200" className={css.CompanionLive}>
+          {MEDIA_ROWS.filter((r) => r.key !== 'screen').map((row) => {
+            const { key } = row;
+            return (
+              <Box key={key} alignItems="Center" gap="300">
+                <Icon size="100" src={row.icon} />
+                <Text size="T300" style={{ flexGrow: 1 }}>
+                  {`${row.label}: ${phone[key] ? 'on' : 'off'}`}
+                </Text>
+                <Switch
+                  variant="Success"
+                  value={phone[key]}
+                  onChange={(on: boolean) => controlCompanion(mx, { [key]: on })}
+                  aria-label={`iPhone ${row.label.toLowerCase()}`}
+                />
+              </Box>
+            );
+          })}
+          <Box alignItems="Center" gap="300">
+            <Icon size="100" src={Icons.ScreenShare} />
+            <Text size="T300" style={{ flexGrow: 1 }}>
+              {phone.screen ? 'Screen: shared' : 'Screen: not shared (start it on the iPhone)'}
+            </Text>
+          </Box>
+        </Box>
+        <Fact icon={Icons.Info}>
+          The microphone and camera buttons in the call bar now work your iPhone; they show a small
+          phone. This computer&apos;s own microphone and camera are off until you disconnect.
+        </Fact>
+        <Fact icon={Icons.Headphone}>The call sound keeps playing on this computer.</Fact>
+        <Fact icon={Icons.Warning}>
+          {companion.phoneBackground && phone.camera
+            ? 'Diddy is in the background on your iPhone, so iOS paused its camera. Open Diddy there.'
+            : 'Keep Diddy open on the iPhone: iOS pauses the camera when you leave the app. The microphone keeps going.'}
+        </Fact>
+        <Fact icon={Icons.Phone}>
+          If the iPhone leaves the call or loses its connection, this computer takes its own
+          microphone and camera back by itself.
+        </Fact>
+      </Box>
+    );
+    actions = (
+      <>
+        <Button
+          variant="Critical"
+          fill="Soft"
+          size="400"
+          onClick={() => {
+            endCompanion(mx);
+            onClose();
+          }}
+        >
+          <Text size="B400">Disconnect iPhone</Text>
+        </Button>
+        <Button variant="Primary" size="400" onClick={onClose}>
+          <Text size="B400">Done</Text>
+        </Button>
+      </>
     );
   } else {
     body = (
       <Box direction="Column" gap="300">
         <Text size="T300" priority="300">
-          Your iPhone joins this call as a second device of yours and sends what you pick. The call
-          sound keeps playing here. Needs the Diddy iPhone app signed in to this account.
+          Your iPhone joins this call as a second device of yours and sends what you pick here.
+          Needs the Diddy iPhone app, signed in to this account.
         </Text>
-        {MEDIA_ROWS.map((row) => (
-          <Box
-            key={row.key}
-            as="label"
-            htmlFor={`companion-${row.key}`}
-            alignItems="Start"
-            gap="300"
-            className={css.CompanionRow}
-          >
-            <Checkbox
-              id={`companion-${row.key}`}
-              variant="Primary"
-              size="300"
-              checked={media[row.key]}
-              onClick={() => setMedia((m) => ({ ...m, [row.key]: !m[row.key] }))}
-            />
-            <Box direction="Column">
-              <Text size="T300">{row.label}</Text>
-              <Text size="T200" priority="300">
-                {row.hint}
-              </Text>
+        <Box direction="Column" gap="200">
+          {MEDIA_ROWS.map((row) => (
+            <Box
+              key={row.key}
+              as="label"
+              htmlFor={`companion-${row.key}`}
+              alignItems="Start"
+              gap="300"
+              className={css.CompanionRow}
+            >
+              <Checkbox
+                id={`companion-${row.key}`}
+                variant="Primary"
+                size="300"
+                checked={media[row.key]}
+                onClick={() => setMedia((m) => ({ ...m, [row.key]: !m[row.key] }))}
+              />
+              <Icon size="100" src={row.icon} />
+              <Box direction="Column">
+                <Text size="T300">{row.label}</Text>
+                <Text size="T200" priority="300">
+                  {row.hint}
+                </Text>
+              </Box>
             </Box>
-          </Box>
-        ))}
+          ))}
+        </Box>
+        <Fact icon={Icons.Headphone}>The call sound keeps playing here, not on the iPhone.</Fact>
+        <Fact icon={Icons.MicMute}>
+          This computer&apos;s microphone and camera go off while the iPhone sends them.
+        </Fact>
         {companion.phase === 'declined' && (
           <Text size="T200" style={{ color: color.Critical.Main }}>
             Your iPhone said Not Now.
+          </Text>
+        )}
+        {companion.phase === 'ended' && (
+          <Text size="T200" style={{ color: color.Critical.Main }}>
+            {companion.endReason === 'lost'
+              ? 'Lost your iPhone (closed or no network). This computer’s mic and camera are back.'
+              : 'Your iPhone left the call. This computer’s mic and camera are back.'}
           </Text>
         )}
         {companion.phase === 'timeout' && (
@@ -137,12 +277,22 @@ export function CompanionDialog({
         )}
       </Box>
     );
+    actions = (
+      <>
+        <Button variant="Secondary" fill="Soft" size="400" onClick={close}>
+          <Text size="B400">Cancel</Text>
+        </Button>
+        <Button variant="Primary" size="400" onClick={send} disabled={!anything || sending}>
+          <Text size="B400">{sending ? 'Asking…' : 'Ask My iPhone'}</Text>
+        </Button>
+      </>
+    );
   }
 
   return (
     <Overlay open backdrop={<OverlayBackdrop />}>
       <OverlayCenter>
-        <Dialog variant="Surface" style={{ width: toRem(440), maxWidth: '96vw' }}>
+        <Dialog variant="Surface" style={{ width: toRem(460), maxWidth: '96vw' }}>
           <Header
             style={{
               padding: `0 ${config.space.S200} 0 ${config.space.S400}`,
@@ -159,6 +309,7 @@ export function CompanionDialog({
             </IconButton>
           </Header>
           <Box style={{ padding: config.space.S400 }} direction="Column" gap="400">
+            <Steps current={step} />
             {body}
             {error && (
               <Text size="T200" style={{ color: color.Critical.Main }}>
@@ -166,35 +317,7 @@ export function CompanionDialog({
               </Text>
             )}
             <Box justifyContent="End" gap="200">
-              {companion.phase === 'waiting' || companion.phase === 'connected' ? (
-                <Button
-                  variant="Critical"
-                  fill="Soft"
-                  size="400"
-                  onClick={() => {
-                    endCompanion(mx);
-                    onClose();
-                  }}
-                >
-                  <Text size="B400">
-                    {companion.phase === 'connected' ? 'Disconnect iPhone' : 'Cancel'}
-                  </Text>
-                </Button>
-              ) : (
-                <>
-                  <Button variant="Secondary" fill="Soft" size="400" onClick={close}>
-                    <Text size="B400">Cancel</Text>
-                  </Button>
-                  <Button
-                    variant="Primary"
-                    size="400"
-                    onClick={send}
-                    disabled={!anything || sending}
-                  >
-                    <Text size="B400">Ask my iPhone</Text>
-                  </Button>
-                </>
-              )}
+              {actions}
             </Box>
           </Box>
         </Dialog>
