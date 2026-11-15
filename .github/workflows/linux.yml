@@ -86,6 +86,10 @@ jobs:
         env:
           DIDDY_TEST_NO_SANDBOX: "1"
         run: timeout 90s xvfb-run -a node electron/tests/desktop-smoke.cjs electron/dist/linux-unpacked/diddy
+      - name: Start the packaged app once (same check as the Windows build)
+        env:
+          DIDDY_TEST_NO_SANDBOX: "1"
+        run: timeout 120s xvfb-run -a node electron/tests/start-smoke.cjs electron/dist/linux-unpacked/diddy --no-sandbox
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: diddy-linux

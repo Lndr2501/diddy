@@ -3,6 +3,7 @@ name: Release
 #
 #   build.yml  (macOS, Tauri)     Diddy_X.Y.Z_aarch64.dmg
 #   linux.yml  (Electron)         Diddy_X.Y.Z_x86_64.AppImage (+ .zsync for AppImageUpdate), Diddy_X.Y.Z_amd64.deb, Diddy_X.Y.Z_x86_64.rpm
+#   windows.yml (Electron)        Diddy_X.Y.Z_x64-setup.exe
 #   ios.yml    (SwiftUI)          Diddy_X.Y.Z_iOS_unsigned.ipa (or Diddy_X.Y.Z_iOS.ipa when signed)
 #   + SHA256SUMS over all of them
 #
@@ -20,7 +21,7 @@ name: Release
 # Signing is optional everywhere and degrades to unsigned builds without the secrets: macOS
 # (APPLE_CERTIFICATE, APPLE_CERTIFICATE_PASSWORD, APPLE_SIGNING_IDENTITY, notarization:
 # APPLE_ID, APPLE_PASSWORD, APPLE_TEAM_ID) and iOS (APPLE_TEAM_ID, ASC_KEY_ID, ASC_ISSUER_ID,
-# ASC_KEY_P8). Linux packages are not signed.
+# ASC_KEY_P8). Linux packages and the Windows installer are not signed.
 on:
   push:
     tags:
@@ -86,6 +87,10 @@ jobs:
     needs: check
     uses: ./.github/workflows/linux.yml
 
+  windows:
+    needs: check
+    uses: ./.github/workflows/windows.yml
+
   ios:
     # The IPA is a bonus: a failing iOS build does not hold back the desktop packages (publish below
     # does not need it to succeed). Re-run the failed jobs afterwards to add it to the release.
@@ -98,8 +103,8 @@ jobs:
       contents: write
 
   publish:
-    needs: [check, macos, linux, ios]
-    if: ${{ !cancelled() && needs.macos.result == 'success' && needs.linux.result == 'success' }}
+    needs: [check, macos, linux, windows, ios]
+    if: ${{ !cancelled() && needs.macos.result == 'success' && needs.linux.result == 'success' && needs.windows.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -126,7 +131,7 @@ jobs:
         run: |
           ls -l dist
           missing=0
-          for f in "Diddy_${VERSION}_aarch64.dmg" "Diddy_${VERSION}_x86_64.AppImage" "Diddy_${VERSION}_x86_64.AppImage.zsync" "Diddy_${VERSION}_amd64.deb" "Diddy_${VERSION}_x86_64.rpm"; do
+          for f in "Diddy_${VERSION}_aarch64.dmg" "Diddy_${VERSION}_x86_64.AppImage" "Diddy_${VERSION}_x86_64.AppImage.zsync" "Diddy_${VERSION}_amd64.deb" "Diddy_${VERSION}_x86_64.rpm" "Diddy_${VERSION}_x64-setup.exe"; do
             if [ ! -s "dist/$f" ]; then echo "::error::dist/$f is missing"; missing=1; fi
           done
           if ! ls dist/*.ipa >/dev/null 2>&1; then
@@ -163,13 +168,14 @@ jobs:
           | Linux x86_64, most distributions (on Ubuntu 24.04+ prefer the .deb) | \`Diddy_${version}_x86_64.AppImage\` | \`chmod +x Diddy_*.AppImage && ./Diddy_*.AppImage\` (updates with AppImageUpdate) |
           | Debian / Ubuntu | \`Diddy_${version}_amd64.deb\` | \`sudo apt install ./Diddy_*.deb\` |
           | Fedora / openSUSE | \`Diddy_${version}_x86_64.rpm\` | \`sudo dnf install ./Diddy_*.rpm\` |
+          | Windows 10 / 11 (x64) | \`Diddy_${version}_x64-setup.exe\` | Run the installer. It is not signed: if Windows SmartScreen warns, click "More info", then "Run anyway" |
           | iPhone / iPad | \`Diddy_${version}_iOS_unsigned.ipa\` | Sideload with AltStore, SideStore or Sideloadly (see ios/README.md) |
 
-          The Linux packages are not signed. \`SHA256SUMS\` lists the checksums of all files.
+          The Linux packages and the Windows installer are not signed. \`SHA256SUMS\` lists the checksums of all files.
 
           NOTES
           cat "$RUNNER_TEMP/changes.md" >> "$RUNNER_TEMP/notes.md"
-          (cd dist && shopt -s nullglob && sha256sum -- *.dmg *.AppImage *.deb *.rpm *.ipa > SHA256SUMS && cat SHA256SUMS)
+          (cd dist && shopt -s nullglob && sha256sum -- *.dmg *.AppImage *.deb *.rpm *.exe *.ipa > SHA256SUMS && cat SHA256SUMS)
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "Release $TAG exists: replacing its assets and text"
             gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --clobber

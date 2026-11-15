@@ -18,7 +18,10 @@ if (connection) {
 }
 
 // Only the trusted top frame gets the audio transport; the call iframe uses its parent's wrapper.
-contextBridge.exposeInMainWorld('__DIDDY_SYS_AUDIO__', {
+// Linux only: the capture helper is built for PulseAudio/PipeWire. On Windows, Chromium's loopback
+// capture would include the call itself (the others would hear themselves), so screen sharing there
+// stays video-only and the page offers no system-audio switch.
+if (process.platform === 'linux') contextBridge.exposeInMainWorld('__DIDDY_SYS_AUDIO__', {
   start: () => ipcRenderer.invoke('diddy:audio-start'),
   stop: (id) => ipcRenderer.invoke('diddy:audio-stop', id),
   subscribe: (listener) => {

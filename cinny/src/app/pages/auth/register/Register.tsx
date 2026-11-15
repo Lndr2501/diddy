@@ -5,12 +5,12 @@ import { SSOAction } from 'matrix-js-sdk';
 import { useAuthServer } from '../../../hooks/useAuthServer';
 import { RegisterFlowStatus, useAuthFlows } from '../../../hooks/useAuthFlows';
 import { useParsedLoginFlows } from '../../../hooks/useParsedLoginFlows';
-import { PasswordRegisterForm, SUPPORTED_REGISTER_STAGES } from '../register/PasswordRegisterForm';
+import { PasswordRegisterForm } from '../register/PasswordRegisterForm';
 import { OrDivider } from '../OrDivider';
 import { SSOLogin } from '../SSOLogin';
-import { SupportedUIAFlowsLoader } from '../../../components/SupportedUIAFlowsLoader';
 import { getLoginPath } from '../../pathUtils';
 import { usePathWithOrigin } from '../../../hooks/usePathWithOrigin';
+import { serverLabel } from '../../../utils/uiaFallback';
 import { RegisterPathSearchParams } from '../../paths';
 
 const useRegisterSearchParams = (searchParams: URLSearchParams): RegisterPathSearchParams =>
@@ -35,9 +35,14 @@ export function Register() {
 
   return (
     <Box direction="Column" gap="500">
-      <Text size="H2" priority="400">
-        Register
-      </Text>
+      <Box direction="Column" gap="100">
+        <Text size="H2" priority="400">
+          Create an Account
+        </Text>
+        <Text size="T300" priority="300">
+          {`Your account lives on ${serverLabel(server)}. Pick another server above if you prefer.`}
+        </Text>
+      </Box>
       {registerFlows.status === RegisterFlowStatus.RegistrationDisabled && !sso && (
         <Text style={{ color: color.Critical.Main }} size="T300">
           Registration has been disabled on this homeserver.
@@ -55,26 +60,20 @@ export function Register() {
       )}
       {registerFlows.status === RegisterFlowStatus.FlowRequired && (
         <>
-          <SupportedUIAFlowsLoader
-            flows={registerFlows.data.flows ?? []}
-            supportedStages={SUPPORTED_REGISTER_STAGES}
-          >
-            {(supportedFlows) =>
-              supportedFlows.length === 0 ? (
-                <Text style={{ color: color.Critical.Main }} size="T300">
-                  This application does not support registration on this homeserver.
-                </Text>
-              ) : (
-                <PasswordRegisterForm
-                  authData={registerFlows.data}
-                  uiaFlows={supportedFlows}
-                  defaultUsername={registerSearchParams.username}
-                  defaultEmail={registerSearchParams.email}
-                  defaultRegisterToken={registerSearchParams.token}
-                />
-              )
-            }
-          </SupportedUIAFlowsLoader>
+          {/* Every flow can be completed: steps the form does not show run on the server's page. */}
+          {(registerFlows.data.flows ?? []).length === 0 ? (
+            <Text style={{ color: color.Critical.Main }} size="T300">
+              This server does not offer any way to create an account.
+            </Text>
+          ) : (
+            <PasswordRegisterForm
+              authData={registerFlows.data}
+              uiaFlows={registerFlows.data.flows ?? []}
+              defaultUsername={registerSearchParams.username}
+              defaultEmail={registerSearchParams.email}
+              defaultRegisterToken={registerSearchParams.token}
+            />
+          )}
           <span data-spacing-node />
           {sso && <OrDivider />}
         </>
@@ -86,12 +85,13 @@ export function Register() {
             redirectUrl={ssoRedirectUrl}
             action={SSOAction.REGISTER}
             saveScreenSpace={registerFlows.status === RegisterFlowStatus.FlowRequired}
+            server={serverLabel(server)}
           />
           <span data-spacing-node />
         </>
       )}
       <Text align="Center">
-        Already have an account? <Link to={getLoginPath(server)}>Login</Link>
+        Already have an account? <Link to={getLoginPath(server)}>Log in</Link>
       </Text>
     </Box>
   );

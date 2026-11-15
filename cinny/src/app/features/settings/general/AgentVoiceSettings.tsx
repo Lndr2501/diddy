@@ -178,7 +178,7 @@ export function AgentVoiceSettings() {
             {linuxDesktop && (
               <InsetRow
                 title="Also in the background"
-                description="Reserves the key for Diddy system-wide (desktop shortcut portal on Wayland, global shortcut on X11). Other apps, such as a dictation tool using the same key, then no longer get it; use a key of its own, or leave this off and let the tool run diddy --agent-voice."
+                description="Reserves the key for Diddy system-wide (desktop shortcut portal on Wayland, global shortcut on X11 and Windows). Other apps, such as a dictation tool using the same key, then no longer get it; use a key of its own, or leave this off and let the tool run diddy --agent-voice."
                 after={
                   <Switch
                     variant="Primary"

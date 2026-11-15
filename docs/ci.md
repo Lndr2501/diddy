@@ -114,3 +114,13 @@ context when a voice first exceeds 100 %. Subsequent levels, mute, deafen and ou
 volume all scale that graph; the original audio element stays silent to avoid echo.
 Screen-share volume retains its existing range. Regression tests cover the shipped
 setter, gain scaling, replacement elements, persistence, mute and rejoin.
+
+## Windows installer
+
+`windows.yml` builds the frontend on Linux (the same build as the Linux packages) and hands it to
+a Windows job. That job checks out with LF line endings (the Electron tests read sources line by
+line), runs `electron` tests, builds the NSIS installer (`npm run dist:win`), checks that the
+Linux capture helpers are not packaged, and starts the packaged `Diddy.exe` once with
+`electron/tests/start-smoke.cjs` (page loaded, desktop API present, log in `%LOCALAPPDATA%`). The
+same smoke test runs on the Linux package. `release.yml` publishes `Diddy_X.Y.Z_x64-setup.exe`;
+it is not code-signed.

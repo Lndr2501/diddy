@@ -113,8 +113,9 @@ final class LoginService: ObservableObject {
         }
     }
 
-    /// Step 2b: the homeserver's own login page (Matrix Authentication Service).
-    func loginWithOAuth() async -> (AccountRecord, Client)? {
+    /// Step 2b: the homeserver's own login page (Matrix Authentication Service). With `create`
+    /// the page opens on "create account" (OAuth `prompt=create`), and signs in afterwards.
+    func loginWithOAuth(create: Bool = false) async -> (AccountRecord, Client)? {
         guard let client, var record else { return nil }
         error = nil
         busy = true
@@ -122,7 +123,7 @@ final class LoginService: ObservableObject {
         do {
             let data = try await client.urlForOauth(
                 oauthConfiguration: Self.oauthConfiguration,
-                prompt: nil,
+                prompt: create ? .create : nil,
                 loginHint: nil,
                 deviceId: nil,
                 additionalScopes: nil
@@ -144,6 +145,16 @@ final class LoginService: ObservableObject {
             return nil
         }
     }
+
+    /// After Registration created the account: signs in with the same name and password.
+    func loginAfterRegistration(userId: String?, username: String, password: String) async -> (AccountRecord, Client)? {
+        self.username = userId ?? username
+        self.password = password
+        return await loginWithPassword()
+    }
+
+    /// The homeserver address found in step 1, for Registration.
+    var resolvedServerURL: URL? { resolvedServer.flatMap(URL.init(string:)) }
 
     private func finish(client: Client, record: inout AccountRecord) throws -> (AccountRecord, Client) {
         let session = try client.session()
@@ -174,6 +185,9 @@ final class LoginService: ObservableObject {
             }
         }
     }
+
+    /// Name of the session a new account starts with (same as a normal login).
+    static var registrationDeviceName: String { deviceName }
 
     private static var deviceName: String {
         "Diddy \(UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone")"
