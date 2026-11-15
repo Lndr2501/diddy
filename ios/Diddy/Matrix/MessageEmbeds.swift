@@ -149,7 +149,8 @@ enum LinkEmbedRules {
 /// desktop's `parseLinkMeta`. The app fetches the page itself in encrypted chats and when the
 /// homeserver has no preview (#197).
 enum LinkPageMeta {
-    private static let headLimit = 512 * 1024
+    /// YouTube's head alone is about 800 KB.
+    private static let headLimit = 2 * 1024 * 1024
 
     static func parse(html: String, pageURL: String) -> LinkPreviewData? {
         var head = String(html.prefix(headLimit))

@@ -59,9 +59,10 @@ actor LinkPreviewStore {
 
 /// The app's own reading of web pages and pictures behind chat links, with the same limits as the
 /// desktop shells (`link_preview.rs`, `linkPreview.cjs`): only public hosts, also after redirects;
-/// pages only as HTML and at most 1 MB, pictures at most 8 MB.
+/// pages only as HTML and at most 2 MB (reading stops at `</head>`; YouTube's head alone is about
+/// 800 KB), pictures at most 8 MB.
 enum LinkPageFetcher {
-    private static let maxPageBytes = 1024 * 1024
+    private static let maxPageBytes = 2 * 1024 * 1024
     private static let maxImageBytes = 8 * 1024 * 1024
 
     private final class RedirectGuard: NSObject, URLSessionTaskDelegate {
@@ -105,15 +106,25 @@ enum LinkPageFetcher {
         return UIImage(data: data)
     }
 
-    /// The start of a page: the head with the OpenGraph tags is at the top.
+    /// The start of a page up to `</head>`: the head holds the OpenGraph tags.
     private static func limitedData(for request: URLRequest, limit: Int) async throws -> (Data, URLResponse) {
         let (bytes, response) = try await session.bytes(for: request)
         var data = Data()
         data.reserveCapacity(min(Int(max(response.expectedContentLength, 0)), limit))
         for try await byte in bytes {
             data.append(byte)
-            if data.count >= limit { break }
+            if data.count >= limit || (byte == UInt8(ascii: ">") && endsWithHeadTag(data)) { break }
         }
         return (data, response)
+    }
+
+    private static let headTag = Array("</head>".utf8)
+
+    /// Whether the data ends with `</head>`, in any case.
+    static func endsWithHeadTag(_ data: Data) -> Bool {
+        guard data.count >= headTag.count else { return false }
+        return zip(data.suffix(headTag.count), headTag).allSatisfy { byte, tag in
+            byte == tag || (byte >= 65 && byte <= 90 && byte + 32 == tag)
+        }
     }
 }
