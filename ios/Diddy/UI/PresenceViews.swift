@@ -16,14 +16,16 @@ struct PresenceDot: View {
 
     var body: some View {
         if let userId, let account {
-            PresenceDotContent(userId: userId, account: account, store: PresenceStore.of(account), size: size, ring: ring, onDemand: onDemand)
+            PresenceDotContent(userId: userId, account: account, details: account.details, store: PresenceStore.of(account), size: size, ring: ring, onDemand: onDemand)
         }
     }
 }
 
 private struct PresenceDotContent: View {
     let userId: String
-    @ObservedObject var account: MatrixAccount
+    /// Not observed (it changes for every room); the Diddy status comes through `details`.
+    let account: MatrixAccount
+    @ObservedObject var details: AccountDetails
     @ObservedObject var store: PresenceStore
     let size: CGFloat
     let ring: Color
@@ -92,15 +94,17 @@ struct PresenceIcon: View {
 /// "Online", "Idle" ... under the name on a profile card, with the person's status message.
 struct PresenceLabel: View {
     let userId: String
-    @ObservedObject var account: MatrixAccount
+    let account: MatrixAccount
 
     var body: some View {
-        PresenceLabelContent(userId: userId, store: PresenceStore.of(account))
+        PresenceLabelContent(userId: userId, details: account.details, store: PresenceStore.of(account))
     }
 }
 
 private struct PresenceLabelContent: View {
     let userId: String
+    /// The Diddy status is part of the shown state.
+    @ObservedObject var details: AccountDetails
     @ObservedObject var store: PresenceStore
 
     var body: some View {

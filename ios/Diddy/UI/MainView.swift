@@ -927,9 +927,18 @@ struct VoiceRosterRow: View {
 }
 
 struct RoomRow: View {
-    @ObservedObject var account: MatrixAccount
+    /// Not observed, like ChatListRow: `room` comes new from the list, the rest through `details`.
+    let account: MatrixAccount
+    @ObservedObject private var details: AccountDetails
     let room: RoomSummary
     let icon: String?
+
+    init(account: MatrixAccount, room: RoomSummary, icon: String?) {
+        self.account = account
+        _details = ObservedObject(wrappedValue: account.details)
+        self.room = room
+        self.icon = icon
+    }
 
     var body: some View {
         HStack(spacing: 10) {

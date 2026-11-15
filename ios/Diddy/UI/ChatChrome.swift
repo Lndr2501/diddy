@@ -367,7 +367,7 @@ extension EnvironmentValues {
 struct TypingIndicator: View {
     @ObservedObject var store: TypingStore
     /// Names that arrive after the pill appeared.
-    @ObservedObject var people: AccountPeople
+    @ObservedObject var people: AccountDetails
     let account: MatrixAccount
     let roomId: String
 

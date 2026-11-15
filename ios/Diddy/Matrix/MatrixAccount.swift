@@ -95,12 +95,13 @@ final class MatrixAccount: ObservableObject, Identifiable {
         }
     }
     @Published private(set) var profiles: [String: UserSummary] = [:] {
-        didSet { people.changed() }
+        didSet { details.changed() }
     }
-    /// Says when names, pictures, Diddy profiles or badges of people change, for views that only
-    /// show people (message rows): they observe this instead of the whole account, which also
-    /// changes for every update in any room.
-    let people = AccountPeople()
+    /// Says when names, pictures, Diddy profiles, badges or notification levels change, for views
+    /// that show those beside a room or message they get as a value (message rows, chat list rows,
+    /// status dots): they observe this instead of the whole account, which also changes for every
+    /// update in any room.
+    let details = AccountDetails()
     /// Servers whose channel list finished loading, so an empty server is not an endless spinner.
     @Published private(set) var loadedServers: Set<String> = []
     /// One `loadAllChannels` run at a time (see there).
@@ -125,7 +126,9 @@ final class MatrixAccount: ObservableObject, Identifiable {
     private var channelIdsCache: [String: Set<String>] = [:]
     private var serverRoomIdsCache: Set<String>?
     /// Rooms with their own notification setting (RoomPrefs.swift); the others follow the default.
-    @Published var roomNotifyLevels: [String: RoomNotifyLevel] = [:]
+    @Published var roomNotifyLevels: [String: RoomNotifyLevel] = [:] {
+        didSet { details.changed() }
+    }
     /// The server rail in the order of the account data `in.cinny.spaces` (ServerManagement.swift).
     @Published var railEntries: [RailEntry] = []
     /// That account data as stored, so writing keeps what only desktop knows.
@@ -136,11 +139,11 @@ final class MatrixAccount: ObservableObject, Identifiable {
     @Published private(set) var started = false
     /// Diddy profile extras by user id, read from the options rooms (see DiddyProfiles.swift).
     @Published var diddyProfiles: [String: DiddyProfile] = [:] {
-        didSet { people.changed() }
+        didSet { details.changed() }
     }
     /// The badges each user shows next to their name.
     @Published var diddyBadges: [String: [DiddyBadge]] = [:] {
-        didSet { people.changed() }
+        didSet { details.changed() }
     }
     /// Every badge you own (given to you), for choosing the shown ones in the profile editor.
     @Published var diddyOwnBadges: [DiddyBadge] = []
@@ -880,7 +883,7 @@ final class MatrixAccount: ObservableObject, Identifiable {
 
 /// See `MatrixAccount.people`.
 @MainActor
-final class AccountPeople: ObservableObject {
+final class AccountDetails: ObservableObject {
     func changed() { objectWillChange.send() }
 }
 

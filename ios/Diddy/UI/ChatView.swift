@@ -6,7 +6,7 @@ import UniformTypeIdentifiers
 
 struct ChatView: View {
     /// Not observed: the account changes for every update in any room. The open room's own
-    /// changes come through `watch`, people's names and profiles through `account.people`.
+    /// changes come through `watch`, people's names and profiles through `account.details`.
     let account: MatrixAccount
     let roomId: String
     @StateObject private var holder = TimelineHolder()
@@ -663,7 +663,7 @@ private struct ChatContent: View {
 
     /// Who is typing, as a pill floating over the chat (ChatChrome.swift).
     private var typingPill: some View {
-        TypingIndicator(store: controller.typing, people: account.people, account: account, roomId: roomId)
+        TypingIndicator(store: controller.typing, people: account.details, account: account, roomId: roomId)
     }
 
     /// Back to the list on iPhone; the iPad shows the list beside the chat.
@@ -1249,7 +1249,7 @@ struct MessageRowView: View, Equatable {
     let account: MatrixAccount
     /// Watched instead of the account (which changes for every room), so names and profiles that
     /// arrive later still show although the chat skips rows that did not change (see `==`).
-    @ObservedObject private var people: AccountPeople
+    @ObservedObject private var people: AccountDetails
     /// Where names of mentioned people are looked up first.
     var roomId = ""
     var onProfile: () -> Void = {}
@@ -1278,7 +1278,7 @@ struct MessageRowView: View, Equatable {
     ) {
         self.row = row
         self.account = account
-        _people = ObservedObject(wrappedValue: account.people)
+        _people = ObservedObject(wrappedValue: account.details)
         self.roomId = roomId
         self.onProfile = onProfile
         self.onMention = onMention

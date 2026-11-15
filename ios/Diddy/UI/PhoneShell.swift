@@ -164,10 +164,20 @@ struct TabBadge: View {
 /// One conversation in the iPhone's chat list: picture, name and time, the newest message, and on
 /// the right a dot for unread or the accent count for mentions. Muted chats are faded.
 struct ChatListRow: View {
-    @ObservedObject var account: MatrixAccount
+    /// Not observed: the list hands over a new `room` when it changes, and the account changes
+    /// for every room. Names, badges and the mute state come through `details`.
+    let account: MatrixAccount
+    @ObservedObject private var details: AccountDetails
     let room: RoomSummary
     /// The Activity tab says which server a channel belongs to.
     var context: String?
+
+    init(account: MatrixAccount, room: RoomSummary, context: String? = nil) {
+        self.account = account
+        _details = ObservedObject(wrappedValue: account.details)
+        self.room = room
+        self.context = context
+    }
 
     private var unread: Bool { room.unread > 0 || room.badge > 0 }
     private var muted: Bool { account.notifyLevel(for: room.id) == .mute }
