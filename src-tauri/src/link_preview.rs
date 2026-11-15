@@ -1,15 +1,16 @@
 //! Reads a web page's head for a link card under a chat message (#197). The page cannot fetch it
 //! itself (most sites send no CORS headers). Narrow on purpose: only http(s) to public hosts
 //! (no `localhost`, private addresses or local names, also after redirects), only HTML, at most
-//! 256 KB (reading stops at `</head>`), 10 seconds. The page parses the answer (`cinny/src/app/plugins/linkEmbeds.ts`).
+//! 2 MB (reading stops at `</head>`), 10 seconds. The page parses the answer (`cinny/src/app/plugins/linkEmbeds.ts`).
 
 use std::net::IpAddr;
 use std::sync::OnceLock;
 use std::time::Duration;
 use tauri_plugin_http::reqwest;
 
-/// The OpenGraph tags sit in the head; nobody needs more of a page than this.
-const MAX_BYTES: usize = 256 * 1024;
+/// The OpenGraph tags sit in the head. YouTube's head alone is about 800 KB, so the limit is high;
+/// reading stops at `</head>` anyway.
+const MAX_BYTES: usize = 2 * 1024 * 1024;
 const MAX_REDIRECTS: usize = 5;
 
 /// Same rules as `isPublicHost` in linkEmbeds.ts.

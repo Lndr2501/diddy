@@ -133,8 +133,8 @@ const absoluteHttp = (value: string | undefined, base: string): string | undefin
   }
 };
 
-/** Only the head matters, and a huge page should not cost much. */
-const HEAD_LIMIT = 512 * 1024;
+/** Only the head matters (the shells stop reading at `</head>`); YouTube's is about 800 KB. */
+const HEAD_LIMIT = 2 * 1024 * 1024;
 
 /**
  * Reads a page's OpenGraph data (with the usual fallbacks: Twitter cards, `<title>`,

@@ -129,3 +129,11 @@ test('display host drops www', () => {
   assert.equal(displayHost('https://www.youtube.com/watch?v=1'), 'youtube.com');
   assert.equal(displayHost('nope'), 'nope');
 });
+
+test('tags deep in a big head are found (YouTube: about 800 KB of head)', () => {
+  const filler = `<script>${'x'.repeat(800 * 1024)}</script>`;
+  const html = `<html><head>${filler}<meta property="og:title" content="A video"><meta property="og:image" content="https://i.ytimg.com/vi/a/maxresdefault.jpg"></head><body></body></html>`;
+  const meta = parseLinkMeta(html, 'https://www.youtube.com/watch?v=a');
+  assert.equal(meta?.title, 'A video');
+  assert.equal(meta?.image, 'https://i.ytimg.com/vi/a/maxresdefault.jpg');
+});

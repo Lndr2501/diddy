@@ -1,10 +1,11 @@
 // Reads a web page's head for a link card under a chat message (#197). Same narrow rules as
 // src-tauri/src/link_preview.rs: only http(s) to public hosts (also after redirects), only HTML,
-// at most 256 KB (reading stops at </head>), 10 seconds. The page parses the answer (cinny/src/app/plugins/linkEmbeds.ts).
+// at most 2 MB (reading stops at </head>), 10 seconds. The page parses the answer (cinny/src/app/plugins/linkEmbeds.ts).
 const net = require('node:net');
 
-// The OpenGraph tags sit in the head; nobody needs more of a page than this.
-const MAX_BYTES = 256 * 1024;
+// The OpenGraph tags sit in the head. YouTube's head alone is about 800 KB, so the limit is high;
+// reading stops at </head> anyway.
+const MAX_BYTES = 2 * 1024 * 1024;
 const HEAD_END = /<\/head>/i;
 const MAX_REDIRECTS = 5;
 const TIMEOUT_MS = 10000;
