@@ -386,7 +386,7 @@
                 <div class="code"><code>chmod +x Diddy_*.AppImage &amp;&amp; ./Diddy_*.AppImage</code><button class="copy" type="button" data-copy="chmod +x Diddy_*.AppImage &amp;&amp; ./Diddy_*.AppImage"><svg aria-hidden="true"><use href="#i-copy"/></svg><span>Copy</span></button></div>
                 <h4>NixOS (in a checkout)</h4>
                 <div class="code"><code>nix run .#diddy</code><button class="copy" type="button" data-copy="nix run .#diddy"><svg aria-hidden="true"><use href="#i-copy"/></svg><span>Copy</span></button></div>
-                <div class="note"><svg aria-hidden="true"><use href="#i-info"/></svg><span>The AppImage needs FUSE 2 (<code>libfuse2</code> / <code>libfuse2t64</code>). On Ubuntu 24.04+ AppArmor can block Chromium's sandbox inside an AppImage, so use the <code>.deb</code> there: it ships an AppArmor profile.</span></div>
+                <div class="note"><svg aria-hidden="true"><use href="#i-info"/></svg><span>The AppImage needs no <code>libfuse2</code> and updates itself with AppImageUpdate or Gear Lever. On Ubuntu 24.04+ AppArmor can block Chromium's sandbox inside an AppImage, so use the <code>.deb</code> there: it ships an AppArmor profile.</span></div>
               </div>
               <div class="aside-card">
                 <h3>Diddy for Linux</h3>
