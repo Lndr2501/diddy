@@ -72,3 +72,11 @@ test('preview hosts and clock', () => {
   assert.equal(musicClock(65), '1:05');
   assert.equal(musicClock(1.9), '0:01');
 });
+
+test('cards are checked before the plain text message returns', () => {
+  const src = fs.readFileSync(path.join(__dirname, '../src/app/components/RenderMessageContent.tsx'), 'utf8');
+  const text = src.indexOf('if (msgType === MsgType.Text) {\n    return (\n      <MText');
+  assert.ok(text > 0);
+  assert.ok(src.indexOf('<MusicCardView') > 0 && src.indexOf('<MusicCardView') < text);
+  assert.ok(src.indexOf('<BotCardView') > 0 && src.indexOf('<BotCardView') < text);
+});

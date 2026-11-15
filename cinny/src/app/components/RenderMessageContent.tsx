@@ -133,6 +133,19 @@ export function RenderMessageContent({
     </>
   );
 
+  // Cards come before the plain text below, which returns for every m.text.
+  // Bot messages with structured data (dev.diddy.card) are drawn as a card; every other client
+  // still shows the plain `body`.
+  if (msgType === MsgType.Notice || msgType === MsgType.Text) {
+    const botCard = parseBotCard(getContent());
+    if (botCard) return <BotCardView card={botCard} />;
+  }
+  // A song shared from iOS (app.diddy.music), drawn like iMessage's lyrics card.
+  if (msgType === MsgType.Text) {
+    const musicCard = parseMusicCard(getContent());
+    if (musicCard) return <MusicCardView card={musicCard} />;
+  }
+
   if (msgType === MsgType.Text) {
     return (
       <MText
@@ -168,18 +181,6 @@ export function RenderMessageContent({
         renderUrlsPreview={urlPreview ? renderUrlsPreview : undefined}
       />
     );
-  }
-
-  // Bot messages with structured data (dev.diddy.card) are drawn as a card; every other client
-  // still shows the plain `body`.
-  if (msgType === MsgType.Notice || msgType === MsgType.Text) {
-    const botCard = parseBotCard(getContent());
-    if (botCard) return <BotCardView card={botCard} />;
-  }
-  // A song shared from iOS (app.diddy.music), drawn like iMessage's lyrics card.
-  if (msgType === MsgType.Text) {
-    const musicCard = parseMusicCard(getContent());
-    if (musicCard) return <MusicCardView card={musicCard} />;
   }
 
   if (msgType === MsgType.Notice) {
