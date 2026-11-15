@@ -67,15 +67,15 @@ final class SampleHandler: RPBroadcastSampleHandler {
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
         let now = CACurrentMediaTime()
         let taken: (NWConnection, BroadcastWire.Config)? = lock.withLock {
-            guard !ended, !sending, now - lastSent >= 1 / Double(config.fps) - 0.002,
+            guard !ended, !sending, now - lastSent >= 1 / Double(self.config.fps) - 0.002,
                   let connection = self.connection, connection.state == .ready else { return nil }
             sending = true
             lastSent = now
-            return (connection, config)
+            return (connection, self.config)
         }
         guard let taken else { return }
-        let (connection, config) = taken
-        guard let jpeg = encode(pixelBuffer, orientation: Self.orientation(of: sampleBuffer), config: config) else {
+        let (connection, settings) = taken
+        guard let jpeg = encode(pixelBuffer, orientation: Self.orientation(of: sampleBuffer), config: settings) else {
             lock.withLock { sending = false }
             return
         }
