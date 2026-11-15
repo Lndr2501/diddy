@@ -15,7 +15,14 @@ const compiled = ts.transpileModule(source, {
   },
 }).outputText;
 
-function setup({ missing = false, disabled = false, contentWindow = true, call = {} } = {}) {
+const guardSource = ts.transpileModule(
+  fs.readFileSync(path.join(__dirname, '../src/app/plugins/call/deafenGuard.ts'), 'utf8'),
+  { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2016 } }
+).outputText;
+const deafenGuard = {};
+vm.runInNewContext(guardSource, { exports: deafenGuard });
+
+function setup({ missing = false, disabled = false, contentWindow = true, call = {}, state = {} } = {}) {
   const calls = [];
   const diagnostics = [];
   let focused = false;
@@ -56,6 +63,7 @@ function setup({ missing = false, disabled = false, contentWindow = true, call =
     './audioDevices': { subscribeAudioPrefs: () => () => {}, applyAudioOutput() {} },
     './screenShareAudio': { screenShareAudio: {} },
     './types': { ElementWidgetActions: { DeviceMute: 'io.element.device_mute' } },
+    './deafenGuard': deafenGuard,
   };
   const exports = {};
   vm.runInNewContext(
@@ -75,7 +83,7 @@ function setup({ missing = false, disabled = false, contentWindow = true, call =
     { filename }
   );
   return {
-    control: new exports.CallControl({}, call, iframe),
+    control: new exports.CallControl(state, call, iframe),
     calls,
     diagnostics,
   };
@@ -161,4 +169,29 @@ test('an answered mute request resolves true without a second send', async () =>
   await control.applyState();
   assert.equal(sent.length, 1);
   assert.equal(await control.toggleMicrophone(true), true);
+});
+
+test('fully muted: a microphone the call page switched on by itself is muted again (#225)', async () => {
+  const sent = [];
+  const call = {
+    transport: {
+      send: async (action, data) => {
+        sent.push(data);
+        return {};
+      },
+    },
+  };
+  const state = { microphone: false, video: false, sound: false, screenshare: false, spotlight: false };
+  const { control, diagnostics } = setup({ call, state });
+  // Diddy asked for the microphone off (the full mute) ...
+  await control.applyState();
+  // ... and the page reports it on by itself when a stream starts
+  control.onMediaState({ detail: { data: { audio_enabled: true, video_enabled: false } } });
+  await new Promise((resolve) => {
+    setTimeout(resolve, 10);
+  });
+  assert.equal(control.sound, false, 'still fully muted');
+  assert.equal(control.microphone, false, 'microphone still off');
+  assert.deepEqual(JSON.parse(JSON.stringify(sent[sent.length - 1])), { audio_enabled: false, video_enabled: false });
+  assert.ok(diagnostics.some((d) => /turned the microphone on while fully muted/.test(d)));
 });

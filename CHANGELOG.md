@@ -2,6 +2,7 @@
 
 ## Unveröffentlicht
 
+- **Full Mute hält beim Streamen (#225, macOS, Linux, Windows):** Startete man im Full Mute einen Stream, hob Diddy das Full Mute heimlich auf, zeigte es aber weiter an. Die Call-Seite meldet dabei das Mikrofon als an, und das galt als „du hast entstummt“; außerdem setzte der Call die Stummschaltung der Audio-Elemente zurück. Jetzt hebt nur ein Mikrofon, das du selbst eingeschaltet hast, das Full Mute auf; schaltet die Seite es von sich aus ein, wird es wieder stumm geschaltet (Log: `turned the microphone on while fully muted`), und im Full Mute bleibt jede Wiedergabe stumm. iOS hat keine Call-Seite und ist nicht betroffen.
 ## 1.10.1 (2026-11-15)
 
 - **Musikkarten auf dem Desktop (macOS, Linux, Windows):** Von iOS geteilte Songs (Apple Music, Spotify) kamen am Desktop nur als Text an. Die Karte wurde nie gezeigt, weil normale Textnachrichten vorher abgefangen wurden; dasselbe galt für Bot-Karten in Textnachrichten. iOS zeigte sie schon richtig. Das Apple-Logo vor „Music“ ist jetzt ein SVG statt des Zeichens , das es nur in Apple-Schriften gibt und das unter Linux und Windows als leeres Kästchen erschien.

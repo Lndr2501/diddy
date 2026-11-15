@@ -5,6 +5,7 @@ import { CallControlState } from './CallControlState';
 import { diag } from '../diagnostics';
 import { applyAudioOutput, subscribeAudioPrefs } from './audioDevices';
 import { screenShareAudio } from './screenShareAudio';
+import { audioMuteStep, pageMicDecision } from './deafenGuard';
 import { ElementMediaStateDetail, ElementMediaStatePayload, ElementWidgetActions } from './types';
 
 export enum CallControlEvent {
@@ -42,6 +43,12 @@ export class CallControl extends EventEmitter implements CallControlState {
 
   // Whether the microphone was live when the user deafened, so un-deafening can restore it.
   private micWasOnBeforeDeafen = false;
+
+  /** The microphone state Diddy last asked the call page for (deafenGuard.ts, #225). */
+  private requestedMicrophone: boolean | undefined;
+
+  /** Audio elements that re-mute themselves while deafened when the call unmutes them (#225). */
+  private guardedAudio = new WeakSet<HTMLMediaElement>();
 
   private get document(): Document | undefined {
     return this.iframe.contentDocument ?? this.iframe.contentWindow?.document;
@@ -210,6 +217,7 @@ export class CallControl extends EventEmitter implements CallControlState {
    * "Request timed out" / "Transport stopped" as unhandled rejections in the app log (#161).
    */
   private async setMediaState(state: ElementMediaStatePayload): Promise<boolean> {
+    this.requestedMicrophone = state.audio_enabled;
     try {
       await this.call.transport.send(ElementWidgetActions.DeviceMute, state);
     } catch (e) {
@@ -269,14 +277,12 @@ export class CallControl extends EventEmitter implements CallControlState {
     callDocument?.querySelectorAll<HTMLMediaElement>('audio, video').forEach((el) => {
       const target = el;
       if (target.tagName === 'AUDIO') {
-        // Only touch `muted` when our deafen state changed: a blanket write undid the per-user
-        // mute of the call (#38).
-        const before = this.appliedDeafened.get(target);
-        if (before !== deafened) {
-          this.appliedDeafened.set(target, deafened);
-          // first sight while not deafened: keep whatever the call set (per-user mute)
-          if (deafened || before === true) target.muted = deafened;
-        }
+        // Deafened: muted, also when the call unmuted it since (#225). Otherwise only undo our own
+        // deafen mute, never the per-user mute of the call (#38).
+        const step = audioMuteStep(deafened, this.appliedDeafened.get(target), target.muted);
+        this.appliedDeafened.set(target, step.applied);
+        if (step.muted !== undefined) target.muted = step.muted;
+        this.guardAudio(target);
       } else if (CallControl.carriesLocalShareAudio(target)) {
         // Never replay our own captured system audio locally (would echo / feed back).
         if (!target.muted) target.muted = true;
@@ -290,6 +296,22 @@ export class CallControl extends EventEmitter implements CallControlState {
         target.muted = false;
       }
       applyAudioOutput(target, deafened);
+    });
+  }
+
+  /**
+   * While deafened, an audio element that the call unmutes (it re-attaches tracks when a stream
+   * starts) is muted again at once, not only at the next layout change (#225).
+   */
+  private guardAudio(el: HTMLMediaElement): void {
+    if (this.guardedAudio.has(el)) return;
+    this.guardedAudio.add(el);
+    el.addEventListener('volumechange', () => {
+      if (this.disposed || this.sound || el.muted) return;
+      diag('call: an audio element was unmuted while fully muted; muting it again');
+      this.appliedDeafened.set(el, true);
+      // eslint-disable-next-line no-param-reassign
+      el.muted = true;
     });
   }
 
@@ -314,6 +336,18 @@ export class CallControl extends EventEmitter implements CallControlState {
   public onMediaState(evt: CustomEvent<ElementMediaStateDetail>) {
     const { data } = evt.detail;
     if (!data) return;
+
+    // The page switched the microphone on by itself while you are fully muted (it does when a
+    // stream starts, #225): keep the full mute and switch the microphone off again.
+    if (pageMicDecision(!this.sound, data.audio_enabled, this.requestedMicrophone) === 'remute') {
+      diag('call: the call page turned the microphone on while fully muted; muting it again');
+      if (this.mediaStatePromiseResolver) {
+        this.mediaStatePromiseResolver();
+        this.mediaStatePromiseResolver = undefined;
+      }
+      this.setMediaState({ audio_enabled: false, video_enabled: data.video_enabled ?? this.video });
+      return;
+    }
 
     const state = new CallControlState(
       data.audio_enabled ?? this.microphone,
