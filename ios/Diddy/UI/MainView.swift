@@ -39,6 +39,8 @@ struct MainView: View {
     @State private var showSettings = false
     @State private var showQuickSwitch = false
     @State private var showWelcome = false
+    /// How far the open chat is pulled aside by the edge swipe (iPhone portrait).
+    @State private var chatEdgeOffset: CGFloat = 0
     @ObservedObject private var themes = ThemeStore.shared
     /// Things shared from other apps through the share sheet (App/ShareInbox.swift).
     @ObservedObject private var inbox = ShareInbox.shared
@@ -51,6 +53,8 @@ struct MainView: View {
             // of the portrait tabs stretched across the whole width.
             if sizeClass == .compact, verticalSizeClass == .compact, proxy.size.width >= 600 {
                 landscapeLayout
+            } else if sizeClass == .compact {
+                phoneLayout(width: proxy.size.width)
             } else {
                 splitLayout
             }
@@ -123,24 +127,59 @@ struct MainView: View {
 }
 
 extension MainView {
+    /// iPhone in portrait: tabs at the bottom (Chats, Servers, Activity, You), the open chat lying
+    /// over them. The list stays drawn underneath, so the swipe back from the edge (EdgeSwipeBack)
+    /// uncovers it as the chat moves out; a split view only drew it once the chat was gone, and the
+    /// gap showed black.
+    private func phoneLayout(width: CGFloat) -> some View {
+        let open = navigator.destination != nil
+        // 0 with the chat fully in place, 1 when it is out of the way
+        let uncovered = open ? min(1, chatEdgeOffset / max(width, 1)) : 1
+        return ZStack {
+            PhoneHome(account: account, showSettings: $showSettings, showSearch: $showQuickSwitch)
+                .background(Theme.sidebar.ignoresSafeArea())
+                // a little behind and darker while the chat covers it, like a system push
+                .offset(x: -(1 - uncovered) * width * 0.25)
+                .overlay {
+                    Color.black.opacity((1 - uncovered) * 0.25)
+                        .ignoresSafeArea()
+                        .allowsHitTesting(false)
+                }
+                .accessibilityHidden(open)
+            if let destination = navigator.destination {
+                NavigationStack { detail(destination) }
+                    .transition(.move(edge: .trailing))
+                    .zIndex(1)
+            }
+        }
+        .animation(.easeOut(duration: 0.25), value: navigator.destination)
+        .onPreferenceChange(ChatEdgeOffsetKey.self) { chatEdgeOffset = $0 }
+    }
+
+    @ViewBuilder
+    private func detail(_ destination: Destination) -> some View {
+        switch destination {
+        case .text(let roomId):
+            ChatView(account: account, roomId: roomId)
+                .id(roomId)
+        case .voice(let roomId):
+            VoiceChannelView(account: account, roomId: roomId)
+                .id(roomId)
+        }
+    }
+
+    /// iPad: server rail and channels beside the chat.
     private var splitLayout: some View {
         NavigationSplitView {
-            Group {
-                if sizeClass == .compact {
-                    // iPhone: tabs at the bottom (Chats, Servers, Activity, You), the chat pushed over them.
-                    PhoneHome(account: account, showSettings: $showSettings, showSearch: $showQuickSwitch)
-                } else {
-                    HStack(spacing: 0) {
-                        ServerRail(account: account, selection: $navigator.server)
-                        ChannelSidebar(
-                            account: account,
-                            server: navigator.server,
-                            destination: $navigator.destination,
-                            showSettings: $showSettings,
-                            showSearch: $showQuickSwitch
-                        )
-                    }
-                }
+            HStack(spacing: 0) {
+                ServerRail(account: account, selection: $navigator.server)
+                ChannelSidebar(
+                    account: account,
+                    server: navigator.server,
+                    destination: $navigator.destination,
+                    showSettings: $showSettings,
+                    showSearch: $showQuickSwitch
+                )
             }
             .background(Theme.sidebar)
             .toolbar(.hidden, for: .navigationBar)
