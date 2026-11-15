@@ -1,4 +1,5 @@
 import React, { useCallback } from 'react';
+import { Room as RoomType } from 'matrix-js-sdk';
 import { Box } from 'folds';
 import { useParams } from 'react-router-dom';
 import { isKeyHotkey } from 'is-hotkey';
@@ -23,6 +24,16 @@ import { openThreadAtom } from '../../state/openThread';
 import { useCallEmbed } from '../../hooks/useCallEmbed';
 import { useCallMembers, useCallSession } from '../../hooks/useCall';
 
+/**
+ * The member list reads the room's members itself: held by Room, every membership or power level
+ * change (frequent with lazy loading) re-rendered the whole room view, even with the list closed.
+ */
+function RoomMembersDrawer({ room }: { room: RoomType }) {
+  const mx = useMatrixClient();
+  const members = useRoomMembers(mx, room.roomId);
+  return <MembersDrawer room={room} members={members} />;
+}
+
 export function Room() {
   const { eventId } = useParams();
   const room = useRoom();
@@ -36,7 +47,6 @@ export function Room() {
   const [hideActivity] = useSetting(settingsAtom, 'hideActivity');
   const screenSize = useScreenSizeContext();
   const powerLevels = usePowerLevels(room);
-  const members = useRoomMembers(mx, room.roomId);
   const chat = useAtomValue(callChatAtom);
   const [openThread] = useAtom(openThreadAtom);
   const thread = openThread?.roomId === room.roomId ? openThread : undefined;
@@ -82,7 +92,7 @@ export function Room() {
           <ThreadDrawer key={`${room.roomId}${thread.eventId}`} room={room} rootId={thread.eventId} />
         )}
         {!callView && screenSize === ScreenSize.Desktop && isDrawer && !thread && (
-          <MembersDrawer key={room.roomId} room={room} members={members} />
+          <RoomMembersDrawer key={room.roomId} room={room} />
         )}
       </Box>
     </PowerLevelsContextProvider>

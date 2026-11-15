@@ -2,6 +2,14 @@
 
 ## Unveröffentlicht
 
+- **Gesendete Bilder mit Vorschau (macOS, Linux, Windows, iOS):** Bilder gingen ohne Vorschaubild raus, also lud jeder im Raum das volle Bild, nur um es im Chat klein zu zeigen. Jetzt geht bei großen Bildern ein JPEG-Vorschaubild mit (längste Seite 800 px; nicht bei GIF, WebP und APNG). Gemessen: ein 11,5-MB-PNG bekommt eine 251-KB-Vorschau.
+- **Desktop: weniger unnötiges Neuzeichnen (macOS, Linux, Windows):**
+  - Die Mitgliederliste sortiert bei Online-Änderungen nur noch für Mitglieder des Raums neu, in einem Durchgang und mit den zwischengespeicherten Diddy-Profilen (vorher pro Mitglied zweimal ein Durchlauf über alle Räume).
+  - Die Nicht-stören-Prüfung läuft erst nach den billigen Filtern statt für jedes Ereignis jedes Raums (nach dem Aufwachen Hunderte).
+  - Die Raumansicht hängt nicht mehr an der Mitgliederliste: Ein Beitritt oder eine Rechteänderung zeichnete die ganze Timeline neu, auch bei geschlossener Liste.
+  - Die Timeline fragt nur noch „ungelesen ja/nein“ ab statt der Zähler, die sich mit jeder Nachricht ändern.
+  - Das Eingabefeld zeichnet sich beim automatischen Speichern des Entwurfs nicht mehr neu.
+  - Benachrichtigungen-Seite fragt den Server nur noch, solange das Fenster sichtbar ist; die Sprachaufnahme aktualisiert die Zeit einmal pro Sekunde statt zehnmal; die Raumliste bleibt bei Beitritten zu bekannten Räumen unverändert.
 - **iOS: Aufnahme einer Sprachnachricht ruckelte:** Zeit und Pegel kamen zehnmal pro Sekunde, und jedes Mal wurde der ganze Chat neu ausgewertet statt nur der Aufnahme-Leiste. Jetzt aktualisiert sich nur noch die Leiste; die Pegelbalken gleiten flüssig mit der Bildwiederholrate statt in 4-Punkt-Sprüngen, und die Aufnahme-Anzeige läuft auch beim Scrollen weiter. Nur iOS betroffen; am Desktop ist die Aufnahme eine eigene Komponente.
 - **iOS: weniger unnötiges Neuzeichnen:** Die Raumliste meldet sich nur noch, wenn sich wirklich etwas geändert hat; bisher ließ jede Aktualisierung in irgendeinem Raum Chatliste, offenen Chat und Tabs neu auswerten, auch ohne Änderung. „X schreibt…“ und der Fortschritt einer Musik-Vorschau aktualisieren nur noch ihre eigene Anzeige statt des ganzen Chats bzw. aller Musikkarten.
 - **iOS: Zurückwischen zeigt die Chatliste sofort:** Beim Wisch vom linken Rand war hinter dem Chat alles schwarz, die Liste erschien erst, wenn der Chat ganz weg war. Auf dem iPhone im Hochformat liegt der Chat jetzt über der Liste: Sie bleibt darunter gezeichnet und gleitet beim Wischen leicht abgedunkelt mit herein, wie bei den System-Apps. Sprachkanäle haben dort einen eigenen Zurück-Pfeil. iPad und Querformat sind unverändert; macOS, Linux und Windows haben diese Geste nicht.

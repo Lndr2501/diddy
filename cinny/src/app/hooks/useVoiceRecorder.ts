@@ -156,7 +156,10 @@ export const useVoiceRecorder = () => {
           peak = Math.max(peak, Math.abs(samples[i] - 128));
         levels.current.push(peak / 128);
         const elapsed = Date.now() - startedAt.current;
-        setElapsedMs(elapsed);
+        // the time shows whole seconds: re-render once a second instead of ten times
+        setElapsedMs((shown) =>
+          Math.floor(shown / 1000) === Math.floor(elapsed / 1000) ? shown : elapsed
+        );
         if (elapsed >= VOICE_MAX_MS && rec.state === 'recording') rec.stop();
       }, LEVEL_INTERVAL_MS);
     } catch (e) {

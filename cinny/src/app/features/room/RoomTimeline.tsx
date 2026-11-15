@@ -118,7 +118,7 @@ import { RenderMessageContent } from '../../components/RenderMessageContent';
 import { Image } from '../../components/media';
 import { ImageViewer } from '../../components/image-viewer';
 import { roomToParentsAtom } from '../../state/room/roomToParents';
-import { useRoomUnread } from '../../state/hooks/unread';
+import { useRoomHasUnread } from '../../state/hooks/unread';
 import { roomToUnreadAtom } from '../../state/room/roomToUnread';
 import { useMentionClickHandler } from '../../hooks/useMentionClickHandler';
 import { useSpoilerClickHandler } from '../../hooks/useSpoilerClickHandler';
@@ -511,7 +511,8 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
   const [editId, setEditId] = useState<string>();
 
   const roomToParents = useAtomValue(roomToParentsAtom);
-  const unread = useRoomUnread(room.roomId, roomToUnreadAtom);
+  // only yes/no: the counts change with every message and re-rendered the whole timeline
+  const hasUnread = useRoomHasUnread(room.roomId, roomToUnreadAtom);
   const { navigateRoom } = useRoomNavigate();
   const mentionClickHandler = useMentionClickHandler(room.roomId);
   const spoilerClickHandler = useSpoilerClickHandler();
@@ -1030,10 +1031,10 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
 
   // Remove unreadInfo on mark as read
   useEffect(() => {
-    if (!unread) {
+    if (!hasUnread) {
       setUnreadInfo(undefined);
     }
-  }, [unread]);
+  }, [hasUnread]);
 
   // scroll out of view msg editor in view.
   useEffect(() => {

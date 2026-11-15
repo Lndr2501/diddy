@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { MatrixClient, SetPresence } from 'matrix-js-sdk';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { DiddyStatus } from './types';
-import { patchMyProfile, readProfile, useDiddyProfile } from './profiles';
+import { patchMyProfile, readProfileForView, useDiddyProfile } from './profiles';
 import { getPrimaryOptionsRoom } from './optionsRoom';
 import { presenceForStatus, resolveMyStatus, silencesAlerts } from './dnd';
 
@@ -32,7 +32,9 @@ export const useMyStatus = (mx: MatrixClient): DiddyStatus =>
 
 /** Your status right now, outside React: the same one the status menu shows. */
 export const getMyStatus = (mx: MatrixClient): DiddyStatus =>
-  resolveMyStatus(readProfile(mx, mx.getSafeUserId())?.status, getLocalStatus());
+  // the cached read: the do-not-disturb check runs for incoming events, and an uncached read
+  // filters and sorts all rooms each time
+  resolveMyStatus(readProfileForView(mx, mx.getSafeUserId())?.status, getLocalStatus());
 
 /**
  * Do not disturb: sounds, system notifications and the call ring stay silent. It reads the

@@ -18,6 +18,7 @@ import { TUploadItem } from '../../state/room/roomInputDrafts';
 import { encodeBlurHash } from '../../utils/blurHash';
 import { scaleYDimension } from '../../utils/common';
 import { voiceContentFields } from '../../plugins/voiceMessage';
+import { imageThumbnailSize } from '../../utils/imageThumbnail';
 
 const generateThumbnailContent = async (
   mx: MatrixClient,
@@ -66,6 +67,16 @@ export const getImageMsgContent = async (
       ...getImageInfo(imgEl, file),
       [MATRIX_BLUR_HASH_PROPERTY_NAME]: blurHash,
     };
+    // A preview for large still pictures, so the chat of everyone else loads that instead of the
+    // original (utils/imageThumbnail.ts). Without one the picture is still sent.
+    const thumbSize = imageThumbnailSize(imgEl.width, imgEl.height, file.type);
+    if (thumbSize) {
+      const [thumbError, thumbContent] = await to(
+        generateThumbnailContent(mx, imgEl, thumbSize, !!encInfo)
+      );
+      if (thumbError) console.warn(thumbError);
+      if (thumbContent) content.info = { ...content.info, ...thumbContent };
+    }
   }
   if (encInfo) {
     content.file = {

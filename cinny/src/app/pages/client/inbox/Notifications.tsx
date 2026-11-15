@@ -41,7 +41,7 @@ import {
   getRoomAvatarUrl,
 } from '../../../utils/room';
 import { ScrollTopContainer } from '../../../components/scroll-top-container';
-import { useInterval } from '../../../hooks/useInterval';
+import { setVisibleInterval } from '../../../utils/visibleInterval';
 import {
   AvatarBase,
   ImageContent,
@@ -607,12 +607,11 @@ export function Notifications() {
   });
   const vItems = virtualizer.getVirtualItems();
 
-  useInterval(
-    useCallback(() => {
-      silentReloadTimeline();
-    }, [silentReloadTimeline]),
-    refreshIntervalTime
-  );
+  // Only while the window is visible: a hidden Diddy asked the server every 7 s.
+  useEffect(() => {
+    if (refreshIntervalTime < 0) return undefined;
+    return setVisibleInterval(silentReloadTimeline, refreshIntervalTime);
+  }, [silentReloadTimeline, refreshIntervalTime]);
 
   const handleScrollTopVisibility = useCallback(
     (onTop: boolean) => setRefreshIntervalTime(onTop ? DEFAULT_REFRESH_MS : -1),

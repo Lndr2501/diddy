@@ -28,7 +28,7 @@ import {
   TooltipProvider,
   config,
 } from 'folds';
-import { MatrixClient, Room, RoomMember, UserEvent } from 'matrix-js-sdk';
+import { MatrixClient, MatrixEvent, Room, RoomMember, User, UserEvent } from 'matrix-js-sdk';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import classNames from 'classnames';
 
@@ -68,7 +68,7 @@ import { AvatarPresence, PresenceBadge } from '../../components/presence';
 import { InviteUserPrompt } from '../../components/invite-user-prompt';
 import { useRoomPermissions } from '../../hooks/useRoomPermissions';
 import { DiddyName } from '../../components/diddy/DiddyName';
-import { readProfile, useDiddyProfile } from '../../plugins/diddy/profiles';
+import { readProfileForView, useDiddyProfile } from '../../plugins/diddy/profiles';
 import { useMyStatus } from '../../plugins/diddy/status';
 import { useRoomBots } from '../../hooks/useRoomBots';
 import {
@@ -303,20 +303,23 @@ const isPresent = (mx: MatrixClient, userId: string): boolean => {
             presence: user.presence,
             lastActiveTs: user.getLastActiveTs(),
             // invisible counts as offline for everyone, also for yourself while you sync
-            chosen: readProfile(mx, userId)?.status === 'invisible' ? 'invisible' : undefined,
+            chosen: readProfileForView(mx, userId)?.status === 'invisible' ? 'invisible' : undefined,
           }
         : undefined
     )
   );
 };
 
-/** Re-renders when anyone's presence changes, batched so busy rooms don't re-sort on every event. */
-const usePresenceVersion = (mx: MatrixClient): number => {
+/**
+ * Re-renders when the presence of a member of this room changes, batched so busy rooms don't
+ * re-sort on every event. Presence of people outside the room (other rooms) is ignored.
+ */
+const usePresenceVersion = (mx: MatrixClient, room: Room): number => {
   const [version, setVersion] = useState(0);
   useEffect(() => {
     let timer: number | undefined;
-    const bump = () => {
-      if (timer !== undefined) return;
+    const bump = (_event: MatrixEvent | undefined, user: User) => {
+      if (timer !== undefined || !room.getMember(user.userId)) return;
       timer = window.setTimeout(() => {
         timer = undefined;
         setVersion((v) => v + 1);
@@ -327,7 +330,7 @@ const usePresenceVersion = (mx: MatrixClient): number => {
       mx.removeListener(UserEvent.Presence, bump);
       if (timer !== undefined) window.clearTimeout(timer);
     };
-  }, [mx]);
+  }, [mx, room]);
   return version;
 };
 
@@ -351,8 +354,12 @@ const groupMembersByPresence = (
   const hasPresence = members.some(
     (m) => m.userId !== myUserId && mx.getUser(m.userId)?.events.presence !== undefined
   );
-  const present = hasPresence ? members.filter((m) => isPresent(mx, m.userId)) : members;
-  const absent = hasPresence ? members.filter((m) => !isPresent(mx, m.userId)) : [];
+  // one pass: each check reads a profile
+  const present: RoomMember[] = hasPresence ? [] : members;
+  const absent: RoomMember[] = [];
+  if (hasPresence) {
+    members.forEach((m) => (isPresent(mx, m.userId) ? present : absent).push(m));
+  }
 
   const items: Array<MemberGroupLabel | RoomMember> = [];
   let label: MemberGroupLabel | undefined;
@@ -439,7 +446,7 @@ export function MembersDrawer({ room, members }: MembersDrawerProps) {
   // a name search only pays off in bigger rooms
   const showSearch = room.getJoinedMemberCount() >= MEMBER_SEARCH_MIN || !!result;
 
-  const presenceVersion = usePresenceVersion(mx);
+  const presenceVersion = usePresenceVersion(mx, room);
   const bots = useRoomBots(room);
   // going invisible must regroup you at once, without waiting for a presence event
   const myStatus = useMyStatus(mx);

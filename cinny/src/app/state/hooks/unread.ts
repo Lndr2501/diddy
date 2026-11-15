@@ -37,6 +37,18 @@ export const useRoomsUnread = (
   return useAtomValue(selectAtom(roomToUnreadAtm, selector, compareUnreadEqual));
 };
 
+/**
+ * Only whether the room has anything unread: a view that needs no counts does not re-render for
+ * every new message (each one changes the counts).
+ */
+export const useRoomHasUnread = (
+  roomId: string,
+  roomToUnreadAtm: typeof roomToUnreadAtom
+): boolean => {
+  const selector = useCallback((roomToUnread: RoomToUnread) => roomToUnread.has(roomId), [roomId]);
+  return useAtomValue(selectAtom(roomToUnreadAtm, selector));
+};
+
 export const useRoomUnread = (
   roomId: string,
   roomToUnreadAtm: typeof roomToUnreadAtom
