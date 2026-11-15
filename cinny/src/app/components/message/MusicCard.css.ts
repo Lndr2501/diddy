@@ -105,6 +105,14 @@ export const Service = style({
   opacity: 0.5,
 });
 
+/** The Apple logo before "Music", the size of the letters like the iOS card's. */
+export const ServiceLogo = style({
+  width: '0.9em',
+  height: '0.9em',
+  marginRight: toRem(2),
+  verticalAlign: '-0.08em',
+});
+
 export const Play = style({
   position: 'relative',
   flexShrink: 0,
