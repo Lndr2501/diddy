@@ -146,7 +146,7 @@ Downloads are on the [Releases](../../releases/latest) page. Pushing a version t
 | NixOS | `nix run .#diddy` in a checkout, see the [NixOS guide](docs/nixos.md) (German) |
 
 > [!NOTE]
-> **AppImage:** needs FUSE 2 (`libfuse2` on Ubuntu 22.04, `libfuse2t64` on 24.04). Without it, run `./Diddy_*.AppImage --appimage-extract-and-run`. On Ubuntu 24.04 and newer, AppArmor restricts unprivileged user namespaces, so Chromium's sandbox can fail to start from an AppImage. Use the `.deb` there: it ships an AppArmor profile.
+> **AppImage:** no `libfuse2` needed (static AppImage runtime). Without FUSE at all, run `./Diddy_*.AppImage --appimage-extract-and-run`. It carries update information, so [AppImageUpdate](https://github.com/AppImageCommunity/AppImageUpdate) and Gear Lever can update it in place. On Ubuntu 24.04 and newer, AppArmor restricts unprivileged user namespaces, so Chromium's sandbox can fail to start from an AppImage. Use the `.deb` there: it ships an AppArmor profile.
 >
 > All current Linux packages use Electron (Chromium): NixOS, AppImage, DEB and RPM. The packages are x86_64 only (CI builds no arm64 packages). System sound capture uses a bundled helper on top of PipeWire's PulseAudio interface or PulseAudio. When moving over from the old Tauri build, sign in once more and verify the new device; your old keys stay in the previous storage.
 

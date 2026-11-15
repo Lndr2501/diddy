@@ -1,5 +1,5 @@
 name: Linux
-# Builds and tests the Linux packages (AppImage, deb, rpm; Electron) and stores them as artifact
+# Builds and tests the Linux packages (AppImage + .zsync, deb, rpm; Electron) and stores them as artifact
 # `diddy-linux`. A version tag is built and published by release.yml, which calls this workflow.
 on:
   workflow_dispatch:
@@ -22,6 +22,8 @@ jobs:
     timeout-minutes: 35
     env:
       HUSKY: "0"
+      # AppImage update information (AppImageUpdate, Gear Lever): the .zsync file of the latest release
+      UPDATE_INFO: gh-releases-zsync|${{ github.repository_owner }}|${{ github.event.repository.name }}|latest|Diddy_*_x86_64.AppImage.zsync
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -34,7 +36,7 @@ jobs:
       - name: Install native capture and sound-server test dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y rpm libglib2.0-dev libpulse-dev pulseaudio pulseaudio-utils pipewire pipewire-pulse wireplumber dbus-x11 openbox xvfb xauth libgtk-3-0 libgbm1 libasound2 libasound2-plugins libnss3
+          sudo apt-get install -y rpm zsync libglib2.0-dev libpulse-dev pulseaudio pulseaudio-utils pipewire pipewire-pulse wireplumber dbus-x11 openbox xvfb xauth libgtk-3-0 libgbm1 libasound2 libasound2-plugins libnss3
       - name: Install frontend and packaging dependencies
         run: |
           (cd cinny && npm ci --no-audit --no-fund)
@@ -57,6 +59,15 @@ jobs:
           (cd cinny && npm run build)
           (cd electron && npm run dist:linux)
           ls -l electron/dist
+      - name: Embed AppImage update information and write the .zsync file
+        # AppImageUpdate and other updaters read the update information from the AppImage and fetch
+        # only the changed blocks via the .zsync file published next to it in the latest release.
+        run: |
+          cd electron/dist
+          for f in Diddy_*_x86_64.AppImage; do
+            python3 -I ../../.github/scripts/appimage-update-info.py "$f" "$UPDATE_INFO"
+            zsyncmake -u "$f" -o "$f.zsync" "$f"
+          done
       - name: Verify packaged capture helper and frontend
         run: |
           test -x electron/dist/linux-unpacked/resources/diddy-system-audio
@@ -66,6 +77,10 @@ jobs:
           rpm -qpi electron/dist/*.rpm
           # AppImage: ELF runtime with an embedded squashfs, named with version and architecture
           file electron/dist/*.AppImage | grep -q ELF
+          # static runtime (type2-runtime): runs without libfuse2 on the host
+          file electron/dist/*.AppImage | grep -q 'static-pie linked'
+          test "$(electron/dist/Diddy_*_x86_64.AppImage --appimage-updateinformation)" = "$UPDATE_INFO"
+          test -s electron/dist/Diddy_*_x86_64.AppImage.zsync
           for f in electron/dist/Diddy_*_x86_64.AppImage electron/dist/Diddy_*_amd64.deb electron/dist/Diddy_*_x86_64.rpm; do test -s "$f"; done
       - name: Exercise packaged Electron screen capture and received WebRTC audio
         env:
@@ -76,6 +91,7 @@ jobs:
           name: diddy-linux
           path: |
             electron/dist/*.AppImage
+            electron/dist/*.AppImage.zsync
             electron/dist/*.deb
             electron/dist/*.rpm
           if-no-files-found: error

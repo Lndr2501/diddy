@@ -2,6 +2,8 @@
 
 ## Unveröffentlicht
 
+- **Linux: AppImage ohne libfuse2 und mit Updates.** Das AppImage nutzt die neue statische AppImage-Runtime und startet damit auch auf Systemen ohne `libfuse2` (z. B. Ubuntu 24.04). Es enthält Update-Informationen, und jedes Release bringt eine `.zsync`-Datei mit: AppImageUpdate oder Gear Lever laden nur die geänderten Teile. macOS und iOS sind nicht betroffen (reine Linux-Paketierung).
+
 ## 1.9.0 (2026-11-14)
 
 - **iOS/iPadOS: Dateien in den Chat ziehen (#216):** Bilder, Videos und Dateien lassen sich aus Fotos, Dateien, Safari oder anderen Apps in einen Chat ziehen; sie landen wie beim Datei-Picker als Anhänge über dem Eingabefeld (auf dem iPad systemweit, auf dem iPhone mit Drag-and-Drop zwischen Apps). Gezogener Text geht wie bisher ins Eingabefeld. Am Desktop gab es das schon.

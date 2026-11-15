@@ -2,7 +2,7 @@ name: Release
 # Pushing a version tag `vX.Y.Z` builds every package and publishes them as ONE GitHub release:
 #
 #   build.yml  (macOS, Tauri)     Diddy_X.Y.Z_aarch64.dmg
-#   linux.yml  (Electron)         Diddy_X.Y.Z_x86_64.AppImage, Diddy_X.Y.Z_amd64.deb, Diddy_X.Y.Z_x86_64.rpm
+#   linux.yml  (Electron)         Diddy_X.Y.Z_x86_64.AppImage (+ .zsync for AppImageUpdate), Diddy_X.Y.Z_amd64.deb, Diddy_X.Y.Z_x86_64.rpm
 #   ios.yml    (SwiftUI)          Diddy_X.Y.Z_iOS_unsigned.ipa (or Diddy_X.Y.Z_iOS.ipa when signed)
 #   + SHA256SUMS over all of them
 #
@@ -126,7 +126,7 @@ jobs:
         run: |
           ls -l dist
           missing=0
-          for f in "Diddy_${VERSION}_aarch64.dmg" "Diddy_${VERSION}_x86_64.AppImage" "Diddy_${VERSION}_amd64.deb" "Diddy_${VERSION}_x86_64.rpm"; do
+          for f in "Diddy_${VERSION}_aarch64.dmg" "Diddy_${VERSION}_x86_64.AppImage" "Diddy_${VERSION}_x86_64.AppImage.zsync" "Diddy_${VERSION}_amd64.deb" "Diddy_${VERSION}_x86_64.rpm"; do
             if [ ! -s "dist/$f" ]; then echo "::error::dist/$f is missing"; missing=1; fi
           done
           if ! ls dist/*.ipa >/dev/null 2>&1; then
@@ -160,7 +160,7 @@ jobs:
           | Platform | Package | Install |
           |---|---|---|
           | macOS (Apple Silicon) | \`Diddy_${version}_aarch64.dmg\` | Open the DMG and $mac |
-          | Linux x86_64, most distributions (needs FUSE 2; on Ubuntu 24.04+ prefer the .deb) | \`Diddy_${version}_x86_64.AppImage\` | \`chmod +x Diddy_*.AppImage && ./Diddy_*.AppImage\` |
+          | Linux x86_64, most distributions (on Ubuntu 24.04+ prefer the .deb) | \`Diddy_${version}_x86_64.AppImage\` | \`chmod +x Diddy_*.AppImage && ./Diddy_*.AppImage\` (updates with AppImageUpdate) |
           | Debian / Ubuntu | \`Diddy_${version}_amd64.deb\` | \`sudo apt install ./Diddy_*.deb\` |
           | Fedora / openSUSE | \`Diddy_${version}_x86_64.rpm\` | \`sudo dnf install ./Diddy_*.rpm\` |
           | iPhone / iPad | \`Diddy_${version}_iOS_unsigned.ipa\` | Sideload with AltStore, SideStore or Sideloadly (see ios/README.md) |
