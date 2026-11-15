@@ -362,6 +362,23 @@ extension EnvironmentValues {
 
 // MARK: Timeline extras
 
+/// The typing pill when someone types. Observes only the room's TypingStore, so a change redraws
+/// the pill and not the whole chat.
+struct TypingIndicator: View {
+    @ObservedObject var store: TypingStore
+    let account: MatrixAccount
+    let roomId: String
+
+    var body: some View {
+        let ids = store.userIds
+        if !ids.isEmpty {
+            TypingPill(names: ids.map { account.name(of: $0) })
+                .transition(.opacity)
+                .onAppear { account.resolveProfiles(ids, in: roomId) }
+        }
+    }
+}
+
 /// "Lndr is typing" floating over the bottom left of the chat, so nothing below it moves.
 struct TypingPill: View {
     let names: [String]
