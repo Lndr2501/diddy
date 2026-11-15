@@ -2,6 +2,8 @@
 
 ## Unveröffentlicht
 
+## 1.10.0 (2026-11-15)
+
 - **Windows (neu):** Diddy gibt es als Installer für Windows 10/11 (x64), `Diddy_X.Y.Z_x64-setup.exe`. Es ist dieselbe Electron-App wie unter Linux; sie installiert sich ohne Administratorrechte für den eigenen Nutzer, mit Startmenü- und Desktop-Verknüpfung. Einstellungen liegen in `%APPDATA%\app.diddy.desktop`, Anmeldungen, Schlüssel und das Log in `%LOCALAPPDATA%\app.diddy.desktop`. Die globale Tastenkombination für Agent Voice und Benachrichtigungen funktionieren. Noch nicht unter Windows: Systemton beim Bildschirm teilen (Chromiums Aufnahme würde den Call selbst mitschneiden, die anderen hörten sich als Echo). Der Installer ist nicht signiert: Bei der SmartScreen-Warnung „Weitere Informationen“ → „Trotzdem ausführen“. Die CI baut ihn auf einem Windows-Rechner, lässt die Tests laufen und startet die fertige App einmal.
 - **Konto erstellen, auf allen Plattformen:**
   - macOS, Linux, Windows: Auf der Anmeldeseite steht jetzt deutlich „Create an account on <Server>“. Der Benutzername wird schon beim Tippen geprüft (frei, vergeben, ungültig). Schritte, die die App nicht selbst zeigen kann, laufen auf der eigenen Seite des Servers im Browser, danach geht es mit „Continue“ weiter: vor allem reCAPTCHA, das in der App nie funktionierte (die Schlüssel lehnen die App-Adresse `localhost` ab), und unbekannte Schritte. Bisher war die Registrierung auf solchen Servern gesperrt. Server mit eigener Anmeldeseite wie matrix.org bekommen einen Knopf „Create an account on matrix.org“.
