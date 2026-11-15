@@ -68,6 +68,7 @@ import { AvatarPresence, PresenceBadge } from '../../components/presence';
 import { InviteUserPrompt } from '../../components/invite-user-prompt';
 import { useRoomPermissions } from '../../hooks/useRoomPermissions';
 import { DiddyName } from '../../components/diddy/DiddyName';
+import { NameEffectRoom } from '../../components/diddy/DiddyName.css';
 import { readProfileForView, useDiddyProfile } from '../../plugins/diddy/profiles';
 import { useMyStatus } from '../../plugins/diddy/status';
 import { useRoomBots } from '../../hooks/useRoomBots';
@@ -242,7 +243,7 @@ export function MemberRowView({
         className={withNameplate ? NameplateText : undefined}
         style={{ minWidth: 0 }}
       >
-        <Text size="T400" truncate>
+        <Text size="T400" truncate className={NameEffectRoom}>
           <DiddyName userId={userId} name={name} showBadges />
         </Text>
         {bot && (

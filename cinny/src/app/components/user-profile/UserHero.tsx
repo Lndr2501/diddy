@@ -35,6 +35,7 @@ import { useMxcUrl } from '../../plugins/diddy/media';
 import { useShownBadges } from '../../plugins/diddy/profiles';
 import { safeAngle, safeColor, safeMxc, safeText } from '../../plugins/diddy/sanitize';
 import { DiddyName } from '../diddy/DiddyName';
+import { NameEffectRoomInline } from '../diddy/DiddyName.css';
 import { BadgeChip } from '../diddy/BadgeChip';
 import { PositionedImg } from '../diddy/PositionedImg';
 import { StatusIcon } from '../presence/StatusIcon';
@@ -275,7 +276,7 @@ export function UserHeroName({
         <Text
           as="div"
           size={compact ? 'H5' : 'H3'}
-          className={classNames(BreakWord, LineClamp2)}
+          className={classNames(BreakWord, LineClamp2, NameEffectRoomInline)}
           style={{ minWidth: 0 }}
           title={displayName ?? username}
         >

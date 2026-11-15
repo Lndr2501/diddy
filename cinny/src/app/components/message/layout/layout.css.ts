@@ -193,6 +193,11 @@ export const Username = style({
   overflow: 'hidden',
   whiteSpace: 'nowrap',
   textOverflow: 'ellipsis',
+  // room for the glow or shadow of a name style, given back so nothing moves (DiddyName.css.ts);
+  // the width limit grows by the same room, or the padding would eat the name (border-box)
+  padding: '0.35em 0.6em',
+  margin: '-0.35em -0.6em',
+  maxWidth: 'calc(100% + 1.2em)',
   selectors: {
     'button&': {
       cursor: 'pointer',

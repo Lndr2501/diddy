@@ -17,6 +17,7 @@ import { useMatrixClient } from '../../hooks/useMatrixClient';
 import colorMXID from '../../../util/colorMXID';
 import { GetMemberPowerTag } from '../../hooks/useMemberPowerTag';
 import { DiddyName } from '../diddy/DiddyName';
+import { NameEffectRoom } from '../diddy/DiddyName.css';
 
 type ReplyLayoutProps = {
   userColor?: string;
@@ -152,7 +153,7 @@ export const Reply = as<'div', ReplyProps>(
                     renderFallback={() => <span />}
                   />
                 </span>
-                <Text size="T200" truncate>
+                <Text size="T200" truncate className={NameEffectRoom}>
                   <b>
                     <DiddyName
                       userId={sender}
