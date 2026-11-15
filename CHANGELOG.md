@@ -2,6 +2,10 @@
 
 ## Unveröffentlicht
 
+## 1.10.1 (2026-11-15)
+
+- **Musikkarten auf dem Desktop (macOS, Linux, Windows):** Von iOS geteilte Songs (Apple Music, Spotify) kamen am Desktop nur als Text an. Die Karte wurde nie gezeigt, weil normale Textnachrichten vorher abgefangen wurden; dasselbe galt für Bot-Karten in Textnachrichten. iOS zeigte sie schon richtig. Das Apple-Logo vor „Music“ ist jetzt ein SVG statt des Zeichens , das es nur in Apple-Schriften gibt und das unter Linux und Windows als leeres Kästchen erschien.
+- **Link-Vorschau für YouTube (macOS, Linux, Windows, iOS):** YouTube-Links bekamen keine Vorschau-Karte, vor allem in verschlüsselten Chats, wo die App die Seite selbst liest. YouTube schreibt Titel und Bild erst etwa 800 KB weit in die Seite; Diddy las nur 256 KB (Desktop) bzw. 512 KB (iOS). Jetzt liest die App bis zu 2 MB und hört weiterhin am Ende des Seitenkopfs auf.
 - **Gesendete Bilder mit Vorschau (macOS, Linux, Windows, iOS):** Bilder gingen ohne Vorschaubild raus, also lud jeder im Raum das volle Bild, nur um es im Chat klein zu zeigen. Jetzt geht bei großen Bildern ein JPEG-Vorschaubild mit (längste Seite 800 px; nicht bei GIF, WebP und APNG). Gemessen: ein 11,5-MB-PNG bekommt eine 251-KB-Vorschau.
 - **Desktop: weniger unnötiges Neuzeichnen (macOS, Linux, Windows):**
   - Die Mitgliederliste sortiert bei Online-Änderungen nur noch für Mitglieder des Raums neu, in einem Durchgang und mit den zwischengespeicherten Diddy-Profilen (vorher pro Mitglied zweimal ein Durchlauf über alle Räume).
