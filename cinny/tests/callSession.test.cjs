@@ -14,6 +14,15 @@ const compiled = ts.transpileModule(fs.readFileSync(filename, 'utf8'), {
 
 const noop = () => undefined;
 
+const callPeople = {};
+vm.runInNewContext(
+  ts.transpileModule(
+    fs.readFileSync(path.join(__dirname, '../src/app/plugins/call/callPeople.ts'), 'utf8'),
+    { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2018 } }
+  ).outputText,
+  { exports: callPeople }
+);
+
 /** Tiny hook runtime: state slots survive between renders of the same "component". */
 function makeReact() {
   let slots = [];
@@ -32,6 +41,16 @@ function makeReact() {
     useCallback(fn) {
       i += 1;
       return fn;
+    },
+    useMemo(fn, deps) {
+      const idx = i;
+      i += 1;
+      const known = slots[idx];
+      if (known && known.deps.length === deps.length && known.deps.every((d, k) => d === deps[k])) {
+        return known.value;
+      }
+      slots[idx] = { deps, value: fn() };
+      return slots[idx].value;
     },
   };
   return {
@@ -61,6 +80,12 @@ function load() {
       removeListener: noop,
     },
     B: { memberships: [], on: noop, removeListener: noop },
+    // your computer and your iPhone as its camera: two devices, one person
+    C: {
+      memberships: [{ userId: '@luis:x', deviceId: 'DESK' }, { userId: '@luis:x', deviceId: 'PHONE' }],
+      on: noop,
+      removeListener: noop,
+    },
   };
   const mx = {
     matrixRTC: { getRoomSession: (room) => sessions[room.roomId], on: noop, off: noop },
@@ -69,6 +94,7 @@ function load() {
   const req = (name) => {
     if (name === 'react') return runtime.react;
     if (name === './useMatrixClient') return { useMatrixClient: () => mx };
+    if (name === '../plugins/call/callPeople') return callPeople;
     return {};
   };
   vm.runInNewContext(compiled, { module: mod, exports: mod.exports, require: req });
@@ -95,4 +121,11 @@ test('a reused row follows the new room, not the old call', () => {
   const third = runtime.render(() => useRow({ roomId: 'A' }));
   assert.equal(third.session, sessions.A);
   assert.equal(third.members.length, 2);
+});
+
+test('two devices of one person are one member', () => {
+  const { useCallSession, useCallMembers, runtime } = load();
+  const out = runtime.render(() => useCallMembers(useCallSession({ roomId: 'C' })));
+  assert.equal(out.length, 1);
+  assert.equal(out[0].deviceId, 'DESK');
 });
