@@ -86,11 +86,7 @@ struct MusicCardView: View {
                     }
                     .frame(width: 46, height: 46)
                     .overlay {
-                        if playing {
-                            Circle().trim(from: 0, to: player.progress)
-                                .stroke(.white.opacity(0.8), style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
-                                .rotationEffect(.degrees(-90))
-                        }
+                        if playing { MusicPreviewRing(progress: player.progress) }
                     }
                 }
                 .buttonStyle(.plain)
@@ -159,7 +155,9 @@ final class MusicPreviewPlayer: ObservableObject {
     @Published private(set) var current: URL?
     @Published private(set) var isPlaying = false
     @Published private(set) var isLoading = false
-    @Published private(set) var progress: Double = 0
+    /// Four updates a second while a preview plays. Its own object, observed only by the ring of
+    /// the playing card: every music card in the chat observes this player.
+    let progress = MusicPreviewProgress()
 
     private var player: AVPlayer?
     private var timeObserver: Any?
@@ -178,7 +176,7 @@ final class MusicPreviewPlayer: ObservableObject {
         current = url
         isLoading = true
         isPlaying = true
-        progress = 0
+        progress.value = 0
         // A running call keeps its own audio setup (play and record); otherwise play even when muted.
         let session = AVAudioSession.sharedInstance()
         if session.category != .playAndRecord { try? session.setCategory(.playback, options: [.mixWithOthers]) }
@@ -192,7 +190,7 @@ final class MusicPreviewPlayer: ObservableObject {
         timeObserver = player.addPeriodicTimeObserver(forInterval: CMTime(seconds: 0.25, preferredTimescale: 600), queue: .main) { [weak self] time in
             Task { @MainActor in
                 guard let self, let duration = self.player?.currentItem?.duration.seconds, duration.isFinite, duration > 0 else { return }
-                self.progress = min(1, time.seconds / duration)
+                self.progress.value = min(1, time.seconds / duration)
             }
         }
         endObserver = NotificationCenter.default.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: item, queue: .main) { [weak self] _ in
@@ -213,6 +211,22 @@ final class MusicPreviewPlayer: ObservableObject {
         current = nil
         isPlaying = false
         isLoading = false
-        progress = 0
+        progress.value = 0
+    }
+}
+
+@MainActor
+final class MusicPreviewProgress: ObservableObject {
+    @Published var value: Double = 0
+}
+
+/// The progress ring around the play button of the card that is playing.
+private struct MusicPreviewRing: View {
+    @ObservedObject var progress: MusicPreviewProgress
+
+    var body: some View {
+        Circle().trim(from: 0, to: progress.value)
+            .stroke(.white.opacity(0.8), style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+            .rotationEffect(.degrees(-90))
     }
 }

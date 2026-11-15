@@ -106,6 +106,24 @@ struct VoiceRecording {
     let size: UInt64
 }
 
+/// The values that change ten times a second while recording: the time and the last loudness
+/// values. Kept apart from VoiceRecorder, which the whole chat observes, so only the recording bar
+/// redraws for them (the chat re-evaluated every row ten times a second).
+@MainActor
+final class VoiceMeter: ObservableObject {
+    @Published var elapsed: TimeInterval = 0
+    /// The last loudness values (0...1) for the live meter.
+    @Published var levels: [Float] = []
+    /// When the newest level came in; the meter slides the bars between two of them.
+    var lastSample = Date()
+
+    func reset() {
+        elapsed = 0
+        levels = []
+        lastSample = Date()
+    }
+}
+
 /// Records a voice message as AAC in an m4a file (`audio/mp4`, the same as Safari and the macOS
 /// desktop app) and samples the loudness every 100 ms for the waveform, like the desktop.
 @MainActor
@@ -113,9 +131,10 @@ final class VoiceRecorder: ObservableObject {
     enum State: Equatable { case idle, starting, recording }
 
     @Published private(set) var state: State = .idle
-    @Published private(set) var elapsed: TimeInterval = 0
-    /// The last loudness values (0...1) for the live meter.
-    @Published private(set) var recentLevels: [Float] = []
+    /// Time and live levels, observed only by the recording bar.
+    let meter = VoiceMeter()
+    /// Recorded time; `meter.elapsed` is the published copy for the bar.
+    private(set) var elapsed: TimeInterval = 0
     @Published var error: String?
     /// Set when the length limit stopped the recording by itself; `stop()` then hands it over.
     @Published private(set) var pending: VoiceRecording?
@@ -125,7 +144,7 @@ final class VoiceRecorder: ObservableObject {
     private var timer: Timer?
     private var levels: [Float] = []
     private var fileURL: URL?
-    private static let interval: TimeInterval = 0.1
+    nonisolated static let interval: TimeInterval = 0.1
 
     /// True from the first tap until the message is sent or thrown away.
     var isActive: Bool { state == .recording || pending != nil }
@@ -171,13 +190,16 @@ final class VoiceRecorder: ObservableObject {
             return
         }
         levels = []
-        recentLevels = []
+        meter.reset()
         elapsed = 0
         pending = nil
         state = .recording
-        timer = Timer.scheduledTimer(withTimeInterval: Self.interval, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: Self.interval, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.tick() }
         }
+        // .common: keeps ticking while the chat is scrolled (the default mode pauses then)
+        RunLoop.main.add(timer, forMode: .common)
+        self.timer = timer
     }
 
     /// Ends the recording. Nil when it was too short or something went wrong (then `error` says why).
@@ -195,6 +217,7 @@ final class VoiceRecorder: ObservableObject {
         guard state == .idle, pending == nil else { try? FileManager.default.removeItem(at: recording.url); return }
         pending = recording
         elapsed = recording.duration
+        meter.elapsed = recording.duration
     }
 
     /// Throws the recording away.
@@ -210,8 +233,10 @@ final class VoiceRecorder: ObservableObject {
         // Peak power in dB (about -160...0) to a linear 0...1 level.
         let level = Float(pow(10, Double(recorder.peakPower(forChannel: 0)) / 20))
         levels.append(level.isFinite ? min(max(level, 0), 1) : 0)
-        recentLevels = Array(levels.suffix(40))
         elapsed = recorder.currentTime
+        meter.lastSample = Date()
+        meter.levels = Array(levels.suffix(120))
+        meter.elapsed = elapsed
         if elapsed >= VoiceWaveform.maxDuration, let recording = finish(keep: true) {
             pending = recording
         }
@@ -230,7 +255,8 @@ final class VoiceRecorder: ObservableObject {
         fileURL = nil
         let collected = levels
         levels = []
-        recentLevels = []
+        meter.levels = []
+        meter.elapsed = duration
         guard keep, let url else {
             if let url { try? FileManager.default.removeItem(at: url) }
             return nil

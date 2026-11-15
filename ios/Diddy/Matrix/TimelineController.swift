@@ -79,7 +79,9 @@ final class TimelineController: ObservableObject {
     @Published private(set) var reachedStart = false
     @Published private(set) var loading = false
     @Published var sendError: String?
-    @Published private(set) var typingUserIds: [String] = []
+    /// Who is typing. Its own object: the chat that observes this controller would otherwise be
+    /// re-evaluated with every row for each change (only the typing pill needs it).
+    let typing = TypingStore()
 
     let room: Room
     let ownUserId: String
@@ -147,7 +149,10 @@ final class TimelineController: ObservableObject {
             let me = ownUserId
             if focus == nil { await nav.start(room: room) }
             typingListener = room.subscribeToTypingNotifications(listener: TypingUpdates { [weak self] ids in
-                Task { @MainActor in self?.typingUserIds = ChatSettings.shareActivity ? ids.filter { $0 != me } : [] }
+                Task { @MainActor in
+                    let shown = ChatSettings.shareActivity ? ids.filter { $0 != me } : []
+                    if self?.typing.userIds != shown { self?.typing.userIds = shown }
+                }
             })
             // Sync only brings the members of recent senders (lazy loading), so older messages had
             // no sender profile: no name and no avatar. Loading the member list fills them in;
@@ -637,4 +642,10 @@ final class TimelineController: ObservableObject {
         default: return nil
         }
     }
+}
+
+/// The people typing in one room (TimelineController.typing), observed only by TypingIndicator.
+@MainActor
+final class TypingStore: ObservableObject {
+    @Published var userIds: [String] = []
 }

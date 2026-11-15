@@ -633,14 +633,8 @@ private struct ChatContent: View {
     }
 
     /// Who is typing, as a pill floating over the chat (ChatChrome.swift).
-    @ViewBuilder
     private var typingPill: some View {
-        let ids = controller.typingUserIds
-        if !ids.isEmpty {
-            TypingPill(names: ids.map { account.name(of: $0) })
-                .transition(.opacity)
-                .onAppear { account.resolveProfiles(ids, in: roomId) }
-        }
+        TypingIndicator(store: controller.typing, account: account, roomId: roomId)
     }
 
     /// Back to the list on iPhone; the iPad shows the list beside the chat.
