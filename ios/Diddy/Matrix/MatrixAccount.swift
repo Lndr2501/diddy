@@ -515,14 +515,32 @@ final class MatrixAccount: ObservableObject, Identifiable {
         guard !missing.isEmpty else { return }
         resolvingProfiles.formUnion(missing)
         let room = room(roomId)
+        let client = client
         Task { [weak self] in
-            for userId in missing {
-                if let member = try? await room?.member(userId: userId) {
-                    self?.remember(userId: userId, name: member.displayName, avatarUrl: member.avatarUrl)
-                } else if let profile = try? await self?.client.getProfile(userId: userId) {
-                    self?.remember(userId: userId, name: profile.displayName, avatarUrl: profile.avatarUrl)
+            // Four at a time, and one change of `profiles` per batch: each change re-evaluates
+            // every view that shows people (a chat full of new senders asked one by one).
+            for start in stride(from: 0, to: missing.count, by: 4) {
+                let batch = Array(missing[start..<min(start + 4, missing.count)])
+                let found = await withTaskGroup(of: (String, String?, String?)?.self) { group in
+                    for userId in batch {
+                        group.addTask {
+                            if let member = try? await room?.member(userId: userId) {
+                                return (userId, member.displayName, member.avatarUrl)
+                            }
+                            if let profile = try? await client.getProfile(userId: userId) {
+                                return (userId, profile.displayName, profile.avatarUrl)
+                            }
+                            return nil
+                        }
+                    }
+                    var results: [(userId: String, name: String?, avatarUrl: String?)] = []
+                    while let next = await group.next() {
+                        if let entry = next { results.append((entry.0, entry.1, entry.2)) }
+                    }
+                    return results
                 }
-                self?.resolvingProfiles.remove(userId)
+                self?.remember(found)
+                for userId in batch { self?.resolvingProfiles.remove(userId) }
             }
         }
     }

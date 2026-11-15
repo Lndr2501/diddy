@@ -90,38 +90,69 @@ final class TimelineNavModel: ObservableObject {
         return pinned.contains(eventId)
     }
 
+    /// What one SDK item adds to the snapshot, read once per item object: the SDK hands out a new
+    /// object when an item changes, and reading an event over the FFI (content, reactions,
+    /// receipts) is the expensive part of a rebuild, which runs for every receipt and edit.
+    private struct ItemNav {
+        let id: String
+        let eventId: String?
+        let sender: String
+        let readers: [String]
+        let threadRoot: String?
+        let replyTo: String?
+        let thread: ThreadInfo?
+        let reactions: [String: [String]]
+    }
+
+    private var itemCache: [ObjectIdentifier: (item: TimelineItem, nav: ItemNav?)] = [:]
+
+    private static func read(_ item: TimelineItem, me: String) -> ItemNav? {
+        guard let event = item.asEvent() else { return nil }
+        var eventId: String?
+        if case .eventId(let value) = event.eventOrTransactionId { eventId = value }
+        var replyTo: String?
+        var threadRoot: String?
+        var thread: ThreadInfo?
+        if case .msgLike(let like) = event.content {
+            replyTo = like.inReplyTo?.eventId()
+            threadRoot = like.threadRoot
+            if let summary = like.threadSummary { thread = info(of: summary) }
+        }
+        let readers = event.readReceipts
+            .filter { $0.key != me }
+            .sorted { ($0.value.timestamp ?? 0) > ($1.value.timestamp ?? 0) }
+            .map { $0.key }
+        var reactions: [String: [String]] = [:]
+        for reaction in event.reactions { reactions[reaction.key] = reaction.senders.map { $0.senderId } }
+        return ItemNav(id: item.uniqueId().id, eventId: eventId, sender: event.sender, readers: readers,
+                       threadRoot: threadRoot, replyTo: replyTo, thread: thread, reactions: reactions)
+    }
+
     func update(items: [TimelineItem], rowIds: Set<String>, me: String) {
         var next = TimelineNavSnapshot()
+        var cache: [ObjectIdentifier: (item: TimelineItem, nav: ItemNav?)] = [:]
+        cache.reserveCapacity(items.count)
         for item in items {
-            guard let event = item.asEvent() else { continue }
-            let id = item.uniqueId().id
-            var eventId: String?
-            if case .eventId(let value) = event.eventOrTransactionId { eventId = value }
-            var replyTo: String?
-            var threadRoot: String?
-            if case .msgLike(let like) = event.content {
-                replyTo = like.inReplyTo?.eventId()
-                threadRoot = like.threadRoot
-                if let summary = like.threadSummary {
-                    next.threads[id] = Self.info(of: summary)
-                }
+            let key = ObjectIdentifier(item)
+            let nav: ItemNav?
+            if let known = itemCache[key], known.item === item {
+                nav = known.nav
+            } else {
+                nav = Self.read(item, me: me)
             }
-            let readers = event.readReceipts
-                .filter { $0.key != me }
-                .sorted { ($0.value.timestamp ?? 0) > ($1.value.timestamp ?? 0) }
-                .map { $0.key }
+            cache[key] = (item, nav)
+            guard let nav else { continue }
+            let id = nav.id
+            if let thread = nav.thread { next.threads[id] = thread }
             let shown = rowIds.contains(id)
-            next.entries.append(TimelineNav.Entry(eventId: eventId, rowId: shown ? id : nil, sender: event.sender,
-                                                  readers: readers, threadRoot: threadRoot, replyTo: replyTo))
+            next.entries.append(TimelineNav.Entry(eventId: nav.eventId, rowId: shown ? id : nil, sender: nav.sender,
+                                                  readers: nav.readers, threadRoot: nav.threadRoot, replyTo: nav.replyTo))
             guard shown else { continue }
-            if let eventId { next.eventIds[id] = eventId }
-            if let replyTo { next.replyTargets[id] = replyTo }
-            if !event.reactions.isEmpty {
-                var byKey: [String: [String]] = [:]
-                for reaction in event.reactions { byKey[reaction.key] = reaction.senders.map { $0.senderId } }
-                next.reactionSenders[id] = byKey
-            }
+            if let eventId = nav.eventId { next.eventIds[id] = eventId }
+            if let replyTo = nav.replyTo { next.replyTargets[id] = replyTo }
+            if !nav.reactions.isEmpty { next.reactionSenders[id] = nav.reactions }
         }
+        itemCache = cache
         if next != snapshot { snapshot = next }
     }
 

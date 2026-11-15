@@ -49,11 +49,11 @@ struct TimelineNavSheetView: View {
     var body: some View {
         switch sheet {
         case .readers(let eventId):
-            PeopleSheet(title: "Seen by", userIds: controller.nav.readers(of: eventId), account: account, roomId: controller.room.id())
+            PeopleSheet(title: "Seen by", userIds: controller.nav.readers(of: eventId), account: account, roomId: controller.roomId)
         case .reactions(let key, let senders):
-            PeopleSheet(title: "Reacted with \(key)", userIds: senders, account: account, roomId: controller.room.id())
+            PeopleSheet(title: "Reacted with \(key)", userIds: senders, account: account, roomId: controller.roomId)
         case .report(let eventId):
-            ReportMessageSheet(account: account, roomId: controller.room.id(), eventId: eventId)
+            ReportMessageSheet(account: account, roomId: controller.roomId, eventId: eventId)
         case .delete(let row):
             DeleteMessageSheet(controller: controller, row: row)
         case .source(let row):
@@ -65,7 +65,7 @@ struct TimelineNavSheetView: View {
         case .pinned:
             PinnedMessagesSheet(account: account, parent: controller, onOpen: onJump)
         case .jumpToDate:
-            JumpToDateSheet(account: account, roomId: controller.room.id(), onOpen: onJump)
+            JumpToDateSheet(account: account, roomId: controller.roomId, onOpen: onJump)
         }
     }
 }
@@ -405,7 +405,7 @@ private struct PinnedList: View {
                         Button {
                             if let eventId = row.remoteEventId { onOpen(eventId) }
                         } label: {
-                            MessageRowView(row: row, account: account, roomId: controller.room.id())
+                            MessageRowView(row: row, account: account, roomId: controller.roomId)
                                 .allowsHitTesting(false)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
@@ -477,7 +477,7 @@ private struct ThreadBody: View {
                             MessageRowView(
                                 row: row,
                                 account: account,
-                                roomId: controller.room.id(),
+                                roomId: controller.roomId,
                                 onProfile: { profile = ProfileTarget(userId: row.sender) },
                                 onMention: { profile = ProfileTarget(userId: $0) },
                                 onReact: { key in Task { await controller.toggleReaction(key, on: row) } }
@@ -508,7 +508,7 @@ private struct ThreadBody: View {
             .padding(10)
             .background(Theme.chat)
         }
-        .sheet(item: $profile) { UserProfileSheet(account: account, userId: $0.userId, roomId: controller.room.id()) }
+        .sheet(item: $profile) { UserProfileSheet(account: account, userId: $0.userId, roomId: controller.roomId) }
         .alert("Message", isPresented: Binding(get: { controller.sendError != nil }, set: { if !$0 { controller.sendError = nil } })) {
             Button("OK", role: .cancel) {}
         } message: { Text(controller.sendError ?? "") }

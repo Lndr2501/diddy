@@ -82,6 +82,8 @@ final class TimelineController: ObservableObject {
     /// Who is typing. Its own object: the chat that observes this controller would otherwise be
     /// re-evaluated with every row for each change (only the typing pill needs it).
     let typing = TypingStore()
+    /// Read once: views ask for it for every row, and `room.id()` goes over the FFI each time.
+    let roomId: String
 
     let room: Room
     let ownUserId: String
@@ -119,6 +121,7 @@ final class TimelineController: ObservableObject {
 
     init(room: Room, ownUserId: String, isDirect: Bool = false, focus: TimelineFocus? = nil) {
         self.room = room
+        roomId = room.id()
         self.ownUserId = ownUserId
         self.isDirect = isDirect
         self.focus = focus

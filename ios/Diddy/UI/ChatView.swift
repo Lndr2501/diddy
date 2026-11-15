@@ -148,7 +148,7 @@ private struct ChatContent: View {
     @State private var composerFocusToken = 0
 
     private var title: String { summary?.name ?? "Channel" }
-    private var roomId: String { controller.room.id() }
+    private var roomId: String { controller.roomId }
     private var trimmedDraft: String { draft.trimmingCharacters(in: .whitespacesAndNewlines) }
 
     var body: some View {
