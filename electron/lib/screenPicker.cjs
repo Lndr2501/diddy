@@ -1,5 +1,15 @@
 const path = require('node:path');
 
+/**
+ * Options for `desktopCapturer.getSources`. Only X11 shows our picker with thumbnails. On Wayland the
+ * portal dialog chooses and the first source is taken as is, so no thumbnails are captured there
+ * (0×0 tells Electron to skip grabbing a frame of every screen and window).
+ */
+const screenSourceOptions = (wayland) => ({
+  types: ['screen', 'window'],
+  thumbnailSize: wayland ? { width: 0, height: 0 } : { width: 320, height: 180 },
+});
+
 function createScreenPicker({ BrowserWindow, ipcMain }) {
   const requests = new Map();
   ipcMain.handle('diddy:screen-sources', (event) => {
@@ -33,4 +43,4 @@ function createScreenPicker({ BrowserWindow, ipcMain }) {
     picker.loadFile(path.join(__dirname, '..', 'picker.html')).catch(() => finish(undefined));
   });
 }
-module.exports = { createScreenPicker };
+module.exports = { createScreenPicker, screenSourceOptions };
