@@ -106,6 +106,10 @@ struct SoundSettingsView: View {
 struct CallSettingsView: View {
     @AppStorage(NoiseSuppression.settingKey) private var noiseSuppression = true
     @AppStorage(CallPrefs.voiceProcessingKey) private var voiceProcessing = true
+    @AppStorage(CallPrefs.shareResolutionKey) private var shareResolution = BroadcastWire.Config.standard.maxPixels
+    @AppStorage(CallPrefs.shareFpsKey) private var shareFps = BroadcastWire.Config.standard.fps
+    @AppStorage(CallPrefs.shareQualityKey) private var shareQuality = BroadcastWire.Config.standard.quality
+    @AppStorage(CallPrefs.shareSystemSoundKey) private var shareSound = true
     @State private var confirmReset = false
     @State private var resetDone = false
 
@@ -128,6 +132,30 @@ struct CallSettingsView: View {
                 Toggle("Voice Processing", isOn: $voiceProcessing)
             } footer: {
                 Text("The system's echo cancellation and automatic gain. Keep it on if you use the speaker instead of headphones; off keeps music and other apps sounding normal. Applies the next time you join a call.")
+            }
+            Section {
+                Picker("Resolution", selection: $shareResolution) {
+                    Text("720p").tag(1280)
+                    Text("1080p").tag(1920)
+                    Text("1440p").tag(2560)
+                    Text("Full Screen Size").tag(0)
+                }
+                Picker("Frame Rate", selection: $shareFps) {
+                    Text("15 fps").tag(15)
+                    Text("30 fps").tag(30)
+                    Text("60 fps").tag(60)
+                }
+                Picker("Picture Quality", selection: $shareQuality) {
+                    Text("Standard").tag(0.6)
+                    Text("High").tag(0.75)
+                    Text("Very High").tag(0.9)
+                    Text("Maximum").tag(1.0)
+                }
+                Toggle("Sound of Other Apps", isOn: $shareSound)
+            } header: {
+                Text("Screen Sharing")
+            } footer: {
+                Text("For Whole Screen sharing. Higher values look sharper and move more smoothly, and use more battery and data; on a slow connection the call lowers them by itself. Sound of other apps goes out with your microphone and can also be switched while sharing. Applies the next time you start sharing.")
             }
             Section {
                 Button("Reset Volumes", role: .destructive) { confirmReset = true }

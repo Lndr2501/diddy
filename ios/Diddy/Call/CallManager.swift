@@ -295,6 +295,11 @@ final class CallSession: NSObject, ObservableObject {
     private var broadcastReceiver: BroadcastReceiver?
     private var broadcastPublication: LiveKit.LocalTrackPublication?
     private var broadcastTimeout: Task<Void, Never>?
+    /// Settings > Calls > Screen Sharing when the share started.
+    private var broadcastConfig = BroadcastWire.Config.standard
+    /// The sound of other apps goes out: it travels in the microphone track (LiveKit's mixer), so
+    /// the track stays on and "muted" turns only the microphone's own channel down.
+    private var sharingAppSound = false
     private var agentVoiceHandle: TaskHandle?
     private var reactionHandle: TaskHandle?
     private lazy var agentVoice: RemoteAgentVoiceWatcher = RemoteAgentVoiceWatcher(hooks: .init(
@@ -506,11 +511,21 @@ final class CallSession: NSObject, ObservableObject {
             if deafened { deafened = false; applyDeafen() }
         }
         do {
-            _ = try await liveKitRoom.localParticipant.setMicrophone(enabled: enable)
+            try await switchMicrophone(enable)
             microphoneOn = enable
             Sounds.shared.play(enable ? .unmute : .mute)
         } catch { lastError = error.friendlyMessage }
         refreshMembers()
+    }
+
+    /// The microphone on or off for the others. While the sound of other apps is shared, only the
+    /// microphone's channel in the mixer: the track has to keep carrying that sound.
+    private func switchMicrophone(_ enable: Bool) async throws {
+        if sharingAppSound {
+            LiveKit.AudioManager.shared.mixer.micVolume = enable ? 1 : 0
+            return
+        }
+        _ = try await liveKitRoom.localParticipant.setMicrophone(enabled: enable)
     }
 
     /// Discord semantics: deafen silences everyone and mutes the microphone; undeafen restores
@@ -522,7 +537,7 @@ final class CallSession: NSObject, ObservableObject {
         Sounds.shared.play(deafened ? .deafen : .undeafen)
         let enable = !deafened && !mutedBeforeDeafen
         do {
-            _ = try await liveKitRoom.localParticipant.setMicrophone(enabled: enable)
+            try await switchMicrophone(enable)
             microphoneOn = enable
         } catch { lastError = error.friendlyMessage }
         refreshMembers()
@@ -620,7 +635,8 @@ final class CallSession: NSObject, ObservableObject {
             if broadcastReceiver != nil { BroadcastPicker.present() }
             return
         }
-        let receiver = BroadcastReceiver { [weak self] event in
+        broadcastConfig = CallPrefs.broadcastConfig
+        let receiver = BroadcastReceiver(config: broadcastConfig) { [weak self] event in
             Task { @MainActor in self?.broadcastEvent(event) }
         }
         do {
@@ -655,15 +671,21 @@ final class CallSession: NSObject, ObservableObject {
         guard let receiver = broadcastReceiver, broadcastPublication == nil, !closed else { return }
         broadcastTimeout?.cancel()
         awaitingBroadcast = false
+        let config = broadcastConfig
+        // the screen's own size: up to 2560 for the encoder's planning; the pictures keep their size
+        let longest = Int32(config.maxPixels > 0 ? config.maxPixels : 2560)
         let track = await LiveKit.LocalVideoTrack.createBufferTrack(
             name: LiveKit.Track.screenShareVideoName,
             source: .screenShareVideo,
-            options: LiveKit.BufferCaptureOptions(dimensions: .h1080_169, fps: 15)
+            options: LiveKit.BufferCaptureOptions(dimensions: LiveKit.Dimensions(width: longest, height: longest * 9 / 16), fps: config.fps)
         )
         do {
             broadcastPublication = try await liveKitRoom.localParticipant.publish(
                 videoTrack: track,
-                options: LiveKit.VideoPublishOptions(preferredCodec: .h264)
+                options: LiveKit.VideoPublishOptions(
+                    screenShareEncoding: LiveKit.VideoEncoding(maxBitrate: config.maxBitrate, maxFps: config.fps),
+                    preferredCodec: .h264
+                )
             )
         } catch {
             lastError = "Screen sharing did not start: \(error.friendlyMessage)"
@@ -675,8 +697,43 @@ final class CallSession: NSObject, ObservableObject {
         }
         screenSharing = true
         Sounds.shared.play(.screenShareStarted)
-        DiagLog.shared.write("call: sharing the whole screen through the broadcast extension")
+        DiagLog.shared.write("call: sharing the whole screen through the broadcast extension (\(config.maxPixels == 0 ? "full size" : "\(config.maxPixels) px"), \(config.fps) fps, sound \(config.audio ? "on" : "off"))")
+        if config.audio { await startAppSound() }
         refreshMembers()
+    }
+
+    /// The sound of other apps into the call: through LiveKit's mixer into the microphone track,
+    /// which therefore has to run; with your microphone muted only its own channel stays silent.
+    private func startAppSound() async {
+        guard let receiver = broadcastReceiver, broadcastPublication != nil, !sharingAppSound, !closed else { return }
+        if microphoneOn {
+            LiveKit.AudioManager.shared.mixer.micVolume = 1
+        } else {
+            LiveKit.AudioManager.shared.mixer.micVolume = 0
+            do {
+                _ = try await liveKitRoom.localParticipant.setMicrophone(enabled: true)
+            } catch {
+                LiveKit.AudioManager.shared.mixer.micVolume = 1
+                lastError = "The sound of other apps needs microphone access for Diddy."
+                return
+            }
+        }
+        sharingAppSound = true
+        // RNNoise would cut music down to something like a voice
+        NoiseSuppression.setPausedForAppSound(true)
+        LiveKit.AudioManager.shared.mixer.appVolume = 1
+        receiver.setAudioSink { buffer in LiveKit.AudioManager.shared.mixer.capture(appAudio: buffer) }
+    }
+
+    private func stopAppSound() async {
+        guard sharingAppSound else { return }
+        broadcastReceiver?.setAudioSink(nil)
+        sharingAppSound = false
+        NoiseSuppression.setPausedForAppSound(false)
+        LiveKit.AudioManager.shared.mixer.micVolume = 1
+        if !microphoneOn, !closed {
+            _ = try? await liveKitRoom.localParticipant.setMicrophone(enabled: false)
+        }
     }
 
     /// Ends the whole-screen share: from the sharing menu, from the extension (Control Center's
@@ -685,6 +742,7 @@ final class CallSession: NSObject, ObservableObject {
         broadcastTimeout?.cancel()
         broadcastTimeout = nil
         awaitingBroadcast = false
+        await stopAppSound()
         let receiver = broadcastReceiver
         broadcastReceiver = nil
         receiver?.stop()
@@ -716,6 +774,10 @@ final class CallSession: NSObject, ObservableObject {
     func setShareSystemSound(_ on: Bool) async {
         extras.setShareSystemSound(on)
         await applyShareSystemSound()
+        guard broadcastPublication != nil else { return }
+        broadcastConfig.audio = on
+        broadcastReceiver?.update(config: broadcastConfig)
+        if on { await startAppSound() } else { await stopAppSound() }
     }
 
     /// Mutes or unmutes the sound of your share to match the setting (the share itself goes on).

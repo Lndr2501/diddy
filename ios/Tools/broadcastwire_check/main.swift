@@ -55,5 +55,32 @@ unknown.append(9)
 unknown.append(contentsOf: [0, 0, 0, 0])
 check(parser.push(unknown).isEmpty && parser.failed, "unknown kind fails")
 
+// settings from the app
+let config = W.Config(maxPixels: 0, fps: 60, quality: 0.9, audio: true)
+check(W.Config.decode(config.encoded()) == config, "config round trip")
+check(W.Config.decode(W.Config(maxPixels: 100, fps: 500, quality: 3, audio: false).encoded())
+      == W.Config(maxPixels: 480, fps: 60, quality: 1, audio: false), "config clamped")
+check(W.Config.decode(Data("nope".utf8)) == nil, "broken config refused")
+check(W.Config(maxPixels: 1280, fps: 15, quality: 0.6, audio: true).maxBitrate == 1_500_000, "720p15 bitrate")
+check(W.Config(maxPixels: 1920, fps: 30, quality: 0.6, audio: true).maxBitrate == 5_000_000, "1080p30 bitrate")
+check(W.Config(maxPixels: 0, fps: 60, quality: 0.6, audio: true).maxBitrate == 16_000_000, "native 60 bitrate")
+parser = W.Parser()
+check(parser.push(W.encode(.config, config.encoded())).first?.kind == .config, "config message")
+
+// sound of other apps
+let audioHeader = W.AudioHeader(sampleRate: 44_100, formatID: 0x6C70636D, formatFlags: 0xE, bytesPerPacket: 4,
+                                framesPerPacket: 1, bytesPerFrame: 4, channelsPerFrame: 2, bitsPerChannel: 16, frameCount: 3)
+let samples = Data((0..<12).map { UInt8($0) })
+let payload = audioHeader.encoded() + samples
+check(audioHeader.encoded().count == W.AudioHeader.size, "audio header is 40 bytes")
+let decoded = W.AudioHeader.decode(payload)
+check(decoded?.0 == audioHeader, "audio header round trip")
+check(decoded?.1 == samples, "samples kept")
+check(W.AudioHeader.decode(audioHeader.encoded() + Data([1, 2])) == nil, "too few samples refused")
+check(W.AudioHeader.decode(Data([1, 2, 3])) == nil, "too short refused")
+var badRate = audioHeader
+badRate.sampleRate = 0
+check(W.AudioHeader.decode(badRate.encoded() + samples) == nil, "no sample rate refused")
+
 if failures > 0 { print("\(failures) broadcast wire check(s) failed"); exit(1) }
 print("broadcast wire checks passed")

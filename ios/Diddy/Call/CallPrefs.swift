@@ -7,6 +7,9 @@ enum CallPrefs {
     static let shareSystemSoundKey = "diddy.call.shareSystemSound"
     static let inputVolumeKey = "diddy.call.inputVolume"
     static let outputVolumeKey = "diddy.call.outputVolume"
+    static let shareResolutionKey = "diddy.call.shareResolution"
+    static let shareFpsKey = "diddy.call.shareFps"
+    static let shareQualityKey = "diddy.call.shareQuality"
 
     /// Echo cancellation, auto gain and the system's noise suppression of the microphone. The
     /// desktop starts with this off (it ducks music there). An iPhone is often used on its speaker
@@ -18,6 +21,19 @@ enum CallPrefs {
     /// Share the sound of the device with a screen share (on by default, like before).
     static var shareSystemSound: Bool {
         UserDefaults.standard.object(forKey: shareSystemSoundKey) as? Bool ?? true
+    }
+
+    /// Whole-screen sharing (the broadcast extension): longest side in pixels (0: the screen's own),
+    /// frames per second and picture quality, from Settings > Calls > Screen Sharing.
+    static var broadcastConfig: BroadcastWire.Config {
+        let defaults = UserDefaults.standard
+        let standard = BroadcastWire.Config.standard
+        return BroadcastWire.Config(
+            maxPixels: defaults.object(forKey: shareResolutionKey) as? Int ?? standard.maxPixels,
+            fps: defaults.object(forKey: shareFpsKey) as? Int ?? standard.fps,
+            quality: defaults.object(forKey: shareQualityKey) as? Double ?? standard.quality,
+            audio: shareSystemSound
+        ).clamped
     }
 
     /// Microphone level 0...1 (the desktop's "Input volume").
