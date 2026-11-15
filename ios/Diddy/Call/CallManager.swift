@@ -99,8 +99,9 @@ final class CallManager: ObservableObject {
         await join(account: request.account, roomId: request.roomId, roomName: request.roomName, showCallScreen: request.showCallScreen)
     }
 
-    func join(account: MatrixAccount, roomId: String, roomName: String, showCallScreen present: Bool = false) async {
-        if current?.roomId == roomId {
+    func join(account: MatrixAccount, roomId: String, roomName: String, showCallScreen present: Bool = false,
+              companion: CallSession.Companion? = nil) async {
+        if current?.roomId == roomId, companion == nil {
             if present { showCallScreen = true }
             return
         }
@@ -111,6 +112,7 @@ final class CallManager: ObservableObject {
             return
         }
         let session = CallSession(account: account, room: room, roomName: roomName)
+        session.companion = companion
         session.onDropped = { [weak self, weak session] in
             guard let self, let session, self.current === session else { return }
             DiagLog.shared.write("call: connection to the voice server lost")
@@ -131,7 +133,12 @@ final class CallManager: ObservableObject {
             try await session.connect()
             DiagLog.shared.write("call: connected")
             Sounds.shared.play(.callJoined)
-            await session.notifyRoom()
+            if session.companion != nil {
+                // the computer is in the call already: nobody needs to be rung
+                await session.startCompanion()
+            } else {
+                await session.notifyRoom()
+            }
         } catch {
             DiagLog.shared.write("call: join failed: \(error.friendlyMessage)")
             self.error = error.friendlyMessage
@@ -252,6 +259,16 @@ final class CallSession: NSObject, ObservableObject {
     @Published private(set) var screenSharing = false
     /// The broadcast sheet is open and Diddy waits for "Diddy" to be picked there.
     @Published private(set) var awaitingBroadcast = false
+
+    /// This iPhone is camera, microphone and/or screen of your computer in this call
+    /// (CompanionProtocol.swift): it plays no sound and reports to the computer what it sends.
+    struct Companion: Equatable {
+        let requestId: String
+        /// The computer's device id.
+        let deviceId: String
+        var media: CompanionProtocol.Media
+    }
+    var companion: Companion?
     /// The share comes from the broadcast extension: the whole screen, other apps too.
     var sharingWholeScreen: Bool { broadcastPublication != nil }
     @Published private(set) var speakerOn = true
@@ -431,7 +448,14 @@ final class CallSession: NSObject, ObservableObject {
         }
         refreshMembers()
         // Membership, keys and microphone go out together, so the others hear you sooner.
-        let microphone = Task { await self.startMicrophone(allowed: await micPermission.value) }
+        let microphone = Task {
+            // As the computer's camera only: no microphone (and no error about it).
+            if let companion = self.companion, !companion.media.microphone {
+                self.microphoneOn = false
+                return
+            }
+            await self.startMicrophone(allowed: await micPermission.value)
+        }
         let present = Array(liveKitRoom.remoteParticipants.values)
         let keys = Task { if self.encrypted { await self.distributeKey(to: present) } }
         do {
@@ -490,6 +514,7 @@ final class CallSession: NSObject, ObservableObject {
         }
         // Stop local capture (camera, screen share) before the room goes away.
         await endBroadcast(announce: false)
+        if companion != nil { await sendCompanionState(joined: false) }
         let local = liveKitRoom.localParticipant
         _ = try? await local.setScreenShare(enabled: false)
         _ = try? await local.setCamera(enabled: false)
@@ -753,6 +778,54 @@ final class CallSession: NSObject, ObservableObject {
         screenSharing = false
         if announce { Sounds.shared.play(.screenShareStopped) }
         refreshMembers()
+    }
+
+    // MARK: Camera and microphone of your computer
+
+    /// Joined as the computer's camera/microphone/screen: says so in LiveKit (for Diddy clients),
+    /// starts what was chosen and keeps the computer told what is sent.
+    func startCompanion() async {
+        guard let companion else { return }
+        DiagLog.shared.write("companion: joined for device \(companion.deviceId)")
+        _ = try? await liveKitRoom.localParticipant.set(attributes: [CompanionProtocol.attribute: companion.deviceId])
+        if companion.media.camera, !cameraOn { await toggleCamera() }
+        if companion.media.screen, !screenSharing {
+            if Self.sharesWholeScreen || !BroadcastPicker.isAvailable {
+                await toggleScreenShare()
+            } else {
+                startWholeScreenShare()
+            }
+        }
+        applyPlaybackVolumes()
+        await sendCompanionState(joined: true)
+        $microphoneOn.combineLatest($cameraOn, $screenSharing)
+            .dropFirst()
+            .removeDuplicates { $0 == $1 }
+            .debounce(for: .milliseconds(300), scheduler: DispatchQueue.main)
+            .sink { [weak self] _ in Task { await self?.sendCompanionState(joined: true) } }
+            .store(in: &observers)
+    }
+
+    /// The computer switched the microphone or camera (its buttons work the phone now).
+    func applyCompanionControl(_ control: CompanionProtocol.Control) async {
+        if let wanted = control.microphone, wanted != microphoneOn { await toggleMicrophone() }
+        if let wanted = control.camera, wanted != cameraOn { await toggleCamera() }
+    }
+
+    private func sendCompanionState(joined: Bool) async {
+        guard let companion else { return }
+        let media = CompanionProtocol.Media(camera: cameraOn, microphone: microphoneOn, screen: screenSharing)
+        let content = CompanionProtocol.state(requestId: companion.requestId, deviceId: ownDeviceId,
+                                              joined: joined && !closed, media: media)
+        do {
+            _ = try await account.client.sendEncryptedToDeviceMessage(
+                eventType: CompanionProtocol.stateType,
+                recipients: [ownUserId: [companion.deviceId]],
+                content: content
+            )
+        } catch {
+            DiagLog.shared.write("companion: state not sent: \(error.friendlyMessage)")
+        }
     }
 
     // MARK: Turning the camera
@@ -1154,13 +1227,48 @@ final class CallSession: NSObject, ObservableObject {
                 ))
             }
         }
+        result = Self.onePerPerson(result)
         account.resolveProfiles(result.map(\.userId), in: roomId)
         // LiveKit reports speaking several times a second; publishing an unchanged list redrew
         // the whole call stage with its video views every time.
         if result != members { members = result }
-        let sharing = local.isScreenShareEnabled()
+        // the whole-screen share (broadcast extension) is a track of its own, not LiveKit's capture
+        let sharing = local.isScreenShareEnabled() || broadcastPublication != nil
         if sharing != screenSharing { screenSharing = sharing }
         if outgoing != .none, someoneElseIsHere { stopOutgoingRing() }
+    }
+
+    /// One tile per person: your computer and the iPhone that works as its camera and microphone
+    /// are two devices of one person (like the desktop's stage). The device that shares its screen
+    /// keeps the tile's id (Watch and the share volume go to it), otherwise your own device, then
+    /// the first; the camera comes from whichever sends one, the microphone counts as on when one is.
+    static func onePerPerson(_ members: [CallMember]) -> [CallMember] {
+        var order: [String] = []
+        var byUser: [String: CallMember] = [:]
+        for member in members {
+            guard let known = byUser[member.userId] else {
+                order.append(member.userId)
+                byUser[member.userId] = member
+                continue
+            }
+            let memberFirst: Bool
+            if (known.screenShare == nil) != (member.screenShare == nil) {
+                memberFirst = member.screenShare != nil
+            } else {
+                memberFirst = member.isLocal && !known.isLocal
+            }
+            let primary = memberFirst ? member : known
+            let other = memberFirst ? known : member
+            var merged = primary
+            merged.camera = primary.camera ?? other.camera
+            merged.screenShare = primary.screenShare ?? other.screenShare
+            merged.isSpeaking = primary.isSpeaking || other.isSpeaking
+            merged.microphoneOn = primary.microphoneOn || other.microphoneOn
+            merged.isConnecting = primary.isConnecting && other.isConnecting
+            merged.talkingToAgent = primary.talkingToAgent || other.talkingToAgent
+            byUser[member.userId] = merged
+        }
+        return order.compactMap { byUser[$0] }
     }
 
     private func member(for participant: LiveKit.Participant, isLocal: Bool, speaking: Set<String>) -> CallMember {

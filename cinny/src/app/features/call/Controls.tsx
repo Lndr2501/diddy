@@ -325,9 +325,11 @@ type MoreButtonProps = {
   spotlight: boolean;
   onToggleSpotlight: () => void;
   onSettings: () => void;
+  /** "iPhone as camera & mic…" (CompanionDialog.tsx) */
+  onPhone?: () => void;
 };
 /** Things used now and then: the view of the call and the call settings. */
-export function MoreButton({ spotlight, onToggleSpotlight, onSettings }: MoreButtonProps) {
+export function MoreButton({ spotlight, onToggleSpotlight, onSettings, onPhone }: MoreButtonProps) {
   const { cords, close, toggle } = useBarMenu();
   return (
     <PopOut
@@ -360,6 +362,20 @@ export function MoreButton({ spotlight, onToggleSpotlight, onSettings }: MoreBut
               >
                 <Text size="T300">Spotlight view</Text>
               </MenuItem>
+              {onPhone && (
+                <MenuItem
+                  className={sheetCss.MenuRow}
+                  size="300"
+                  radii="300"
+                  before={<Icon size="100" src={Icons.Phone} />}
+                  onClick={() => {
+                    close();
+                    onPhone();
+                  }}
+                >
+                  <Text size="T300">iPhone as camera & mic…</Text>
+                </MenuItem>
+              )}
               <MenuItem
                 className={sheetCss.MenuRow}
                 size="300"

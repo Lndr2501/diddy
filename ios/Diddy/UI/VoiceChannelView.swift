@@ -212,6 +212,7 @@ private struct ConnectedVoiceView: View {
 
     @ViewBuilder
     private var notices: some View {
+        if session.companion != nil { CompanionBanner() }
         if session.awaitingBroadcast {
             Label("Choose Diddy and tap Start Broadcast.", systemImage: "info.circle")
                 .font(.footnote)
