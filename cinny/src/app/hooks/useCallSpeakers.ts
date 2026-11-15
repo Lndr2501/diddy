@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CallEmbed, useCallControlState } from '../plugins/call';
-import { markSpeaking, readCallStage, stageSpeakers } from '../plugins/call/callStage';
+import { markSpeaking, readCallStage, stageSpeakers, StageModel } from '../plugins/call/callStage';
 import { useLocalSpeaking } from '../plugins/call/localSpeaking';
 import { createSpeakerHold } from '../plugins/call/speakerHold';
 import { useMatrixClient } from './useMatrixClient';
@@ -10,13 +10,11 @@ const sameSet = (a: Set<string>, b: Set<string>): boolean =>
   a.size === b.size && Array.from(a).every((id) => b.has(id));
 
 /**
- * Who is speaking in the call: the people whose Element Call tile carries the speaking class, and
- * you while Diddy hears you on your (unmuted) microphone (#76). Element Call's own speaking glow
- * is switched off by the call theme, so the class is read, not the glow.
+ * Who is in the call, speaking and muted, read from Element Call's tiles: one observer for the
+ * call (CallSpeakingSync publishes speakers and muted people for everyone else).
  */
-export const useCallSpeakers = (callEmbed: CallEmbed): Set<string> => {
+export const useCallStageModel = (callEmbed: CallEmbed): StageModel => {
   const mx = useMatrixClient();
-  const localSpeaking = useLocalSpeaking();
   // the call document is replaced while the call loads: observe the one of the joined call
   const joined = useCallJoined(callEmbed);
   // your own mute state is Diddy's call control (#107), not Element Call's tile
@@ -60,6 +58,17 @@ export const useCallSpeakers = (callEmbed: CallEmbed): Set<string> => {
     };
   }, [callEmbed, joined, userId, microphone]);
 
+  return model;
+};
+
+/**
+ * Who is speaking: the people whose Element Call tile carries the speaking class, and you while
+ * Diddy hears you on your (unmuted) microphone (#76). Element Call's own speaking glow is switched
+ * off by the call theme, so the class is read, not the glow.
+ */
+export const useStageSpeakers = (model: StageModel): Set<string> => {
+  const mx = useMatrixClient();
+  const localSpeaking = useLocalSpeaking();
   const [speakers, setSpeakers] = useState(() => new Set<string>());
   const next = useMemo(
     () => stageSpeakers(markSpeaking(model, mx.getUserId() ?? undefined, localSpeaking)),
@@ -86,3 +95,7 @@ export const useCallSpeakers = (callEmbed: CallEmbed): Set<string> => {
 
   return speakers;
 };
+
+/** Speakers of a call with its own observer; prefer `speakingUsersAtom` where the call is yours. */
+export const useCallSpeakers = (callEmbed: CallEmbed): Set<string> =>
+  useStageSpeakers(useCallStageModel(callEmbed));

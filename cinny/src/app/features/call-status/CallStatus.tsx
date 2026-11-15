@@ -1,5 +1,6 @@
 import React from 'react';
 import { Box, Spinner } from 'folds';
+import { useAtomValue } from 'jotai';
 import { LiveChip } from './LiveChip';
 import * as css from './styles.css';
 import { CallRoomName } from './CallRoomName';
@@ -10,7 +11,7 @@ import { MemberGlance } from './MemberGlance';
 import { StatusDivider } from './components';
 import { CallEmbed } from '../../plugins/call/CallEmbed';
 import { useCallJoined } from '../../hooks/useCallEmbed';
-import { useCallSpeakers } from '../../hooks/useCallSpeakers';
+import { speakingUsersAtom } from '../../state/speakingUsers';
 import { MemberSpeaking } from './MemberSpeaking';
 
 type CallStatusProps = {
@@ -23,7 +24,8 @@ export function CallStatus({ callEmbed }: CallStatusProps) {
   const callMembers = useCallMembers(callSession);
   const screenSize = useScreenSize();
   const callJoined = useCallJoined(callEmbed);
-  const speakers = useCallSpeakers(callEmbed);
+  // published by CallSpeakingSync for the call you are in: no second reader of the call's tiles
+  const speakers = useAtomValue(speakingUsersAtom);
 
   const compact = screenSize === ScreenSize.Mobile;
 

@@ -39,8 +39,8 @@ import {
   getTrackedPeerConnections,
   onPeerConnectionCreated,
 } from '../plugins/call/streamStats';
-import { useCallSpeakers } from '../hooks/useCallSpeakers';
-import { speakingUsersAtom } from '../state/speakingUsers';
+import { useCallStageModel, useStageSpeakers } from '../hooks/useCallSpeakers';
+import { callMutedUsersAtom, speakingUsersAtom } from '../state/speakingUsers';
 import { useCallMembersChange } from '../hooks/useCall';
 import { mDirectAtom } from '../state/mDirectList';
 import { useRoomNavigate } from '../hooks/useRoomNavigate';
@@ -253,14 +253,33 @@ function CallUtils({ embed }: { embed: CallEmbed }) {
   return null;
 }
 
-/** Publishes who is speaking so profile pictures can move while their owner talks. */
+const sameIds = (a: ReadonlySet<string>, b: ReadonlySet<string>): boolean =>
+  a.size === b.size && Array.from(a).every((id) => b.has(id));
+
+/**
+ * Publishes who is speaking (profile pictures move while their owner talks, the call status bar)
+ * and who is muted (the call members in the room list). The only reader of the call's tiles
+ * besides the stage itself.
+ */
 function CallSpeakingSync({ embed }: { embed: CallEmbed }) {
-  const speakers = useCallSpeakers(embed);
+  const model = useCallStageModel(embed);
+  const speakers = useStageSpeakers(model);
   const setSpeaking = useSetAtom(speakingUsersAtom);
+  const setMuted = useSetAtom(callMutedUsersAtom);
   useEffect(() => {
     setSpeaking(speakers);
   }, [speakers, setSpeaking]);
-  useEffect(() => () => setSpeaking(new Set()), [setSpeaking]);
+  useEffect(() => {
+    const muted = new Set(model.people.filter((p) => p.muted).map((p) => p.userId));
+    setMuted((prev) => (sameIds(prev, muted) ? prev : muted));
+  }, [model, setMuted]);
+  useEffect(
+    () => () => {
+      setSpeaking(new Set());
+      setMuted(new Set());
+    },
+    [setSpeaking, setMuted]
+  );
   return null;
 }
 

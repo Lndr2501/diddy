@@ -11,18 +11,15 @@ import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
 import { useOpenUserRoomProfile } from '../../state/hooks/userRoomProfile';
 import { openCallUserMenu } from '../../plugins/callFrameMenu';
-import { readCallStage } from '../../plugins/call/callStage';
 import { CallControlEvent } from '../../plugins/call/CallControl';
 import { callEmbedAtom } from '../../state/callEmbed';
-import { speakingUsersAtom } from '../../state/speakingUsers';
+import { callMutedUsersAtom, speakingUsersAtom } from '../../state/speakingUsers';
 import * as css from './styles.css';
 
 type CallMemberListProps = {
   room: Room;
   members: CallMembership[];
 };
-
-const MUTE_POLL_MS = 500;
 
 type CallAudioState = {
   /** people whose microphone is off */
@@ -31,53 +28,33 @@ type CallAudioState = {
   deafened: boolean;
 };
 
-const NO_ONE: CallAudioState = { muted: new Set(), deafened: false };
+const NO_ONE: ReadonlySet<string> = new Set();
 
 /**
- * Who is muted in the call of `roomId`, read from the call you are in (Matrix does not carry the
- * mute state of the others), and whether you are deafened. Empty when you are not in that call.
+ * Who is muted in the call of `roomId`, from the call you are in (Matrix does not carry the mute
+ * state of the others; CallSpeakingSync reads it from the call with the speakers), and whether
+ * you are deafened. Empty when you are not in that call.
  */
 function useCallAudioState(roomId: string): CallAudioState {
-  const mx = useMatrixClient();
-  const userId = mx.getUserId() ?? undefined;
   const callEmbed = useAtomValue(callEmbedAtom);
-  const [state, setState] = useState<CallAudioState>(NO_ONE);
+  const inThisCall = !!callEmbed && callEmbed.roomId === roomId;
+  const mutedInCall = useAtomValue(callMutedUsersAtom);
+  const [deafened, setDeafened] = useState(false);
 
   useEffect(() => {
-    if (!callEmbed || callEmbed.roomId !== roomId) {
-      setState((prev) => (prev === NO_ONE ? prev : NO_ONE));
+    if (!callEmbed || !inThisCall) {
+      setDeafened(false);
       return undefined;
     }
-    const update = () => {
-      let next: Set<string>;
-      try {
-        // the same reading as the call stage and status bar (#107): you from the call control,
-        // the others from LiveKit
-        const local = userId ? { userId, microphone: callEmbed.control.microphone } : undefined;
-        const model = readCallStage(callEmbed.document, local);
-        next = new Set(model.people.filter((p) => p.muted).map((p) => p.userId));
-      } catch {
-        next = new Set(); // torn-down or not yet loaded iframe
-      }
-      const deafened = !callEmbed.control.sound;
-      setState((prev) =>
-        prev.deafened === deafened &&
-        prev.muted.size === next.size &&
-        [...next].every((id) => prev.muted.has(id))
-          ? prev
-          : { muted: next, deafened }
-      );
-    };
+    const update = () => setDeafened(!callEmbed.control.sound);
     update();
-    const timer = window.setInterval(update, MUTE_POLL_MS);
     callEmbed.control.on(CallControlEvent.StateUpdate, update);
     return () => {
-      window.clearInterval(timer);
       callEmbed.control.off(CallControlEvent.StateUpdate, update);
     };
-  }, [callEmbed, roomId, userId]);
+  }, [callEmbed, inThisCall]);
 
-  return state;
+  return { muted: inThisCall ? mutedInCall : NO_ONE, deafened: inThisCall && deafened };
 }
 
 /**

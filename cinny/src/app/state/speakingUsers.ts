@@ -9,6 +9,13 @@ export const speakingUsersAtom = atom<Set<string>>(new Set<string>());
  * changes several times a second in a call, and only the pictures whose owner started or stopped
  * speaking have to be drawn again.
  */
+/**
+ * Matrix ids of the people muted in the call you are in, read by the same observer as the speakers
+ * (CallSpeakingSync). The room list's call members read this instead of scanning the call twice a
+ * second themselves.
+ */
+export const callMutedUsersAtom = atom<ReadonlySet<string>>(new Set<string>());
+
 export const userSpeakingAtom = atomFamily((userId: string) =>
   atom((get) => get(speakingUsersAtom).has(userId))
 );
