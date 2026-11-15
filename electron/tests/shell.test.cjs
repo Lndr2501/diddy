@@ -27,15 +27,24 @@ test('version matches the Tauri build', () => {
 
 test('folders follow XDG and keep the Tauri config folder', () => {
   const env = { HOME: '/home/u' };
-  assert.equal(paths.configDir(env), '/home/u/.config/app.diddy.desktop');
-  assert.equal(paths.browserDataDir(env), '/home/u/.local/share/app.diddy.desktop/electron');
-  assert.equal(paths.logDir(env), '/home/u/.local/state/diddy');
+  assert.equal(paths.configDir(env, 'linux'), '/home/u/.config/app.diddy.desktop');
+  assert.equal(paths.browserDataDir(env, 'linux'), '/home/u/.local/share/app.diddy.desktop/electron');
+  assert.equal(paths.logDir(env, 'linux'), '/home/u/.local/state/diddy');
   const xdg = { HOME: '/home/u', XDG_CONFIG_HOME: '/cfg', XDG_DATA_HOME: '/data', XDG_STATE_HOME: '/state' };
-  assert.equal(paths.configDir(xdg), '/cfg/app.diddy.desktop');
-  assert.equal(paths.browserDataDir(xdg), '/data/app.diddy.desktop/electron');
-  assert.equal(paths.logDir(xdg), '/state/diddy');
+  assert.equal(paths.configDir(xdg, 'linux'), '/cfg/app.diddy.desktop');
+  assert.equal(paths.browserDataDir(xdg, 'linux'), '/data/app.diddy.desktop/electron');
+  assert.equal(paths.logDir(xdg, 'linux'), '/state/diddy');
   // relative XDG values are invalid per spec and ignored
-  assert.equal(paths.logDir({ HOME: '/home/u', XDG_STATE_HOME: 'relative' }), '/home/u/.local/state/diddy');
+  assert.equal(paths.logDir({ HOME: '/home/u', XDG_STATE_HOME: 'relative' }, 'linux'), '/home/u/.local/state/diddy');
+});
+
+test('Windows keeps settings in the roaming and data in the local profile', () => {
+  const env = { USERPROFILE: 'C:\\Users\\u', APPDATA: 'C:\\Users\\u\\AppData\\Roaming', LOCALAPPDATA: 'D:\\Local' };
+  assert.equal(paths.configDir(env, 'win32'), 'C:\\Users\\u\\AppData\\Roaming\\app.diddy.desktop');
+  assert.equal(paths.browserDataDir(env, 'win32'), 'D:\\Local\\app.diddy.desktop\\electron');
+  assert.equal(paths.logDir(env, 'win32'), 'D:\\Local\\app.diddy.desktop\\logs');
+  // missing or relative profile variables fall back to the user folder
+  assert.equal(paths.logDir({ USERPROFILE: 'C:\\Users\\u', LOCALAPPDATA: 'relative' }, 'win32'), 'C:\\Users\\u\\AppData\\Local\\app.diddy.desktop\\logs');
 });
 
 test('log lines have a timestamp, no newlines and a length limit', () => {

@@ -222,7 +222,7 @@ export class HotkeyGate {
 /**
  * What the Linux shell (Electron) reports after binding the hotkey system-wide:
  * portal = XDG Desktop Portal (Wayland, KDE, newer GNOME): press and release, so holding works;
- * x11 = X11 global shortcut: presses only, every press starts / stops;
+ * x11 = Electron global shortcut (X11 and Windows): presses only, every press starts / stops;
  * window = no global shortcut, only the focused window and `diddy --agent-voice`.
  */
 export type GlobalHotkeyInfo = {
@@ -260,7 +260,7 @@ const GLOBAL_REASONS: Record<string, string> = {
   'register-failed': 'Another application already uses this key.',
 };
 
-/** One sentence for the settings: how far the hotkey reaches on Linux. */
+/** One sentence for the settings: how far the hotkey reaches on Linux and Windows. */
 export const globalHotkeyReach = (info: GlobalHotkeyInfo | undefined): string => {
   if (!info) return 'Only while the Diddy window is focused.';
   if (info.path === 'portal') {
@@ -269,7 +269,7 @@ export const globalHotkeyReach = (info: GlobalHotkeyInfo | undefined): string =>
     }. Holding works. The key is reserved for Diddy.`;
   }
   if (info.path === 'x11') {
-    return 'Also while Diddy is in the background (X11 global shortcut). Every press starts or stops; holding is not possible here. The key is reserved for Diddy.';
+    return 'Also while Diddy is in the background (global shortcut). Every press starts or stops; holding is not possible here. The key is reserved for Diddy.';
   }
   const why = info.reason ? GLOBAL_REASONS[info.reason] : undefined;
   return `Only while the Diddy window is focused${why ? `. ${why}` : ''}`;

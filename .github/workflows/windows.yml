@@ -1,0 +1,105 @@
+name: Windows
+# Builds and tests the Windows installer (Electron, NSIS, x64) and stores it as artifact
+# `diddy-windows`. A version tag is built and published by release.yml, which calls this workflow.
+#
+# The frontend is built on Linux (same build as the Linux packages) and handed to the Windows job,
+# which only packages the Electron shell around it, runs its tests and starts the packaged app once.
+# The installer is not code-signed: Windows SmartScreen asks once ("More info" > "Run anyway").
+on:
+  workflow_dispatch:
+  workflow_call:
+  pull_request:
+    paths: ["electron/**", "cinny/**", "config.json", ".github/workflows/windows.yml"]
+  push:
+    branches: [main]
+    paths: ["electron/**", "cinny/**", "config.json", ".github/workflows/windows.yml", ".github/scripts/stamp-version.sh"]
+# Own group name: as a called workflow github.workflow is the caller's name, and the release
+# workflow's other jobs must not cancel this one. Tag runs are never cancelled.
+concurrency:
+  group: windows-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+permissions:
+  contents: read
+jobs:
+  frontend:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    env:
+      HUSKY: "0"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: cinny/package-lock.json
+      - name: Show the tag version in the app
+        run: .github/scripts/stamp-version.sh
+      - name: Build frontend
+        env:
+          NODE_OPTIONS: --max_old_space_size=4096
+        run: |
+          cp config.json cinny/config.json
+          cd cinny
+          npm ci --no-audit --no-fund
+          npm run build
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-frontend
+          path: cinny/dist
+          if-no-files-found: error
+          retention-days: 1
+
+  package:
+    needs: frontend
+    runs-on: windows-2025
+    timeout-minutes: 30
+    env:
+      HUSKY: "0"
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: electron/package-lock.json
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: windows-frontend
+          path: cinny/dist
+      - name: Install Electron and packaging dependencies
+        run: cd electron && npm ci --no-audit --no-fund
+      - name: Run Electron tests
+        run: cd electron && npm test
+      - name: Build the installer
+        run: |
+          cd electron
+          npm run dist:win
+          ls -l dist
+      - name: Check the installer and the packaged app
+        run: |
+          version=$(node -p "require('./electron/package.json').version")
+          test -s "electron/dist/Diddy_${version}_x64-setup.exe"
+          test -s electron/dist/win-unpacked/Diddy.exe
+          test -s electron/dist/win-unpacked/resources/app.asar
+          test -s electron/dist/win-unpacked/resources/frontend/index.html
+          test -s electron/dist/win-unpacked/resources/app-icons/pink.png
+          # the Linux capture helpers are not part of the Windows build
+          test ! -e electron/dist/win-unpacked/resources/diddy-system-audio
+          test ! -e electron/dist/win-unpacked/resources/diddy-global-shortcut
+      - name: Start the packaged app once
+        run: |
+          npm install --no-save --no-audit --no-fund --prefix "$RUNNER_TEMP/pw" playwright-core@1.65.0
+          NODE_PATH="$RUNNER_TEMP/pw/node_modules" node electron/tests/start-smoke.cjs electron/dist/win-unpacked/Diddy.exe
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: diddy-windows
+          path: electron/dist/Diddy_*_x64-setup.exe
+          if-no-files-found: error

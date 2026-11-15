@@ -209,7 +209,9 @@ test('every module main.cjs loads ships in the Linux package and the Nix package
   for (const [script, binary, variable] of [['build:audio', 'diddy-system-audio', 'DIDDY_AUDIO_HELPER'], ['build:shortcut', 'diddy-global-shortcut', 'DIDDY_SHORTCUT_HELPER']]) {
     assert.ok(pkg.scripts[script].includes(`native/bin/${binary}`));
     assert.ok(pkg.scripts['dist:linux'].includes(script));
-    assert.ok(pkg.build.extraResources.some((r) => r.from === `native/bin/${binary}` && r.to === binary));
+    // Linux only: the Windows installer must not look for them
+    assert.ok(pkg.build.linux.extraResources.some((r) => r.from === `native/bin/${binary}` && r.to === binary));
+    assert.ok(!pkg.build.extraResources.some((r) => r.from.startsWith('native/')));
     assert.ok(nix.includes(`--set ${variable} $out/libexec/${binary}`));
     assert.ok(main.includes(variable) && main.includes(`'${binary}'`));
   }

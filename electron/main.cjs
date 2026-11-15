@@ -72,6 +72,8 @@ const appOrigin = new URL(appUrl).origin;
 
 app.setName('Diddy');
 app.setPath('userData', browserDataDir());
+// Windows shows notifications and groups the taskbar by this id; it must match the installer's appId.
+if (process.platform === 'win32') app.setAppUserModelId('app.diddy.desktop');
 // Same as the Tauri build on Linux: call sounds and remote audio may play without a click.
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 // Screen sharing on Wayland goes through the desktop portal (PipeWire).
@@ -481,7 +483,7 @@ if (!app.requestSingleInstanceLock()) {
 
   app.whenReady().then(async () => {
     diag.writeLine(
-      `---- Diddy ${VERSION} started (linux ${process.arch}, electron ${process.versions.electron}, chromium ${process.versions.chrome}) ----`
+      `---- Diddy ${VERSION} started (${process.platform} ${process.arch}, electron ${process.versions.electron}, chromium ${process.versions.chrome}) ----`
     );
     Menu.setApplicationMenu(null);
     if (!process.env.DIDDY_DEV_URL) {
