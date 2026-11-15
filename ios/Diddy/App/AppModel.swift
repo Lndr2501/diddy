@@ -104,6 +104,9 @@ final class AppModel: ObservableObject {
             LocalNotifications.shared.roomsChanged(account: account, from: old, to: new)
             CallPush.shared.publish(account: account)
         }
+        // "Use iPhone as Camera & Mic" requests from your computer (CompanionService.swift).
+        CompanionService.shared.setUp(model: self)
+        CompanionService.shared.attach(account)
         return account
     }
 
@@ -155,6 +158,7 @@ final class AppModel: ObservableObject {
 
     func logout(_ account: MatrixAccount) async {
         if calls.current?.accountId == account.id { await calls.leave() }
+        CompanionService.shared.detach(accountId: account.id)
         await account.logout()
         accounts.removeAll { $0.id == account.id }
         saveAccountList()

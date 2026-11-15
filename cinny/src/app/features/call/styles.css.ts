@@ -168,6 +168,23 @@ export const ControlToast = style({
   },
 });
 
+// A row of the iPhone camera & mic dialog: the whole row toggles its checkbox.
+export const CompanionRow = style({
+  cursor: 'pointer',
+});
+
+// "iPhone: camera, microphone · Disconnect" link inside the status line
+export const ToastAction = style({
+  all: 'unset',
+  cursor: 'pointer',
+  fontWeight: 600,
+  textDecoration: 'underline',
+  textUnderlineOffset: toRem(2),
+  selectors: {
+    '&:focus-visible': t.focusOutline,
+  },
+});
+
 export const ControlGroup = style({
   display: 'flex',
   alignItems: 'center',

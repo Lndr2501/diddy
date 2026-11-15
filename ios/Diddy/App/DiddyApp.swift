@@ -25,6 +25,8 @@ struct DiddyApp: App {
 
 struct RootView: View {
     @EnvironmentObject private var app: AppModel
+    /// Your computer asking for this iPhone as camera and microphone (CompanionService.swift).
+    @ObservedObject private var companion = CompanionService.shared
 
     var body: some View {
         Group {
@@ -50,6 +52,12 @@ struct RootView: View {
             } else {
                 LoginView(isAddingAccount: false)
             }
+        }
+        .sheet(item: $companion.pending) { pending in
+            CompanionRequestSheet(pending: pending,
+                                  onJoin: { companion.accept(media: $0) },
+                                  onDecline: { companion.decline() })
+                .diddySheetAppearance()
         }
         .task(id: app.unreachable.isEmpty) {
             // Quietly keeps trying, for the offline screen and for a second account that is down.

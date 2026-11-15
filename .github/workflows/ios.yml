@@ -155,6 +155,11 @@ jobs:
           swiftc -swift-version 5 Diddy/Matrix/SentMedia.swift Tools/sentmedia_check/main.swift -o "$RUNNER_TEMP/diddy-sentmedia-check"
           "$RUNNER_TEMP/diddy-sentmedia-check"
 
+      - name: Phone as camera and mic checks
+        run: |
+          swiftc -swift-version 5 Diddy/Call/CompanionProtocol.swift Tools/companion_check/main.swift -o "$RUNNER_TEMP/diddy-companion-check"
+          "$RUNNER_TEMP/diddy-companion-check"
+
       - name: Screen broadcast wire checks
         run: |
           swiftc -swift-version 5 Diddy/Call/BroadcastWire.swift Tools/broadcastwire_check/main.swift -o "$RUNNER_TEMP/diddy-broadcastwire-check"

@@ -112,6 +112,17 @@ final class LocalNotifications: NSObject, UNUserNotificationCenterDelegate {
         return true
     }
 
+    /// Your computer asks for this iPhone as camera and microphone (CompanionService.swift). Shown
+    /// whenever the app is not on screen, also without "Background Notifications": you asked for it.
+    func announceCompanion(account: MatrixAccount, roomId: String, roomName: String) {
+        guard UIApplication.shared.applicationState != .active else { return }
+        let content = UNMutableNotificationContent()
+        content.title = roomName.isEmpty ? "Your computer" : roomName
+        content.body = "Your computer wants to use this iPhone as camera and microphone. Open Diddy to join."
+        content.sound = .default
+        post(content, id: "companion|" + Self.identifier(account, roomId), account: account, roomId: roomId)
+    }
+
     func removeCall(account: MatrixAccount, roomId: String) {
         let id = "call|" + Self.identifier(account, roomId)
         center.removeDeliveredNotifications(withIdentifiers: [id])

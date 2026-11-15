@@ -14,7 +14,9 @@ extension CallSession {
     /// for me) for their voice, the share volume for their screen-share sound, both times the
     /// output volume of the devices menu. Deafened means silence.
     func applyPlaybackVolumes() {
-        let master = extras.outputVolume
+        // As the computer's camera/microphone the phone stays silent: the call plays on the computer
+        // (two devices playing it in one room would echo).
+        let master = companion == nil ? extras.outputVolume : 0
         for participant in liveKitRoom.remoteParticipants.values {
             let userId = participant.identity.flatMap { Self.split(identity: $0.stringValue)?.userId }
                 ?? participant.identity?.stringValue ?? ""
