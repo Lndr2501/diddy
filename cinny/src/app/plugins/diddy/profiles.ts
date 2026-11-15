@@ -1015,7 +1015,7 @@ export const readProfile = (mx: MatrixClient, userId: string): DiddyProfile | un
  * busy chat). Writes keep using readProfile, which always looks at the rooms as they are now.
  */
 let profileCache: { mx: MatrixClient; v: number; byUser: Map<string, DiddyProfile | undefined> } | undefined;
-const readProfileForView = (mx: MatrixClient, userId: string): DiddyProfile | undefined => {
+export const readProfileForView = (mx: MatrixClient, userId: string): DiddyProfile | undefined => {
   if (!profileCache || profileCache.mx !== mx || profileCache.v !== version) {
     profileCache = { mx, v: version, byUser: new Map() };
   }

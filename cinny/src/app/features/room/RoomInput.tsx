@@ -7,7 +7,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { useAtom, useAtomValue } from 'jotai';
+import { useAtom, useAtomValue, useSetAtom, useStore } from 'jotai';
 import { isKeyHotkey } from 'is-hotkey';
 import { EventType, IContent, IEventRelation, MsgType, RelationType, Room } from 'matrix-js-sdk';
 import { ReactEditor } from 'slate-react';
@@ -167,7 +167,10 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
     const powerLevels = usePowerLevelsContext();
     const creators = useRoomCreators(room);
 
-    const [msgDraft, setMsgDraft] = useAtom(roomIdToMsgDraftAtomFamily(roomId));
+    // Written on every typing pause, read only to restore: subscribing re-rendered the whole input
+    // after each save.
+    const setMsgDraft = useSetAtom(roomIdToMsgDraftAtomFamily(roomId));
+    const store = useStore();
     const [replyDraft, setReplyDraft] = useAtom(roomIdToReplyDraftAtomFamily(roomId));
     const replyUserID = replyDraft?.userId;
 
@@ -279,6 +282,7 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
 
     useEffect(() => {
       // if the editor is empty and there is a draft, restore it
+      const msgDraft = store.get(roomIdToMsgDraftAtomFamily(roomId));
       if (isEmptyEditor(editor) && msgDraft && msgDraft.length > 0) {
         try {
           Transforms.insertFragment(editor, msgDraft);
@@ -287,7 +291,7 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
           setMsgDraft(RESET);
         }
       }
-    }, [editor, msgDraft, setMsgDraft]);
+    }, [editor, roomId, store, setMsgDraft]);
 
     // Room of the latest render: a draft save that was scheduled for another room is dropped.
     const currentRoomIdRef = useRef(roomId);

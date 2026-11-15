@@ -13,6 +13,10 @@ export const allRoomsAtom = atom<string[], [RoomsAction], undefined>(
       return;
     }
     set(baseRoomsAtom, (ids) => {
+      // unchanged list, same array: everything reading the room list stays as it is
+      const has = ids.includes(action.roomId);
+      if (action.type === 'PUT' && has) return ids;
+      if (action.type !== 'PUT' && !has) return ids;
       const newIds = ids.filter((id) => id !== action.roomId);
       if (action.type === 'PUT') newIds.push(action.roomId);
       return newIds;

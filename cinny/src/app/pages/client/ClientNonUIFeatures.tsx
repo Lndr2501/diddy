@@ -292,7 +292,6 @@ function MessageNotifications() {
       data
     ) => {
       if (mx.getSyncState() !== 'SYNCING') return;
-      if (isDoNotDisturb(mx)) return;
       if (document.hasFocus() && (selectedRoomId === room?.roomId || notificationSelected)) return;
       if (
         !room ||
@@ -307,6 +306,8 @@ function MessageNotifications() {
       const sender = mEvent.getSender();
       const eventId = mEvent.getId();
       if (!sender || !eventId || mEvent.getSender() === mx.getUserId()) return;
+      // after the cheap checks: it reads your profile (catching up after sleep brings hundreds of events)
+      if (isDoNotDisturb(mx)) return;
       const unreadInfo = getUnreadInfo(room);
       const cachedUnreadInfo = unreadCacheRef.current.get(room.roomId);
       unreadCacheRef.current.set(room.roomId, unreadInfo);
