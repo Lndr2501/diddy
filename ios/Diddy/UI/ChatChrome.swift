@@ -340,6 +340,13 @@ struct EdgeSwipeBack: View {
     }
 }
 
+/// How far the chat is pulled aside by EdgeSwipeBack, for the list underneath (MainView moves it
+/// back in as the chat moves out).
+struct ChatEdgeOffsetKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+}
+
 /// True where the chat stands beside the chat list (iPhone in landscape, MainView): no back button
 /// and no edge swipe, the list is right there.
 private struct ChatBesideListKey: EnvironmentKey {

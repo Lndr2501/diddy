@@ -8,7 +8,11 @@ struct VoiceChannelView: View {
     var showsClose = false
     @EnvironmentObject private var calls: CallManager
     @Environment(\.dismiss) private var dismiss
+    /// iPhone in landscape: the list is beside the channel, no back button needed.
+    @Environment(\.chatBesideList) private var besideList
     @Environment(\.verticalSizeClass) private var verticalSizeClass
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @EnvironmentObject private var navigator: AppNavigator
     @State private var showMembers = false
     @State private var joining = false
     @State private var profile: ProfileTarget?
@@ -47,6 +51,12 @@ struct VoiceChannelView: View {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button { calls.showCallScreen = false } label: { Image(systemName: "chevron.down") }
                         .accessibilityLabel("Minimize call")
+                }
+            } else if horizontalSizeClass == .compact && !besideList {
+                // iPhone: the channel lies over the list (MainView), there is no system back button
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button { navigator.destination = nil } label: { Image(systemName: "chevron.left") }
+                        .accessibilityLabel("Back")
                 }
             }
             ToolbarItem(placement: .navigationBarTrailing) {

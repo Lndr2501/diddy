@@ -154,6 +154,7 @@ private struct ChatContent: View {
         }
         .shadow(color: .black.opacity(edgeOffset > 0 ? 0.35 : 0), radius: 14)
         .offset(x: edgeOffset)
+        .preference(key: ChatEdgeOffsetKey.self, value: edgeOffset)
         .navigationTitle(title)
         // Our own flat header (ChatHeader) instead of the system bar and its glass buttons; the
         // swipe back from the edge still works (ChatChrome.swift).

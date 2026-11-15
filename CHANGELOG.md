@@ -2,6 +2,8 @@
 
 ## Unveröffentlicht
 
+- **iOS: Zurückwischen zeigt die Chatliste sofort:** Beim Wisch vom linken Rand war hinter dem Chat alles schwarz, die Liste erschien erst, wenn der Chat ganz weg war. Auf dem iPhone im Hochformat liegt der Chat jetzt über der Liste: Sie bleibt darunter gezeichnet und gleitet beim Wischen leicht abgedunkelt mit herein, wie bei den System-Apps. Sprachkanäle haben dort einen eigenen Zurück-Pfeil. iPad und Querformat sind unverändert; macOS, Linux und Windows haben diese Geste nicht.
+
 ## 1.10.0 (2026-11-15)
 
 - **Windows (neu):** Diddy gibt es als Installer für Windows 10/11 (x64), `Diddy_X.Y.Z_x64-setup.exe`. Es ist dieselbe Electron-App wie unter Linux; sie installiert sich ohne Administratorrechte für den eigenen Nutzer, mit Startmenü- und Desktop-Verknüpfung. Einstellungen liegen in `%APPDATA%\app.diddy.desktop`, Anmeldungen, Schlüssel und das Log in `%LOCALAPPDATA%\app.diddy.desktop`. Die globale Tastenkombination für Agent Voice und Benachrichtigungen funktionieren. Noch nicht unter Windows: Systemton beim Bildschirm teilen (Chromiums Aufnahme würde den Call selbst mitschneiden, die anderen hörten sich als Echo). Der Installer ist nicht signiert: Bei der SmartScreen-Warnung „Weitere Informationen“ → „Trotzdem ausführen“. Die CI baut ihn auf einem Windows-Rechner, lässt die Tests laufen und startet die fertige App einmal.
