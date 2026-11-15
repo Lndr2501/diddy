@@ -31,6 +31,19 @@ export type HierarchyItem = HierarchyItemSpace | HierarchyItemRoom;
 
 type GetRoomCallback = (roomId: string) => Room | undefined;
 
+const sameHierarchy = (a: HierarchyItem[], b: HierarchyItem[]): boolean =>
+  a.length === b.length &&
+  a.every((item, i) => {
+    const other = b[i];
+    return (
+      item.roomId === other.roomId &&
+      item.parentId === other.parentId &&
+      item.ts === other.ts &&
+      item.content === other.content &&
+      'space' in item === 'space' in other
+    );
+  });
+
 const hierarchyItemTs: SortFunc<HierarchyItem> = (a, b) => byTsOldToNew(a.ts, b.ts);
 const hierarchyItemByOrder: SortFunc<HierarchyItem> = (a, b) =>
   byOrderKey(a.content.order, b.content.order);
@@ -244,7 +257,9 @@ export const useSpaceJoinedHierarchy = (
   const [hierarchy, setHierarchy] = useAtom(hierarchyAtom);
 
   useEffect(() => {
-    setHierarchy(getSpaceJoinedHierarchy(spaceId, getRoom, excludeRoom, sortRoomItems));
+    const next = getSpaceJoinedHierarchy(spaceId, getRoom, excludeRoom, sortRoomItems);
+    // the same rooms in the same places: keep the array, so the list does not render twice
+    setHierarchy((current) => (sameHierarchy(current, next) ? current : next));
   }, [mx, spaceId, setHierarchy, getRoom, excludeRoom, sortRoomItems]);
 
   useStateEventCallback(

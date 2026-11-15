@@ -60,7 +60,8 @@ import { useCategoryHandler } from '../../../hooks/useCategoryHandler';
 import { useNavToActivePathMapper } from '../../../hooks/useNavToActivePathMapper';
 import { PageNav, PageNavHeader, PageNavContent } from '../../../components/page';
 import * as pageCss from '../../../components/page/style.css';
-import { useRoomsUnread } from '../../../state/hooks/unread';
+import { useRoomsUnread, useUnreadRoomIds } from '../../../state/hooks/unread';
+import { useRoomActivityTick } from '../../../hooks/useRoomActivityTick';
 import { markAsRead } from '../../../utils/notifications';
 import { useClosedNavCategoriesAtom } from '../../../state/hooks/closedNavCategories';
 import { stopPropagation } from '../../../utils/keyboard';
@@ -225,7 +226,9 @@ export function Home() {
   const allRooms = useAtomValue(allRoomsAtom);
   const mDirects = useAtomValue(mDirectAtom);
   const notificationPreferences = useRoomsNotificationPreferencesContext();
-  const roomToUnread = useAtomValue(roomToUnreadAtom);
+  // which rooms are unread, not their counts; activity re-sorts at most once a second
+  const unreadIds = useUnreadRoomIds(roomToUnreadAtom);
+  const activityTick = useRoomActivityTick(mx);
   const navigate = useNavigate();
 
   const selectedRoomId = useSelectedRoom();
@@ -252,14 +255,22 @@ export function Home() {
   const noRoomToDisplay =
     otherRoomIds.length === 0 && favouriteRoomIds.length === 0 && directs.length === 0;
 
+  // A–Z does not change with activity or unread state: sorted only when the rooms change.
+  const favouritesAtoZ = useMemo(
+    () => Array.from(favouriteRoomIds).sort(factoryRoomIdByAtoZ(mx)),
+    [mx, favouriteRoomIds]
+  );
+  const othersAtoZ = useMemo(
+    () => Array.from(otherRoomIds).sort(factoryRoomIdByAtoZ(mx)),
+    [mx, otherRoomIds]
+  );
+
   const virtualItems = useMemo(() => {
-    const makeRoomList = (roomIds: string[], closed: boolean): string[] => {
-      const sorted = Array.from(roomIds).sort(
-        closed ? factoryRoomIdByActivity(mx) : factoryRoomIdByAtoZ(mx)
-      );
-      return closed
-        ? sorted.filter((rId) => roomToUnread.has(rId) || rId === selectedRoomId)
-        : sorted;
+    const makeRoomList = (roomIds: string[], atoZ: string[], closed: boolean): string[] => {
+      if (!closed) return atoZ;
+      return Array.from(roomIds)
+        .sort(factoryRoomIdByActivity(mx))
+        .filter((rId) => unreadIds.has(rId) || rId === selectedRoomId);
     };
 
     const items: HomeVirtualItem[] = [];
@@ -267,7 +278,7 @@ export function Home() {
     if (favouriteRoomIds.length > 0) {
       const closed = closedCategories.has(FAVOURITE_CATEGORY_ID);
       items.push({ type: 'category', id: FAVOURITE_CATEGORY_ID, name: 'Favourites', closed });
-      makeRoomList(favouriteRoomIds, closed).forEach((roomId) =>
+      makeRoomList(favouriteRoomIds, favouritesAtoZ, closed).forEach((roomId) =>
         items.push({ type: 'room', roomId })
       );
     }
@@ -275,7 +286,9 @@ export function Home() {
     if (otherRoomIds.length > 0 || (favouriteRoomIds.length === 0 && directs.length === 0)) {
       const closed = closedCategories.has(DEFAULT_CATEGORY_ID);
       items.push({ type: 'category', id: DEFAULT_CATEGORY_ID, name: 'Rooms', closed });
-      makeRoomList(otherRoomIds, closed).forEach((roomId) => items.push({ type: 'room', roomId }));
+      makeRoomList(otherRoomIds, othersAtoZ, closed).forEach((roomId) =>
+        items.push({ type: 'room', roomId })
+      );
     }
 
     if (directs.length > 0) {
@@ -283,12 +296,25 @@ export function Home() {
       items.push({ type: 'category', id: DIRECT_CATEGORY_ID, name: 'Direct Messages', closed });
       Array.from(directs)
         .sort(factoryRoomIdByActivity(mx))
-        .filter((rId) => !closed || roomToUnread.has(rId) || rId === selectedRoomId)
+        .filter((rId) => !closed || unreadIds.has(rId) || rId === selectedRoomId)
         .forEach((roomId) => items.push({ type: 'room', roomId, direct: true }));
     }
 
     return items;
-  }, [mx, favouriteRoomIds, otherRoomIds, directs, closedCategories, roomToUnread, selectedRoomId]);
+    // activityTick: the activity order is read from the rooms, the tick says when to read it again
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    mx,
+    favouriteRoomIds,
+    otherRoomIds,
+    favouritesAtoZ,
+    othersAtoZ,
+    directs,
+    closedCategories,
+    unreadIds,
+    selectedRoomId,
+    activityTick,
+  ]);
 
   const virtualizer = useVirtualizer({
     count: virtualItems.length,
@@ -438,7 +464,8 @@ export function Home() {
                 return (
                   <VirtualTile
                     virtualItem={vItem}
-                    key={`${vItem.index}:${item.roomId}`}
+                    // by room: a chat moving up keeps its row instead of remounting the ones between
+                    key={item.roomId}
                     ref={virtualizer.measureElement}
                   >
                     <RoomNavItem

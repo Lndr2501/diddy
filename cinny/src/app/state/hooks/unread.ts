@@ -26,6 +26,18 @@ const getRoomsUnread = (rooms: string[], roomToUnread: RoomToUnread): Unread | u
   return unread;
 };
 
+const unreadRoomIds = (roomToUnread: RoomToUnread): ReadonlySet<string> => new Set(roomToUnread.keys());
+const sameIds = (a: ReadonlySet<string>, b: ReadonlySet<string>): boolean =>
+  a.size === b.size && Array.from(a).every((id) => b.has(id));
+
+/**
+ * The rooms with anything unread. Changes only when a room becomes unread or read, not with every
+ * new message (which changes the counts): the room lists only need to know which rooms to keep
+ * in a closed category.
+ */
+export const useUnreadRoomIds = (roomToUnreadAtm: typeof roomToUnreadAtom): ReadonlySet<string> =>
+  useAtomValue(selectAtom(roomToUnreadAtm, unreadRoomIds, sameIds));
+
 export const useRoomsUnread = (
   rooms: string[],
   roomToUnreadAtm: typeof roomToUnreadAtom

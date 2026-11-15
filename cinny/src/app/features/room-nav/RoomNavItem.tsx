@@ -1,4 +1,4 @@
-import React, { MouseEventHandler, ReactNode, forwardRef, useState } from 'react';
+import React, { MouseEventHandler, ReactNode, forwardRef, memo, useState } from 'react';
 import { Room } from 'matrix-js-sdk';
 import {
   Avatar,
@@ -352,7 +352,7 @@ type RoomNavItemProps = {
   showAvatar?: boolean;
   direct?: boolean;
 };
-export function RoomNavItem({
+function RoomNavItemView({
   room,
   selected,
   showAvatar,
@@ -561,3 +561,9 @@ export function RoomNavItem({
     </>
   );
 }
+
+/**
+ * Memoized: the room lists re-render when rooms move or become unread, and every row ran all its
+ * hooks again. A row's own state (unread, typing, call) comes from its own subscriptions.
+ */
+export const RoomNavItem = memo(RoomNavItemView);

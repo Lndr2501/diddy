@@ -59,7 +59,8 @@ import { usePowerLevels } from '../../../hooks/usePowerLevels';
 import { useRecursiveChildScopeFactory, useSpaceChildren } from '../../../state/hooks/roomList';
 import { roomToParentsAtom } from '../../../state/room/roomToParents';
 import { markAsRead } from '../../../utils/notifications';
-import { useRoomsUnread } from '../../../state/hooks/unread';
+import { useRoomsUnread, useUnreadRoomIds } from '../../../state/hooks/unread';
+import { useRoomActivityTick } from '../../../hooks/useRoomActivityTick';
 import { UseStateProvider } from '../../../components/UseStateProvider';
 import { LeaveSpacePrompt } from '../../../components/leave-space-prompt';
 import { copyToClipboard } from '../../../utils/dom';
@@ -400,7 +401,8 @@ function SpaceDirects({
 }) {
   const mx = useMatrixClient();
   const directs = useDirectRooms();
-  const roomToUnread = useAtomValue(roomToUnreadAtom);
+  const unreadIds = useUnreadRoomIds(roomToUnreadAtom);
+  const activityTick = useRoomActivityTick(mx);
   const selectedRoomId = useSelectedRoom();
   const notificationPreferences = useRoomsNotificationPreferencesContext();
   const [closedCategories, setClosedCategories] = useAtom(useClosedNavCategoriesAtom());
@@ -416,9 +418,11 @@ function SpaceDirects({
       .sort(factoryRoomIdByActivity(mx));
     // closed: like every category, unread and open chats stay visible
     return closed
-      ? sorted.filter((rId) => roomToUnread.has(rId) || rId === selectedRoomId)
+      ? sorted.filter((rId) => unreadIds.has(rId) || rId === selectedRoomId)
       : sorted;
-  }, [mx, directs, hiddenRoomIds, closed, roomToUnread, selectedRoomId]);
+    // activityTick: says when to read the activity order from the rooms again
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mx, directs, hiddenRoomIds, closed, unreadIds, selectedRoomId, activityTick]);
 
   if (directs.length === 0) return null;
   return (
@@ -460,7 +464,9 @@ export function Space() {
   const spaceIdOrAlias = getCanonicalAliasOrRoomId(mx, space.roomId);
   const scrollRef = useRef<HTMLDivElement>(null);
   const mDirects = useAtomValue(mDirectAtom);
-  const roomToUnread = useAtomValue(roomToUnreadAtom);
+  // only which rooms are unread: the hierarchy walk below depends on it
+  const unreadIds = useUnreadRoomIds(roomToUnreadAtom);
+  const activityTick = useRoomActivityTick(mx);
   const allRooms = useAtomValue(allRoomsAtom);
   const allJoinedRooms = useMemo(() => new Set(allRooms), [allRooms]);
   const notificationPreferences = useRoomsNotificationPreferencesContext();
@@ -493,14 +499,16 @@ export function Space() {
           return false;
         }
         const showRoomAnyway =
-          roomToUnread.has(roomId) || roomId === selectedRoomId || callEmbed?.roomId === roomId;
+          unreadIds.has(roomId) || roomId === selectedRoomId || callEmbed?.roomId === roomId;
         return !showRoomAnyway;
       },
-      [space.roomId, closedCategories, roomToUnread, selectedRoomId, callEmbed]
+      [space.roomId, closedCategories, unreadIds, selectedRoomId, callEmbed]
     ),
     useCallback(
       (sId) => closedCategories.has(makeNavCategoryId(space.roomId, sId)),
-      [closedCategories, space.roomId]
+      // closed categories sort by activity: walk again when it changes (open ones sort by order)
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      [closedCategories, space.roomId, closedCategories.size > 0 ? activityTick : 0]
     )
   );
 

@@ -43,7 +43,8 @@ import { useDirectRooms } from './useDirectRooms';
 import { PageNav, PageNavContent, PageNavHeader } from '../../../components/page';
 import * as pageCss from '../../../components/page/style.css';
 import { useClosedNavCategoriesAtom } from '../../../state/hooks/closedNavCategories';
-import { useRoomsUnread } from '../../../state/hooks/unread';
+import { useRoomsUnread, useUnreadRoomIds } from '../../../state/hooks/unread';
+import { useRoomActivityTick } from '../../../hooks/useRoomActivityTick';
 import { markAsRead } from '../../../utils/notifications';
 import { stopPropagation } from '../../../utils/keyboard';
 import { useSetting } from '../../../state/hooks/settings';
@@ -189,7 +190,9 @@ export function Direct() {
   const directs = useDirectRooms();
   const favouriteRooms = useAtomValue(favouriteRoomsAtom);
   const notificationPreferences = useRoomsNotificationPreferencesContext();
-  const roomToUnread = useAtomValue(roomToUnreadAtom);
+  // which rooms are unread, not their counts; activity re-sorts at most once a second
+  const unreadIds = useUnreadRoomIds(roomToUnreadAtom);
+  const activityTick = useRoomActivityTick(mx);
   const navigate = useNavigate();
 
   const createDirectSelected = useDirectCreateSelected();
@@ -212,7 +215,7 @@ export function Direct() {
     const makeDirectList = (roomIds: string[], closed: boolean): string[] => {
       const sorted = Array.from(roomIds).sort(factoryRoomIdByActivity(mx));
       return closed
-        ? sorted.filter((rId) => roomToUnread.has(rId) || rId === selectedRoomId)
+        ? sorted.filter((rId) => unreadIds.has(rId) || rId === selectedRoomId)
         : sorted;
     };
 
@@ -235,7 +238,9 @@ export function Direct() {
     }
 
     return items;
-  }, [mx, favouriteRoomIds, otherRoomIds, closedCategories, roomToUnread, selectedRoomId]);
+    // activityTick: says when to read the activity order from the rooms again
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mx, favouriteRoomIds, otherRoomIds, closedCategories, unreadIds, selectedRoomId, activityTick]);
 
   const virtualizer = useVirtualizer({
     count: virtualItems.length,
@@ -315,7 +320,7 @@ export function Direct() {
                 return (
                   <VirtualTile
                     virtualItem={vItem}
-                    key={`${vItem.index}:${item.roomId}`}
+                    key={item.roomId}
                     ref={virtualizer.measureElement}
                   >
                     <RoomNavItem
