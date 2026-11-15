@@ -55,6 +55,9 @@ targets:
       - target: DiddyShare
         embed: true
         codeSign: false
+      - target: DiddyBroadcast
+        embed: true
+        codeSign: false
       # MatrixRustSDK is a dynamic framework (the Rust core lives in it) and must be copied into
       # the app; CI checks that every @rpath framework is really inside the IPA.
       - package: MatrixRustSDK
@@ -102,6 +105,31 @@ targets:
         # Home-screen icons the user can switch to in Settings (see AppIconManager.swift).
         ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: AppIcon-Blue AppIcon-Purple AppIcon-Black AppIcon-Magenta
         ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: NO
+
+  # "Diddy" in the screen broadcast sheet: records the whole screen, also in other apps, and hands
+  # the pictures to the app over 127.0.0.1 (Diddy/Call/BroadcastWire.swift). No Matrix code here.
+  DiddyBroadcast:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: DiddyBroadcast
+      - path: Diddy/Call/BroadcastWire.swift
+    info:
+      path: DiddyBroadcast/Info.plist
+      properties:
+        CFBundleDisplayName: Diddy
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.broadcast-services-upload
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).SampleHandler
+          RPBroadcastProcessMode: RPBroadcastProcessModeSampleBuffer
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.diddy.ios.broadcast
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES
+        SWIFT_OBJC_BRIDGING_HEADER: ""
 
   # "Diddy" in the share sheet: collects photos, videos, files, links and text (Apple Music lyrics)
   # into the app group and opens the app, which asks for the chat and sends. No Matrix code here.

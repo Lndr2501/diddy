@@ -141,7 +141,8 @@ struct CallStageView: View {
     private func tile(_ item: StageItem, size: CGSize, role: StageTileRole) -> some View {
         switch item.kind {
         case .person:
-            PersonTile(member: item.member, account: account, size: size, role: role, reaction: extras.reaction(for: item.member.userId), onBack: { select(item) })
+            PersonTile(member: item.member, account: account, size: size, role: role, reaction: extras.reaction(for: item.member.userId), onBack: { select(item) },
+                       onFlip: item.member.isLocal ? { Task { await session.flipCamera() } } : nil)
                 .onTapGesture { select(item) }
                 .contextMenu { personMenu(item.member) }
         case .share:
@@ -229,6 +230,8 @@ private struct PersonTile: View {
     let role: StageTileRole
     var reaction: String?
     let onBack: () -> Void
+    /// Your own tile while the camera runs: turns it between front and back.
+    var onFlip: (() -> Void)?
 
     private var speaking: Bool { member.isSpeaking && member.microphoneOn && !member.isConnecting }
     private var avatarSize: CGFloat { min(max(min(size.width, size.height) * 0.42, 30), 128) }
@@ -261,6 +264,11 @@ private struct PersonTile: View {
         }
         .overlay(alignment: .topTrailing) {
             if role == .focus { StageIconButton(icon: "square.grid.2x2", label: "Back to grid", action: onBack) }
+        }
+        .overlay(alignment: .bottomTrailing) {
+            if let onFlip, member.isLocal, member.camera != nil, role != .thumb {
+                StageIconButton(icon: "arrow.triangle.2.circlepath.camera", label: "Flip camera", action: onFlip)
+            }
         }
         .overlay {
             if let reaction {

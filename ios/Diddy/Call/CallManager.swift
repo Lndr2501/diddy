@@ -250,6 +250,10 @@ final class CallSession: NSObject, ObservableObject {
     /// The camera picked in the menu (`AVCaptureDevice.uniqueID`), kept for later calls.
     @Published private(set) var cameraId: String? = UserDefaults.standard.string(forKey: CallSession.cameraKey)
     @Published private(set) var screenSharing = false
+    /// The broadcast sheet is open and Diddy waits for "Diddy" to be picked there.
+    @Published private(set) var awaitingBroadcast = false
+    /// The share comes from the broadcast extension: the whole screen, other apps too.
+    var sharingWholeScreen: Bool { broadcastPublication != nil }
     @Published private(set) var speakerOn = true
     @Published private(set) var outgoing: OutgoingRing = .none
     /// Others in the call who told us they talk to an agent (their user ids).
@@ -287,6 +291,15 @@ final class CallSession: NSObject, ObservableObject {
     private var ownKey = Data()
     private let ownKeyIndex: Int32 = 0
     private var toDeviceHandle: TaskHandle?
+    /// The whole-screen share from the broadcast extension (BroadcastReceiver.swift).
+    private var broadcastReceiver: BroadcastReceiver?
+    private var broadcastPublication: LiveKit.LocalTrackPublication?
+    private var broadcastTimeout: Task<Void, Never>?
+    /// Settings > Calls > Screen Sharing when the share started.
+    private var broadcastConfig = BroadcastWire.Config.standard
+    /// The sound of other apps goes out: it travels in the microphone track (LiveKit's mixer), so
+    /// the track stays on and "muted" turns only the microphone's own channel down.
+    private var sharingAppSound = false
     private var agentVoiceHandle: TaskHandle?
     private var reactionHandle: TaskHandle?
     private lazy var agentVoice: RemoteAgentVoiceWatcher = RemoteAgentVoiceWatcher(hooks: .init(
@@ -391,8 +404,8 @@ final class CallSession: NSObject, ObservableObject {
         }
 
         let roomOptions = LiveKit.RoomOptions(
-            // No broadcast extension (a second App ID would cost sideloaders one of their few free ones):
-            // iOS 27+ captures the whole screen in-process with ScreenCaptureKit, older iOS only Diddy itself.
+            // In-app capture: iOS 27+ the whole screen with ScreenCaptureKit, older iOS only Diddy
+            // itself. The whole screen on older iOS comes from DiddyBroadcast (startWholeScreenShare).
             defaultScreenShareCaptureOptions: LiveKit.ScreenShareCaptureOptions(
                 dimensions: .h1080_169, fps: 15, appAudio: true,
                 useBroadcastExtension: false, useScreenCaptureKit: true
@@ -476,6 +489,7 @@ final class CallSession: NSObject, ObservableObject {
             _ = try? await matrixRoom.sendStateEventRaw(eventType: Self.memberEventType, stateKey: stateKey, content: "{}", requestConfigOverride: nil)
         }
         // Stop local capture (camera, screen share) before the room goes away.
+        await endBroadcast(announce: false)
         let local = liveKitRoom.localParticipant
         _ = try? await local.setScreenShare(enabled: false)
         _ = try? await local.setCamera(enabled: false)
@@ -497,11 +511,21 @@ final class CallSession: NSObject, ObservableObject {
             if deafened { deafened = false; applyDeafen() }
         }
         do {
-            _ = try await liveKitRoom.localParticipant.setMicrophone(enabled: enable)
+            try await switchMicrophone(enable)
             microphoneOn = enable
             Sounds.shared.play(enable ? .unmute : .mute)
         } catch { lastError = error.friendlyMessage }
         refreshMembers()
+    }
+
+    /// The microphone on or off for the others. While the sound of other apps is shared, only the
+    /// microphone's channel in the mixer: the track has to keep carrying that sound.
+    private func switchMicrophone(_ enable: Bool) async throws {
+        if sharingAppSound {
+            LiveKit.AudioManager.shared.mixer.micVolume = enable ? 1 : 0
+            return
+        }
+        _ = try await liveKitRoom.localParticipant.setMicrophone(enabled: enable)
     }
 
     /// Discord semantics: deafen silences everyone and mutes the microphone; undeafen restores
@@ -513,7 +537,7 @@ final class CallSession: NSObject, ObservableObject {
         Sounds.shared.play(deafened ? .deafen : .undeafen)
         let enable = !deafened && !mutedBeforeDeafen
         do {
-            _ = try await liveKitRoom.localParticipant.setMicrophone(enabled: enable)
+            try await switchMicrophone(enable)
             microphoneOn = enable
         } catch { lastError = error.friendlyMessage }
         refreshMembers()
@@ -573,8 +597,8 @@ final class CallSession: NSObject, ObservableObject {
     }
 
     /// iOS 27+: the system picker, then ScreenCaptureKit in-process (whole screen, other apps too).
-    /// iOS 16–26: in-app ReplayKit capture, which only sees Diddy itself (Apple allows whole-screen
-    /// capture there only from a broadcast extension, which this app deliberately does not have).
+    /// iOS 16–26: in-app ReplayKit capture, which only sees Diddy itself ("Only Diddy"); the whole
+    /// screen there comes from the broadcast extension (`startWholeScreenShare`).
     func toggleScreenShare() async {
         do {
             _ = try await liveKitRoom.localParticipant.setScreenShare(enabled: !screenSharing)
@@ -594,13 +618,166 @@ final class CallSession: NSObject, ObservableObject {
     /// "Stop sharing" of the sharing menu.
     func stopScreenShare() async {
         guard screenSharing else { return }
+        if broadcastPublication != nil {
+            await endBroadcast(announce: true)
+            return
+        }
         await toggleScreenShare()
+    }
+
+    // MARK: Whole screen through the broadcast extension
+
+    /// "Whole screen": listens for `DiddyBroadcast` and opens the iOS broadcast sheet. Sharing
+    /// starts when "Diddy" is picked there and goes on in other apps. Before iOS 27 this is the
+    /// only way to share more than Diddy itself.
+    func startWholeScreenShare() {
+        guard connected, !closed, !screenSharing, broadcastReceiver == nil else {
+            if broadcastReceiver != nil { BroadcastPicker.present() }
+            return
+        }
+        broadcastConfig = CallPrefs.broadcastConfig
+        let receiver = BroadcastReceiver(config: broadcastConfig) { [weak self] event in
+            Task { @MainActor in self?.broadcastEvent(event) }
+        }
+        do {
+            try receiver.start()
+        } catch {
+            lastError = "Screen sharing could not start: \(error.friendlyMessage)"
+            return
+        }
+        broadcastReceiver = receiver
+        awaitingBroadcast = true
+        BroadcastPicker.present()
+        // Closing the sheet without starting: stop waiting after a while.
+        broadcastTimeout?.cancel()
+        broadcastTimeout = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 90_000_000_000)
+            guard !Task.isCancelled, let self, self.awaitingBroadcast else { return }
+            await self.endBroadcast(announce: false)
+        }
+    }
+
+    private func broadcastEvent(_ event: BroadcastReceiver.Event) {
+        switch event {
+        case .connected:
+            Task { await publishBroadcast() }
+        case .ended:
+            Task { await endBroadcast(announce: true) }
+        }
+    }
+
+    /// The extension is connected: a screen-share track that is fed with its pictures.
+    private func publishBroadcast() async {
+        guard let receiver = broadcastReceiver, broadcastPublication == nil, !closed else { return }
+        broadcastTimeout?.cancel()
+        awaitingBroadcast = false
+        let config = broadcastConfig
+        // the screen's own size: up to 2560 for the encoder's planning; the pictures keep their size
+        let longest = Int32(config.maxPixels > 0 ? config.maxPixels : 2560)
+        let track = await LiveKit.LocalVideoTrack.createBufferTrack(
+            name: LiveKit.Track.screenShareVideoName,
+            source: .screenShareVideo,
+            options: LiveKit.BufferCaptureOptions(dimensions: LiveKit.Dimensions(width: longest, height: longest * 9 / 16), fps: config.fps)
+        )
+        do {
+            broadcastPublication = try await liveKitRoom.localParticipant.publish(
+                videoTrack: track,
+                options: LiveKit.VideoPublishOptions(
+                    screenShareEncoding: LiveKit.VideoEncoding(maxBitrate: config.maxBitrate, maxFps: config.fps),
+                    preferredCodec: .h264
+                )
+            )
+        } catch {
+            lastError = "Screen sharing did not start: \(error.friendlyMessage)"
+            await endBroadcast(announce: false)
+            return
+        }
+        if let capturer = track.capturer as? LiveKit.BufferCapturer {
+            receiver.setSink { buffer in capturer.capture(buffer) }
+        }
+        screenSharing = true
+        Sounds.shared.play(.screenShareStarted)
+        DiagLog.shared.write("call: sharing the whole screen through the broadcast extension (\(config.maxPixels == 0 ? "full size" : "\(config.maxPixels) px"), \(config.fps) fps, sound \(config.audio ? "on" : "off"))")
+        if config.audio { await startAppSound() }
+        refreshMembers()
+    }
+
+    /// The sound of other apps into the call: through LiveKit's mixer into the microphone track,
+    /// which therefore has to run; with your microphone muted only its own channel stays silent.
+    private func startAppSound() async {
+        guard let receiver = broadcastReceiver, broadcastPublication != nil, !sharingAppSound, !closed else { return }
+        if microphoneOn {
+            LiveKit.AudioManager.shared.mixer.micVolume = 1
+        } else {
+            LiveKit.AudioManager.shared.mixer.micVolume = 0
+            do {
+                _ = try await liveKitRoom.localParticipant.setMicrophone(enabled: true)
+            } catch {
+                LiveKit.AudioManager.shared.mixer.micVolume = 1
+                lastError = "The sound of other apps needs microphone access for Diddy."
+                return
+            }
+        }
+        sharingAppSound = true
+        // RNNoise would cut music down to something like a voice
+        NoiseSuppression.setPausedForAppSound(true)
+        LiveKit.AudioManager.shared.mixer.appVolume = 1
+        receiver.setAudioSink { buffer in LiveKit.AudioManager.shared.mixer.capture(appAudio: buffer) }
+    }
+
+    private func stopAppSound() async {
+        guard sharingAppSound else { return }
+        broadcastReceiver?.setAudioSink(nil)
+        sharingAppSound = false
+        NoiseSuppression.setPausedForAppSound(false)
+        LiveKit.AudioManager.shared.mixer.micVolume = 1
+        if !microphoneOn, !closed {
+            _ = try? await liveKitRoom.localParticipant.setMicrophone(enabled: false)
+        }
+    }
+
+    /// Ends the whole-screen share: from the sharing menu, from the extension (Control Center's
+    /// stop), or because the call ends. The extension sees the connection close and stops too.
+    private func endBroadcast(announce: Bool) async {
+        broadcastTimeout?.cancel()
+        broadcastTimeout = nil
+        awaitingBroadcast = false
+        await stopAppSound()
+        let receiver = broadcastReceiver
+        broadcastReceiver = nil
+        receiver?.stop()
+        guard let publication = broadcastPublication else { return }
+        broadcastPublication = nil
+        try? await liveKitRoom.localParticipant.unpublish(publication: publication)
+        guard !closed else { return }
+        screenSharing = false
+        if announce { Sounds.shared.play(.screenShareStopped) }
+        refreshMembers()
+    }
+
+    // MARK: Turning the camera
+
+    /// Front to back camera and back again, also while the camera runs.
+    func flipCamera() async {
+        let devices = (try? await CameraCapturer.captureDevices()) ?? []
+        let current = devices.first { $0.uniqueID == activeCameraId }
+        let wanted: AVCaptureDevice.Position = current?.position == .front ? .back : .front
+        let candidates = devices.filter { $0.position == wanted }
+        guard let target = candidates.first(where: { $0.deviceType == .builtInWideAngleCamera }) ?? candidates.first else {
+            lastError = "This device has no other camera."
+            return
+        }
+        await selectCamera(target.uniqueID)
     }
 
     /// "Share system sound" of the sharing menu; takes effect at once while sharing.
     func setShareSystemSound(_ on: Bool) async {
         extras.setShareSystemSound(on)
         await applyShareSystemSound()
+        guard broadcastPublication != nil else { return }
+        broadcastConfig.audio = on
+        broadcastReceiver?.update(config: broadcastConfig)
+        if on { await startAppSound() } else { await stopAppSound() }
     }
 
     /// Mutes or unmutes the sound of your share to match the setting (the share itself goes on).

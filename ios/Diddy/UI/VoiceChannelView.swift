@@ -212,8 +212,15 @@ private struct ConnectedVoiceView: View {
 
     @ViewBuilder
     private var notices: some View {
-        if session.screenSharing && !CallSession.sharesWholeScreen {
-            Label("Sharing Diddy only. Sharing other apps needs iOS 27.", systemImage: "info.circle")
+        if session.awaitingBroadcast {
+            Label("Choose Diddy and tap Start Broadcast.", systemImage: "info.circle")
+                .font(.footnote)
+                .foregroundStyle(Theme.muted)
+                .padding(.horizontal)
+                .padding(.bottom, 6)
+        }
+        if session.screenSharing && !CallSession.sharesWholeScreen && !session.sharingWholeScreen {
+            Label("Sharing Diddy only. Choose Whole Screen to share other apps too.", systemImage: "info.circle")
                 .font(.footnote)
                 .foregroundStyle(Theme.muted)
                 .padding(.horizontal)
@@ -273,6 +280,13 @@ private struct ConnectedVoiceView: View {
             .accessibilityValue(session.cameraOn ? "On" : "Off")
             // Long press: pick the camera (#201), like the camera chevron on desktop.
             .contextMenu {
+                if session.cameras.count > 1 {
+                    Button {
+                        Task { await session.flipCamera() }
+                    } label: {
+                        Label("Flip Camera", systemImage: "arrow.triangle.2.circlepath.camera")
+                    }
+                }
                 if session.cameras.isEmpty {
                     Text("No camera found")
                 } else {
