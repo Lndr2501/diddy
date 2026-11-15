@@ -23,7 +23,7 @@ Die App ist Beta: Alles in der Tabelle ist gebaut und läuft bei den ersten Test
 | Mehrere Konten auf verschiedenen Servern, jedes mit eigenem Speicher | 🧪 |
 | Anmeldung mit Passwort oder über die Login-Seite des Servers (OAuth/MAS), nur über HTTPS | 🧪 |
 | Sprachkanäle mit Desktop-Diddy und Element Call (gleiches MatrixRTC, gleiche Medien-Verschlüsselung) | 🧪 |
-| Bildschirmübertragung | 🧪 ab iOS 27 ganzer Bildschirm, davor nur Diddy selbst |
+| Bildschirmübertragung | 🧪 ganzer Bildschirm, auch andere Apps (Broadcast-Erweiterung; ab iOS 27 auch ohne) |
 | Stummschalten, Taubschalten, Kamera | 🧪 |
 | Call-Kacheln wie am Desktop: eine Kachel pro Person und pro Bildschirmübertragung (Avatar oder Kamera, Sprechring, Stumm-Symbol), Tippen holt eine Kachel groß nach vorn, der Rest als Vorschauleiste; Bildschirmübertragungen groß und im Vollbild zoombar (Pinch, Doppeltippen, gezoomt verschieben) | 🧪 |
 | „Redet mit Agent“ von Desktop-Nutzern als Hinweis auf Kachel und Profilkarte (`app.diddy.agent_voice`, nur empfangen; selbst mit einem Agenten reden gibt es auf dem iPhone nicht) | 🧪 |
@@ -76,16 +76,16 @@ Die IPA baut der Workflow [Build iOS](../.github/workflows/ios.yml), Artefakt `d
 Grenzen einer kostenlosen Apple-ID:
 - Die App läuft 7 Tage und muss dann neu signiert werden (AltStore/SideStore machen das automatisch).
 - Höchstens 3 eigene Apps gleichzeitig.
-- Diddy hat genau eine Erweiterung: „Diddy“ im Teilen-Menü (`DiddyShare`). AltStore und SideStore belegen dafür eine zweite App-ID (eine kostenlose Apple-ID bekommt 10 pro Woche); Sideloader, die die App-ID der App mitnutzen, keine. Der Workflow bricht ab, falls eine andere Erweiterung in die IPA gerät.
+- Diddy hat zwei Erweiterungen: „Diddy“ im Teilen-Menü (`DiddyShare`) und „Diddy“ in der Bildschirmübertragung (`DiddyBroadcast`). AltStore und SideStore belegen dafür je eine weitere App-ID (eine kostenlose Apple-ID bekommt 10 pro Woche); Sideloader, die die App-ID der App mitnutzen, keine. Der Workflow bricht ab, falls eine andere Erweiterung in die IPA gerät.
 
 **Mit bezahltem Konto:** Repository-Secrets `APPLE_TEAM_ID`, `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8` setzen (siehe Kopf des Workflows), dann ist die IPA signiert.
 
 ## Bildschirm übertragen
 
-Im Sprachkanal auf das Bildschirm-Symbol tippen. Diddy nimmt ohne Erweiterung direkt in der App auf.
+Im Sprachkanal auf das Bildschirm-Symbol tippen.
 
+- **iOS 16 bis 26:** „Ganzer Bildschirm“ öffnet die iOS-Bildschirmübertragung mit „Diddy“ (Erweiterung `DiddyBroadcast`), dann „Übertragung starten“. Sie nimmt den ganzen Bildschirm auf und läuft weiter, wenn du in andere Apps wechselst. Die Erweiterung gibt die Bilder über eine lokale Verbindung auf dem Gerät (127.0.0.1) an die App, die sie im Call teilt: höchstens 1280 px, 15 Bilder pro Sekunde, ohne Ton anderer Apps. Beenden über Diddy oder den roten Balken bzw. das Kontrollzentrum. „Nur Diddy“ nimmt wie bisher nur die App selbst auf.
 - **ab iOS 27:** Der iOS-Dialog fragt, was geteilt wird. Das kann der ganze Bildschirm sein, auch andere Apps, und es läuft im Hintergrund weiter (ScreenCaptureKit).
-- **iOS 16 bis 26:** nur Diddy selbst. Apple erlaubt die Aufnahme anderer Apps dort nur aus einer Broadcast-Erweiterung, und die würde beim Sideloaden eine zweite App-ID kosten.
 
 Für den iOS-27-Weg muss die App mit dem iOS-27-SDK (Xcode 27) gebaut sein. Mit älterem Xcode läuft die App auch auf iOS 27, überträgt dann aber nur Diddy selbst. Der Workflow nimmt das neueste Xcode des Runners und warnt, wenn es älter ist.
 

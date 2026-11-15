@@ -2,6 +2,8 @@
 
 ## Unveröffentlicht
 
+- **iOS: ganzen Bildschirm teilen, auch in anderen Apps:** Bisher konnte Diddy vor iOS 27 nur sich selbst aufnehmen, und der Stream fror ein, sobald man die App verließ. Neu ist die Erweiterung „Diddy“ in der iOS-Bildschirmübertragung: Teilen → „Whole Screen“ → „Übertragung starten“. Sie nimmt den ganzen Bildschirm auf, auch andere Apps, und gibt die Bilder über eine lokale Verbindung auf dem Gerät an Diddy (ohne App-Group, funktioniert mit jeder Signierung). Höchstens 1280 px und 15 Bilder pro Sekunde, Ton anderer Apps noch nicht. „Only Diddy“ bleibt für die App allein. Beim Sideloaden mit AltStore/SideStore kostet die Erweiterung eine weitere App-ID.
+- **iOS: Kamera drehen:** Ein Knopf auf deinem eigenen Kamerabild und „Flip Camera“ im Kamera-Menü wechseln zwischen Front- und Rückkamera, auch während die Kamera läuft. Am Desktop gibt es dafür die Kamerawahl.
 - **Full Mute hält beim Streamen (#225, macOS, Linux, Windows):** Startete man im Full Mute einen Stream, hob Diddy das Full Mute heimlich auf, zeigte es aber weiter an. Die Call-Seite meldet dabei das Mikrofon als an, und das galt als „du hast entstummt“; außerdem setzte der Call die Stummschaltung der Audio-Elemente zurück. Jetzt hebt nur ein Mikrofon, das du selbst eingeschaltet hast, das Full Mute auf; schaltet die Seite es von sich aus ein, wird es wieder stumm geschaltet (Log: `turned the microphone on while fully muted`), und im Full Mute bleibt jede Wiedergabe stumm. iOS hat keine Call-Seite und ist nicht betroffen.
 ## 1.10.1 (2026-11-15)
 

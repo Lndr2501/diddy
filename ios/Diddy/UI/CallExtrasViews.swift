@@ -131,6 +131,26 @@ struct ShareControl: View {
             }
             .accessibilityLabel("Sharing your screen")
             .accessibilityHint("Opens the sharing options")
+        } else if !CallSession.sharesWholeScreen && BroadcastPicker.isAvailable {
+            // Before iOS 27 only the broadcast extension sees other apps; in-app sharing stays for
+            // showing Diddy itself without the system sheet.
+            Menu {
+                Button {
+                    session.startWholeScreenShare()
+                } label: {
+                    Label("Whole Screen", systemImage: "iphone")
+                }
+                Button {
+                    Task { await session.toggleScreenShare() }
+                } label: {
+                    Label("Only Diddy", systemImage: "app")
+                }
+            } label: {
+                CallBarIcon(icon: "rectangle.on.rectangle", highlight: session.awaitingBroadcast)
+            }
+            .disabled(!session.connected)
+            .accessibilityLabel("Share screen")
+            .accessibilityHint("Whole screen keeps sharing while you use other apps")
         } else {
             Button { Task { await session.toggleScreenShare() } } label: {
                 CallBarIcon(icon: "rectangle.on.rectangle")
