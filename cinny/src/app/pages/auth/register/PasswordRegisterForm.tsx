@@ -36,21 +36,18 @@ import {
   AutoDummyStageDialog,
   AutoTermsStageDialog,
   EmailStageDialog,
+  FallbackStageDialog,
   ReCaptchaStageDialog,
   RegistrationTokenStageDialog,
 } from '../../../components/uia-stages';
 import { useRegisterEmail } from '../../../hooks/useRegisterEmail';
 import { ConfirmPasswordMatch } from '../../../components/ConfirmPasswordMatch';
 import { UIAFlowOverlay } from '../../../components/UIAFlowOverlay';
+import { needsFallback } from '../../../utils/uiaFallback';
+import { canInvoke } from '../../../plugins/tauri';
+import { UsernameAvailability, useUsernameAvailability } from './useUsernameAvailability';
 import { RequestEmailTokenCallback, RequestEmailTokenResponse } from '../../../hooks/types';
 
-export const SUPPORTED_REGISTER_STAGES = [
-  AuthType.RegistrationToken,
-  AuthType.Terms,
-  AuthType.Recaptcha,
-  AuthType.Email,
-  AuthType.Dummy,
-];
 type RegisterFormInputs = {
   usernameInput: HTMLInputElement;
   passwordInput: HTMLInputElement;
@@ -82,6 +79,10 @@ const pickStages = (uiaFlows: UIAFlow[], formData: FormData): string[] => {
 };
 
 type RegisterUIAFlowProps = {
+  baseUrl: string;
+  /** Steps on the server's page the user already said were done. */
+  triedFallbacks: string[];
+  onTryFallback: (stage: string) => void;
   formData: FormData;
   flow: UIAFlow;
   authData: IAuthData;
@@ -90,6 +91,9 @@ type RegisterUIAFlowProps = {
   onRegister: (registerReqData: RegisterRequest) => void;
 };
 function RegisterUIAFlow({
+  baseUrl,
+  triedFallbacks,
+  onTryFallback,
   formData,
   flow,
   authData,
@@ -120,13 +124,25 @@ function RegisterUIAFlow({
   }, []);
 
   if (!stageToComplete) return null;
+  // Captchas (in the desktop app) and steps the form does not know run on the server's page.
+  const fallback = needsFallback(stageToComplete.type, canInvoke());
   return (
     <UIAFlowOverlay
       currentStep={completed.length + 1}
       stepCount={flow.stages.length}
       onCancel={handleCancel}
     >
-      {stageToComplete.type === AuthType.RegistrationToken && (
+      {fallback && (
+        <FallbackStageDialog
+          baseUrl={baseUrl}
+          tried={triedFallbacks.includes(stageToComplete.type)}
+          onTry={onTryFallback}
+          stageData={stageToComplete}
+          submitAuthDict={handleAuthDict}
+          onCancel={handleCancel}
+        />
+      )}
+      {!fallback && stageToComplete.type === AuthType.RegistrationToken && (
         <RegistrationTokenStageDialog
           token={formData.token}
           stageData={stageToComplete}
@@ -134,21 +150,21 @@ function RegisterUIAFlow({
           onCancel={handleCancel}
         />
       )}
-      {stageToComplete.type === AuthType.Terms && (
+      {!fallback && stageToComplete.type === AuthType.Terms && (
         <AutoTermsStageDialog
           stageData={stageToComplete}
           submitAuthDict={handleAuthDict}
           onCancel={handleCancel}
         />
       )}
-      {stageToComplete.type === AuthType.Recaptcha && (
+      {!fallback && stageToComplete.type === AuthType.Recaptcha && (
         <ReCaptchaStageDialog
           stageData={stageToComplete}
           submitAuthDict={handleAuthDict}
           onCancel={handleCancel}
         />
       )}
-      {stageToComplete.type === AuthType.Email && (
+      {!fallback && stageToComplete.type === AuthType.Email && (
         <EmailStageDialog
           email={formData.email}
           clientSecret={formData.clientSecret}
@@ -159,7 +175,7 @@ function RegisterUIAFlow({
           onCancel={handleCancel}
         />
       )}
-      {stageToComplete.type === AuthType.Dummy && (
+      {!fallback && stageToComplete.type === AuthType.Dummy && (
         <AutoDummyStageDialog
           stageData={stageToComplete}
           submitAuthDict={handleAuthDict}
@@ -194,6 +210,13 @@ export function PasswordRegisterForm({
   const [ongoingFlow, setOngoingFlow] = useState<UIAFlow>();
 
   const [registerEmailState, registerEmail] = useRegisterEmail(mx);
+  const [availability, checkUsername] = useUsernameAvailability(mx);
+  const [triedFallbacks, setTriedFallbacks] = useState<string[]>([]);
+  const tryFallback = useCallback(
+    (stage: string) =>
+      setTriedFallbacks((tried) => (tried.includes(stage) ? tried : [...tried, stage])),
+    []
+  );
 
   const [registerState, handleRegister] = useAsyncCallback<
     RegisterResult,
@@ -244,6 +267,7 @@ export function PasswordRegisterForm({
     const pickedFlow = getUIAFlowForStages(uiaFlows, pickedStages);
     setOngoingFlow(pickedFlow);
     setFormData(fData);
+    setTriedFallbacks([]);
     handleRegister({
       username,
       password,
@@ -268,7 +292,21 @@ export function PasswordRegisterForm({
             size="500"
             outlined
             required
+            autoFocus
+            autoComplete="username"
+            onChange={(evt) => checkUsername(evt.currentTarget.value)}
           />
+          {!registerError && availability === UsernameAvailability.Available && (
+            <Text size="T200" style={{ color: color.Success.Main }}>
+              This username is free.
+            </Text>
+          )}
+          {!registerError && availability === UsernameAvailability.Taken && (
+            <FieldError message="This username is already taken." />
+          )}
+          {!registerError && availability === UsernameAvailability.Invalid && (
+            <FieldError message="Use only lowercase letters, numbers and . _ = - /" />
+          )}
           {registerError?.errcode === RegisterError.UserTaken && (
             <FieldError message="This username is already taken." />
           )}
@@ -391,7 +429,7 @@ export function PasswordRegisterForm({
         <span data-spacing-node />
         <Button variant="Primary" size="500" type="submit">
           <Text as="span" size="B500">
-            Register
+            Create Account
           </Text>
         </Button>
       </Box>
@@ -400,6 +438,9 @@ export function PasswordRegisterForm({
         ongoingFlow &&
         ongoingAuthData && (
           <RegisterUIAFlow
+            baseUrl={baseUrl}
+            triedFallbacks={triedFallbacks}
+            onTryFallback={tryFallback}
             formData={formData}
             flow={ongoingFlow}
             authData={ongoingAuthData}

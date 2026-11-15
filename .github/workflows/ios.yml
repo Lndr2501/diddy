@@ -149,6 +149,11 @@ jobs:
           swiftc -swift-version 5 Diddy/Matrix/BotCard.swift Tools/botcard_check/main.swift -o "$RUNNER_TEMP/diddy-botcard-check"
           "$RUNNER_TEMP/diddy-botcard-check"
 
+      - name: Account registration checks
+        run: |
+          swiftc -swift-version 5 Diddy/Matrix/RegistrationLogic.swift Tools/registration_check/main.swift -o "$RUNNER_TEMP/diddy-registration-check"
+          "$RUNNER_TEMP/diddy-registration-check"
+
       - name: Options room marker checks
         run: |
           swiftc -swift-version 5 Diddy/Matrix/DiddyMarkerChecks.swift Tools/markerchecks_check/main.swift -o "$RUNNER_TEMP/diddy-markerchecks-check"

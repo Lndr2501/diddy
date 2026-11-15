@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Box, Text, color } from 'folds';
+import { Box, Button, Text, color } from 'folds';
 import { Link, useSearchParams } from 'react-router-dom';
 import { SSOAction } from 'matrix-js-sdk';
 import { useAuthFlows } from '../../../hooks/useAuthFlows';
@@ -11,6 +11,7 @@ import { TokenLogin } from './TokenLogin';
 import { OrDivider } from '../OrDivider';
 import { getLoginPath, getRegisterPath, withSearchParam } from '../../pathUtils';
 import { usePathWithOrigin } from '../../../hooks/usePathWithOrigin';
+import { serverLabel } from '../../../utils/uiaFallback';
 import { LoginPathSearchParams } from '../../paths';
 import { useClientConfig } from '../../../hooks/useClientConfig';
 
@@ -91,9 +92,24 @@ export function Login() {
           <span data-spacing-node />
         </>
       )}
-      <Text align="Center">
-        Do not have an account? <Link to={getRegisterPath(server)}>Register</Link>
-      </Text>
+      <Box direction="Column" gap="200">
+        <Text align="Center" size="T300" priority="300">
+          New here?
+        </Text>
+        <Button
+          as={Link}
+          to={getRegisterPath(server)}
+          style={{ textDecoration: 'none' }}
+          variant="Secondary"
+          fill="Soft"
+          outlined
+          size="500"
+        >
+          <Text as="span" size="B500">
+            {`Create an account on ${serverLabel(server)}`}
+          </Text>
+        </Button>
+      </Box>
     </Box>
   );
 }

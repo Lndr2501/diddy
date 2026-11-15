@@ -8,8 +8,16 @@ type SSOLoginProps = {
   redirectUrl: string;
   action?: SSOAction;
   saveScreenSpace?: boolean;
+  /** Shown on the single button of a server without listed providers when creating an account. */
+  server?: string;
 };
-export function SSOLogin({ providers, redirectUrl, action, saveScreenSpace }: SSOLoginProps) {
+export function SSOLogin({
+  providers,
+  redirectUrl,
+  action,
+  saveScreenSpace,
+  server,
+}: SSOLoginProps) {
   const discovery = useAutoDiscoveryInfo();
   const baseUrl = discovery['m.homeserver'].base_url;
   const mx = useMemo(() => createClient({ baseUrl }), [baseUrl]);
@@ -85,7 +93,9 @@ export function SSOLogin({ providers, redirectUrl, action, saveScreenSpace }: SS
           outlined
         >
           <Text align="Center" size="B500" truncate>
-            Continue with SSO
+            {action === SSOAction.REGISTER && server
+              ? `Create an account on ${server}`
+              : 'Continue with SSO'}
           </Text>
         </Button>
       )}
