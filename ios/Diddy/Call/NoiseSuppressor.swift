@@ -12,9 +12,18 @@ enum NoiseSuppression {
     /// Takes effect at once, also during a call. The processor stays installed either way, because
     /// it also mixes soundboard clips into the microphone; the setting only switches RNNoise.
     static func apply() {
-        processor.denoise = isEnabled
+        processor.denoise = isEnabled && !pausedForAppSound
         AudioManager.shared.capturePostProcessingDelegate = processor
     }
+
+    /// The sound of other apps (whole-screen sharing) is mixed into the microphone before this
+    /// filter; RNNoise would cut music and games down to something like a voice, so it pauses.
+    static func setPausedForAppSound(_ paused: Bool) {
+        pausedForAppSound = paused
+        apply()
+    }
+
+    private static var pausedForAppSound = false
 
     private static let processor = CaptureProcessor()
 }

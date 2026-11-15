@@ -4,21 +4,20 @@ import Network
 import ReplayKit
 
 /// "Diddy" in the iOS screen broadcast picker: records the whole screen, also while you are in
-/// another app, and hands the pictures to the Diddy app over 127.0.0.1 (BroadcastWire.swift),
-/// which shares them in the call. Without the extension iOS 26 and older only let Diddy record
-/// itself, and the share froze as soon as you left the app.
+/// another app, and hands the pictures and the sound of other apps to the Diddy app over
+/// 127.0.0.1 (BroadcastWire.swift), which shares them in the call. Without the extension iOS 26
+/// and older only let Diddy record itself, and the share froze as soon as you left the app.
 ///
-/// Extensions have about 50 MB: every picture is made at most 1280 px on its longest side and
-/// sent as JPEG, 15 per second at most, and a new one only once the previous one went out.
+/// Resolution, frame rate, quality and sound come from the app (Settings > Calls > Screen
+/// Sharing) as a `config` message. Extensions have about 50 MB: a picture is encoded only once the
+/// previous one went out, so a slow moment drops pictures instead of piling them up.
 final class SampleHandler: RPBroadcastSampleHandler {
-    private static let maxPixels: CGFloat = 1280
-    private static let minInterval: CFTimeInterval = 1.0 / 15
-    private static let quality: CGFloat = 0.6
-
     private let queue = DispatchQueue(label: "app.diddy.broadcast")
     private let context = CIContext(options: [.cacheIntermediates: false])
     private let lock = NSLock()
     private var connection: NWConnection?
+    private var parser = BroadcastWire.Parser()
+    private var config = BroadcastWire.Config.standard
     private var sending = false
     private var ended = false
     private var lastSent: CFTimeInterval = 0
@@ -31,7 +30,7 @@ final class SampleHandler: RPBroadcastSampleHandler {
         connection.stateUpdateHandler = { [weak self] state in
             switch state {
             case .ready:
-                self?.watchForClose(connection)
+                self?.receive(on: connection)
             case .waiting, .failed:
                 // nobody listens: Diddy is not in a call (or did not ask for this broadcast)
                 self?.end("Start sharing from a voice channel in Diddy, then choose Diddy here.")
@@ -43,7 +42,7 @@ final class SampleHandler: RPBroadcastSampleHandler {
         }
         lock.withLock { self.connection = connection }
         connection.start(queue: queue)
-        connection.send(content: BroadcastWire.encode(.hello, Data("{\"v\":1}".utf8)), completion: .contentProcessed { _ in })
+        connection.send(content: BroadcastWire.encode(.hello, Data("{\"v\":2}".utf8)), completion: .contentProcessed { _ in })
     }
 
     override func broadcastFinished() {
@@ -55,17 +54,28 @@ final class SampleHandler: RPBroadcastSampleHandler {
     }
 
     override func processSampleBuffer(_ sampleBuffer: CMSampleBuffer, with sampleBufferType: RPSampleBufferType) {
-        guard sampleBufferType == .video, let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+        switch sampleBufferType {
+        case .video: sendPicture(sampleBuffer)
+        case .audioApp: sendSound(sampleBuffer)
+        default: break // your microphone is the call's own
+        }
+    }
+
+    // MARK: Pictures
+
+    private func sendPicture(_ sampleBuffer: CMSampleBuffer) {
+        guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
         let now = CACurrentMediaTime()
-        let connection: NWConnection? = lock.withLock {
-            guard !ended, !sending, now - lastSent >= Self.minInterval,
+        let taken: (NWConnection, BroadcastWire.Config)? = lock.withLock {
+            guard !ended, !sending, now - lastSent >= 1 / Double(config.fps) - 0.002,
                   let connection = self.connection, connection.state == .ready else { return nil }
             sending = true
             lastSent = now
-            return connection
+            return (connection, config)
         }
-        guard let connection else { return }
-        guard let jpeg = encode(pixelBuffer, orientation: Self.orientation(of: sampleBuffer)) else {
+        guard let taken else { return }
+        let (connection, config) = taken
+        guard let jpeg = encode(pixelBuffer, orientation: Self.orientation(of: sampleBuffer), config: config) else {
             lock.withLock { sending = false }
             return
         }
@@ -74,20 +84,20 @@ final class SampleHandler: RPBroadcastSampleHandler {
         })
     }
 
-    /// Upright, at most `maxPixels` on the longest side, as JPEG.
-    private func encode(_ pixelBuffer: CVPixelBuffer, orientation: CGImagePropertyOrientation) -> Data? {
-        var image = CIImage(cvPixelBuffer: pixelBuffer).oriented(orientation)
-        let longest = max(image.extent.width, image.extent.height)
-        if longest > Self.maxPixels {
-            let scale = Self.maxPixels / longest
-            image = image.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
-        }
-        image = image.transformed(by: CGAffineTransform(translationX: -image.extent.origin.x, y: -image.extent.origin.y))
-        let options: [CIImageRepresentationOption: Any] = [
-            CIImageRepresentationOption(rawValue: kCGImageDestinationLossyCompressionQuality as String): Self.quality,
-        ]
-        return autoreleasepool {
-            context.jpegRepresentation(of: image, colorSpace: CGColorSpaceCreateDeviceRGB(), options: options)
+    /// Upright, at most `maxPixels` on the longest side (0: as recorded), as JPEG.
+    private func encode(_ pixelBuffer: CVPixelBuffer, orientation: CGImagePropertyOrientation, config: BroadcastWire.Config) -> Data? {
+        autoreleasepool {
+            var image = CIImage(cvPixelBuffer: pixelBuffer).oriented(orientation)
+            let longest = max(image.extent.width, image.extent.height)
+            if config.maxPixels > 0, longest > CGFloat(config.maxPixels) {
+                let scale = CGFloat(config.maxPixels) / longest
+                image = image.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+            }
+            image = image.transformed(by: CGAffineTransform(translationX: -image.extent.origin.x, y: -image.extent.origin.y))
+            let options: [CIImageRepresentationOption: Any] = [
+                CIImageRepresentationOption(rawValue: kCGImageDestinationLossyCompressionQuality as String): config.quality,
+            ]
+            return context.jpegRepresentation(of: image, colorSpace: CGColorSpaceCreateDeviceRGB(), options: options)
         }
     }
 
@@ -96,24 +106,61 @@ final class SampleHandler: RPBroadcastSampleHandler {
         return value.flatMap { CGImagePropertyOrientation(rawValue: $0.uint32Value) } ?? .up
     }
 
-    /// Diddy closes the connection when you stop sharing there or leave the call.
-    private func watchForClose(_ connection: NWConnection) {
-        connection.receive(minimumIncompleteLength: 1, maximumLength: 1024) { [weak self] _, _, isComplete, error in
+    // MARK: Sound of other apps
+
+    private func sendSound(_ sampleBuffer: CMSampleBuffer) {
+        let connection: NWConnection? = lock.withLock {
+            guard !ended, config.audio, let connection = self.connection, connection.state == .ready else { return nil }
+            return connection
+        }
+        guard let connection,
+              let description = CMSampleBufferGetFormatDescription(sampleBuffer),
+              let basic = CMAudioFormatDescriptionGetStreamBasicDescription(description)?.pointee,
+              basic.mFormatID == kAudioFormatLinearPCM,
+              let block = CMSampleBufferGetDataBuffer(sampleBuffer) else { return }
+        var length = 0
+        var pointer: UnsafeMutablePointer<Int8>?
+        guard CMBlockBufferGetDataPointer(block, atOffset: 0, lengthAtOffsetOut: nil, totalLengthOut: &length,
+                                          dataPointerOut: &pointer) == kCMBlockBufferNoErr, let pointer, length > 0 else { return }
+        let header = BroadcastWire.AudioHeader(
+            sampleRate: basic.mSampleRate, formatID: basic.mFormatID, formatFlags: basic.mFormatFlags,
+            bytesPerPacket: basic.mBytesPerPacket, framesPerPacket: basic.mFramesPerPacket,
+            bytesPerFrame: basic.mBytesPerFrame, channelsPerFrame: basic.mChannelsPerFrame,
+            bitsPerChannel: basic.mBitsPerChannel, frameCount: UInt32(CMSampleBufferGetNumSamples(sampleBuffer))
+        )
+        let payload = header.encoded() + Data(bytes: pointer, count: length)
+        connection.send(content: BroadcastWire.encode(.audio, payload), completion: .contentProcessed { _ in })
+    }
+
+    // MARK: Connection
+
+    /// Settings from the app, and the close when you stop sharing there or leave the call.
+    private func receive(on connection: NWConnection) {
+        connection.receive(minimumIncompleteLength: 1, maximumLength: 64 * 1024) { [weak self] data, _, isComplete, error in
+            guard let self else { return }
+            if let data, !data.isEmpty {
+                let messages = self.lock.withLock { self.parser.push(data) }
+                for message in messages where message.kind == .config {
+                    if let config = BroadcastWire.Config.decode(message.payload) {
+                        self.lock.withLock { self.config = config }
+                    }
+                }
+            }
             if isComplete || error != nil {
-                self?.end("Diddy stopped sharing your screen.")
+                self.end("Diddy stopped sharing your screen.")
             } else {
-                self?.watchForClose(connection)
+                self.receive(on: connection)
             }
         }
     }
 
     private func end(_ message: String) {
-        let shouldEnd = lock.withLock { () -> Bool in
-            guard !ended else { return false }
+        let connection = lock.withLock { () -> NWConnection?? in
+            guard !ended else { return nil }
             ended = true
-            return true
+            return .some(self.connection)
         }
-        guard shouldEnd else { return }
+        guard let connection else { return }
         connection?.cancel()
         finishBroadcastWithError(NSError(domain: "app.diddy.broadcast", code: 1,
                                          userInfo: [NSLocalizedDescriptionKey: message]))
