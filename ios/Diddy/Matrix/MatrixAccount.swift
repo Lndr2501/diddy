@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import MatrixRustSDK
 
@@ -93,7 +94,13 @@ final class MatrixAccount: ObservableObject, Identifiable {
             onRoomsChanged?(previous, rooms)
         }
     }
-    @Published private(set) var profiles: [String: UserSummary] = [:]
+    @Published private(set) var profiles: [String: UserSummary] = [:] {
+        didSet { people.changed() }
+    }
+    /// Says when names, pictures, Diddy profiles or badges of people change, for views that only
+    /// show people (message rows): they observe this instead of the whole account, which also
+    /// changes for every update in any room.
+    let people = AccountPeople()
     /// Servers whose channel list finished loading, so an empty server is not an endless spinner.
     @Published private(set) var loadedServers: Set<String> = []
     /// One `loadAllChannels` run at a time (see there).
@@ -128,9 +135,13 @@ final class MatrixAccount: ObservableObject, Identifiable {
     @Published private(set) var verificationState: VerificationState = .unknown
     @Published private(set) var started = false
     /// Diddy profile extras by user id, read from the options rooms (see DiddyProfiles.swift).
-    @Published var diddyProfiles: [String: DiddyProfile] = [:]
+    @Published var diddyProfiles: [String: DiddyProfile] = [:] {
+        didSet { people.changed() }
+    }
     /// The badges each user shows next to their name.
-    @Published var diddyBadges: [String: [DiddyBadge]] = [:]
+    @Published var diddyBadges: [String: [DiddyBadge]] = [:] {
+        didSet { people.changed() }
+    }
     /// Every badge you own (given to you), for choosing the shown ones in the profile editor.
     @Published var diddyOwnBadges: [DiddyBadge] = []
     /// Every badge definition that is known: the built-in ones and the custom ones (badge library).
@@ -864,5 +875,35 @@ final class MatrixAccount: ObservableObject, Identifiable {
 
     func recover(with key: String) async throws {
         try await client.encryption().recover(recoveryKey: key.trimmingCharacters(in: .whitespacesAndNewlines))
+    }
+}
+
+/// See `MatrixAccount.people`.
+@MainActor
+final class AccountPeople: ObservableObject {
+    func changed() { objectWillChange.send() }
+}
+
+/// One room of an account, for the open chat: says when that room's summary or notification level
+/// changes, not when any other room does (the account itself changes for every room).
+@MainActor
+final class RoomWatch: ObservableObject {
+    @Published private(set) var summary: RoomSummary?
+    @Published private(set) var notifyLevel: RoomNotifyLevel?
+    private var subscriptions: [AnyCancellable] = []
+
+    init(account: MatrixAccount, roomId: String) {
+        summary = account.summary(for: roomId)
+        notifyLevel = account.roomNotifyLevels[roomId]
+        subscriptions = [
+            account.$rooms
+                .map { rooms in rooms.first { $0.id == roomId } }
+                .removeDuplicates()
+                .sink { [weak self] in self?.summary = $0 },
+            account.$roomNotifyLevels
+                .map { $0[roomId] }
+                .removeDuplicates()
+                .sink { [weak self] in self?.notifyLevel = $0 },
+        ]
     }
 }

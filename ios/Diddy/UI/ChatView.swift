@@ -5,11 +5,20 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct ChatView: View {
-    @ObservedObject var account: MatrixAccount
+    /// Not observed: the account changes for every update in any room. The open room's own
+    /// changes come through `watch`, people's names and profiles through `account.people`.
+    let account: MatrixAccount
     let roomId: String
     @StateObject private var holder = TimelineHolder()
+    @StateObject private var watch: RoomWatch
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @AppStorage(MemberPanel.key) private var memberPanelOpen = true
+
+    init(account: MatrixAccount, roomId: String) {
+        self.account = account
+        self.roomId = roomId
+        _watch = StateObject(wrappedValue: RoomWatch(account: account, roomId: roomId))
+    }
 
     var body: some View {
         HStack(spacing: 0) {
@@ -26,7 +35,7 @@ struct ChatView: View {
     private var chat: some View {
         Group {
             if let controller = holder.controller {
-                ChatContent(account: account, controller: controller, summary: account.summary(for: roomId))
+                ChatContent(account: account, controller: controller, watch: watch)
             } else {
                 ZStack { Theme.chat.ignoresSafeArea(); ProgressView() }
             }
@@ -50,13 +59,32 @@ final class TimelineHolder: ObservableObject {
 }
 
 private struct ChatContent: View {
-    @ObservedObject var account: MatrixAccount
+    /// Not observed (see ChatView); the room's summary comes from `watch`.
+    let account: MatrixAccount
     @ObservedObject var controller: TimelineController
-    let summary: RoomSummary?
+    @ObservedObject var watch: RoomWatch
+    private var summary: RoomSummary? { watch.summary }
     @EnvironmentObject private var calls: CallManager
     @StateObject private var memberStore = MemberStore()
     @StateObject private var botCommands = BotCommandStore()
-    @State private var draft = ""
+    /// Text and cursor of the composer, in an object only the composer observes: a key press
+    /// redraws the composer, not the chat with every message (see ComposerObserver).
+    @State private var composerText = ComposerText()
+    private var draft: String {
+        get { composerText.text }
+        nonmutating set { composerText.text = newValue }
+    }
+    private var selection: NSRange {
+        get { composerText.selection }
+        nonmutating set { composerText.selection = newValue }
+    }
+    // Plain bindings to the object: a binding through @State would invalidate the whole chat.
+    private var draftBinding: Binding<String> {
+        Binding(get: { composerText.text }, set: { composerText.text = $0 })
+    }
+    private var selectionBinding: Binding<NSRange> {
+        Binding(get: { composerText.selection }, set: { composerText.selection = $0 })
+    }
     @State private var replyTo: MessageRow?
     @State private var editing: MessageRow?
     @State private var photos: [PhotosPickerItem] = []
@@ -66,7 +94,6 @@ private struct ChatContent: View {
     @State private var showEmoji = false
     @State private var packs: [ImagePack] = []
     @State private var tokens: [String: ComposerToken] = [:]
-    @State private var selection = NSRange(location: 0, length: 0)
     @State private var restoredReplyId: String?
     @State private var pendingFiles: [ComposerPendingFile] = []
     /// A song shared from Apple Music or Spotify, sent as a music card with the next send.
@@ -132,7 +159,19 @@ private struct ChatContent: View {
             // A replaced (upgraded) room shows "This room has been replaced" instead (RoomSettings/RoomTombstoneViews.swift).
             RoomTombstoneGate(account: account, roomId: roomId, onOpen: { navigator.open($0, account: account) }) {
                 if canSend {
-                    composer
+                    ComposerObserver(model: composerText) {
+                        composer
+                            .onChange(of: composerText.text) { text in
+                                controller.setTyping(!text.isEmpty && editing == nil)
+                                // Written once typing pauses, not for every key (JSON into the defaults each time).
+                                draftSave?.cancel()
+                                draftSave = Task {
+                                    try? await Task.sleep(nanoseconds: 600_000_000)
+                                    guard !Task.isCancelled else { return }
+                                    saveDraft()
+                                }
+                            }
+                    }
                 } else {
                     Text("You do not have permission to send messages here.")
                         .font(.footnote).foregroundStyle(Theme.muted)
@@ -248,16 +287,6 @@ private struct ChatContent: View {
                     } catch { controller.sendError = error.friendlyMessage }
                 }
                 photos = []
-            }
-        }
-        .onChange(of: draft) { text in
-            controller.setTyping(!text.isEmpty && editing == nil)
-            // Written once typing pauses, not for every key (JSON into the defaults each time).
-            draftSave?.cancel()
-            draftSave = Task {
-                try? await Task.sleep(nanoseconds: 600_000_000)
-                guard !Task.isCancelled else { return }
-                saveDraft()
             }
         }
         .onChange(of: scenePhase) { phase in
@@ -458,7 +487,7 @@ private struct ChatContent: View {
         Menu {
             RoomNotifyPicker(account: account, roomId: roomId) { notifyError = $0 }
         } label: {
-            Label("Notifications", systemImage: account.notifyLevel(for: roomId).systemImage)
+            Label("Notifications", systemImage: (watch.notifyLevel ?? .default).systemImage)
         }
     }
 
@@ -634,7 +663,7 @@ private struct ChatContent: View {
 
     /// Who is typing, as a pill floating over the chat (ChatChrome.swift).
     private var typingPill: some View {
-        TypingIndicator(store: controller.typing, account: account, roomId: roomId)
+        TypingIndicator(store: controller.typing, people: account.people, account: account, roomId: roomId)
     }
 
     /// Back to the list on iPhone; the iPad shows the list beside the chat.
@@ -765,7 +794,7 @@ private struct ChatContent: View {
                 }
                 .accessibilityLabel("Add attachment")
             }
-            ComposerEditor(text: $draft, selection: $selection, isFocused: composerFocused, focusToken: composerFocusToken, onFocus: { composerFocused = $0 }, onSend: send, onFiles: { urls, images in
+            ComposerEditor(text: draftBinding, selection: selectionBinding, isFocused: composerFocused, focusToken: composerFocusToken, onFocus: { composerFocused = $0 }, onSend: send, onFiles: { urls, images in
                 Task { await addFiles(urls, images: images) }
             })
                 .frame(minHeight: ComposerEditor.minHeight)
@@ -1216,10 +1245,11 @@ private struct ChannelIntro: View {
 struct MessageRowView: View, Equatable {
     @EnvironmentObject private var navigator: AppNavigator
     let row: MessageRow
-    /// The account this timeline belongs to; its client loads the avatars and images. Watched
-    /// here, so names and profiles that arrive later still show although the chat skips rows
-    /// that did not change (see `==`).
-    @ObservedObject var account: MatrixAccount
+    /// The account this timeline belongs to; its client loads the avatars and images.
+    let account: MatrixAccount
+    /// Watched instead of the account (which changes for every room), so names and profiles that
+    /// arrive later still show although the chat skips rows that did not change (see `==`).
+    @ObservedObject private var people: AccountPeople
     /// Where names of mentioned people are looked up first.
     var roomId = ""
     var onProfile: () -> Void = {}
@@ -1232,6 +1262,33 @@ struct MessageRowView: View, Equatable {
     var onReplyTap: () -> Void = {}
     /// Long-pressing a reaction asks who reacted.
     var onReactionInfo: (String) -> Void = { _ in }
+
+    init(
+        row: MessageRow,
+        account: MatrixAccount,
+        roomId: String = "",
+        onProfile: @escaping () -> Void = {},
+        onMention: @escaping (String) -> Void = { _ in },
+        onReact: @escaping (String) -> Void = { _ in },
+        onImage: @escaping (UIImage) -> Void = { _ in },
+        onFile: @escaping (URL) -> Void = { _ in },
+        onCardCommand: @escaping (String) -> Void = { _ in },
+        onReplyTap: @escaping () -> Void = {},
+        onReactionInfo: @escaping (String) -> Void = { _ in }
+    ) {
+        self.row = row
+        self.account = account
+        _people = ObservedObject(wrappedValue: account.people)
+        self.roomId = roomId
+        self.onProfile = onProfile
+        self.onMention = onMention
+        self.onReact = onReact
+        self.onImage = onImage
+        self.onFile = onFile
+        self.onCardCommand = onCardCommand
+        self.onReplyTap = onReplyTap
+        self.onReactionInfo = onReactionInfo
+    }
     /// Badges grow with the name next to them when the text size changes.
     @ScaledMetric(relativeTo: .subheadline) private var badgeSize: CGFloat = 13
 
@@ -1766,4 +1823,19 @@ private struct PendingFileChip: View {
             .accessibilityElement(children: .combine)
         }
     }
+}
+
+/// Text and cursor of the composer (ChatContent.composerText).
+@MainActor
+final class ComposerText: ObservableObject {
+    @Published var text = ""
+    @Published var selection = NSRange(location: 0, length: 0)
+}
+
+/// Re-evaluates the composer when its text or cursor changes, without the chat around it.
+private struct ComposerObserver<Content: View>: View {
+    @ObservedObject var model: ComposerText
+    @ViewBuilder let content: () -> Content
+
+    var body: some View { content() }
 }

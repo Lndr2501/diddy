@@ -366,6 +366,8 @@ extension EnvironmentValues {
 /// the pill and not the whole chat.
 struct TypingIndicator: View {
     @ObservedObject var store: TypingStore
+    /// Names that arrive after the pill appeared.
+    @ObservedObject var people: AccountPeople
     let account: MatrixAccount
     let roomId: String
 
