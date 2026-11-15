@@ -13,7 +13,7 @@ check(request?.id == "r1" && request?.roomId == "!abc:hs" && request?.deviceId =
 check(request?.roomName == "Gaming", "name trimmed")
 check(request?.media == C.Media(camera: true, microphone: true, screen: false), "media read")
 check(C.parseRequest(#"{"v":2,"request_id":"r","room_id":"!a:b","device_id":"D","camera":true}"#) == nil, "other version refused")
-check(C.parseRequest(#"{"v":1,"request_id":"r","room_id":"#alias:b","device_id":"D","camera":true}"#) == nil, "room alias refused")
+check(C.parseRequest(##"{"v":1,"request_id":"r","room_id":"#alias:b","device_id":"D","camera":true}"##) == nil, "room alias refused")
 check(C.parseRequest(#"{"v":1,"request_id":"r","room_id":"!a:b","device_id":"D"}"#) == nil, "nothing to send refused")
 check(C.parseRequest("not json") == nil, "garbage refused")
 check(C.parseRequest(#"{"v":1,"request_id":"","room_id":"!a:b","device_id":"D","camera":true}"#) == nil, "empty id refused")
