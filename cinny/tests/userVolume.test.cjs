@@ -348,6 +348,31 @@ test('finds remote people through the React props of their tiles', () => {
   assert.equal(a.playbackVolume$.value, 1);
 });
 
+test('your own other device (iPhone as camera & mic) is never played back, and stays silent', () => {
+  const phone = userVm({ userId: '@me:x.org' });
+  const other = userVm({ userId: '@b:x.org' });
+  const doc = { querySelectorAll: () => [tileWith(phone), tileWith(other)] };
+  const storage = memoryStorage({});
+  const timers = fakeTimers();
+  mod.syncUserVolumes(doc, { storage, ownUserId: '@me:x.org', ...timers });
+  assert.equal(phone.playbackVolume$.value, 0);
+  assert.equal(other.playbackVolume$.value, 1);
+  // set back by Element Call or its menu: silent again at once
+  phone.togglePlaybackMuted();
+  assert.equal(phone.playbackVolume$.value, 0);
+  phone.adjustPlaybackVolume(0.8);
+  assert.equal(phone.playbackVolume$.value, 0);
+  // seen again on the next sync: nothing doubles up, and your own id is never remembered
+  mod.syncUserVolumes(doc, { storage, ownUserId: '@me:x.org', ...timers });
+  timers.flush();
+  assert.equal(phone.playbackVolume$.listeners.size, 1);
+  assert.equal('@me:x.org' in storage.saved(), false);
+  // without your id (older callers) everyone is a person as before
+  const solo = userVm({ userId: '@me:x.org' });
+  mod.syncUserVolumes({ querySelectorAll: () => [tileWith(solo)] }, { storage, ...fakeTimers() });
+  assert.equal(solo.playbackVolume$.value, 1);
+});
+
 // The hooks above, in the Element Call build Diddy ships: if an update renames them, this fails.
 test('the shipped Element Call still has the per-person volume hooks', () => {
   const dist = path.join(__dirname, '../node_modules/@element-hq/element-call-embedded/dist/assets');

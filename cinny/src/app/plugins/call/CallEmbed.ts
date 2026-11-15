@@ -295,7 +295,8 @@ export class CallEmbed {
       installScreenShareGrid(iframe.contentWindow);
       // #103: the volume / mute-for-me you give a person comes back in the next call
       installVoiceBoost(iframe.contentWindow, getAudioPrefs, () => !this.control.sound);
-      installUserVolumeMemory(iframe.contentWindow);
+      // ... and your own other devices (your iPhone as camera & mic) are never played back here
+      installUserVolumeMemory(iframe.contentWindow, this.mx.getSafeUserId());
       this.watchLivekitToken(iframe.contentWindow);
     };
     const earlyInstall = window.setInterval(() => {

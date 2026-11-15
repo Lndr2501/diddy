@@ -18,6 +18,9 @@
  *   - vm.playbackVolume$ (behaviour: `value` + `subscribe`), vm.adjustPlaybackVolume(v),
  *     vm.commitPlaybackVolume(), vm.togglePlaybackMuted()
  * If any of that is missing after an Element Call update, nothing is restored or remembered.
+ *
+ * Your own other devices (a remote model with your own Matrix id, e.g. your iPhone as camera & mic)
+ * are never played here: you would hear yourself. They are held at 0 and not remembered.
  */
 import {
   browserStorage,
@@ -194,18 +197,45 @@ export const untrackUserVolume = (vm: UserVolumeVm): void => {
   tracked.get(vm)?.stop();
 };
 
-/** Look for new remote people in the call document and track each of them. */
+/** Your own other devices, held silent (each model once, while it lives). */
+const silenced = new WeakSet<object>();
+
+/**
+ * Never play one of your own other devices (your iPhone in the call as camera & mic): its
+ * microphone is your voice, played back here with a delay. Held at 0, also when Element Call or
+ * its menu sets it back.
+ */
+export const silenceOwnDevice = (vm: UserVolumeVm): void => {
+  if (silenced.has(vm)) return;
+  silenced.add(vm);
+  const quiet = () => {
+    if (Number(vm.playbackVolume$.value) !== 0) vm.adjustPlaybackVolume(0);
+  };
+  quiet();
+  vm.playbackVolume$.subscribe(quiet);
+};
+
+/**
+ * Look for new remote people in the call document and track each of them; your own other
+ * devices (`ownUserId`) are silenced instead.
+ */
 export const syncUserVolumes = (
   doc: TileDoc | null | undefined,
-  options: TrackOptions = {}
+  options: TrackOptions & { ownUserId?: string } = {}
 ): void => {
-  findUserVolumeVms(doc).forEach((vm) => trackUserVolume(vm, options));
+  findUserVolumeVms(doc).forEach((vm) => {
+    if (options.ownUserId && vm.userId === options.ownUserId) silenceOwnDevice(vm);
+    else trackUserVolume(vm, options);
+  });
 };
 
 const INSTALLED_ATTR = 'data-diddy-user-volume';
 
-/** Watch the call document for tiles and restore / remember each remote person's volume. */
-export function installUserVolumeMemory(win: Window | null | undefined): void {
+/**
+ * Watch the call document for tiles and restore / remember each remote person's volume; your own
+ * other devices stay silent.
+ */
+export function installUserVolumeMemory(win: Window | null | undefined, ownUserId?: string): void {
   try {
     const doc = win?.document;
     if (!doc?.body || doc.documentElement.hasAttribute(INSTALLED_ATTR)) return;
@@ -213,7 +243,7 @@ export function installUserVolumeMemory(win: Window | null | undefined): void {
     let scheduled = false;
     const sync = () => {
       scheduled = false;
-      syncUserVolumes(doc, { storage: browserStorage() });
+      syncUserVolumes(doc, { storage: browserStorage(), ownUserId });
     };
     const schedule = () => {
       if (scheduled) return;
