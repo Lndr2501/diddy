@@ -77,8 +77,8 @@ jobs:
 
       - name: Select newest Xcode
         id: toolchain
-        # Whole-screen sharing without an extension (ScreenCaptureKit on iOS) is only compiled into
-        # LiveKit with the iOS 27 SDK, so use the newest Xcode the runner has.
+        # Use the newest Xcode the runner has. Whole-screen sharing goes through the DiddyBroadcast
+        # extension with any SDK; ScreenCaptureKit (iOS 27 SDK) only matters for a build without it.
         run: |
           newest=$(printf '%s\n' /Applications/Xcode_*.app | grep -E 'Xcode_[0-9.]+\.app$' | sort -V | tail -n 1)
           sudo xcode-select -s "$newest"
@@ -92,7 +92,7 @@ jobs:
             echo "signed=$SIGNED"
           } >> "$GITHUB_OUTPUT"
           if [ "${sdk%%.*}" -lt 27 ]; then
-            echo "::warning::iOS SDK $sdk: screen sharing will only cover the Diddy app itself, even on iOS 27 devices. Needs Xcode 27."
+            echo "::notice::iOS SDK $sdk: no ScreenCaptureKit; whole-screen sharing goes through the DiddyBroadcast extension on every iOS (also iOS 27)."
           fi
 
       - name: Check emoji reaction rules

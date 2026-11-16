@@ -84,14 +84,14 @@ Grenzen einer kostenlosen Apple-ID:
 
 Im Sprachkanal auf das Bildschirm-Symbol tippen.
 
-- **iOS 16 bis 26:** „Ganzer Bildschirm“ öffnet die iOS-Bildschirmübertragung mit „Diddy“ (Erweiterung `DiddyBroadcast`), dann „Übertragung starten“. Sie nimmt den ganzen Bildschirm auf und läuft weiter, wenn du in andere Apps wechselst. Die Erweiterung gibt Bilder und den Ton anderer Apps über eine lokale Verbindung auf dem Gerät (127.0.0.1) an die App, die sie im Call teilt. Auflösung (720p bis volle Bildschirmgröße), Bildrate (15/30/60 fps), Bildqualität und „Sound of Other Apps“ stehen unter Einstellungen → Calls → Screen Sharing; die App schickt sie der Erweiterung beim Start. Der Ton anderer Apps läuft wie bei LiveKits eigener Erweiterung über das Mikrofon-Signal: Ist dein Mikro stumm, bleibt nur dessen eigener Kanal still, und RNNoise pausiert, damit Musik nicht verfälscht wird. Beenden über Diddy oder den roten Balken bzw. das Kontrollzentrum. „Nur Diddy“ nimmt wie bisher nur die App selbst auf.
-- **ab iOS 27:** Der iOS-Dialog fragt, was geteilt wird. Das kann der ganze Bildschirm sein, auch andere Apps, und es läuft im Hintergrund weiter (ScreenCaptureKit).
+- **Ganzer Bildschirm (jedes iOS, auch iOS 27):** „Ganzer Bildschirm“ öffnet die iOS-Bildschirmübertragung mit „Diddy“ (Erweiterung `DiddyBroadcast`), dann „Übertragung starten“. Sie nimmt den ganzen Bildschirm auf und läuft weiter, wenn du in andere Apps wechselst. Die Erweiterung gibt Bilder und den Ton anderer Apps über eine lokale Verbindung auf dem Gerät (127.0.0.1) an die App, die sie im Call teilt. Auflösung (720p bis volle Bildschirmgröße), Bildrate (15/30/60 fps), Bildqualität und „Sound of Other Apps“ stehen unter Einstellungen → Calls → Screen Sharing; die App schickt sie der Erweiterung beim Start. Der Ton anderer Apps läuft wie bei LiveKits eigener Erweiterung über das Mikrofon-Signal: Ist dein Mikro stumm, bleibt nur dessen eigener Kanal still, und RNNoise pausiert, damit Musik nicht verfälscht wird. Beenden über Diddy oder den roten Balken bzw. das Kontrollzentrum. „Nur Diddy“ nimmt wie bisher nur die App selbst auf.
+- **iOS 27 ohne Erweiterung:** Fehlt `DiddyBroadcast` in der App (z. B. vom Sideloader entfernt) und ist die App mit dem iOS-27-SDK (Xcode 27) gebaut, fragt der iOS-Dialog selbst, was geteilt wird (ScreenCaptureKit). Mit älterem Xcode ist dieser Weg nicht eingebaut; dann gibt es ohne Erweiterung nur Diddy selbst.
 
-Für den iOS-27-Weg muss die App mit dem iOS-27-SDK (Xcode 27) gebaut sein. Mit älterem Xcode läuft die App auch auf iOS 27, überträgt dann aber nur Diddy selbst. Der Workflow nimmt das neueste Xcode des Runners und warnt, wenn es älter ist.
+Bis 1.11.0 bot Diddy auf iOS 27 „Ganzer Bildschirm“ nicht an und verließ sich auf ScreenCaptureKit, obwohl die IPA mit dem iOS-26-SDK gebaut war: Übertragen wurde dann nur Diddy, und der Stream fror außerhalb der App ein.
 
 ## Selbst bauen
 
-Auf einem Mac mit Xcode 16.3 oder neuer. Xcode 16.3 bis 26 reicht zum Bauen, die Bildschirmübertragung zeigt dann aber auf jedem iOS nur Diddy selbst. Für die ganze Bildschirmübertragung ab iOS 27 braucht es Xcode 27 (siehe oben).
+Auf einem Mac mit Xcode 16.3 oder neuer. Xcode 16.3 bis 26 reicht zum Bauen, auch für die ganze Bildschirmübertragung (über die Erweiterung `DiddyBroadcast`). Xcode 27 braucht es nur für ScreenCaptureKit in einer App ohne Erweiterung (siehe oben).
 
 ```sh
 brew install xcodegen
