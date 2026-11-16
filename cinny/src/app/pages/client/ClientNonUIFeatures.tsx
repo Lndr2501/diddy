@@ -33,6 +33,7 @@ import { useSpaceAutoJoinWorker } from '../../hooks/useSpaceAutoJoin';
 import { applyStoredAppIcon } from '../../plugins/appIcon';
 import { useDiddyOptionsAutoJoin } from '../../plugins/diddy/autoJoin';
 import { isDoNotDisturb, useDiddyStatusSync } from '../../plugins/diddy/status';
+import { useSettingsSync } from '../../plugins/diddy/useSettingsSync';
 import { useClientVersionSync } from '../../plugins/diddy/versionSync';
 import { DiddyOnboarding } from '../../features/onboarding/DiddyOnboarding';
 import { MatrixIntro } from '../../features/intro/MatrixIntro';
@@ -411,6 +412,7 @@ function DiddyOptionsAutoJoinFeature() {
 function DiddyStatusFeature() {
   useDiddyStatusSync();
   useClientVersionSync();
+  useSettingsSync();
   return null;
 }
 

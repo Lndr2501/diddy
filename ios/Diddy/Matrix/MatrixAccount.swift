@@ -154,6 +154,8 @@ final class MatrixAccount: ObservableObject, Identifiable {
     /// Whether the stored marker answers (DiddyMarkerChecks) were read this session.
     var diddyMarkerChecksLoaded = false
     var diddyPrimaryRoom: (id: String, encrypted: Bool)?
+    /// Every options room that was read, in desktop's order (profiles and badges go into all of them).
+    var diddyWriteRooms: [DiddyWriteRoom] = []
     /// Your own profile event as written, so an edit here keeps the fields only desktop knows.
     var diddyOwnProfileRaw: [String: Any]?
     var diddyLoading = false
