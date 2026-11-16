@@ -72,6 +72,7 @@ Online, Idle, Do Not Disturb and Invisible. Do Not Disturb silences message soun
 More details:
 
 - **Chat:** voice messages that show up as voice messages in Element, a right-click menu with *Copy Text*, *Join All Rooms* for spaces, and a calm member list split by online and offline.
+- **Saved messages:** bookmark a message from its context menu (long-press on iOS), then open *Inbox → Saved* on desktop or *You → Saved Messages* on iPhone (bookmark in the sidebar on iPad). Jump back to any accessible message or remove a bookmark. The list syncs through Matrix account data without storing message content there.
 - **Notifications in the window:** while Diddy is in front, new messages and invitations slide in as cards at the top (click opens the room, swipe up dismisses), and incoming calls arrive as a banner with answer and decline. In the background the system notification is used.
 - **Calm interface:** an own icon set, neutral highlights with the accent kept for mentions and sending, room updates folded into one line ("4 joined · 4 invited"), a one-line composer and voice messages with a scrubbable waveform.
 - **Settings by topic:** *Appearance*, *Chat*, *Notifications* and *Calls & Audio*, with a search that finds every single setting.
