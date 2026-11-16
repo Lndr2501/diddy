@@ -67,21 +67,21 @@ struct LoginView: View {
     }
 
     private var title: String {
-        if creating { return "Create an Account" }
-        return isAddingAccount ? "Add an Account" : "Welcome to Diddy"
+        if creating { return L("ios.registrationMore.createAnAccount") }
+        return isAddingAccount ? L("ios.registrationMore.addAnAccount") : L("ios.registrationMore.welcomeToDiddy")
     }
 
     private var subtitle: String {
-        if creating { return "Pick a server, a name and a password. Your account lives on that server." }
+        if creating { return L("ios.registrationMore.pickAServerANameAndAPasswordYourAccountLivesOnThatServer") }
         return isAddingAccount
-            ? "Sign in on another homeserver. Your current account stays signed in."
-            : "Sign in with your Matrix account."
+            ? L("ios.registrationMore.signInOnAnotherHomeserverYourCurrentAccountStaysSignedIn")
+            : L("ios.registrationMore.signInWithYourMatrixAccount")
     }
 
     @ViewBuilder
     private var form: some View {
         VStack(alignment: .leading, spacing: 14) {
-            field("HOMESERVER") {
+            field(L("ios.registrationMore.homeserver")) {
                 TextField("matrix.org", text: $login.homeserver)
                     .textContentType(.URL)
                     .keyboardType(.URL)
@@ -96,7 +96,7 @@ struct LoginView: View {
             }
             switch login.method {
             case nil:
-                primaryButton("Continue") { await login.discover() }
+                primaryButton(L("ios.registrationMore.continue")) { await login.discover() }
             case .password?:
                 serverLine
                 if creating {
@@ -107,10 +107,10 @@ struct LoginView: View {
             case .oauth?:
                 serverLine
                 Text(creating
-                     ? "This server creates accounts on its own page. Diddy signs you in when you are done."
-                     : "This server signs you in on its own page. Diddy never sees your password.")
+                     ? L("ios.registrationMore.thisServerCreatesAccountsOnItsOwnPageDiddySignsYouInWhenYouA")
+                     : L("ios.registrationMore.thisServerSignsYouInOnItsOwnPageDiddyNeverSeesYourPassword"))
                     .font(.footnote).foregroundStyle(Theme.muted)
-                primaryButton(creating ? "Create Account" : "Continue to Sign In") {
+                primaryButton(creating ? L("ios.registrationMore.createAccount") : L("ios.registrationMore.continueToSignIn")) {
                     if let result = await login.loginWithOAuth(create: creating) {
                         await app.add(record: result.0, client: result.1)
                         if isAddingAccount { dismiss() }
@@ -131,16 +131,16 @@ struct LoginView: View {
 
     @ViewBuilder
     private var passwordLogin: some View {
-        field("USERNAME") {
+        field(L("ios.registrationMore.username")) {
             TextField("@you:server", text: $login.username)
                 .textContentType(.username)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
         }
-        field("PASSWORD") {
-            SecureField("Password", text: $login.password).textContentType(.password)
+        field(L("ios.registrationMore.password")) {
+            SecureField(L("auth.password.password"), text: $login.password).textContentType(.password)
         }
-        primaryButton("Log In") {
+        primaryButton(L("ios.registrationMore.logIn")) {
             if let result = await login.loginWithPassword() {
                 await app.add(record: result.0, client: result.1)
                 if isAddingAccount { dismiss() }
@@ -154,7 +154,7 @@ struct LoginView: View {
     private var registrationForm: some View {
         switch registration.step {
         case .form, .done:
-            field("USERNAME") {
+            field(L("ios.registrationMore.username")) {
                 TextField("name", text: $newUsername)
                     .textContentType(.username)
                     .textInputAutocapitalization(.never)
@@ -175,18 +175,18 @@ struct LoginView: View {
                     Text(text).font(.footnote).foregroundStyle(Theme.danger)
                 }
             }
-            field("PASSWORD") {
-                SecureField("Password", text: $newPassword).textContentType(.newPassword)
+            field(L("ios.registrationMore.password")) {
+                SecureField(L("auth.password.password"), text: $newPassword).textContentType(.newPassword)
             }
-            field("CONFIRM PASSWORD") {
-                SecureField("Password again", text: $confirmPassword).textContentType(.newPassword)
+            field(L("ios.registrationMore.confirmPassword")) {
+                SecureField(L("ios.registrationMore.passwordAgain"), text: $confirmPassword).textContentType(.newPassword)
             }
             if !confirmPassword.isEmpty && confirmPassword != newPassword {
                 Text(L("ios.login.passwordsDoNotMatch")).font(.footnote).foregroundStyle(Theme.danger)
             }
             registrationButton(L("auth.passwordRegisterForm.createAccount")) {
                 guard newPassword == confirmPassword else {
-                    registration.error = "The passwords do not match."
+                    registration.error = L("ios.login.passwordsDoNotMatch")
                     return
                 }
                 await registration.start(username: newUsername, password: newPassword, deviceName: LoginService.registrationDeviceName)
@@ -194,12 +194,12 @@ struct LoginView: View {
         case .token:
             Text(L("ios.login.registrationTokenHelp"))
                 .font(.footnote).foregroundStyle(Theme.muted)
-            field("REGISTRATION TOKEN") {
-                TextField("Token", text: $token)
+            field(L("ios.registrationMore.registrationToken")) {
+                TextField(L("ios.registrationMore.token"), text: $token)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
             }
-            registrationButton("Continue") { await registration.submitToken(token) }
+            registrationButton(L("ios.registrationMore.continue")) { await registration.submitToken(token) }
         case .terms(let policies):
             Text(L("ios.login.acceptTerms"))
                 .font(.footnote).foregroundStyle(Theme.muted)
@@ -213,7 +213,7 @@ struct LoginView: View {
         case .email:
             Text(L("ios.login.emailConfirmation"))
                 .font(.footnote).foregroundStyle(Theme.muted)
-            field("EMAIL") {
+            field(L("ios.registrationMore.email")) {
                 TextField("you@example.com", text: $email)
                     .textContentType(.emailAddress)
                     .keyboardType(.emailAddress)
@@ -222,9 +222,9 @@ struct LoginView: View {
             }
             registrationButton(L("ios.login.sendLink")) { await registration.sendEmail(email) }
         case .waitingForEmail(let address):
-            Text("We sent a link to \(address). Open it, then come back and tap Continue.")
+            Text(L("ios.registrationMore.emailLinkSent", ["address": address]))
                 .font(.footnote).foregroundStyle(Theme.muted)
-            registrationButton("Continue") { await registration.confirmEmail() }
+            registrationButton(L("ios.registrationMore.continue")) { await registration.confirmEmail() }
             Button(L("ios.login.sendAgain")) { Task { await registration.sendEmail(address) } }
                 .font(.footnote)
         case .web(let url):
@@ -261,7 +261,7 @@ struct LoginView: View {
             login.error = nil
             registration.reset(homeserver: login.resolvedServerURL)
         } label: {
-            Text(creating ? LocalizedStringKey("Already have an account? **Log in**") : LocalizedStringKey("New here? **Create an account**"))
+            Text(creating ? LocalizedStringKey(L("ios.registrationMore.alreadyHaveAnAccountLogIn")) : LocalizedStringKey(L("ios.registrationMore.newHereCreateAnAccount")))
                 .font(.subheadline)
                 .foregroundStyle(Theme.text)
         }
@@ -276,7 +276,7 @@ struct LoginView: View {
             Image(systemName: "checkmark.seal.fill").foregroundStyle(Theme.online)
             Text(login.resolvedServer ?? login.homeserver).font(.footnote).foregroundStyle(Theme.muted).lineLimit(1)
             Spacer()
-            Button("Change") {
+            Button(L("ios.registrationMore.change")) {
                 login.reset()
                 registration.reset(homeserver: nil)
             }

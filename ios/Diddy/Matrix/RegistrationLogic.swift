@@ -111,10 +111,10 @@ enum RegistrationLogic {
 
     /// Nil when the server could accept the name (spec: a-z, 0-9, and . _ = - /).
     static func usernameProblem(_ localpart: String) -> String? {
-        if localpart.isEmpty { return "Choose a username." }
+        if localpart.isEmpty { return L("ios.registrationMore.chooseAUsername") }
         let allowed = Set("abcdefghijklmnopqrstuvwxyz0123456789._=-/")
         if !localpart.allSatisfy({ allowed.contains($0) }) {
-            return "Use only letters, numbers and . _ = - /"
+            return L("ios.registrationMore.useOnlyLettersNumbersAnd")
         }
         return nil
     }
@@ -135,16 +135,16 @@ enum RegistrationLogic {
     /// A sentence for an error answer of /register or /register/available.
     static func message(errcode: String?, error: String?) -> String {
         switch errcode {
-        case "M_USER_IN_USE": return "This username is already taken."
-        case "M_INVALID_USERNAME": return "This username is not allowed. Use only letters, numbers and . _ = - /"
-        case "M_EXCLUSIVE": return "This username is reserved."
-        case "M_WEAK_PASSWORD": return error.map { "Choose a stronger password: \($0)" } ?? "Choose a stronger password."
-        case "M_PASSWORD_TOO_SHORT": return "Choose a longer password."
-        case "M_FORBIDDEN": return error ?? "This server does not accept new accounts. Try another server."
-        case "M_LIMIT_EXCEEDED": return "Too many attempts. Wait a moment, then try again."
-        case "M_THREEPID_IN_USE": return "This email address already belongs to an account."
-        case "M_THREEPID_DENIED": return "This server does not accept this email address."
-        default: return error ?? "The server could not create the account."
+        case "M_USER_IN_USE": return L("ios.registrationMore.thisUsernameIsAlreadyTaken")
+        case "M_INVALID_USERNAME": return L("ios.registrationMore.thisUsernameIsNotAllowedUseOnlyLettersNumbersAnd")
+        case "M_EXCLUSIVE": return L("ios.registrationMore.thisUsernameIsReserved")
+        case "M_WEAK_PASSWORD": return error.map { L("ios.registrationMore.strongerPasswordReason", ["reason": $0]) } ?? L("ios.registrationMore.chooseAStrongerPassword")
+        case "M_PASSWORD_TOO_SHORT": return L("ios.registrationMore.chooseALongerPassword")
+        case "M_FORBIDDEN": return error ?? L("ios.registrationMore.thisServerDoesNotAcceptNewAccountsTryAnotherServer")
+        case "M_LIMIT_EXCEEDED": return L("ios.registrationMore.tooManyAttemptsWaitAMomentThenTryAgain")
+        case "M_THREEPID_IN_USE": return L("ios.registrationMore.thisEmailAddressAlreadyBelongsToAnAccount")
+        case "M_THREEPID_DENIED": return L("ios.registrationMore.thisServerDoesNotAcceptThisEmailAddress")
+        default: return error ?? L("ios.registrationMore.theServerCouldNotCreateTheAccount")
         }
     }
 }
