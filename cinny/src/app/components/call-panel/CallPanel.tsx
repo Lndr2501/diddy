@@ -307,7 +307,7 @@ function ActiveCallPanel({ callEmbed }: ActiveCallPanelProps) {
   );
 
   return (
-    <section className={css.CallPanel} aria-label={t('call.panel.sprachchat')}>
+    <section className={css.CallPanel} aria-label={t('call.panel.voiceChat')}>
       {importing && <MyInstantsImport onClose={() => setImporting(false)} />}
       <div className={css.CallPanelHeader}>
         <SignalBars latency={latency} />

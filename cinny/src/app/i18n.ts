@@ -130,7 +130,14 @@ i18n.use(initReactI18next).init({
 /** Switches the UI to a setting (`system` or a code). Resolves once the texts are there. */
 export const applyLanguage = async (pref: string = readLanguagePref()): Promise<string> => {
   let code = resolveLanguage(pref);
-  if (code !== SOURCE_LANGUAGE) {
+  // An imported en.json can override English too. Keep the bundled source underneath so a
+  // partial custom file still falls back to the original English texts.
+  if (code === SOURCE_LANGUAGE) {
+    i18n.removeResourceBundle(SOURCE_LANGUAGE, 'translation');
+    i18n.addResourceBundle(SOURCE_LANGUAGE, 'translation', stripMeta(english));
+    const custom = readCustomLanguages()[SOURCE_LANGUAGE];
+    if (custom) i18n.addResourceBundle(SOURCE_LANGUAGE, 'translation', stripMeta(custom), true, true);
+  } else {
     const file = await loadLanguageFile(code);
     // replaced, not merged: a removed custom file must not leave its texts behind
     if (i18n.hasResourceBundle(code, 'translation')) i18n.removeResourceBundle(code, 'translation');
