@@ -1,5 +1,7 @@
 import React, {
   KeyboardEventHandler,
+  MouseEventHandler,
+  PointerEventHandler,
   RefObject,
   forwardRef,
   useCallback,
@@ -18,15 +20,20 @@ import {
   Icon,
   IconButton,
   Icons,
+  Menu,
+  MenuItem,
   Overlay,
   OverlayBackdrop,
   OverlayCenter,
   PopOut,
+  RectCords,
   Scroll,
   Text,
   color,
+  config,
   toRem,
 } from 'folds';
+import FocusTrap from 'focus-trap-react';
 import { RESET } from 'jotai/utils';
 
 import { StickerEventContent } from 'matrix-js-sdk/lib/types';
@@ -127,6 +134,13 @@ import { VoiceRecorderButton } from './VoiceRecorderButton';
 import { VoiceRecording } from '../../hooks/useVoiceRecorder';
 import { sendVoiceMessage } from './sendVoiceMessage';
 import { PollDialog } from './PollDialog';
+import { stopPropagation } from '../../utils/keyboard';
+import { pushToastAtom } from '../../state/toasts';
+import { ScheduledMessagesBar, ScheduledRow } from './send-later/ScheduledMessagesBar';
+import { SendLaterDialog, routeExplanation } from './send-later/SendLaterDialog';
+import { useScheduleMessage } from './send-later/useSendLater';
+import { formatSendAt } from './send-later/sendLaterLogic';
+import { knownMaxDelay } from './send-later/sendLaterService';
 
 const getReplyContent = (replyDraft: IReplyDraft | undefined): IEventRelation => {
   if (!replyDraft) return {};
@@ -398,9 +412,14 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
       contents.forEach((content) => mx.sendMessage(roomId, content as any));
     };
 
-    const submit = useCallback(() => {
-      uploadBoardHandlers.current?.handleSend();
-
+    /**
+     * The message the composer holds: its content, a command that runs instead (/myroomnick
+     * and the like), or nothing.
+     */
+    const composeMessage = useCallback(():
+      | { kind: 'message'; content: IContent }
+      | { kind: 'command'; run: () => void }
+      | { kind: 'empty' } => {
       const commandName = getBeginCommand(editor);
       let plainText = toPlainText(editor.children, isMarkdown).trim();
       let customHtml = trimCustomHtml(
@@ -431,16 +450,11 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
         customHtml = `${UNFLIP} ${customHtml}`;
       } else if (commandName) {
         const commandContent = commands[commandName as Command];
-        if (commandContent) {
-          commandContent.exe(plainText);
-        }
-        resetEditor(editor);
-        resetEditorHistory(editor);
-        sendTypingStatus(false);
-        return;
+        const text = plainText;
+        return { kind: 'command', run: () => commandContent?.exe(text) };
       }
 
-      if (plainText === '') return;
+      if (plainText === '') return { kind: 'empty' };
 
       const body = plainText;
       const formattedBody = customHtml;
@@ -463,13 +477,144 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
         content.formatted_body = formattedBody;
       }
       if (replyDraft) content['m.relates_to'] = getReplyContent(replyDraft);
-      // A failed send stays in the timeline as "not sent" with retry (local echo).
-      mx.sendMessage(roomId, content as any).catch(() => undefined);
+      return { kind: 'message', content };
+    }, [mx, roomId, editor, replyDraft, isMarkdown, commands]);
+
+    const clearComposer = useCallback(() => {
       resetEditor(editor);
       resetEditorHistory(editor);
       setReplyDraft(undefined);
       sendTypingStatus(false);
-    }, [mx, roomId, editor, replyDraft, sendTypingStatus, setReplyDraft, isMarkdown, commands]);
+    }, [editor, setReplyDraft, sendTypingStatus]);
+
+    const submit = useCallback(() => {
+      uploadBoardHandlers.current?.handleSend();
+
+      const message = composeMessage();
+      if (message.kind === 'command') {
+        message.run();
+        resetEditor(editor);
+        resetEditorHistory(editor);
+        sendTypingStatus(false);
+        return;
+      }
+      if (message.kind === 'empty') return;
+
+      // A failed send stays in the timeline as "not sent" with retry (local echo).
+      mx.sendMessage(roomId, message.content as never).catch(() => undefined);
+      clearComposer();
+    }, [mx, roomId, editor, sendTypingStatus, composeMessage, clearComposer]);
+
+    // Send later: right-click (or long press) on the send button.
+    const [sendMenuAnchor, setSendMenuAnchor] = useState<RectCords>();
+    const [sendLaterOpen, setSendLaterOpen] = useState(false);
+    const longPressRef = useRef<number>();
+    const longPressedRef = useRef(false);
+    const scheduleMessage = useScheduleMessage(room);
+    const pushToast = useSetAtom(pushToastAtom);
+    const [hour24Clock] = useSetting(settingsAtom, 'hour24Clock');
+    const canSendLater = hasText && selectedFiles.length === 0;
+
+    const openSendMenu = useCallback((target: HTMLElement) => {
+      setSendMenuAnchor(target.getBoundingClientRect());
+    }, []);
+
+    const handleSendContextMenu: MouseEventHandler<HTMLButtonElement> = (evt) => {
+      evt.preventDefault();
+      openSendMenu(evt.currentTarget);
+    };
+
+    const handleSendPointerDown: PointerEventHandler<HTMLButtonElement> = (evt) => {
+      longPressedRef.current = false;
+      if (evt.pointerType !== 'touch') return;
+      const target = evt.currentTarget;
+      window.clearTimeout(longPressRef.current);
+      longPressRef.current = window.setTimeout(() => {
+        longPressedRef.current = true;
+        openSendMenu(target);
+      }, 500);
+    };
+    const cancelLongPress = () => window.clearTimeout(longPressRef.current);
+
+    const handleSendClick = () => {
+      if (longPressedRef.current) {
+        longPressedRef.current = false;
+        return;
+      }
+      submit();
+    };
+
+    const handleSchedule = async (sendAt: number, preferLocal: boolean) => {
+      const message = composeMessage();
+      if (message.kind !== 'message') {
+        setSendLaterOpen(false);
+        return;
+      }
+      const draft = JSON.parse(JSON.stringify(editor.children));
+      const reply = replyDraft
+        ? {
+            eventId: replyDraft.eventId,
+            userId: replyDraft.userId,
+            body: replyDraft.body,
+            relation: replyDraft.relation,
+          }
+        : undefined;
+      const result = await scheduleMessage({
+        content: message.content,
+        sendAt,
+        preferLocal,
+        draft,
+        reply,
+      });
+      setSendLaterOpen(false);
+      clearComposer();
+      if (result.reason === 'too-far-for-server' || result.reason === 'server-failed') {
+        // the dialog promised the server, but it said no: say where the message waits now
+        pushToast({
+          key: `send-later-route-${sendAt}`,
+          title: 'Scheduled on this device',
+          body: `${formatSendAt(sendAt, Date.now(), hour24Clock)}: ${
+            routeExplanation(
+              { route: 'local', reason: result.reason, encryptedAhead: false },
+              knownMaxDelay(mx)
+            ).text
+          }`,
+          roomId,
+          stamp: Date.now(),
+        });
+      }
+    };
+
+    // Edit a scheduled message: it goes back into the composer, the schedule is gone.
+    const handleEditScheduled = useCallback(
+      (row: ScheduledRow) => {
+        const draft = row.local?.draft;
+        const body = typeof row.content.body === 'string' ? row.content.body : '';
+        if (isEmptyEditor(editor)) resetEditor(editor);
+        else Transforms.select(editor, Editor.end(editor, []));
+        try {
+          if (Array.isArray(draft) && draft.length > 0) {
+            Transforms.insertFragment(editor, draft);
+          } else {
+            Transforms.insertText(editor, body);
+          }
+        } catch {
+          Transforms.insertText(editor, body);
+        }
+        const reply = row.local?.reply;
+        if (reply && !replyDraft) {
+          setReplyDraft({
+            eventId: reply.eventId,
+            userId: reply.userId,
+            body: reply.body,
+            relation: reply.relation as IEventRelation | undefined,
+          });
+        }
+        setHasText(true);
+        ReactEditor.focus(editor);
+      },
+      [editor, replyDraft, setReplyDraft]
+    );
 
     const handleKeyDown: KeyboardEventHandler = useCallback(
       (evt) => {
@@ -642,6 +787,14 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
             requestClose={handleCloseAutocomplete}
           />
         )}
+        <ScheduledMessagesBar roomId={roomId} onEdit={handleEditScheduled} />
+        {sendLaterOpen && (
+          <SendLaterDialog
+            room={room}
+            onCancel={() => setSendLaterOpen(false)}
+            onSchedule={handleSchedule}
+          />
+        )}
         <CustomEditor
           editableName="RoomInput"
           editor={editor}
@@ -792,16 +945,70 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
                 )}
               </UseStateProvider>
               <IconButton
-                onClick={submit}
+                onClick={handleSendClick}
+                onContextMenu={handleSendContextMenu}
+                onPointerDown={handleSendPointerDown}
+                onPointerUp={cancelLongPress}
+                onPointerLeave={cancelLongPress}
+                onPointerCancel={cancelLongPress}
                 variant="Primary"
                 size="300"
                 radii="Pill"
                 className={css.SendButton}
                 data-ready={hasText || selectedFiles.length > 0}
                 aria-label="Send message"
+                aria-haspopup="menu"
+                title="Send (right-click: Send Later…)"
               >
                 <Icon src={Icons.Send} />
               </IconButton>
+              {sendMenuAnchor && (
+                <PopOut
+                  anchor={sendMenuAnchor}
+                  position="Top"
+                  align="End"
+                  offset={8}
+                  content={
+                    <FocusTrap
+                      focusTrapOptions={{
+                        initialFocus: false,
+                        returnFocusOnDeactivate: false,
+                        onDeactivate: () => setSendMenuAnchor(undefined),
+                        clickOutsideDeactivates: true,
+                        isKeyForward: (evt: KeyboardEvent) => evt.key === 'ArrowDown',
+                        isKeyBackward: (evt: KeyboardEvent) => evt.key === 'ArrowUp',
+                        escapeDeactivates: stopPropagation,
+                      }}
+                    >
+                      <Menu style={{ padding: config.space.S100, maxWidth: toRem(260) }}>
+                        <MenuItem
+                          size="300"
+                          radii="300"
+                          disabled={!canSendLater}
+                          after={<Icon size="100" src={Icons.RecentClock} />}
+                          onClick={() => {
+                            setSendMenuAnchor(undefined);
+                            setSendLaterOpen(true);
+                          }}
+                        >
+                          <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
+                            Send Later…
+                          </Text>
+                        </MenuItem>
+                        {selectedFiles.length > 0 && (
+                          <Text
+                            size="T200"
+                            priority="300"
+                            style={{ padding: `${config.space.S100} ${config.space.S200}` }}
+                          >
+                            Attachments cannot be scheduled.
+                          </Text>
+                        )}
+                      </Menu>
+                    </FocusTrap>
+                  }
+                />
+              )}
             </>
           }
           bottom={

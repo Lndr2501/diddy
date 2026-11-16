@@ -115,6 +115,7 @@ All images show example data and are generated from the real app, see [docs/scre
 | …with system sound | ✅ macOS 14.2+ | 🧪 other apps, not Diddy's own sound | 🧪 Windows 10 2004+, not Diddy's own sound | 🧪 app sound |
 | Connection profiles | ✅ macOS 14+ | 🧪 untested | 🧪 | 🧪 multiple accounts |
 | Voice messages | ✅ | 🧪 | 🧪 | 🧪 sends m4a, plays m4a and Ogg/Opus |
+| Send later (text) | 🧪 | 🧪 | 🧪 | 🧪 server only in unencrypted chats |
 | Change app icon | ✅ | 🧪 | 🧪 window icon | 🧪 |
 | Call tiles, soundboard, MyInstants | ✅ | ✅ | 🧪 | 🧪 |
 | Push to talk | 🧪 also in the background (Fn, modifier, F13-F20) | 🧪 also in the background (portal / X11) | 🧪 also in the background (presses) | 🧪 Talk button, iPad keyboard key |

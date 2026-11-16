@@ -148,6 +148,8 @@ private struct ChatContent: View {
     @FocusState private var composerFocused: Bool
     /// Raised by a reply, so the keyboard comes up even after a swipe (see ComposerEditor.focusToken).
     @State private var composerFocusToken = 0
+    /// Send later: the date sheet of the send button's long-press menu (SendLaterViews.swift).
+    @State private var showSendLater = false
 
     private var title: String { summary?.name ?? "Channel" }
     private var roomId: String { controller.roomId }
@@ -254,6 +256,12 @@ private struct ChatContent: View {
             }
         }
         .sheet(isPresented: $showCamera) { ComposerCamera { image in Task { await addFiles([], images: [image]) } } }
+        .sheet(isPresented: $showSendLater) {
+            SendLaterSheet(store: ScheduledMessageStore.of(account), roomId: roomId) { sendAt, preferLocal in
+                scheduleLater(at: sendAt, preferLocal: preferLocal)
+            }
+        }
+        .task { await ScheduledMessageStore.of(account).prepare(roomId: roomId) }
         // Files dragged in from other apps become attachments (#216, ChatDrop.swift).
         .onDrop(of: [.item], isTargeted: $dropTargeted) { providers in
             guard canSend, editing == nil, ChatDrop.accepts(providers) else { return false }
@@ -774,6 +782,8 @@ private struct ChatContent: View {
                     editing = nil
                     draft = ""
                 }
+            } else {
+                ScheduledMessagesBar(store: ScheduledMessageStore.of(account), roomId: roomId, onEdit: editScheduled)
             }
             composerInputRow
         }
@@ -855,6 +865,15 @@ private struct ChatContent: View {
                 .disabled(sending)
                 .opacity(sending ? 0.6 : 1)
                 .accessibilityLabel(editing == nil ? "Send" : "Save edit")
+                .accessibilityHint(canScheduleLater ? "Touch and hold to send later" : "")
+                // Long press: Send later (text only, like the desktop's right-click menu).
+                .contextMenu {
+                    if canScheduleLater {
+                        SendLaterMenu(store: ScheduledMessageStore.of(account), roomId: roomId,
+                                      onPick: { scheduleLater(at: $0, preferLocal: false) },
+                                      onCustom: { showSendLater = true })
+                    }
+                }
             } else if editing == nil {
                 VoiceMicButton(recorder: recorder, width: 36, height: ComposerEditor.minHeight)
             }
@@ -1051,6 +1070,53 @@ private struct ChatContent: View {
             }
             sending = false
         }
+    }
+
+    /// Text (also /me, /notice and the like) can be scheduled; attachments, songs and edits cannot.
+    private var canScheduleLater: Bool {
+        guard editing == nil, pendingFiles.isEmpty, pendingMusic == nil, !trimmedDraft.isEmpty else { return false }
+        return SlashCommand.command(in: draft).map(\.sendsMessage) ?? true
+    }
+
+    /// Schedules the composer's message (ScheduledMessages.swift) and empties the composer.
+    private func scheduleLater(at sendAt: Date, preferLocal: Bool) {
+        guard canScheduleLater, !sending else { return }
+        let original = draft
+        var allTokens = tokens
+        for (name, id) in mentions { allTokens["@" + name] = .user(id: id) }
+        let command = SlashCommand.command(in: draft)
+        var replyId = restoredReplyId
+        if case .eventId(let id)? = replyTo?.eventId { replyId = id }
+        guard let message = ComposerFormatter.message(from: draft, tokens: allTokens, markdown: ChatSettings.markdown,
+            command: command?.sendsMessage == true ? command : nil, isReply: replyId != nil,
+            replyUserId: replyTo?.sender, ownUserId: account.userId) else { return }
+        let msgtype: String
+        switch command {
+        case .me?: msgtype = "m.emote"
+        case .notice?: msgtype = "m.notice"
+        default: msgtype = "m.text"
+        }
+        let content = SendLaterLogic.messageContent(body: message.body, html: message.html, msgtype: msgtype,
+                                                    mentionedUserIds: message.mentionedUserIds, replyEventId: replyId)
+        draft = ""; mentions = [:]; tokens = [:]; replyTo = nil; restoredReplyId = nil
+        selection = NSRange(location: 0, length: 0)
+        saveDraft()
+        controller.setTyping(false)
+        let store = ScheduledMessageStore.of(account)
+        let targetRoom = roomId
+        Task {
+            await store.schedule(roomId: targetRoom, content: content, draftText: original, replyEventId: replyId,
+                                 sendAt: sendAt, preferLocal: preferLocal)
+        }
+    }
+
+    /// Edit a scheduled message: its text goes back into the composer (the schedule is already cancelled).
+    private func editScheduled(_ item: SendLaterLogic.Scheduled) {
+        if trimmedDraft.isEmpty { draft = item.draftText } else { draft += "\n" + item.draftText }
+        selection = NSRange(location: (draft as NSString).length, length: 0)
+        if replyTo == nil, restoredReplyId == nil { restoredReplyId = item.replyEventId }
+        saveDraft()
+        composerFocusToken += 1
     }
 
     private func saveDraft() {
