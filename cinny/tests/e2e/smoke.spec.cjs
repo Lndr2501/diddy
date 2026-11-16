@@ -23,7 +23,8 @@ test('the app boots into the login screen instead of a blank page', async ({ pag
 
 test('the saved connections entry point is reachable on the login screen', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('button', { name: 'Verbindungen' })).toBeVisible({
+  // English or German, depending on the browser language (cinny/locales).
+  await expect(page.getByRole('button', { name: /^(Connections|Verbindungen)$/ })).toBeVisible({
     timeout: 30000,
   });
 });
