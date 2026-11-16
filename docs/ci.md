@@ -12,6 +12,10 @@ Playwright also checks the voice-recorder hook using synthetic audio and Chromiu
 WebM encoder, decoder, playback and seeking; this does not replace Linux device tests.
 Rust tests run in parallel on macOS. No checks were removed.
 
+The Bot SDK workflow (`bot-sdk.yml`) runs only when `sdk/python/` or Diddy's bot parsers change: Python unit
+tests, a parity test of `sdk/python/diddybot/protocol.py` against the TypeScript parsers, and an end-to-end run
+against a throwaway Synapse container in an encrypted room.
+
 ## Caches
 
 - Test jobs cache npm downloads keyed by `cinny/package-lock.json`; `npm ci` still installs
@@ -125,8 +129,13 @@ setter, gain scaling, replacement elements, persistence, mute and rejoin.
 
 `windows.yml` builds the frontend on Linux (the same build as the Linux packages) and hands it to
 a Windows job. That job checks out with LF line endings (the Electron tests read sources line by
-line), runs `electron` tests, builds the NSIS installer (`npm run dist:win`), checks that the
-Linux capture helpers are not packaged, and starts the packaged `Diddy.exe` once with
-`electron/tests/start-smoke.cjs` (page loaded, desktop API present, log in `%LOCALAPPDATA%`). The
-same smoke test runs on the Linux package. `release.yml` publishes `Diddy_X.Y.Z_x64-setup.exe`;
+line), runs `electron` tests and the unit tests of the system-audio helper
+(`electron/native/windows-audio`, Rust, cached with `rust-cache`), builds the NSIS installer
+(`npm run dist:win`, which first builds the helper with a static C runtime into
+`native/bin/diddy-system-audio.exe`), checks that the Linux capture helpers are not packaged and the
+Windows one is, and runs the packaged helper with `--probe` (process loopback capture for 300 ms,
+`READY` and `probe ok` required; the step starts the Windows audio service first). Then it starts
+the packaged `Diddy.exe` once with `electron/tests/start-smoke.cjs` (page loaded, desktop API
+present, log in `%LOCALAPPDATA%`, system-audio bridge present, and on Windows one capture started
+and stopped through the bridge). The same smoke test runs on the Linux package. `release.yml` publishes `Diddy_X.Y.Z_x64-setup.exe`;
 it is not code-signed.

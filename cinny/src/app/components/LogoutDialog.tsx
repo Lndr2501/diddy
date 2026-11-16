@@ -28,13 +28,18 @@ export const LogoutDialog = forwardRef<HTMLDivElement, LogoutDialogProps>(
       mx.getDeviceId() ?? undefined
     );
 
-    const [logoutState, logout] = useAsyncCallback<void, Error, []>(
-      useCallback(async () => {
-        await logoutClient(mx);
-      }, [mx])
+    const [logoutState, logout] = useAsyncCallback<void, Error, [boolean]>(
+      useCallback(
+        async (localOnly: boolean) => {
+          await logoutClient(mx, localOnly);
+        },
+        [mx]
+      )
     );
 
     const ongoingLogout = logoutState.status === AsyncStatus.Loading;
+    // The server did not end the session: retry, or remove it here and leave it signed in there.
+    const failed = logoutState.status === AsyncStatus.Error;
 
     return (
       <Dialog variant="Surface" className={sheetCss.Alert} ref={ref}>
@@ -68,21 +73,32 @@ export const LogoutDialog = forwardRef<HTMLDivElement, LogoutDialogProps>(
             ))}
           {logoutState.status === AsyncStatus.Error && (
             <Text style={{ color: color.Critical.Main }} size="T300">
-              {t('common.logoutDialog.failedToLogoutMessage', {
-                message: logoutState.error.message,
-              })}
+              The server could not end this session ({logoutState.error.message}). If you remove it
+              from this device anyway, it stays signed in on the server until you remove it under
+              Devices on another device.
             </Text>
           )}
           <div className={sheetCss.AlertActions}>
             <Button
               className={sheetCss.Pill}
               variant="Critical"
-              onClick={ignoreRejection(logout)}
+              onClick={ignoreRejection(() => logout(false))}
               disabled={ongoingLogout}
               before={ongoingLogout && <Spinner variant="Critical" fill="Solid" size="200" />}
             >
-              <Text size="B400">{t('common.logoutDialog.logout')}</Text>
+              <Text size="B400">{failed ? 'Try Again' : 'Logout'}</Text>
             </Button>
+            {failed && (
+              <Button
+                className={sheetCss.Pill}
+                variant="Critical"
+                fill="Soft"
+                onClick={ignoreRejection(() => logout(true))}
+                disabled={ongoingLogout}
+              >
+                <Text size="B400">Remove from This Device Anyway</Text>
+              </Button>
+            )}
             <Button
               className={sheetCss.Pill}
               variant="Secondary"

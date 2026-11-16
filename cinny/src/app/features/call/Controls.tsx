@@ -22,8 +22,10 @@ import { stopPropagation } from '../../utils/keyboard';
 import * as sheetCss from '../../components/sheet/Sheet.css';
 import * as css from './styles.css';
 import { callChatAtom } from '../../state/callEmbed';
+import type { ShareAudioOption } from '../../plugins/call';
 import { AsyncStatus, useAsyncCallback, ignoreRejection } from '../../hooks/useAsyncCallback';
 import { useTranslation } from 'react-i18next';
+import { pushToTalkHoldProps } from './pushToTalkHold';
 
 export function ControlDivider() {
   return (
@@ -40,17 +42,70 @@ function PhoneBadge() {
   );
 }
 
+/** "PTT" on the microphone button while push-to-talk runs. */
+function PushToTalkBadge() {
+  return (
+    <span className={css.PushToTalkBadge} aria-hidden>
+      PTT
+    </span>
+  );
+}
+
+/** Push-to-talk on the microphone button: it shows whether the microphone is open, holding talks. */
+export type MicrophonePushToTalk = {
+  open: boolean;
+  /** the push-to-talk key, for the tooltip */
+  keyLabel?: string;
+  /** held, but full mute keeps the microphone closed */
+  fullMuted: boolean;
+};
+
 type MicrophoneButtonProps = {
   enabled: boolean;
   onToggle: () => Promise<unknown>;
   /** works your iPhone (camera & mic) instead of this computer */
   phone?: boolean;
+  ptt?: MicrophonePushToTalk;
 };
-export function MicrophoneButton({ enabled, onToggle, phone }: MicrophoneButtonProps) {
+export function MicrophoneButton({ enabled, onToggle, phone, ptt }: MicrophoneButtonProps) {
   const { t } = useTranslation();
   const [micState, toggleMic] = useAsyncCallback(onToggle);
   const loading = micState.status === AsyncStatus.Loading;
   const what = phone ? t('call.controls.phoneMicrophone') : t('call.controls.microphone');
+
+  if (ptt) {
+    let tip = ptt.keyLabel ? `Hold to talk (${ptt.keyLabel})` : 'Hold to talk';
+    if (ptt.fullMuted) tip = 'Full mute is on: turn on sound to talk';
+    else if (ptt.open) tip = `Talking${phone ? ' on your iPhone' : ''}`;
+    return (
+      <TooltipProvider
+        position="Top"
+        delay={500}
+        tooltip={
+          <Tooltip>
+            <Text size="T200">{tip}</Text>
+          </Tooltip>
+        }
+      >
+        {(anchorRef) => (
+          <IconButton
+            ref={anchorRef}
+            variant={ptt.open ? 'Success' : 'SurfaceVariant'}
+            fill="Soft"
+            radii="400"
+            size="400"
+            className={css.ControlButton}
+            aria-label={`Push to talk: hold to talk${phone ? ' on your iPhone' : ''}`}
+            aria-pressed={ptt.open}
+            {...pushToTalkHoldProps}
+          >
+            <Icon size="400" src={ptt.open ? Icons.Mic : Icons.MicMute} filled={ptt.open} />
+            {phone ? <PhoneBadge /> : <PushToTalkBadge />}
+          </IconButton>
+        )}
+      </TooltipProvider>
+    );
+  }
 
   return (
     <TooltipProvider
@@ -287,8 +342,11 @@ function useBarMenu() {
 }
 
 type ShareOptionsButtonProps = {
-  /** null: the system sound cannot be shared on this device, no toggle */
-  audio: { enabled: boolean; onToggle: () => void } | null;
+  /**
+   * null: the system sound cannot be shared on this device, no toggle.
+   * { unavailable }: shown greyed out with the reason (older Windows).
+   */
+  audio: ShareAudioOption;
   onStop: () => void;
 };
 /** Chevron next to the share button while sharing: system sound on/off, stop sharing. */
@@ -312,7 +370,25 @@ export function ShareOptionsButton({ audio, onStop }: ShareOptionsButtonProps) {
         >
           <Menu className={sheetCss.MenuMaterial} style={{ minWidth: toRem(240) }}>
             <Box direction="Column" gap="100" style={{ padding: config.space.S100 }}>
-              {audio && (
+              {audio && 'unavailable' in audio && (
+                <MenuItem
+                  className={sheetCss.MenuRow}
+                  size="300"
+                  radii="300"
+                  disabled
+                  aria-disabled
+                  title={audio.unavailable}
+                  before={<Icon size="100" src={Icons.VolumeMute} />}
+                >
+                  <Box direction="Column" gap="100">
+                    <Text size="T300">Share system sound</Text>
+                    <Text size="T200" priority="300" style={{ whiteSpace: 'normal' }}>
+                      {audio.unavailable}
+                    </Text>
+                  </Box>
+                </MenuItem>
+              )}
+              {audio && 'enabled' in audio && (
                 <MenuItem
                   className={sheetCss.MenuRow}
                   size="300"

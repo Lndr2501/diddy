@@ -14,6 +14,7 @@ import {
   LOGIN_PATH,
   INBOX_INVITES_PATH,
   INBOX_NOTIFICATIONS_PATH,
+  INBOX_SAVED_PATH,
   INBOX_PATH,
   REGISTER_PATH,
   RESET_PASSWORD_PATH,
@@ -158,3 +159,4 @@ export const getCreatePath = (): string => CREATE_PATH;
 export const getInboxPath = (): string => INBOX_PATH;
 export const getInboxNotificationsPath = (): string => INBOX_NOTIFICATIONS_PATH;
 export const getInboxInvitesPath = (): string => INBOX_INVITES_PATH;
+export const getInboxSavedPath = (): string => INBOX_SAVED_PATH;

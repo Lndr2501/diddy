@@ -3,6 +3,7 @@ import {
   getInboxInvitesPath,
   getInboxNotificationsPath,
   getInboxPath,
+  getInboxSavedPath,
 } from '../../pages/pathUtils';
 
 export const useInboxSelected = (): boolean => {
@@ -28,6 +29,16 @@ export const useInboxNotificationsSelected = (): boolean => {
 export const useInboxInvitesSelected = (): boolean => {
   const match = useMatch({
     path: getInboxInvitesPath(),
+    caseSensitive: true,
+    end: false,
+  });
+
+  return !!match;
+};
+
+export const useInboxSavedSelected = (): boolean => {
+  const match = useMatch({
+    path: getInboxSavedPath(),
     caseSensitive: true,
     end: false,
   });

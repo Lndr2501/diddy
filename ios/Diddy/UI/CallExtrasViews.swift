@@ -111,8 +111,14 @@ struct CallReactionBubble: View {
 struct ShareControl: View {
     @ObservedObject var session: CallSession
     @ObservedObject var extras: CallLiveExtras
+    @State private var confirmWholeScreen = false
 
     var body: some View {
+        content
+            .wholeScreenShareAlert(isPresented: $confirmWholeScreen) { Task { await session.toggleScreenShare() } }
+    }
+
+    @ViewBuilder private var content: some View {
         if session.screenSharing {
             Menu {
                 Toggle(isOn: Binding(
@@ -132,8 +138,8 @@ struct ShareControl: View {
             .accessibilityLabel("Sharing your screen")
             .accessibilityHint("Opens the sharing options")
         } else if !CallSession.sharesWholeScreen && BroadcastPicker.isAvailable {
-            // Before iOS 27 only the broadcast extension sees other apps; in-app sharing stays for
-            // showing Diddy itself without the system sheet.
+            // Only the broadcast extension reliably sees other apps (also on iOS 27 with an IPA
+            // built before Xcode 27); in-app sharing stays for showing Diddy itself without the sheet.
             Menu {
                 Button {
                     session.startWholeScreenShare()
@@ -152,7 +158,10 @@ struct ShareControl: View {
             .accessibilityLabel("Share screen")
             .accessibilityHint("Whole screen keeps sharing while you use other apps")
         } else {
-            Button { Task { await session.toggleScreenShare() } } label: {
+            Button {
+                // From iOS 27 this sends the whole screen, so say so first.
+                if CallSession.sharesWholeScreen { confirmWholeScreen = true } else { Task { await session.toggleScreenShare() } }
+            } label: {
                 CallBarIcon(icon: "rectangle.on.rectangle")
             }
             .disabled(!session.connected)
@@ -248,6 +257,10 @@ struct CallMoreButton: View {
         .accessibilityLabel("More")
         .accessibilityHint("Reactions, soundboard, watch together, deafen and audio devices")
         .sheet(item: $sheet) { which in sheetContent(which) }
+        .background {
+            // These commands exist only in the call view; iOS never registers a global shortcut.
+            if session.connected && sheet != .soundboard { SoundboardKeyboardCommands() }
+        }
     }
 
     @ViewBuilder

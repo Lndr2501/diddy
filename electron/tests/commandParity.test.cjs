@@ -19,9 +19,8 @@ const MACOS_ONLY = new Set(['updater_state', 'updater_action', 'updater_open_rel
 // calls these (AgentVoiceSync checks isMacOS), the Tauri side reads Fn/F13-F20 by itself.
 // set_in_call switches background throttling of the Electron window by call state; Tauri keeps its
 // own fixed setting and the page only calls it outside macOS (CallEmbedProvider).
-// set_ui_language hands the texts of the shell's own menus to Electron; on macOS WebKit and the
-// system draw those menus in the system language.
-const LINUX_ONLY = new Set(['agent_voice_bind', 'agent_voice_hotkey_info', 'set_in_call', 'set_ui_language']);
+// hotkey_bind is the same for the page's other hotkeys (push-to-talk); hotkey_wait exists on both.
+const LINUX_ONLY = new Set(['agent_voice_bind', 'agent_voice_hotkey_info', 'hotkey_bind', 'set_in_call', 'set_ui_language']);
 
 const tauriCommands = () => {
   const block = /generate_handler!\[([\s\S]*?)\]/.exec(libRs);

@@ -68,6 +68,12 @@ const copyFiles = {
       dest: '',
     },
     {
+      // The macOS update window loads /updater.html. Without this copy the local server falls
+      // back to index.html and the whole app opens in the small update window (#243).
+      src: 'public/updater.html',
+      dest: '',
+    },
+    {
       src: 'public/res/android',
       dest: 'public/',
     },

@@ -26,13 +26,32 @@ enum DiddyLightRooms {
         var all = ids(for: accountId)
         all.insert(roomId)
         UserDefaults.standard.set(all.sorted(), forKey: key(accountId))
+        markChangedHere(for: accountId)
+        // Picked again on purpose: no longer a room that was left for good.
+        var left = UserDefaults.standard.stringArray(forKey: MatrixAccount.leftOptionsRoomsKey) ?? []
+        if left.contains(roomId) {
+            left.removeAll { $0 == roomId }
+            UserDefaults.standard.set(left, forKey: MatrixAccount.leftOptionsRoomsKey)
+        }
     }
 
     static func remove(_ roomId: String, for accountId: String) {
         var all = ids(for: accountId)
         all.remove(roomId)
         UserDefaults.standard.set(all.sorted(), forKey: key(accountId))
+        markChangedHere(for: accountId)
     }
+
+    /// The whole list as the account has it (DiddyRoomListSync), not a change made here.
+    static func replace(_ all: Set<String>, for accountId: String) {
+        UserDefaults.standard.set(all.sorted(), forKey: key(accountId))
+    }
+
+    // A change made on this device since the lists were last shared (then this device's lists win).
+    private static func changedKey(_ accountId: String) -> String { "diddy.lightOptionsRoomsChanged.\(accountId)" }
+    static func markChangedHere(for accountId: String) { UserDefaults.standard.set(true, forKey: changedKey(accountId)) }
+    static func changedHere(for accountId: String) -> Bool { UserDefaults.standard.bool(forKey: changedKey(accountId)) }
+    static func clearChangedHere(for accountId: String) { UserDefaults.standard.removeObject(forKey: changedKey(accountId)) }
 }
 
 /// Setting up the hidden Diddy Options room like desktop's Settings > Profile and onboarding do:
@@ -189,7 +208,7 @@ extension MatrixAccount {
     /// The options room of one of your servers that you have not joined (`joinOptionsRoomOfSpace`),
     /// nil when there is none.
     func findDiddyRoom(ofServer spaceId: String) async -> DiddyRoomChoice? {
-        let left = Set(UserDefaults.standard.stringArray(forKey: "diddyLeftOptionsRooms") ?? [])
+        let left = Set(UserDefaults.standard.stringArray(forKey: Self.leftOptionsRoomsKey) ?? [])
         let found = await hierarchyRooms(of: spaceId)
         let joined = Set(rooms.filter(\.isJoined).map(\.id))
         let candidate = DiddyOptionsRoomLogic.joinCandidate(

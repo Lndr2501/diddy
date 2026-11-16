@@ -40,6 +40,9 @@ import { AsyncStatus, useAsyncCallback, ignoreRejection } from '../../hooks/useA
 import { SoundboardMenu } from '../../features/call/Soundboard';
 import { MyInstantsImport } from '../../features/call/MyInstantsImport';
 import { useTranslation } from 'react-i18next';
+import { useMatrixClient } from '../../hooks/useMatrixClient';
+import { E2eeKeys, watchE2eeKeys } from '../../plugins/call/e2eeWatch';
+import { callEncryption, callEncryptionLabel } from '../../plugins/call/callEncryption';
 
 /** Latency (ms) to the call server -> number of lit bars (3 = good). */
 const barsFor = (ms: number): number => {
@@ -99,6 +102,41 @@ function SignalBars({ latency }: { latency?: number }) {
           {t('call.panel.latencyMs', { latency })}
         </span>
       )}
+    </span>
+  );
+}
+
+type CallEncryptionBadgeProps = {
+  callEmbed: CallEmbed;
+  members: ReadonlyArray<{ sender?: string; deviceId?: string }>;
+};
+/** The call's lock: end-to-end encrypted or not, and whether everyone's media key has arrived. */
+function CallEncryptionBadge({ callEmbed, members }: CallEncryptionBadgeProps) {
+  const mx = useMatrixClient();
+  const [keys, setKeys] = useState<E2eeKeys>({ livekit: false, keyed: new Set() });
+  useEffect(() => {
+    const win = callEmbed.iframe.contentWindow;
+    if (!win || !callEmbed.encrypted) return undefined;
+    return watchE2eeKeys(win, setKeys);
+  }, [callEmbed]);
+  const state = callEncryption({
+    encrypted: callEmbed.encrypted,
+    members,
+    ownUserId: mx.getSafeUserId(),
+    ownDeviceId: mx.getDeviceId() ?? '',
+    livekit: keys.livekit,
+    keyed: keys.keyed,
+  });
+  const label = callEncryptionLabel(state);
+  return (
+    <span
+      className={css.CallPanelEncryption}
+      data-state={state.kind}
+      role="img"
+      aria-label={label}
+      title={label}
+    >
+      <Icon size="100" src={state.kind === 'off' ? Icons.Warning : Icons.Lock} filled />
     </span>
   );
 }
@@ -325,6 +363,7 @@ function ActiveCallPanel({ callEmbed }: ActiveCallPanelProps) {
             {t('call.panel.connectedTo', { roomName })}
           </Text>
         </button>
+        <CallEncryptionBadge callEmbed={callEmbed} members={callMembers} />
         <span
           className={css.CallPanelCount}
           role="img"

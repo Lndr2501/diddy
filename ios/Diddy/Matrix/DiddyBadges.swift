@@ -20,7 +20,8 @@ extension MatrixAccount {
             name: name.trimmingCharacters(in: .whitespacesAndNewlines), emoji: emoji.trimmingCharacters(in: .whitespacesAndNewlines),
             imageMxc: imageMxc, color: color, createdBy: userId
         )
-        try await writeDiddyData(type: DiddyEvents.badge, key: id, content: content)
+        // Into every options room, so the badge can be given to people of any of your servers.
+        try await writeDiddyData(type: DiddyEvents.badge, key: id, content: content, to: diddyAllWriteRooms)
         await loadDiddyProfiles(force: true)
         return id
     }
@@ -28,17 +29,23 @@ extension MatrixAccount {
     /// Gives a badge to someone (to yourself for "Add to me"). The event names you as the giver.
     func awardDiddyBadge(_ badgeId: String, to recipient: String) async throws {
         try requireDiddyRoom()
+        // Where the person is a member: their friends there read only that room (desktop's `awardBadge`).
+        let all = diddyAllWriteRooms
+        let memberRooms = all.filter { $0.members.contains(recipient) }
         try await writeDiddyData(type: DiddyEvents.award,
                                  key: DiddyBadgeLogic.awardKey(badgeId: badgeId, userId: recipient),
-                                 content: DiddyBadgeLogic.awardContent(by: userId, at: nowMs))
+                                 content: DiddyBadgeLogic.awardContent(by: userId, at: nowMs),
+                                 to: memberRooms.isEmpty ? Array(all.prefix(1)) : memberRooms)
         await loadDiddyProfiles(force: true)
     }
 
     /// Takes a badge back: the giver can, and so can the person who has it.
     func revokeDiddyBadge(_ badgeId: String, from recipient: String) async throws {
         try requireDiddyRoom()
+        // Removed in every room, wherever it was given.
         try await writeDiddyData(type: DiddyEvents.award,
-                                 key: DiddyBadgeLogic.awardKey(badgeId: badgeId, userId: recipient), content: [:])
+                                 key: DiddyBadgeLogic.awardKey(badgeId: badgeId, userId: recipient), content: [:],
+                                 to: diddyAllWriteRooms)
         await loadDiddyProfiles(force: true)
     }
 
@@ -46,7 +53,7 @@ extension MatrixAccount {
     func deleteDiddyBadge(_ badge: DiddyBadge) async throws {
         try requireDiddyRoom()
         guard DiddyBadgeLogic.canDelete(badge, me: userId) else { throw DiddyError("Only the creator can delete this badge.") }
-        try await writeDiddyData(type: DiddyEvents.badge, key: badge.id, content: [:])
+        try await writeDiddyData(type: DiddyEvents.badge, key: badge.id, content: [:], to: diddyAllWriteRooms)
         await loadDiddyProfiles(force: true)
     }
 

@@ -9,6 +9,7 @@
 // (`__TAURI_INTERNALS__.invoke`, see preload.cjs), so the frontend does not know the difference.
 const fs = require('node:fs');
 const path = require('node:path');
+const os = require('node:os');
 const {
   app,
   BrowserWindow,
@@ -36,10 +37,12 @@ const { createStartupGate } = require('./lib/startupGate.cjs');
 const { shouldReloadAfter, createRateLimiter, describeError } = require('./lib/crashGuard.cjs');
 const { startStaticServer } = require('./lib/staticServer.cjs');
 const { isSsoStart, openSsoWindow } = require('./lib/ssoWindow.cjs');
-const { createSystemAudio } = require('./lib/systemAudio.cjs');
+const { createSystemAudio, systemAudioSupport, helperName } = require('./lib/systemAudio.cjs');
 const { createScreenPicker, screenSourceOptions } = require('./lib/screenPicker.cjs');
 const { parseAgentVoiceLaunch, createAgentVoiceTrigger } = require('./lib/agentVoice.cjs');
 const { createAgentVoiceHotkey } = require('./lib/agentVoiceHotkey.cjs');
+const { createSoundboardHotkeys } = require('./lib/soundboardHotkeys.cjs');
+const { createHotkeySlots } = require('./lib/hotkeySlots.cjs');
 const { sanitizeHotkey } = require('./lib/globalHotkey.cjs');
 const { startPortalShortcut } = require('./lib/portalShortcut.cjs');
 const { installShellInput } = require('./lib/shellInput.cjs');
@@ -81,6 +84,10 @@ app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 const isWayland = process.env.XDG_SESSION_TYPE === 'wayland' || !!process.env.WAYLAND_DISPLAY;
 // Merged, not appended: a wrapper may already pass --enable-features (NixOS: WaylandWindowDecorations).
 addFeatureSwitch(app.commandLine, isWayland ? 'enable-features' : 'disable-features', 'WebRTCPipeWireCapturer');
+// With automatic gain on, Chromium also moves the system microphone slider (analog AGC) and on
+// Windows often leaves it far down: you stay quiet in every app, even after the call. Diddy's
+// "Automatic mic volume" only amplifies the signal inside Diddy.
+addFeatureSwitch(app.commandLine, 'disable-features', 'WebRtcAllowInputVolumeAdjustment');
 
 // ---- crash handling ---------------------------------------------------------------------------
 
@@ -357,6 +364,17 @@ const agentVoiceHotkey = createAgentVoiceHotkey({
   startPortal: startPortalShortcut,
   log: (line) => diag.writeLine(line),
 });
+// The page's other system-wide hotkeys (push-to-talk), same mechanism, one slot each.
+const hotkeySlots = createHotkeySlots({
+  globalShortcut,
+  helper: shortcutHelper,
+  helperAvailable: () => fs.existsSync(shortcutHelper),
+  startPortal: startPortalShortcut,
+  log: (line) => diag.writeLine(line),
+});
+
+// Soundboard shortcuts in the background: bound by the page only during a call.
+const soundboardHotkeys = createSoundboardHotkeys({ globalShortcut, log: (line) => diag.writeLine(line) });
 
 /** `diddy --agent-voice start|stop|toggle` (#57). True when the launch was one of these. */
 const handleAgentVoiceLaunch = (argv) => {
@@ -414,6 +432,13 @@ const commands = {
   // Binds the page's hotkey globally (null: unbind). Answers { path: 'portal' | 'x11' | 'window', trigger?, reason? }.
   agent_voice_bind: ({ hotkey }) => agentVoiceHotkey.bind(sanitizeHotkey(hotkey)),
   agent_voice_hotkey_info: () => agentVoiceHotkey.info(),
+  // Soundboard shortcuts while Diddy is in the background (same contract as the Tauri commands).
+  soundboard_hotkeys_bind: ({ hotkeys }) => soundboardHotkeys.bind(hotkeys),
+  soundboard_hotkeys_wait: (args) => soundboardHotkeys.wait({ after: Number(args?.after) || 0, timeoutMs: args?.timeoutMs }),
+  // Other hotkeys of the page by slot (push-to-talk): bind system-wide (null: unbind), then wait for the key.
+  // `key` (the key code) is for the macOS shell, which reads the key itself; here the bound slot answers.
+  hotkey_bind: ({ slot, hotkey }) => hotkeySlots.bind(slot, sanitizeHotkey(hotkey)),
+  hotkey_wait: (args) => hotkeySlots.wait(args?.slot, args?.lastKey, args?.timeoutMs),
   // The update check belongs to the macOS shell; Linux has no native updater (the UI still sends this).
   updater_set_config: () => null,
   // texts of the right-click menu and the screen picker in the UI language (lib/uiStrings.cjs)
@@ -422,9 +447,23 @@ const commands = {
 
 const audioCaptures = new Map();
 const trusted = (event) => event.senderFrame && event.senderFrame === event.sender.mainFrame && originOf(event.senderFrame.url) === appOrigin;
+// Linux: 'diddy-system-audio' (PulseAudio/PipeWire), Windows: 'diddy-system-audio.exe' (process loopback).
+const audioHelper = () => process.env.DIDDY_AUDIO_HELPER || path.join(process.resourcesPath, helperName());
+let audioSupport;
+const audioSupportInfo = () => {
+  if (!audioSupport) {
+    audioSupport = systemAudioSupport({ release: os.release(), helperExists: () => fs.existsSync(audioHelper()) });
+    diag.writeLine(`system audio: ${audioSupport.available ? 'available' : `unavailable${audioSupport.reason ? ` (${audioSupport.reason})` : ''}`} on ${process.platform} ${os.release()}`);
+  }
+  return audioSupport;
+};
+// The preload asks once per page, synchronously, before it decides what the page gets.
+ipcMain.on('diddy:audio-support', (event) => {
+  event.returnValue = trusted(event) ? audioSupportInfo() : { available: false };
+});
 const audioFor = (contents) => {
   if (!audioCaptures.has(contents.id)) {
-    const helper = process.env.DIDDY_AUDIO_HELPER || path.join(process.resourcesPath, 'diddy-system-audio');
+    const helper = audioHelper();
     const audio = createSystemAudio({ helper, log: (line) => diag.writeLine(line), send: (message) => { if (!contents.isDestroyed()) contents.send('diddy:audio-data', message); } });
     audioCaptures.set(contents.id, audio);
     contents.on('did-start-navigation', (_event, _url, _inPlace, isMainFrame) => { if (isMainFrame) audio.close(); });
@@ -435,6 +474,7 @@ const audioFor = (contents) => {
 };
 ipcMain.handle('diddy:audio-start', (event) => {
   if (!trusted(event)) throw new Error('not allowed');
+  if (!audioSupportInfo().available) throw new Error(audioSupportInfo().reason ?? 'System audio is not available');
   return audioFor(event.sender).start();
 });
 ipcMain.handle('diddy:audio-stop', (event, id) => {
@@ -444,7 +484,11 @@ ipcMain.on('diddy:audio-ack', (event, id) => {
   if (trusted(event)) audioCaptures.get(event.sender.id)?.ack(id);
 });
 app.on('before-quit', () => audioCaptures.forEach((audio) => audio.close()));
-app.on('will-quit', () => agentVoiceHotkey.close());
+app.on('will-quit', () => {
+  agentVoiceHotkey.close();
+  soundboardHotkeys.close();
+  hotkeySlots.close();
+});
 
 ipcMain.handle('diddy:invoke', async (event, cmd, args) => {
   // Only Diddy's own top-level page may call these (not Element Call's frame, not other sites).

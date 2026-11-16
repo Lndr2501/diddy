@@ -18,7 +18,9 @@
  * - as a defensive fix, sets the missing flag to "enabled" before the receiver starts. In an
  *   encrypted call every participant encrypts, and LiveKit itself posts the same message when it
  *   learns about the track, so the worst case is a redundant message. An explicit "disabled" from
- *   LiveKit is never overridden.
+ *   LiveKit is never overridden;
+ * - remembers whose media keys reached the worker (identities only), for the lock in the call
+ *   panel (`watchE2eeKeys`).
  */
 import { diag } from '../diagnostics';
 
@@ -44,6 +46,9 @@ export class E2eeTracker {
   /** The worker was initialised by LiveKit's E2EE manager (an `init` with keyProviderOptions). */
   public livekit = false;
 
+  /** LiveKit identities of others whose media key reached the worker. */
+  public readonly keyed = new Set<string>();
+
   private readonly flags = new Map<string, boolean>();
 
   private readonly errors = new Map<string, { lastLogged: number; suppressed: number }>();
@@ -52,9 +57,17 @@ export class E2eeTracker {
 
   private readonly now: () => number;
 
-  constructor(log: (line: string) => void, now: () => number = Date.now) {
+  private readonly changed: () => void;
+
+  /** `changed` runs when the worker turns out to be LiveKit's and when a new person's key arrives. */
+  constructor(
+    log: (line: string) => void,
+    now: () => number = Date.now,
+    changed: () => void = () => undefined
+  ) {
     this.log = log;
     this.now = now;
+    this.changed = changed;
   }
 
   /** The per-participant flag as LiveKit's worker sees it (undefined = never set). */
@@ -71,6 +84,7 @@ export class E2eeTracker {
       const options = asData(data?.keyProviderOptions);
       if (!options) return undefined;
       this.livekit = true;
+      this.changed();
       this.log(
         `e2ee worker started sharedKey=${!!options.sharedKey} ratchetWindow=${String(
           options.ratchetWindowSize ?? '-'
@@ -104,6 +118,7 @@ export class E2eeTracker {
         );
         return undefined;
       case 'setKey':
+        this.keyArrived(data);
         // LiveKit re-posts every known key with updateCurrentKeyIndex=false after each flag
         // update; only the real key changes (rotation on join/leave) are worth a line.
         if (data.updateCurrentKeyIndex === false) return undefined;
@@ -144,6 +159,15 @@ export class E2eeTracker {
         )}`
       );
     }
+  }
+
+  private keyArrived(data: Data) {
+    const id = data.participantIdentity;
+    if (data.isPublisher === true || typeof id !== 'string' || id === '' || this.keyed.has(id)) {
+      return;
+    }
+    this.keyed.add(id);
+    this.changed();
   }
 
   private receiving(identity: unknown, trackId: unknown, codec: unknown): E2eeAction | undefined {
@@ -187,6 +211,44 @@ export class E2eeTracker {
 const trackers = new WeakMap<object, E2eeTracker>();
 const installed = new WeakSet<object>();
 
+/** What the workers of one call window know about media keys. */
+export type E2eeKeys = {
+  /** A LiveKit E2EE worker runs: the keys below are known. */
+  livekit: boolean;
+  /** Identities ("@user:server:DEVICE") whose key reached a worker. */
+  keyed: ReadonlySet<string>;
+};
+
+type KeyState = { livekit: boolean; keyed: Set<string>; listeners: Set<(keys: E2eeKeys) => void> };
+const keyStates = new WeakMap<object, KeyState>();
+
+const keyStateOf = (win: object): KeyState => {
+  let state = keyStates.get(win);
+  if (!state) {
+    state = { livekit: false, keyed: new Set(), listeners: new Set() };
+    keyStates.set(win, state);
+  }
+  return state;
+};
+
+const snapshot = (state: KeyState): E2eeKeys => ({
+  livekit: state.livekit,
+  keyed: new Set(state.keyed),
+});
+
+/**
+ * Calls `listener` with the key state of the call window now and on every change. Works before
+ * the call has started its worker. Returns the unsubscribe function.
+ */
+export const watchE2eeKeys = (win: object, listener: (keys: E2eeKeys) => void): (() => void) => {
+  const state = keyStateOf(win);
+  state.listeners.add(listener);
+  listener(snapshot(state));
+  return () => {
+    state.listeners.delete(listener);
+  };
+};
+
 type PostMessage = (...args: unknown[]) => void;
 
 const postEnable = (post: PostMessage, action: E2eeAction | undefined) => {
@@ -198,8 +260,20 @@ const postEnable = (post: PostMessage, action: E2eeAction | undefined) => {
   }
 };
 
-const watchWorker = (worker: Worker) => {
-  const tracker = new E2eeTracker(diag);
+const watchWorker = (worker: Worker, win: object) => {
+  const state = keyStateOf(win);
+  const tracker: E2eeTracker = new E2eeTracker(diag, Date.now, () => {
+    state.livekit = state.livekit || tracker.livekit;
+    tracker.keyed.forEach((id) => state.keyed.add(id));
+    const keys = snapshot(state);
+    state.listeners.forEach((listener) => {
+      try {
+        listener(keys);
+      } catch {
+        // a listener must never break the call
+      }
+    });
+  });
   trackers.set(worker, tracker);
   const original = worker.postMessage as unknown as PostMessage;
   const post: PostMessage = (...args) => original.apply(worker, args);
@@ -247,7 +321,7 @@ export const installE2eeWatch = (win: Window | null | undefined) => {
             newTarget === proxy ? target : newTarget
           ) as Worker;
           try {
-            watchWorker(worker);
+            watchWorker(worker, w);
           } catch (e) {
             diag(`e2ee watch failed: ${String(e)}`);
           }

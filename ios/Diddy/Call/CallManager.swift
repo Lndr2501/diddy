@@ -64,8 +64,16 @@ final class CallManager: ObservableObject {
             Sounds.shared.inCall = current != nil
             // The call takes the audio session over and keeps the app running itself.
             if current != nil { BackgroundKeepAlive.shared.stop(deactivate: false) }
+            // Anything that shows secrets hides them while the screen goes out (ScreenShareNotice).
+            shareObserver = current?.$screenSharing.removeDuplicates().sink { [weak self] sharing in
+                self?.sharingScreen = sharing
+            }
+            if current == nil { sharingScreen = false }
         }
     }
+    /// The running call is sending this device's screen (the whole screen or Diddy alone).
+    @Published private(set) var sharingScreen = false
+    private var shareObserver: AnyCancellable?
     @Published private(set) var incoming: IncomingCall?
     @Published var error: String?
     /// Shows the call full screen; set when a call starts somewhere that has no call UI of its own.
@@ -286,6 +294,13 @@ final class CallSession: NSObject, ObservableObject {
     @Published private(set) var outgoing: OutgoingRing = .none
     /// Others in the call who told us they talk to an agent (their user ids).
     @Published private(set) var agentTalkingUsers: Set<String> = []
+    /// Push-to-talk is the input mode (Settings > Calls), followed during the call.
+    @Published private(set) var pushToTalkMode = CallPrefs.pushToTalk
+    /// The Talk button or the keyboard key is held (deafen may still keep the microphone closed).
+    @Published private(set) var pushToTalkHeld = false
+    private var pushToTalkGate = PushToTalkGate()
+    private var pushToTalkRelease: Task<Void, Never>?
+    private var pushToTalkSwitching = false
     /// A hint under the tiles that clears itself, so an old problem does not look like a current one.
     @Published var lastError: String? {
         didSet {
@@ -313,11 +328,24 @@ final class CallSession: NSObject, ObservableObject {
     /// Ping, reactions, held speaking, volumes (CallLiveExtras.swift).
     let extras = CallLiveExtras()
     private let keyProvider: LiveKit.BaseKeyProvider
-    private var encrypted = false
+    /// The room is encrypted, so the media is too (Element Call's per-device keys).
+    @Published private(set) var encrypted = false
+    /// LiveKit identities ("@user:server:DEVICE") whose media key has arrived.
+    @Published private(set) var keysFrom: Set<String> = []
     /// Set once teardown starts: late LiveKit callbacks must not touch the dying room or republish tracks.
     private var closed = false
     private var ownKey = Data()
-    private let ownKeyIndex: Int32 = 0
+    private var ownKeyIndex: Int32 = 0
+    /// The live call devices of the room other than this one, with their membership's `created_ts`.
+    private var callDevices: [CallDevice: UInt64] = [:]
+    /// The devices that have our current key, with the membership they had when it was sent.
+    private var keySharedWith: [CallDevice: UInt64] = [:]
+    /// A key rollout runs (sending, waiting before use); calls meanwhile ask for one more round.
+    private var keyRollout: Task<Void, Never>?
+    private var keyRolloutAgain = false
+    private var membershipCheck: Task<Void, Never>?
+    private var membershipWatch: Task<Void, Never>?
+    private var roomInfoHandle: TaskHandle?
     private var toDeviceHandle: TaskHandle?
     /// The whole-screen share from the broadcast extension (BroadcastReceiver.swift).
     private var broadcastReceiver: BroadcastReceiver?
@@ -364,6 +392,9 @@ final class CallSession: NSObject, ObservableObject {
     /// MSC4075, what Diddy desktop and Element Call send and listen for.
     private static let notificationEventType = "org.matrix.msc4075.rtc.notification"
     private static let ringLifetimeMs: UInt64 = 30_000
+    /// LiveKit 2.19 stamps every frame with the key provider's current key index (2.18 always used
+    /// slot 0), so a new key goes into the next slot and is used after a delay, like Element Call.
+    private static let senderFollowsKeyIndex = true
 
     init(account: MatrixAccount, room: MatrixRustSDK.Room, roomName: String) {
         self.account = account
@@ -396,6 +427,7 @@ final class CallSession: NSObject, ObservableObject {
     private var ownDeviceId: String { account.deviceId }
     private var ownIdentity: String { "\(ownUserId):\(ownDeviceId)" }
     private var stateKey: String { "_\(ownUserId)_\(ownDeviceId)_m.call" }
+    private var ownDevice: CallDevice { CallDevice(userId: ownUserId, deviceId: ownDeviceId) }
 
     // MARK: Connect / disconnect
 
@@ -432,11 +464,12 @@ final class CallSession: NSObject, ObservableObject {
         }
 
         let roomOptions = LiveKit.RoomOptions(
-            // In-app capture: iOS 27+ the whole screen with ScreenCaptureKit, older iOS only Diddy
-            // itself. The whole screen on older iOS comes from DiddyBroadcast (startWholeScreenShare).
+            // The whole screen comes from DiddyBroadcast (startWholeScreenShare) on every iOS, so
+            // in-app capture stays "Only Diddy". ScreenCaptureKit (iOS 27+, only in builds with the
+            // iOS 27 SDK) is used only when the app carries no extension (see sharesWholeScreen).
             defaultScreenShareCaptureOptions: LiveKit.ScreenShareCaptureOptions(
                 dimensions: .h1080_169, fps: 15, appAudio: true,
-                useBroadcastExtension: false, useScreenCaptureKit: true
+                useBroadcastExtension: false, useScreenCaptureKit: !BroadcastPicker.isAvailable
             ),
             // Same as the desktop: H.264 when the server allows it; the share stays within 1080p.
             defaultAudioCaptureOptions: Self.audioCaptureOptions(),
@@ -455,7 +488,7 @@ final class CallSession: NSObject, ObservableObject {
         }
 
         if encrypted {
-            keyProvider.setKey(keyData: ownKey, participantId: liveKitRoom.localParticipant.identity?.stringValue ?? ownIdentity, index: ownKeyIndex)
+            keyProvider.setKey(keyData: ownKey, participantId: localKeyIdentity, index: ownKeyIndex)
         }
         refreshMembers()
         // Membership, keys and microphone go out together, so the others hear you sooner.
@@ -465,16 +498,26 @@ final class CallSession: NSObject, ObservableObject {
                 self.microphoneOn = false
                 return
             }
+            // Push-to-talk: closed until Talk is held; the first press publishes the microphone.
+            if self.usesPushToTalk {
+                self.microphoneOn = false
+                return
+            }
             await self.startMicrophone(allowed: await micPermission.value)
         }
-        let present = Array(liveKitRoom.remoteParticipants.values)
-        let keys = Task { if self.encrypted { await self.distributeKey(to: present) } }
+        // The key goes to the devices with a live call membership, not to whoever is in LiveKit.
+        let keys = Task {
+            guard self.encrypted else { return }
+            await self.refreshCallDevices()
+            await self.keyRollout?.value
+        }
         do {
             try await sendMembership()
         } catch {
             throw DiddyError("You do not have permission to join a call in this room. An admin has to allow it.")
         }
         await keys.value
+        if encrypted { watchCallDevices() }
         reactionHandle = matrixRoom.subscribeToMessageLikeEvents(
             eventType: messageLikeEventTypeFromString(s: CallReactions.eventType),
             listener: CallReactionListener { [weak self] event in
@@ -485,6 +528,11 @@ final class CallSession: NSObject, ObservableObject {
         await microphone.value
         connected = true
         state = "Voice connected"
+        // Push-to-talk switched on or off in Settings during the call.
+        NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in Task { await self?.pushToTalkSettingChanged() } }
+            .store(in: &observers)
         watchTogether.start()
         extras.startMeter { [weak self] in self?.microphoneOn ?? false }
         extras.startPing(room: liveKitRoom)
@@ -503,6 +551,10 @@ final class CallSession: NSObject, ObservableObject {
         guard !closed else { return }
         agentVoice.leave()
         closed = true
+        pushToTalkRelease?.cancel()
+        pushToTalkRelease = nil
+        pushToTalkGate.reset()
+        pushToTalkHeld = false
         let wasConnected = connected
         // Drop every video track from the UI first, so no SwiftUIVideoView renders a track of a room
         // that is being torn down (the likely crash after leaving a call).
@@ -515,6 +567,11 @@ final class CallSession: NSObject, ObservableObject {
         membershipRefresh?.cancel()
         toDeviceHandle?.cancel()
         toDeviceHandle = nil
+        roomInfoHandle?.cancel()
+        roomInfoHandle = nil
+        membershipCheck?.cancel()
+        membershipWatch?.cancel()
+        keyRollout?.cancel()
         agentVoiceHandle?.cancel()
         agentVoiceHandle = nil
         watchTogether.stop()
@@ -540,6 +597,11 @@ final class CallSession: NSObject, ObservableObject {
     // MARK: Controls
 
     func toggleMicrophone() async {
+        // Push-to-talk owns the microphone: holding Talk opens it.
+        if usesPushToTalk {
+            lastError = "Push to talk is on: hold Talk to speak."
+            return
+        }
         let enable = !microphoneOn
         if enable {
             guard await AVCaptureDevice.requestAccess(for: .audio) else {
@@ -569,6 +631,16 @@ final class CallSession: NSObject, ObservableObject {
     /// Discord semantics: deafen silences everyone and mutes the microphone; undeafen restores
     /// both, but stays muted if you had muted yourself before.
     func toggleDeafen() async {
+        // Push-to-talk: deafen closes the microphone at once; undeafen leaves it to Talk (a held
+        // button opens it again), it never brings back the state from before.
+        if usesPushToTalk {
+            deafened.toggle()
+            applyDeafen()
+            Sounds.shared.play(deafened ? .deafen : .undeafen)
+            handlePushToTalk(pushToTalkGate.setDeafened(deafened), sound: false)
+            await followPushToTalk()
+            return
+        }
         if !deafened { mutedBeforeDeafen = !microphoneOn }
         deafened.toggle()
         applyDeafen()
@@ -579,6 +651,71 @@ final class CallSession: NSObject, ObservableObject {
             microphoneOn = enable
         } catch { lastError = error.friendlyMessage }
         refreshMembers()
+    }
+
+    // MARK: Push-to-talk
+
+    /// Push-to-talk runs for this call: on in Settings, and not while this iPhone is your computer's
+    /// microphone (the computer's push-to-talk key steers it then, through CompanionProtocol).
+    var usesPushToTalk: Bool { pushToTalkMode && companion == nil }
+
+    /// The Talk button or the keyboard key went down (true) or up (false).
+    func pushToTalk(_ source: PushToTalkSource, down: Bool) {
+        guard usesPushToTalk, connected, !closed else { return }
+        handlePushToTalk(pushToTalkGate.set(source, down: down, releaseDelayMs: CallPrefs.pushToTalkDelayMs))
+    }
+
+    private func handlePushToTalk(_ step: PushToTalkGate.Step, sound: Bool = true) {
+        pushToTalkHeld = pushToTalkGate.isHeld
+        switch step {
+        case .none:
+            return
+        case .closeAfterDelay:
+            pushToTalkRelease?.cancel()
+            let delay = UInt64(CallPrefs.pushToTalkDelayMs)
+            pushToTalkRelease = Task { [weak self] in
+                try? await Task.sleep(nanoseconds: delay * 1_000_000)
+                guard !Task.isCancelled, let self else { return }
+                self.handlePushToTalk(self.pushToTalkGate.releaseDelayElapsed())
+            }
+        case .open, .close:
+            pushToTalkRelease?.cancel()
+            pushToTalkRelease = nil
+            if sound { Sounds.shared.play(step == .open ? .pttOn : .pttOff) }
+            Task { await followPushToTalk() }
+        }
+    }
+
+    /// Brings the microphone to what push-to-talk wants, one switch at a time: a quick press and
+    /// release while the first switch still runs ends closed, not open.
+    private func followPushToTalk() async {
+        guard !pushToTalkSwitching else { return }
+        pushToTalkSwitching = true
+        defer { pushToTalkSwitching = false }
+        while !closed, usesPushToTalk, microphoneOn != pushToTalkGate.open {
+            let enable = pushToTalkGate.open
+            do {
+                try await switchMicrophone(enable)
+                microphoneOn = enable
+            } catch {
+                lastError = error.friendlyMessage
+                break
+            }
+        }
+        refreshMembers()
+    }
+
+    private func pushToTalkSettingChanged() async {
+        let mode = CallPrefs.pushToTalk
+        guard mode != pushToTalkMode, !closed else { return }
+        pushToTalkMode = mode
+        pushToTalkRelease?.cancel()
+        pushToTalkRelease = nil
+        pushToTalkGate.reset()
+        _ = pushToTalkGate.setDeafened(deafened)
+        pushToTalkHeld = false
+        // Switched on during the call: closed until Talk is held. Switched off: stays as it is.
+        if usesPushToTalk, microphoneOn { await followPushToTalk() }
     }
 
     func toggleSpeaker() {
@@ -634,9 +771,10 @@ final class CallSession: NSObject, ObservableObject {
         refreshMembers()
     }
 
-    /// iOS 27+: the system picker, then ScreenCaptureKit in-process (whole screen, other apps too).
-    /// iOS 16–26: in-app ReplayKit capture, which only sees Diddy itself ("Only Diddy"); the whole
-    /// screen there comes from the broadcast extension (`startWholeScreenShare`).
+    /// In-app capture. With the broadcast extension in the app (the normal case) this is ReplayKit
+    /// in-app capture, which only sees Diddy itself ("Only Diddy"); the whole screen comes from the
+    /// extension (`startWholeScreenShare`). Without the extension, iOS 27 builds made with the
+    /// iOS 27 SDK use ScreenCaptureKit here (system picker, other apps too).
     func toggleScreenShare() async {
         do {
             _ = try await liveKitRoom.localParticipant.setScreenShare(enabled: !screenSharing)
@@ -666,8 +804,7 @@ final class CallSession: NSObject, ObservableObject {
     // MARK: Whole screen through the broadcast extension
 
     /// "Whole screen": listens for `DiddyBroadcast` and opens the iOS broadcast sheet. Sharing
-    /// starts when "Diddy" is picked there and goes on in other apps. Before iOS 27 this is the
-    /// only way to share more than Diddy itself.
+    /// starts when "Diddy" is picked there and goes on in other apps, on every iOS version.
     func startWholeScreenShare() {
         guard connected, !closed, !screenSharing, broadcastReceiver == nil else {
             if broadcastReceiver != nil { BroadcastPicker.present() }
@@ -1139,16 +1276,6 @@ final class CallSession: NSObject, ObservableObject {
         return (userId, deviceId)
     }
 
-    /// User id -> device ids of the given participants, the shape to-device sending wants.
-    private static func deviceRecipients(of participants: [LiveKit.RemoteParticipant]) -> [String: [String]] {
-        var recipients: [String: [String]] = [:]
-        for participant in participants {
-            guard let identity = participant.identity?.stringValue, let parts = split(identity: identity) else { continue }
-            recipients[parts.userId, default: []].append(parts.deviceId)
-        }
-        return recipients
-    }
-
     /// The devices in the call except ours, from the LiveKit identities ("@user:server:DEVICE").
     private func watchDevices() -> [WatchDevice] {
         var devices: [WatchDevice] = []
@@ -1159,23 +1286,131 @@ final class CallSession: NSObject, ObservableObject {
         return devices
     }
 
-    private func distributeKey(to participants: [LiveKit.RemoteParticipant]) async {
-        guard encrypted, !ownKey.isEmpty else { return }
-        let recipients = Self.deviceRecipients(of: participants)
-        guard !recipients.isEmpty else { return }
+    private var localKeyIdentity: String { liveKitRoom.localParticipant.identity?.stringValue ?? ownIdentity }
+
+    /// What the call header shows: encrypted or not, and whose keys are still missing.
+    var encryption: CallKeyLogic.Encryption {
+        let remote = liveKitRoom.remoteParticipants.values.compactMap { $0.identity?.stringValue }
+        return CallKeyLogic.encryption(roomEncrypted: encrypted, remote: remote, keysFrom: keysFrom)
+    }
+
+    /// Follows the call memberships of the room: every room update (a `call.member` event is one),
+    /// every LiveKit join and leave, and every 30 s for memberships that simply expire.
+    private func watchCallDevices() {
+        guard !closed, roomInfoHandle == nil else { return }
+        roomInfoHandle = matrixRoom.subscribeToRoomInfoUpdates(listener: RoomInfoUpdates { [weak self] _ in
+            Task { @MainActor in self?.scheduleMembershipCheck() }
+        })
+        membershipWatch = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 30_000_000_000)
+                guard !Task.isCancelled, let self, !self.closed else { return }
+                await self.refreshCallDevices()
+            }
+        }
+    }
+
+    /// Room updates come in bursts; one read of the memberships after they settle.
+    private func scheduleMembershipCheck(afterMs delay: UInt64 = 300) {
+        guard encrypted, !closed else { return }
+        membershipCheck?.cancel()
+        membershipCheck = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: delay * 1_000_000)
+            guard !Task.isCancelled else { return }
+            await self?.refreshCallDevices()
+        }
+    }
+
+    /// Reads the live call memberships of the room and hands out keys to match.
+    private func refreshCallDevices() async {
+        guard encrypted, !closed else { return }
+        let events: [RoomStateEvent]
+        do {
+            events = try await matrixRoom.stateEvents(eventType: .callMember)
+        } catch {
+            // unknown is not "everyone left": keep what we know
+            DiagLog.shared.write("call: memberships not readable: \(error.friendlyMessage)")
+            return
+        }
+        guard !closed else { return }
+        let now = UInt64(Date().timeIntervalSince1970 * 1000)
+        var devices = CallKeyLogic.members(events.map {
+            CallMemberEvent(sender: $0.sender, stateKey: $0.stateKey, contentJson: $0.contentJson, timestamp: $0.timestamp)
+        }, now: now)
+        devices[ownDevice] = nil
+        callDevices = devices
+        ensureKeyDistribution()
+    }
+
+    /// Element Call's key rollout (matrix-js-sdk RTCEncryptionManager): when a device that had our
+    /// key left, a new key goes to everyone still here and is used after a short delay; devices
+    /// that joined get the current key. One rollout at a time, calls meanwhile make one more round.
+    private func ensureKeyDistribution() {
+        guard encrypted, !closed, !ownKey.isEmpty else { return }
+        guard keyRollout == nil else {
+            keyRolloutAgain = true
+            return
+        }
+        keyRollout = Task { [weak self] in
+            await self?.rolloutKey()
+            guard let self else { return }
+            self.keyRollout = nil
+            if self.keyRolloutAgain, !self.closed {
+                self.keyRolloutAgain = false
+                self.ensureKeyDistribution()
+            }
+        }
+    }
+
+    private func rolloutKey() async {
+        let members = callDevices
+        guard CallKeyLogic.needsNewKey(sharedWith: keySharedWith, members: members) else {
+            let waiting = CallKeyLogic.waitingForKey(sharedWith: keySharedWith, members: members)
+            guard !waiting.isEmpty else { return }
+            if await sendKey(ownKey, index: ownKeyIndex, to: waiting) {
+                for device in waiting { keySharedWith[device] = members[device] }
+            }
+            return
+        }
+        let key: Data
+        do {
+            key = try Self.randomKey()
+        } catch {
+            lastError = error.friendlyMessage
+            return
+        }
+        let index = CallKeyLogic.nextKeyIndex(after: ownKeyIndex, senderFollowsKeyIndex: Self.senderFollowsKeyIndex)
+        DiagLog.shared.write("call: a device left the call, new media key (index \(index)) for \(members.count) device(s)")
+        // Not sent: the old key stays and the next membership update tries again.
+        guard await sendKey(key, index: index, to: Array(members.keys)), !closed else { return }
+        keySharedWith = members
+        let delay = CallKeyLogic.useDelayMs(senderFollowsKeyIndex: Self.senderFollowsKeyIndex)
+        if delay > 0 { try? await Task.sleep(nanoseconds: delay * 1_000_000) }
+        guard !closed else { return }
+        ownKey = key
+        ownKeyIndex = index
+        keyProvider.setKey(keyData: key, participantId: localKeyIdentity, index: index)
+    }
+
+    /// Our media key to `devices` (Element Call's `io.element.call.encryption_keys`).
+    private func sendKey(_ key: Data, index: Int32, to devices: [CallDevice]) async -> Bool {
+        let recipients = CallKeyLogic.recipients(devices, excluding: ownDevice)
+        guard !recipients.isEmpty else { return true }
         let content: [String: Any] = [
-            "keys": ["index": ownKeyIndex, "key": ownKey.base64EncodedString()],
+            "keys": ["index": index, "key": key.base64EncodedString()],
             "room_id": roomId,
             "member": ["claimed_device_id": ownDeviceId, "id": ownIdentity],
             "session": ["call_id": "", "application": "m.call", "scope": "m.room"],
             "sent_ts": UInt64(Date().timeIntervalSince1970 * 1000),
         ]
         guard let data = try? JSONSerialization.data(withJSONObject: content),
-              let json = String(data: data, encoding: .utf8) else { return }
+              let json = String(data: data, encoding: .utf8) else { return false }
         do {
             _ = try await account.client.sendEncryptedToDeviceMessage(eventType: Self.keysEventType, recipients: recipients, content: json)
+            return true
         } catch {
             lastError = "Could not share the call key: \(error.friendlyMessage)"
+            return false
         }
     }
 
@@ -1193,12 +1428,20 @@ final class CallSession: NSObject, ObservableObject {
               let device = member["claimed_device_id"] as? String
         else { return }
         // Element Call maps the key to the sender's LiveKit identity for legacy members.
-        keyProvider.setKey(keyData: key, participantId: "\(message.senderId):\(device)", index: index)
+        let identity = "\(message.senderId):\(device)"
+        keyProvider.setKey(keyData: key, participantId: identity, index: index)
+        if !keysFrom.contains(identity) { keysFrom.insert(identity) }
     }
 
-    /// Whether this iOS can share the whole screen without an extension.
+    /// Whether in-app sharing ("Share screen" without the broadcast sheet) sees other apps too.
+    /// Only with ScreenCaptureKit, which needs iOS 27 on the device and the iOS 27 SDK at build
+    /// time: an IPA built with an older Xcode has LiveKit's ScreenCaptureKit path compiled out and
+    /// records only Diddy, also on iOS 27. With the extension in the app the whole screen always
+    /// goes through it, which works on every iOS and with every Xcode.
     static var sharesWholeScreen: Bool {
-        if #available(iOS 27.0, *) { return true }
+        #if canImport(ScreenCaptureKit)
+        if #available(iOS 27.0, *) { return !BroadcastPicker.isAvailable }
+        #endif
         return false
     }
 
@@ -1360,7 +1603,8 @@ extension CallSession: LiveKit.RoomDelegate {
     nonisolated func room(_ room: LiveKit.Room, participantDidConnect participant: LiveKit.RemoteParticipant) {
         Task { @MainActor in
             guard !self.closed else { return }
-            await self.distributeKey(to: [participant])
+            // Their membership may reach us after LiveKit does; a room update brings it as well.
+            self.scheduleMembershipCheck()
             self.refreshMembers()
             self.playForOthers(.userJoined)
         }
@@ -1368,6 +1612,7 @@ extension CallSession: LiveKit.RoomDelegate {
 
     nonisolated func room(_ room: LiveKit.Room, participantDidDisconnect participant: LiveKit.RemoteParticipant) {
         Task { @MainActor in
+            self.scheduleMembershipCheck()
             self.refreshMembers()
             self.playForOthers(.userLeft)
         }

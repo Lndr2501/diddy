@@ -50,10 +50,11 @@ import { BackgroundSettings, CustomThemeSettings } from './CustomThemeSettings';
 import { LanguageSettings } from './LanguageSettings';
 import { ThemeTiles } from './ThemeTiles';
 import * as css from './General.css';
-import { updateCallPrefs, useCallPrefs } from '../../../state/callPrefs';
+import { autoGainSupported, updateCallPrefs, useCallPrefs } from '../../../state/callPrefs';
 import { SoundSettings } from './SoundSettings';
 import { browserStorage, clearAllCallVolumes } from '../../../plugins/call/volumeMemory';
 import { AgentVoiceSettings } from './AgentVoiceSettings';
+import { PushToTalkSettings } from './PushToTalkSettings';
 import { WatchTogetherSettings } from './WatchTogetherSettings';
 import { CameraDeviceList } from '../../call/DevicePicker';
 import { AvatarSurface, setAvatarAnimation, useAvatarPrefs } from '../../../state/avatarPrefs';
@@ -846,10 +847,16 @@ export function WelcomeGuideSettings() {
   const { t } = useTranslation();
   const mx = useMatrixClient();
   const [shown, setShown] = useState(false);
+  const [syncSettings, setSyncSettings] = useSetting(settingsAtom, 'syncSettings');
 
   return (
     <InsetSection title="Diddy">
       <InsetGroup>
+        <InsetRow
+          title="Sync settings between devices"
+          description="Theme, message layout, editor, timeline and date settings follow your account to every Diddy device. Zoom and notifications stay per device."
+          after={<Switch variant="Primary" value={syncSettings} onChange={setSyncSettings} />}
+        />
         <InsetRow
           title={t('settings.general.welcomeGuide')}
           description={t('settings.general.showTheSetupWalkthrough')}
@@ -1041,6 +1048,19 @@ function CallSettings() {
             />
           }
         />
+        {autoGainSupported() && !prefs.echoCancellation && (
+          <InsetRow
+            title="Automatic mic volume"
+            description="Raises a quiet microphone to a normal speaking level, also while Voice processing is off. Your system microphone slider stays as it is. Turn it off if you play music through your microphone. Applies the next time you join a call."
+            after={
+              <Switch
+                variant="Primary"
+                value={prefs.autoGain}
+                onChange={(autoGain) => updateCallPrefs({ autoGain })}
+              />
+            }
+          />
+        )}
         <InsetRow
           title={t('settings.general.camera')}
           description={t('settings.general.usedForVideoIn')}
@@ -1095,6 +1115,7 @@ export function CallsSettings({ requestClose }: PageProps) {
   return (
     <SettingsPage title={t('settings.general.callsAudio')} requestClose={requestClose}>
       <CallSettings />
+      <PushToTalkSettings />
       <SoundSettings />
       <AgentVoiceSettings />
       <WatchTogetherSettings />

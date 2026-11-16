@@ -78,6 +78,8 @@ final class VoicePlayer: NSObject, ObservableObject, AVAudioPlayerDelegate {
     @Published private(set) var isLoading = false
     /// The message whose last attempt failed (download or a format iOS cannot play).
     @Published private(set) var failedId: String?
+    /// Why `failedId` failed, for the line under the button.
+    @Published private(set) var failureMessage = VoiceFailure.generic
     /// Speed for every voice message (#204); changing it also speeds up the one playing.
     @Published private(set) var rate: Float = VoiceRate.parse(UserDefaults.standard.object(forKey: VoiceRate.defaultsKey) as? Float)
     let progress = PlaybackProgress()
@@ -101,15 +103,22 @@ final class VoicePlayer: NSObject, ObservableObject, AVAudioPlayerDelegate {
         progress.duration = audio.duration ?? 0
         let client = account.client, accountId = account.id
         loading = Task { [weak self] in
-            let url = await MediaLoader.shared.audioFile(source: audio.source, mimeType: audio.mimeType, accountId: accountId, client: client)
+            let result = await MediaLoader.shared.audioFile(source: audio.source, mimeType: audio.mimeType, accountId: accountId, client: client)
             guard let self, !Task.isCancelled, self.currentId == id else { return }
             self.isLoading = false
-            guard let url, self.begin(url: url, mimeType: audio.mimeType) else {
-                self.currentId = nil
-                self.failedId = id
-                return
+            switch result {
+            case .file(let url):
+                if !self.begin(url: url, mimeType: audio.mimeType) { self.fail(id, VoiceFailure.generic) }
+            case .failed(let message), .undecodable(let message):
+                self.fail(id, message)
             }
         }
+    }
+
+    private func fail(_ id: String?, _ message: String) {
+        stop()
+        failureMessage = message
+        failedId = id
     }
 
     func cycleRate() {
@@ -175,9 +184,7 @@ final class VoicePlayer: NSObject, ObservableObject, AVAudioPlayerDelegate {
     private func resume() {
         guard let player else { return }
         guard player.play() else {
-            let failed = currentId
-            stop()
-            failedId = failed
+            fail(currentId, VoiceFailure.generic)
             return
         }
         isPlaying = true
@@ -199,18 +206,14 @@ final class VoicePlayer: NSObject, ObservableObject, AVAudioPlayerDelegate {
     nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         Task { @MainActor in
             guard self.player === player else { return }
-            let failed = self.currentId
-            self.stop()
-            if !flag { self.failedId = failed }
+            if flag { self.stop() } else { self.fail(self.currentId, VoiceFailure.generic) }
         }
     }
 
     nonisolated func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
         Task { @MainActor in
             guard self.player === player else { return }
-            let failed = self.currentId
-            self.stop()
-            self.failedId = failed
+            self.fail(self.currentId, VoiceFailure.generic)
         }
     }
 }
@@ -250,7 +253,8 @@ struct VoiceMessageView: View {
                     Text(audio.filename).font(.footnote).foregroundStyle(Theme.text).lineLimit(1)
                 }
                 if failed {
-                    Text("This audio cannot be played on iOS.").font(.caption).foregroundStyle(Theme.danger)
+                    Text(player.failureMessage).font(.caption).foregroundStyle(Theme.danger)
+                        .fixedSize(horizontal: false, vertical: true)
                 } else {
                     HStack(spacing: 8) {
                         if active {

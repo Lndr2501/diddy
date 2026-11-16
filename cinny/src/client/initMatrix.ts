@@ -3,6 +3,7 @@ import { createClient, MatrixClient, IndexedDBStore, IndexedDBCryptoStore } from
 import { cryptoCallbacks } from './secretStorageKeys';
 import { clearNavToActivePathStore } from '../app/state/navToActivePath';
 import { pushSessionToSW } from '../sw-session';
+import { signOut } from './signOut';
 
 type Session = {
   baseUrl: string;
@@ -60,17 +61,22 @@ export const clearCacheAndReload = async (mx: MatrixClient) => {
   window.location.reload();
 };
 
-export const logoutClient = async (mx: MatrixClient) => {
-  pushSessionToSW();
-  mx.stopClient();
-  try {
-    await mx.logout();
-  } catch {
-    // ignore if failed to logout
-  }
-  await mx.clearStores();
-  window.localStorage.clear();
-  window.location.reload();
+/**
+ * Logs out on the server, then removes the session here. Throws when the server could not end
+ * the session; the client keeps running then. `localOnly` removes it from this device only.
+ */
+export const logoutClient = async (mx: MatrixClient, localOnly = false) => {
+  await signOut(
+    () => mx.logout(),
+    async () => {
+      pushSessionToSW();
+      mx.stopClient();
+      await mx.clearStores();
+      window.localStorage.clear();
+      window.location.reload();
+    },
+    localOnly
+  );
 };
 
 export const clearLoginData = async () => {

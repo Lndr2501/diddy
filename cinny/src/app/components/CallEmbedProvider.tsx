@@ -24,6 +24,7 @@ import {
 } from '../hooks/useCallEmbed';
 import { callChatAtom, callEmbedAtom } from '../state/callEmbed';
 import { CompanionSync } from './CompanionSync';
+import { PushToTalkSync } from './PushToTalkSync';
 import { CallEmbed, ElementWidgetActions, useClientWidgetApiEvent } from '../plugins/call';
 import { useSelectedRoom } from '../hooks/router/useSelectedRoom';
 import { ScreenSize, useScreenSizeContext } from '../hooks/useScreenSize';
@@ -51,6 +52,7 @@ import { getPowersLevelFromMatrixEvent } from '../hooks/usePowerLevels';
 import { getRoomCreatorsForRoomId } from '../hooks/useRoomCreators';
 import { getRoomPermissionsAPI } from '../hooks/useRoomPermissions';
 import { AgentVoiceSync } from './AgentVoiceSync';
+import { SoundboardHotkeysSync } from './SoundboardHotkeysSync';
 import { WatchTogetherSync } from './WatchTogetherSync';
 import { diag } from '../plugins/diagnostics';
 import { IncomingCall, IncomingCallInfo } from './incoming-call/IncomingCall';
@@ -475,7 +477,9 @@ export function CallEmbedProvider({ children }: CallEmbedProviderProps) {
       {callEmbed && joined && <CallConnectionSounds embed={callEmbed} />}
       {callEmbed && joined && <CallSpeakingSync embed={callEmbed} />}
       <AgentVoiceSync />
+      <SoundboardHotkeysSync joined={!!joined} />
       <CompanionSync />
+      <PushToTalkSync />
       {callEmbed && joined && <WatchTogetherSync key={callEmbed.roomId} embed={callEmbed} />}
       <CallEmbedRefContextProvider value={callEmbedRef}>
         <IncomingCallListener callEmbed={callEmbed} joined={joined} />

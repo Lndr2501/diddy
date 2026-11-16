@@ -45,14 +45,19 @@ export const SETTINGS_SEARCH_INDEX: Record<string, SettingsSearchEntry> = {
   calls: {
     name: 'Calls & Audio',
     keywords:
-      'call voice audio sound microphone agent dictation watch together video camera webcam',
+      'call voice audio sound microphone quiet loud gain agc agent dictation watch together video camera webcam ptt push to talk voice activity hold key',
     titles: [
       'Calls & Audio',
       'Calls',
       'Noise suppression',
       'Voice processing',
+      'Automatic mic volume',
       'Camera',
       'Volumes of people',
+      'Push to talk',
+      'Input mode',
+      'Push-to-talk key',
+      'Release delay',
       'Sounds',
       'New message',
       'Mention',
@@ -60,6 +65,8 @@ export const SETTINGS_SEARCH_INDEX: Record<string, SettingsSearchEntry> = {
       'Incoming call',
       'Outgoing call',
       'Microphone changed',
+      'Push to talk opens',
+      'Push to talk closes',
       'Connection lost',
       'Talking to an agent',
       'Mute in the call meanwhile',
@@ -230,11 +237,12 @@ export const SETTINGS_SEARCH_INDEX: Record<string, SettingsSearchEntry> = {
   },
   about: {
     name: 'About',
-    keywords: 'version cache reload credits source',
+    keywords: 'version cache reload credits source sync devices',
     titles: [
       'About',
       'Diddy',
       'Welcome guide',
+      'Sync settings between devices',
       'Updates',
       'Check for updates',
       'Update repository',

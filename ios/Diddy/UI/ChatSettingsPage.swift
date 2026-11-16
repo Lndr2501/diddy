@@ -52,7 +52,7 @@ struct ChatSettingsView: View {
                 Toggle(isOn: Binding(get: { !shareActivity }, set: { shareActivity = !$0 })) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Hide Typing & Read Receipts")
-                        Text("Turn off both typing status and read receipts to keep your activity private.")
+                        Text("Others stop seeing that you type and how far you have read. Chats still count as read for you (a private read receipt, like on desktop).")
                             .font(.caption).foregroundStyle(Theme.muted)
                     }
                 }

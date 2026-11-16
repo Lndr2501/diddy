@@ -68,6 +68,7 @@ import {
   MSticker,
   ImageContent,
   EventContent,
+  PollContent,
 } from '../../components/message';
 import {
   factoryRenderLinkifyWithMention,
@@ -91,6 +92,7 @@ import {
 import { isRoomBot } from '../../hooks/useRoomBots';
 import { TimelineRowMemo } from './TimelineRowMemo';
 import { isCardActionMessage } from '../../plugins/botCard';
+import { POLL_START_TYPES, isPollRelationType } from '../../plugins/polls';
 import { findUpdateRuns, summarizeUpdates, TimelineKind } from '../../plugins/timelineGroups';
 import { useSetting } from '../../state/hooks/settings';
 import { MessageLayout, settingsAtom } from '../../state/settings';
@@ -1298,10 +1300,43 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
     );
   };
 
+  const renderPoll = (mEventId: string, mEvent: MatrixEvent, item: number, timelineSet: EventTimelineSet, collapse: boolean) =>
+    memoRow(mEventId, mEvent, item, timelineSet, collapse, false, undefined,
+      <Message
+        data-message-item={item}
+        data-message-id={mEventId}
+        room={room}
+        mEvent={mEvent}
+        messageSpacing={messageSpacing}
+        messageLayout={messageLayout}
+        collapse={collapse}
+        highlight={focusItem?.index === item && focusItem.highlight}
+        canDelete={canRedact || (canDeleteOwn && mEvent.getSender() === mx.getUserId())}
+        canSendReaction={canSendReaction}
+        canPinEvent={canPinEvent}
+        imagePackRooms={imagePackRooms}
+        onUserClick={handleUserClick}
+        onUsernameClick={handleUsernameClick}
+        onReplyClick={handleReplyClick}
+        onReactionToggle={handleReactionToggle}
+        hideReadReceipts={hideActivity}
+        showDeveloperTools={showDeveloperTools}
+        memberPowerTag={getMemberPowerTag(mEvent.getSender() ?? '')}
+        accessibleTagColors={accessiblePowerTagColors}
+        legacyUsernameColor={legacyUsernameColor || direct}
+        hour24Clock={hour24Clock}
+        dateFormatString={dateFormatString}
+      >
+        {mEvent.isRedacted() ? <RedactedContent /> : <PollContent room={room} mEvent={mEvent} canVote={canSendReaction} />}
+      </Message>
+    );
+
   const renderMatrixEvent = useMatrixEventRenderer<
     [string, MatrixEvent, number, EventTimelineSet, boolean]
   >(
     {
+      [POLL_START_TYPES[0]]: renderPoll,
+      [POLL_START_TYPES[1]]: renderPoll,
       [MessageEvent.RoomMessage]: (mEventId, mEvent, item, timelineSet, collapse) => {
         const reactionRelations = getEventReactions(timelineSet, mEventId);
         const reactions = reactionRelations && reactionRelations.getSortedAnnotationsByKey();
@@ -1884,7 +1919,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
     (mEventId, mEvent, item) => {
       if (!showHiddenEvents) return null;
       if (Object.keys(mEvent.getContent()).length === 0) return null;
-      if (mEvent.getRelation()) return null;
+      if (mEvent.getRelation() || isPollRelationType(mEvent.getType())) return null;
       if (mEvent.isRedaction()) return null;
 
       const highlighted = focusItem?.index === item && focusItem.highlight;

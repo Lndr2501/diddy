@@ -1,8 +1,9 @@
 /**
  * Screen-share audio for the desktop app.
  *
- * The shells capture system audio natively: macOS over a loopback WebSocket, Linux over
- * bounded Electron IPC from the application-audio helper. This module turns that
+ * The shells capture system audio natively: macOS over a loopback WebSocket, Linux and Windows
+ * over bounded Electron IPC from the application-audio helper (Windows: process loopback, which
+ * leaves out Diddy's own process tree). This module turns that
  * stream into a MediaStreamTrack and adds it to the stream Element Call receives from
  * getDisplayMedia(), so LiveKit publishes it as the screen-share audio track.
  *
@@ -84,6 +85,17 @@ const getBridge = (): Bridge | undefined =>
   (window as unknown as { __CINNY_SYS_AUDIO__?: Bridge }).__CINNY_SYS_AUDIO__ ??
   (window as unknown as { __DIDDY_SYS_AUDIO__?: NativeBridge }).__DIDDY_SYS_AUDIO__;
 
+/**
+ * Set by the desktop shell instead of a bridge where sharing system sound is impossible without an
+ * echo (Windows before 10 version 2004). The page shows the option greyed out with this text.
+ */
+const getUnavailableReason = (): string | undefined => {
+  if (getBridge()) return undefined;
+  const reason = (window as unknown as { __DIDDY_SYS_AUDIO_UNAVAILABLE__?: unknown })
+    .__DIDDY_SYS_AUDIO_UNAVAILABLE__;
+  return typeof reason === 'string' && reason ? reason : undefined;
+};
+
 type Session = {
   ctx: AudioContext;
   ws?: WebSocket;
@@ -97,6 +109,8 @@ type Session = {
 
 export type ScreenShareAudioSnapshot = {
   available: boolean;
+  /** Not available, but the desktop shell explains why (show the option disabled). */
+  unavailableReason?: string;
   enabled: boolean;
   active: boolean;
   error?: string;
@@ -121,6 +135,7 @@ class ScreenShareAudio {
   private buildSnapshot(): ScreenShareAudioSnapshot {
     return {
       available: getBridge() !== undefined,
+      unavailableReason: getUnavailableReason(),
       enabled: this.enabledSetting,
       active: this.session?.track !== undefined,
       error: this.lastError,
@@ -544,4 +559,17 @@ export const useScreenShareAudio = (): ScreenShareAudioSnapshot & {
 } => {
   const snapshot = useSyncExternalStore(screenShareAudio.subscribe, screenShareAudio.getSnapshot);
   return { ...snapshot, toggle: () => screenShareAudio.toggle() };
+};
+
+/** The "Share system sound" entry of the share menu: a toggle, greyed out with a reason, or none. */
+export type ShareAudioOption =
+  | { enabled: boolean; onToggle: () => void }
+  | { unavailable: string }
+  | null;
+export const shareAudioOption = (
+  audio: ScreenShareAudioSnapshot & { toggle: () => void }
+): ShareAudioOption => {
+  if (audio.available) return { enabled: audio.enabled, onToggle: audio.toggle };
+  if (audio.unavailableReason) return { unavailable: audio.unavailableReason };
+  return null;
 };

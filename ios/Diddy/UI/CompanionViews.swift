@@ -48,7 +48,8 @@ struct CompanionRequestSheet: View {
                 } header: {
                     Text("This iPhone sends")
                 } footer: {
-                    Text("The call sound keeps playing on your computer; this iPhone stays silent. You can turn the camera around in the call.")
+                    Text("The call sound keeps playing on your computer; this iPhone stays silent. You can turn the camera around in the call."
+                         + (screen && CallSession.sharesWholeScreen ? "\n\n" + ScreenShareNotice.message : ""))
                 }
             }
             .scrollContentBackground(.hidden)
@@ -90,6 +91,7 @@ struct CompanionCallView: View {
     @ObservedObject var session: CallSession
     let title: String
     @EnvironmentObject private var calls: CallManager
+    @State private var confirmWholeScreen = false
 
     private var camera: LiveKit.VideoTrack? {
         session.cameraOn ? session.liveKitRoom.localParticipant.firstCameraPublication?.track as? LiveKit.VideoTrack : nil
@@ -190,6 +192,11 @@ struct CompanionCallView: View {
     }
 
     private var controls: some View {
+        controlRow
+            .wholeScreenShareAlert(isPresented: $confirmWholeScreen) { Task { await session.toggleScreenShare() } }
+    }
+
+    private var controlRow: some View {
         HStack(spacing: 12) {
             CompanionToggle(icon: session.cameraOn ? "video.fill" : "video.slash.fill", label: "Camera", on: session.cameraOn) {
                 Task { await session.toggleCamera() }
@@ -200,7 +207,9 @@ struct CompanionCallView: View {
             CompanionToggle(icon: "rectangle.on.rectangle", label: session.screenSharing ? "Stop Screen" : "Screen", on: session.screenSharing) {
                 if session.screenSharing {
                     Task { await session.stopScreenShare() }
-                } else if CallSession.sharesWholeScreen || !BroadcastPicker.isAvailable {
+                } else if CallSession.sharesWholeScreen {
+                    confirmWholeScreen = true
+                } else if !BroadcastPicker.isAvailable {
                     Task { await session.toggleScreenShare() }
                 } else {
                     session.startWholeScreenShare()

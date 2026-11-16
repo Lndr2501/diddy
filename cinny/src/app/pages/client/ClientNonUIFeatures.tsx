@@ -33,6 +33,7 @@ import { useSpaceAutoJoinWorker } from '../../hooks/useSpaceAutoJoin';
 import { applyStoredAppIcon } from '../../plugins/appIcon';
 import { useDiddyOptionsAutoJoin } from '../../plugins/diddy/autoJoin';
 import { isDoNotDisturb, useDiddyStatusSync } from '../../plugins/diddy/status';
+import { useSettingsSync } from '../../plugins/diddy/useSettingsSync';
 import { useClientVersionSync } from '../../plugins/diddy/versionSync';
 import { DiddyOnboarding } from '../../features/onboarding/DiddyOnboarding';
 import { MatrixIntro } from '../../features/intro/MatrixIntro';
@@ -40,6 +41,7 @@ import { CallFrameMenu } from '../../components/CallFrameMenu';
 import { CallUserMenu } from '../../components/CallUserMenu';
 import { UpdateNotice } from '../../components/update-notice/UpdateNotice';
 import { ToastHost } from '../../components/toast/ToastHost';
+import { useScheduledMessagesRunner } from '../../features/room/send-later/useSendLater';
 import { pushToastAtom } from '../../state/toasts';
 import { messagePreview, messageToastBody } from '../../plugins/toastLogic';
 import { useTranslation } from 'react-i18next';
@@ -408,9 +410,15 @@ function DiddyOptionsAutoJoinFeature() {
   return null;
 }
 
+function ScheduledMessagesFeature() {
+  useScheduledMessagesRunner();
+  return null;
+}
+
 function DiddyStatusFeature() {
   useDiddyStatusSync();
   useClientVersionSync();
+  useSettingsSync();
   return null;
 }
 
@@ -440,6 +448,7 @@ export function ClientNonUIFeatures({ children }: ClientNonUIFeaturesProps) {
       <AppIconFeature />
       <DiddyOptionsAutoJoinFeature />
       <DiddyStatusFeature />
+      <ScheduledMessagesFeature />
       <DiddyOnboarding />
       <MatrixIntro />
       <CallFrameMenu />

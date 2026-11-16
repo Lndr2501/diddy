@@ -69,3 +69,43 @@ test('an update is wanted only when newer and not skipped', () => {
   assert.equal(u.isUpdateWanted('1.10.0', '1.9.9'), true);
   assert.equal(u.isUpdateWanted('1.4.1', '1.4.0', '1.4.1'), false);
 });
+
+// #246: two or more releases behind, the notice must name the newest one, not the next one.
+test('the newest version of a release list wins, whatever the order', () => {
+  const rel = (tag, extra = {}) => ({
+    tag_name: tag,
+    html_url: `https://github.com/Lndr2501/diddy/releases/tag/${tag}`,
+    ...extra,
+  });
+  const list = [
+    rel('v1.11.1'),
+    rel('v1.12.0'),
+    rel('ios-v1.13.0'),
+    rel('v2.0.0', { prerelease: true }),
+    rel('v1.13.0', { draft: true }),
+    rel('v1.9.9'),
+    rel('v1.11.0'),
+  ];
+  const newest = u.newestRelease(list, 'Lndr2501/diddy');
+  assert.equal(newest.version, '1.12.0');
+  assert.equal(newest.pageUrl, 'https://github.com/Lndr2501/diddy/releases/tag/v1.12.0');
+  assert.equal(u.isUpdateWanted(newest.version, '1.11.0'), true);
+  assert.equal(u.newestRelease([], 'a/b'), undefined);
+  assert.equal(u.newestRelease([null, rel('nightly')], 'a/b'), undefined);
+  // a single release object (the "latest" endpoint) still works
+  assert.equal(u.newestRelease(rel('v1.5.0'), 'a/b').version, '1.5.0');
+  assert.match(u.releasesListApiUrl('Lndr2501/diddy'), /\/repos\/Lndr2501\/diddy\/releases\?per_page=30$/);
+});
+
+test('the notice uses the release list and checks at least hourly', () => {
+  const src = fs.readFileSync(
+    path.join(__dirname, '../src/app/components/update-notice/UpdateNotice.tsx'),
+    'utf8'
+  );
+  assert.match(src, /releasesListApiUrl\(repo\)/);
+  assert.match(src, /newestRelease\(/);
+  const m = /CHECK_INTERVAL_MS = ([\d\s*]+);/.exec(src);
+  assert.ok(m);
+  // eslint-disable-next-line no-new-func
+  assert.ok(Function(`return ${m[1]}`)() <= 60 * 60 * 1000);
+});

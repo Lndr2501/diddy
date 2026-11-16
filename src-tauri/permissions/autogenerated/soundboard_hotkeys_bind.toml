@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-soundboard-hotkeys-bind"
+description = "Enables the soundboard_hotkeys_bind command without any pre-configured scope."
+commands.allow = ["soundboard_hotkeys_bind"]
+
+[[permission]]
+identifier = "deny-soundboard-hotkeys-bind"
+description = "Denies the soundboard_hotkeys_bind command without any pre-configured scope."
+commands.deny = ["soundboard_hotkeys_bind"]

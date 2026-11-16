@@ -2,10 +2,11 @@ import React from 'react';
 import { Avatar, Box, Icon, Icons, Text } from 'folds';
 import { useAtomValue } from 'jotai';
 import { NavCategory, NavItem, NavItemContent, NavLink } from '../../../components/nav';
-import { getInboxInvitesPath, getInboxNotificationsPath } from '../../pathUtils';
+import { getInboxInvitesPath, getInboxNotificationsPath, getInboxSavedPath } from '../../pathUtils';
 import {
   useInboxInvitesSelected,
   useInboxNotificationsSelected,
+  useInboxSavedSelected,
 } from '../../../hooks/router/useInbox';
 import { UnreadBadge } from '../../../components/unread-badge';
 import { allInvitesAtom } from '../../../state/room-list/inviteList';
@@ -50,6 +51,7 @@ export function Inbox() {
   const { t } = useTranslation();
   useNavToActivePathMapper('inbox');
   const notificationsSelected = useInboxNotificationsSelected();
+  const savedSelected = useInboxSavedSelected();
 
   return (
     <PageNav>
@@ -83,6 +85,22 @@ export function Inbox() {
               </NavLink>
             </NavItem>
             <InvitesNavItem />
+            <NavItem variant="Background" radii="400" aria-selected={savedSelected}>
+              <NavLink to={getInboxSavedPath()}>
+                <NavItemContent>
+                  <Box as="span" grow="Yes" alignItems="Center" gap="200">
+                    <Avatar size="200" radii="400">
+                      <Icon src={Icons.Bookmark} size="100" filled={savedSelected} />
+                    </Avatar>
+                    <Box as="span" grow="Yes">
+                      <Text as="span" size="Inherit" truncate>
+                        Saved
+                      </Text>
+                    </Box>
+                  </Box>
+                </NavItemContent>
+              </NavLink>
+            </NavItem>
           </NavCategory>
         </Box>
       </PageNavContent>

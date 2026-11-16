@@ -70,6 +70,9 @@ export class CallEmbed {
 
   public readonly room: Room;
 
+  /** The call encrypts its media (Element Call's `perParticipantE2EE`, from the room at join). */
+  public readonly encrypted: boolean;
+
   public joined = false;
 
   private disposed = false;
@@ -243,6 +246,7 @@ export class CallEmbed {
     this.room = room;
     this.iframe = iframe;
     this.container = container;
+    this.encrypted = CallEmbed.encryptedCall(iframe.src);
 
     this.themeSync = createThemeSync<ElementCallThemeKind>(
       CallEmbed.initialTheme(iframe.src),
@@ -354,6 +358,15 @@ export class CallEmbed {
   /** The theme of the call page (sent once the page answers widget messages, see callThemeSync). */
   public setTheme(theme: ElementCallThemeKind): void {
     this.themeSync.set(theme);
+  }
+
+  /** Whether the call page was told to encrypt: it is part of the widget URL. */
+  private static encryptedCall(url: string): boolean {
+    try {
+      return new URL(url).searchParams.get('perParticipantE2EE') === 'true';
+    } catch {
+      return false;
+    }
   }
 
   /** The theme the call page starts with: it is part of the widget URL. */

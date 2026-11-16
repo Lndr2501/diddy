@@ -15,6 +15,7 @@ import { CallControlState } from '../plugins/call/CallControlState';
 import { useCallMembersChange, useCallSession } from './useCall';
 import { CallPreferences } from '../state/callPreferences';
 import { prewarmCall } from '../plugins/call/callPrewarm';
+import { isPushToTalkMode } from '../state/pushToTalk';
 
 const CallEmbedContext = createContext<CallEmbed | undefined>(undefined);
 
@@ -51,7 +52,11 @@ export const createCallEmbed = (
 
   const intent = CallEmbed.getIntent(dm, ongoing, pref?.video);
   const widget = CallEmbed.getWidget(mx, room, intent, themeKind);
-  const controlState = pref && new CallControlState(pref.microphone, pref.video, pref.sound);
+  // push-to-talk: the microphone starts closed and opens with the key (PushToTalkSync)
+  const ptt = isPushToTalkMode();
+  let controlState: CallControlState | undefined;
+  if (pref) controlState = new CallControlState(pref.microphone && !ptt, pref.video, pref.sound);
+  else if (ptt) controlState = new CallControlState(false, false, true);
 
   const embed = new CallEmbed(mx, room, widget, container, controlState);
 

@@ -236,7 +236,24 @@ export const PhoneBadge = style({
   pointerEvents: 'none',
 });
 
-globalStyle(`${ControlButton}:has(${PhoneBadge})`, {
+// "PTT" in the corner of the microphone button while push-to-talk runs
+export const PushToTalkBadge = style({
+  position: 'absolute',
+  right: toRem(2),
+  bottom: toRem(2),
+  padding: `0 ${toRem(3)}`,
+  borderRadius: toRem(4),
+  fontSize: toRem(8),
+  fontWeight: 700,
+  lineHeight: toRem(12),
+  letterSpacing: '0.04em',
+  backgroundColor: color.Secondary.Main,
+  color: color.Secondary.OnMain,
+  boxShadow: `0 0 0 ${toRem(2)} ${color.Surface.Container}`,
+  pointerEvents: 'none',
+});
+
+globalStyle(`${ControlButton}:has(${PhoneBadge}), ${ControlButton}:has(${PushToTalkBadge})`, {
   position: 'relative',
 });
 
