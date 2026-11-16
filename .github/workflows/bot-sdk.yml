@@ -1,0 +1,73 @@
+name: Bot SDK
+# Python bot library (sdk/python): unit tests, parity with Diddy's own card/command/profile parsers
+# (cinny/src/app/plugins/bot*.ts) and an end-to-end run against a real Synapse in an encrypted room.
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "sdk/python/**"
+      - "cinny/src/app/plugins/botCard.ts"
+      - "cinny/src/app/plugins/botCommands.ts"
+      - "cinny/src/app/plugins/botProfile.ts"
+      - ".github/workflows/bot-sdk.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "sdk/python/**"
+      - "cinny/src/app/plugins/botCard.ts"
+      - "cinny/src/app/plugins/botCommands.ts"
+      - "cinny/src/app/plugins/botProfile.ts"
+      - ".github/workflows/bot-sdk.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Node >= 22.6 runs the TypeScript parsers directly (--experimental-strip-types)
+      - name: Setup node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: ".node-version"
+
+      - name: Start Synapse
+        run: |
+          docker volume create synapse-data
+          docker run --rm -v synapse-data:/data -e SYNAPSE_SERVER_NAME=localhost \
+            -e SYNAPSE_REPORT_STATS=no matrixdotorg/synapse:v1.145.0 generate
+          docker run --rm -v synapse-data:/data --entrypoint sh matrixdotorg/synapse:v1.145.0 -c '
+            printf "\n%s\n" \
+              "enable_registration: true" \
+              "enable_registration_without_verification: true" \
+              "rc_message: {per_second: 1000, burst_count: 1000}" \
+              "rc_registration: {per_second: 1000, burst_count: 1000}" \
+              "rc_login: {address: {per_second: 1000, burst_count: 1000}, account: {per_second: 1000, burst_count: 1000}}" \
+              "rc_joins: {local: {per_second: 1000, burst_count: 1000}}" \
+              "rc_invites: {per_room: {per_second: 1000, burst_count: 1000}, per_user: {per_second: 1000, burst_count: 1000}}" \
+              >> /data/homeserver.yaml'
+          docker run -d --name synapse -v synapse-data:/data -p 127.0.0.1:8008:8008 \
+            matrixdotorg/synapse:v1.145.0
+          for i in $(seq 60); do curl -sf http://127.0.0.1:8008/health && exit 0; sleep 1; done
+          docker logs synapse; exit 1
+
+      - name: Install
+        working-directory: sdk/python
+        run: |
+          python3 -m venv .venv
+          .venv/bin/pip install --quiet -e ".[dev]"
+
+      - name: Tests (unit, parity, examples, end to end)
+        working-directory: sdk/python
+        env:
+          DIDDY_TEST_HOMESERVER: http://127.0.0.1:8008
+        run: .venv/bin/python -m pytest -q

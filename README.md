@@ -215,6 +215,27 @@ Restart Diddy afterwards. The file is over 100 MB. On **NixOS** there is an opti
 fonts.packages = [ inputs.diddy.packages.${pkgs.system}.apple-color-emoji ];
 ```
 
+## Build a bot
+
+Bots can send cards, buttons and live progress that Diddy draws natively, while every other Matrix client still
+shows plain text. The Python library in [`sdk/python`](sdk/python/README.md) (German docs) does the protocol,
+E2EE, login and testing for you:
+
+```python
+from diddybot import Bot, cards
+
+bot = Bot.from_env(about="Says hello.")
+
+@bot.command("hello", desc="greets you")
+async def hello(ctx, name: str = ""):
+    await ctx.reply(cards.note(f"Hello {name or ctx.sender_name}!", icon="👋"))
+
+bot.run()
+```
+
+`pip install "git+https://github.com/Lndr2501/diddy.git#subdirectory=sdk/python"`, then `diddybot new mybot`.
+The protocol itself is in [docs/bot-cards.md](docs/bot-cards.md).
+
 ## Report a bug
 
 The most helpful thing is the log file. It lives at `~/Library/Logs/Diddy/app.log` on macOS, `~/.local/state/diddy/app.log` on Linux and `%LOCALAPPDATA%\app.diddy.desktop\logs\app.log` on Windows. In the app, *Settings → About → Diagnostics → Open Folder* opens the folder. The log contains technical events and errors, never message text.
