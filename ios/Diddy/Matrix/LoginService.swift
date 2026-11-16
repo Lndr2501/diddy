@@ -39,8 +39,15 @@ final class LoginService: ObservableObject {
         if changed && !busy { error = nil }
     }
 
+    /// Removes the folders of a login that did not become an account.
+    private func discard(_ record: AccountRecord?) {
+        guard let record else { return }
+        record.removeDirectories()
+        AccountCleanup.ended(record.id)
+    }
+
     func reset() {
-        record?.removeDirectories()
+        discard(record)
         record = nil
         client = nil
         method = nil
@@ -56,8 +63,10 @@ final class LoginService: ObservableObject {
         let input = homeserver.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !input.isEmpty else { error = "Enter a homeserver."; return }
         if let problem = Self.insecureServerProblem(input) { error = problem; return }
-        record?.removeDirectories()
+        discard(record)
+        record = nil
         let fresh = AccountRecord(id: UUID().uuidString.lowercased(), userId: "", homeserver: input, displayName: nil)
+        AccountCleanup.began(fresh.id)
         do {
             // Discovery (.well-known, versions) gives up after 8 s, like desktop (HomeserverTimeout.swift).
             let client = try await HomeserverTimeout.run {
@@ -68,7 +77,7 @@ final class LoginService: ObservableObject {
             let details = try await HomeserverTimeout.run { await client.homeserverLoginDetails() }
             // .well-known may point somewhere else; that address has to be HTTPS as well.
             if let problem = Self.insecureServerProblem(details.url()) {
-                fresh.removeDirectories()
+                discard(fresh)
                 error = problem
                 return
             }
@@ -83,7 +92,7 @@ final class LoginService: ObservableObject {
                 error = "This server only offers login types Diddy does not support yet (SSO without OAuth)."
             }
         } catch {
-            fresh.removeDirectories()
+            discard(fresh)
             self.error = Self.describe(error, server: input)
         }
     }

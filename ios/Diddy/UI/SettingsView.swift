@@ -25,8 +25,25 @@ struct SettingsView: View {
     @EnvironmentObject private var app: AppModel
     @Environment(\.dismiss) private var dismiss
     @State private var confirmLogout: MatrixAccount?
+    /// The server did not end the session: retry, or remove the account from this device anyway.
+    @State private var logoutFailure: LogoutFailure?
     @State private var showRecovery = false
     @State private var showWelcome = false
+
+    private struct LogoutFailure: Identifiable {
+        let account: MatrixAccount
+        let message: String
+        var id: String { account.id }
+    }
+
+    private func logOut(_ target: MatrixAccount, localOnly: Bool) async {
+        do {
+            try await app.logout(target, localOnly: localOnly)
+            if target.id == account.id { dismiss() }
+        } catch {
+            logoutFailure = LogoutFailure(account: target, message: error.friendlyMessage)
+        }
+    }
 
     private var isVerified: Bool { account.verificationState == .verified }
 
@@ -84,15 +101,23 @@ struct SettingsView: View {
                 titleVisibility: .visible
             ) {
                 Button("Log Out", role: .destructive) {
-                    if let target = confirmLogout {
-                        Task {
-                            await app.logout(target)
-                            if target.id == account.id { dismiss() }
-                        }
-                    }
+                    if let target = confirmLogout { Task { await logOut(target, localOnly: false) } }
                 }
             } message: {
                 Text("Encrypted messages can only be read again with your recovery key or another verified device.")
+            }
+            .alert(
+                "Could not log out",
+                isPresented: Binding(get: { logoutFailure != nil }, set: { if !$0 { logoutFailure = nil } }),
+                presenting: logoutFailure
+            ) { failure in
+                Button("Try Again") { Task { await logOut(failure.account, localOnly: false) } }
+                Button("Remove from This Device Anyway", role: .destructive) {
+                    Task { await logOut(failure.account, localOnly: true) }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: { failure in
+                Text("The server did not end this session (\(failure.message)). If you remove it from this device anyway, it stays signed in on the server until you remove it under Devices on another device.")
             }
             .sheet(isPresented: $showRecovery) { RecoveryView(account: account).diddySheetAppearance() }
         }
@@ -377,6 +402,7 @@ private struct AccountRow: View {
 
 struct RecoveryView: View {
     @ObservedObject var account: MatrixAccount
+    @EnvironmentObject private var calls: CallManager
     @Environment(\.dismiss) private var dismiss
     @State private var key = ""
     @State private var reveal = false
@@ -386,6 +412,13 @@ struct RecoveryView: View {
     var body: some View {
         NavigationStack {
             Form {
+                if calls.sharingScreen {
+                    // The field is gone while the screen goes out (ScreenShareNotice).
+                    Section {
+                        Label(ScreenShareNotice.recoveryLocked, systemImage: "eye.slash")
+                            .foregroundStyle(Theme.muted)
+                    }
+                } else {
                 Section {
                     HStack {
                         Group {
@@ -409,6 +442,7 @@ struct RecoveryView: View {
                 } footer: {
                     Text("The recovery key (or security key) or passphrase you saved when you set up encryption, for example in Diddy desktop or Element. It unlocks your message history on this device.")
                 }
+                }
                 if let error { Text(error).foregroundStyle(Theme.danger) }
                 Button {
                     busy = true
@@ -423,8 +457,9 @@ struct RecoveryView: View {
                 } label: {
                     HStack { if busy { ProgressView() }; Text("Verify") }
                 }
-                .disabled(key.isEmpty || busy)
+                .disabled(key.isEmpty || busy || calls.sharingScreen)
             }
+            .onChange(of: calls.sharingScreen) { sharing in if sharing { key = ""; reveal = false } }
             .navigationTitle("Verify this device")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }

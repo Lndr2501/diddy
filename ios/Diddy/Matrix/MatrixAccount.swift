@@ -291,9 +291,20 @@ final class MatrixAccount: ObservableObject, Identifiable {
         }
     }
 
-    func logout() async {
+    /// Ends the session on the server first, then removes it from this device. When the server
+    /// cannot be reached this throws and changes nothing: the account keeps running, so the
+    /// device does not stay signed in on the server unnoticed. `localOnly` ("Remove Anyway")
+    /// skips the server. A session the server already ended counts as logged out.
+    func logout(localOnly: Bool = false) async throws {
+        if !localOnly {
+            do {
+                _ = try await client.logout()
+            } catch {
+                let text = "\(error) \(error.localizedDescription)"
+                if !AccountCleanupLogic.sessionAlreadyEnded(errorText: text) { throw error }
+            }
+        }
         await stop()
-        try? await client.logout()
         SessionStore.delete(accountId: record.id)
         record.removeDirectories()
     }

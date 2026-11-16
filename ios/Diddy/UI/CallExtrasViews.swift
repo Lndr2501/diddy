@@ -111,8 +111,14 @@ struct CallReactionBubble: View {
 struct ShareControl: View {
     @ObservedObject var session: CallSession
     @ObservedObject var extras: CallLiveExtras
+    @State private var confirmWholeScreen = false
 
     var body: some View {
+        content
+            .wholeScreenShareAlert(isPresented: $confirmWholeScreen) { Task { await session.toggleScreenShare() } }
+    }
+
+    @ViewBuilder private var content: some View {
         if session.screenSharing {
             Menu {
                 Toggle(isOn: Binding(
@@ -152,7 +158,10 @@ struct ShareControl: View {
             .accessibilityLabel("Share screen")
             .accessibilityHint("Whole screen keeps sharing while you use other apps")
         } else {
-            Button { Task { await session.toggleScreenShare() } } label: {
+            Button {
+                // From iOS 27 this sends the whole screen, so say so first.
+                if CallSession.sharesWholeScreen { confirmWholeScreen = true } else { Task { await session.toggleScreenShare() } }
+            } label: {
                 CallBarIcon(icon: "rectangle.on.rectangle")
             }
             .disabled(!session.connected)

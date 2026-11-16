@@ -64,8 +64,16 @@ final class CallManager: ObservableObject {
             Sounds.shared.inCall = current != nil
             // The call takes the audio session over and keeps the app running itself.
             if current != nil { BackgroundKeepAlive.shared.stop(deactivate: false) }
+            // Anything that shows secrets hides them while the screen goes out (ScreenShareNotice).
+            shareObserver = current?.$screenSharing.removeDuplicates().sink { [weak self] sharing in
+                self?.sharingScreen = sharing
+            }
+            if current == nil { sharingScreen = false }
         }
     }
+    /// The running call is sending this device's screen (the whole screen or Diddy alone).
+    @Published private(set) var sharingScreen = false
+    private var shareObserver: AnyCancellable?
     @Published private(set) var incoming: IncomingCall?
     @Published var error: String?
     /// Shows the call full screen; set when a call starts somewhere that has no call UI of its own.
