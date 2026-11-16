@@ -213,9 +213,16 @@ enum BotCardParser {
         for case let item as [String: Any] in list.prefix(max) {
             guard let label = text(item["label"], 24), let send = text(item["send"], 120) else { continue }
             // A button only types a bot command into the chat for you: it has to look like one.
-            if looksLikeCommand(send, tail: 1...Int.max) { out.append(BotCardAction(label: label, send: send)) }
+            if isButtonCommand(send) { out.append(BotCardAction(label: label, send: send)) }
         }
         return out
+    }
+
+    /// `^[!/][^\s]`: the command name, arguments allowed (`!seek +10`). Same as the desktop and Android.
+    static func isButtonCommand(_ send: String) -> Bool {
+        guard let first = send.first, first == "!" || first == "/", send.count >= 2 else { return false }
+        let second = send[send.index(after: send.startIndex)]
+        return !(second.isWhitespace || second.isNewline)
     }
 
     /// A player button's command: `^[!/][^\s]{1,30}( [^\s]{1,20})?$`, at most 60 characters, so it

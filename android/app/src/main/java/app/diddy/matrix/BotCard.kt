@@ -159,9 +159,16 @@ object BotCardParser {
             val o = item.obj() ?: return@mapNotNull null
             val label = text(o["label"], 24) ?: return@mapNotNull null
             val send = text(o["send"], 120) ?: return@mapNotNull null
-            if (looksLikeCommand(send, 1..Int.MAX_VALUE)) BotCardAction(label, send) else null
+            if (isButtonCommand(send)) BotCardAction(label, send) else null
         }
     }
+
+    /**
+     * A button only types a bot command into the chat for you, so it has to look like one:
+     * `!` or `/`, then the command name, arguments allowed (`!seek +10`). Same as the desktop.
+     */
+    fun isButtonCommand(send: String): Boolean =
+        send.length >= 2 && (send[0] == '!' || send[0] == '/') && !send[1].isWhitespace()
 
     fun playerCommand(value: Any?): String? {
         val string = value as? String ?: return null
