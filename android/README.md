@@ -34,7 +34,14 @@ cd android
 echo "sdk.dir=$HOME/android-sdk" > local.properties   # once, path to your Android SDK
 ./gradlew testDebugUnitTest      # logic tests (no device needed)
 ./gradlew assembleDebug          # app/build/outputs/apk/debug/app-debug.apk
+./gradlew lintDebug              # Android lint, also in CI
+./gradlew connectedDebugAndroidTest   # smoke test on a connected device or emulator
 ```
+
+CI (`.github/workflows/android.yml`) runs the unit tests, lint and the build, and starts the app
+on two emulators: Android 8 (API 26) and Android 15 with 16 KB memory pages. The smoke test
+(`app/src/androidTest`) checks that the native libraries load, the login shows and the Keystore
+works. No server or account is involved.
 
 JDK 17, Android SDK platform 37. The build copies the desktop's sound pack and built-in plugins
 (`cinny/public/sound/diddy`, `cinny/src/app/plugins/builtin`) and the emoji table of the iPhone app
@@ -52,14 +59,19 @@ into the APK, so all apps sound and work the same.
 - Members with roles, kick, ban, invite; room and server settings; create rooms, channels and
   servers; explore public rooms
 - Calls and voice channels (MatrixRTC + LiveKit, Element Call media keys): camera, screen
-  sharing, speaker, deafen, per-person volume, ringing in DMs, incoming call screen, soundboard
-  with MyInstants search, Watch Together (YouTube with SponsorBlock), the phone as camera and
-  microphone for the computer
+  sharing with app sound (Android 10+), speaker, deafen, per-person volume, ringing in DMs,
+  Android's call notifications (answer, decline, hang up), soundboard with MyInstants search,
+  Watch Together (YouTube with SponsorBlock), the phone as camera and microphone for the computer
+- Call encryption: the media key goes only to devices with a MatrixRTC membership, keys are only
+  taken from members' own devices, a new key when someone leaves, and the call screen says
+  whether it is end-to-end encrypted and whose key is missing
 - Notifications: UnifiedPush (ntfy and others) or a background connection, with message,
   mention, invite and call notifications; ntfy call alerts
 - Emoji verification, recovery key, key backup, devices
 - Plugins (same contract as desktop and iOS), pinned under You
 - Share into a chat from other apps; matrix.to and `matrix:` links open in Diddy
+- Tablets and open foldables: chat list and chat side by side
+- Recovery key views are kept out of screenshots and screen sharing
 
 ## Notes
 
@@ -67,3 +79,14 @@ into the APK, so all apps sound and work the same.
   Push), or the background connection. Push needs no open connection and saves battery.
 - Watch Together, the soundboard with MyInstants search and the phone as camera and microphone
   for the computer (companion) work like on the iPhone.
+- After *Force stop* in Android's settings nothing arrives until Diddy is opened again; some
+  manufacturers' battery savers delay push. There is no FCM build (it needs a Firebase project).
+- App sound with a shared screen works only for apps that allow recording (not for protected
+  videos) and goes with the microphone, so it is silent while you are muted.
+- Not on Android yet: Agent Voice, changing the app icon.
+
+## More
+
+- [Architecture and security decisions](../docs/android-architektur.md)
+- [Test protocol: what is checked on devices](../docs/android-testprotokoll.md)
+- [Features per platform](../docs/plattformen.md)

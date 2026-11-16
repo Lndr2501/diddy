@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- **Android: sichere Call-Schlüssel (Android):** Der eigene Medienschlüssel geht nur noch an Geräte, die laut Matrix im Call sind (`call.member`), nicht an jeden, der den Medienserver erreicht. Schlüssel anderer gelten nur, wenn sie verschlüsselt vom genannten Gerät eines Mitglieds kommen; kommen sie vor der Mitgliedschaft an, warten sie darauf. Verlässt jemand den Call, verteilt Android einen neuen Schlüssel und nutzt ihn nach 5 Sekunden (wie Element Call), damit der Gegangene nicht weiter mithört. Der Call zeigt „End-to-end encrypted“, „Not end-to-end encrypted“ oder wessen Schlüssel noch fehlt. iOS hat diese Punkte weiter offen (`ios/SECURITY-TODO.md`); der Desktop macht es über Element Call.
+- **Android: Anrufe wie das Telefon:** Eingehende Anrufe kommen als Android-Anrufbenachrichtigung mit Ablehnen und Annehmen, auch per Push bei geschlossener App; Annehmen öffnet Diddy und tritt bei. Der laufende Call zeigt Auflegen und die Dauer. Ein Anruf-Push, der erst nach Ablauf des Klingelns ankommt, klingelt nicht mehr; ein Call-Start in einer Gruppe kommt als normale Benachrichtigung.
+- **Android: App-Ton beim Bildschirmteilen (Android 10+):** Ton von Videos und Spielen geht mit dem geteilten Bildschirm raus, über das Mikrofon-Signal. Diddys eigener Ton (Call, Soundboard, Watch Together) ist ausgenommen. Abschaltbar unter Settings > Calls.
+- **Android: Tablets und Foldables:** Ab 720 dp Breite stehen Chatliste und Chat nebeneinander.
+- **Android: Schutz und Aufräumen:** Wiederherstellungsschlüssel und Passphrase erscheinen nicht in Screenshots, beim Bildschirmteilen und im App-Umschalter. Ein Logout, den der Server nicht mitbekommt, wird gemeldet. Reste abgebrochener Logins werden beim Start entfernt.
+- **Bot-Karten: Knöpfe mit Argumenten (iOS, Android):** Knöpfe wie `!seek +10` oder `/me winkt` fehlten auf iPhone und Android, obwohl Doku und Desktop sie erlauben. Gemeinsame Testfälle in `docs/fixtures/bot-cards.json` prüfen jetzt Desktop und Android gegen dieselben Karten. macOS, Linux und Windows waren nicht betroffen.
+- **CI: Android mit Lint und Emulator:** `Build Android` prüft Lint und startet die App auf Android 8 und auf Android 15 mit 16-KB-Speicherseiten. Feature-Matrix (`docs/plattformen.md`) jetzt mit Windows und Android, dazu `docs/android-architektur.md` und `docs/android-testprotokoll.md`.
+
 ## 1.11.1 (2026-11-16)
 
 - **Android erstmals im Release:** Die native Android-App (Android 8+, arm64 und x86_64) kommt als direkt installierbare, signierte APK dazu: Chats, Spaces, Profile, Sprachnachrichten, MatrixRTC-Calls mit Kamera und Bildschirm, Soundboard mit MyInstants, Watch Together, Handy als Kamera und Mikrofon für den Computer sowie UnifiedPush. Desktop und iPhone bekommen ihre Pakete wie bisher im selben Release. Android wird vor dem Veröffentlichen gebaut und getestet, die APK-Signatur geprüft und die Prüfsumme mitgeliefert. Auf einem echten Android-Gerät ist die App noch nicht abgenommen.
