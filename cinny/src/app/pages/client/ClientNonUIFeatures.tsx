@@ -40,6 +40,7 @@ import { CallFrameMenu } from '../../components/CallFrameMenu';
 import { CallUserMenu } from '../../components/CallUserMenu';
 import { UpdateNotice } from '../../components/update-notice/UpdateNotice';
 import { ToastHost } from '../../components/toast/ToastHost';
+import { useScheduledMessagesRunner } from '../../features/room/send-later/useSendLater';
 import { pushToastAtom } from '../../state/toasts';
 import { messagePreview, messageToastBody } from '../../plugins/toastLogic';
 
@@ -408,6 +409,11 @@ function DiddyOptionsAutoJoinFeature() {
   return null;
 }
 
+function ScheduledMessagesFeature() {
+  useScheduledMessagesRunner();
+  return null;
+}
+
 function DiddyStatusFeature() {
   useDiddyStatusSync();
   useClientVersionSync();
@@ -440,6 +446,7 @@ export function ClientNonUIFeatures({ children }: ClientNonUIFeaturesProps) {
       <AppIconFeature />
       <DiddyOptionsAutoJoinFeature />
       <DiddyStatusFeature />
+      <ScheduledMessagesFeature />
       <DiddyOnboarding />
       <MatrixIntro />
       <CallFrameMenu />

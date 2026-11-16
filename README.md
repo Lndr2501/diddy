@@ -114,6 +114,7 @@ All images show example data and are generated from the real app, see [docs/scre
 | …with system sound | ✅ macOS 14.2+ | 🧪 other apps, not Diddy's own sound | ❌ not yet | 🧪 app sound |
 | Connection profiles | ✅ macOS 14+ | 🧪 untested | 🧪 | 🧪 multiple accounts |
 | Voice messages | ✅ | 🧪 | 🧪 | 🧪 m4a, no Ogg/Opus playback |
+| Send later (text) | 🧪 | 🧪 | 🧪 | 🧪 server only in unencrypted chats |
 | Change app icon | ✅ | 🧪 | 🧪 window icon | 🧪 |
 | Call tiles, soundboard, MyInstants | ✅ | ✅ | 🧪 | 🧪 |
 | Bot cards, profiles and badges, themes, plugins, agent voice | ✅ | ✅ | 🧪 | 🧪 |
