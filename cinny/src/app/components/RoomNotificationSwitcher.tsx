@@ -9,6 +9,7 @@ import {
 } from '../hooks/useRoomsNotificationPreferences';
 import { AsyncStatus } from '../hooks/useAsyncCallback';
 import * as sheetCss from './sheet/Sheet.css';
+import { useTranslation } from 'react-i18next';
 
 const useRoomNotificationModes = (): RoomNotificationMode[] =>
   useMemo(
@@ -21,16 +22,18 @@ const useRoomNotificationModes = (): RoomNotificationMode[] =>
     []
   );
 
-const useRoomNotificationModeStr = (): Record<RoomNotificationMode, string> =>
-  useMemo(
+const useRoomNotificationModeStr = (): Record<RoomNotificationMode, string> => {
+  const { t } = useTranslation();
+  return useMemo(
     () => ({
-      [RoomNotificationMode.Unset]: 'Default',
-      [RoomNotificationMode.AllMessages]: 'All Messages',
-      [RoomNotificationMode.SpecialMessages]: 'Mention & Keywords',
-      [RoomNotificationMode.Mute]: 'Mute',
+      [RoomNotificationMode.Unset]: t('common.roomNotificationSwitcher.default'),
+      [RoomNotificationMode.AllMessages]: t('common.roomNotificationSwitcher.allMessages'),
+      [RoomNotificationMode.SpecialMessages]: t('common.roomNotificationSwitcher.mentionKeywords'),
+      [RoomNotificationMode.Mute]: t('common.roomNotificationSwitcher.mute'),
     }),
-    []
+    [t]
   );
+};
 
 type NotificationModeSwitcherProps = {
   roomId: string;

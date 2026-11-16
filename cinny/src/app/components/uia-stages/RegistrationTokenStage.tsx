@@ -3,6 +3,7 @@ import { Dialog, Text, Box, Button, config, Input } from 'folds';
 import { AuthType } from 'matrix-js-sdk';
 import { StageComponentProps } from './types';
 import * as sheetCss from '../sheet/Sheet.css';
+import { useTranslation } from 'react-i18next';
 
 function RegistrationTokenErrorDialog({
   title,
@@ -17,6 +18,7 @@ function RegistrationTokenErrorDialog({
   onRetry: (token: string) => void;
   onCancel: () => void;
 }) {
+  const { t } = useTranslation();
   const handleFormSubmit: FormEventHandler<HTMLFormElement> = (evt) => {
     evt.preventDefault();
     const { retryTokenInput } = evt.target as HTMLFormElement & {
@@ -41,7 +43,7 @@ function RegistrationTokenErrorDialog({
           </Text>
           <Text>{message}</Text>
           <Text as="label" size="L400" style={{ paddingTop: config.space.S400 }}>
-            Registration Token
+            {t('auth.registrationToken.registrationToken')}
           </Text>
           <Input
             name="retryTokenInput"
@@ -54,7 +56,7 @@ function RegistrationTokenErrorDialog({
         </Box>
         <Button className={sheetCss.Pill} variant="Critical" type="submit">
           <Text as="span" size="B400">
-            Retry
+            {t('auth.registrationToken.retry')}
           </Text>
         </Button>
         <Button
@@ -66,7 +68,7 @@ function RegistrationTokenErrorDialog({
           onClick={onCancel}
         >
           <Text as="span" size="B400">
-            Cancel
+            {t('auth.registrationToken.cancel')}
           </Text>
         </Button>
       </Box>
@@ -82,6 +84,7 @@ export function RegistrationTokenStageDialog({
 }: StageComponentProps & {
   token?: string;
 }) {
+  const { t } = useTranslation();
   const { errorCode, error, session } = stageData;
 
   const handleSubmit = useCallback(
@@ -104,7 +107,7 @@ export function RegistrationTokenStageDialog({
       <RegistrationTokenErrorDialog
         defaultToken={token}
         title={errorCode}
-        message={error ?? 'Invalid registration token provided.'}
+        message={error ?? t('auth.registrationToken.invalidRegistrationTokenProvided')}
         onRetry={handleSubmit}
         onCancel={onCancel}
       />
@@ -115,8 +118,8 @@ export function RegistrationTokenStageDialog({
     return (
       <RegistrationTokenErrorDialog
         defaultToken={token}
-        title="Registration Token"
-        message="Please submit registration token provided by you homeserver admin."
+        title={t('auth.registrationToken.registrationToken')}
+        message={t('auth.registrationToken.pleaseSubmitRegistrationToken')}
         onRetry={handleSubmit}
         onCancel={onCancel}
       />

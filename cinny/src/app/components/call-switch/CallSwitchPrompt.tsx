@@ -4,6 +4,7 @@ import { Button, color, Dialog, Overlay, OverlayBackdrop, OverlayCenter, Text } 
 import { stopPropagation } from '../../utils/keyboard';
 import { AppLogo } from '../app-logo/AppLogo';
 import * as sheetCss from '../sheet/Sheet.css';
+import { useTranslation } from 'react-i18next';
 
 export type CallSwitchAction = 'call' | 'join';
 
@@ -27,10 +28,11 @@ export function CallSwitchPrompt({
   onConfirm,
   onCancel,
 }: CallSwitchPromptProps) {
+  const { t } = useTranslation();
   const text =
     action === 'call'
-      ? `You're in a call in ${currentName}. Calling ${targetName} will end it for you.`
-      : `You're in a call in ${currentName}. Joining ${targetName} will end it for you.`;
+      ? t('call.switchPrompt.youReInA', { currentName, targetName })
+      : t('call.switchPrompt.youReInA2', { currentName, targetName });
 
   return (
     <Overlay open backdrop={<OverlayBackdrop className={sheetCss.Backdrop} />}>
@@ -47,7 +49,9 @@ export function CallSwitchPrompt({
             <div className={sheetCss.AlertBody}>
               <AppLogo className={sheetCss.AlertIcon} size={64} />
               <Text as="h2" className={sheetCss.AlertTitle}>
-                {error ? 'Could not switch calls' : 'Leave your current call?'}
+                {error
+                  ? t('call.switchPrompt.couldNotSwitchCalls')
+                  : t('call.switchPrompt.leaveYourCurrentCall')}
               </Text>
               {error ? (
                 <Text as="p" className={sheetCss.AlertText} style={{ color: color.Critical.Main }}>
@@ -67,7 +71,9 @@ export function CallSwitchPrompt({
                     onClick={onConfirm}
                   >
                     <Text size="B400">
-                      {action === 'call' ? 'Leave and call' : 'Leave and join'}
+                      {action === 'call'
+                        ? t('call.switchPrompt.leaveAndCall')
+                        : t('call.switchPrompt.leaveAndJoin')}
                     </Text>
                   </Button>
                 )}
@@ -77,7 +83,9 @@ export function CallSwitchPrompt({
                   fill="Soft"
                   onClick={onCancel}
                 >
-                  <Text size="B400">{error ? 'Close' : 'Cancel'}</Text>
+                  <Text size="B400">
+                    {error ? t('call.switchPrompt.close') : t('call.switchPrompt.cancel')}
+                  </Text>
                 </Button>
               </div>
             </div>

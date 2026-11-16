@@ -58,7 +58,7 @@ test('misspelled word without suggestions says so and still offers the dictionar
 
 test('selection outside a field offers Copy only', () => {
   const template = buildContextMenuTemplate({ isEditable: false, selectionText: 'some text', editFlags: allFlags }, recorder());
-  assert.deepEqual(template, [{ role: 'copy' }]);
+  assert.deepEqual(template, [{ role: 'copy', label: 'Copy' }]);
   assert.deepEqual(buildContextMenuTemplate({ isEditable: false, selectionText: '   ' }, recorder()), []);
 });
 

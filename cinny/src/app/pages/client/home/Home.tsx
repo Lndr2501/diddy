@@ -74,11 +74,13 @@ import {
 import { UseStateProvider } from '../../../components/UseStateProvider';
 import { JoinAddressPrompt } from '../../../components/join-address-prompt';
 import { _RoomSearchParams } from '../../paths';
+import { useTranslation } from 'react-i18next';
 
 type HomeMenuProps = {
   requestClose: () => void;
 };
 const HomeMenu = forwardRef<HTMLDivElement, HomeMenuProps>(({ requestClose }, ref) => {
+  const { t } = useTranslation();
   const orphanRooms = useHomeRooms();
   const [hideActivity] = useSetting(settingsAtom, 'hideActivity');
   const unread = useRoomsUnread(orphanRooms, roomToUnreadAtom);
@@ -101,7 +103,7 @@ const HomeMenu = forwardRef<HTMLDivElement, HomeMenuProps>(({ requestClose }, re
           aria-disabled={!unread}
         >
           <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
-            Mark as Read
+            {t('nav.home.markAsRead')}
           </Text>
         </MenuItem>
       </Box>
@@ -110,6 +112,7 @@ const HomeMenu = forwardRef<HTMLDivElement, HomeMenuProps>(({ requestClose }, re
 });
 
 function HomeHeader() {
+  const { t } = useTranslation();
   const [menuAnchor, setMenuAnchor] = useState<RectCords>();
 
   const handleOpenMenu: MouseEventHandler<HTMLButtonElement> = (evt) => {
@@ -126,14 +129,14 @@ function HomeHeader() {
         <Box alignItems="Center" grow="Yes" gap="300">
           <Box grow="Yes">
             <Text size="H4" className={pageCss.PageNavHeaderTitle} truncate>
-              Home
+              {t('nav.home.home')}
             </Text>
           </Box>
           <Box>
             <IconButton
               className={pageCss.PageNavHeaderButton}
               aria-pressed={!!menuAnchor}
-              aria-label="More Options"
+              aria-label={t('nav.home.moreOptions')}
               variant="Background"
               radii="300"
               onClick={handleOpenMenu}
@@ -169,6 +172,7 @@ function HomeHeader() {
 }
 
 function HomeEmpty() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   return (
@@ -177,19 +181,19 @@ function HomeEmpty() {
         icon={<Icon size="600" src={Icons.Hash} />}
         title={
           <Text size="H5" align="Center">
-            No Rooms
+            {t('nav.home.noRooms')}
           </Text>
         }
         content={
           <Text size="T300" align="Center">
-            You do not have any rooms yet.
+            {t('nav.home.youDoNotHave')}
           </Text>
         }
         options={
           <>
             <Button onClick={() => navigate(getHomeCreatePath())} variant="Secondary" size="300">
               <Text size="B300" truncate>
-                Create Room
+                {t('nav.home.createRoom')}
               </Text>
             </Button>
             <Button
@@ -199,7 +203,7 @@ function HomeEmpty() {
               size="300"
             >
               <Text size="B300" truncate>
-                Explore Community Rooms
+                {t('nav.home.exploreCommunityRooms')}
               </Text>
             </Button>
           </>
@@ -217,6 +221,7 @@ type HomeVirtualItem =
   | { type: 'category'; id: string; name: string; closed: boolean }
   | { type: 'room'; roomId: string; direct?: boolean };
 export function Home() {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   useNavToActivePathMapper('home');
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -277,7 +282,12 @@ export function Home() {
 
     if (favouriteRoomIds.length > 0) {
       const closed = closedCategories.has(FAVOURITE_CATEGORY_ID);
-      items.push({ type: 'category', id: FAVOURITE_CATEGORY_ID, name: 'Favourites', closed });
+      items.push({
+        type: 'category',
+        id: FAVOURITE_CATEGORY_ID,
+        name: t('nav.home.favourites'),
+        closed,
+      });
       makeRoomList(favouriteRoomIds, favouritesAtoZ, closed).forEach((roomId) =>
         items.push({ type: 'room', roomId })
       );
@@ -285,7 +295,7 @@ export function Home() {
 
     if (otherRoomIds.length > 0 || (favouriteRoomIds.length === 0 && directs.length === 0)) {
       const closed = closedCategories.has(DEFAULT_CATEGORY_ID);
-      items.push({ type: 'category', id: DEFAULT_CATEGORY_ID, name: 'Rooms', closed });
+      items.push({ type: 'category', id: DEFAULT_CATEGORY_ID, name: t('nav.home.rooms'), closed });
       makeRoomList(otherRoomIds, othersAtoZ, closed).forEach((roomId) =>
         items.push({ type: 'room', roomId })
       );
@@ -293,7 +303,12 @@ export function Home() {
 
     if (directs.length > 0) {
       const closed = closedCategories.has(DIRECT_CATEGORY_ID);
-      items.push({ type: 'category', id: DIRECT_CATEGORY_ID, name: 'Direct Messages', closed });
+      items.push({
+        type: 'category',
+        id: DIRECT_CATEGORY_ID,
+        name: t('nav.home.directMessages'),
+        closed,
+      });
       Array.from(directs)
         .sort(factoryRoomIdByActivity(mx))
         .filter((rId) => !closed || unreadIds.has(rId) || rId === selectedRoomId)
@@ -314,6 +329,8 @@ export function Home() {
     unreadIds,
     selectedRoomId,
     activityTick,
+    ,
+    t,
   ]);
 
   const virtualizer = useVirtualizer({
@@ -345,7 +362,7 @@ export function Home() {
                       </Avatar>
                       <Box as="span" grow="Yes">
                         <Text as="span" size="Inherit" truncate>
-                          Create Room
+                          {t('nav.home.createRoom')}
                         </Text>
                       </Box>
                     </Box>
@@ -364,7 +381,7 @@ export function Home() {
                             </Avatar>
                             <Box as="span" grow="Yes">
                               <Text as="span" size="Inherit" truncate>
-                                Join with Address
+                                {t('nav.home.joinWithAddress')}
                               </Text>
                             </Box>
                           </Box>
@@ -399,7 +416,7 @@ export function Home() {
                       </Avatar>
                       <Box as="span" grow="Yes">
                         <Text as="span" size="Inherit" truncate>
-                          New Message
+                          {t('nav.home.newMessage')}
                         </Text>
                       </Box>
                     </Box>
@@ -415,7 +432,7 @@ export function Home() {
                       </Avatar>
                       <Box as="span" grow="Yes">
                         <Text as="span" size="Inherit" truncate>
-                          Message Search
+                          {t('nav.home.messageSearch')}
                         </Text>
                       </Box>
                     </Box>

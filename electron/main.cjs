@@ -46,6 +46,7 @@ const { createHotkeySlots } = require('./lib/hotkeySlots.cjs');
 const { sanitizeHotkey } = require('./lib/globalHotkey.cjs');
 const { startPortalShortcut } = require('./lib/portalShortcut.cjs');
 const { installShellInput } = require('./lib/shellInput.cjs');
+const { setUiLanguage } = require('./lib/uiStrings.cjs');
 
 const APP_PORT = 44548;
 const VERSION = (() => {
@@ -440,6 +441,8 @@ const commands = {
   hotkey_wait: (args) => hotkeySlots.wait(args?.slot, args?.lastKey, args?.timeoutMs),
   // The update check belongs to the macOS shell; Linux has no native updater (the UI still sends this).
   updater_set_config: () => null,
+  // texts of the right-click menu and the screen picker in the UI language (lib/uiStrings.cjs)
+  set_ui_language: (args) => setUiLanguage(args),
 };
 
 const audioCaptures = new Map();

@@ -15,8 +15,10 @@ import {
 import { CustomEditor, useEditor } from './Editor';
 import { Toolbar } from './Toolbar';
 import { stopPropagation } from '../../utils/keyboard';
+import { useTranslation } from 'react-i18next';
 
 export function EditorPreview() {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const editor = useEditor();
   const [toolbar, setToolbar] = useState(false);
@@ -40,7 +42,7 @@ export function EditorPreview() {
               <div style={{ padding: config.space.S400 }}>
                 <CustomEditor
                   editor={editor}
-                  placeholder="Send a message..."
+                  placeholder={t('composer.editorPreview.sendAMessage')}
                   before={
                     <IconButton variant="SurfaceVariant" size="300" radii="300">
                       <Icon src={Icons.PlusCircle} />

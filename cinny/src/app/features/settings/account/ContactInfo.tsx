@@ -3,8 +3,10 @@ import { Text, Chip } from 'folds';
 import { InsetGroup, InsetRow, InsetSection } from '../inset-list';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { AsyncStatus, useAsyncCallback } from '../../../hooks/useAsyncCallback';
+import { useTranslation } from 'react-i18next';
 
 export function ContactInformation() {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const [threePIdsState, loadThreePIds] = useAsyncCallback(
     useCallback(() => mx.getThreePids(), [mx])
@@ -19,11 +21,11 @@ export function ContactInformation() {
   }, [loadThreePIds]);
 
   return (
-    <InsetSection title="Contact Information">
+    <InsetSection title={t('settings.contactInfo.contactInformation')}>
       <InsetGroup>
         <InsetRow
-          title="Email Address"
-          description="Email address attached to your account."
+          title={t('settings.contactInfo.emailAddress')}
+          description={t('settings.contactInfo.emailAddressAttachedTo')}
           after={
             emailIds && emailIds.length > 0 ? (
               emailIds.map((email) => (
@@ -33,7 +35,7 @@ export function ContactInformation() {
               ))
             ) : (
               <Text size="T200" priority="300">
-                {threePIds ? 'None' : ''}
+                {threePIds ? t('settings.contactInfo.none') : ''}
               </Text>
             )
           }

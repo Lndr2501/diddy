@@ -15,8 +15,10 @@ import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { getMxIdServer } from '../../../utils/matrix';
 import { ScreenSize, useScreenSizeContext } from '../../../hooks/useScreenSize';
 import { useNavToActivePathAtom } from '../../../state/hooks/navToActivePath';
+import { useTranslation } from 'react-i18next';
 
 export function ExploreTab() {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const screenSize = useScreenSizeContext();
   const clientConfig = useClientConfig();
@@ -52,10 +54,10 @@ export function ExploreTab() {
 
   return (
     <SidebarItem active={exploreSelected}>
-      <SidebarItemTooltip tooltip="Explore Community">
+      <SidebarItemTooltip tooltip={t('nav.explore.exploreCommunity')}>
         {(triggerRef) => (
           <SidebarAvatar
-            aria-label="Explore"
+            aria-label={t('nav.explore.explore')}
             as="button"
             ref={triggerRef}
             outlined

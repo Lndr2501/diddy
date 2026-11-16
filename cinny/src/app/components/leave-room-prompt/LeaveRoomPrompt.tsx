@@ -17,6 +17,7 @@ import { stopPropagation } from '../../utils/keyboard';
 import { leaveRoom as leaveRoomAndSync } from '../../utils/leaveRoom';
 import { AppLogo } from '../app-logo/AppLogo';
 import * as sheetCss from '../sheet/Sheet.css';
+import { useTranslation } from 'react-i18next';
 
 type LeaveRoomPromptProps = {
   roomId: string;
@@ -25,6 +26,7 @@ type LeaveRoomPromptProps = {
 };
 
 export function LeaveRoomPrompt({ roomId, onDone, onCancel }: LeaveRoomPromptProps) {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
 
   const [leaveState, leaveRoom] = useAsyncCallback<undefined, MatrixError, []>(
@@ -58,14 +60,16 @@ export function LeaveRoomPrompt({ roomId, onDone, onCancel }: LeaveRoomPromptPro
             <div className={sheetCss.AlertBody}>
               <AppLogo className={sheetCss.AlertIcon} size={64} />
               <Text as="h2" className={sheetCss.AlertTitle}>
-                Leave Room
+                {t('common.leaveRoomPrompt.leaveRoom')}
               </Text>
               <Text as="p" className={sheetCss.AlertText}>
-                Are you sure you want to leave this room?
+                {t('common.leaveRoomPrompt.areYouSureYou')}
               </Text>
               {leaveState.status === AsyncStatus.Error && (
                 <Text style={{ color: color.Critical.Main }} size="T300">
-                  Failed to leave room! {leaveState.error.message}
+                  {t('common.leaveRoomPrompt.failedToLeaveRoom', {
+                    message: leaveState.error.message,
+                  })}
                 </Text>
               )}
               <div className={sheetCss.AlertActions}>
@@ -85,7 +89,9 @@ export function LeaveRoomPrompt({ roomId, onDone, onCancel }: LeaveRoomPromptPro
                   }
                 >
                   <Text size="B400">
-                    {leaveState.status === AsyncStatus.Loading ? 'Leaving...' : 'Leave'}
+                    {leaveState.status === AsyncStatus.Loading
+                      ? t('common.leaveRoomPrompt.leaving')
+                      : t('common.leaveRoomPrompt.leave')}
                   </Text>
                 </Button>
                 <Button
@@ -94,7 +100,7 @@ export function LeaveRoomPrompt({ roomId, onDone, onCancel }: LeaveRoomPromptPro
                   fill="Soft"
                   onClick={onCancel}
                 >
-                  <Text size="B400">Cancel</Text>
+                  <Text size="B400">{t('common.leaveRoomPrompt.cancel')}</Text>
                 </Button>
               </div>
             </div>

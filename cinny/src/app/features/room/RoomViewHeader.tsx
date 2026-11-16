@@ -79,6 +79,7 @@ import { usePresenceState } from '../../hooks/usePresenceState';
 import { AvatarPresence, PresenceBadge } from '../../components/presence';
 import { PRESENCE_STATE_LABEL } from '../../utils/presenceState';
 import { HeaderSearchField } from '../../components/top-actions';
+import { useTranslation } from 'react-i18next';
 
 type RoomMenuProps = {
   room: Room;
@@ -88,6 +89,7 @@ type RoomMenuProps = {
 };
 const RoomMenu = forwardRef<HTMLDivElement, RoomMenuProps>(
   ({ room, requestClose, onSearch }, ref) => {
+    const { t } = useTranslation();
     const mx = useMatrixClient();
     const [hideActivity] = useSetting(settingsAtom, 'hideActivity');
     const unread = useRoomUnread(room.roomId, roomToUnreadAtom);
@@ -152,7 +154,7 @@ const RoomMenu = forwardRef<HTMLDivElement, RoomMenuProps>(
               radii="300"
             >
               <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
-                Search Messages
+                {t('room.viewHeader.searchMessages')}
               </Text>
             </MenuItem>
           )}
@@ -164,7 +166,7 @@ const RoomMenu = forwardRef<HTMLDivElement, RoomMenuProps>(
             disabled={!unread}
           >
             <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
-              Mark as Read
+              {t('room.viewHeader.markAsRead')}
             </Text>
           </MenuItem>
           <RoomNotificationModeSwitcher roomId={room.roomId} value={notificationMode}>
@@ -183,7 +185,7 @@ const RoomMenu = forwardRef<HTMLDivElement, RoomMenuProps>(
                 onClick={handleOpen}
               >
                 <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
-                  Notifications
+                  {t('room.viewHeader.notifications')}
                 </Text>
               </MenuItem>
             )}
@@ -202,7 +204,7 @@ const RoomMenu = forwardRef<HTMLDivElement, RoomMenuProps>(
             disabled={!canInvite}
           >
             <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
-              Invite
+              {t('room.viewHeader.invite')}
             </Text>
           </MenuItem>
           <MenuItem
@@ -212,7 +214,7 @@ const RoomMenu = forwardRef<HTMLDivElement, RoomMenuProps>(
             radii="300"
           >
             <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
-              Copy Link
+              {t('room.viewHeader.copyLink')}
             </Text>
           </MenuItem>
           <MenuItem
@@ -222,7 +224,7 @@ const RoomMenu = forwardRef<HTMLDivElement, RoomMenuProps>(
             radii="300"
           >
             <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
-              Room Settings
+              {t('room.viewHeader.roomSettings')}
             </Text>
           </MenuItem>
           <MenuItem
@@ -232,7 +234,7 @@ const RoomMenu = forwardRef<HTMLDivElement, RoomMenuProps>(
             radii="300"
           >
             <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
-              Media & Files
+              {t('room.viewHeader.mediaFiles')}
             </Text>
           </MenuItem>
           <UseStateProvider initial={false}>
@@ -246,7 +248,7 @@ const RoomMenu = forwardRef<HTMLDivElement, RoomMenuProps>(
                   aria-pressed={promptJump}
                 >
                   <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
-                    Jump to Time
+                    {t('room.viewHeader.jumpToTime')}
                   </Text>
                 </MenuItem>
                 {promptJump && (
@@ -278,7 +280,7 @@ const RoomMenu = forwardRef<HTMLDivElement, RoomMenuProps>(
                   aria-pressed={promptLeave}
                 >
                   <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
-                    Leave Room
+                    {t('room.viewHeader.leaveRoom')}
                   </Text>
                 </MenuItem>
                 {promptLeave && (
@@ -304,6 +306,7 @@ type CallMenuProps = {
 };
 const CallMenu = forwardRef<HTMLDivElement, CallMenuProps>(
   ({ requestClose, onVoiceCall, onVideoCall }, ref) => {
+    const { t } = useTranslation();
     const handleVoice = () => {
       onVoiceCall();
       requestClose();
@@ -316,7 +319,7 @@ const CallMenu = forwardRef<HTMLDivElement, CallMenuProps>(
     return (
       <Menu ref={ref} style={{ padding: config.space.S200, minWidth: toRem(150) }}>
         <Box direction="Column" gap="200">
-          <Text size="L400">Start Call</Text>
+          <Text size="L400">{t('room.viewHeader.startCall')}</Text>
           <Box direction="Column" gap="200">
             <Button
               size="300"
@@ -327,7 +330,7 @@ const CallMenu = forwardRef<HTMLDivElement, CallMenuProps>(
               before={<Icon size="100" src={Icons.Phone} filled />}
               onClick={handleVoice}
             >
-              <Text size="B300">Voice</Text>
+              <Text size="B300">{t('room.viewHeader.voice')}</Text>
             </Button>
             <Button
               size="300"
@@ -336,7 +339,7 @@ const CallMenu = forwardRef<HTMLDivElement, CallMenuProps>(
               before={<Icon size="100" src={Icons.VideoCamera} filled />}
               onClick={handleVideo}
             >
-              <Text size="B300">Video</Text>
+              <Text size="B300">{t('room.viewHeader.video')}</Text>
             </Button>
           </Box>
         </Box>
@@ -346,6 +349,7 @@ const CallMenu = forwardRef<HTMLDivElement, CallMenuProps>(
 );
 
 function CallButton() {
+  const { t } = useTranslation();
   const room = useRoom();
   const direct = useIsDirectRoom();
 
@@ -376,11 +380,9 @@ function CallButton() {
         tooltip={
           <Tooltip>
             {inAnotherCall ? (
-              <Text size="L400">
-                You&apos;re in another call — Starting one will end it for you.
-              </Text>
+              <Text size="L400">{t('room.viewHeader.youReInAnother')}</Text>
             ) : (
-              <Text>Call</Text>
+              <Text>{t('room.viewHeader.call')}</Text>
             )}
           </Tooltip>
         }
@@ -439,6 +441,7 @@ function CallButton() {
 }
 
 export function RoomViewHeader({ callView }: { callView?: boolean }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
@@ -634,7 +637,7 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
               offset={4}
               tooltip={
                 <Tooltip>
-                  <Text>Pinned Messages</Text>
+                  <Text>{t('room.viewHeader.pinnedMessages')}</Text>
                 </Tooltip>
               }
             >
@@ -700,9 +703,13 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
               tooltip={
                 <Tooltip>
                   {callView ? (
-                    <Text>Members</Text>
+                    <Text>{t('room.viewHeader.members')}</Text>
                   ) : (
-                    <Text>{peopleDrawer ? 'Hide Members' : 'Show Members'}</Text>
+                    <Text>
+                      {peopleDrawer
+                        ? t('room.viewHeader.hideMembers')
+                        : t('room.viewHeader.showMembers')}
+                    </Text>
                   )}
                 </Tooltip>
               }
@@ -730,7 +737,7 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
             offset={4}
             tooltip={
               <Tooltip>
-                <Text>More Options</Text>
+                <Text>{t('room.viewHeader.moreOptions')}</Text>
               </Tooltip>
             }
           >
@@ -743,7 +750,7 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
                 radii="300"
                 onClick={handleOpenMenu}
                 ref={triggerRef}
-                aria-label="More options"
+                aria-label={t('room.viewHeader.moreOptions2')}
                 aria-pressed={!!menuAnchor}
               >
                 <Icon size="200" src={Icons.VerticalDots} filled={!!menuAnchor} />
@@ -774,9 +781,7 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
               </FocusTrap>
             }
           />
-          {screenSize !== ScreenSize.Mobile && (
-            <HeaderSearchField />
-          )}
+          {screenSize !== ScreenSize.Mobile && <HeaderSearchField />}
         </Box>
       </Box>
     </PageHeader>

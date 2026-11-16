@@ -4,12 +4,14 @@ import { getActivePlugins } from '../../plugins/userPlugins';
 import { useUserPlugins } from '../../state/userPlugins';
 import { setPluginCollapsed, usePluginDock } from '../../state/pluginDock';
 import { PluginFrame } from './PluginFrame';
+import { useTranslation } from 'react-i18next';
 
 /**
  * Pinned plugins as small cards above the user panel in the left column (switch on "Show in
  * sidebar" per plugin in Settings > Plugins). Each card can be collapsed to its title.
  */
 export function PluginDock() {
+  const { t } = useTranslation();
   const plugins = useUserPlugins();
   const { pinned, collapsed, styles } = usePluginDock();
   const shown = getActivePlugins(plugins).filter((p) => pinned.includes(p.id));
@@ -37,7 +39,11 @@ export function PluginDock() {
                 radii="Pill"
                 variant="Surface"
                 fill="None"
-                aria-label={isCollapsed ? `Expand ${plugin.name}` : `Collapse ${plugin.name}`}
+                aria-label={
+                  isCollapsed
+                    ? t('plugins.dock.expandName', { name: plugin.name })
+                    : t('plugins.dock.collapseName', { name: plugin.name })
+                }
                 aria-expanded={!isCollapsed}
                 onClick={() => setPluginCollapsed(plugin.id, !isCollapsed)}
               >

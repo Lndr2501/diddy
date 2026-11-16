@@ -256,7 +256,9 @@ export class CallEmbed {
     this.disposables.push(this.listenEvent('ready', () => this.themeSync.ready()));
     this.heldToDevice = createToDeviceBuffer((m) => call.canReceiveToDeviceEvent(m.raw.type));
     // Capabilities approved: hand over the call keys that arrived while the page was starting.
-    this.disposables.push(this.listenEvent('capabilitiesNotified', () => this.releaseHeldToDevice()));
+    this.disposables.push(
+      this.listenEvent('capabilitiesNotified', () => this.releaseHeldToDevice())
+    );
 
     const controlState = initialControlState ?? new CallControlState(true, false, true);
     this.control = new CallControl(controlState, call, iframe);

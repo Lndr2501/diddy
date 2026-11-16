@@ -15,6 +15,7 @@ import { useHasCustomTitleBar } from '../titlebar/TitleBar';
 import { TITLE_BAR_HEIGHT } from '../titlebar/TitleBar.css';
 import { CrossGlyph, HangUpGlyph, PhoneGlyph, VideoGlyph } from './CallGlyphs';
 import * as css from './IncomingCall.css';
+import { useTranslation } from 'react-i18next';
 
 export type IncomingCallInfo = {
   room: Room;
@@ -41,7 +42,15 @@ type IncomingCallProps = {
  * the card opens around it. Answer and reject (in a group: ignore) sit on the right. Not modal: the rest of
  * the app stays usable while it rings.
  */
-export function IncomingCall({ dm, info, leaving, onIgnore, onAnswer, onReject }: IncomingCallProps) {
+export function IncomingCall({
+  dm,
+  info,
+  leaving,
+  onIgnore,
+  onAnswer,
+  onReject,
+}: IncomingCallProps) {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const livekitSupported = useLivekitSupport();
   const rtcSupported = webRTCSupported();
@@ -82,8 +91,8 @@ export function IncomingCall({ dm, info, leaving, onIgnore, onAnswer, onReject }
   }, [leaving]);
 
   let problem: string | undefined;
-  if (!livekitSupported) problem = 'Your homeserver does not support calling.';
-  else if (!rtcSupported) problem = 'This app cannot make calls here (no WebRTC).';
+  if (!livekitSupported) problem = t('call.incoming.yourHomeserverDoesNot');
+  else if (!rtcSupported) problem = t('call.incoming.thisAppCannotMake');
 
   return (
     <div
@@ -115,8 +124,8 @@ export function IncomingCall({ dm, info, leaving, onIgnore, onAnswer, onReject }
           <button
             type="button"
             className={css.Decline}
-            aria-label={dm ? 'Reject call' : 'Ignore call'}
-            title={dm ? 'Reject' : 'Ignore'}
+            aria-label={dm ? t('call.incoming.rejectCall') : t('call.incoming.ignoreCall')}
+            title={dm ? t('call.incoming.reject') : t('call.incoming.ignore')}
             disabled={leaving}
             onClick={() => (dm ? onReject(room, info.refEventId) : onIgnore())}
           >
@@ -125,8 +134,10 @@ export function IncomingCall({ dm, info, leaving, onIgnore, onAnswer, onReject }
           <button
             type="button"
             className={css.Accept}
-            aria-label={text.video ? 'Answer with video' : 'Answer call'}
-            title="Answer"
+            aria-label={
+              text.video ? t('call.incoming.answerWithVideo') : t('call.incoming.answerCall')
+            }
+            title={t('call.incoming.answer')}
             disabled={!canAnswer || leaving}
             onClick={() => onAnswer(room, text.video)}
           >

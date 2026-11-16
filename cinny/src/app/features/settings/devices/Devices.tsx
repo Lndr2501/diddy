@@ -23,10 +23,12 @@ import {
 } from '../../../hooks/useSecretStorage';
 import { useCrossSigningActive } from '../../../hooks/useCrossSigning';
 import { BackupRestoreTile } from '../../../components/BackupRestore';
+import { useTranslation } from 'react-i18next';
 
 function DevicesPlaceholder() {
+  const { t } = useTranslation();
   return (
-    <InsetSection title="Other Devices">
+    <InsetSection title={t('settings.devices.otherDevices')}>
       <DeviceTilePlaceholder count={2} />
     </InsetSection>
   );
@@ -36,6 +38,7 @@ type DevicesProps = {
   requestClose: () => void;
 };
 export function Devices({ requestClose }: DevicesProps) {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const crypto = mx.getCrypto();
   const crossSigningActive = useCrossSigningActive();
@@ -61,12 +64,12 @@ export function Devices({ requestClose }: DevicesProps) {
   );
 
   return (
-    <SettingsPage title="Devices" requestClose={requestClose}>
-      <InsetSection title="Security">
+    <SettingsPage title={t('settings.devices.devices')} requestClose={requestClose}>
+      <InsetSection title={t('settings.devices.security')}>
         <InsetGroup>
           <InsetRow
-            title="Device Verification"
-            description="To verify device identity and grant access to encrypted messages."
+            title={t('settings.devices.deviceVerification')}
+            description={t('settings.devices.toVerifyDeviceIdentity')}
             after={
               <>
                 <EnableVerification visible={!crossSigningActive} />
@@ -84,7 +87,7 @@ export function Devices({ requestClose }: DevicesProps) {
           />
         </InsetGroup>
       </InsetSection>
-      <InsetSection title="This Device">
+      <InsetSection title={t('settings.devices.thisDevice')}>
         {currentDevice ? (
           <InsetGroup>
             <InsetItem>

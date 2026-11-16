@@ -4,6 +4,8 @@ import { Button, Icon, IconSrc, Icons, Text } from 'folds';
 import * as css from './DiddyProfileSettings.css';
 import { RangeInput } from '../../../components/diddy/RangeInput';
 import { useMxcUrl } from '../../../plugins/diddy/media';
+import { useTranslation } from 'react-i18next';
+import { translate } from '../../../i18n';
 
 /*
  * The building blocks of Settings > Profile (#105). Every section is a SettingsCard, every
@@ -240,19 +242,26 @@ export function AngleField({
   value: number;
   onChange: (value: number) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <SliderField
       value={value}
       min={0}
       max={360}
-      label="Angle"
+      label={t('settings.profileSettingsUI.angle')}
       format={(v) => `${v}°`}
       onChange={onChange}
     />
   );
 }
 
-export function ClearButton({ onClick, label = 'Clear' }: { onClick: () => void; label?: string }) {
+export function ClearButton({
+  onClick,
+  label = translate('settings.profileSettingsUI.clear'),
+}: {
+  onClick: () => void;
+  label?: string;
+}) {
   return (
     <Button size="300" variant="Secondary" fill="None" radii="300" onClick={onClick}>
       <Text size="B300">{label}</Text>
@@ -295,6 +304,7 @@ export function UploadField({
   onFile,
   onRemove,
 }: UploadFieldProps) {
+  const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
   const url = useMxcUrl(mxc);
   const [over, setOver] = useState(false);
@@ -330,7 +340,7 @@ export function UploadField({
       <div className={css.DropText}>
         <Text size="T300">{title}</Text>
         <Text size="T200" priority="300">
-          {busy ? 'Uploading...' : hint}
+          {busy ? t('settings.profileSettingsUI.uploading') : hint}
         </Text>
       </div>
       <input
@@ -353,7 +363,9 @@ export function UploadField({
           disabled={busy}
           onClick={() => inputRef.current?.click()}
         >
-          <Text size="B300">{mxc ? 'Replace' : 'Upload'}</Text>
+          <Text size="B300">
+            {mxc ? t('settings.profileSettingsUI.replace') : t('settings.profileSettingsUI.upload')}
+          </Text>
         </Button>
         {mxc && (
           <Button
@@ -364,7 +376,7 @@ export function UploadField({
             disabled={busy}
             onClick={onRemove}
           >
-            <Text size="B300">Remove</Text>
+            <Text size="B300">{t('settings.profileSettingsUI.remove')}</Text>
           </Button>
         )}
       </div>

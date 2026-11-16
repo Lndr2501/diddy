@@ -22,6 +22,7 @@ import { useSetting } from '../../state/hooks/settings';
 import { useRoomPermissions } from '../../hooks/useRoomPermissions';
 import { useRoomCreators } from '../../hooks/useRoomCreators';
 import { useRoom } from '../../hooks/useRoom';
+import { useTranslation } from 'react-i18next';
 
 const FN_KEYS_REGEX = /^F\d+$/;
 const shouldFocusMessageField = (evt: KeyboardEvent): boolean => {
@@ -55,6 +56,7 @@ const shouldFocusMessageField = (evt: KeyboardEvent): boolean => {
 };
 
 export function RoomView({ eventId }: { eventId?: string }) {
+  const { t } = useTranslation();
   const roomInputRef = useRef<HTMLDivElement>(null);
   const roomViewRef = useRef<HTMLDivElement>(null);
 
@@ -135,7 +137,7 @@ export function RoomView({ eventId }: { eventId?: string }) {
                   alignItems="Center"
                   justifyContent="Center"
                 >
-                  <Text align="Center">You do not have permission to post in this room</Text>
+                  <Text align="Center">{t('room.view.youDoNotHave')}</Text>
                 </RoomInputPlaceholder>
               )}
             </>

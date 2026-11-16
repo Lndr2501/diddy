@@ -195,15 +195,20 @@ class ScreenShareAudio {
   private async connect(session: Session): Promise<MediaStreamTrack> {
     const { ctx } = session;
     const ensureCurrent = () => {
-      if (this.session !== session) throw new DOMException('Screen-share audio canceled', 'AbortError');
+      if (this.session !== session)
+        throw new DOMException('Screen-share audio canceled', 'AbortError');
     };
     ensureCurrent();
     let interrupt!: (error: Error) => void;
-    const interrupted = new Promise<never>((_, reject) => { interrupt = reject; });
+    const interrupted = new Promise<never>((_, reject) => {
+      interrupt = reject;
+    });
     // Also observe cancellation if a synchronous setup error occurs before the first race.
     interrupted.catch(() => {});
-    const waitFor = <T>(operation: Promise<T>): Promise<T> => Promise.race([operation, interrupted]);
-    session.cancelConnect = () => interrupt(new DOMException('Screen-share audio canceled', 'AbortError'));
+    const waitFor = <T>(operation: Promise<T>): Promise<T> =>
+      Promise.race([operation, interrupted]);
+    session.cancelConnect = () =>
+      interrupt(new DOMException('Screen-share audio canceled', 'AbortError'));
     // Bound the entire audio setup, including worklet loading, not just the socket handshake.
     const timer = window.setTimeout(
       () => interrupt(new Error('timed out preparing system audio')),
@@ -276,20 +281,22 @@ class ScreenShareAudio {
       ws.binaryType = 'arraybuffer';
       session.ws = ws;
 
-      await waitFor(new Promise<void>((resolve, reject) => {
-        ws.onerror = () => reject(new Error('could not connect to system audio bridge'));
-        ws.onclose = () => reject(new Error('system audio bridge closed'));
-        ws.onmessage = (evt) => {
-          if (typeof evt.data !== 'string') return;
-          try {
-            const msg = JSON.parse(evt.data) as { type: string; message?: string };
-            if (msg.type === 'format') resolve();
-            else reject(new Error(msg.message ?? 'system audio failed'));
-          } catch {
-            reject(new Error('invalid system audio bridge response'));
-          }
-        };
-      }));
+      await waitFor(
+        new Promise<void>((resolve, reject) => {
+          ws.onerror = () => reject(new Error('could not connect to system audio bridge'));
+          ws.onclose = () => reject(new Error('system audio bridge closed'));
+          ws.onmessage = (evt) => {
+            if (typeof evt.data !== 'string') return;
+            try {
+              const msg = JSON.parse(evt.data) as { type: string; message?: string };
+              if (msg.type === 'format') resolve();
+              else reject(new Error(msg.message ?? 'system audio failed'));
+            } catch {
+              reject(new Error('invalid system audio bridge response'));
+            }
+          };
+        })
+      );
       ensureCurrent();
 
       ws.onerror = null;
@@ -368,9 +375,13 @@ const preferRequestedResolution = (
   for (const dimension of ['width', 'height'] as const) {
     const range = video[dimension];
     if (
-      typeof range === 'object' && range !== null &&
-      range.ideal === undefined && range.exact === undefined &&
-      typeof range.max === 'number' && Number.isFinite(range.max) && range.max > 0
+      typeof range === 'object' &&
+      range !== null &&
+      range.ideal === undefined &&
+      range.exact === undefined &&
+      typeof range.max === 'number' &&
+      Number.isFinite(range.max) &&
+      range.max > 0
     ) {
       video[dimension] = { ...range, ideal: range.max };
     }
@@ -449,7 +460,11 @@ export const installScreenShareAudio = (win: Window | null | undefined) => {
       };
       const nativeStop = video.stop.bind(video);
       video.stop = () => {
-        try { nativeStop(); } finally { cleanup?.(); }
+        try {
+          nativeStop();
+        } finally {
+          cleanup?.();
+        }
       };
       video.addEventListener('ended', cleanup, { once: true });
       const videoOptions = requested?.video;
@@ -465,14 +480,23 @@ export const installScreenShareAudio = (win: Window | null | undefined) => {
             video.applyConstraints({
               ...(videoOptions.width !== undefined ? { width: videoOptions.width } : {}),
               ...(videoOptions.height !== undefined ? { height: videoOptions.height } : {}),
-              ...(videoOptions.frameRate !== undefined ? { frameRate: videoOptions.frameRate } : {}),
+              ...(videoOptions.frameRate !== undefined
+                ? { frameRate: videoOptions.frameRate }
+                : {}),
             }),
             new Promise<never>((_, reject) => {
-              timer = window.setTimeout(() => reject(new Error('capture quality adjustment timed out')), 2000);
+              timer = window.setTimeout(
+                () => reject(new Error('capture quality adjustment timed out')),
+                2000
+              );
             }),
           ]);
         } catch (e) {
-          diag(`getDisplayMedia #${request} quality adjustment failed: ${e instanceof Error ? e.name : 'unknown'}`);
+          diag(
+            `getDisplayMedia #${request} quality adjustment failed: ${
+              e instanceof Error ? e.name : 'unknown'
+            }`
+          );
         } finally {
           window.clearTimeout(timer);
         }

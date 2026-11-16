@@ -3,6 +3,7 @@ import { Dialog, Text, Box, Button, config } from 'folds';
 import { AuthType } from 'matrix-js-sdk';
 import { StageComponentProps } from './types';
 import * as sheetCss from '../sheet/Sheet.css';
+import { useTranslation } from 'react-i18next';
 
 function DummyErrorDialog({
   title,
@@ -15,6 +16,7 @@ function DummyErrorDialog({
   onRetry: () => void;
   onCancel: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <Dialog className={sheetCss.Sheet}>
       <Box style={{ padding: config.space.S400 }} direction="Column" gap="400">
@@ -26,7 +28,7 @@ function DummyErrorDialog({
         </Box>
         <Button className={sheetCss.Pill} variant="Critical" onClick={onRetry}>
           <Text as="span" size="B400">
-            Retry
+            {t('auth.dummy.retry')}
           </Text>
         </Button>
         <Button
@@ -37,7 +39,7 @@ function DummyErrorDialog({
           onClick={onCancel}
         >
           <Text as="span" size="B400">
-            Cancel
+            {t('auth.dummy.cancel')}
           </Text>
         </Button>
       </Box>
@@ -46,6 +48,7 @@ function DummyErrorDialog({
 }
 
 export function AutoDummyStageDialog({ stageData, submitAuthDict, onCancel }: StageComponentProps) {
+  const { t } = useTranslation();
   const { errorCode, error, session } = stageData;
 
   const handleSubmit = useCallback(() => {
@@ -63,7 +66,7 @@ export function AutoDummyStageDialog({ stageData, submitAuthDict, onCancel }: St
     return (
       <DummyErrorDialog
         title={errorCode}
-        message={error ?? 'Failed to register.'}
+        message={error ?? t('auth.dummy.failedToRegister')}
         onRetry={handleSubmit}
         onCancel={onCancel}
       />

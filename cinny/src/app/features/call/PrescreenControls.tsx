@@ -6,11 +6,13 @@ import { useIsDirectRoom, useRoom } from '../../hooks/useRoom';
 import { useCallEmbed, useCallJoined, useCallStart } from '../../hooks/useCallEmbed';
 import { useCallPreferences } from '../../state/hooks/callPreferences';
 import { useSwitchCall } from '../../components/call-switch/useSwitchCall';
+import { useTranslation } from 'react-i18next';
 
 type PrescreenControlsProps = {
   canJoin?: boolean;
 };
 export function PrescreenControls({ canJoin }: PrescreenControlsProps) {
+  const { t } = useTranslation();
   const room = useRoom();
   const callEmbed = useCallEmbed();
   const callJoined = useCallJoined(callEmbed);
@@ -69,7 +71,7 @@ export function PrescreenControls({ canJoin }: PrescreenControlsProps) {
             )
           }
         >
-          <Text size="B400">Join</Text>
+          <Text size="B400">{t('call.prescreenControls.join')}</Text>
         </Button>
       </Box>
       {prompt}

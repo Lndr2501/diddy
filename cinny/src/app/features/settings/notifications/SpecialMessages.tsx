@@ -15,6 +15,7 @@ import {
   useNotificationModeActions,
 } from '../../../hooks/useNotificationMode';
 import { NotificationModeSwitcher } from './NotificationModeSwitcher';
+import { useTranslation } from 'react-i18next';
 
 const NOTIFY_MODE_OPS: NotificationModeOptions = {
   highlight: true,
@@ -110,6 +111,7 @@ function MentionModeSwitcher({ ruleId, pushRules, defaultPushRuleData }: PushRul
 }
 
 export function SpecialMessagesNotifications() {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const userId = mx.getUserId()!;
   const { displayName } = useUserProfile(userId);
@@ -121,11 +123,11 @@ export function SpecialMessagesNotifications() {
 
   return (
     <InsetSection
-      title="Mentions"
+      title={t('settings.specialMessages.mentions')}
       after={
         <Box gap="100" alignItems="Center">
           <Text size="T200" priority="300">
-            Badge
+            {t('settings.specialMessages.badge')}
           </Text>
           <Badge radii="300" variant="Primary" fill="Solid">
             <Text size="L400">1</Text>
@@ -135,7 +137,7 @@ export function SpecialMessagesNotifications() {
     >
       <InsetGroup>
         <InsetRow
-          title="Mention User ID"
+          title={t('settings.specialMessages.mentionUserId')}
           description={userId}
           after={
             <MentionModeSwitcher
@@ -146,7 +148,7 @@ export function SpecialMessagesNotifications() {
           }
         />
         <InsetRow
-          title="Contains Display Name"
+          title={t('settings.specialMessages.containsDisplayName')}
           description={displayName ? `"${displayName}"` : undefined}
           after={
             <MentionModeSwitcher
@@ -157,7 +159,7 @@ export function SpecialMessagesNotifications() {
           }
         />
         <InsetRow
-          title="Contains Username"
+          title={t('settings.specialMessages.containsUsername')}
           description={`"${getMxIdLocalPart(userId)}"`}
           after={
             <MentionModeSwitcher
@@ -168,7 +170,7 @@ export function SpecialMessagesNotifications() {
           }
         />
         <InsetRow
-          title="Mention @room"
+          title={t('settings.specialMessages.mentionRoom')}
           after={
             <MentionModeSwitcher
               pushRules={pushRules}
@@ -178,7 +180,7 @@ export function SpecialMessagesNotifications() {
           }
         />
         <InsetRow
-          title="Contains @room"
+          title={t('settings.specialMessages.containsRoom')}
           after={
             <MentionModeSwitcher
               pushRules={pushRules}

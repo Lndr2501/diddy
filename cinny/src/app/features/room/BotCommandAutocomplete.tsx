@@ -7,6 +7,7 @@ import { useBotCommandLists } from '../../hooks/useBotCommandLists';
 import { useKeyDown } from '../../hooks/useKeyDown';
 import { onTabPress } from '../../utils/keyboard';
 import { BotCommand, matchBotCommands } from '../../plugins/botCommands';
+import { useTranslation } from 'react-i18next';
 
 type BotCommandAutocompleteProps = {
   room: Room;
@@ -22,6 +23,7 @@ export function BotCommandAutocomplete({
   query,
   requestClose,
 }: BotCommandAutocompleteProps) {
+  const { t } = useTranslation();
   const lists = useBotCommandLists(room);
   const typed = `${query.prefix}${query.text}`;
   const matches = useMemo(() => matchBotCommands(lists, typed), [lists, typed]);
@@ -43,7 +45,7 @@ export function BotCommandAutocomplete({
     <AutocompleteMenu
       headerContent={
         <Box grow="Yes" direction="Row" gap="200" justifyContent="SpaceBetween">
-          <Text size="L400">Bot commands</Text>
+          <Text size="L400">{t('room.botCommandAutocomplete.botCommands')}</Text>
         </Box>
       }
       requestClose={requestClose}

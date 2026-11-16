@@ -12,6 +12,7 @@ import { getMouseEventCords } from '../../utils/dom';
 import * as css from './styles.css';
 import { useAgentTalking } from '../../state/agentVoice';
 import { openCallUserMenu } from '../../plugins/callFrameMenu';
+import { useTranslation } from 'react-i18next';
 
 type CallMemberCardProps = {
   member: CallMembership;
@@ -42,6 +43,7 @@ export function CallRosterChipView({
   onClick,
   onContextMenu,
 }: CallRosterChipViewProps) {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
   const avatarUrl = avatarMxc
@@ -55,7 +57,11 @@ export function CallRosterChipView({
       alignItems="Center"
       gap="200"
       data-agent={agent || undefined}
-      title={agent ? `${name} redet mit Agent` : `Profil von ${name}`}
+      title={
+        agent
+          ? t('call.memberCard.nameTalksToAgent', { name })
+          : t('call.memberCard.profileOf', { name })
+      }
       onClick={onClick}
       onContextMenu={onContextMenu}
     >
@@ -77,7 +83,7 @@ export function CallRosterChipView({
       </Text>
       {agent && (
         <Text as="span" size="T200" className={css.CallRosterAgent} role="status">
-          redet mit Agent
+          {t('call.memberCard.talksToAgent')}
         </Text>
       )}
     </Box>
@@ -112,12 +118,13 @@ function CallRosterChip({ userId }: { userId: string }) {
  * to an agent (dictation, #57) is marked.
  */
 export function CallRoster({ members }: { members: CallMembership[] }) {
+  const { t } = useTranslation();
   if (members.length === 0) return null;
 
   return (
     <Box className={css.CallRoster} alignItems="Center" gap="200" wrap="Wrap">
       <Text as="span" size="T200" className={css.CallRosterLabel}>
-        Im Gespräch
+        {t('call.memberCard.inCall')}
       </Text>
       {members.map((member) =>
         member.userId ? <CallRosterChip key={member.memberId} userId={member.userId} /> : null
@@ -189,6 +196,7 @@ export function CallMemberRenderer({
   members: CallMembership[];
   max?: number;
 }) {
+  const { t } = useTranslation();
   const [viewMore, setViewMore] = useState(false);
 
   const truncatedMembers = viewMore ? members : members.slice(0, 4);
@@ -211,11 +219,13 @@ export function CallMemberRenderer({
           <Box grow="Yes" gap="300" alignItems="Center">
             {viewMore ? (
               <Text size="T300" priority="300" truncate>
-                Collapse
+                {t('call.memberCard.collapse')}
               </Text>
             ) : (
               <Text size="T300" priority="300" truncate>
-                {remaining === 0 ? `+${remaining} Other` : `+${remaining} Others`}
+                {remaining === 0
+                  ? t('call.memberCard.remainingOther', { remaining })
+                  : t('call.memberCard.remainingOthers', { remaining })}
               </Text>
             )}
           </Box>

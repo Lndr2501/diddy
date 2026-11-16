@@ -11,6 +11,7 @@ import {
   useCustomTheme,
 } from '../../../state/customTheme';
 import { RangeInput } from '../../../components/diddy/RangeInput';
+import { useTranslation } from 'react-i18next';
 
 type ColorWellProps = {
   label: string;
@@ -71,6 +72,7 @@ function Slider({ label, value, min, max, step, format, onChange }: SliderProps)
 }
 
 export function CustomThemeSettings() {
+  const { t } = useTranslation();
   const config = useCustomTheme();
   const set = (patch: Partial<CustomThemeConfig>) => updateCustomTheme(patch);
   // the colour fields only matter while the "Custom" theme is in use
@@ -79,37 +81,43 @@ export function CustomThemeSettings() {
 
   return (
     <InsetSection
-      title="Custom Theme"
-      footer="Colors of the Custom theme."
+      title={t('settings.customTheme.customTheme')}
+      footer={t('settings.customTheme.colorsOfTheCustom')}
     >
       <InsetGroup>
         <InsetRow
-          title="Accent"
+          title={t('settings.customTheme.accent')}
           after={
             <ColorWell
-              label="Accent"
+              label={t('settings.customTheme.accent')}
               value={config.accent}
               onChange={(accent) => set({ accent })}
             />
           }
         />
         <InsetRow
-          title="Background"
+          title={t('settings.customTheme.background')}
           after={
             <ColorWell
-              label="Background"
+              label={t('settings.customTheme.background')}
               value={config.background}
               onChange={(background) => set({ background })}
             />
           }
         />
         <InsetRow
-          title="Text"
-          after={<ColorWell label="Text" value={config.text} onChange={(text) => set({ text })} />}
+          title={t('settings.customTheme.text')}
+          after={
+            <ColorWell
+              label={t('settings.customTheme.text')}
+              value={config.text}
+              onChange={(text) => set({ text })}
+            />
+          }
         />
         <InsetRow
-          title="Reset Colors"
-          description="Go back to the default custom colors."
+          title={t('settings.customTheme.resetColors')}
+          description={t('settings.customTheme.goBackToThe')}
           after={
             <Button
               size="300"
@@ -124,7 +132,7 @@ export function CustomThemeSettings() {
                 })
               }
             >
-              <Text size="B300">Reset</Text>
+              <Text size="B300">{t('settings.customTheme.reset')}</Text>
             </Button>
           }
         />
@@ -135,6 +143,7 @@ export function CustomThemeSettings() {
 
 /** Gradient, image, GIF or video behind the whole app. Works with every theme. */
 export function BackgroundSettings() {
+  const { t } = useTranslation();
   const config = useCustomTheme();
   const fileRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string>();
@@ -151,15 +160,18 @@ export function BackgroundSettings() {
     try {
       await setBackgroundMedia(file);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not use this file.');
+      setError(e instanceof Error ? e.message : t('settings.customTheme.couldNotUseThis'));
     }
   };
 
   return (
-    <InsetSection title="Background" footer="Shown behind the app with any theme.">
+    <InsetSection
+      title={t('settings.customTheme.background')}
+      footer={t('settings.customTheme.shownBehindTheApp')}
+    >
       <InsetGroup>
         <InsetRow
-          title="Gradient Background"
+          title={t('settings.customTheme.gradientBackground')}
           after={
             <Switch
               variant="Primary"
@@ -171,30 +183,30 @@ export function BackgroundSettings() {
         {config.gradient && (
           <>
             <InsetRow
-              title="Gradient Start"
+              title={t('settings.customTheme.gradientStart')}
               after={
                 <ColorWell
-                  label="Gradient start"
+                  label={t('settings.customTheme.gradientStart2')}
                   value={config.gradientFrom}
                   onChange={(gradientFrom) => set({ gradientFrom })}
                 />
               }
             />
             <InsetRow
-              title="Gradient End"
+              title={t('settings.customTheme.gradientEnd')}
               after={
                 <ColorWell
-                  label="Gradient end"
+                  label={t('settings.customTheme.gradientEnd2')}
                   value={config.gradientTo}
                   onChange={(gradientTo) => set({ gradientTo })}
                 />
               }
             />
             <InsetRow
-              title="Angle"
+              title={t('settings.customTheme.angle')}
               after={
                 <Slider
-                  label="Angle"
+                  label={t('settings.customTheme.angle')}
                   value={config.gradientAngle}
                   min={0}
                   max={360}
@@ -207,8 +219,8 @@ export function BackgroundSettings() {
           </>
         )}
         <InsetRow
-          title="Image, GIF or Video"
-          description={config.mediaName ?? 'No file chosen.'}
+          title={t('settings.customTheme.imageGifOrVideo')}
+          description={config.mediaName ?? t('settings.customTheme.noFileChosen')}
           after={
             <>
               {config.mediaKind && (
@@ -219,7 +231,7 @@ export function BackgroundSettings() {
                   radii="300"
                   onClick={() => removeBackgroundMedia()}
                 >
-                  <Text size="B300">Remove</Text>
+                  <Text size="B300">{t('settings.customTheme.remove')}</Text>
                 </Button>
               )}
               <Button
@@ -229,7 +241,7 @@ export function BackgroundSettings() {
                 radii="300"
                 onClick={() => fileRef.current?.click()}
               >
-                <Text size="B300">Choose File…</Text>
+                <Text size="B300">{t('settings.customTheme.chooseFile')}</Text>
               </Button>
             </>
           }
@@ -249,7 +261,7 @@ export function BackgroundSettings() {
         </InsetRow>
         {config.mediaKind === 'video' && (
           <InsetRow
-            title="Video Sound"
+            title={t('settings.customTheme.videoSound')}
             after={
               <Switch
                 variant="Primary"
@@ -261,10 +273,10 @@ export function BackgroundSettings() {
         )}
         {config.mediaKind === 'video' && config.mediaSound && (
           <InsetRow
-            title="Volume"
+            title={t('settings.customTheme.volume')}
             after={
               <Slider
-                label="Volume"
+                label={t('settings.customTheme.volume')}
                 value={config.mediaVolume}
                 min={0}
                 max={1}
@@ -277,11 +289,11 @@ export function BackgroundSettings() {
         )}
         {(config.gradient || config.mediaKind) && (
           <InsetRow
-            title="Panel Opacity"
-            description="How much of the background shows through the panels."
+            title={t('settings.customTheme.panelOpacity')}
+            description={t('settings.customTheme.howMuchOfThe')}
             after={
               <Slider
-                label="Panel opacity"
+                label={t('settings.customTheme.panelOpacity2')}
                 value={config.surfaceOpacity}
                 min={0.3}
                 max={1}

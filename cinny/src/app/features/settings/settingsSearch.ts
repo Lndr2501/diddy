@@ -81,8 +81,11 @@ export const SETTINGS_SEARCH_INDEX: Record<string, SettingsSearchEntry> = {
   },
   appearance: {
     name: 'Appearance',
-    keywords: 'theme dark light colour color font app icon wallpaper animation animated gif',
+    keywords:
+      'theme dark light colour color font app icon wallpaper animation animated gif language sprache langue idioma translate translation',
     titles: [
+      'Language',
+      'Translate Diddy',
       'Theme',
       'Match System Appearance',
       'Light Appearance',
@@ -223,7 +226,14 @@ export const SETTINGS_SEARCH_INDEX: Record<string, SettingsSearchEntry> = {
   developerTools: {
     name: 'Developer Tools',
     keywords: 'debug account data developer',
-    titles: ['Developer Tools', 'Enable Developer Tools', 'Access Token', 'Account Data', 'Global', 'Options'],
+    titles: [
+      'Developer Tools',
+      'Enable Developer Tools',
+      'Access Token',
+      'Account Data',
+      'Global',
+      'Options',
+    ],
   },
   about: {
     name: 'About',
@@ -268,6 +278,25 @@ export const entryMatches = (entry: SettingsSearchEntry, query: string): boolean
   if (words(query).length === 0) return true;
   if (textMatches(`${entry.name} ${entry.keywords}`, query)) return true;
   return entry.titles.some((title) => textMatches(title, query));
+};
+
+/**
+ * The entry in the UI language (docs/translating.md): name and titles translated by `translate`,
+ * the English words kept as keywords, so English and the UI language both find a setting.
+ * `keywords` are extra words in the UI language.
+ */
+export const localizeEntry = (
+  entry: SettingsSearchEntry,
+  translate: (english: string) => string,
+  keywords = ''
+): SettingsSearchEntry => {
+  const name = translate(entry.name);
+  if (name === entry.name && !keywords) return entry;
+  return {
+    name,
+    keywords: [entry.keywords, keywords, entry.name, ...entry.titles].filter(Boolean).join(' '),
+    titles: entry.titles.map(translate),
+  };
 };
 
 /** The settings on a page that match the query, for the hint under the page row. */

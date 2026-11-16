@@ -18,8 +18,10 @@ import * as css from './style.css';
 import { useRoomNavigate } from '../../../hooks/useRoomNavigate';
 import { ScreenSize, useScreenSizeContext } from '../../../hooks/useScreenSize';
 import { BackRouteHandler } from '../../../components/BackRouteHandler';
+import { useTranslation } from 'react-i18next';
 
 export function FeaturedRooms() {
+  const { t } = useTranslation();
   const { featuredCommunities } = useClientConfig();
   const { rooms, spaces } = featuredCommunities ?? {};
   const allRooms = useAtomValue(allRoomsAtom);
@@ -49,14 +51,14 @@ export function FeaturedRooms() {
                 <PageHeroSection>
                   <PageHero
                     icon={<Icon size="600" src={Icons.Bulb} />}
-                    title="Featured by Client"
-                    subTitle="Find and explore public rooms and spaces featured by client provider."
+                    title={t('nav.featured.featuredByClient')}
+                    subTitle={t('nav.featured.findAndExplorePublic')}
                   />
                 </PageHeroSection>
                 <Box direction="Column" gap="700">
                   {spaces && spaces.length > 0 && (
                     <Box direction="Column" gap="400">
-                      <Text size="H4">Featured Spaces</Text>
+                      <Text size="H4">{t('nav.featured.featuredSpaces')}</Text>
                       <RoomCardGrid>
                         {spaces.map((roomIdOrAlias) => (
                           <RoomSummaryLoader key={roomIdOrAlias} roomIdOrAlias={roomIdOrAlias}>
@@ -85,7 +87,7 @@ export function FeaturedRooms() {
                   )}
                   {rooms && rooms.length > 0 && (
                     <Box direction="Column" gap="400">
-                      <Text size="H4">Featured Rooms</Text>
+                      <Text size="H4">{t('nav.featured.featuredRooms')}</Text>
                       <RoomCardGrid>
                         {rooms.map((roomIdOrAlias) => (
                           <RoomSummaryLoader key={roomIdOrAlias} roomIdOrAlias={roomIdOrAlias}>
@@ -123,7 +125,7 @@ export function FeaturedRooms() {
                     >
                       <Icon size="400" src={Icons.Info} />
                       <Text size="T300" align="Center">
-                        No rooms or spaces featured by client provider.
+                        {t('nav.featured.noRoomsOrSpaces')}
                       </Text>
                     </Box>
                   )}

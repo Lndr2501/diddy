@@ -5,6 +5,7 @@ import { stopPropagation } from '../utils/keyboard';
 import { ScreenSize, useScreenSizeContext } from '../hooks/useScreenSize';
 import { useHasCustomTitleBar } from './titlebar/TitleBar';
 import * as css from './SettingsSheet.css';
+import { translate } from '../i18n';
 
 type SettingsSheetProps = {
   requestClose: () => void;
@@ -18,7 +19,11 @@ type SettingsSheetProps = {
  * On macOS the overlay title bar (traffic lights) stays free and draggable; on phones the sheet
  * takes the whole window. Esc or a click on the backdrop closes it.
  */
-export function SettingsSheet({ requestClose, children, label = 'Settings' }: SettingsSheetProps) {
+export function SettingsSheet({
+  requestClose,
+  children,
+  label = translate('common.settingsSheet.settings'),
+}: SettingsSheetProps) {
   const sheetRef = useRef<HTMLDivElement>(null);
   const titleBar = useHasCustomTitleBar();
   const compact = useScreenSizeContext() === ScreenSize.Mobile;

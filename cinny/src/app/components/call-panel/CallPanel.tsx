@@ -39,6 +39,7 @@ import { ScreenSize, useScreenSizeContext } from '../../hooks/useScreenSize';
 import { AsyncStatus, useAsyncCallback, ignoreRejection } from '../../hooks/useAsyncCallback';
 import { SoundboardMenu } from '../../features/call/Soundboard';
 import { MyInstantsImport } from '../../features/call/MyInstantsImport';
+import { useTranslation } from 'react-i18next';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { E2eeKeys, watchE2eeKeys } from '../../plugins/call/e2eeWatch';
 import { callEncryption, callEncryptionLabel } from '../../plugins/call/callEncryption';
@@ -52,8 +53,12 @@ const barsFor = (ms: number): number => {
 
 /** Signal bars and the real round-trip time to the call server; dimmed until a value exists. */
 function SignalBars({ latency }: { latency?: number }) {
+  const { t } = useTranslation();
   const lit = latency === undefined ? 0 : barsFor(latency);
-  const label = latency === undefined ? 'Measuring ping' : `Ping ${latency} ms`;
+  const label =
+    latency === undefined
+      ? t('call.panel.measuringPing')
+      : t('call.panel.pingLatencyMs', { latency });
   const color = lit === 1 ? 'var(--diddy-warning, #e0a030)' : undefined;
   return (
     <span
@@ -94,7 +99,7 @@ function SignalBars({ latency }: { latency?: number }) {
       </svg>
       {latency !== undefined && (
         <span style={{ fontSize: toRem(11), lineHeight: toRem(20), marginLeft: toRem(4) }}>
-          {latency} ms
+          {t('call.panel.latencyMs', { latency })}
         </span>
       )}
     </span>
@@ -202,6 +207,7 @@ type ActiveCallPanelProps = {
   callEmbed: CallEmbed;
 };
 function ActiveCallPanel({ callEmbed }: ActiveCallPanelProps) {
+  const { t } = useTranslation();
   const { room } = callEmbed;
   const latency = useCallLatency(callEmbed);
   const roomName = useRoomName(room);
@@ -281,8 +287,10 @@ function ActiveCallPanel({ callEmbed }: ActiveCallPanelProps) {
     callEmbed.control.toggleScreenshare();
   };
 
-  const screenshareLabel = screenshare ? 'Stop screen share' : 'Share screen';
-  const videoLabel = video ? 'Stop camera' : 'Start camera';
+  const screenshareLabel = screenshare
+    ? t('call.panel.stopScreenShare')
+    : t('call.panel.shareScreen');
+  const videoLabel = video ? t('call.panel.stopCamera') : t('call.panel.startCamera');
   const peopleLabel = `${participantCount} ${
     participantCount === 1 ? 'participant' : 'participants'
   }`;
@@ -308,7 +316,9 @@ function ActiveCallPanel({ callEmbed }: ActiveCallPanelProps) {
               onClick={() => streamAudio.toggle()}
             >
               <Text size="B300" truncate>
-                {streamAudio.enabled ? 'Mute stream sound' : 'Share stream sound'}
+                {streamAudio.enabled
+                  ? t('call.panel.muteStreamSound')
+                  : t('call.panel.shareStreamSound')}
               </Text>
             </MenuItem>
           )}
@@ -325,7 +335,7 @@ function ActiveCallPanel({ callEmbed }: ActiveCallPanelProps) {
               }}
             >
               <Text size="B300" truncate>
-                Go to call room
+                {t('call.panel.goToCallRoom')}
               </Text>
             </MenuItem>
           )}
@@ -335,7 +345,7 @@ function ActiveCallPanel({ callEmbed }: ActiveCallPanelProps) {
   );
 
   return (
-    <section className={css.CallPanel} aria-label="Sprachchat">
+    <section className={css.CallPanel} aria-label={t('call.panel.voiceChat')}>
       {importing && <MyInstantsImport onClose={() => setImporting(false)} />}
       <div className={css.CallPanelHeader}>
         <SignalBars latency={latency} />
@@ -343,14 +353,14 @@ function ActiveCallPanel({ callEmbed }: ActiveCallPanelProps) {
           type="button"
           className={css.CallPanelTitleButton}
           onClick={openCallRoom}
-          aria-label={`Im Sprachchat: ${roomName}. Call-Raum öffnen`}
-          title={`${roomName} öffnen`}
+          aria-label={t('call.panel.inVoiceChatOpen', { roomName })}
+          title={t('call.panel.openRoom', { roomName })}
         >
           <Text size="T300" priority="500" truncate>
-            <b>Im Sprachchat</b>
+            <b>{t('call.panel.inVoiceChat')}</b>
           </Text>
           <Text size="T200" priority="300" truncate>
-            Verbunden mit {roomName}
+            {t('call.panel.connectedTo', { roomName })}
           </Text>
         </button>
         <CallEncryptionBadge callEmbed={callEmbed} members={callMembers} />
@@ -366,7 +376,7 @@ function ActiveCallPanel({ callEmbed }: ActiveCallPanelProps) {
           </Text>
         </span>
       </div>
-      <div className={css.CallPanelButtons} role="group" aria-label="Call controls">
+      <div className={css.CallPanelButtons} role="group" aria-label={t('call.panel.callControls')}>
         <WithTooltip label={screenshareLabel}>
           {(anchorRef) => (
             <IconButton
@@ -424,7 +434,7 @@ function ActiveCallPanel({ callEmbed }: ActiveCallPanelProps) {
             </div>
           }
         >
-          <WithTooltip label="Soundboard">
+          <WithTooltip label={t('call.panel.soundboard')}>
             {(anchorRef) => (
               <IconButton
                 ref={bindRefs(soundboardButtonRef, anchorRef)}
@@ -434,7 +444,7 @@ function ActiveCallPanel({ callEmbed }: ActiveCallPanelProps) {
                 fill="Soft"
                 size="300"
                 radii="400"
-                aria-label="Soundboard"
+                aria-label={t('call.panel.soundboard')}
                 aria-haspopup="menu"
                 aria-expanded={soundboardCords !== undefined}
                 onClick={handleSoundboard}
@@ -446,7 +456,7 @@ function ActiveCallPanel({ callEmbed }: ActiveCallPanelProps) {
         </PopOut>
         {hasMore && (
           <PopOut anchor={moreCords} position="Top" align="Center" content={moreMenu}>
-            <WithTooltip label="More call options">
+            <WithTooltip label={t('call.panel.moreCallOptions')}>
               {(anchorRef) => (
                 <IconButton
                   ref={bindRefs(moreButtonRef, anchorRef)}
@@ -456,7 +466,7 @@ function ActiveCallPanel({ callEmbed }: ActiveCallPanelProps) {
                   fill="Soft"
                   size="300"
                   radii="400"
-                  aria-label="More call options"
+                  aria-label={t('call.panel.moreCallOptions')}
                   aria-haspopup="menu"
                   aria-expanded={moreCords !== undefined}
                   onClick={handleMore}
@@ -467,7 +477,7 @@ function ActiveCallPanel({ callEmbed }: ActiveCallPanelProps) {
             </WithTooltip>
           </PopOut>
         )}
-        <WithTooltip label="Leave call">
+        <WithTooltip label={t('call.panel.leaveCall')}>
           {(anchorRef) => (
             <IconButton
               ref={anchorRef}
@@ -476,7 +486,7 @@ function ActiveCallPanel({ callEmbed }: ActiveCallPanelProps) {
               fill="Soft"
               size="300"
               radii="400"
-              aria-label="Leave call"
+              aria-label={t('call.panel.leaveCall')}
               disabled={exiting}
               onClick={ignoreRejection(hangup)}
             >

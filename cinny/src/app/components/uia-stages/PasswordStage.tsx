@@ -5,6 +5,7 @@ import { StageComponentProps } from './types';
 import { ErrorCode } from '../../cs-errorcode';
 import { PasswordInput } from '../password-input';
 import * as sheetCss from '../sheet/Sheet.css';
+import { useTranslation } from 'react-i18next';
 
 export function PasswordStage({
   stageData,
@@ -14,6 +15,7 @@ export function PasswordStage({
 }: StageComponentProps & {
   userId: string;
 }) {
+  const { t } = useTranslation();
   const { errorCode, error, session } = stageData;
 
   const handleFormSubmit: FormEventHandler<HTMLFormElement> = (evt) => {
@@ -46,7 +48,7 @@ export function PasswordStage({
       >
         <Box grow="Yes">
           <Text className={sheetCss.SheetTitle} size="H4">
-            Account Password
+            {t('auth.password.accountPassword')}
           </Text>
         </Box>
         <IconButton size="300" onClick={onCancel} radii="300">
@@ -61,12 +63,9 @@ export function PasswordStage({
         gap="400"
       >
         <Box direction="Column" gap="400">
-          <Text size="T200">
-            To perform this action you need to authenticate yourself by entering you account
-            password.
-          </Text>
+          <Text size="T200">{t('auth.password.toPerformThisAction')}</Text>
           <Box direction="Column" gap="100">
-            <Text size="L400">Password</Text>
+            <Text size="L400">{t('auth.password.password')}</Text>
             <PasswordInput size="400" name="passwordInput" outlined autoFocus required />
             {errorCode && (
               <Box alignItems="Center" gap="100" style={{ color: color.Critical.Main }}>
@@ -74,7 +73,7 @@ export function PasswordStage({
                 <Text size="T200">
                   <b>
                     {errorCode === ErrorCode.M_FORBIDDEN
-                      ? 'Invalid Password!'
+                      ? t('auth.password.invalidPassword')
                       : `${errorCode}: ${error}`}
                   </b>
                 </Text>
@@ -84,7 +83,7 @@ export function PasswordStage({
         </Box>
         <Button className={sheetCss.Pill} variant="Primary" type="submit">
           <Text as="span" size="B400">
-            Continue
+            {t('auth.password.continue')}
           </Text>
         </Button>
       </Box>

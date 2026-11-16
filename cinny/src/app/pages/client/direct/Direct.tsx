@@ -54,11 +54,13 @@ import {
   useRoomsNotificationPreferencesContext,
 } from '../../../hooks/useRoomsNotificationPreferences';
 import { useDirectCreateSelected } from '../../../hooks/router/useDirectSelected';
+import { useTranslation } from 'react-i18next';
 
 type DirectMenuProps = {
   requestClose: () => void;
 };
 const DirectMenu = forwardRef<HTMLDivElement, DirectMenuProps>(({ requestClose }, ref) => {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const [hideActivity] = useSetting(settingsAtom, 'hideActivity');
   const orphanRooms = useDirectRooms();
@@ -81,7 +83,7 @@ const DirectMenu = forwardRef<HTMLDivElement, DirectMenuProps>(({ requestClose }
           aria-disabled={!unread}
         >
           <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
-            Mark as Read
+            {t('nav.direct.markAsRead')}
           </Text>
         </MenuItem>
       </Box>
@@ -90,6 +92,7 @@ const DirectMenu = forwardRef<HTMLDivElement, DirectMenuProps>(({ requestClose }
 });
 
 function DirectHeader() {
+  const { t } = useTranslation();
   const [menuAnchor, setMenuAnchor] = useState<RectCords>();
 
   const handleOpenMenu: MouseEventHandler<HTMLButtonElement> = (evt) => {
@@ -106,14 +109,14 @@ function DirectHeader() {
         <Box alignItems="Center" grow="Yes" gap="300">
           <Box grow="Yes">
             <Text size="H4" className={pageCss.PageNavHeaderTitle} truncate>
-              Direct Messages
+              {t('nav.direct.directMessages')}
             </Text>
           </Box>
           <Box>
             <IconButton
               className={pageCss.PageNavHeaderButton}
               aria-pressed={!!menuAnchor}
-              aria-label="More Options"
+              aria-label={t('nav.direct.moreOptions')}
               variant="Background"
               radii="300"
               onClick={handleOpenMenu}
@@ -149,6 +152,7 @@ function DirectHeader() {
 }
 
 function DirectEmpty() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   return (
@@ -157,18 +161,18 @@ function DirectEmpty() {
         icon={<Icon size="600" src={Icons.Mention} />}
         title={
           <Text size="H5" align="Center">
-            No Direct Messages
+            {t('nav.direct.noDirectMessages')}
           </Text>
         }
         content={
           <Text size="T300" align="Center">
-            You do not have any direct messages yet.
+            {t('nav.direct.youDoNotHave')}
           </Text>
         }
         options={
           <Button variant="Secondary" size="300" onClick={() => navigate(getDirectCreatePath())}>
             <Text size="B300" truncate>
-              Direct Message
+              {t('nav.direct.directMessage')}
             </Text>
           </Button>
         }
@@ -184,6 +188,7 @@ type DirectVirtualItem =
   | { type: 'category'; id: string; name: string; closed: boolean }
   | { type: 'room'; roomId: string };
 export function Direct() {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   useNavToActivePathMapper('direct');
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -214,16 +219,19 @@ export function Direct() {
   const virtualItems = useMemo(() => {
     const makeDirectList = (roomIds: string[], closed: boolean): string[] => {
       const sorted = Array.from(roomIds).sort(factoryRoomIdByActivity(mx));
-      return closed
-        ? sorted.filter((rId) => unreadIds.has(rId) || rId === selectedRoomId)
-        : sorted;
+      return closed ? sorted.filter((rId) => unreadIds.has(rId) || rId === selectedRoomId) : sorted;
     };
 
     const items: DirectVirtualItem[] = [];
 
     if (favouriteRoomIds.length > 0) {
       const closed = closedCategories.has(FAVOURITE_CATEGORY_ID);
-      items.push({ type: 'category', id: FAVOURITE_CATEGORY_ID, name: 'Favourites', closed });
+      items.push({
+        type: 'category',
+        id: FAVOURITE_CATEGORY_ID,
+        name: t('nav.direct.favourites'),
+        closed,
+      });
       makeDirectList(favouriteRoomIds, closed).forEach((roomId) =>
         items.push({ type: 'room', roomId })
       );
@@ -231,7 +239,12 @@ export function Direct() {
 
     if (otherRoomIds.length > 0 || favouriteRoomIds.length === 0) {
       const closed = closedCategories.has(DEFAULT_CATEGORY_ID);
-      items.push({ type: 'category', id: DEFAULT_CATEGORY_ID, name: 'Chats', closed });
+      items.push({
+        type: 'category',
+        id: DEFAULT_CATEGORY_ID,
+        name: t('nav.direct.chats'),
+        closed,
+      });
       makeDirectList(otherRoomIds, closed).forEach((roomId) =>
         items.push({ type: 'room', roomId })
       );
@@ -240,7 +253,16 @@ export function Direct() {
     return items;
     // activityTick: says when to read the activity order from the rooms again
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mx, favouriteRoomIds, otherRoomIds, closedCategories, unreadIds, selectedRoomId, activityTick]);
+  }, [
+    mx,
+    favouriteRoomIds,
+    otherRoomIds,
+    closedCategories,
+    unreadIds,
+    selectedRoomId,
+    activityTick,
+    t,
+  ]);
 
   const virtualizer = useVirtualizer({
     count: virtualItems.length,
@@ -271,7 +293,7 @@ export function Direct() {
                       </Avatar>
                       <Box as="span" grow="Yes">
                         <Text as="span" size="Inherit" truncate>
-                          Create Chat
+                          {t('nav.direct.createChat')}
                         </Text>
                       </Box>
                     </Box>

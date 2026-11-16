@@ -10,8 +10,10 @@ import { AsyncStatus, useAsyncCallback } from '../../../hooks/useAsyncCallback';
 import { decryptMegolmKeyFile, encryptMegolmKeyFile } from '../../../../util/cryptE2ERoomKeys';
 import { useAlive } from '../../../hooks/useAlive';
 import { useFilePicker } from '../../../hooks/useFilePicker';
+import { useTranslation } from 'react-i18next';
 
 function ExportKeys() {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const alive = useAlive();
 
@@ -65,7 +67,7 @@ function ExportKeys() {
             {(match, doMatch, passRef, confPassRef) => (
               <>
                 <Box grow="Yes" direction="Column" gap="100">
-                  <Text size="L400">New Password</Text>
+                  <Text size="L400">{t('settings.localBackup.newPassword')}</Text>
                   <PasswordInput
                     ref={passRef}
                     name="passwordInput"
@@ -79,7 +81,7 @@ function ExportKeys() {
                   />
                 </Box>
                 <Box grow="Yes" direction="Column" gap="100">
-                  <Text size="L400">Confirm Password</Text>
+                  <Text size="L400">{t('settings.localBackup.confirmPassword')}</Text>
                   <PasswordInput
                     ref={confPassRef}
                     style={{ color: match ? undefined : color.Critical.Main }}
@@ -106,7 +108,7 @@ function ExportKeys() {
             before={exporting ? <Spinner size="200" variant="Secondary" fill="Soft" /> : undefined}
           >
             <Text as="span" size="B400">
-              Export
+              {t('settings.localBackup.export')}
             </Text>
           </Button>
         </Box>
@@ -121,13 +123,14 @@ function ExportKeys() {
 }
 
 function ExportKeysTile() {
+  const { t } = useTranslation();
   const [expand, setExpand] = useState(false);
 
   return (
     <>
       <SettingTile
-        title="Export Messages Data"
-        description="Save password protected copy of encryption data on your device to decrypt messages later."
+        title={t('settings.localBackup.exportMessagesData')}
+        description={t('settings.localBackup.savePasswordProtectedCopy')}
         after={
           <Box>
             <Button
@@ -143,7 +146,7 @@ function ExportKeysTile() {
               }
             >
               <Text as="span" size="B300" truncate>
-                {expand ? 'Collapse' : 'Expand'}
+                {expand ? t('settings.localBackup.collapse') : t('settings.localBackup.expand')}
               </Text>
             </Button>
           </Box>
@@ -159,6 +162,7 @@ type ImportKeysProps = {
   onDone?: () => void;
 };
 function ImportKeys({ file, onDone }: ImportKeysProps) {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const alive = useAlive();
 
@@ -208,7 +212,7 @@ function ImportKeys({ file, onDone }: ImportKeysProps) {
       <Box as="form" onSubmit={handleSubmit} direction="Column" gap="100">
         <Box gap="200" alignItems="End">
           <Box grow="Yes" direction="Column" gap="100">
-            <Text size="L400">Password</Text>
+            <Text size="L400">{t('settings.localBackup.password')}</Text>
             <PasswordInput
               name="passwordInput"
               size="400"
@@ -230,7 +234,7 @@ function ImportKeys({ file, onDone }: ImportKeysProps) {
             before={decrypting ? <Spinner size="200" variant="Secondary" fill="Soft" /> : undefined}
           >
             <Text as="span" size="B400">
-              Decrypt
+              {t('settings.localBackup.decrypt')}
             </Text>
           </Button>
         </Box>
@@ -245,6 +249,7 @@ function ImportKeys({ file, onDone }: ImportKeysProps) {
 }
 
 function ImportKeysTile() {
+  const { t } = useTranslation();
   const [file, setFile] = useState<File>();
   const pickFile = useFilePicker(setFile);
 
@@ -255,8 +260,8 @@ function ImportKeysTile() {
   return (
     <>
       <SettingTile
-        title="Import Messages Data"
-        description="Load password protected copy of encryption data from device to decrypt your messages."
+        title={t('settings.localBackup.importMessagesData')}
+        description={t('settings.localBackup.loadPasswordProtectedCopy')}
         after={
           <Box>
             {file ? (
@@ -287,7 +292,7 @@ function ImportKeysTile() {
                 before={<Icon size="100" src={Icons.ArrowRight} />}
               >
                 <Text as="span" size="B300">
-                  Import
+                  {t('settings.localBackup.import')}
                 </Text>
               </Button>
             )}
@@ -300,8 +305,9 @@ function ImportKeysTile() {
 }
 
 export function LocalBackup() {
+  const { t } = useTranslation();
   return (
-    <InsetSection title="Local Backup">
+    <InsetSection title={t('settings.localBackup.localBackup')}>
       <InsetGroup>
         <InsetItem>
           <ExportKeysTile />

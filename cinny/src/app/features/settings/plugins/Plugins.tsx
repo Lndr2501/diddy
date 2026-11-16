@@ -32,10 +32,12 @@ import {
 } from '../../../state/userPlugins';
 import { PluginFrame } from '../../plugins/PluginFrame';
 import { AddLocalPluginForm, LocalPluginDescription, LocalPluginTools } from './LocalPlugins';
+import { useTranslation } from 'react-i18next';
 
 const DOCS_URL = `${APP_REPO_URL}/blob/main/docs/plugins.md`;
 
 function AddPluginForm({ full }: { full: boolean }) {
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
   const [error, setError] = useState<string>();
@@ -57,7 +59,7 @@ function AddPluginForm({ full }: { full: boolean }) {
       <Box gap="200" wrap="Wrap">
         <Box direction="Column" gap="100" grow="Yes" style={{ minWidth: 160, flexBasis: 160 }}>
           <Text as="label" htmlFor="diddy-plugin-name" size="L400">
-            Name
+            {t('settings.plugins.name')}
           </Text>
           <Input
             id="diddy-plugin-name"
@@ -66,7 +68,7 @@ function AddPluginForm({ full }: { full: boolean }) {
               setName(evt.currentTarget.value);
               setError(undefined);
             }}
-            placeholder="Weather"
+            placeholder={t('settings.plugins.weather')}
             maxLength={80}
             autoComplete="off"
             variant="Secondary"
@@ -76,7 +78,7 @@ function AddPluginForm({ full }: { full: boolean }) {
         </Box>
         <Box direction="Column" gap="100" grow="Yes" style={{ minWidth: 220, flexBasis: 260 }}>
           <Text as="label" htmlFor="diddy-plugin-url" size="L400">
-            Address
+            {t('settings.plugins.address')}
           </Text>
           <Input
             id="diddy-plugin-url"
@@ -85,7 +87,7 @@ function AddPluginForm({ full }: { full: boolean }) {
               setUrl(evt.currentTarget.value);
               setError(undefined);
             }}
-            placeholder="https://example.com/plugin.html"
+            placeholder={t('settings.plugins.httpsExampleComPlugin')}
             inputMode="url"
             autoComplete="off"
             autoCapitalize="off"
@@ -105,8 +107,8 @@ function AddPluginForm({ full }: { full: boolean }) {
         >
           {error ??
             (full
-              ? `You have reached the limit of ${MAX_PLUGINS} plugins.`
-              : 'https:// addresses, or http://localhost while you build a plugin.')}
+              ? t('settings.plugins.youHaveReachedThe', { maxPlugins: MAX_PLUGINS })
+              : t('settings.plugins.httpsAddressesOrHttp'))}
         </Text>
         <Button
           className={sheetCss.Pill}
@@ -117,7 +119,7 @@ function AddPluginForm({ full }: { full: boolean }) {
           disabled={full || !name.trim() || !url.trim()}
           before={<Icon src={Icons.Plus} size="100" />}
         >
-          <Text size="B300">Add Plugin</Text>
+          <Text size="B300">{t('settings.plugins.addPlugin')}</Text>
         </Button>
       </Box>
     </Box>
@@ -130,13 +132,14 @@ type PluginLookEditorProps = { id: string; look?: PluginStyle };
  * plugin. The custom CSS is sent to the plugin with `diddy:init`; plugins that support it apply it.
  */
 function PluginLookEditor({ id, look }: PluginLookEditorProps) {
+  const { t } = useTranslation();
   const field = { display: 'flex', alignItems: 'center', gap: config.space.S200 } as const;
   return (
     <Box direction="Column" gap="200">
-      <Text size="L400">Sidebar card</Text>
+      <Text size="L400">{t('settings.plugins.sidebarCard')}</Text>
       <div style={field}>
         <Text as="label" size="T200" htmlFor={`plugin-height-${id}`} style={{ width: 90 }}>
-          Height (px)
+          {t('settings.plugins.heightPx')}
         </Text>
         <input
           id={`plugin-height-${id}`}
@@ -154,7 +157,7 @@ function PluginLookEditor({ id, look }: PluginLookEditorProps) {
       </div>
       <div style={field}>
         <Text as="label" size="T200" htmlFor={`plugin-zoom-${id}`} style={{ width: 90 }}>
-          Zoom (%)
+          {t('settings.plugins.zoom')}
         </Text>
         <input
           id={`plugin-zoom-${id}`}
@@ -171,7 +174,7 @@ function PluginLookEditor({ id, look }: PluginLookEditorProps) {
         </Text>
       </div>
       <Text as="label" size="L400" htmlFor={`plugin-css-${id}`}>
-        Custom CSS
+        {t('settings.plugins.customCss')}
       </Text>
       <textarea
         id={`plugin-css-${id}`}
@@ -179,7 +182,7 @@ function PluginLookEditor({ id, look }: PluginLookEditorProps) {
         maxLength={MAX_CUSTOM_CSS}
         rows={4}
         spellCheck={false}
-        placeholder=".temp { font-size: 18px; }"
+        placeholder={t('settings.plugins.tempFontSize18px')}
         onChange={(evt) => setPluginStyle(id, { css: evt.target.value })}
         style={{
           width: '100%',
@@ -194,8 +197,7 @@ function PluginLookEditor({ id, look }: PluginLookEditorProps) {
         }}
       />
       <Text size="T200" priority="300">
-        Sent to the plugin, which decides whether to apply it. Height and zoom work for every
-        plugin.
+        {t('settings.plugins.sentToThePlugin')}
       </Text>
     </Box>
   );
@@ -207,6 +209,7 @@ type PluginRowProps = {
   onConfirm: (confirming: boolean) => void;
 };
 function PluginRow({ plugin, confirming, onConfirm }: PluginRowProps) {
+  const { t } = useTranslation();
   const dock = usePluginDock();
   const pinned = dock.pinned.includes(plugin.id);
   const look = dock.styles[plugin.id];
@@ -227,7 +230,7 @@ function PluginRow({ plugin, confirming, onConfirm }: PluginRowProps) {
                 radii="Pill"
                 onClick={() => onConfirm(false)}
               >
-                <Text size="B300">Cancel</Text>
+                <Text size="B300">{t('settings.plugins.cancel')}</Text>
               </Button>
               <Button
                 className={sheetCss.Pill}
@@ -239,7 +242,7 @@ function PluginRow({ plugin, confirming, onConfirm }: PluginRowProps) {
                   removeUserPlugin(plugin.id);
                 }}
               >
-                <Text size="B300">Remove</Text>
+                <Text size="B300">{t('settings.plugins.remove')}</Text>
               </Button>
             </>
           ) : (
@@ -247,13 +250,13 @@ function PluginRow({ plugin, confirming, onConfirm }: PluginRowProps) {
               {plugin.enabled && (
                 <Box alignItems="Center" gap="100">
                   <Text size="T200" priority="300">
-                    Sidebar
+                    {t('settings.plugins.sidebar')}
                   </Text>
                   <Switch
                     variant="Primary"
                     value={pinned}
                     onChange={(value) => setPluginPinned(plugin.id, value)}
-                    aria-label={`Show ${plugin.name} in the sidebar`}
+                    aria-label={t('settings.plugins.showNameInThe', { name: plugin.name })}
                   />
                 </Box>
               )}
@@ -261,7 +264,11 @@ function PluginRow({ plugin, confirming, onConfirm }: PluginRowProps) {
                 variant="Primary"
                 value={plugin.enabled}
                 onChange={(enabled) => setUserPluginEnabled(plugin.id, enabled)}
-                aria-label={plugin.enabled ? `Turn off ${plugin.name}` : `Turn on ${plugin.name}`}
+                aria-label={
+                  plugin.enabled
+                    ? t('settings.plugins.turnOffName', { name: plugin.name })
+                    : t('settings.plugins.turnOnName', { name: plugin.name })
+                }
               />
               <Button
                 className={sheetCss.Pill}
@@ -270,9 +277,9 @@ function PluginRow({ plugin, confirming, onConfirm }: PluginRowProps) {
                 size="300"
                 radii="Pill"
                 onClick={() => onConfirm(true)}
-                aria-label={`Remove ${plugin.name}`}
+                aria-label={t('settings.plugins.removeName', { name: plugin.name })}
               >
-                <Text size="B300">Remove</Text>
+                <Text size="B300">{t('settings.plugins.remove')}</Text>
               </Button>
             </>
           )}
@@ -294,6 +301,7 @@ type PluginsProps = {
   requestClose: () => void;
 };
 export function Plugins({ requestClose }: PluginsProps) {
+  const { t } = useTranslation();
   const plugins = useUserPlugins();
   const [confirmId, setConfirmId] = useState<string>();
   const full = plugins.length >= MAX_PLUGINS;
@@ -301,11 +309,11 @@ export function Plugins({ requestClose }: PluginsProps) {
   const builtins = getBuiltinPlugins();
 
   return (
-    <SettingsPage title="Plugins" requestClose={requestClose}>
+    <SettingsPage title={t('settings.plugins.plugins')} requestClose={requestClose}>
       {builtins.length > 0 && (
         <InsetSection
-          title="Built-in Plugins"
-          footer="Ready to use: no account, no key. They run isolated like every other plugin and show up as small cards in the sidebar."
+          title={t('settings.plugins.builtInPlugins')}
+          footer={t('settings.plugins.readyToUseNo')}
         >
           <InsetGroup>
             {builtins.map((builtin) => {
@@ -332,7 +340,9 @@ export function Plugins({ requestClose }: PluginsProps) {
                         if (created) setPluginPinned(created.id, true);
                       }}
                     >
-                      <Text size="B300">{added ? 'Added' : 'Add'}</Text>
+                      <Text size="B300">
+                        {added ? t('settings.plugins.added') : t('settings.plugins.add')}
+                      </Text>
                     </Button>
                   }
                 />
@@ -342,14 +352,12 @@ export function Plugins({ requestClose }: PluginsProps) {
         </InsetSection>
       )}
       <InsetSection
-        title="Add Plugin"
+        title={t('settings.plugins.addPlugin')}
         footer={
           <>
-            A plugin is a web page shown inside Diddy, for example a weather widget. It runs
-            isolated from the app and never sees your account, messages or login. Only add pages you
-            trust.{' '}
+            {t('settings.plugins.aPluginIsA')}{' '}
             <a href={DOCS_URL} target="_blank" rel="noreferrer noopener">
-              How to build a plugin
+              {t('settings.plugins.howToBuildA')}
             </a>
           </>
         }
@@ -361,19 +369,16 @@ export function Plugins({ requestClose }: PluginsProps) {
         </InsetGroup>
       </InsetSection>
       <InsetSection
-        title="Without Hosting"
+        title={t('settings.plugins.withoutHosting')}
         footer={
           <>
-            No server needed: the HTML is stored on this device and runs in the same sandbox as
-            every other plugin, with no extra permissions. Pick a file, paste code, or import a
-            public GitHub file or Gist once. To try changes, use “Replace from file” on the plugin
-            below.{' '}
+            {t('settings.plugins.noServerNeededThe')}{' '}
             <a
               href={`${DOCS_URL}#ohne-hosting-aus-datei-code-oder-github`}
               target="_blank"
               rel="noreferrer noopener"
             >
-              More
+              {t('settings.plugins.more')}
             </a>
           </>
         }
@@ -385,14 +390,17 @@ export function Plugins({ requestClose }: PluginsProps) {
         </InsetGroup>
       </InsetSection>
       <InsetSection
-        title={`Your Plugins (${plugins.length}/${MAX_PLUGINS})`}
-        footer="Active plugins appear in the Plugins tab of the sidebar. They are stored on this device only."
+        title={t('settings.plugins.yourPluginsCountMaxplugins', {
+          count: plugins.length,
+          maxPlugins: MAX_PLUGINS,
+        })}
+        footer={t('settings.plugins.activePluginsAppearIn')}
       >
         <InsetGroup>
           {plugins.length === 0 ? (
             <InsetRow
-              title="No plugins yet"
-              description="Add a built-in plugin, an address, a file or code above to see it here."
+              title={t('settings.plugins.noPluginsYet')}
+              description={t('settings.plugins.addABuiltIn')}
             />
           ) : (
             plugins.map((plugin) => (

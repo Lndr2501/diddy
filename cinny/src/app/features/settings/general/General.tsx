@@ -47,6 +47,7 @@ import { useMessageSpacingItems } from '../../../hooks/useMessageSpacing';
 import { useDateFormatItems } from '../../../hooks/useDateFormat';
 import { AppIconPicker } from './AppIconPicker';
 import { BackgroundSettings, CustomThemeSettings } from './CustomThemeSettings';
+import { LanguageSettings } from './LanguageSettings';
 import { ThemeTiles } from './ThemeTiles';
 import * as css from './General.css';
 import { autoGainSupported, updateCallPrefs, useCallPrefs } from '../../../state/callPrefs';
@@ -68,8 +69,11 @@ import {
   SegmentedControl,
   SettingsPage,
 } from '../inset-list';
+import { useTranslation } from 'react-i18next';
+import { translate } from '../../../i18n';
 
 function ThemeSettings() {
+  const { t } = useTranslation();
   const themes = useThemes();
   const themeNames = useThemeNames();
   const systemThemeKind = useSystemThemeKind();
@@ -86,25 +90,25 @@ function ThemeSettings() {
   const selectedDarkTheme = darkThemes.find((theme) => theme.id === darkThemeId) ?? DarkTheme;
 
   return (
-    <InsetSection title="Theme">
+    <InsetSection title={t('settings.general.theme')}>
       <InsetGroup>
         <InsetRow
-          title="Match System Appearance"
-          description="Switch between a light and a dark theme together with your system."
+          title={t('settings.general.matchSystemAppearance')}
+          description={t('settings.general.switchBetweenALight')}
           after={<Switch variant="Primary" value={systemTheme} onChange={setSystemTheme} />}
         />
         {systemTheme ? (
           <>
             <InsetRow
-              title="Light Appearance"
+              title={t('settings.general.lightAppearance')}
               description={
                 systemThemeKind === ThemeKind.Light
-                  ? 'In use now.'
-                  : 'Used when your system is in light mode.'
+                  ? t('settings.general.inUseNow')
+                  : t('settings.general.usedWhenYourSystem')
               }
             >
               <ThemeTiles
-                aria-label="Light theme"
+                aria-label={t('settings.general.lightTheme')}
                 themes={lightThemes}
                 themeNames={themeNames}
                 selectedId={selectedLightTheme.id}
@@ -112,15 +116,15 @@ function ThemeSettings() {
               />
             </InsetRow>
             <InsetRow
-              title="Dark Appearance"
+              title={t('settings.general.darkAppearance')}
               description={
                 systemThemeKind === ThemeKind.Dark
-                  ? 'In use now.'
-                  : 'Used when your system is in dark mode.'
+                  ? t('settings.general.inUseNow')
+                  : t('settings.general.usedWhenYourSystem2')
               }
             >
               <ThemeTiles
-                aria-label="Dark theme"
+                aria-label={t('settings.general.darkTheme')}
                 themes={darkThemes}
                 themeNames={themeNames}
                 selectedId={selectedDarkTheme.id}
@@ -131,7 +135,7 @@ function ThemeSettings() {
         ) : (
           <InsetItem>
             <ThemeTiles
-              aria-label="Theme"
+              aria-label={t('settings.general.theme')}
               themes={themes}
               themeNames={themeNames}
               selectedId={selectedTheme.id}
@@ -189,38 +193,35 @@ function PageZoomInput() {
 }
 
 function DisplaySettings() {
+  const { t } = useTranslation();
   const [monochromeMode, setMonochromeMode] = useSetting(settingsAtom, 'monochromeMode');
   const [dynamicPageTitle, setDynamicPageTitle] = useSetting(settingsAtom, 'showDynamicPageTitle');
   const [directsInSpaces, setDirectsInSpaces] = useSetting(settingsAtom, 'showDirectsInSpaces');
 
   return (
-    <InsetSection title="Display">
+    <InsetSection title={t('settings.general.display')}>
       <InsetGroup>
         <InsetRow
-          title="Monochrome Mode"
+          title={t('settings.general.monochromeMode')}
           after={<Switch variant="Primary" value={monochromeMode} onChange={setMonochromeMode} />}
         />
         <InsetRow
-          title="Dynamic Page Title"
-          description="Display your current room and space in the window title."
+          title={t('settings.general.dynamicPageTitle')}
+          description={t('settings.general.displayYourCurrentRoom')}
           after={
             <Switch variant="Primary" value={dynamicPageTitle} onChange={setDynamicPageTitle} />
           }
         />
         <InsetRow
-          title="Direct Messages in Spaces"
-          description="List your direct messages at the bottom of every space's room list."
+          title={t('settings.general.directMessagesInSpaces')}
+          description={t('settings.general.listYourDirectMessages')}
           after={
-            <Switch
-              variant="Primary"
-              value={!!directsInSpaces}
-              onChange={setDirectsInSpaces}
-            />
+            <Switch variant="Primary" value={!!directsInSpaces} onChange={setDirectsInSpaces} />
           }
         />
         <InsetRow
-          title="Page Zoom"
-          description="Between 75% and 150%. Press Enter to apply."
+          title={t('settings.general.pageZoom')}
+          description={t('settings.general.between75And150')}
           after={<PageZoomInput />}
         />
       </InsetGroup>
@@ -232,21 +233,21 @@ const APPLE_EMOJI_HELP = 'https://github.com/Lndr2501/diddy#apple-emoji-unter-li
 
 /** Apple Color Emoji is used whenever installed. It cannot be bundled, so say how to get it. */
 function EmojiSettings() {
+  const { t } = useTranslation();
   const installed = useMemo(() => isAppleEmojiInstalled(), []);
   return (
-    <InsetSection title="Emoji">
+    <InsetSection title={t('settings.general.emoji')}>
       <InsetGroup>
         <InsetRow
-          title="Apple Color Emoji"
+          title={t('settings.general.appleColorEmoji')}
           description={
             installed ? (
-              'Installed on this system, so emoji look like on a Mac.'
+              t('settings.general.installedOnThisSystem')
             ) : (
               <>
-                Not installed on this system, so your system emoji are shown. Apple emoji are used
-                automatically once the font is installed.{' '}
+                {t('settings.general.notInstalledOnThis')}{' '}
                 <a href={APPLE_EMOJI_HELP} target="_blank" rel="noreferrer noopener">
-                  See how to install it
+                  {t('settings.general.seeHowToInstall')}
                 </a>
                 .
               </>
@@ -259,9 +260,13 @@ function EmojiSettings() {
 }
 
 function AppIconSettings() {
+  const { t } = useTranslation();
   if (!canChangeAppIcon()) return null;
   return (
-    <InsetSection title="App Icon" footer="Icon shown in the Dock or taskbar.">
+    <InsetSection
+      title={t('settings.general.appIcon')}
+      footer={t('settings.general.iconShownInThe')}
+    >
       <InsetGroup>
         <InsetItem>
           <AppIconPicker />
@@ -276,6 +281,7 @@ type DateHintProps = {
   handleReset: () => void;
 };
 function DateHint({ hasChanges, handleReset }: DateHintProps) {
+  const { t } = useTranslation();
   const [anchor, setAnchor] = useState<RectCords>();
   const categoryPadding = { padding: config.space.S200, paddingTop: 0 };
 
@@ -298,26 +304,25 @@ function DateHint({ hasChanges, handleReset }: DateHintProps) {
         >
           <Menu style={{ maxHeight: '85vh', overflowY: 'auto' }}>
             <Header size="300" style={{ padding: `0 ${config.space.S200}` }}>
-              <Text size="L400">Formatting</Text>
+              <Text size="L400">{t('settings.general.formatting')}</Text>
             </Header>
 
             <Box direction="Column">
               <Box style={categoryPadding} direction="Column">
                 <Header size="300">
-                  <Text size="L400">Year</Text>
+                  <Text size="L400">{t('settings.general.year')}</Text>
                 </Header>
                 <Box direction="Column" tabIndex={0} gap="100">
                   <Text size="T300">
                     YY
                     <Text as="span" size="Inherit" priority="300">
-                      {': '}
-                      Two-digit year
+                      {t('settings.general.twoDigitYear')}
                     </Text>{' '}
                   </Text>
                   <Text size="T300">
                     YYYY
                     <Text as="span" size="Inherit" priority="300">
-                      {': '}Four-digit year
+                      {t('settings.general.fourDigitYear')}
                     </Text>
                   </Text>
                 </Box>
@@ -325,31 +330,31 @@ function DateHint({ hasChanges, handleReset }: DateHintProps) {
 
               <Box style={categoryPadding} direction="Column">
                 <Header size="300">
-                  <Text size="L400">Month</Text>
+                  <Text size="L400">{t('settings.general.month')}</Text>
                 </Header>
                 <Box direction="Column" tabIndex={0} gap="100">
                   <Text size="T300">
                     M
                     <Text as="span" size="Inherit" priority="300">
-                      {': '}The month
+                      {t('settings.general.theMonth')}
                     </Text>
                   </Text>
                   <Text size="T300">
                     MM
                     <Text as="span" size="Inherit" priority="300">
-                      {': '}Two-digit month
+                      {t('settings.general.twoDigitMonth')}
                     </Text>{' '}
                   </Text>
                   <Text size="T300">
                     MMM
                     <Text as="span" size="Inherit" priority="300">
-                      {': '}Short month name
+                      {t('settings.general.shortMonthName')}
                     </Text>
                   </Text>
                   <Text size="T300">
                     MMMM
                     <Text as="span" size="Inherit" priority="300">
-                      {': '}Full month name
+                      {t('settings.general.fullMonthName')}
                     </Text>
                   </Text>
                 </Box>
@@ -357,50 +362,50 @@ function DateHint({ hasChanges, handleReset }: DateHintProps) {
 
               <Box style={categoryPadding} direction="Column">
                 <Header size="300">
-                  <Text size="L400">Day of the Month</Text>
+                  <Text size="L400">{t('settings.general.dayOfTheMonth')}</Text>
                 </Header>
                 <Box direction="Column" tabIndex={0} gap="100">
                   <Text size="T300">
                     D
                     <Text as="span" size="Inherit" priority="300">
-                      {': '}Day of the month
+                      {t('settings.general.dayOfTheMonth2')}
                     </Text>
                   </Text>
                   <Text size="T300">
                     DD
                     <Text as="span" size="Inherit" priority="300">
-                      {': '}Two-digit day of the month
+                      {t('settings.general.twoDigitDayOf')}
                     </Text>
                   </Text>
                 </Box>
               </Box>
               <Box style={categoryPadding} direction="Column">
                 <Header size="300">
-                  <Text size="L400">Day of the Week</Text>
+                  <Text size="L400">{t('settings.general.dayOfTheWeek')}</Text>
                 </Header>
                 <Box direction="Column" tabIndex={0} gap="100">
                   <Text size="T300">
                     d
                     <Text as="span" size="Inherit" priority="300">
-                      {': '}Day of the week (Sunday = 0)
+                      {t('settings.general.dayOfTheWeek2')}
                     </Text>
                   </Text>
                   <Text size="T300">
                     dd
                     <Text as="span" size="Inherit" priority="300">
-                      {': '}Two-letter day name
+                      {t('settings.general.twoLetterDayName')}
                     </Text>
                   </Text>
                   <Text size="T300">
                     ddd
                     <Text as="span" size="Inherit" priority="300">
-                      {': '}Short day name
+                      {t('settings.general.shortDayName')}
                     </Text>
                   </Text>
                   <Text size="T300">
                     dddd
                     <Text as="span" size="Inherit" priority="300">
-                      {': '}Full day name
+                      {t('settings.general.fullDayName')}
                     </Text>
                   </Text>
                 </Box>
@@ -443,6 +448,7 @@ type CustomDateFormatProps = {
   onChange: (format: string) => void;
 };
 function CustomDateFormat({ value, onChange }: CustomDateFormatProps) {
+  const { t } = useTranslation();
   const [dateFormatCustom, setDateFormatCustom] = useState(value);
 
   useEffect(() => {
@@ -495,7 +501,7 @@ function CustomDateFormat({ value, onChange }: CustomDateFormatProps) {
         disabled={!hasChanges}
         type="submit"
       >
-        <Text size="B400">Save</Text>
+        <Text size="B400">{t('settings.general.save')}</Text>
       </Button>
     </Box>
   );
@@ -506,11 +512,12 @@ type PresetDateFormatProps = {
   onChange: (format: string) => void;
 };
 function PresetDateFormat({ value, onChange }: PresetDateFormatProps) {
+  const { t } = useTranslation();
   const [menuCords, setMenuCords] = useState<RectCords>();
   const dateFormatItems = useDateFormatItems();
 
   const getDisplayDate = (format: string): string =>
-    format !== '' ? dayjs().format(format) : 'Custom';
+    format !== '' ? dayjs().format(format) : t('settings.general.custom');
 
   const handleMenu: MouseEventHandler<HTMLButtonElement> = (evt) => {
     setMenuCords(evt.currentTarget.getBoundingClientRect());
@@ -577,6 +584,7 @@ function PresetDateFormat({ value, onChange }: PresetDateFormatProps) {
 }
 
 function SelectDateFormat() {
+  const { t } = useTranslation();
   const [dateFormatString, setDateFormatString] = useSetting(settingsAtom, 'dateFormatString');
   const [selectedDateFormat, setSelectedDateFormat] = useState(dateFormatString);
   const customDateFormat = selectedDateFormat === '';
@@ -590,7 +598,7 @@ function SelectDateFormat() {
 
   return (
     <InsetRow
-      title="Date Format"
+      title={t('settings.general.dateFormat')}
       description={customDateFormat ? dayjs().format(dateFormatString) : undefined}
       after={<PresetDateFormat value={selectedDateFormat} onChange={handlePresetChange} />}
     >
@@ -602,13 +610,14 @@ function SelectDateFormat() {
 }
 
 function DateAndTime() {
+  const { t } = useTranslation();
   const [hour24Clock, setHour24Clock] = useSetting(settingsAtom, 'hour24Clock');
 
   return (
-    <InsetSection title="Date & Time">
+    <InsetSection title={t('settings.general.dateTime')}>
       <InsetGroup>
         <InsetRow
-          title="24-Hour Time Format"
+          title={t('settings.general.n24HourTimeFormat')}
           after={<Switch variant="Primary" value={hour24Clock} onChange={setHour24Clock} />}
         />
         <SelectDateFormat />
@@ -618,27 +627,28 @@ function DateAndTime() {
 }
 
 function Editor() {
+  const { t } = useTranslation();
   const [enterForNewline, setEnterForNewline] = useSetting(settingsAtom, 'enterForNewline');
   const [isMarkdown, setIsMarkdown] = useSetting(settingsAtom, 'isMarkdown');
   const [hideActivity, setHideActivity] = useSetting(settingsAtom, 'hideActivity');
 
   return (
-    <InsetSection title="Editor">
+    <InsetSection title={t('settings.general.editor')}>
       <InsetGroup>
         <InsetRow
-          title="ENTER for Newline"
-          description={`Use ${
-            isMacOS() ? KeySymbol.Command : 'Ctrl'
-          } + ENTER to send message and ENTER for newline.`}
+          title={t('settings.general.enterForNewline')}
+          description={t('settings.general.enterForNewlineDescription', {
+            key: isMacOS() ? KeySymbol.Command : 'Ctrl',
+          })}
           after={<Switch variant="Primary" value={enterForNewline} onChange={setEnterForNewline} />}
         />
         <InsetRow
-          title="Markdown Formatting"
+          title={t('settings.general.markdownFormatting')}
           after={<Switch variant="Primary" value={isMarkdown} onChange={setIsMarkdown} />}
         />
         <InsetRow
-          title="Hide Typing & Read Receipts"
-          description="Turn off both typing status and read receipts to keep your activity private."
+          title={t('settings.general.hideTypingReadReceipts')}
+          description={t('settings.general.turnOffBothTyping')}
           after={<Switch variant="Primary" value={hideActivity} onChange={setHideActivity} />}
         />
       </InsetGroup>
@@ -647,12 +657,13 @@ function Editor() {
 }
 
 function SelectMessageLayout() {
+  const { t } = useTranslation();
   const [messageLayout, setMessageLayout] = useSetting(settingsAtom, 'messageLayout');
   const messageLayoutItems = useMessageLayoutItems();
 
   return (
     <SegmentedControl<string>
-      aria-label="Message Layout"
+      aria-label={t('settings.general.messageLayout')}
       options={messageLayoutItems.map((item) => ({
         value: String(item.layout),
         label: item.name,
@@ -736,6 +747,7 @@ function SelectMessageSpacing() {
 }
 
 function Messages() {
+  const { t } = useTranslation();
   const [legacyUsernameColor, setLegacyUsernameColor] = useSetting(
     settingsAtom,
     'legacyUsernameColor'
@@ -755,12 +767,12 @@ function Messages() {
 
   return (
     <>
-      <InsetSection title="Messages">
+      <InsetSection title={t('settings.general.messages')}>
         <InsetGroup>
-          <InsetRow title="Message Layout" after={<SelectMessageLayout />} />
-          <InsetRow title="Message Spacing" after={<SelectMessageSpacing />} />
+          <InsetRow title={t('settings.general.messageLayout')} after={<SelectMessageLayout />} />
+          <InsetRow title={t('settings.general.messageSpacing')} after={<SelectMessageSpacing />} />
           <InsetRow
-            title="Legacy Username Color"
+            title={t('settings.general.legacyUsernameColor')}
             after={
               <Switch
                 variant="Primary"
@@ -772,10 +784,10 @@ function Messages() {
         </InsetGroup>
       </InsetSection>
 
-      <InsetSection title="Timeline">
+      <InsetSection title={t('settings.general.timeline')}>
         <InsetGroup>
           <InsetRow
-            title="Hide Membership Change"
+            title={t('settings.general.hideMembershipChange')}
             after={
               <Switch
                 variant="Primary"
@@ -785,7 +797,7 @@ function Messages() {
             }
           />
           <InsetRow
-            title="Hide Profile Change"
+            title={t('settings.general.hideProfileChange')}
             after={
               <Switch
                 variant="Primary"
@@ -795,7 +807,7 @@ function Messages() {
             }
           />
           <InsetRow
-            title="Show Hidden Events"
+            title={t('settings.general.showHiddenEvents')}
             after={
               <Switch variant="Primary" value={showHiddenEvents} onChange={setShowHiddenEvents} />
             }
@@ -803,10 +815,10 @@ function Messages() {
         </InsetGroup>
       </InsetSection>
 
-      <InsetSection title="Media & Previews">
+      <InsetSection title={t('settings.general.mediaPreviews')}>
         <InsetGroup>
           <InsetRow
-            title="Disable Media Auto Load"
+            title={t('settings.general.disableMediaAutoLoad')}
             after={
               <Switch
                 variant="Primary"
@@ -816,13 +828,13 @@ function Messages() {
             }
           />
           <InsetRow
-            title="Url Preview"
-            description="Cards and pictures under links. Picture links load straight from the site."
+            title={t('settings.general.urlPreview')}
+            description={t('settings.general.cardsAndPicturesUnder')}
             after={<Switch variant="Primary" value={urlPreview} onChange={setUrlPreview} />}
           />
           <InsetRow
-            title="Url Preview in Encrypted Room"
-            description="Diddy reads the page itself, the link is not sent to your homeserver."
+            title={t('settings.general.urlPreviewInEncrypted')}
+            description={t('settings.general.diddyReadsThePage')}
             after={<Switch variant="Primary" value={encUrlPreview} onChange={setEncUrlPreview} />}
           />
         </InsetGroup>
@@ -832,6 +844,7 @@ function Messages() {
 }
 
 export function WelcomeGuideSettings() {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const [shown, setShown] = useState(false);
   const [syncSettings, setSyncSettings] = useSetting(settingsAtom, 'syncSettings');
@@ -845,8 +858,8 @@ export function WelcomeGuideSettings() {
           after={<Switch variant="Primary" value={syncSettings} onChange={setSyncSettings} />}
         />
         <InsetRow
-          title="Welcome guide"
-          description="Show the setup walkthrough for Diddy servers again."
+          title={t('settings.general.welcomeGuide')}
+          description={t('settings.general.showTheSetupWalkthrough')}
           after={
             <Button
               size="300"
@@ -858,7 +871,9 @@ export function WelcomeGuideSettings() {
                 setShown(true);
               }}
             >
-              <Text size="B300">{shown ? 'Starting...' : 'Show again'}</Text>
+              <Text size="B300">
+                {shown ? t('settings.general.starting') : t('settings.general.showAgain')}
+              </Text>
             </Button>
           }
         />
@@ -868,39 +883,72 @@ export function WelcomeGuideSettings() {
 }
 
 const AVATAR_PLACES: { surface: AvatarSurface; title: string; description: string }[] = [
-  { surface: 'profile', title: 'Profile card', description: 'The big picture on a profile.' },
+  {
+    surface: 'profile',
+    get title() {
+      return translate('settings.general.profileCard');
+    },
+    get description() {
+      return translate('settings.general.theBigPictureOn');
+    },
+  },
   {
     surface: 'chat',
-    title: 'Chat',
-    description: 'Next to messages, replies, search results and pins.',
+    get title() {
+      return translate('settings.general.chat');
+    },
+    get description() {
+      return translate('settings.general.nextToMessagesReplies');
+    },
   },
   {
     surface: 'members',
-    title: 'Member list',
-    description: 'Member list, mentions and who reacted or read.',
+    get title() {
+      return translate('settings.general.memberList');
+    },
+    get description() {
+      return translate('settings.general.memberListMentionsAnd');
+    },
   },
   {
     surface: 'account',
-    title: 'Your account',
-    description: 'The picture at the bottom left and in settings.',
+    get title() {
+      return translate('settings.general.yourAccount');
+    },
+    get description() {
+      return translate('settings.general.thePictureAtThe');
+    },
   },
-  { surface: 'call', title: 'Calls', description: 'Participants in voice chat and call status.' },
+  {
+    surface: 'call',
+    get title() {
+      return translate('settings.general.calls');
+    },
+    get description() {
+      return translate('settings.general.participantsInVoiceChat');
+    },
+  },
 ];
 
 function AnimatedAvatarSettings() {
+  const { t } = useTranslation();
   const prefs = useAvatarPrefs();
 
   return (
     <InsetSection
-      title="Animated profile pictures"
-      footer="With reduced motion turned on in your system, nothing moves."
+      title={t('settings.general.animatedProfilePictures')}
+      footer={t('settings.general.withReducedMotionTurned')}
     >
       <InsetGroup>
         <InsetRow
-          title="Pictures move in"
-          description="Where animated profile pictures play. Elsewhere they stand still."
+          title={t('settings.general.picturesMoveIn')}
+          description={t('settings.general.whereAnimatedProfilePictures')}
         >
-          <div className={css.ChipRow} role="group" aria-label="Pictures move in">
+          <div
+            className={css.ChipRow}
+            role="group"
+            aria-label={t('settings.general.picturesMoveIn')}
+          >
             {AVATAR_PLACES.map(({ surface, title, description }) => {
               const on = prefs[surface];
               return (
@@ -922,8 +970,8 @@ function AnimatedAvatarSettings() {
           </div>
         </InsetRow>
         <InsetRow
-          title="Only while speaking"
-          description="Pictures stand still and move only while the person speaks in your call."
+          title={t('settings.general.onlyWhileSpeaking')}
+          description={t('settings.general.picturesStandStillAnd')}
           after={
             <Switch
               variant="Primary"
@@ -933,8 +981,8 @@ function AnimatedAvatarSettings() {
           }
         />
         <InsetRow
-          title="Nameplates"
-          description="Moving backgrounds behind names in the member and DM lists."
+          title={t('settings.general.nameplates')}
+          description={t('settings.general.movingBackgroundsBehindNames')}
           after={
             <Switch
               variant="Primary"
@@ -944,8 +992,8 @@ function AnimatedAvatarSettings() {
           }
         />
         <InsetRow
-          title="Profile effects"
-          description="Animated overlays other people put on their profile card."
+          title={t('settings.general.profileEffects')}
+          description={t('settings.general.animatedOverlaysOtherPeople')}
           after={
             <Switch
               variant="Primary"
@@ -955,8 +1003,8 @@ function AnimatedAvatarSettings() {
           }
         />
         <InsetRow
-          title="Profile frames"
-          description="Decorative frames other people put around their profile card."
+          title={t('settings.general.profileFrames')}
+          description={t('settings.general.decorativeFramesOtherPeople')}
           after={
             <Switch
               variant="Primary"
@@ -971,15 +1019,16 @@ function AnimatedAvatarSettings() {
 }
 
 function CallSettings() {
+  const { t } = useTranslation();
   const prefs = useCallPrefs();
   const [volumesReset, setVolumesReset] = useState(false);
 
   return (
-    <InsetSection title="Calls">
+    <InsetSection title={t('settings.general.calls')}>
       <InsetGroup>
         <InsetRow
-          title="Noise suppression"
-          description="Removes background noise such as keyboard, fan and room noise from your microphone (RNNoise, open source). It runs inside Diddy and does not turn your music down. Applies the next time you join a call."
+          title={t('settings.general.noiseSuppression')}
+          description={t('settings.general.removesBackgroundNoiseSuch')}
           after={
             <Switch
               variant="Primary"
@@ -989,8 +1038,8 @@ function CallSettings() {
           }
         />
         <InsetRow
-          title="Voice processing"
-          description="Echo cancellation, noise suppression and auto gain. Off keeps your music and other apps sounding normal and avoids short audio glitches when you join a call. Turn it on if you use speakers instead of headphones. Applies the next time you join a call."
+          title={t('settings.general.voiceProcessing')}
+          description={t('settings.general.echoCancellationNoiseSuppression')}
           after={
             <Switch
               variant="Primary"
@@ -1013,14 +1062,14 @@ function CallSettings() {
           />
         )}
         <InsetRow
-          title="Camera"
-          description="Used for video in calls. Changing it switches the camera of a running call too."
+          title={t('settings.general.camera')}
+          description={t('settings.general.usedForVideoIn')}
         >
           <CameraDeviceList />
         </InsetRow>
         <InsetRow
-          title="Volumes of people"
-          description="Diddy remembers the volume and mute for me you give each person (and their screen share) on this device. Reset puts everyone back to 100 % from their next call on."
+          title={t('settings.general.volumesOfPeople')}
+          description={t('settings.general.diddyRemembersTheVolume')}
           after={
             <Button
               size="300"
@@ -1033,7 +1082,9 @@ function CallSettings() {
                 setVolumesReset(true);
               }}
             >
-              <Text size="B300">{volumesReset ? 'Reset' : 'Reset volumes'}</Text>
+              <Text size="B300">
+                {volumesReset ? t('settings.general.reset') : t('settings.general.resetVolumes')}
+              </Text>
             </Button>
           }
         />
@@ -1048,8 +1099,9 @@ type PageProps = {
 
 /** Everything about reading and writing messages. */
 export function ChatSettings({ requestClose }: PageProps) {
+  const { t } = useTranslation();
   return (
-    <SettingsPage title="Chat" requestClose={requestClose}>
+    <SettingsPage title={t('settings.general.chat')} requestClose={requestClose}>
       <Messages />
       <Editor />
       <DateAndTime />
@@ -1059,8 +1111,9 @@ export function ChatSettings({ requestClose }: PageProps) {
 
 /** Calls, the app's sounds and the voice extras. */
 export function CallsSettings({ requestClose }: PageProps) {
+  const { t } = useTranslation();
   return (
-    <SettingsPage title="Calls & Audio" requestClose={requestClose}>
+    <SettingsPage title={t('settings.general.callsAudio')} requestClose={requestClose}>
       <CallSettings />
       <PushToTalkSettings />
       <SoundSettings />
@@ -1074,8 +1127,10 @@ type AppearanceSettingsProps = {
   requestClose: () => void;
 };
 export function AppearanceSettings({ requestClose }: AppearanceSettingsProps) {
+  const { t } = useTranslation();
   return (
-    <SettingsPage title="Appearance" requestClose={requestClose}>
+    <SettingsPage title={t('settings.general.appearance')} requestClose={requestClose}>
+      <LanguageSettings />
       <ThemeSettings />
       <CustomThemeSettings />
       <BackgroundSettings />

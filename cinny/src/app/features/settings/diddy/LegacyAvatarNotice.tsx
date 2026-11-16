@@ -10,6 +10,7 @@ import {
   shouldOfferLegacyAvatar,
 } from '../../../plugins/diddy/avatar';
 import { Hint, SettingsCard } from './ProfileSettingsUI';
+import { useTranslation } from 'react-i18next';
 
 type LegacyAvatarNoticeProps = {
   /** the old Diddy avatar from the stored profile */
@@ -23,6 +24,7 @@ type LegacyAvatarNoticeProps = {
  * offered to make it their Matrix picture, or to dismiss it. Not a blocking dialog.
  */
 export function LegacyAvatarNotice({ legacyMxc, matrixMxc }: LegacyAvatarNoticeProps) {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const userId = mx.getSafeUserId();
   const [answered, setAnswered] = useState(() => readAnsweredLegacyAvatars(userId));
@@ -57,14 +59,14 @@ export function LegacyAvatarNotice({ legacyMxc, matrixMxc }: LegacyAvatarNoticeP
   return (
     <SettingsCard
       icon={Icons.User}
-      title="Your old Diddy picture"
-      description="Diddy no longer has its own profile picture: everyone now sees your Matrix picture, which can be a GIF too."
+      title={t('settings.legacyAvatarNotice.yourOldDiddyPicture')}
+      description={t('settings.legacyAvatarNotice.diddyNoLongerHas')}
     >
       <Box gap="400" alignItems="Center" wrap="Wrap">
         {previewUrl && (
           <img
             src={previewUrl}
-            alt="Your old Diddy avatar"
+            alt={t('settings.legacyAvatarNotice.yourOldDiddyAvatar')}
             style={{
               width: 64,
               height: 64,
@@ -84,7 +86,7 @@ export function LegacyAvatarNotice({ legacyMxc, matrixMxc }: LegacyAvatarNoticeP
               before={busy ? <Spinner size="100" variant="Primary" fill="Solid" /> : undefined}
               onClick={handleUse}
             >
-              <Text size="B300">Use my old Diddy picture as my Matrix picture</Text>
+              <Text size="B300">{t('settings.legacyAvatarNotice.useMyOldDiddy')}</Text>
             </Button>
             <Button
               size="300"
@@ -94,7 +96,7 @@ export function LegacyAvatarNotice({ legacyMxc, matrixMxc }: LegacyAvatarNoticeP
               disabled={busy}
               onClick={finish}
             >
-              <Text size="B300">Dismiss</Text>
+              <Text size="B300">{t('settings.legacyAvatarNotice.dismiss')}</Text>
             </Button>
           </Box>
           {error && <Hint tone="error">{error}</Hint>}

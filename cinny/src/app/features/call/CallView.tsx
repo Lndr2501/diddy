@@ -18,19 +18,22 @@ import { CallControls } from './CallControls';
 import { WatchTogetherPanel } from './WatchTogether';
 import { useLivekitSupport } from '../../hooks/useLivekitSupport';
 import { webRTCSupported } from '../../utils/rtc';
+import { useTranslation } from 'react-i18next';
 
 function LivekitServerMissingMessage() {
+  const { t } = useTranslation();
   return (
     <Text style={{ margin: 'auto', color: color.Critical.Main }} size="T300" align="Center">
-      Your homeserver does not support calling.
+      {t('call.view.yourHomeserverDoesNot')}
     </Text>
   );
 }
 
 function WebRTCMissingError() {
+  const { t } = useTranslation();
   return (
     <Text style={{ margin: 'auto', color: color.Critical.Main }} size="T300" align="Center">
-      Your browser does not support WebRTC, which is required for calling.
+      {t('call.view.yourBrowserDoesNot')}
     </Text>
   );
 }
@@ -44,6 +47,7 @@ function JoinMessage({
   livekitSupported?: boolean;
   rtcSupported?: boolean;
 }) {
+  const { t } = useTranslation();
   if (rtcSupported === false) {
     return <WebRTCMissingError />;
   }
@@ -56,28 +60,31 @@ function JoinMessage({
 
   return (
     <Text style={{ margin: 'auto' }} size="T300" priority="300" align="Center">
-      Voice chat’s empty — Be the first to hop in!
+      {t('call.view.voiceChatSEmpty')}
     </Text>
   );
 }
 
 function NoPermissionMessage() {
+  const { t } = useTranslation();
   return (
     <Text style={{ margin: 'auto' }} size="T300" priority="300" align="Center">
-      You don&#39;t have permission to join!
+      {t('call.view.youDonTHave')}
     </Text>
   );
 }
 
 function AlreadyInCallMessage() {
+  const { t } = useTranslation();
   return (
     <Text style={{ margin: 'auto', color: color.Warning.Main }} size="T300" align="Center">
-      You&apos;re in another call — Joining will end it for you.
+      {t('call.view.youReInAnother')}
     </Text>
   );
 }
 
 function CallPrescreen() {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const room = useRoom();
   const livekitSupported = useLivekitSupport();
@@ -109,11 +116,11 @@ function CallPrescreen() {
             <Box direction="Column" gap="200">
               <div className={css.SectionHeader}>
                 <Text as="span" size="T200" className={css.SectionLabel}>
-                  Participants
+                  {t('call.view.participants')}
                 </Text>
                 <span className={css.CountPill}>
                   <span className={css.CountPillDot} aria-hidden />
-                  {callMembers.length} Live
+                  {t('call.view.countLive', { count: callMembers.length })}
                 </span>
               </div>
               <CallMemberRenderer members={callMembers} />

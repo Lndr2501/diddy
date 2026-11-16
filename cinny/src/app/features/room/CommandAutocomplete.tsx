@@ -14,6 +14,7 @@ import { UseAsyncSearchOptions, useAsyncSearch } from '../../hooks/useAsyncSearc
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { useKeyDown } from '../../hooks/useKeyDown';
 import { onTabPress } from '../../utils/keyboard';
+import { useTranslation } from 'react-i18next';
 
 type CommandAutoCompleteHandler = (commandName: string) => void;
 
@@ -36,6 +37,7 @@ export function CommandAutocomplete({
   query,
   requestClose,
 }: CommandAutocompleteProps) {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const commands = useCommands(mx, room);
   const commandNames = useMemo(() => Object.keys(commands) as Command[], [commands]);
@@ -74,7 +76,7 @@ export function CommandAutocomplete({
     <AutocompleteMenu
       headerContent={
         <Box grow="Yes" direction="Row" gap="200" justifyContent="SpaceBetween">
-          <Text size="L400">Commands</Text>
+          <Text size="L400">{t('room.commandAutocomplete.commands')}</Text>
         </Box>
       }
       requestClose={requestClose}

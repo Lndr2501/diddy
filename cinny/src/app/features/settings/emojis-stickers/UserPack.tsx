@@ -7,11 +7,13 @@ import { mxcUrlToHttp } from '../../../utils/matrix';
 import { useMediaAuthentication } from '../../../hooks/useMediaAuthentication';
 import { InsetGroup, InsetRow, InsetSection } from '../inset-list';
 import * as sheetCss from '../../../components/sheet/Sheet.css';
+import { useTranslation } from 'react-i18next';
 
 type UserPackProps = {
   onViewPack: (imagePack: ImagePack) => void;
 };
 export function UserPack({ onViewPack }: UserPackProps) {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
 
@@ -29,10 +31,10 @@ export function UserPack({ onViewPack }: UserPackProps) {
   };
 
   return (
-    <InsetSection title="Default Pack">
+    <InsetSection title={t('settings.userPack.defaultPack')}>
       <InsetGroup>
         <InsetRow
-          title={userPack?.meta.name ?? 'Unknown'}
+          title={userPack?.meta.name ?? t('settings.userPack.unknown')}
           description={userPack?.meta.attribution}
           before={
             <Avatar size="300" radii="300">
@@ -54,7 +56,7 @@ export function UserPack({ onViewPack }: UserPackProps) {
               radii="Pill"
               onClick={handleView}
             >
-              <Text size="B300">View</Text>
+              <Text size="B300">{t('settings.userPack.view')}</Text>
             </Button>
           }
         />
