@@ -19,11 +19,11 @@ private struct LeaveServerDialog: ViewModifier {
             titleVisibility: .visible,
             presenting: serverId
         ) { id in
-            Button("Leave Server Only") { leave(id, withChannels: false) }
-            Button("Leave Server and Its Channels", role: .destructive) { leave(id, withChannels: true) }
+            Button(L("ios.remainingUI.leaveServerOnly")) { leave(id, withChannels: false) }
+            Button(L("ios.remainingUI.leaveServerAndItsChannels"), role: .destructive) { leave(id, withChannels: true) }
             Button(L("ios.settings.cancel"), role: .cancel) {}
         } message: { _ in
-            Text("Are you sure you want to leave this server? You need a new invite to come back if it is private.")
+            Text(L("ios.remainingUI.areYouSureYouWantToLeaveThisServerYouNeedANewInviteToComeB"))
         }
     }
 
@@ -72,7 +72,7 @@ struct ManageServerView: View {
                     HStack { Spacer(); ProgressView(); Spacer() }.listRowBackground(Color.clear)
                 }
                 if !loading && rows.isEmpty {
-                    Text("Nothing in this server yet.").foregroundStyle(Theme.muted).listRowBackground(Color.clear)
+                    Text(L("ios.remainingUI.nothingInThisServerYet")).foregroundStyle(Theme.muted).listRowBackground(Color.clear)
                 }
                 ForEach(rows) { row in
                     rowView(row)
@@ -116,7 +116,7 @@ struct ManageServerView: View {
                 titleVisibility: .visible,
                 presenting: removing
             ) { row in
-                Button("Remove from Server", role: .destructive) { remove(row) }
+                Button(L("ios.remainingUI.removeFromServer"), role: .destructive) { remove(row) }
                 Button(L("ios.settings.cancel"), role: .cancel) {}
             } message: { row in
                 Text("\(row.name) stays as it is, it is only taken out of this server.")
@@ -126,11 +126,11 @@ struct ManageServerView: View {
 
     @ViewBuilder
     private func addMenu(to parent: String) -> some View {
-        Button { sheet = .createRoom(parent) } label: { Label("Create Channel", systemImage: "plus.bubble") }
-        Button { sheet = .createServer(parent) } label: { Label("Create Server", systemImage: "plus.square.on.square") }
+        Button { sheet = .createRoom(parent) } label: { Label(L("ios.remainingUI.createChannel"), systemImage: "plus.bubble") }
+        Button { sheet = .createServer(parent) } label: { Label(L("ios.remainingUI.createServer"), systemImage: "plus.square.on.square") }
         Divider()
-        Button { sheet = .addRooms(parent) } label: { Label("Add Existing Room", systemImage: "number") }
-        Button { sheet = .addServers(parent) } label: { Label("Add Existing Server", systemImage: "square.stack.3d.up") }
+        Button { sheet = .addRooms(parent) } label: { Label(L("ios.remainingUI.addExistingRoom"), systemImage: "number") }
+        Button { sheet = .addServers(parent) } label: { Label(L("ios.remainingUI.addExistingServer"), systemImage: "square.stack.3d.up") }
     }
 
     private func rowView(_ row: HierarchyRow) -> some View {
@@ -140,7 +140,7 @@ struct ManageServerView: View {
                 .frame(width: 22)
             Text(row.name).foregroundStyle(Theme.text).lineLimit(1)
             if row.suggested {
-                Text("Suggested").font(.caption2.weight(.semibold)).foregroundStyle(Theme.accent)
+                Text(L("ios.remainingUI.suggested")).font(.caption2.weight(.semibold)).foregroundStyle(Theme.accent)
             }
             Spacer()
             Menu {
@@ -154,7 +154,7 @@ struct ManageServerView: View {
                     addMenu(to: row.roomId)
                 }
                 Divider()
-                Button(role: .destructive) { removing = row } label: { Label("Remove from Server", systemImage: "minus.circle") }
+                Button(role: .destructive) { removing = row } label: { Label(L("ios.remainingUI.removeFromServer"), systemImage: "minus.circle") }
             } label: {
                 Image(systemName: "ellipsis.circle").foregroundStyle(Theme.muted)
                     .frame(width: 36, height: 36)

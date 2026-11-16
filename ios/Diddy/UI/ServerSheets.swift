@@ -16,22 +16,22 @@ struct AddServerView: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("Address or link", text: $address)
+                    TextField(L("ios.remainingUI.addressOrLink"), text: $address)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
-                    Button("Join Server") { run { try await join() } }
+                    Button(L("ios.remainingUI.joinServer")) { run { try await join() } }
                         .disabled(address.trimmingCharacters(in: .whitespaces).isEmpty || busy)
                 } header: {
-                    Text("Join a server")
+                    Text(L("ios.remainingUI.joinAServer"))
                 } footer: {
-                    Text("For example #community:matrix.org or a matrix.to link.")
+                    Text(L("ios.remainingUI.forExampleCommunityMatrixOrgOrAMatrixToLink"))
                 }
                 Section {
-                    Button("Create a Server") { serverBeforeCreating = navigator.server; creating = true }
+                    Button(L("ios.remainingUI.createAServer")) { serverBeforeCreating = navigator.server; creating = true }
                 } header: {
-                    Text("Create your own")
+                    Text(L("ios.remainingUI.createYourOwn"))
                 } footer: {
-                    Text("Choose who can join, the address, encryption and more.")
+                    Text(L("ios.remainingUI.chooseWhoCanJoinTheAddressEncryptionAndMore"))
                 }
                 if let error { Text(error).foregroundStyle(Theme.danger) }
                 if busy { HStack { Spacer(); ProgressView(); Spacer() } }

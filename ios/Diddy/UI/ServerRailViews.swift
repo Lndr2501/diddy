@@ -123,7 +123,7 @@ struct ServerRail: View {
         .accessibilityLabel(folder.name ?? "Folder")
         .accessibilityValue(open ? "Expanded, \(folder.content.count) servers" : "Collapsed, \(folder.content.count) servers")
         .contextMenu {
-            Button { sheet = .arrange } label: { Label("Arrange Servers", systemImage: "arrow.up.arrow.down") }
+            Button { sheet = .arrange } label: { Label(L("ios.remainingUI.arrangeServers"), systemImage: "arrow.up.arrow.down") }
         }
         if open {
             ForEach(folder.content, id: \.self) { spaceButton($0) }
@@ -237,19 +237,19 @@ struct ServerMenuItems: View {
             Task { if let link = await account.roomLink(serverId) { UIPasteboard.general.string = link } }
         } label: { Label(L("room.viewHeader.copyLink"), systemImage: "link") }
         Divider()
-        Button(action: onCreateChannel) { Label("Create Channel", systemImage: "plus.bubble") }
+        Button(action: onCreateChannel) { Label(L("ios.remainingUI.createChannel"), systemImage: "plus.bubble") }
         if let onJoinAll {
-            Button(action: onJoinAll) { Label("Join All Channels", systemImage: "arrow.right.circle") }
+            Button(action: onJoinAll) { Label(L("ios.remainingUI.joinAllChannels"), systemImage: "arrow.right.circle") }
         }
-        Button(action: onManage) { Label("Manage Channels", systemImage: "list.bullet.indent") }
-        Button(action: onSettings) { Label("Server Settings", systemImage: "gearshape") }
+        Button(action: onManage) { Label(L("ios.remainingUI.manageChannels"), systemImage: "list.bullet.indent") }
+        Button(action: onSettings) { Label(L("ios.remainingUI.serverSettings"), systemImage: "gearshape") }
         if let onArrange {
             Divider()
-            Button(action: onArrange) { Label("Arrange Servers", systemImage: "arrow.up.arrow.down") }
+            Button(action: onArrange) { Label(L("ios.remainingUI.arrangeServers"), systemImage: "arrow.up.arrow.down") }
         }
         Divider()
         Button(role: .destructive, action: onLeave) {
-            Label("Leave Server", systemImage: "rectangle.portrait.and.arrow.right")
+            Label(L("ios.remainingUI.leaveServer"), systemImage: "rectangle.portrait.and.arrow.right")
         }
     }
 }
@@ -279,7 +279,7 @@ struct ServerRailEditorView: View {
             List {
                 Section {
                     if entries.isEmpty {
-                        Text("You have not joined any servers yet.").foregroundStyle(Theme.muted)
+                        Text(L("ios.remainingUI.youHaveNotJoinedAnyServersYet")).foregroundStyle(Theme.muted)
                     }
                     ForEach(entries) { entry in
                         row(entry)
@@ -288,13 +288,13 @@ struct ServerRailEditorView: View {
                         apply(ServerRailLayout.moved(entries, from: source, to: destination))
                     }
                 } footer: {
-                    Text("Tap Edit and drag to change the order. The order is the same in the desktop app.")
+                    Text(L("ios.remainingUI.tapEditAndDragToChangeTheOrderTheOrderIsTheSameInTheDeskto"))
                 }
                 if let error { Text(error).foregroundStyle(Theme.danger) }
             }
             .scrollContentBackground(.hidden)
             .background(Theme.sidebar.ignoresSafeArea())
-            .navigationTitle("Arrange Servers")
+            .navigationTitle(L("ios.remainingUI.arrangeServers"))
             .navigationBarTitleDisplayMode(.inline)
             .tint(Theme.accent)
             .toolbar {
@@ -314,7 +314,7 @@ struct ServerRailEditorView: View {
                 Text(info.name).foregroundStyle(Theme.text).lineLimit(1)
                 Spacer()
                 Menu {
-                    Button { apply(ServerRailLayout.foldered(id, in: entries)) } label: { Label("Put in New Folder", systemImage: "folder.badge.plus") }
+                    Button { apply(ServerRailLayout.foldered(id, in: entries)) } label: { Label(L("ios.remainingUI.putInNewFolder"), systemImage: "folder.badge.plus") }
                     ForEach(folders, id: \.id) { folder in
                         Button { apply(ServerRailLayout.put(id, intoFolder: folder.id, of: entries)) } label: {
                             Label("Put in \(folder.name ?? "Folder")", systemImage: "folder")
@@ -370,7 +370,7 @@ struct FolderEditorView: View {
     var body: some View {
         List {
             Section(L("settings.badgeEditor.name")) {
-                TextField("Folder", text: $name)
+                TextField(L("ios.remainingUI.folder"), text: $name)
                     .onSubmit { rename() }
                 Button(L("ios.settings.saveName")) { rename() }
                     .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines) == (folder?.name ?? ""))
@@ -404,10 +404,10 @@ struct FolderEditorView: View {
                     apply(ServerRailLayout.dissolved(folderId, in: entries))
                     dismiss()
                 } label: {
-                    Label("Dissolve Folder", systemImage: "folder.badge.minus")
+                    Label(L("ios.remainingUI.dissolveFolder"), systemImage: "folder.badge.minus")
                 }
             } footer: {
-                Text("The servers stay in your list, only the folder goes away.")
+                Text(L("ios.remainingUI.theServersStayInYourListOnlyTheFolderGoesAway"))
             }
             if let error { Text(error).foregroundStyle(Theme.danger) }
         }

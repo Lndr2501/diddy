@@ -35,7 +35,7 @@ struct DiddyOptionsSetupView: View {
 
     var body: some View {
         Section {
-            Text("Diddy needs a hidden room to share profiles, badges and name styles. Without it your customization cannot be saved or seen by others. Not an admin? Ask the admin of your server to set it up; Diddy joins it automatically.")
+            Text(L("ios.remainingUI.diddyNeedsAHiddenRoomToShareProfilesBadgesAndNameStylesWit"))
                 .font(.footnote)
                 .foregroundStyle(Theme.muted)
             Picker(L("settings.diddyProfile.mode"), selection: $mode) {
@@ -55,9 +55,9 @@ struct DiddyOptionsSetupView: View {
             Section {
                 Text(error).foregroundStyle(Theme.danger)
                 if mode == .existing, let selected, selected.joined, !usedWithoutAdmin {
-                    Button("Use Without Admin Rights") { Task { await useWithoutAdmin(selected) } }
+                    Button(L("ios.remainingUI.useWithoutAdminRights")) { Task { await useWithoutAdmin(selected) } }
                         .disabled(working)
-                    Text("Everyone has to choose this same room themselves. Your profile is then stored as hidden messages in it.")
+                    Text(L("ios.remainingUI.everyoneHasToChooseThisSameRoomThemselvesYourProfileIsThen"))
                         .font(.footnote)
                         .foregroundStyle(Theme.muted)
                 }
@@ -85,11 +85,11 @@ struct DiddyOptionsSetupView: View {
                 ForEach(account.spaces) { space in Text(space.displayName).tag(space.roomId) }
             }
             .disabled(working)
-            actionButton("Create Diddy Options Room") {
+            actionButton(L("ios.remainingUI.createDiddyOptionsRoom")) {
                 try await account.createDiddyOptionsRoom(name: roomName, spaceId: spaceId.isEmpty ? nil : spaceId)
             }
         } footer: {
-            Text("In a space, everyone in the server can join the room and Diddy does it for them.")
+            Text(L("ios.remainingUI.inASpaceEveryoneInTheServerCanJoinTheRoomAndDiddyDoesItFor"))
         }
     }
 
@@ -97,15 +97,15 @@ struct DiddyOptionsSetupView: View {
     private var existingSection: some View {
         Section {
             Picker(L("settings.diddyProfile.room"), selection: $choiceId) {
-                Text("Choose a room…").tag("")
+                Text(L("ios.remainingUI.chooseARoom")).tag("")
                 ForEach(choices) { choice in Text(label(choice)).tag(choice.id) }
             }
             .disabled(working)
-            if loadingChoices { HStack(spacing: 8) { ProgressView(); Text("Looking in your servers…").foregroundStyle(Theme.muted) } }
+            if loadingChoices { HStack(spacing: 8) { ProgressView(); Text(L("ios.remainingUI.lookingInYourServers")).foregroundStyle(Theme.muted) } }
             Toggle(isOn: $tagTopic) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Let Others Find It")
-                    Text("Adds [diddy-options] to the topic, so Diddy in the same server joins it automatically.")
+                    Text(L("ios.remainingUI.letOthersFindIt"))
+                    Text(L("ios.remainingUI.addsDiddyOptionsToTheTopicSoDiddyInTheSameServerJoinsItAut"))
                         .font(.caption)
                         .foregroundStyle(Theme.muted)
                 }
@@ -117,7 +117,7 @@ struct DiddyOptionsSetupView: View {
             }
             Button(L("settings.diddyProfile.refresh")) { Task { await loadChoices() } }.disabled(loadingChoices || working)
         } footer: {
-            Text("The room is then hidden from the room lists in Diddy. You need permission to change its settings.")
+            Text(L("ios.remainingUI.theRoomIsThenHiddenFromTheRoomListsInDiddyYouNeedPermissio"))
         }
         .task { if choices.isEmpty { await loadChoices() } }
     }
@@ -126,13 +126,13 @@ struct DiddyOptionsSetupView: View {
     private var joinSection: some View {
         Section {
             if account.spaces.isEmpty {
-                Text("You are not in a server yet.").foregroundStyle(Theme.muted)
+                Text(L("ios.remainingUI.youAreNotInAServerYet")).foregroundStyle(Theme.muted)
             } else {
                 Button { Task { await lookInServers() } } label: {
-                    Label("Look in My Servers", systemImage: "magnifyingglass")
+                    Label(L("ios.remainingUI.lookInMyServers"), systemImage: "magnifyingglass")
                 }
                 .disabled(working || loadingChoices)
-                if loadingChoices { HStack(spacing: 8) { ProgressView(); Text("Looking…").foregroundStyle(Theme.muted) } }
+                if loadingChoices { HStack(spacing: 8) { ProgressView(); Text(L("ios.remainingUI.looking")).foregroundStyle(Theme.muted) } }
                 ForEach(serverRooms) { room in
                     Button {
                         Task { await run { try await account.connectDiddyRoom(roomId: room.id, via: room.via) } }
@@ -145,7 +145,7 @@ struct DiddyOptionsSetupView: View {
                     .disabled(working)
                 }
                 if lookedForServerRooms && serverRooms.isEmpty && !loadingChoices {
-                    Text("No Diddy Options room found in your servers. Ask an admin to set one up, or create one.")
+                    Text(L("ios.remainingUI.noDiddyOptionsRoomFoundInYourServersAskAnAdminToSetOneUpOr"))
                         .foregroundStyle(Theme.muted)
                 }
             }

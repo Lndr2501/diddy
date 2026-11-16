@@ -19,8 +19,8 @@ struct OwnStatusMenu: View {
                 }
             }
             Divider()
-            Button { showingMessage = true } label: { Label("Set Status Message", systemImage: "text.bubble") }
-            Button { showing = true } label: { Label("Edit Profile", systemImage: "person.crop.circle") }
+            Button { showingMessage = true } label: { Label(L("ios.remainingUI.setStatusMessage"), systemImage: "text.bubble") }
+            Button { showing = true } label: { Label(L("ios.remainingUI.editProfile"), systemImage: "person.crop.circle") }
         } label: {
             AvatarView(url: account.avatarUrl, name: account.title, size: size, account: account)
                 .overlay(alignment: .bottomTrailing) { PresenceDot(userId: account.userId, account: account, size: max(11, size / 3.2)) }
@@ -34,7 +34,7 @@ struct OwnStatusMenu: View {
             }
         }
         .sheet(isPresented: $showingMessage) { OwnStatusMessageView(account: account) }
-        .alert("Could not save status", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
+        .alert(L("ios.remainingUI.couldNotSaveStatus"), isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
             Button(L("settings.localPlugins.ok"), role: .cancel) {}
         } message: { Text(error ?? "") }
     }
@@ -116,8 +116,8 @@ struct WelcomeGuideView: View {
                     }
                 }.padding()
             }
-            .navigationTitle("Matrix Guide").navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Skip") { finish() } } }
+            .navigationTitle(L("ios.remainingUI.matrixGuide")).navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button(L("ios.remainingUI.skip")) { finish() } } }
         }
     }
     private func finish() { onFinish?(); dismiss() }
@@ -148,7 +148,7 @@ struct ShellUpdateNotice: View {
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("Dismiss update notice")
+                    .accessibilityLabel(L("ios.remainingUI.dismissUpdateNotice"))
                 }
                 .font(.footnote.weight(.semibold))
                 .padding(.leading, 12).padding(.trailing, 6).padding(.vertical, 4)
@@ -193,12 +193,12 @@ private struct OwnStatusMessageView: View {
     var body: some View {
         NavigationStack {
             Form {
-                TextField("Status message", text: $text, axis: .vertical)
+                TextField(L("ios.remainingUI.statusMessage"), text: $text, axis: .vertical)
                     .onChange(of: text) { text = String($0.prefix(DiddyProfileRules.maxBio)) }
-                Text("Shown as your profile bio to other Diddy users.").font(.footnote)
+                Text(L("ios.remainingUI.shownAsYourProfileBioToOtherDiddyUsers")).font(.footnote)
                 if let error { Text(error).foregroundStyle(Theme.danger) }
             }
-            .navigationTitle("Status Message")
+            .navigationTitle(L("ios.remainingUI.statusMessage"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button(L("settings.deviceTile.cancel")) { dismiss() } }

@@ -200,7 +200,7 @@ struct RoomPermissionsView: View {
             } else {
                 Text(changes.count == 1 ? "1 unsaved change." : "\(changes.count) unsaved changes.").font(.footnote.bold())
             }
-            Button("Discard Changes", role: .destructive) {
+            Button(L("ios.remainingUI.discardChanges"), role: .destructive) {
                 changes = [:]
                 applyFailed = false
             }
@@ -310,7 +310,7 @@ struct RoomPowersEditor: View {
                     } else {
                         Text(L("settings.diddyProfile.youHaveUnsavedChanges")).font(.footnote.bold())
                     }
-                    Button("Discard Changes", role: .destructive) {
+                    Button(L("ios.remainingUI.discardChanges"), role: .destructive) {
                         edited = nil
                         deleted = []
                         applyFailed = false

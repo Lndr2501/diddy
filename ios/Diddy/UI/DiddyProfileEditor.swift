@@ -112,7 +112,7 @@ struct DiddyProfileEditor: View {
                 // from another room (chosen there), which has to be added here by hand.
                 Section {
                     NavigationLink { DiddyDataRoomView(account: account) } label: {
-                        Label("Data Room", systemImage: "externaldrive.connected.to.line.below")
+                        Label(L("ios.remainingUI.dataRoom"), systemImage: "externaldrive.connected.to.line.below")
                     }
                 } footer: {
                     Text("The room your profile, badges and name styles are shared through. Missing profiles of others? Add the room your desktop uses.")
@@ -773,7 +773,7 @@ struct DiddyProfileEditor: View {
             }
             .disabled(!canSave)
             if dirty {
-                Button("Discard Changes", role: .destructive) { revert() }.disabled(saving)
+                Button(L("ios.remainingUI.discardChanges"), role: .destructive) { revert() }.disabled(saving)
             }
         } footer: {
             Text(dirty ? "You have unsaved changes." : "Saved changes show for everyone in your Diddy Options room.")

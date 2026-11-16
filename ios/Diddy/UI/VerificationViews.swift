@@ -81,7 +81,7 @@ struct VerificationSheet: View {
             EmptyView()
         case .incoming(let request):
             icon("person.badge.shield.checkmark.fill")
-            Text("Verification request").font(.title2.bold()).foregroundStyle(Theme.text)
+            Text(L("ios.remainingUI.verificationRequest")).font(.title2.bold()).foregroundStyle(Theme.text)
             Text(incomingText(request)).multilineTextAlignment(.center).foregroundStyle(Theme.muted)
             VStack(spacing: 10) {
                 Button { Task { await center.accept() } } label: { Text(L("common.deviceVerification.accept")).frame(maxWidth: .infinity) }
@@ -91,14 +91,14 @@ struct VerificationSheet: View {
             }
         case .requesting(let text):
             ProgressView()
-            Text("Waiting for the other side").font(.title3.bold()).foregroundStyle(Theme.text)
+            Text(L("ios.remainingUI.waitingForTheOtherSide")).font(.title3.bold()).foregroundStyle(Theme.text)
             Text(text).multilineTextAlignment(.center).foregroundStyle(Theme.muted)
         case .starting:
             ProgressView()
-            Text("Setting up the comparison…").foregroundStyle(Theme.muted)
+            Text(L("ios.remainingUI.settingUpTheComparison")).foregroundStyle(Theme.muted)
         case .emojis(let emojis):
-            Text("Compare the emojis").font(.title2.bold()).foregroundStyle(Theme.text)
-            Text("Check that these emojis appear in the same order on the other device.")
+            Text(L("ios.remainingUI.compareTheEmojis")).font(.title2.bold()).foregroundStyle(Theme.text)
+            Text(L("ios.remainingUI.checkThatTheseEmojisAppearInTheSameOrderOnTheOtherDevice"))
                 .multilineTextAlignment(.center).foregroundStyle(Theme.muted)
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4), spacing: 14) {
                 ForEach(Array(emojis.enumerated()), id: \.offset) { _, emoji in
@@ -111,30 +111,30 @@ struct VerificationSheet: View {
             }
             matchButtons
         case .decimals(let values):
-            Text("Compare the numbers").font(.title2.bold()).foregroundStyle(Theme.text)
-            Text("Check that these numbers appear in the same order on the other device.")
+            Text(L("ios.remainingUI.compareTheNumbers")).font(.title2.bold()).foregroundStyle(Theme.text)
+            Text(L("ios.remainingUI.checkThatTheseNumbersAppearInTheSameOrderOnTheOtherDevice"))
                 .multilineTextAlignment(.center).foregroundStyle(Theme.muted)
             Text(values.map(String.init).joined(separator: "  "))
                 .font(.system(.title, design: .monospaced).bold()).foregroundStyle(Theme.text)
             matchButtons
         case .confirming:
             ProgressView()
-            Text("Waiting for the other side to confirm…").foregroundStyle(Theme.muted)
+            Text(L("ios.remainingUI.waitingForTheOtherSideToConfirm")).foregroundStyle(Theme.muted)
         case .done:
             icon("checkmark.shield.fill", color: Theme.online)
             Text(L("settings.verification.verified")).font(.title2.bold()).foregroundStyle(Theme.text)
-            Text("The verification is complete.").foregroundStyle(Theme.muted)
+            Text(L("ios.remainingUI.theVerificationIsComplete")).foregroundStyle(Theme.muted)
             Button { Task { await center.dismiss() } } label: { Text(L("call.companionDialog.done")).frame(maxWidth: .infinity) }
                 .buttonStyle(.borderedProminent)
         case .cancelled(let reason):
             icon("xmark.shield.fill", color: Theme.danger)
-            Text("Verification cancelled").font(.title2.bold()).foregroundStyle(Theme.text)
+            Text(L("ios.remainingUI.verificationCancelled")).font(.title2.bold()).foregroundStyle(Theme.text)
             Text(reason).multilineTextAlignment(.center).foregroundStyle(Theme.muted)
             Button { Task { await center.dismiss() } } label: { Text(L("room.callChatView.close")).frame(maxWidth: .infinity) }
                 .buttonStyle(.bordered)
         case .failed(let message):
             icon("exclamationmark.triangle.fill", color: Theme.danger)
-            Text("Verification failed").font(.title2.bold()).foregroundStyle(Theme.text)
+            Text(L("ios.remainingUI.verificationFailed")).font(.title2.bold()).foregroundStyle(Theme.text)
             Text(message).multilineTextAlignment(.center).foregroundStyle(Theme.muted)
             Button { Task { await center.dismiss() } } label: { Text(L("room.callChatView.close")).frame(maxWidth: .infinity) }
                 .buttonStyle(.bordered)
@@ -143,9 +143,9 @@ struct VerificationSheet: View {
 
     private var matchButtons: some View {
         VStack(spacing: 10) {
-            Button { Task { await center.approve() } } label: { Text("They match").frame(maxWidth: .infinity) }
+            Button { Task { await center.approve() } } label: { Text(L("ios.remainingUI.theyMatch")).frame(maxWidth: .infinity) }
                 .buttonStyle(.borderedProminent)
-            Button(role: .destructive) { Task { await center.decline() } } label: { Text("They don't match").frame(maxWidth: .infinity) }
+            Button(role: .destructive) { Task { await center.decline() } } label: { Text(L("ios.remainingUI.theyDonTMatch")).frame(maxWidth: .infinity) }
                 .buttonStyle(.bordered)
         }
     }

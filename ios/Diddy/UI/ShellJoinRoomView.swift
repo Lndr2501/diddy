@@ -24,7 +24,7 @@ struct ShellJoinRoomView: View {
                 if busy { ProgressView() }
                 if let error { Text(error).foregroundStyle(Theme.danger) }
             }
-            .navigationTitle("Open Matrix room")
+            .navigationTitle(L("ios.remainingUI.openMatrixRoom"))
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button(L("settings.deviceTile.cancel")) { dismiss() } } }
         }
     }

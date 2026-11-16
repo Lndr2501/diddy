@@ -36,7 +36,7 @@ struct ShareTargetSheet: View {
                             .listRowBackground(Theme.sidebar)
                     }
                 } header: {
-                    Text("Send to")
+                    Text(L("ios.remainingUI.sendTo"))
                 }
             }
             .listStyle(.insetGrouped)
@@ -64,7 +64,7 @@ struct ShareTargetSheet: View {
             if let music = current.music {
                 MusicCardView(card: music, account: account, interactive: false)
             } else if current.resolvingMusic {
-                HStack(spacing: 8) { ProgressView(); Text("Looking up the song…").foregroundStyle(Theme.muted) }
+                HStack(spacing: 8) { ProgressView(); Text(L("ios.remainingUI.lookingUpTheSong")).foregroundStyle(Theme.muted) }
                     .frame(height: 80)
             }
             if !current.files.isEmpty {
@@ -95,7 +95,7 @@ struct ShareTargetSheet: View {
                 if let server = account.server(of: room.id) {
                     Text(account.serverInfo(server).name).font(.caption).foregroundStyle(Theme.muted).lineLimit(1)
                 } else if room.isDirect {
-                    Text("Direct message").font(.caption).foregroundStyle(Theme.muted)
+                    Text(L("ios.remainingUI.directMessage")).font(.caption).foregroundStyle(Theme.muted)
                 }
             }
             Spacer(minLength: 0)

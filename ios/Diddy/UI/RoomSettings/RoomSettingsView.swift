@@ -193,7 +193,7 @@ struct RoomSettingsView: View {
             if profileChanged(state, canName: canName, canTopic: canTopic) {
                 Button(L("settings.profile.save")) { Task { await saveProfile(state, canName: canName, canTopic: canTopic) } }
                     .disabled(model.busy || (canName && name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty))
-                Button("Discard Changes", role: .destructive) {
+                Button(L("ios.remainingUI.discardChanges"), role: .destructive) {
                     name = state.name ?? ""
                     topic = state.topic ?? ""
                 }

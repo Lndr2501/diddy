@@ -51,7 +51,7 @@ struct DiddyWelcomeView: View {
                 }
                 Section {
                     NavigationLink { DiddyProfileEditor(account: account) } label: {
-                        Label("Edit Profile", systemImage: "person.crop.circle")
+                        Label(L("ios.remainingUI.editProfile"), systemImage: "person.crop.circle")
                     }
                 } header: {
                     Text(L("ios.registrationMore.makeItYours"))

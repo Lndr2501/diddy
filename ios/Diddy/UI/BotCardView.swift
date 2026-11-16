@@ -184,7 +184,7 @@ struct BotCardView: View {
                 .foregroundStyle(Theme.muted)
             }
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Playback")
+            .accessibilityLabel(L("ios.remainingUI.playback"))
             .accessibilityValue("\(BotCardParser.formatTime(position)) of \(BotCardParser.formatTime(duration))")
             .accessibilityAdjustableAction { direction in
                 guard seekable, let seek = track.seek else { return }

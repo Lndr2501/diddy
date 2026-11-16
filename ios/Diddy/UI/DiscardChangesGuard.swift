@@ -18,13 +18,13 @@ private struct DiscardChangesDialog: ViewModifier {
                     }
                 }
             }
-            Button("Discard Changes", role: .destructive) {
+            Button(L("ios.remainingUI.discardChanges"), role: .destructive) {
                 onDiscard()
                 onLeave()
             }
             Button(L("settings.deviceTile.cancel"), role: .cancel) {}
         } message: {
-            Text("Your changes haven't been saved.")
+            Text(L("ios.remainingUI.yourChangesHavenTBeenSaved"))
         }
     }
 }

@@ -74,7 +74,7 @@ private struct NewRoomForm: View {
                     TextField(isSpace ? "My Server" : (isVoice ? "Lounge" : "new-\(noun.lowercased())"), text: $name)
                 }
                 Section(L("createRoom.main.topicOptional")) {
-                    TextField("What is it about?", text: $topic, axis: .vertical)
+                    TextField(L("ios.remainingUI.whatIsItAbout"), text: $topic, axis: .vertical)
                 }
                 if !isSpace {
                     Section(L("createRoom.main.type")) {
@@ -124,7 +124,7 @@ private struct NewRoomForm: View {
                         Text(L("createRoom.main.usersFromOtherServers"))
                             .font(.footnote).foregroundStyle(Theme.muted)
                         if !availableVersions.isEmpty {
-                            Picker("Room Version", selection: Binding(get: { version ?? availableVersions[0] }, set: { version = $0 })) {
+                            Picker(L("ios.remainingUI.roomVersion"), selection: Binding(get: { version ?? availableVersions[0] }, set: { version = $0 })) {
                                 ForEach(availableVersions, id: \.self) { Text($0).tag($0) }
                             }
                         }

@@ -61,7 +61,7 @@ struct PollComposer: View {
         NavigationStack {
             Form {
                 Section(L("ios.chatMore.question")) {
-                    TextField("Your question", text: $question).textInputAutocapitalization(.sentences)
+                    TextField(L("ios.remainingUI.yourQuestion"), text: $question).textInputAutocapitalization(.sentences)
                         .onChange(of: question) { value in if value.count > 340 { question = String(value.prefix(340)) } }
                 }
                 Section(L("ios.chatMore.answers220")) {

@@ -103,7 +103,7 @@ struct PluginsPanelView: View {
                         PluginDockControls(plugin: plugin)
                     }
                     if store.activePlugins.isEmpty {
-                        Text("No plugins are turned on. Add some in Settings > Plugins.")
+                        Text(L("ios.remainingUI.noPluginsAreTurnedOnAddSomeInSettingsPlugins"))
                             .font(.subheadline).foregroundStyle(Theme.muted).padding(.top, 40)
                     }
                 }
@@ -161,12 +161,12 @@ struct PluginSettingsView: View {
                 NavigationLink { AddPluginView() } label: { Label(L("settings.localPlugins.addPlugin"), systemImage: "plus.circle.fill") }
                     .disabled(store.plugins.count >= PluginRules.maxPlugins)
             } header: {
-                Text("Your plugins")
+                Text(L("ios.remainingUI.yourPlugins"))
             } footer: {
-                Text("Turned-on plugins appear in the puzzle button next to Settings. A plugin is a small web page that runs in a locked-down frame: no access to your account, messages or files. Only add plugins you trust.")
+                Text(L("ios.remainingUI.turnedOnPluginsAppearInThePuzzleButtonNextToSettingsAPlugi"))
             }
 
-            Section("Built-in plugins") {
+            Section(L("ios.remainingUI.builtInPlugins")) {
                 ForEach(PluginStore.builtins) { item in
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
@@ -198,13 +198,13 @@ struct PluginSettingsView: View {
             isPresented: Binding(get: { pendingRemoval != nil }, set: { if !$0 { pendingRemoval = nil } }),
             titleVisibility: .visible
         ) {
-            Button("Remove Plugin", role: .destructive) {
+            Button(L("ios.remainingUI.removePlugin"), role: .destructive) {
                 if let plugin = pendingRemoval { store.remove(plugin.id) }
                 pendingRemoval = nil
             }
             Button(L("settings.deviceTile.cancel"), role: .cancel) { pendingRemoval = nil }
         } message: {
-            Text("The data this plugin saved on this device is deleted too.")
+            Text(L("ios.remainingUI.theDataThisPluginSavedOnThisDeviceIsDeletedToo"))
         }
     }
 
@@ -227,7 +227,7 @@ struct PluginDetailView: View {
         if let plugin = store.plugins.first(where: { $0.id == pluginId }) {
             List {
                 Section {
-                    Toggle("Turned on", isOn: Binding(get: { plugin.enabled }, set: { store.setEnabled(plugin.id, $0) }))
+                    Toggle(L("ios.remainingUI.turnedOn"), isOn: Binding(get: { plugin.enabled }, set: { store.setEnabled(plugin.id, $0) }))
                 }
                 Section(L("settings.badgeEditor.preview")) {
                     PluginCardView(plugin: plugin, showsTitle: false)
@@ -252,12 +252,12 @@ struct PluginDetailView: View {
                     Text("Sent to the plugin, which decides whether to apply it (up to \(PluginRules.maxCustomCSS) characters). Reload the preview to see it.")
                 }
                 Section {
-                    Button("Remove Plugin", role: .destructive) {
+                    Button(L("ios.remainingUI.removePlugin"), role: .destructive) {
                         store.remove(plugin.id)
                         dismiss()
                     }
                 } footer: {
-                    Text("Removing also deletes what the plugin saved on this device.")
+                    Text(L("ios.remainingUI.removingAlsoDeletesWhatThePluginSavedOnThisDevice"))
                 }
             }
             .scrollContentBackground(.hidden)
@@ -268,7 +268,7 @@ struct PluginDetailView: View {
                 if !loadedCss { css = plugin.customCss ?? ""; loadedCss = true }
             }
         } else {
-            Text("This plugin was removed.").foregroundStyle(Theme.muted)
+            Text(L("ios.remainingUI.thisPluginWasRemoved")).foregroundStyle(Theme.muted)
         }
     }
 
@@ -317,7 +317,7 @@ struct AddPluginView: View {
     var body: some View {
         Form {
             Section {
-                Picker("Source", selection: $kind) {
+                Picker(L("ios.remainingUI.source"), selection: $kind) {
                     ForEach(Kind.allCases) { Text($0.rawValue).tag($0) }
                 }
                 .pickerStyle(.segmented)
@@ -333,7 +333,7 @@ struct AddPluginView: View {
                     TextField(L("settings.plugins.httpsExampleComPlugin"), text: $address)
                         .keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
                 } footer: {
-                    Text("A web page that follows the plugin contract (docs/plugins.md). Only https addresses work on iOS.")
+                    Text(L("ios.remainingUI.aWebPageThatFollowsThePluginContractDocsPluginsMdOnlyHttps"))
                 }
             case .code:
                 Section {
@@ -342,7 +342,7 @@ struct AddPluginView: View {
                         .frame(minHeight: 160)
                         .autocorrectionDisabled().textInputAutocapitalization(.never)
                     Button(L("settings.badgeEditor.preview")) { previewing = true }.disabled(code.isEmpty)
-                } header: { Text("HTML code") } footer: {
+                } header: { Text(L("ios.remainingUI.htmlCode")) } footer: {
                     Text("One self-contained HTML file, at most \(PluginRules.maxLocalBytes / 1024) KB. It is saved on this device.")
                 }
             case .file:
@@ -350,7 +350,7 @@ struct AddPluginView: View {
                     Button { importing = true } label: { Label(fileName ?? "Choose an .html file", systemImage: "doc") }
                     if !code.isEmpty { Button(L("settings.badgeEditor.preview")) { previewing = true } }
                 } footer: {
-                    Text("The file is saved on this device.")
+                    Text(L("ios.remainingUI.theFileIsSavedOnThisDevice"))
                 }
             case .github:
                 Section {
@@ -362,7 +362,7 @@ struct AddPluginView: View {
                     .disabled(busy || githubLink.isEmpty)
                     if fetched != nil { Button(L("settings.badgeEditor.preview")) { previewing = true } }
                 } footer: {
-                    Text("Link to a single .html file in a public repository, or to a public Gist. It is loaded once and saved on this device.")
+                    Text(L("ios.remainingUI.linkToASingleHtmlFileInAPublicRepositoryOrToAPublicGistItI"))
                 }
             }
             Section {
