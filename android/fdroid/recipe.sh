@@ -2,11 +2,12 @@
 # Prints the F-Droid build recipe (fdroiddata metadata/app.diddy.android.yml) for one release.
 #   android/fdroid/recipe.sh v1.13.0 > app.diddy.android.yml
 # The version and versionCode come from android/app/build.gradle.kts at that tag, the commit is the
-# tag's commit. F-Droid builds the APK from source, checks that it matches the signed APK of the
+# tag's commit. The layout is what `fdroid rewritemeta` writes, so fdroiddata's CI accepts it.
+# F-Droid builds the APK from source, checks that it matches the signed APK of the
 # GitHub release byte for byte, and then ships Diddy's own signed APK (see README.md here).
 set -euo pipefail
 ref=${1:?usage: recipe.sh <tag or commit>}
-cd "$(git rev-parse --show-toplevel)"
+cd "$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
 commit=$(git rev-parse "$ref^{commit}")
 gradle=$(git show "$commit:android/app/build.gradle.kts")
 version=$(sed -n 's/^val diddyVersion = "\(.*\)"/\1/p' <<<"$gradle")
@@ -16,9 +17,9 @@ code=$(sed -n 's/^val diddyVersionCode = \([0-9]*\)$/\1/p' <<<"$gradle")
 cat <<YAML
 AntiFeatures:
   NonFreeNet:
-    en-US: 'Optional features use non-free services when you use them: Watch Together plays YouTube
-      videos, the soundboard imports sounds from MyInstants, and Apple Music links show song cards
-      from the iTunes catalog.'
+    en-US: 'Optional features use non-free services when you use them: Watch Together
+      plays YouTube videos, the soundboard imports sounds from MyInstants, and Apple
+      Music links show song cards from the iTunes catalog.'
 Categories:
   - Internet
   - Messaging
