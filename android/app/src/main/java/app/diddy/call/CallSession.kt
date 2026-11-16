@@ -122,6 +122,17 @@ class CallSession(private val context: Context, val account: MatrixAccount, priv
     private var ringTimeout: Job? = null
     private var mutedBeforeDeafen = false
 
+    /** The shared YouTube video of this call (Watch Together). */
+    val watchTogether = WatchTogetherSession(
+        account, roomId,
+        devices = { watchDevices() },
+        isMember = { userId -> members.any { it.userId == userId } || userId in (account.summary(roomId)?.callParticipants ?: emptyList()) },
+    )
+
+    private fun watchDevices(): List<WatchDevice> = liveKitRoom.remoteParticipants.values.mapNotNull { participant ->
+        participant.identity?.value?.let(CallLogic::split)?.let { (user, device) -> WatchDevice(user, device) }
+    }
+
     private val ownUserId get() = account.userId
     private val ownDeviceId get() = account.deviceId
     private val ownIdentity get() = CallLogic.identity(ownUserId, ownDeviceId)
@@ -195,6 +206,7 @@ class CallSession(private val context: Context, val account: MatrixAccount, priv
         ensureOpen()
         connected = true
         state = "Voice connected"
+        watchTogether.start()
         scheduleMembershipRefresh()
         refreshMembers()
     }
@@ -212,6 +224,7 @@ class CallSession(private val context: Context, val account: MatrixAccount, priv
         screenSharing = false
         state = "Disconnected"
         refreshJob?.cancel()
+        watchTogether.stop()
         toDeviceHandle?.cancel()
         toDeviceHandle = null
         if (wasConnected || membershipCreatedTs != null) {

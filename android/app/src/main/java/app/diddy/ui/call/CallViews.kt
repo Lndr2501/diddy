@@ -54,6 +54,7 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.PhoneInTalk
 import androidx.compose.material.icons.filled.ScreenShare
+import androidx.compose.material.icons.filled.SmartDisplay
 import androidx.compose.material.icons.filled.StopScreenShare
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.VideocamOff
@@ -271,12 +272,15 @@ fun VoiceChannelScreen(account: MatrixAccount, roomId: String, navigator: Naviga
 }
 
 @Composable
-private fun CallHeader(title: String, subtitle: String?, backIcon: ImageVector, onBack: () -> Unit, onMembers: () -> Unit) {
+private fun CallHeader(title: String, subtitle: String?, backIcon: ImageVector, onBack: () -> Unit, onWatch: (() -> Unit)? = null, onMembers: () -> Unit) {
     Row(Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(48.dp).clickable(onClick = onBack), contentAlignment = Alignment.Center) { Icon(backIcon, "Back", tint = Theme.text) }
         Column(Modifier.weight(1f)) {
             Text(title, color = Theme.text, fontWeight = FontWeight.SemiBold, fontSize = 17.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             subtitle?.let { Text(it, color = Theme.muted, fontSize = 12.sp, maxLines = 1) }
+        }
+        if (onWatch != null) Box(Modifier.size(48.dp).clickable(onClick = onWatch), contentAlignment = Alignment.Center) {
+            Icon(Icons.Filled.SmartDisplay, "Watch together", tint = Theme.text)
         }
         Box(Modifier.size(48.dp).clickable(onClick = onMembers), contentAlignment = Alignment.Center) { Icon(Icons.Filled.Group, "Members", tint = Theme.text) }
     }
@@ -286,6 +290,9 @@ private fun CallHeader(title: String, subtitle: String?, backIcon: ImageVector, 
 @Composable
 private fun ConnectedCall(session: CallSession, title: String, navigator: Navigator, onMinimize: () -> Unit, minimizeIcon: ImageVector) {
     var volumeFor by remember { mutableStateOf<CallMember?>(null) }
+    var watchLink by remember { mutableStateOf(false) }
+    if (watchLink) WatchLinkSheet(session.watchTogether) { watchLink = false }
+    val watchOffered = app.diddy.call.WatchPrefsStore.prefs.enabled && session.watchTogether.available
     val status = when {
         session.outgoing == CallSession.OutgoingRing.RINGING -> "Ringing…"
         session.outgoing == CallSession.OutgoingRing.NO_ANSWER -> "No answer"
@@ -294,7 +301,11 @@ private fun ConnectedCall(session: CallSession, title: String, navigator: Naviga
         else -> if (session.members.size == 1) "Only you" else "${session.members.size} in voice"
     }
     Column(Modifier.fillMaxSize().background(Theme.rail).statusBarsPadding().navigationBarsPadding()) {
-        CallHeader(title, status + if (session.deafened) " · Deafened" else "", minimizeIcon, onMinimize) { navigator.show(Sheet.Members(session.roomId)) }
+        CallHeader(
+            title, status + if (session.deafened) " · Deafened" else "", minimizeIcon, onMinimize,
+            onWatch = if (watchOffered) ({ watchLink = true }) else null,
+        ) { navigator.show(Sheet.Members(session.roomId)) }
+        WatchTogetherArea(session.watchTogether)
         val watched = session.members.firstOrNull { it.id == session.watchedShare && it.screenShare != null }
         Box(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 10.dp)) {
             if (watched != null) {
@@ -673,12 +684,3 @@ fun CallSettingsPage() {
     }
 }
 
-/** Settings > Watch Together: not on Android yet. */
-@Composable
-fun WatchTogetherSettingsPage() {
-    Column(Modifier.fillMaxSize().padding(vertical = 8.dp)) {
-        FormSection(footer = "Watch Together runs on the desktop and iPhone apps. On Android it is not built yet; you still see and hear the call.") {
-            Text("Not available on Android yet.", color = Theme.muted, modifier = Modifier.padding(14.dp))
-        }
-    }
-}
