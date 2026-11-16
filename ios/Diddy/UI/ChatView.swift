@@ -809,11 +809,11 @@ private struct ChatContent: View {
         HStack(alignment: .bottom, spacing: 0) {
             if editing == nil {
                 Menu {
-                    Button { showPhotos = true } label: { Label("Photos and Videos", systemImage: "photo.on.rectangle") }
+                    Button { showPhotos = true } label: { Label(L("ios.composer.photosAndVideos"), systemImage: "photo.on.rectangle") }
                     if UIImagePickerController.isSourceTypeAvailable(.camera) {
-                        Button { showCamera = true } label: { Label("Camera", systemImage: "camera") }
+                        Button { showCamera = true } label: { Label(L("ios.calls.moreCamera"), systemImage: "camera") }
                     }
-                    Button { showFiles = true } label: { Label("Files", systemImage: "doc") }
+                    Button { showFiles = true } label: { Label(L("common.uploadBoard.files"), systemImage: "doc") }
                     Button { showPoll = true } label: { Label("Poll", systemImage: "chart.bar.xaxis") }
                 } label: {
                     Image(systemName: "plus")
@@ -824,7 +824,7 @@ private struct ChatContent: View {
                         .frame(width: 38, height: ComposerEditor.minHeight)
                         .contentShape(Rectangle())
                 }
-                .accessibilityLabel("Add attachment")
+                .accessibilityLabel(L("ios.composer.addAttachment"))
             }
             ComposerEditor(text: draftBinding, selection: selectionBinding, isFocused: composerFocused, focusToken: composerFocusToken, onFocus: { composerFocused = $0 }, onSend: send, onFiles: { urls, images in
                 Task { await addFiles(urls, images: images) }
@@ -832,7 +832,7 @@ private struct ChatContent: View {
                 .frame(minHeight: ComposerEditor.minHeight)
                 .overlay(alignment: .leading) {
                     if draft.isEmpty {
-                        Text(editing != nil ? "Edit message" : pendingMusic != nil ? "Add a message…" : pendingFiles.isEmpty ? "Message \(title)" : "Add a caption…")
+                        Text(editing != nil ? L("ios.composer.editMessage") : pendingMusic != nil ? L("ios.composer.addMessage") : pendingFiles.isEmpty ? L("ios.composer.messageRoom", ["name": title]) : L("ios.composer.addCaption"))
                             .font(ComposerEditor.font)
                             .foregroundStyle(Theme.faint)
                             .lineLimit(1)
@@ -850,7 +850,7 @@ private struct ChatContent: View {
                         .frame(width: 36, height: ComposerEditor.minHeight)
                         .contentShape(Rectangle())
                 }
-                .accessibilityLabel("Emoji and stickers")
+                .accessibilityLabel(L("ios.composer.emojiAndStickers"))
             }
             if !trimmedDraft.isEmpty || !pendingFiles.isEmpty || pendingMusic != nil {
                 Button(action: send) {
@@ -864,8 +864,8 @@ private struct ChatContent: View {
                 }
                 .disabled(sending)
                 .opacity(sending ? 0.6 : 1)
-                .accessibilityLabel(editing == nil ? "Send" : "Save edit")
-                .accessibilityHint(canScheduleLater ? "Touch and hold to send later" : "")
+                .accessibilityLabel(editing == nil ? L("room.voiceRecorderButton.send") : L("ios.composer.saveEdit"))
+                .accessibilityHint(canScheduleLater ? L("ios.composer.holdSendLater") : "")
                 // Long press: Send later (text only, like the desktop's right-click menu).
                 .contextMenu {
                     if canScheduleLater {
@@ -905,7 +905,7 @@ private struct ChatContent: View {
                     .buttonStyle(.plain)
                     .disabled(sending)
                     .offset(x: 10, y: -10)
-                    .accessibilityLabel("Remove song")
+                    .accessibilityLabel(L("ios.composer.removeSong"))
                 }
             Spacer(minLength: 0)
         }
@@ -950,7 +950,7 @@ private struct ChatContent: View {
                     ProgressView()
                     Text(L("ios.chat.uploading")).font(.footnote).foregroundStyle(Theme.muted)
                     Spacer(minLength: 0)
-                    Button("Cancel") { controller.cancelAttachment() }.font(.footnote.weight(.semibold))
+                    Button(L("ios.settings.cancel")) { controller.cancelAttachment() }.font(.footnote.weight(.semibold))
                 }
             }
         }
@@ -1013,7 +1013,7 @@ private struct ChatContent: View {
             Spacer(minLength: 0)
             Button(action: cancel) { Image(systemName: "xmark.circle.fill").frame(width: 30, height: 30) }
                 .foregroundStyle(Theme.muted)
-                .accessibilityLabel("Cancel")
+                .accessibilityLabel(L("ios.settings.cancel"))
         }
         .font(.footnote)
         .padding(.leading, 14)

@@ -2528,6 +2528,27 @@
       "moreCamera": "Kamera",
       "moreStopScreen": "Bildschirmteilen beenden",
       "moreScreen": "Bildschirm"
+    },
+    "composer": {
+      "photosAndVideos": "Fotos und Videos",
+      "addAttachment": "Anhang hinzufügen",
+      "editMessage": "Nachricht bearbeiten",
+      "addMessage": "Nachricht hinzufügen …",
+      "addCaption": "Bildunterschrift hinzufügen …",
+      "emojiAndStickers": "Emoji und Sticker",
+      "saveEdit": "Änderung speichern",
+      "holdSendLater": "Für späteres Senden gedrückt halten",
+      "removeSong": "Lied entfernen",
+      "messageRoom": "Nachricht an {{name}}",
+      "searchStickers": "Sticker suchen",
+      "searchEmoji": "Emoji suchen",
+      "customPack": "Eigenes Paket",
+      "noStickers": "Noch keine Sticker",
+      "noEmoji": "Keine Emoji",
+      "noResults": "Keine Ergebnisse",
+      "stickerPacksHelp": "Sticker-Pakete aus deinem Konto und diesem Raum erscheinen hier.",
+      "message": "Nachricht",
+      "dropToAttach": "Zum Anhängen hier ablegen"
     }
   }
 }
