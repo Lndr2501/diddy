@@ -31,6 +31,12 @@ class CallLogicTest {
         )
         assertEquals(CallLogic.Transport("https://old", "!r:x"), CallLogic.oldestTransport(events, "_@me:x_M_m.call", "!r:x", now))
         assertNull(CallLogic.oldestTransport(emptyList(), "k", "!r:x", now))
+        // Without created_ts the server time counts, so an old Element Call member wins.
+        val ec = CallLogic.MemberEvent("_@ec:x_E_m.call", mapOf("application" to "m.call",
+            "foci_preferred" to listOf(mapOf("type" to "livekit", "livekit_service_url" to "https://ec"))), originTs = now - 50_000)
+        assertEquals("https://ec", CallLogic.oldestTransport(events + ec, "_@me:x_M_m.call", "!r:x", now)?.serviceUrl)
+        val dead = ec.copy(originTs = now - CallLogic.MEMBERSHIP_EXPIRY_MS - 1)
+        assertEquals("https://old", CallLogic.oldestTransport(events + dead, "_@me:x_M_m.call", "!r:x", now)?.serviceUrl)
     }
 
     @Test fun membershipKeepsTheJoinTimeOnRefresh() {

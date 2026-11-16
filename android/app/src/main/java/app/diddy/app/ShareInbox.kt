@@ -28,10 +28,14 @@ object ShareInbox {
     var incoming by mutableStateOf<IncomingShare?>(null)
         private set
     private val staged = mutableMapOf<String, IncomingShare>()
+    /** Bumped when a share is staged, so an already open chat picks it up too. */
+    var stagedVersion by mutableStateOf(0)
+        private set
     /** A matrix.to or matrix: link opened from outside, for the account screen to show. */
     var link by mutableStateOf<String?>(null)
 
-    const val MAX_FILE_BYTES = 100L * 1024 * 1024
+    const val MAX_FILE_BYTES = 50L * 1024 * 1024
+    const val MAX_TOTAL_BYTES = 150L * 1024 * 1024
 
     /** Reads a share intent; true when it was one. */
     suspend fun handle(context: Context, intent: Intent): Boolean {
@@ -42,7 +46,13 @@ object ShareInbox {
         val uris = mutableListOf<Uri>()
         if (action == Intent.ACTION_SEND) streamExtra(intent)?.let { uris += it }
         else streamListExtra(intent)?.let { uris += it }
-        val files = withContext(Dispatchers.IO) { uris.take(10).mapNotNull { read(context, it) } }
+        val files = withContext(Dispatchers.IO) {
+            var total = 0L
+            uris.take(10).mapNotNull { uri ->
+                if (total >= MAX_TOTAL_BYTES) return@mapNotNull null
+                read(context, uri, minOf(MAX_FILE_BYTES, MAX_TOTAL_BYTES - total))?.also { total += it.data.size }
+            }
+        }
         if (text.isEmpty() && files.isEmpty()) return true
         incoming = IncomingShare(text, files)
         return true
@@ -56,7 +66,8 @@ object ShareInbox {
     private fun streamListExtra(intent: Intent): List<Uri>? =
         if (Build.VERSION.SDK_INT >= 33) intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM, Uri::class.java) else intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM)
 
-    private fun read(context: Context, uri: Uri): SharedFile? = try {
+    /** Reads at most `limit` bytes; a bigger file is left out (sizes are not always known up front). */
+    private fun read(context: Context, uri: Uri, limit: Long): SharedFile? = try {
         val resolver = context.contentResolver
         var name = uri.lastPathSegment ?: "file"
         var size = -1L
@@ -66,8 +77,20 @@ object ShareInbox {
                 if (!cursor.isNull(1)) size = cursor.getLong(1)
             }
         }
-        if (size > MAX_FILE_BYTES) null
-        else resolver.openInputStream(uri)?.use { SharedFile(name, resolver.getType(uri) ?: "application/octet-stream", it.readBytes()) }
+        if (size > limit) null
+        else resolver.openInputStream(uri)?.use { input ->
+            val out = java.io.ByteArrayOutputStream()
+            val buffer = ByteArray(64 * 1024)
+            var read = 0L
+            while (true) {
+                val n = input.read(buffer)
+                if (n < 0) break
+                read += n
+                if (read > limit) return@use null
+                out.write(buffer, 0, n)
+            }
+            SharedFile(name, resolver.getType(uri) ?: "application/octet-stream", out.toByteArray())
+        }
     } catch (e: Exception) {
         DiagLog.write("share: could not read a file (${e.message})")
         null
@@ -78,6 +101,7 @@ object ShareInbox {
         val share = incoming ?: return
         staged[roomId] = share
         incoming = null
+        stagedVersion++
     }
 
     fun take(roomId: String): IncomingShare? = staged.remove(roomId)

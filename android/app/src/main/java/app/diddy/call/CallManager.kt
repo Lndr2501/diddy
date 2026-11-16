@@ -101,7 +101,10 @@ class IncomingCall(val account: MatrixAccount, val roomId: String, val callerId:
             val content = event.content as? TimelineItemContent.RtcNotification ?: continue
             val eventId = (event.eventOrTransactionId as? EventOrTransactionId.EventId)?.eventId ?: continue
             val age = System.currentTimeMillis() - event.timestamp.toLong()
-            if (age > 120_000 || account.userId in content.declinedBy) onCancelled?.invoke() else notificationEventId = eventId
+            // An older notification is from an earlier call (the new one may not be decrypted yet):
+            // keep ringing, the ring ends by itself after 30 seconds.
+            if (age > 120_000) return
+            if (account.userId in content.declinedBy) onCancelled?.invoke() else notificationEventId = eventId
             return
         }
     }
@@ -191,7 +194,7 @@ object CallManager {
         CallService.start(context, session.roomName)
         DiagLog.write("call: joining")
         try {
-            session.connect(microphoneAllowed)
+            session.connect()
             DiagLog.write("call: connected")
             Sounds.play(Sound.CALL_JOINED)
             session.notifyRoom()

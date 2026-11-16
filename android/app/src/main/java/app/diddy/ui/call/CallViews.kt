@@ -426,10 +426,15 @@ fun VideoView(track: VideoTrack, session: CallSession, modifier: Modifier, fill:
 private fun ControlBar(session: CallSession) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    // A new permission: the call service needs the matching type to keep it in the background.
     val camera = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) scope.launch { session.toggleCamera(true) }
+        if (granted) {
+            app.diddy.call.CallService.start(context, session.roomName)
+            scope.launch { session.toggleCamera(true) }
+        }
     }
     val mic = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) app.diddy.call.CallService.start(context, session.roomName)
         scope.launch { session.toggleMicrophone(granted) }
     }
     val projection = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->

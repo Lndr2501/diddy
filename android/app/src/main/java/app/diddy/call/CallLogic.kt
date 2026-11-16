@@ -21,8 +21,8 @@ object CallLogic {
 
     data class Transport(val serviceUrl: String, val alias: String)
 
-    /** One `call.member` state event: its state key, sender and content. */
-    data class MemberEvent(val stateKey: String, val content: Map<String, Any?>)
+    /** One `call.member` state event: its state key, content and when the server got it. */
+    data class MemberEvent(val stateKey: String, val content: Map<String, Any?>, val originTs: Long? = null)
 
     fun stateKey(userId: String, deviceId: String) = "_${userId}_${deviceId}_m.call"
 
@@ -46,7 +46,8 @@ object CallLogic {
             if (content["application"].str() != "m.call") continue
             val focus = content["foci_preferred"].objectsLenient().firstOrNull { it["type"].str() == "livekit" } ?: continue
             val url = focus["livekit_service_url"].str() ?: continue
-            val created = content["created_ts"].long() ?: now
+            // Without created_ts (Element Call, a first join) the membership started when it was sent.
+            val created = content["created_ts"].long() ?: event.originTs ?: now
             val expires = content["expires"].long() ?: MEMBERSHIP_EXPIRY_MS
             if (created + expires < now) continue
             if (event.stateKey == ownStateKey) continue

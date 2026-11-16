@@ -99,10 +99,9 @@ object Soundboard {
     fun play(clip: Clip) {
         val file = File(folder, clip.file)
         if (!file.exists()) return
-        playing = clip.id
         ClipMixer.play(clip.id, file)
-        runCatching {
-            val player = MediaPlayer()
+        val player = MediaPlayer()
+        try {
             player.setDataSource(file.absolutePath)
             player.setVolume(volume.toFloat(), volume.toFloat())
             player.setOnCompletionListener {
@@ -113,6 +112,10 @@ object Soundboard {
             player.prepare()
             player.start()
             localPlayers += player
+            playing = clip.id
+        } catch (e: Exception) {
+            player.release()
+            DiagLog.write("soundboard: could not play (${e.message})")
         }
     }
 

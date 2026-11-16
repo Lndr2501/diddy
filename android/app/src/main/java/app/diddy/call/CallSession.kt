@@ -15,6 +15,8 @@ import app.diddy.util.DiddyError
 import app.diddy.util.Http
 import app.diddy.util.Json
 import app.diddy.util.friendlyMessage
+import app.diddy.util.long
+import app.diddy.util.obj
 import app.diddy.util.str
 import com.twilio.audioswitch.AudioDevice
 import io.livekit.android.LiveKit
@@ -127,13 +129,21 @@ class CallSession(private val context: Context, val account: MatrixAccount, priv
 
     // MARK: Connect / disconnect
 
-    suspend fun connect(microphoneAllowed: Boolean) {
+    /** Left while joining: stop here, disconnect() has already cleaned up. */
+    private fun ensureOpen() {
+        if (closed) throw kotlinx.coroutines.CancellationException("left while joining")
+    }
+
+    suspend fun connect() {
         encrypted = runCatching { matrixRoom.isEncrypted() }.getOrDefault(false)
         val chosen = chooseTransport()
+        ensureOpen()
         transport = chosen
         state = "Getting voice server access…"
         val token = account.client.requestOpenidToken()
+        ensureOpen()
         val sfu = requestSfuConfig(chosen.serviceUrl, token)
+        ensureOpen()
         if (encrypted) {
             ownKey = ByteArray(16).also { SecureRandom().nextBytes(it) }
             toDeviceHandle = account.client.subscribeToCustomToDeviceMessages(
@@ -160,10 +170,7 @@ class CallSession(private val context: Context, val account: MatrixAccount, priv
         eventsJob = scope.launch { liveKitRoom.events.collect { onEvent(it) } }
         state = "Connecting…"
         liveKitRoom.connect(sfu.first, sfu.second)
-        if (closed) {
-            liveKitRoom.disconnect()
-            throw kotlinx.coroutines.CancellationException()
-        }
+        ensureOpen()
         if (encrypted) {
             val identity = liveKitRoom.localParticipant.identity?.value ?: ownIdentity
             keyProvider.rtcKeyProvider.setKey(identity, ownKeyIndex, ownKey)
@@ -172,12 +179,20 @@ class CallSession(private val context: Context, val account: MatrixAccount, priv
         refreshMembers()
         val present = liveKitRoom.remoteParticipants.values.toList()
         if (encrypted) distributeKey(present)
+        ensureOpen()
         try {
             sendMembership()
         } catch (e: Exception) {
             throw DiddyError("You do not have permission to join a call in this room. An admin has to allow it.")
         }
-        startMicrophone(microphoneAllowed)
+        // Left during the membership write: take it back at once, nobody else will.
+        if (closed) {
+            runCatching { matrixRoom.sendStateEventRaw(CallLogic.MEMBER_EVENT_TYPE, stateKey, "{}") }
+            ensureOpen()
+        }
+        // Read now, not at join time: the permission may have been granted meanwhile.
+        startMicrophone(CallManager.microphoneAllowed)
+        ensureOpen()
         connected = true
         state = "Voice connected"
         scheduleMembershipRefresh()
@@ -214,6 +229,8 @@ class CallSession(private val context: Context, val account: MatrixAccount, priv
     // MARK: Controls
 
     suspend fun toggleMicrophone(allowed: Boolean) {
+        // While joining, connect() turns the microphone on itself once it can.
+        if (!connected) return
         val enable = !microphoneOn
         if (enable && !allowed) {
             lastError = "Microphone access is off. Allow it for Diddy in Android's settings."
@@ -329,8 +346,18 @@ class CallSession(private val context: Context, val account: MatrixAccount, priv
 
     private suspend fun chooseTransport(): CallLogic.Transport {
         state = "Finding voice server…"
-        val events = runCatching { matrixRoom.stateEvents(uniffi.ruma_events.StateEventType.CallMember) }.getOrDefault(emptyList())
-        val parsed = events.mapNotNull { event -> Json.obj(event.contentJson)?.let { CallLogic.MemberEvent(event.stateKey, it) } }
+        // The room state from the server carries origin_server_ts, which memberships without
+        // created_ts need; the SDK's copy is the fallback.
+        val parsed = runCatching {
+            account.clientRequestArray("/_matrix/client/v3/rooms/${MatrixAccount.pathComponent(roomId)}/state")
+                .filter { it["type"].str() == CallLogic.MEMBER_EVENT_TYPE }
+                .mapNotNull { event ->
+                    val key = event["state_key"].str() ?: return@mapNotNull null
+                    val content = event["content"].obj() ?: return@mapNotNull null
+                    CallLogic.MemberEvent(key, content, event["origin_server_ts"].long())
+                }
+        }.getOrNull() ?: runCatching { matrixRoom.stateEvents(uniffi.ruma_events.StateEventType.CallMember) }.getOrDefault(emptyList())
+            .mapNotNull { event -> Json.obj(event.contentJson)?.let { CallLogic.MemberEvent(event.stateKey, it) } }
         CallLogic.oldestTransport(parsed, stateKey, roomId, System.currentTimeMillis())?.let { return it }
         val transports = runCatching { account.client.discoverRtcTransports() }.getOrNull() ?: emptyList()
         for (transport in transports) {

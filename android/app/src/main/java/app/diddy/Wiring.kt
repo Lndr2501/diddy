@@ -15,7 +15,8 @@ object Wiring {
             previous(account, old, new)
             Notifications.roomsChanged(account, old, new)
             // A new DM gets this device's call alert target too.
-            if (new.count { it.isDirect } != old.values.count { it.isDirect }) CallPush.publish(account)
+            val dms = new.filter { it.isDirect && it.isJoined }.map { it.id }.toSet()
+            if (dms != old.values.filter { it.isDirect && it.isJoined }.map { it.id }.toSet()) CallPush.publish(account)
         }
         // Do Not Disturb mutes message, mention, invite and ringing sounds like on desktop.
         AppModel.Hooks.silencesSound = { account, sound ->

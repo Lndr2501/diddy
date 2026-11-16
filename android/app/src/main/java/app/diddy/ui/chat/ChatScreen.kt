@@ -175,14 +175,13 @@ private fun ChatContent(account: MatrixAccount, controller: TimelineController, 
     val context = LocalContext.current
     val uri = LocalUriHandler.current
     val haptics = LocalHapticFeedback.current
-    val composer = remember(roomId) {
-        ComposerState(account, roomId).also { state ->
-            state.load()
-            // Something shared from another app for this chat: draft text and attachments.
-            app.diddy.app.ShareInbox.take(roomId)?.let { share ->
-                if (share.text.isNotEmpty()) state.setText(if (state.text.isEmpty()) share.text else state.text + "\n" + share.text)
-                state.pendingFiles = state.pendingFiles + share.files.map { PendingFile(it.name, it.mime, it.data, null) }
-            }
+    val composer = remember(roomId) { ComposerState(account, roomId).also { it.load() } }
+    // Something shared from another app for this chat: draft text and attachments, also when the
+    // chat was open already.
+    LaunchedEffect(roomId, app.diddy.app.ShareInbox.stagedVersion) {
+        app.diddy.app.ShareInbox.take(roomId)?.let { share ->
+            if (share.text.isNotEmpty()) composer.setText(if (composer.text.isEmpty()) share.text else composer.text + "\n" + share.text)
+            composer.pendingFiles = composer.pendingFiles + share.files.map { PendingFile(it.name, it.mime, it.data, null) }
         }
     }
     val members = remember(roomId) { MemberStore() }
