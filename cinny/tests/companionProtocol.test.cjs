@@ -87,3 +87,21 @@ test('the phone in the background and a phone that went silent', () => {
   // the phone says it is there clearly more often than it takes to call it lost
   assert.ok(mod.COMPANION_HEARTBEAT_MS * 3 <= mod.COMPANION_LOST_MS);
 });
+
+test('the phones to pick from: own other devices with keys, newest first', () => {
+  const devices = [
+    { device_id: 'DESK', display_name: 'Diddy macOS', last_seen_ts: 300 },
+    { device_id: 'PIXEL', display_name: ' Diddy on Pixel 9 ', last_seen_ts: 200 },
+    { device_id: 'IPHONE', display_name: 'Diddy iOS', last_seen_ts: 500 },
+    { device_id: 'OLD', display_name: 'Element', last_seen_ts: 900 },
+    { device_id: 'NONAME' },
+  ];
+  const found = plain(mod.companionCandidates(devices, 'DESK', ['DESK', 'PIXEL', 'IPHONE', 'NONAME']));
+  assert.deepEqual(found.map((d) => d.deviceId), ['IPHONE', 'PIXEL', 'NONAME']);
+  assert.equal(found[1].name, 'Diddy on Pixel 9');
+  assert.equal(found[2].name, 'NONAME');
+  assert.deepEqual(plain(mod.companionRecipients(found, 'PIXEL')), ['PIXEL']);
+  assert.deepEqual(plain(mod.companionRecipients(found, '')), ['IPHONE', 'PIXEL', 'NONAME']);
+  // a phone that is gone: ask all again
+  assert.deepEqual(plain(mod.companionRecipients(found, 'GONE')), ['IPHONE', 'PIXEL', 'NONAME']);
+});

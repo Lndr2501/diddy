@@ -2,6 +2,8 @@
 
 ## Unveröffentlicht
 
+- **Handy als Kamera & Mikro: welches Handy (macOS, Linux, Windows):** Der Dialog „Phone as camera & mic“ zeigt jetzt unter „Which phone“ deine anderen Geräte mit Namen und wann sie zuletzt aktiv waren, und du wählst, welches gefragt wird. „All my devices“ fragt wie bisher alle, das erste Handy, das beitritt, übernimmt. Die Wahl wird gemerkt; ist das Gerät weg, fragt Diddy wieder alle. Die Texte sagen „Phone“ statt „iPhone“, weil auch die Android-App mitmacht. iOS und Android brauchen dafür keine Änderung: Sie antworten auf die Anfrage wie bisher.
+
 ## 1.11.0 (2026-11-15)
 
 - **Kein Echo von deinen eigenen Geräten (macOS, Linux, Windows, iOS):** Mit dem iPhone als Mikro hörte man sich am Computer selbst, verzögert: Für den Call ist das iPhone ein weiterer Teilnehmer, und der Computer spielte dessen Mikrofon ab. Jetzt spielt keine Diddy-App deine eigenen anderen Geräte im selben Call ab (am Computer per „Mute for me“, das sich nicht zurückstellen lässt und nicht gemerkt wird; am iPhone über die Lautstärke des Teilnehmers). Andere hören dich normal.

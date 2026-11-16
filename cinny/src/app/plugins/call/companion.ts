@@ -9,11 +9,14 @@ import type { ReceivedToDeviceMessage } from 'matrix-js-sdk/lib/sync-accumulator
 import { useSyncExternalStore } from 'react';
 import { diag } from '../diagnostics';
 import {
+  ANY_COMPANION_DEVICE,
   applyCompanionState,
   COMPANION_CONTROL,
   COMPANION_REQUEST,
   COMPANION_STATE,
+  companionCandidates,
   CompanionControl,
+  CompanionDevice,
   CompanionMedia,
   CompanionSnapshot,
   companionLost,
@@ -87,15 +90,56 @@ const newRequestId = (): string =>
     ? crypto.randomUUID()
     : `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`;
 
+/** Your other devices that can be asked, with their names, newest first. */
+export const loadCompanionDevices = async (mx: MatrixClient): Promise<CompanionDevice[]> => {
+  const ownId = mx.getSafeUserId();
+  const crypto = mx.getCrypto();
+  if (!crypto) throw new Error('Encryption is not available in this session.');
+  const withKeys = Array.from(
+    (await crypto.getUserDeviceInfo([ownId], true)).get(ownId)?.keys() ?? []
+  );
+  const listed = await mx
+    .getDevices()
+    .then((r) => r.devices)
+    .catch(() => []);
+  // A device the server does not list (yet) still counts, under its id.
+  const known = new Set(listed.map((d) => d.device_id));
+  const all = [
+    ...listed,
+    ...withKeys.filter((id) => !known.has(id)).map((id) => ({ device_id: id })),
+  ];
+  return companionCandidates(all, mx.getDeviceId() ?? '', withKeys);
+};
+
+const CHOICE_KEY = 'diddyCompanionDevice';
+
+/** The phone you picked last time ('' = ask all). */
+export const savedCompanionChoice = (): string => {
+  try {
+    return localStorage.getItem(CHOICE_KEY) ?? ANY_COMPANION_DEVICE;
+  } catch {
+    return ANY_COMPANION_DEVICE;
+  }
+};
+
+export const saveCompanionChoice = (deviceId: string): void => {
+  try {
+    localStorage.setItem(CHOICE_KEY, deviceId);
+  } catch {
+    // private mode: the choice is just not remembered
+  }
+};
+
 /**
- * Sends the request to all your other devices; the first phone that joins takes it. Throws when
- * you have no other device or encryption is not available.
+ * Sends the request to the chosen phone, or to all your other devices (the first phone that
+ * joins takes it). Throws when you have no other device or encryption is not available.
  */
 export const requestCompanion = async (
   mx: MatrixClient,
   roomId: string,
   roomName: string,
-  media: CompanionMedia
+  media: CompanionMedia,
+  deviceIds?: string[]
 ): Promise<void> => {
   const ownId = mx.getSafeUserId();
   const ownDevice = mx.getDeviceId() ?? '';
@@ -104,9 +148,10 @@ export const requestCompanion = async (
   const devices = (await crypto.getUserDeviceInfo([ownId], true)).get(ownId);
   const recipients = Array.from(devices?.keys() ?? [])
     .filter((deviceId) => deviceId !== ownDevice)
+    .filter((deviceId) => !deviceIds || deviceIds.includes(deviceId))
     .map((deviceId) => ({ userId: ownId, deviceId }));
   if (recipients.length === 0) {
-    throw new Error('You have no other device. Sign in to Diddy on your iPhone first.');
+    throw new Error('You have no other device. Sign in to Diddy on your phone first.');
   }
   const requestId = newRequestId();
   set({ phase: 'waiting', requestId, roomId, wanted: media });

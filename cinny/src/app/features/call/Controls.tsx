@@ -48,7 +48,7 @@ type MicrophoneButtonProps = {
 export function MicrophoneButton({ enabled, onToggle, phone }: MicrophoneButtonProps) {
   const [micState, toggleMic] = useAsyncCallback(onToggle);
   const loading = micState.status === AsyncStatus.Loading;
-  const what = phone ? 'iPhone Microphone' : 'Microphone';
+  const what = phone ? 'Phone Microphone' : 'Microphone';
 
   return (
     <TooltipProvider
@@ -125,7 +125,7 @@ type VideoButtonProps = {
 export function VideoButton({ enabled, onToggle, phone }: VideoButtonProps) {
   const [videoState, toggleVideo] = useAsyncCallback(onToggle);
   const loading = videoState.status === AsyncStatus.Loading;
-  const what = phone ? 'iPhone Camera' : 'Camera';
+  const what = phone ? 'Phone Camera' : 'Camera';
 
   return (
     <TooltipProvider
@@ -344,9 +344,9 @@ export type PhoneButtonState = 'idle' | 'waiting' | 'connected';
 
 /** "iPhone as camera & mic": opens the dialog; shows waiting and connected (CompanionDialog.tsx). */
 export function PhoneButton({ state, onClick }: { state: PhoneButtonState; onClick: () => void }) {
-  let label = 'Use iPhone as Camera & Mic';
-  if (state === 'waiting') label = 'Waiting for Your iPhone…';
-  if (state === 'connected') label = 'iPhone Connected';
+  let label = 'Use Phone as Camera & Mic';
+  if (state === 'waiting') label = 'Waiting for Your Phone…';
+  if (state === 'connected') label = 'Phone Connected';
   return (
     <TooltipProvider
       position="Top"
@@ -433,7 +433,7 @@ export function MoreButton({ spotlight, onToggleSpotlight, onSettings, onPhone }
                     onPhone();
                   }}
                 >
-                  <Text size="T300">iPhone as camera & mic…</Text>
+                  <Text size="T300">Phone as camera & mic…</Text>
                 </MenuItem>
               )}
               <MenuItem
