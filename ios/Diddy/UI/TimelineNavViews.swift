@@ -577,7 +577,7 @@ struct JumpToDateSheet: View {
                 if let eventId = json["event_id"] as? String {
                     onOpen(eventId)
                 } else {
-                    error = "The server did not find a message at that time."
+                    error = L("ios.errorsExtra.theServerDidNotFindAMessageAtThatTime")
                 }
             } catch {
                 self.error = error.friendlyMessage

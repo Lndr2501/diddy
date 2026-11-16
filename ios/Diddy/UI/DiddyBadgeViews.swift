@@ -235,7 +235,7 @@ struct DiddyCreateBadgeView: View {
         error = nil
         defer { uploading = false }
         do {
-            guard let data = try await item.loadTransferable(type: Data.self) else { throw DiddyError("This picture could not be read.") }
+            guard let data = try await item.loadTransferable(type: Data.self) else { throw DiddyError(L("ios.errorsExtra.thisPictureCouldNotBeRead")) }
             let limit = await account.diddyUploadLimit()
             let file = try DiddyMediaPrep.picture(data, limit: limit)
             imageMxc = try await account.uploadDiddyMedia(file.data, mimeType: file.mimeType, filename: "badge.\(file.ext)")

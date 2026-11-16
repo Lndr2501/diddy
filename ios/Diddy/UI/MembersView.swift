@@ -68,7 +68,7 @@ final class MemberStore: ObservableObject {
 
     func load(account: MatrixAccount, roomId: String) async {
         guard let room = account.room(roomId) else {
-            error = "This room is not available yet."
+            error = L("ios.errorsExtra.thisRoomIsNotAvailableYet")
             return
         }
         loading = true

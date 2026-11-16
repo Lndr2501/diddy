@@ -57,7 +57,7 @@ extension CallSession {
             return
         }
         guard let port = session.availableInputs?.first(where: { $0.uid == uid }) else {
-            throw DiddyError("This microphone is not available any more.")
+            throw DiddyError(L("ios.errorsExtra.thisMicrophoneIsNotAvailableAnyMore"))
         }
         try session.setPreferredInput(port)
     }

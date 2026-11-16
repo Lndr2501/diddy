@@ -96,7 +96,7 @@ struct PollComposer: View {
                         let q = question.trimmingCharacters(in: .whitespacesAndNewlines)
                         let valid = answers.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
                         guard !q.isEmpty, valid.count >= 2, Set(valid.map { $0.lowercased() }).count == valid.count else {
-                            error = "Enter a question and at least two different answers."
+                            error = L("ios.errorsExtra.enterAQuestionAndAtLeastTwoDifferentAnswers")
                             return
                         }
                         sending = true
@@ -104,7 +104,7 @@ struct PollComposer: View {
                             if await onCreate(q, valid, min(maxSelections, valid.count), disclosed) {
                                 dismiss()
                             } else {
-                                error = "Could not send the poll. Please try again."
+                                error = L("ios.errorsExtra.couldNotSendThePollPleaseTryAgain")
                                 sending = false
                             }
                         }

@@ -133,7 +133,7 @@ final class ScheduledMessageStore: ObservableObject {
     }
 
     private func scheduleOnServer(roomId: String, content: [String: Any], delay: TimeInterval) async throws -> String {
-        guard let account else { throw DiddyError("Not signed in.") }
+        guard let account else { throw DiddyError(L("ios.errorsExtra.notSignedIn")) }
         let txnId = "diddy-later-\(UUID().uuidString)"
         let ms = max(0, Int((delay * 1000).rounded()))
         // The delay parameter on the normal send endpoint, as Synapse and matrix-js-sdk do it.
@@ -141,7 +141,7 @@ final class ScheduledMessageStore: ObservableObject {
         let json = try await account.clientRequest(path, body: content, method: "PUT")
         guard let delayId = json["delay_id"] as? String else {
             // A server that ignored the parameter would have sent it already.
-            throw DiddyError("The server did not schedule the message.")
+            throw DiddyError(L("ios.errorsExtra.theServerDidNotScheduleTheMessage"))
         }
         return delayId
     }

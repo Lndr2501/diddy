@@ -105,7 +105,7 @@ final class MyInstantsModel: ObservableObject {
         error = nil
         status = nil
         guard let target = MyInstantsParser.parseInput(input) else {
-            error = "Enter a search term or a myinstants.com link."
+            error = L("ios.errorsExtra.enterASearchTermOrAMyinstantsComLink")
             return
         }
         stopPreview()

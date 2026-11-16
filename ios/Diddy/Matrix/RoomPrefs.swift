@@ -80,7 +80,7 @@ extension MatrixAccount {
 
     /// Desktop's "Add to Favourites" / "Remove from Favourites": the `m.favourite` room tag.
     func setFavourite(_ roomId: String, _ on: Bool) async throws {
-        guard let room = room(roomId) else { throw DiddyError("This room is not available yet.") }
+        guard let room = room(roomId) else { throw DiddyError(L("ios.errorsExtra.thisRoomIsNotAvailableYet")) }
         try await room.setIsFavourite(isFavourite: on, tagOrder: nil)
     }
 

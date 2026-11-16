@@ -197,7 +197,7 @@ struct DevicesView: View {
         if let url = await account.accountManagementURL(action) {
             openURL(url)
         } else {
-            error = "The account page could not be opened."
+            error = L("ios.errorsExtra.theAccountPageCouldNotBeOpened")
         }
     }
 

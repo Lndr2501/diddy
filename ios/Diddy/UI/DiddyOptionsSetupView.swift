@@ -112,7 +112,7 @@ struct DiddyOptionsSetupView: View {
             }
             .disabled(working)
             actionButton(selected?.joined == false ? "Join and Use" : "Use This Room", enabled: selected != nil) {
-                guard let selected else { throw DiddyError("Choose a room first.") }
+                guard let selected else { throw DiddyError(L("ios.errorsExtra.chooseARoomFirst")) }
                 try await account.adoptRoomAsDiddyOptions(roomId: selected.id, via: selected.via, tagTopic: tagTopic)
             }
             Button(L("settings.diddyProfile.refresh")) { Task { await loadChoices() } }.disabled(loadingChoices || working)
@@ -200,7 +200,7 @@ struct DiddyOptionsSetupView: View {
             error = nil
             onReady()
         } else {
-            error = "The room was set up, but it has not arrived from the server yet. Try again in a moment."
+            error = L("ios.errorsExtra.theRoomWasSetUpButItHasNotArrivedFromTheServerYetTryAgainInA")
         }
     }
 

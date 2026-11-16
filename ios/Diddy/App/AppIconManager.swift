@@ -23,7 +23,7 @@ enum AppIconChoice: String, CaseIterable, Identifiable {
     @MainActor
     func apply() async throws {
         guard UIApplication.shared.supportsAlternateIcons else {
-            throw DiddyError("This device does not support alternate app icons.")
+            throw DiddyError(L("ios.errorsExtra.thisDeviceDoesNotSupportAlternateAppIcons"))
         }
         guard UIApplication.shared.alternateIconName != alternateName else { return }
         try await UIApplication.shared.setAlternateIconName(alternateName)

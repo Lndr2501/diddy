@@ -73,9 +73,9 @@ final class AppLanguage: ObservableObject {
         let scoped = url.startAccessingSecurityScopedResource()
         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
         let data = try Data(contentsOf: url)
-        guard data.count <= 2 * 1024 * 1024 else { throw LanguageError.invalid("The file is too big (2 MB maximum).") }
+        guard data.count <= 2 * 1024 * 1024 else { throw LanguageError.invalid(L("ios.errorsExtra.theFileIsTooBig2MbMaximum")) }
         guard let file = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
-            throw LanguageError.invalid("The file is not valid JSON.")
+            throw LanguageError.invalid(L("ios.errorsExtra.theFileIsNotValidJson"))
         }
         if let problem = LocaleRules.validate(file, source: english) { throw LanguageError.invalid(problem) }
         let code = (file["_meta"] as! [String: Any])["code"] as! String

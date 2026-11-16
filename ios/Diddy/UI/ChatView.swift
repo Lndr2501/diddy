@@ -1183,7 +1183,7 @@ private struct ChatContent: View {
         do {
             let config = try await account.clientRequest("/_matrix/media/v3/config")
             guard !ComposerSize.exceeds(Int64(data.count), limit: ComposerSize.uploadLimit(from: config)) else {
-                throw DiddyError("File exceeds the server upload limit.")
+                throw DiddyError(L("ios.errorsExtra.fileExceedsTheServerUploadLimit"))
             }
             pendingFiles.append(ComposerPendingFile(name: name, mime: mime, data: data))
         } catch { controller.sendError = error.friendlyMessage }

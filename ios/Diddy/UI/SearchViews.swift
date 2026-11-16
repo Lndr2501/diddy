@@ -215,7 +215,7 @@ struct SearchContextView: View {
                     }
                     events = MessageSearch.resolveHits(hits + extra.filter { MessageSearch.isReplaceEvent($0) }.map { MessageSearchHit(rank: 0, event: $0) }, extraEvents: extra, term: "").map(\.event)
                     if !events.contains(where: { $0.eventId == target.eventId }) {
-                        error = "This message is no longer available."
+                        error = L("ios.errorsExtra.thisMessageIsNoLongerAvailable")
                     }
                 } catch { self.error = error.friendlyMessage }
             }

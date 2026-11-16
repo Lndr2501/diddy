@@ -228,7 +228,7 @@ final class Soundboard: ObservableObject {
         stopPreview()
         prepareLocalPlayback()
         guard let player = try? AVAudioPlayer(data: data) else {
-            throw DiddyError("This sound could not be played.")
+            throw DiddyError(L("ios.errorsExtra.thisSoundCouldNotBePlayed"))
         }
         player.volume = Float(volume)
         player.play()

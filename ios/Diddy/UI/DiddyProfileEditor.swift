@@ -846,7 +846,7 @@ struct DiddyProfileEditor: View {
     private func uploadBanner(_ item: PhotosPickerItem) async {
         await runUpload(.banner) {
             guard let data = try await item.loadTransferable(type: Data.self) else {
-                throw DiddyError("This picture could not be read.")
+                throw DiddyError(L("ios.errorsExtra.thisPictureCouldNotBeRead"))
             }
             let limit = await account.diddyUploadLimit()
             let file = try DiddyMediaPrep.picture(data, limit: limit)
@@ -862,7 +862,7 @@ struct DiddyProfileEditor: View {
             let limit = await account.diddyUploadLimit()
             if item.supportedContentTypes.contains(where: { $0.conforms(to: .movie) }) {
                 guard let movie = try await item.loadTransferable(type: DiddyPickedMovie.self) else {
-                    throw DiddyError("This video could not be read.")
+                    throw DiddyError(L("ios.errorsExtra.thisVideoCouldNotBeRead"))
                 }
                 defer { try? FileManager.default.removeItem(at: movie.url) }
                 let prepared = try await DiddyMediaPrep.nameplateVideo(movie.url, limit: limit)
@@ -872,7 +872,7 @@ struct DiddyProfileEditor: View {
                 draft.plateVideoMxc = video
             } else {
                 guard let data = try await item.loadTransferable(type: Data.self) else {
-                    throw DiddyError("This picture could not be read.")
+                    throw DiddyError(L("ios.errorsExtra.thisPictureCouldNotBeRead"))
                 }
                 let file = try DiddyMediaPrep.picture(data, limit: limit)
                 draft.plateImageMxc = try await account.uploadDiddyMedia(file.data, mimeType: file.mimeType, filename: "nameplate.\(file.ext)")

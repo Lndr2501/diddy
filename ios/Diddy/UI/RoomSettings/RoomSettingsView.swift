@@ -238,7 +238,7 @@ struct RoomSettingsView: View {
     private func uploadAvatar(_ item: PhotosPickerItem) async {
         await model.perform {
             guard let data = try await item.loadTransferable(type: Data.self) else {
-                throw DiddyError("This picture could not be read.")
+                throw DiddyError(L("ios.errorsExtra.thisPictureCouldNotBeRead"))
             }
             let limit = await account.diddyUploadLimit()
             let file = try DiddyMediaPrep.picture(data, limit: limit)

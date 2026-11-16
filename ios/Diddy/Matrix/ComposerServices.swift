@@ -66,10 +66,10 @@ enum ComposerServices {
                 _ = try await account.clientRequest("/_matrix/client/v3/join/\(path(id))", body: [:])
             }
         case .startdm:
-            guard let user = users.first else { throw DiddyError("Enter a user ID.") }
+            guard let user = users.first else { throw DiddyError(L("ios.errorsExtra.enterAUserId")) }
             _ = try await account.directMessage(with: user)
         case .invite, .kick, .disinvite, .ban, .unban:
-            guard !users.isEmpty else { throw DiddyError("Enter a user ID.") }
+            guard !users.isEmpty else { throw DiddyError(L("ios.errorsExtra.enterAUserId")) }
             let action = command == .disinvite ? "kick" : command.rawValue
             for user in users {
                 var body: [String: Any] = ["user_id": user]
@@ -81,7 +81,7 @@ enum ComposerServices {
             content[command == .myroomnick ? "displayname" : "avatar_url"] = payload.isEmpty ? nil : payload
             _ = try await account.clientRequest(base + "/state/m.room.member/\(path(account.userId))", body: content, method: "PUT")
         case .ignore, .unignore:
-            guard !users.isEmpty else { throw DiddyError("Enter a user ID.") }
+            guard !users.isEmpty else { throw DiddyError(L("ios.errorsExtra.enterAUserId")) }
             var content = (try? await account.clientRequest(userBase + "m.ignored_user_list")) ?? [:]
             var ignored = content["ignored_users"] as? [String: Any] ?? [:]
             for user in users { ignored[user] = command == .ignore ? [:] : nil }
@@ -93,12 +93,12 @@ enum ComposerServices {
             var content = SlashCommand.removingDirect(current, roomId: roomId)
             if command == .converttodm {
                 let members = try await account.joinedMembers(of: roomId)
-                guard let user = members.first(where: { $0 != account.userId }) else { throw DiddyError("No other member in this room.") }
+                guard let user = members.first(where: { $0 != account.userId }) else { throw DiddyError(L("ios.errorsExtra.noOtherMemberInThisRoom")) }
                 content = SlashCommand.addingDirect(current, roomId: roomId, userId: user)
             }
             _ = try await account.clientRequest(userBase + "m.direct", body: content, method: "PUT")
         case .delete:
-            guard let date = SlashCommand.pastDate(flags["past"] ?? ""), !users.isEmpty else { throw DiddyError("Enter users or servers and -past 1d|2h|5m|30s.") }
+            guard let date = SlashCommand.pastDate(flags["past"] ?? ""), !users.isEmpty else { throw DiddyError(L("ios.errorsExtra.enterUsersOrServersAndPast1D2H5M30S")) }
             let timestamp = Int64(date.timeIntervalSince1970 * 1000)
             let result = try await account.clientRequest(base + "/timestamp_to_event?ts=\(timestamp)&dir=f")
             guard let eventId = result["event_id"] as? String else { return }
@@ -125,7 +125,7 @@ enum ComposerServices {
         case .acl:
             let content = (try? await account.stateContent(of: roomId, type: "m.room.server_acl", stateKey: "")) ?? [:]
             _ = try await account.clientRequest(base + "/state/m.room.server_acl/", body: SlashCommand.updatedAcl(content, flags: flags), method: "PUT")
-        default: throw DiddyError("This command is not available here yet.")
+        default: throw DiddyError(L("ios.errorsExtra.thisCommandIsNotAvailableHereYet"))
         }
     }
 }
