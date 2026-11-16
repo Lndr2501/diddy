@@ -80,7 +80,7 @@ const setLightRoomIds = (ids: string[], share = true) => {
     // ignore (storage full / unavailable)
   }
   window.dispatchEvent(new CustomEvent(LIGHT_ROOMS_EVENT));
-  // eslint-disable-next-line @typescript-eslint/no-use-before-define
+  // eslint-disable-next-line no-use-before-define
   if (share) shareRoomLists();
 };
 
@@ -91,7 +91,7 @@ export const addLightOptionsRoom = (roomId: string): void => {
     diag(`diddy: room selected as message-mode options room room=${roomId}`);
   }
   // picked again on purpose: it is no longer a room that was left for good
-  // eslint-disable-next-line @typescript-eslint/no-use-before-define
+  // eslint-disable-next-line no-use-before-define
   forgetLeftOptionsRoom(roomId);
   setLightRoomIds(ids);
 };
@@ -123,7 +123,7 @@ const setLeftRoomIds = (ids: string[], share = true) => {
   } catch {
     // ignore (storage full / unavailable)
   }
-  // eslint-disable-next-line @typescript-eslint/no-use-before-define
+  // eslint-disable-next-line no-use-before-define
   if (share) shareRoomLists();
 };
 

@@ -216,6 +216,9 @@ const clearDrop = (roomId: string, reason: DropReason, event: MatrixEvent) => {
 
 /** Own entries among the newest events of each room (no re-send on every app start). */
 const recentOwn = new RecentOwnData();
+/** Options rooms checked for an older copy of your profile this session (see healOwnProfile). */
+const healedRooms = new Set<string>();
+let healTimer: number | undefined;
 
 /** `recent`: the event is among the newest RECENT_WINDOW_EVENTS of the room (live or first page). */
 const ingestEvent = (event: MatrixEvent, roomId: string | undefined, recent = true): boolean => {
@@ -488,7 +491,7 @@ const backfillRoom = (mx: MatrixClient, room: Room) => {
       );
       // also without new data: waiting profile writes may go ahead now
       notify();
-      // eslint-disable-next-line @typescript-eslint/no-use-before-define
+      // eslint-disable-next-line no-use-before-define
       scheduleHeal();
     })
     .catch((e) => {
@@ -504,7 +507,7 @@ const backfillRoom = (mx: MatrixClient, room: Room) => {
         // nothing more to learn this session; do not block profile writes forever
         scannedRooms.add(room.roomId);
         notify();
-        // eslint-disable-next-line @typescript-eslint/no-use-before-define
+        // eslint-disable-next-line no-use-before-define
         scheduleHeal();
       }
     });
@@ -798,7 +801,7 @@ const syncRooms = (mx: MatrixClient) => {
     if (badgesAsMessages(room)) backfillRoom(mx, room);
   });
   if (changed) notify();
-  // eslint-disable-next-line @typescript-eslint/no-use-before-define
+  // eslint-disable-next-line no-use-before-define
   scheduleHeal();
 };
 
@@ -1146,8 +1149,6 @@ export const setMyProfile = async (mx: MatrixClient, profile: DiddyProfile): Pro
 // skipped re-sending because "a profile of yours is recent there". Once per room and session the
 // newest profile is copied into rooms whose copy differs.
 
-const healedRooms = new Set<string>();
-let healTimer: number | undefined;
 let healing = false;
 const HEAL_DELAY_MS = 8000;
 

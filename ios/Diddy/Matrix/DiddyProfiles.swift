@@ -325,6 +325,8 @@ extension MatrixAccount {
         diddyLoading = true
         defer { diddyLoading = false }
         diddyLoadedAt = Date()
+        // Message-mode rooms and rooms left on purpose are the same on every device (account data).
+        await syncDiddyRoomLists()
 
         // The marker is checked once per room; most rooms answer "not found". Only the marker
         // counts, like desktop's `isOptionsRoom`: a room that merely carries the topic tag is no
@@ -371,11 +373,12 @@ extension MatrixAccount {
         // Desktop's order (`localeCompare`), so the same room wins here and gets your writes.
         let optionsRooms = DiddyOptionsRoomLogic.sortedLikeDesktop(diddyOptionsRooms.union(diddyLightRoomIds).filter { joined.contains($0) })
 
-        var loaded: [(id: String, data: OptionsRoomData, encrypted: Bool)] = []
+        var loaded: [(id: String, data: OptionsRoomData, encrypted: Bool, members: Set<String>)] = []
         for roomId in optionsRooms {
-            if let room = await loadOptionsRoom(roomId) { loaded.append((roomId, room.data, room.encrypted)) }
+            if let room = await loadOptionsRoom(roomId) { loaded.append((roomId, room.data, room.encrypted, room.members)) }
         }
         diddyPrimaryRoom = loaded.first.map { (id: $0.id, encrypted: $0.encrypted) }
+        diddyWriteRooms = loaded.map { DiddyWriteRoom(id: $0.id, encrypted: $0.encrypted, members: $0.members) }
 
         // Profiles: the newest valid one the user wrote, in any options room (#207). Each device
         // has its own light rooms, so "the first room wins" let a phone keep an old profile from a
@@ -506,7 +509,8 @@ extension MatrixAccount {
         }
         var content = build(diddyOwnProfileRaw ?? [:])
         content["v"] = 1
-        try await writeDiddyData(type: DiddyEvents.profile, key: userId, content: content)
+        // Into every options room: the people of each of your servers only read their own room.
+        try await writeDiddyData(type: DiddyEvents.profile, key: userId, content: content, to: diddyAllWriteRooms)
         await loadDiddyProfiles(force: true)
     }
 
@@ -517,6 +521,34 @@ extension MatrixAccount {
     /// when the room is. Refuses content readers would drop for its size.
     func writeDiddyData(type: String, key: String, content raw: [String: Any]) async throws {
         guard let primary = diddyPrimaryRoom else { throw DiddyError("No Diddy Options room found.") }
+        try await writeDiddyData(type: type, key: key, content: raw, in: primary)
+    }
+
+    /// Every options room that was read, the primary one first (where writes for everyone go).
+    var diddyAllWriteRooms: [DiddyWriteRoom] {
+        if !diddyWriteRooms.isEmpty { return diddyWriteRooms }
+        return diddyPrimaryRoom.map { [DiddyWriteRoom(id: $0.id, encrypted: $0.encrypted, members: [])] } ?? []
+    }
+
+    /// Writes the same data into several options rooms (desktop's `writeToRooms`). Succeeds when
+    /// at least one room took it, throws the first error when none did.
+    func writeDiddyData(type: String, key: String, content raw: [String: Any], to targets: [DiddyWriteRoom]) async throws {
+        guard !targets.isEmpty else { throw DiddyError("No Diddy Options room found.") }
+        var firstError: Error?
+        var written = 0
+        for target in targets {
+            do {
+                try await writeDiddyData(type: type, key: key, content: raw, in: (id: target.id, encrypted: target.encrypted))
+                written += 1
+            } catch {
+                DiagLog.shared.write("diddy: write failed type=\(type) room=\(target.id): \(error.friendlyMessage)")
+                if firstError == nil { firstError = error }
+            }
+        }
+        if written == 0, let firstError { throw firstError }
+    }
+
+    private func writeDiddyData(type: String, key: String, content raw: [String: Any], in primary: (id: String, encrypted: Bool)) async throws {
         var content = raw
         content[DiddyEvents.keyField] = nil
         guard let size = DiddyProfileDraft.encodedSize(content, key: key) else {
@@ -558,7 +590,7 @@ extension MatrixAccount {
 
     // MARK: Reading one room
 
-    private func loadOptionsRoom(_ roomId: String) async -> (data: OptionsRoomData, encrypted: Bool)? {
+    private func loadOptionsRoom(_ roomId: String) async -> (data: OptionsRoomData, encrypted: Bool, members: Set<String>)? {
         let base = "/_matrix/client/v3/rooms/\(Self.pathComponent(roomId))"
         guard let state = try? await clientRequestArray(base + "/state") else { return nil }
         var joined: Set<String> = []
@@ -641,7 +673,7 @@ extension MatrixAccount {
         for pending in DiddyTrust.trimMessages(messages, sender: { $0.candidate.sender }, ts: { $0.candidate.ts }) {
             data.add(type: pending.type, key: pending.key, pending.candidate)
         }
-        return (data, encrypted)
+        return (data, encrypted, joined)
     }
 
     /// `pickDefinition` with desktop's validity check: the content is a badge and the creator it
