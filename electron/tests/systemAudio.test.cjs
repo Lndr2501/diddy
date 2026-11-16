@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { EventEmitter } = require('node:events');
-const { createSystemAudio, BLOCK_BYTES, MESSAGE_BYTES, MAX_IN_FLIGHT } = require('../lib/systemAudio.cjs');
+const { createSystemAudio, systemAudioSupport, helperName, WINDOWS_MIN_BUILD, BLOCK_BYTES, MESSAGE_BYTES, MAX_IN_FLIGHT } = require('../lib/systemAudio.cjs');
 function setup(options = {}) {
   const children = [], sent = [];
   const capture = createSystemAudio({ helper: '/fixed/helper', send: (data) => sent.push(data), ...options, spawnProcess: (file, args) => {
@@ -112,6 +112,38 @@ test('an unexpected helper exit is logged and reported', async () => {
   const lines = [];
   const env = setup({ log: (line) => lines.push(line) }); const { id, child } = await env.start();
   child.emit('exit', 1, null);
-  assert.deepEqual(env.sent.at(-1), { id, error: 'Linux audio capture stopped' });
+  assert.deepEqual(env.sent.at(-1), { id, error: 'System audio capture stopped' });
   assert.ok(lines.some((line) => line.includes('exited code=1')));
+});
+test('system audio support: Linux always, Windows from build 19041 with the helper, never elsewhere', () => {
+  assert.deepEqual(systemAudioSupport({ platform: 'linux' }), { available: true });
+  assert.deepEqual(systemAudioSupport({ platform: 'darwin' }), { available: false });
+  for (const release of ['10.0.19041', '10.0.19045', '10.0.22631', '10.0.26100']) {
+    assert.deepEqual(systemAudioSupport({ platform: 'win32', release }), { available: true });
+  }
+  // older Windows: greyed out with a reason, never Chromium's loopback (it would echo the call)
+  for (const release of ['10.0.18363', '6.3.9600', '', 'garbage']) {
+    const support = systemAudioSupport({ platform: 'win32', release });
+    assert.equal(support.available, false);
+    assert.match(support.reason, /Windows 10 version 2004/);
+  }
+  const missing = systemAudioSupport({ platform: 'win32', release: '10.0.22631', helperExists: () => false });
+  assert.equal(missing.available, false);
+  assert.match(missing.reason, /missing/);
+  assert.equal(WINDOWS_MIN_BUILD, 19041);
+  assert.equal(helperName('win32'), 'diddy-system-audio.exe');
+  assert.equal(helperName('linux'), 'diddy-system-audio');
+});
+test('the helper starts without a console window', () => {
+  let options;
+  const capture = createSystemAudio({ helper: 'h', send: () => {}, spawnProcess: (_file, _args, opts) => {
+    options = opts;
+    const child = new EventEmitter();
+    child.stdout = new EventEmitter(); child.stderr = new EventEmitter();
+    child.kill = () => {};
+    return child;
+  } });
+  capture.start().catch(() => {});
+  assert.equal(options.windowsHide, true);
+  capture.close();
 });

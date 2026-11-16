@@ -22,6 +22,7 @@ import { stopPropagation } from '../../utils/keyboard';
 import * as sheetCss from '../../components/sheet/Sheet.css';
 import * as css from './styles.css';
 import { callChatAtom } from '../../state/callEmbed';
+import type { ShareAudioOption } from '../../plugins/call';
 import { AsyncStatus, useAsyncCallback, ignoreRejection } from '../../hooks/useAsyncCallback';
 
 export function ControlDivider() {
@@ -266,8 +267,11 @@ function useBarMenu() {
 }
 
 type ShareOptionsButtonProps = {
-  /** null: the system sound cannot be shared on this device, no toggle */
-  audio: { enabled: boolean; onToggle: () => void } | null;
+  /**
+   * null: the system sound cannot be shared on this device, no toggle.
+   * { unavailable }: shown greyed out with the reason (older Windows).
+   */
+  audio: ShareAudioOption;
   onStop: () => void;
 };
 /** Chevron next to the share button while sharing: system sound on/off, stop sharing. */
@@ -290,7 +294,25 @@ export function ShareOptionsButton({ audio, onStop }: ShareOptionsButtonProps) {
         >
           <Menu className={sheetCss.MenuMaterial} style={{ minWidth: toRem(240) }}>
             <Box direction="Column" gap="100" style={{ padding: config.space.S100 }}>
-              {audio && (
+              {audio && 'unavailable' in audio && (
+                <MenuItem
+                  className={sheetCss.MenuRow}
+                  size="300"
+                  radii="300"
+                  disabled
+                  aria-disabled
+                  title={audio.unavailable}
+                  before={<Icon size="100" src={Icons.VolumeMute} />}
+                >
+                  <Box direction="Column" gap="100">
+                    <Text size="T300">Share system sound</Text>
+                    <Text size="T200" priority="300" style={{ whiteSpace: 'normal' }}>
+                      {audio.unavailable}
+                    </Text>
+                  </Box>
+                </MenuItem>
+              )}
+              {audio && 'enabled' in audio && (
                 <MenuItem
                   className={sheetCss.MenuRow}
                   size="300"

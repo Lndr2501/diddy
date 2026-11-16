@@ -2,6 +2,8 @@
 
 ## Unveröffentlicht
 
+- **Systemton beim Bildschirm teilen unter Windows (Windows):** Beim Teilen kann jetzt auch der Ton anderer Programme mit, wie unter macOS und Linux, umschaltbar im Teilen-Menü der Call-Leiste („Share system sound“). Ein kleiner Helfer, der mit Diddy installiert wird, nimmt alles auf, was Windows abspielt, außer Diddy selbst; die anderen hören den Call also nicht als Echo zurück. Das braucht Windows 10 Version 2004 (Build 19041) oder neuer. Auf älterem Windows ist die Option ausgegraut und sagt warum; Chromiums eigene Aufnahme würde dort den Call mitschneiden. Die Windows-CI baut den Helfer, packt ihn in den Installer, startet ihn einmal zur Probe und lässt die fertige App eine Aufnahme starten und beenden. macOS und Linux bleiben unverändert, iOS ist nicht betroffen (kein Windows-Code).
+
 ## 1.11.0 (2026-11-15)
 
 - **Kein Echo von deinen eigenen Geräten (macOS, Linux, Windows, iOS):** Mit dem iPhone als Mikro hörte man sich am Computer selbst, verzögert: Für den Call ist das iPhone ein weiterer Teilnehmer, und der Computer spielte dessen Mikrofon ab. Jetzt spielt keine Diddy-App deine eigenen anderen Geräte im selben Call ab (am Computer per „Mute for me“, das sich nicht zurückstellen lässt und nicht gemerkt wird; am iPhone über die Lautstärke des Teilnehmers). Andere hören dich normal.

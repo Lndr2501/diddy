@@ -9,6 +9,7 @@
 // (`__TAURI_INTERNALS__.invoke`, see preload.cjs), so the frontend does not know the difference.
 const fs = require('node:fs');
 const path = require('node:path');
+const os = require('node:os');
 const {
   app,
   BrowserWindow,
@@ -36,7 +37,7 @@ const { createStartupGate } = require('./lib/startupGate.cjs');
 const { shouldReloadAfter, createRateLimiter, describeError } = require('./lib/crashGuard.cjs');
 const { startStaticServer } = require('./lib/staticServer.cjs');
 const { isSsoStart, openSsoWindow } = require('./lib/ssoWindow.cjs');
-const { createSystemAudio } = require('./lib/systemAudio.cjs');
+const { createSystemAudio, systemAudioSupport, helperName } = require('./lib/systemAudio.cjs');
 const { createScreenPicker, screenSourceOptions } = require('./lib/screenPicker.cjs');
 const { parseAgentVoiceLaunch, createAgentVoiceTrigger } = require('./lib/agentVoice.cjs');
 const { createAgentVoiceHotkey } = require('./lib/agentVoiceHotkey.cjs');
@@ -419,9 +420,23 @@ const commands = {
 
 const audioCaptures = new Map();
 const trusted = (event) => event.senderFrame && event.senderFrame === event.sender.mainFrame && originOf(event.senderFrame.url) === appOrigin;
+// Linux: 'diddy-system-audio' (PulseAudio/PipeWire), Windows: 'diddy-system-audio.exe' (process loopback).
+const audioHelper = () => process.env.DIDDY_AUDIO_HELPER || path.join(process.resourcesPath, helperName());
+let audioSupport;
+const audioSupportInfo = () => {
+  if (!audioSupport) {
+    audioSupport = systemAudioSupport({ release: os.release(), helperExists: () => fs.existsSync(audioHelper()) });
+    diag.writeLine(`system audio: ${audioSupport.available ? 'available' : `unavailable${audioSupport.reason ? ` (${audioSupport.reason})` : ''}`} on ${process.platform} ${os.release()}`);
+  }
+  return audioSupport;
+};
+// The preload asks once per page, synchronously, before it decides what the page gets.
+ipcMain.on('diddy:audio-support', (event) => {
+  event.returnValue = trusted(event) ? audioSupportInfo() : { available: false };
+});
 const audioFor = (contents) => {
   if (!audioCaptures.has(contents.id)) {
-    const helper = process.env.DIDDY_AUDIO_HELPER || path.join(process.resourcesPath, 'diddy-system-audio');
+    const helper = audioHelper();
     const audio = createSystemAudio({ helper, log: (line) => diag.writeLine(line), send: (message) => { if (!contents.isDestroyed()) contents.send('diddy:audio-data', message); } });
     audioCaptures.set(contents.id, audio);
     contents.on('did-start-navigation', (_event, _url, _inPlace, isMainFrame) => { if (isMainFrame) audio.close(); });
@@ -432,6 +447,7 @@ const audioFor = (contents) => {
 };
 ipcMain.handle('diddy:audio-start', (event) => {
   if (!trusted(event)) throw new Error('not allowed');
+  if (!audioSupportInfo().available) throw new Error(audioSupportInfo().reason ?? 'System audio is not available');
   return audioFor(event.sender).start();
 });
 ipcMain.handle('diddy:audio-stop', (event, id) => {

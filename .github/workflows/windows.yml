@@ -77,15 +77,26 @@ jobs:
         with:
           name: windows-frontend
           path: cinny/dist
+      - name: Cache the system-audio helper's Rust dependencies
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+        with:
+          workspaces: electron/native/windows-audio -> target
+          key: windows-audio
       - name: Install Electron and packaging dependencies
         run: cd electron && npm ci --no-audit --no-fund
       - name: Run Electron tests
         run: cd electron && npm test
+      # The system-audio helper (Rust, process loopback); dist:win builds and packages it.
+      - name: Check the system-audio helper
+        run: |
+          rustup show active-toolchain
+          cd electron/native/windows-audio
+          cargo test --locked
       - name: Build the installer
         run: |
           cd electron
           npm run dist:win
-          ls -l dist
+          ls -l dist native/bin
       - name: Check the installer and the packaged app
         run: |
           version=$(node -p "require('./electron/package.json').version")
@@ -94,9 +105,24 @@ jobs:
           test -s electron/dist/win-unpacked/resources/app.asar
           test -s electron/dist/win-unpacked/resources/frontend/index.html
           test -s electron/dist/win-unpacked/resources/app-icons/pink.png
-          # the Linux capture helpers are not part of the Windows build
+          # the Linux capture helpers are not part of the Windows build, the Windows one is
           test ! -e electron/dist/win-unpacked/resources/diddy-system-audio
           test ! -e electron/dist/win-unpacked/resources/diddy-global-shortcut
+          test -s electron/dist/win-unpacked/resources/diddy-system-audio.exe
+      - name: Probe the packaged system-audio helper
+        run: |
+          # Process loopback needs the Windows audio service; server runners may have it stopped.
+          powershell -NoProfile -Command "Get-Service Audiosrv,AudioEndpointBuilder | Format-Table -AutoSize; Set-Service Audiosrv -StartupType Automatic -ErrorAction SilentlyContinue; Start-Service Audiosrv -ErrorAction SilentlyContinue; Get-Service Audiosrv | Format-Table -AutoSize" || true
+          set +e
+          electron/dist/win-unpacked/resources/diddy-system-audio.exe --probe 2> probe.log
+          code=$?
+          set -e
+          cat probe.log
+          test "$code" = 0
+          grep -qx READY probe.log
+          grep -q "probe ok" probe.log
+          # without a target the helper refuses to run instead of capturing anything
+          if electron/dist/win-unpacked/resources/diddy-system-audio.exe 2>/dev/null; then exit 1; fi
       - name: Start the packaged app once
         run: |
           npm install --no-save --no-audit --no-fund --prefix "$RUNNER_TEMP/pw" playwright-core@1.65.0
