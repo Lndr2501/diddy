@@ -1,0 +1,26 @@
+<p>Diddy ist eine Chat-App für <a href="https://matrix.org">Matrix</a>, das offene, dezentrale Chat-Netz. Aufgebaut ist sie wie Discord: Server (Matrix-Spaces) mit Kanälen und Sprachkanälen, eine Mitgliederliste mit Rollen und Calls, in denen alle sehen, wer gerade spricht.</p>
+
+<p>Diddy gibt es auch für macOS, Linux, Windows und iPhone. Alle Apps haben dieselben Funktionen, Töne und Plugins.</p>
+
+<p><b>Chat</b></p>
+<ul>
+<li>Ende-zu-Ende-Verschlüsselung, Geräteverifizierung und Wiederherstellungsschlüssel (matrix-rust-sdk)</li>
+<li>Antworten, Threads, Reaktionen, Bearbeiten, Anheften, Suche, Lesebestätigungen, Tippanzeige</li>
+<li>Bilder, Videos, Dateien, Sprachnachrichten, eigene Emoji und Sticker, Markdown</li>
+<li>Mehrere Konten, Themes, Teilen aus anderen Apps, matrix.to-Links</li>
+</ul>
+
+<p><b>Sprache und Bildschirmteilen</b></p>
+<ul>
+<li>Sprachkanäle über MatrixRTC (LiveKit), kompatibel mit Element Call</li>
+<li>Call-Schlüssel gehen nur an Geräte im Call; verlässt jemand den Call, gibt es einen neuen</li>
+<li>Bildschirm teilen, ab Android 10 mit dem Ton anderer Apps</li>
+<li>Soundboard, Watch Together, eingehende Anrufe auf dem Sperrbildschirm</li>
+</ul>
+
+<p><b>Benachrichtigungen ohne Google</b></p>
+<p>Push läuft über <a href="https://unifiedpush.org">UnifiedPush</a> (zum Beispiel die App ntfy). Ohne Verteiler hält eine abschaltbare Hintergrundverbindung die Benachrichtigungen. Diddy enthält keine Google-Dienste, keine Werbung und kein Tracking.</p>
+
+<p>Dein Homeserver braucht Simplified Sliding Sync (MSC4186), das aktuelle Synapse-Versionen und matrix.org bieten. Sprachkanäle brauchen ein MatrixRTC-Backend (LiveKit) auf dem Server.</p>
+
+<p>Optionale Funktionen nutzen fremde Dienste nur, wenn du sie verwendest: Watch Together spielt YouTube-Videos, das Soundboard kann Töne von MyInstants importieren, und Apple-Music-Links zeigen Songkarten aus dem iTunes-Katalog.</p>

@@ -14,13 +14,18 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
-// The Diddy version, the same for every platform. .github/scripts/stamp-version.sh writes it.
+// The Diddy version, the same for every platform. .github/scripts/stamp-version.sh writes both lines.
+// The versionCode stays a plain number because F-Droid's update check reads it from this file.
 val diddyVersion = "1.12.0"
+val diddyVersionCode = 11200
 
 /** 1.12.0 -> 11200. Updates need a growing versionCode; the patch level has two digits. */
 fun versionCodeOf(version: String): Int {
     val (major, minor, patch) = version.split(".").map { it.toInt() }
     return major * 10000 + minor * 100 + patch
+}
+check(diddyVersionCode == versionCodeOf(diddyVersion)) {
+    "diddyVersionCode is $diddyVersionCode, but version $diddyVersion needs ${versionCodeOf(diddyVersion)}"
 }
 
 /**
@@ -72,7 +77,7 @@ android {
         minSdk = 26
         targetSdk = 37
         versionName = diddyVersion
-        versionCode = versionCodeOf(diddyVersion)
+        versionCode = diddyVersionCode
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk {
             // Phones (arm64) and the emulator (x86_64). The Rust SDK and WebRTC ship both.
@@ -101,6 +106,9 @@ android {
         }
         release {
             isMinifyEnabled = false
+            // F-Droid rebuilds the release from the tag and must get the same bytes (reproducible build,
+            // android/fdroid/README.md). The git revision file is not needed for that.
+            vcsInfo.include = false
             val release = signingConfigs.getByName("release")
             if (release.storeFile != null) signingConfig = release
         }
@@ -114,6 +122,12 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    // The dependency list Google Play wants is an encrypted block in the APK signature; F-Droid refuses it.
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
     }
 
     packaging {
