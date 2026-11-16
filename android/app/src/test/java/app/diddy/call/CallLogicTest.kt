@@ -79,3 +79,18 @@ class ClipMixerTest {
         org.junit.Assert.assertEquals(10, ClipMixer.resample(ShortArray(10), 48000, 48000).size)
     }
 }
+
+class MyInstantsParserTest {
+    @org.junit.Test fun inputsAndPages() {
+        org.junit.Assert.assertEquals(MyInstantsParser.Target.Search("bruh", 1), MyInstantsParser.parseInput(" bruh "))
+        org.junit.Assert.assertEquals(MyInstantsParser.Target.Search("vine boom", 2), MyInstantsParser.parseInput("https://www.myinstants.com/en/search/?name=vine+boom&page=2"))
+        org.junit.Assert.assertEquals(MyInstantsParser.Target.Instant("https://www.myinstants.com/en/instant/bruh-123/"), MyInstantsParser.parseInput("https://myinstants.com/en/instant/bruh-123/"))
+        org.junit.Assert.assertNull(MyInstantsParser.parseInput("https://evil.com/en/instant/x"))
+        val html = """<div class="instant"><button onclick="play('/media/sounds/bruh.mp3', 'x')"></button><a href="/x" class="instant-link link-secondary">Bruh &amp; co</a></div>
+            <div class="instant"><button onclick="play('/media/../etc', 'x')"></button><a class="instant-link">bad</a></div>"""
+        val page = MyInstantsParser.parseSearch(html)
+        org.junit.Assert.assertEquals(listOf(MyInstantsParser.Item("/media/sounds/bruh.mp3", "Bruh & co")), page.items)
+        org.junit.Assert.assertEquals("Clip", MyInstantsParser.clipTitle("  "))
+        org.junit.Assert.assertEquals("é", MyInstantsParser.decodeEntities("&#xE9;"))
+    }
+}

@@ -75,6 +75,56 @@ object Soundboard {
         val id = UUID.randomUUID().toString()
         val target = File(folder, "$id.$ext")
         resolver.openInputStream(uri)?.use { input -> target.outputStream().use { input.copyTo(it) } } ?: throw DiddyError("The file could not be read.")
+        register(target, id, name.substringBeforeLast('.'))
+    }
+
+    fun hasClip(name: String): Boolean {
+        val wanted = MyInstantsParser.clipTitle(name).lowercase()
+        return clips.any { it.name.lowercase() == wanted }
+    }
+
+    /** Adds downloaded audio (MyInstants); false when a clip with that name exists already. */
+    fun add(data: ByteArray, name: String, ext: String): Boolean {
+        val title = MyInstantsParser.clipTitle(name)
+        if (hasClip(title)) return false
+        val id = UUID.randomUUID().toString()
+        val target = File(folder, "$id.$ext")
+        target.writeBytes(data)
+        register(target, id, title)
+        return true
+    }
+
+    private var previewPlayer: MediaPlayer? = null
+    var previewing by mutableStateOf<String?>(null)
+        private set
+
+    /** Plays a downloaded sound for you only, before importing it. */
+    fun preview(data: ByteArray, id: String) {
+        stopPreview()
+        val file = File(context.cacheDir, "soundboard-preview")
+        file.writeBytes(data)
+        val player = MediaPlayer()
+        try {
+            player.setDataSource(file.absolutePath)
+            player.setVolume(volume.toFloat(), volume.toFloat())
+            player.setOnCompletionListener { stopPreview() }
+            player.prepare()
+            player.start()
+            previewPlayer = player
+            previewing = id
+        } catch (_: Exception) {
+            player.release()
+            throw DiddyError("This sound cannot be played.")
+        }
+    }
+
+    fun stopPreview() {
+        previewPlayer?.let { runCatching { it.stop() }; it.release() }
+        previewPlayer = null
+        previewing = null
+    }
+
+    private fun register(target: File, id: String, rawName: String) {
         val seconds = durationSeconds(target)
         if (seconds == null) {
             target.delete()
@@ -84,7 +134,7 @@ object Soundboard {
             target.delete()
             throw DiddyError("Clips can be at most ${MAX_SECONDS.toInt()} seconds long.")
         }
-        clips = clips + Clip(id, name.substringBeforeLast('.').take(40).ifBlank { "Sound" }, target.name)
+        clips = clips + Clip(id, MyInstantsParser.clipTitle(rawName), target.name)
         save()
     }
 

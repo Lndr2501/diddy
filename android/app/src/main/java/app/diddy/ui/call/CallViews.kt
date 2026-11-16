@@ -499,6 +499,8 @@ private fun SoundboardSheet(session: CallSession, onClose: () -> Unit) {
     val board = app.diddy.call.Soundboard
     var error by remember { mutableStateOf<String?>(null) }
     var removing by remember { mutableStateOf<app.diddy.call.Soundboard.Clip?>(null) }
+    var instants by remember { mutableStateOf(false) }
+    if (instants) MyInstantsSheet { instants = false }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) try { board.add(uri) } catch (e: Exception) { error = e.friendlyMessage }
     }
@@ -511,7 +513,8 @@ private fun SoundboardSheet(session: CallSession, onClose: () -> Unit) {
                     colors = SliderDefaults.colors(thumbColor = Theme.accent, activeTrackColor = Theme.accent))
                 Icon(Icons.AutoMirrored.Filled.VolumeUp, null, tint = Theme.muted)
             }
-            if (board.clips.isEmpty()) Text("No sounds yet. Tap Add to pick audio files of up to 20 seconds.", color = Theme.muted)
+            TextButton(onClick = { instants = true }) { Text("Search MyInstants") }
+            if (board.clips.isEmpty()) Text("No sounds yet. Tap Add to pick audio files of up to 20 seconds, or search MyInstants.", color = Theme.muted)
             LazyVerticalGrid(GridCells.Adaptive(100.dp), Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(board.clips, key = { it.id }) { clip ->
                     Box(
