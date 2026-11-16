@@ -331,3 +331,12 @@ object IntroSteps {
         ),
     )
 }
+
+/** Phone or tablet layout, from the window width (Material's expanded width class starts at 840). */
+object Layout {
+    /** From here the chat list and the chat sit side by side: tablets, open foldables, wide windows. */
+    const val TWO_PANE_MIN_WIDTH_DP = 720f
+    const val LIST_PANE_WIDTH_DP = 360
+
+    fun isTwoPane(widthDp: Float): Boolean = widthDp >= TWO_PANE_MIN_WIDTH_DP
+}

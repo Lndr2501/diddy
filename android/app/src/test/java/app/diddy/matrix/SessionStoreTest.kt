@@ -17,3 +17,12 @@ class SessionStoreTest {
         assertEquals(emptyList<String>(), SessionStore.orphanIds(emptyList(), setOf("kept")))
     }
 }
+
+class LayoutTest {
+    @Test fun wideWindowsShowListAndChatSideBySide() {
+        assertEquals(false, app.diddy.app.Layout.isTwoPane(411f)) // phone
+        assertEquals(false, app.diddy.app.Layout.isTwoPane(673f)) // foldable cover / small landscape
+        assertEquals(true, app.diddy.app.Layout.isTwoPane(800f)) // tablet portrait, foldable open
+        assertEquals(true, app.diddy.app.Layout.isTwoPane(1280f))
+    }
+}
