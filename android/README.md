@@ -39,16 +39,17 @@ into the APK, so all apps sound and work the same.
   servers; explore public rooms
 - Calls and voice channels (MatrixRTC + LiveKit, Element Call media keys): camera, screen
   sharing, speaker, deafen, per-person volume, ringing in DMs, incoming call screen, soundboard
-- Notifications: a background connection (Settings > Notifications) with message, mention,
-  invite and call notifications; ntfy call alerts
+  with MyInstants search, Watch Together (YouTube with SponsorBlock), the phone as camera and
+  microphone for the computer
+- Notifications: UnifiedPush (ntfy and others) or a background connection, with message,
+  mention, invite and call notifications; ntfy call alerts
 - Emoji verification, recovery key, key backup, devices
 - Plugins (same contract as desktop and iOS), pinned under You
 - Share into a chat from other apps; matrix.to and `matrix:` links open in Diddy
 
-## Not built yet on Android
+## Notes
 
-- Watch Together
-- Using the phone as camera/microphone for the computer (companion)
-- MyInstants search in the soundboard
-- Push without the background connection (UnifiedPush): notifications need the background
-  connection for now
+- Notifications: either push through a UnifiedPush app such as ntfy (Settings > Notifications >
+  Push), or the background connection. Push needs no open connection and saves battery.
+- Watch Together, the soundboard with MyInstants search and the phone as camera and microphone
+  for the computer (companion) work like on the iPhone.

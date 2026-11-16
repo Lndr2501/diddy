@@ -150,6 +150,7 @@ fun CallOverlay(account: MatrixAccount, navigator: Navigator) {
         }
     }
     CallManager.incoming?.let { IncomingCallScreen() }
+    CompanionOfferDialog()
     CallManager.switchRequest?.let { request ->
         AlertDialog(
             onDismissRequest = { CallManager.switchRequest = null },
@@ -305,6 +306,23 @@ private fun ConnectedCall(session: CallSession, title: String, navigator: Naviga
             title, status + if (session.deafened) " · Deafened" else "", minimizeIcon, onMinimize,
             onWatch = if (watchOffered) ({ watchLink = true }) else null,
         ) { navigator.show(Sheet.Members(session.roomId)) }
+        session.companion?.let { role ->
+            Column(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 4.dp).clip(RoundedCornerShape(10.dp)).background(Theme.accent.copy(alpha = 0.15f)).padding(10.dp)) {
+                Text("This phone is your computer's ${listOfNotNull("camera".takeIf { role.media.camera }, "microphone".takeIf { role.media.microphone }, "screen".takeIf { role.media.screen }).joinToString(" and ")}. The call plays on your computer.", color = Theme.text, fontSize = 13.sp)
+                if (role.media.screen && !session.screenSharing) {
+                    val context = LocalContext.current
+                    val scope = rememberCoroutineScope()
+                    val projection = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+                        val data = result.data
+                        if (result.resultCode == Activity.RESULT_OK && data != null) scope.launch { session.startScreenShare(data) }
+                    }
+                    TextButton(onClick = {
+                        val manager = context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+                        projection.launch(manager.createScreenCaptureIntent())
+                    }) { Text("Share This Screen") }
+                }
+            }
+        }
         WatchTogetherArea(session.watchTogether)
         val watched = session.members.firstOrNull { it.id == session.watchedShare && it.screenShare != null }
         Box(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 10.dp)) {

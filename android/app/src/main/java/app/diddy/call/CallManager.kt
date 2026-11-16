@@ -162,8 +162,8 @@ object CallManager {
         join(request.account, request.roomId, request.roomName, request.showCallScreen)
     }
 
-    suspend fun join(account: MatrixAccount, roomId: String, roomName: String, present: Boolean = false) {
-        if (current?.roomId == roomId) {
+    suspend fun join(account: MatrixAccount, roomId: String, roomName: String, present: Boolean = false, companion: CompanionRole? = null) {
+        if (current?.roomId == roomId && companion == null) {
             if (present) showCallScreen = true
             return
         }
@@ -174,6 +174,13 @@ object CallManager {
             return
         }
         val session = CallSession(context, account, room, roomName)
+        session.companion = companion
+        session.onCompanionComputerGone = {
+            if (current === session) {
+                error = "Your computer is no longer in the call, so this phone left too."
+                scope.launch { leave() }
+            }
+        }
         session.onDropped = {
             if (current === session) {
                 error = "The connection to the voice server was lost."
@@ -197,7 +204,8 @@ object CallManager {
             session.connect()
             DiagLog.write("call: connected")
             Sounds.play(Sound.CALL_JOINED)
-            session.notifyRoom()
+            // As the computer's camera, nobody needs to be rung: the computer is in the call already.
+            if (companion != null) session.startCompanion() else session.notifyRoom()
         } catch (e: Exception) {
             DiagLog.write("call: join failed: ${e.friendlyMessage}")
             if (e !is kotlinx.coroutines.CancellationException) error = e.friendlyMessage
@@ -344,7 +352,13 @@ object CallWiring {
         }
         AppModel.Hooks.isDeafened = { CallManager.current?.deafened == true }
         val beforeLogout = AppModel.Hooks.beforeLogout
+        val added = AppModel.Hooks.accountAdded
+        AppModel.Hooks.accountAdded = { account ->
+            added(account)
+            CompanionService.attach(account)
+        }
         AppModel.Hooks.beforeLogout = { account ->
+            CompanionService.detach(account.id)
             if (CallManager.current?.account === account) CallManager.leave(silently = true)
             beforeLogout(account)
         }

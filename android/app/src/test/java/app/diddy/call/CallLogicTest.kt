@@ -94,3 +94,17 @@ class MyInstantsParserTest {
         org.junit.Assert.assertEquals("é", MyInstantsParser.decodeEntities("&#xE9;"))
     }
 }
+
+class CompanionProtocolTest {
+    @org.junit.Test fun requestsAndState() {
+        val request = CompanionProtocol.parseRequest("""{"v":1,"request_id":"r1","room_id":"!a:x","device_id":"DESK","camera":true,"room_name":" Lounge "}""")!!
+        org.junit.Assert.assertEquals(CompanionProtocol.Request("r1", "!a:x", "Lounge", "DESK", CompanionProtocol.Media(true, false, false)), request)
+        org.junit.Assert.assertNull(CompanionProtocol.parseRequest("""{"v":1,"request_id":"r1","room_id":"!a:x","device_id":"DESK"}"""))
+        org.junit.Assert.assertNull(CompanionProtocol.parseRequest("""{"v":2,"request_id":"r1","room_id":"!a:x","device_id":"DESK","camera":true}"""))
+        org.junit.Assert.assertEquals(CompanionProtocol.Control("r1", false, null, true), CompanionProtocol.parseControl("""{"v":1,"request_id":"r1","microphone":false,"end":true}"""))
+        org.junit.Assert.assertTrue(CompanionProtocol.accepts("@me:x", "@me:x", true, "DESK", "PHONE"))
+        org.junit.Assert.assertFalse(CompanionProtocol.accepts("@me:x", "@me:x", false, "DESK", "PHONE"))
+        org.junit.Assert.assertFalse(CompanionProtocol.accepts("@other:x", "@me:x", true, "DESK", "PHONE"))
+        org.junit.Assert.assertTrue(CompanionProtocol.state("r1", "PHONE", true, CompanionProtocol.Media(true, true, false)).contains("\"joined\":true"))
+    }
+}

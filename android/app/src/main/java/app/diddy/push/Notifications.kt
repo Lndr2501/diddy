@@ -163,6 +163,21 @@ object Notifications {
         return true
     }
 
+    /** The computer asks this phone to be its camera and microphone, while Diddy is in the background. */
+    @SuppressLint("MissingPermission")
+    fun announceCompanion(account: MatrixAccount, roomId: String, roomName: String) {
+        if (!::context.isInitialized || inForeground || !permitted) return
+        val notification = NotificationCompat.Builder(context, CHANNEL_CALLS)
+            .setSmallIcon(R.drawable.ic_launcher_monochrome)
+            .setContentTitle(roomName.ifEmpty { "Your computer" })
+            .setContentText("Your computer wants to use this phone as camera and microphone. Open Diddy to join.")
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .setContentIntent(openIntent(account.id, roomId))
+            .build()
+        runCatching { NotificationManagerCompat.from(context).notify("companion|" + tag(account, roomId), 0, notification) }
+    }
+
     fun removeCall(account: MatrixAccount, roomId: String) {
         if (!::context.isInitialized) return
         NotificationManagerCompat.from(context).cancel("call|" + tag(account, roomId), 0)

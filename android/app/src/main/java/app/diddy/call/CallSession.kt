@@ -97,6 +97,13 @@ class CallSession(private val context: Context, val account: MatrixAccount, priv
 
     enum class OutgoingRing { NONE, RINGING, NO_ANSWER }
 
+    /** Set when this phone joins as the computer's camera and microphone (companion). */
+    var companion: CompanionRole? = null
+    var onCompanionComputerGone: (() -> Unit)? = null
+    private var companionJob: Job? = null
+    private var companionSent: CompanionProtocol.Media? = null
+    private var companionSendJob: Job? = null
+
     var onDropped: (() -> Unit)? = null
     var onDeclined: ((String) -> Unit)? = null
 
@@ -201,8 +208,10 @@ class CallSession(private val context: Context, val account: MatrixAccount, priv
             runCatching { matrixRoom.sendStateEventRaw(CallLogic.MEMBER_EVENT_TYPE, stateKey, "{}") }
             ensureOpen()
         }
-        // Read now, not at join time: the permission may have been granted meanwhile.
-        startMicrophone(CallManager.microphoneAllowed)
+        // Read now, not at join time: the permission may have been granted meanwhile. As the
+        // computer's camera only, the microphone stays off.
+        if (companion?.media?.microphone == false) microphoneOn = false
+        else startMicrophone(CallManager.microphoneAllowed)
         ensureOpen()
         connected = true
         state = "Voice connected"
@@ -224,6 +233,8 @@ class CallSession(private val context: Context, val account: MatrixAccount, priv
         screenSharing = false
         state = "Disconnected"
         refreshJob?.cancel()
+        companionJob?.cancel()
+        if (companion != null) runCatching { sendCompanionState(joined = false) }
         watchTogether.stop()
         toDeviceHandle?.cancel()
         toDeviceHandle = null
@@ -348,7 +359,8 @@ class CallSession(private val context: Context, val account: MatrixAccount, priv
     private fun applyVolumes() {
         for (participant in liveKitRoom.remoteParticipants.values) {
             val userId = participant.identity?.value?.let { CallLogic.split(it)?.first } ?: continue
-            val volume = if (deafened) 0.0 else CallPrefs.volume(userId)
+            // As the computer's camera and microphone the phone plays nothing: the call sounds on the computer.
+            val volume = if (deafened || companion != null) 0.0 else CallPrefs.volume(userId)
             for (publication in participant.audioTrackPublications) {
                 (publication.second as? RemoteAudioTrack)?.setVolume(volume)
             }
@@ -432,6 +444,58 @@ class CallSession(private val context: Context, val account: MatrixAccount, priv
         } catch (e: Exception) {
             microphoneOn = false
             lastError = "The microphone could not be started: ${e.friendlyMessage}"
+        }
+    }
+
+    // MARK: Companion
+
+    /** Joined as the computer's camera and microphone: say so, start the camera, watch the computer. */
+    suspend fun startCompanion() {
+        val role = companion ?: return
+        DiagLog.write("companion: joined for another own device")
+        runCatching { liveKitRoom.localParticipant.updateAttributes(mapOf(CompanionProtocol.ATTRIBUTE to role.deviceId)) }
+        applyVolumes()
+        if (role.media.camera && !cameraOn) toggleCamera(CallManager.cameraAllowed)
+        companionSent = CompanionProtocol.Media(cameraOn, microphoneOn, screenSharing)
+        sendCompanionState(joined = true)
+        companionJob = scope.launch {
+            var seconds = 0
+            var computerSeen = false
+            var missing = 0
+            val computer = CallLogic.identity(ownUserId, role.deviceId)
+            while (true) {
+                delay(10_000)
+                seconds += 10
+                if (seconds % CompanionProtocol.HEARTBEAT_SECONDS == 0) sendCompanionState(joined = true)
+                if (liveKitRoom.remoteParticipants.values.any { it.identity?.value == computer }) {
+                    computerSeen = true
+                    missing = 0
+                } else if (computerSeen) {
+                    missing += 10
+                }
+                if (missing >= 30) {
+                    DiagLog.write("companion: the computer left the call, leaving too")
+                    onCompanionComputerGone?.invoke()
+                    return@launch
+                }
+            }
+        }
+    }
+
+    /** The computer switched the microphone or camera. */
+    suspend fun applyCompanionControl(control: CompanionProtocol.Control) {
+        control.microphone?.let { if (it != microphoneOn) toggleMicrophone(CallManager.microphoneAllowed) }
+        control.camera?.let { if (it != cameraOn) toggleCamera(CallManager.cameraAllowed) }
+    }
+
+    private suspend fun sendCompanionState(joined: Boolean) {
+        val role = companion ?: return
+        val background = !androidx.lifecycle.ProcessLifecycleOwner.get().lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)
+        val content = CompanionProtocol.state(role.requestId, ownDeviceId, joined && !closed, CompanionProtocol.Media(cameraOn, microphoneOn, screenSharing), background)
+        try {
+            account.client.sendEncryptedToDeviceMessage(CompanionProtocol.STATE_TYPE, mapOf(ownUserId to listOf(role.deviceId)), content)
+        } catch (e: Exception) {
+            DiagLog.write("companion: state not sent: ${e.friendlyMessage}")
         }
     }
 
@@ -548,6 +612,18 @@ class CallSession(private val context: Context, val account: MatrixAccount, priv
         account.resolveProfiles(merged.map { it.userId }, roomId)
         if (merged != members) members = merged
         if (outgoing != OutgoingRing.NONE && someoneElseIsHere) stopOutgoingRing()
+        // The computer hears at once what this phone sends now.
+        if (companion != null && connected) {
+            val media = CompanionProtocol.Media(cameraOn, microphoneOn, screenSharing)
+            if (media != companionSent) {
+                companionSent = media
+                companionSendJob?.cancel()
+                companionSendJob = scope.launch {
+                    delay(300)
+                    sendCompanionState(joined = true)
+                }
+            }
+        }
         if (watchedShare != null && merged.none { it.id == watchedShare && it.screenShare != null }) watchedShare = null
     }
 

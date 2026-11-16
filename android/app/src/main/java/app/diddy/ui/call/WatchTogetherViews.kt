@@ -216,3 +216,30 @@ fun WatchTogetherSettingsPage() {
         }
     }
 }
+
+/** The computer asks this phone to be its camera and microphone (ios CompanionRequestView). */
+@Composable
+fun CompanionOfferDialog() {
+    val pending = app.diddy.call.CompanionService.pending ?: return
+    val media = pending.request.media
+    var camera by remember(pending) { mutableStateOf(media.camera) }
+    var microphone by remember(pending) { mutableStateOf(media.microphone) }
+    var screen by remember(pending) { mutableStateOf(media.screen) }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = { app.diddy.call.CompanionService.decline() },
+        title = { Text("Use this phone in the call?") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Your computer wants this phone as camera and microphone in ${pending.request.roomName.ifEmpty { "its call" }}.", color = Theme.muted)
+                FormToggle("Camera", camera) { camera = it }
+                FormToggle("Microphone", microphone) { microphone = it }
+                FormToggle("Screen", screen) { screen = it }
+                Text("The call sound keeps playing on your computer; this phone stays silent.", color = Theme.faint, fontSize = 12.sp)
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { app.diddy.call.CompanionService.accept(app.diddy.call.CompanionProtocol.Media(camera, microphone, screen)) }, enabled = camera || microphone || screen) { Text("Join") }
+        },
+        dismissButton = { TextButton(onClick = { app.diddy.call.CompanionService.decline() }) { Text("Not Now") } },
+    )
+}
