@@ -1,0 +1,81 @@
+name: Build Android
+# Builds the native Android app (android/, Jetpack Compose + matrix-rust-sdk + LiveKit), runs its
+# unit tests and stores the APK as artifact `diddy-android`. Install it on the phone directly
+# (allow installing from unknown sources once).
+#
+# Without secrets the APK is the debug build (app id app.diddy.android.debug). A signed release
+# build needs the repository secrets DIDDY_ANDROID_KEYSTORE (base64), DIDDY_ANDROID_KEYSTORE_PASSWORD,
+# DIDDY_ANDROID_KEY_ALIAS and DIDDY_ANDROID_KEY_PASSWORD.
+on:
+  workflow_call:
+  workflow_dispatch:
+  push:
+    branches: [main, "android/**"]
+    paths:
+      - "android/**"
+      - "cinny/public/sound/diddy/**"
+      - "cinny/src/app/plugins/builtin/**"
+      - "ios/Diddy/Matrix/EmojiData.swift"
+      - ".github/workflows/android.yml"
+  pull_request:
+    paths:
+      - "android/**"
+      - ".github/workflows/android.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      HAS_KEYSTORE: ${{ secrets.DIDDY_ANDROID_KEYSTORE != '' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Use Java 17
+        run: echo "JAVA_HOME=$JAVA_HOME_17_X64" >> "$GITHUB_ENV"
+
+      - name: Point Gradle at the Android SDK
+        run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
+
+      - name: Unit tests
+        working-directory: android
+        run: ./gradlew --no-daemon testDebugUnitTest
+
+      - name: Keystore
+        if: env.HAS_KEYSTORE == 'true'
+        env:
+          KEYSTORE: ${{ secrets.DIDDY_ANDROID_KEYSTORE }}
+        run: |
+          echo "$KEYSTORE" | base64 -d > "$RUNNER_TEMP/diddy.jks"
+          echo "DIDDY_ANDROID_KEYSTORE_FILE=$RUNNER_TEMP/diddy.jks" >> "$GITHUB_ENV"
+
+      - name: Build APK
+        working-directory: android
+        env:
+          DIDDY_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.DIDDY_ANDROID_KEYSTORE_PASSWORD }}
+          DIDDY_ANDROID_KEY_ALIAS: ${{ secrets.DIDDY_ANDROID_KEY_ALIAS }}
+          DIDDY_ANDROID_KEY_PASSWORD: ${{ secrets.DIDDY_ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -n "$DIDDY_ANDROID_KEYSTORE_FILE" ]; then
+            ./gradlew --no-daemon assembleRelease
+          else
+            ./gradlew --no-daemon assembleDebug
+          fi
+          mkdir -p ../dist
+          find app/build/outputs/apk -name "*.apk" -exec cp {} ../dist/ \;
+          ls -la ../dist
+
+      - name: Upload APK
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: diddy-android
+          path: dist/*.apk
+          if-no-files-found: error
