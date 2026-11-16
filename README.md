@@ -5,12 +5,12 @@
 # Diddy
 
 **A Matrix chat client with voice calls that just work.**<br>
-Themes, profiles, plugins and a calm interface. Built for macOS, Windows, Linux and iPhone/iPad.
+Themes, profiles, plugins and a calm interface. Built for macOS, Windows, Linux, iPhone/iPad and Android.
 
 [![Release](https://img.shields.io/github/v/release/Lndr2501/diddy?label=release&color=e5517c&style=flat-square)](../../releases/latest)
 [![Tests](https://img.shields.io/github/actions/workflow/status/Lndr2501/diddy/test.yml?label=tests&style=flat-square)](../../actions/workflows/test.yml)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=flat-square)](LICENSE)
-![Platforms](https://img.shields.io/badge/macOS%20%C2%B7%20Windows%20%C2%B7%20Linux%20%C2%B7%20iOS-lightgrey?style=flat-square)
+![Platforms](https://img.shields.io/badge/macOS%20%C2%B7%20Windows%20%C2%B7%20Linux%20%C2%B7%20iOS%20%C2%B7%20Android-lightgrey?style=flat-square)
 
 [**Download**](../../releases/latest) · [Features](#features) · [Install](#install) · [Build from source](#build-from-source) · [Changelog](CHANGELOG.md)
 
@@ -120,11 +120,26 @@ All images show example data and are generated from the real app, see [docs/scre
 
 ✅ works and is tested · 🧪 built, but not yet tested in daily use · ❌ not supported (yet)
 
+**Android 🧪:** the native Kotlin/Compose app is available as a signed APK from 1.11.1, with chats,
+encrypted calls, screen sharing, soundboard, Watch Together, phone companion and UnifiedPush.
+Built and unit-tested, not yet checked on a real phone. See the [Android guide](android/README.md).
+
 ## Install
 
-Downloads are on the [Releases](../../releases/latest) page. Pushing a version tag (`vX.Y.Z`) builds everything automatically: the macOS DMG, the Windows installer, Linux AppImage, DEB and RPM, the iOS IPA and `SHA256SUMS`.
+Downloads are on the [Releases](../../releases/latest) page. Pushing a version tag (`vX.Y.Z`) builds everything automatically: the macOS DMG, the Windows installer, Linux AppImage, DEB and RPM, the iOS IPA, the signed Android APK and `SHA256SUMS`.
 
 No Matrix account yet? Choose *Create an account* on the login screen: Diddy checks the name while you type and signs you in when the account is ready. Servers with their own sign-in page, such as matrix.org, open it in create mode.
+
+<details>
+<summary><b>Android 8+ (arm64 / x86_64)</b></summary>
+
+1. Download `Diddy_*_Android.apk` from the release and open it on your phone.
+2. Allow installing apps from that source when Android asks.
+3. Later release APKs update the same app and keep its data. Debug builds are a separate app.
+
+See [android/README.md](android/README.md) for building, signing and notification setup.
+
+</details>
 
 <details open>
 <summary><b>macOS (Apple Silicon)</b></summary>
@@ -227,7 +242,7 @@ On macOS, start the native tests with `DYLD_LIBRARY_PATH=/usr/lib/swift`.
 
 ## Contributing
 
-Diddy has three clients: macOS (Tauri), Linux (Electron, `electron/`) and iOS (Swift, `ios/`). The chat UI is a Cinny fork in `cinny/` (React, TypeScript).
+Diddy has four clients: macOS (Tauri), Linux/Windows (Electron, `electron/`), iOS (Swift, `ios/`) and Android (Kotlin/Compose, `android/`). The desktop chat UI is a Cinny fork in `cinny/` (React, TypeScript).
 
 - Open work is in the [issues](../../issues), labelled *iOS*, *Linux* and *macOS*.
 - Work on a branch (`fix/...`) and open a pull request. Do not push to `main`.
