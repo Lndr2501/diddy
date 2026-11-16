@@ -12,3 +12,13 @@ fun VoiceStatusBar(account: MatrixAccount, navigator: Navigator, rounded: Boolea
 
 @Composable
 fun VoiceRoster(account: MatrixAccount, roomId: String, participants: List<String>) {}
+
+@Composable
+fun ChatCallBanner(account: MatrixAccount, roomId: String, title: String, navigator: Navigator) {}
+
+suspend fun startCall(account: MatrixAccount, roomId: String, title: String, navigator: Navigator) {}
+
+@Composable
+fun VoiceChannelScreen(account: MatrixAccount, roomId: String, navigator: Navigator, onBack: () -> Unit) {
+    app.diddy.ui.chat.ChatScreen(account, roomId, navigator, onBack)
+}

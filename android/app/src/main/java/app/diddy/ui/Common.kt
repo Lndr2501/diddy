@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -224,3 +225,42 @@ fun Card(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
 fun Divider(modifier: Modifier = Modifier) {
     Box(modifier.fillMaxWidth().height(1.dp).background(Theme.text.copy(alpha = 0.07f)))
 }
+
+/**
+ * A screen over everything (an iOS sheet): a bar with the title, Close on the left and an optional
+ * action on the right, then the content.
+ */
+@Composable
+fun FullSheet(
+    title: String,
+    onClose: () -> Unit,
+    closeLabel: String = "Close",
+    action: String? = null,
+    actionEnabled: Boolean = true,
+    onAction: () -> Unit = {},
+    background: Color = Theme.sidebar,
+    content: @Composable () -> Unit,
+) {
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = onClose,
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
+    ) {
+        Column(
+            Modifier.fillMaxSize().background(background).androidxStatusBars().androidxImePadding(),
+        ) {
+            Row(Modifier.fillMaxWidth().height(52.dp).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = onClose) { Text(closeLabel, color = Theme.accent) }
+                Text(title, color = Theme.text, fontWeight = FontWeight.SemiBold, fontSize = 17.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                if (action != null) TextButton(onClick = onAction, enabled = actionEnabled) { Text(action, color = if (actionEnabled) Theme.accent else Theme.faint, fontWeight = FontWeight.SemiBold) }
+                else Spacer(Modifier.width(72.dp))
+            }
+            Divider()
+            Box(Modifier.fillMaxSize().androidxNavigationBars()) { content() }
+        }
+    }
+}
+
+private fun Modifier.androidxStatusBars() = this.then(Modifier.statusBarsPaddingCompat())
+private fun Modifier.androidxNavigationBars() = this.then(Modifier.navigationBarsPaddingCompat())
+private fun Modifier.androidxImePadding() = this.then(Modifier.imePaddingCompat())
