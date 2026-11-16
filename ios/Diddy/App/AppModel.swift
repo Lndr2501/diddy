@@ -34,6 +34,7 @@ final class AppModel: ObservableObject {
 
     func restore() async {
         defer { restoring = false }
+        AccountCleanup.run()
         let records = AccountList.load()
         let preferred = AccountList.activeAccountId
         // The account shown first is restored first, and the splash only waits for it (or, when
@@ -156,10 +157,12 @@ final class AppModel: ObservableObject {
         await account.start()
     }
 
-    func logout(_ account: MatrixAccount) async {
+    /// Throws when the server did not end the session; nothing is removed then, so the person can
+    /// retry or pass `localOnly` to remove the account from this device anyway.
+    func logout(_ account: MatrixAccount, localOnly: Bool = false) async throws {
+        try await account.logout(localOnly: localOnly)
         if calls.current?.accountId == account.id { await calls.leave() }
         CompanionService.shared.detach(accountId: account.id)
-        await account.logout()
         accounts.removeAll { $0.id == account.id }
         saveAccountList()
         if activeAccountId == account.id { activeAccountId = accounts.first?.id }

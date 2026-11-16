@@ -2,6 +2,11 @@
 
 ## Unveröffentlicht
 
+- **Abmelden meldet Fehler (macOS, Linux, Windows, iOS):** Schlug das Abmelden am Server fehl (kein Netz, Serverfehler), entfernte Diddy das Konto trotzdem still, und das Gerät blieb am Server angemeldet. Jetzt bleibt das Konto, und es kommt ein Hinweis mit „Try Again“ und „Remove from This Device Anyway“ (am Desktop im Abmelde-Dialog, auf iOS als Hinweis). Hat der Server die Sitzung schon beendet (anderswo entfernt), gilt das als abgemeldet.
+- **iOS: verwaiste Konten aufräumen:** Ordner unter `Accounts/` und Schlüsselbund-Einträge ohne Eintrag in der Kontoliste (z. B. nach einem Absturz mitten im Login) werden beim Start gelöscht. Nie angefasst werden Konten der Liste, ein laufender Login und alles, was nicht wie eine Diddy-Konto-ID heißt; ist die Kontoliste unlesbar, wird nichts gelöscht.
+- **iOS: Lesebestätigungen privat (wie am Desktop):** Der Schalter „Hide Typing & Read Receipts“ gab es schon und bedeutet dasselbe wie am Desktop „Hide Activity“ (private Lesebestätigung `m.read.private`, kein Tippstatus); der Text erklärt das jetzt. Ein „Aus“ ohne jede Bestätigung gibt es auch am Desktop nicht, weil der Server sonst nie „gelesen“ erfährt.
+- **iOS: Warnung beim Teilen des ganzen Bildschirms (ab iOS 27):** Vor dem Start steht ein Hinweis, dass auch andere Apps, Mitteilungen und die Einstellungen von Diddy zu sehen sind (auch beim Start durch deinen Computer). Solange du den Bildschirm teilst, sind die Eingabe des Wiederherstellungsschlüssels und das Anzeigen eines neuen Schlüssels gesperrt und mit einem Hinweis ersetzt.
+
 ## 1.11.0 (2026-11-15)
 
 - **Kein Echo von deinen eigenen Geräten (macOS, Linux, Windows, iOS):** Mit dem iPhone als Mikro hörte man sich am Computer selbst, verzögert: Für den Call ist das iPhone ein weiterer Teilnehmer, und der Computer spielte dessen Mikrofon ab. Jetzt spielt keine Diddy-App deine eigenen anderen Geräte im selben Call ab (am Computer per „Mute for me“, das sich nicht zurückstellen lässt und nicht gemerkt wird; am iPhone über die Lautstärke des Teilnehmers). Andere hören dich normal.

@@ -230,6 +230,11 @@ jobs:
           swiftc -swift-version 5 Diddy/Matrix/SecurityLogic.swift Tools/security_check/main.swift -o "$RUNNER_TEMP/diddy-security-check"
           "$RUNNER_TEMP/diddy-security-check"
 
+      - name: Check account cleanup and logout rules
+        run: |
+          swiftc -swift-version 5 Diddy/Matrix/AccountCleanupLogic.swift Tools/accountcleanup_check/main.swift -o "$RUNNER_TEMP/diddy-accountcleanup-check"
+          "$RUNNER_TEMP/diddy-accountcleanup-check"
+
       - name: Check app shell rules
         run: |
           swiftc -swift-version 5 Diddy/App/ShellLogic.swift Tools/shell_check/main.swift -o "$RUNNER_TEMP/diddy-shell-check"
