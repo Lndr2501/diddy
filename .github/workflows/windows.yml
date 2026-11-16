@@ -105,9 +105,10 @@ jobs:
           test -s electron/dist/win-unpacked/resources/app.asar
           test -s electron/dist/win-unpacked/resources/frontend/index.html
           test -s electron/dist/win-unpacked/resources/app-icons/pink.png
-          # the Linux capture helpers are not part of the Windows build, the Windows one is
-          test ! -e electron/dist/win-unpacked/resources/diddy-system-audio
-          test ! -e electron/dist/win-unpacked/resources/diddy-global-shortcut
+          # the Linux capture helpers are not part of the Windows build, the Windows one is. Exact
+          # names from the directory listing: Git Bash's `test -e x` also matches `x.exe`.
+          ls electron/dist/win-unpacked/resources
+          if ls electron/dist/win-unpacked/resources | grep -qxE 'diddy-system-audio|diddy-global-shortcut'; then exit 1; fi
           test -s electron/dist/win-unpacked/resources/diddy-system-audio.exe
       - name: Probe the packaged system-audio helper
         run: |
