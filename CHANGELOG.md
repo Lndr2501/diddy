@@ -2,6 +2,8 @@
 
 ## Unveröffentlicht
 
+- **Bot-Library `diddybot` (Python, `sdk/python`):** Matrix-Bots in wenigen Zeilen, die in Diddy alles nutzen, was Diddy für Bots kann: Karten (Hinweis, Liste, Diagramme, Hilfe, Warteschlange, Fortschritt, Player), Knöpfe, Karten, die sich bei einem Klick selbst bearbeiten statt neue Nachrichten zu schicken, Befehlsvorschläge beim Tippen, eine fertige `!help`-Karte und das BOT-Profil. Befehle sind normale Funktionen, deren Argumente nach Typ umgewandelt werden; falsche Eingaben beantwortet der Bot mit der Gebrauchszeile. E2EE, Login mit gespeichertem Token, Einladungen und Direktnachrichten sind eingebaut. `diddybot new meinbot` legt ein Projekt an, `diddybot.testing` testet einen Bot ohne Server, und zwar mit Diddys eigenem Parser: eine Karte, die Diddy kürzen würde, lässt den Test scheitern. Ein CI-Job prüft die Library gegen die TypeScript-Parser von Diddy und Ende zu Ende gegen einen echten Synapse in einem verschlüsselten Raum. Anleitung: `sdk/python/README.md`. Betrifft keine App; Bot-Karten zeigen macOS, Linux, Windows und iOS wie bisher.
+
 ## 1.11.0 (2026-11-15)
 
 - **Kein Echo von deinen eigenen Geräten (macOS, Linux, Windows, iOS):** Mit dem iPhone als Mikro hörte man sich am Computer selbst, verzögert: Für den Call ist das iPhone ein weiterer Teilnehmer, und der Computer spielte dessen Mikrofon ab. Jetzt spielt keine Diddy-App deine eigenen anderen Geräte im selben Call ab (am Computer per „Mute for me“, das sich nicht zurückstellen lässt und nicht gemerkt wird; am iPhone über die Lautstärke des Teilnehmers). Andere hören dich normal.

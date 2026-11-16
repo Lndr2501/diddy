@@ -6,6 +6,10 @@ Playwright also checks the voice-recorder hook using synthetic audio and Chromiu
 WebM encoder, decoder, playback and seeking; this does not replace Linux device tests.
 Rust tests run in parallel on macOS. No checks were removed.
 
+The Bot SDK workflow (`bot-sdk.yml`) runs only when `sdk/python/` or Diddy's bot parsers change: Python unit
+tests, a parity test of `sdk/python/diddybot/protocol.py` against the TypeScript parsers, and an end-to-end run
+against a throwaway Synapse container in an encrypted room.
+
 ## Caches
 
 - Test jobs cache npm downloads keyed by `cinny/package-lock.json`; `npm ci` still installs

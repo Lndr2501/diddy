@@ -1,0 +1,31 @@
+[project]
+name = "diddy-bot"
+version = "0.1.0"
+description = "Matrix bots in a few lines, with cards, buttons and command suggestions in Diddy"
+readme = "README.md"
+license = "AGPL-3.0-only"
+requires-python = ">=3.10"
+dependencies = ["matrix-nio[e2e]>=0.25,<0.27"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-asyncio>=0.23"]
+
+[project.scripts]
+diddybot = "diddybot.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/Lndr2501/diddy"
+Protocol = "https://github.com/Lndr2501/diddy/blob/main/docs/bot-cards.md"
+
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["diddybot*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+markers = ["integration: needs a homeserver (DIDDY_TEST_HOMESERVER)"]
