@@ -30,7 +30,7 @@ struct RoomAddressesView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Theme.sidebar.ignoresSafeArea())
-        .navigationTitle("Addresses")
+        .navigationTitle(L("ios.securityUI.addresses"))
         .navigationBarTitleDisplayMode(.inline)
         .task { await model.loadLocalAliases() }
         .refreshable {
@@ -46,8 +46,8 @@ struct RoomAddressesView: View {
         return Section {
             if published.isEmpty {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("No Addresses").font(.subheadline.weight(.semibold))
-                    Text("To publish an address, it needs to be set as a local address first")
+                    Text(L("ios.securityUI.noAddresses")).font(.subheadline.weight(.semibold))
+                    Text(L("ios.securityUI.toPublishAnAddressItNeedsToBeSetAsALocalAddressFirst"))
                         .font(.caption).foregroundStyle(Theme.muted)
                 }
             } else {
@@ -56,15 +56,15 @@ struct RoomAddressesView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(alias)
                             if alias == canonical.alias {
-                                Text("Main").font(.caption.weight(.bold)).foregroundStyle(Theme.accent)
+                                Text(L("ios.securityUI.main")).font(.caption.weight(.bold)).foregroundStyle(Theme.accent)
                             }
                         }
                         Spacer()
                         if canEditCanonical {
                             if alias == canonical.alias {
-                                Button("Unset Main") { setMain(nil) }.buttonStyle(.borderless)
+                                Button(L("ios.securityUI.unsetMain")) { setMain(nil) }.buttonStyle(.borderless)
                             } else {
-                                Button("Set Main") { setMain(alias) }.buttonStyle(.borderless)
+                                Button(L("ios.securityUI.setMain")) { setMain(alias) }.buttonStyle(.borderless)
                             }
                         }
                     }
@@ -72,12 +72,12 @@ struct RoomAddressesView: View {
                 }
             }
         } header: {
-            Text("Published Addresses")
+            Text(L("ios.securityUI.publishedAddresses"))
         } footer: {
             if canEditCanonical {
-                Text("If access is Public, published addresses can be used by anyone to join.")
+                Text(L("ios.securityUI.ifAccessIsPublicPublishedAddressesCanBeUsedByAnyoneToJoin"))
             } else {
-                Text("If access is Public, published addresses can be used by anyone to join. Your role can't change the published addresses.")
+                Text(L("ios.securityUI.ifAccessIsPublicPublishedAddressesCanBeUsedByAnyoneToJoinYou"))
             }
         }
     }
@@ -97,7 +97,7 @@ struct RoomAddressesView: View {
             if model.localAliases == nil {
                 HStack { Spacer(); ProgressView(); Spacer() }
             } else if model.localAliases?.isEmpty == true {
-                Text("No Addresses").font(.subheadline.weight(.semibold))
+                Text(L("ios.securityUI.noAddresses")).font(.subheadline.weight(.semibold))
             } else {
                 ForEach(model.localAliases ?? [], id: \.self) { alias in
                     Button {
@@ -109,7 +109,7 @@ struct RoomAddressesView: View {
                             Text(alias).foregroundStyle(Theme.text)
                             Spacer()
                             if canonical.published.contains(alias) {
-                                Text("Published").font(.caption.weight(.bold)).foregroundStyle(Theme.online)
+                                Text(L("ios.securityUI.published")).font(.caption.weight(.bold)).foregroundStyle(Theme.online)
                             }
                         }
                     }
@@ -130,9 +130,9 @@ struct RoomAddressesView: View {
                     .disabled(newAliasFull == nil || model.busy)
             }
         } header: {
-            Text("Local Addresses")
+            Text(L("ios.securityUI.localAddresses"))
         } footer: {
-            Text("Set local address so users can join through your homeserver.")
+            Text(L("ios.securityUI.setLocalAddressSoUsersCanJoinThroughYourHomeserver"))
         }
     }
 
@@ -143,7 +143,7 @@ struct RoomAddressesView: View {
             let published = chosen.filter { canonical.published.contains($0) }
             let unpublished = chosen.filter { !canonical.published.contains($0) }
             if !unpublished.isEmpty {
-                Button("Publish") {
+                Button(L("ios.securityUI.publish")) {
                     Task {
                         await model.perform {
                             try await model.sendState("m.room.canonical_alias", content: canonical.publishing(unpublished))
@@ -154,7 +154,7 @@ struct RoomAddressesView: View {
                 .disabled(model.busy)
             }
             if !published.isEmpty {
-                Button("Unpublish") {
+                Button(L("ios.securityUI.unpublish")) {
                     Task {
                         await model.perform {
                             try await model.sendState("m.room.canonical_alias", content: canonical.unpublishing(published))
@@ -169,7 +169,7 @@ struct RoomAddressesView: View {
             confirmDelete = true
         }
         .disabled(model.busy)
-        .confirmationDialog("Delete the selected addresses?", isPresented: $confirmDelete, titleVisibility: .visible) {
+        .confirmationDialog(L("ios.securityUI.deleteTheSelectedAddresses"), isPresented: $confirmDelete, titleVisibility: .visible) {
             Button(L("common.connectionRecovery.delete"), role: .destructive) {
                 Task {
                     await model.perform {

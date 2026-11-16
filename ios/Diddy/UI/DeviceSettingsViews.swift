@@ -46,7 +46,7 @@ struct DevicesView: View {
                 LabeledContent(L("settings.devices.deviceVerification"), value: summary)
                 if account.verificationState != .verified {
                     Button { Task { await VerificationCenter.of(account).requestDeviceVerification() } } label: {
-                        Label("Verify with Another Device", systemImage: "iphone.and.arrow.forward")
+                        Label(L("ios.securityUI.verifyWithAnotherDevice"), systemImage: "iphone.and.arrow.forward")
                     }
                 }
                 NavigationLink { EncryptionSettingsView(account: account) } label: {
@@ -68,7 +68,7 @@ struct DevicesView: View {
             if !others.isEmpty {
                 Section {
                     ForEach(others) { row($0, isCurrent: false) }
-                    Button("Sign Out of All Other Devices", role: .destructive) {
+                    Button(L("ios.securityUI.signOutOfAllOtherDevices"), role: .destructive) {
                         confirmSignOut = SignOutRequest(ids: others.map(\.id))
                     }
                 } header: {
@@ -88,23 +88,23 @@ struct DevicesView: View {
         .task { await load() }
         .refreshable { await load() }
         .verificationSheet(account: account)
-        .alert("Rename Device", isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
+        .alert(L("ios.securityUI.renameDevice"), isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
             TextField(L("settings.badgeEditor.name"), text: $newName)
             Button(L("settings.profile.save")) { if let device = renaming { Task { await rename(device) } } }
             Button(L("ios.settings.cancel"), role: .cancel) {}
         } message: {
-            Text("Other people in encrypted chats can see this name.")
+            Text(L("ios.securityUI.otherPeopleInEncryptedChatsCanSeeThisName"))
         }
         .confirmationDialog(
             confirmSignOut.map { $0.ids.count == 1 ? "Sign out this device?" : "Sign out \($0.ids.count) devices?" } ?? "",
             isPresented: Binding(get: { confirmSignOut != nil }, set: { if !$0 { confirmSignOut = nil } }),
             titleVisibility: .visible
         ) {
-            Button("Sign Out", role: .destructive) {
+            Button(L("ios.securityUI.signOut"), role: .destructive) {
                 if let request = confirmSignOut { Task { await signOut(request) } }
             }
         } message: {
-            Text("They need to log in again. Encrypted messages stay readable there only if the device keeps its keys.")
+            Text(L("ios.securityUI.theyNeedToLogInAgainEncryptedMessagesStayReadableThereOnlyIf"))
         }
         .sheet(item: $passwordRequest, onDismiss: { challenge = nil }) { request in
             DevicePasswordSheet(count: request.ids.count) { password in
@@ -137,18 +137,18 @@ struct DevicesView: View {
             }
         }
         .contextMenu {
-            Button { newName = device.name ?? ""; renaming = device } label: { Label("Rename", systemImage: "pencil") }
-            Button { UIPasteboard.general.string = device.id } label: { Label("Copy Device ID", systemImage: "doc.on.doc") }
+            Button { newName = device.name ?? ""; renaming = device } label: { Label(L("ios.securityUI.rename"), systemImage: "pencil") }
+            Button { UIPasteboard.general.string = device.id } label: { Label(L("ios.securityUI.copyDeviceId"), systemImage: "doc.on.doc") }
             if !isCurrent {
                 Button(role: .destructive) { confirmSignOut = SignOutRequest(ids: [device.id]) } label: {
-                    Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
+                    Label(L("ios.securityUI.signOut"), systemImage: "rectangle.portrait.and.arrow.right")
                 }
             }
         }
         .swipeActions {
             if !isCurrent {
                 Button(role: .destructive) { confirmSignOut = SignOutRequest(ids: [device.id]) } label: {
-                    Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
+                    Label(L("ios.securityUI.signOut"), systemImage: "rectangle.portrait.and.arrow.right")
                 }
             }
         }
@@ -269,7 +269,7 @@ private struct DevicePasswordSheet: View {
                             if let answer { error = answer; password = "" }
                         }
                     } label: {
-                        HStack { Text("Sign Out"); if busy { Spacer(); ProgressView() } }
+                        HStack { Text(L("ios.securityUI.signOut")); if busy { Spacer(); ProgressView() } }
                     }
                     .disabled(password.isEmpty || busy)
                 }

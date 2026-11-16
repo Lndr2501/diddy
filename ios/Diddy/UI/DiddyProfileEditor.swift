@@ -76,7 +76,7 @@ struct DiddyProfileEditor: View {
             if !loaded {
                 HStack(spacing: 10) {
                     ProgressView()
-                    Text("Loading your profile").foregroundStyle(Theme.muted)
+                    Text(L("ios.securityUI.loadingYourProfile")).foregroundStyle(Theme.muted)
                 }
                 .frame(maxWidth: .infinity)
                 .listRowBackground(Color.clear)
@@ -85,13 +85,13 @@ struct DiddyProfileEditor: View {
                     DiddyOptionsSetupView(account: account) { Task { await reload() } }
                 } else {
                     Section {
-                        Text("This app could not read your current profile from your encrypted Diddy Options room yet (the message keys are missing). Verify this device in Settings, then try again, or edit your profile in Diddy desktop.")
+                        Text(L("ios.securityUI.thisAppCouldNotReadYourCurrentProfileFromYourEncryptedDiddyO"))
                             .foregroundStyle(Theme.muted)
                     }
                 }
             } else {
                 Section {
-                    Picker("Part", selection: $tab) {
+                    Picker(L("ios.securityUI.part"), selection: $tab) {
                         ForEach(Tab.allCases, id: \.self) { Text($0.rawValue).tag($0) }
                     }
                     .pickerStyle(.segmented)
@@ -115,7 +115,7 @@ struct DiddyProfileEditor: View {
                         Label(L("ios.remainingUI.dataRoom"), systemImage: "externaldrive.connected.to.line.below")
                     }
                 } footer: {
-                    Text("The room your profile, badges and name styles are shared through. Missing profiles of others? Add the room your desktop uses.")
+                    Text(L("ios.securityUI.theRoomYourProfileBadgesAndNameStylesAreSharedThroughMissing"))
                 }
             }
         }
@@ -124,7 +124,7 @@ struct DiddyProfileEditor: View {
         }
         .scrollContentBackground(.hidden)
         .background(Theme.sidebar)
-        .navigationTitle("Diddy Profile")
+        .navigationTitle(L("ios.securityUI.diddyProfile"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if inSheet {
@@ -298,7 +298,7 @@ struct DiddyProfileEditor: View {
 
     @ViewBuilder
     private var nameTab: some View {
-        Section("Name Style") {
+        Section(L("ios.securityUI.nameStyle")) {
             Picker(L("settings.diddyProfile.font"), selection: $draft.nameFont) {
                 ForEach(Rules.fontIds, id: \.self) { Text(Rules.label($0, in: Rules.fonts)).tag($0) }
             }
@@ -315,18 +315,18 @@ struct DiddyProfileEditor: View {
             }
             .pickerStyle(.segmented)
             if draft.nameGradient != nil {
-                ColorPicker("Start", selection: colorBinding({ draft.nameGradient?.from }, fallback: "#7aa2f7") { draft.nameGradient?.from = $0 },
+                ColorPicker(L("ios.securityUI.start"), selection: colorBinding({ draft.nameGradient?.from }, fallback: "#7aa2f7") { draft.nameGradient?.from = $0 },
                             supportsOpacity: false)
-                ColorPicker("End", selection: colorBinding({ draft.nameGradient?.to }, fallback: "#c084fc") { draft.nameGradient?.to = $0 },
+                ColorPicker(L("ios.securityUI.end"), selection: colorBinding({ draft.nameGradient?.to }, fallback: "#c084fc") { draft.nameGradient?.to = $0 },
                             supportsOpacity: false)
                 angleRow("Angle", Binding(get: { draft.nameGradient?.angle ?? 90 }, set: { draft.nameGradient?.angle = $0 }))
             } else {
                 optionalColorRow("Colour", hex: $draft.nameColor, fallback: "#ffffff")
             }
         } header: {
-            Text("Name Colour")
+            Text(L("ios.securityUI.nameColour"))
         } footer: {
-            Text("A solid colour or a two-colour gradient. Without a colour your name has the normal text colour.")
+            Text(L("ios.securityUI.aSolidColourOrATwoColourGradientWithoutAColourYourNameHasThe"))
         }
     }
 
@@ -342,9 +342,9 @@ struct DiddyProfileEditor: View {
             }
             optionalColorRow("Accent", hex: $draft.cardAccent, fallback: "#7aa2f7")
         } header: {
-            Text("Header & Accent")
+            Text(L("ios.securityUI.headerAccent"))
         } footer: {
-            Text("The header colours show when there is no banner. The accent colours the buttons and the outline of your card.")
+            Text(L("ios.securityUI.theHeaderColoursShowWhenThereIsNoBannerTheAccentColoursTheBu"))
         }
         Section {
             PhotosPicker(selection: $bannerItem, matching: .images) {
@@ -354,7 +354,7 @@ struct DiddyProfileEditor: View {
             if uploading == .banner { uploadingRow }
             if let mxc = draft.bannerMxc {
                 DiddyImagePositionEditor(mxc: mxc, ratio: 640.0 / 192.0, pos: $draft.bannerPos, account: account)
-                Button("Remove Banner", role: .destructive) {
+                Button(L("ios.securityUI.removeBanner"), role: .destructive) {
                     draft.bannerMxc = nil
                     draft.bannerPos = nil
                 }
@@ -362,13 +362,13 @@ struct DiddyProfileEditor: View {
         } header: {
             Text(L("settings.diddyProfile.banner"))
         } footer: {
-            Text("A picture or GIF at the top of your card.")
+            Text(L("ios.securityUI.aPictureOrGifAtTheTopOfYourCard"))
         }
         Section {
             TextField(L("settings.diddyProfile.tellPeopleABit"), text: limited($draft.bio, Rules.maxBio), axis: .vertical)
                 .lineLimit(2...6)
         } header: {
-            Text("About Me")
+            Text(L("ios.securityUI.aboutMe"))
         } footer: {
             Text("\(draft.bio.unicodeScalars.count)/\(Rules.maxBio)")
         }
@@ -409,7 +409,7 @@ struct DiddyProfileEditor: View {
         Section {
             ForEach(draft.links.indices, id: \.self) { index in linkRow(index) }
             if draft.links.count < Rules.maxLinks {
-                Button { draft.links.append("") } label: { Label("Add Link", systemImage: "plus") }
+                Button { draft.links.append("") } label: { Label(L("ios.securityUI.addLink"), systemImage: "plus") }
             }
         } header: {
             Text(L("profile.profileModules.links"))
@@ -417,15 +417,15 @@ struct DiddyProfileEditor: View {
             Text("GitHub, GitLab, LinkedIn, Spotify, YouTube or your own website. Only https addresses. \(draft.links.count)/\(Rules.maxLinks)")
         }
         Section(L("profile.profileModules.activity")) {
-            Picker("Doing", selection: $draft.activityKind) {
-                Text("Nothing").tag("none")
+            Picker(L("ios.securityUI.doing"), selection: $draft.activityKind) {
+                Text(L("ios.securityUI.nothing")).tag("none")
                 ForEach(Rules.activityKinds, id: \.self) { kind in
                     Text(DiddyCardModules.activityTitle(kind)).tag(kind)
                 }
             }
             if draft.activityKind != "none" {
-                TextField("What", text: limited($draft.activityText, Rules.maxActivityLength))
-                TextField("Details (optional)", text: limited($draft.activityDetail, Rules.maxActivityLength))
+                TextField(L("ios.securityUI.what"), text: limited($draft.activityText, Rules.maxActivityLength))
+                TextField(L("ios.securityUI.detailsOptional"), text: limited($draft.activityDetail, Rules.maxActivityLength))
             }
         }
     }
@@ -491,7 +491,7 @@ struct DiddyProfileEditor: View {
                 importTarget = .nameplate
                 importing = true
             } label: {
-                Label("Import ZIP or File…", systemImage: "square.and.arrow.down")
+                Label(L("ios.securityUI.importZipOrFile"), systemImage: "square.and.arrow.down")
             }
             .disabled(uploading != nil)
             if uploading == .nameplate { uploadingRow }
@@ -517,14 +517,14 @@ struct DiddyProfileEditor: View {
                 importTarget = .effect
                 importing = true
             } label: {
-                Label("Import Own Effect…", systemImage: "square.and.arrow.down")
+                Label(L("ios.securityUI.importOwnEffect"), systemImage: "square.and.arrow.down")
             }
             .disabled(uploading != nil)
             if uploading == .effect { uploadingRow }
         } header: {
-            Text("Profile Effect")
+            Text(L("ios.securityUI.profileEffect"))
         } footer: {
-            Text("An animated overlay other Diddy users see over your profile card. Import your own from a ZIP effect pack or from one animated PNG, WebP or GIF with a transparent background.")
+            Text(L("ios.securityUI.anAnimatedOverlayOtherDiddyUsersSeeOverYourProfileCardImport"))
         }
         Section {
             choicePicker("Frame", selection: $draft.frame, presets: Rules.framePresets,
@@ -533,14 +533,14 @@ struct DiddyProfileEditor: View {
                 importTarget = .frame
                 importing = true
             } label: {
-                Label("Import Own Frame…", systemImage: "square.and.arrow.down")
+                Label(L("ios.securityUI.importOwnFrame"), systemImage: "square.and.arrow.down")
             }
             .disabled(uploading != nil)
             if uploading == .frame { uploadingRow }
         } header: {
-            Text("Profile Frame")
+            Text(L("ios.securityUI.profileFrame"))
         } footer: {
-            Text("A decorative frame other Diddy users see around your profile card. Import your own from a ZIP frame pack or from one PNG or WebP with a transparent background.")
+            Text(L("ios.securityUI.aDecorativeFrameOtherDiddyUsersSeeAroundYourProfileCardImpor"))
         }
     }
 
@@ -607,13 +607,13 @@ struct DiddyProfileEditor: View {
         }
         Section {
             if account.diddyOwnBadges.isEmpty {
-                Text("You do not have any badges yet. Take one from the badge library or create your own.")
+                Text(L("ios.securityUI.youDoNotHaveAnyBadgesYetTakeOneFromTheBadgeLibraryOrCreateYo"))
                     .foregroundStyle(Theme.muted)
             } else {
                 ForEach(account.diddyOwnBadges) { badge in badgeRow(badge) }
             }
         } header: {
-            Text("Shown Badges")
+            Text(L("ios.securityUI.shownBadges"))
         } footer: {
             Text("Pick up to \(Rules.maxShownBadges) of your badges to show next to your name. \(draft.shownBadgeIds(owned: ownedIds).count)/\(Rules.maxShownBadges)")
         }
@@ -621,29 +621,29 @@ struct DiddyProfileEditor: View {
             NavigationLink {
                 DiddyBadgeLibraryView(account: account)
             } label: {
-                Label("Badge Library", systemImage: "star.circle")
+                Label(L("ios.securityUI.badgeLibrary"), systemImage: "star.circle")
             }
             NavigationLink {
                 DiddyCreateBadgeView(account: account)
             } label: {
-                Label("Create a Badge", systemImage: "plus.circle")
+                Label(L("ios.securityUI.createABadge"), systemImage: "plus.circle")
             }
         } footer: {
-            Text("Taking, creating and deleting badges is saved right away.")
+            Text(L("ios.securityUI.takingCreatingAndDeletingBadgesIsSavedRightAway"))
         }
         Section {
             Toggle(isOn: $shareVersion) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Show My Diddy Version")
+                    Text(L("ios.securityUI.showMyDiddyVersion"))
                     Text("\(DiddyClientVersion.current ?? "This version"), small on your profile card. Switched off, it is removed from your profile.")
                         .font(.caption)
                         .foregroundStyle(Theme.muted)
                 }
             }
         } header: {
-            Text("What Others See")
+            Text(L("ios.securityUI.whatOthersSee"))
         } footer: {
-            Text("Your profile card, badges and name style are shared with everyone in the data room who uses Diddy. Fields you leave empty are not shared.")
+            Text(L("ios.securityUI.yourProfileCardBadgesAndNameStyleAreSharedWithEveryoneInTheD"))
         }
     }
 
@@ -677,7 +677,7 @@ struct DiddyProfileEditor: View {
             .pickerStyle(.segmented)
             Text(Self.layoutText(draft.layout)).font(.footnote).foregroundStyle(Theme.muted)
         } header: {
-            Text("Card Layout")
+            Text(L("ios.securityUI.cardLayout"))
         }
         Section(L("settings.profileCardEditor.look")) {
             Picker(L("settings.profileCardEditor.cardTheme"), selection: $draft.cardTheme) {
@@ -713,7 +713,7 @@ struct DiddyProfileEditor: View {
                 Text(L("settings.profileCardEditor.large")).tag("large")
             }
         } header: {
-            Text("Big Profile")
+            Text(L("ios.securityUI.bigProfile"))
         } footer: {
             Text(L("settings.profileCardEditor.theLargeViewPeople"))
         }
@@ -725,7 +725,7 @@ struct DiddyProfileEditor: View {
             switch draft.layout {
             case "compact": Text(L("settings.profileCardEditor.theCompactLayoutOnly"))
             case "tabs": Text(L("settings.profileCardEditor.inTheTabLayout"))
-            default: Text("Show, hide and reorder the parts of your card.")
+            default: Text(L("ios.securityUI.showHideAndReorderThePartsOfYourCard"))
             }
         }
     }
@@ -890,13 +890,13 @@ struct DiddyProfileEditor: View {
                 exportDocument = DiddyProfileDocument(text: DiddyProfileTransfer.export(draft, stored: account.diddyOwnProfileRaw ?? [:]))
                 exporting = true
             } label: {
-                Label("Export Profile…", systemImage: "square.and.arrow.up")
+                Label(L("ios.securityUI.exportProfile"), systemImage: "square.and.arrow.up")
             }
             Button {
                 importTarget = .profile
                 importing = true
             } label: {
-                Label("Import Profile…", systemImage: "square.and.arrow.down")
+                Label(L("ios.securityUI.importProfile"), systemImage: "square.and.arrow.down")
             }
             Button(role: .destructive) {
                 draft = DiddyProfileTransfer.reset(draft)
@@ -904,14 +904,14 @@ struct DiddyProfileEditor: View {
                 error = nil
                 notice = nil
             } label: {
-                Label("Reset to Default", systemImage: "arrow.counterclockwise")
+                Label(L("ios.securityUI.resetToDefault"), systemImage: "arrow.counterclockwise")
             }
             .disabled(!DiddyProfileTransfer.canReset(draft))
         } label: {
             Image(systemName: "ellipsis.circle")
         }
         .disabled(saving || uploading != nil)
-        .accessibilityLabel("Profile file")
+        .accessibilityLabel(L("ios.securityUI.profileFile"))
     }
 
     private var importTypes: [UTType] {
@@ -993,7 +993,7 @@ struct DiddyProfileEditor: View {
             if hex.wrappedValue != nil {
                 Button(L("nav.server.clear")) { hex.wrappedValue = nil }.buttonStyle(.borderless)
             } else {
-                Text("Not set").font(.caption).foregroundStyle(Theme.faint)
+                Text(L("ios.securityUI.notSet")).font(.caption).foregroundStyle(Theme.faint)
             }
         }
     }
