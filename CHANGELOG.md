@@ -1,5 +1,9 @@
 # Changelog
 
+## Unveröffentlicht
+
+- **Desktop-Sprachen (macOS, Linux, Windows):** Die Oberfläche kann der Systemsprache folgen oder eine Sprache aus `cinny/locales/<code>.json` wählen. Eigene Übersetzungen lassen sich als Datei laden, exportieren und entfernen; fehlende Texte bleiben auf Englisch. Deutsch ist für die erfassten Sprachschlüssel vollständig. Weitere englische Texte und native macOS-Menüs bleiben vorerst offen. iOS folgt in einem eigenen PR. Anleitung: [Diddy übersetzen](docs/translating.md).
+
 ## 1.11.1 (2026-11-16)
 
 - **Android erstmals im Release:** Die native Android-App (Android 8+, arm64 und x86_64) kommt als direkt installierbare, signierte APK dazu: Chats, Spaces, Profile, Sprachnachrichten, MatrixRTC-Calls mit Kamera und Bildschirm, Soundboard mit MyInstants, Watch Together, Handy als Kamera und Mikrofon für den Computer sowie UnifiedPush. Desktop und iPhone bekommen ihre Pakete wie bisher im selben Release. Android wird vor dem Veröffentlichen gebaut und getestet, die APK-Signatur geprüft und die Prüfsumme mitgeliefert. Auf einem echten Android-Gerät ist die App noch nicht abgenommen.
