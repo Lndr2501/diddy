@@ -20,14 +20,14 @@ struct MessageSearchView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 8) {
-                Picker("Order", selection: $order) {
+                Picker(L("ios.chatMore.order"), selection: $order) {
                     ForEach(MessageSearch.Order.allCases) { Text($0.title).tag($0) }
                 }
                 .pickerStyle(.segmented)
                 .padding(.horizontal)
                 .padding(.top, 8)
                 if roomId != nil {
-                    Toggle("Search All Rooms", isOn: $global)
+                    Toggle(L("ios.chatMore.searchAllRooms"), isOn: $global)
                         .font(.subheadline)
                         .padding(.horizontal)
                 }
@@ -51,10 +51,10 @@ struct MessageSearchView: View {
                     if let error = store.error {
                         Section {
                             Text(error).foregroundStyle(Theme.danger)
-                            Button("Try Again") { Task { await store.load(account: account) } }
+                            Button(L("ios.settings.tryAgain")) { Task { await store.load(account: account) } }
                         }
                     } else if store.nextBatch != nil && !store.loading {
-                        Button("Load More") { Task { await store.load(account: account) } }
+                        Button(L("ios.chatMore.loadMore")) { Task { await store.load(account: account) } }
                     } else if store.searched && store.groups.isEmpty && !store.loading {
                         statusRow("No Results", detail: "Try another word, or search all rooms.", symbol: "magnifyingglass")
                     } else if !store.searched && !store.loading {
@@ -71,7 +71,7 @@ struct MessageSearchView: View {
             .onSubmit(of: .search) { search() }
             .navigationTitle(L("room.viewHeader.searchMessages"))
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button(L("room.callChatView.close")) { dismiss() } } }
             .onChange(of: order) { _ in search() }
             .onChange(of: global) { _ in search() }
         }
@@ -154,7 +154,7 @@ struct QuickSwitchView: View {
                         Label(L("room.viewHeader.searchMessages"), systemImage: "text.magnifyingglass")
                     }
                 }
-                Section("Rooms, people and servers") {
+                Section(L("ios.chatMore.roomsPeopleAndServers")) {
                     ForEach(results) { item in
                         Button {
                             if item.kind == .spaces {
@@ -166,12 +166,12 @@ struct QuickSwitchView: View {
                             Label(item.name, systemImage: item.kind == .spaces ? "square.stack.3d.up" : item.kind == .directs ? "person" : "number")
                         }
                     }
-                    if results.isEmpty { Text("No results found").foregroundStyle(Theme.muted) }
+                    if results.isEmpty { Text(L("ios.chatMore.noResultsFound")).foregroundStyle(Theme.muted) }
                 }
             }
             .searchable(text: $query, prompt: "Search (# rooms, @ people, * servers)")
             .navigationTitle(L("settings.page.search"))
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button(L("room.callChatView.close")) { dismiss() } } }
             .sheet(isPresented: $messages) { MessageSearchView(account: account, onOpen: { dismiss() }) }
         }
     }
@@ -197,8 +197,8 @@ struct SearchContextView: View {
                 .onChange(of: events.count) { _ in proxy.scrollTo(target.eventId, anchor: .center) }
                 .overlay { if loading { ProgressView() } }
             }
-            .navigationTitle("Message context")
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
+            .navigationTitle(L("ios.chatMore.messageContext"))
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button(L("room.callChatView.close")) { dismiss() } } }
             .safeAreaInset(edge: .bottom) {
                 if let error { Text(error).foregroundStyle(Theme.danger).padding() }
             }

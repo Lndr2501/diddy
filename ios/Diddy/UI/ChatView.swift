@@ -221,8 +221,8 @@ private struct ChatContent: View {
         }
         .animation(.easeOut(duration: 0.18), value: actionRow?.id)
         .task { await account.refreshNotifyLevel(roomId: roomId) }
-        .alert("Notifications", isPresented: Binding(get: { notifyError != nil }, set: { if !$0 { notifyError = nil } })) {
-            Button("OK", role: .cancel) {}
+        .alert(L("nav.inbox.notifications"), isPresented: Binding(get: { notifyError != nil }, set: { if !$0 { notifyError = nil } })) {
+            Button(L("ios.common.ok"), role: .cancel) {}
         } message: { Text(notifyError ?? "") }
         .sheet(item: $navSheet) { sheet in
             TimelineNavSheetView(account: account, controller: controller, sheet: sheet) { eventId in
@@ -245,8 +245,8 @@ private struct ChatContent: View {
         }
         .fullScreenCover(item: $viewedImage) { ImageViewer(image: $0.image) }
         .quickLookPreview($openedFile)
-        .alert("Message", isPresented: Binding(get: { controller.sendError != nil }, set: { if !$0 { controller.sendError = nil } })) {
-            Button("OK", role: .cancel) {}
+        .alert(L("ios.composer.message"), isPresented: Binding(get: { controller.sendError != nil }, set: { if !$0 { controller.sendError = nil } })) {
+            Button(L("ios.common.ok"), role: .cancel) {}
         } message: { Text(controller.sendError ?? "") }
         .photosPicker(isPresented: $showPhotos, selection: $photos, maxSelectionCount: 20, matching: .any(of: [.images, .videos]))
         .fileImporter(isPresented: $showFiles, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
@@ -485,25 +485,25 @@ private struct ChatContent: View {
         }
         .padding(12)
         .transition(.scale(scale: 0.6).combined(with: .opacity))
-        .accessibilityLabel("Jump to latest messages")
+        .accessibilityLabel(L("ios.chatMore.jumpToLatestMessages"))
     }
 
     /// The header's "More" menu: search and people, finding things, then the room's notification level.
     @ViewBuilder
     private var headerMenu: some View {
-        Button { showInfo = true } label: { Label("Details", systemImage: "info.circle") }
-        Button { showSearch = true } label: { Label("Search Messages", systemImage: "magnifyingglass") }
+        Button { showInfo = true } label: { Label(L("settings.profileCardEditor.details"), systemImage: "info.circle") }
+        Button { showSearch = true } label: { Label(L("room.viewHeader.searchMessages"), systemImage: "magnifyingglass") }
         Button {
             if horizontalSizeClass == .regular { memberPanelOpen.toggle() } else { showMembers = true }
-        } label: { Label("Members", systemImage: "person.2") }
+        } label: { Label(L("room.viewHeader.members"), systemImage: "person.2") }
         Divider()
-        Button { navSheet = .pinned } label: { Label("Pinned Messages", systemImage: "pin") }
-        Button { navSheet = .jumpToDate } label: { Label("Jump to Time", systemImage: "calendar") }
+        Button { navSheet = .pinned } label: { Label(L("room.pinMenu.pinnedMessages"), systemImage: "pin") }
+        Button { navSheet = .jumpToDate } label: { Label(L("room.viewHeader.jumpToTime"), systemImage: "calendar") }
         Divider()
         Menu {
             RoomNotifyPicker(account: account, roomId: roomId) { notifyError = $0 }
         } label: {
-            Label("Notifications", systemImage: (watch.notifyLevel ?? .default).systemImage)
+            Label(L("nav.inbox.notifications"), systemImage: (watch.notifyLevel ?? .default).systemImage)
         }
     }
 
@@ -612,26 +612,26 @@ private struct ChatContent: View {
     @ViewBuilder
     private func actions(for row: MessageRow) -> some View {
         let eventId = actionableEventId(of: row)
-        Button { closeActions(); reply(to: row) } label: { Label("Reply", systemImage: "arrowshape.turn.up.left") }
+        Button { closeActions(); reply(to: row) } label: { Label(L("message.main.reply"), systemImage: "arrowshape.turn.up.left") }
         if let eventId {
             Button {
                 closeActions()
                 let root = controller.nav.snapshot.entries.first(where: { $0.eventId == eventId })?.threadRoot
                 navSheet = .thread(root: root ?? eventId)
-            } label: { Label("Reply in Thread", systemImage: "bubble.left.and.bubble.right") }
+            } label: { Label(L("message.main.replyInThread"), systemImage: "bubble.left.and.bubble.right") }
         }
         if let poll = row.poll, !poll.ended, row.remoteEventId != nil,
            row.isOwn || controller.nav.canRedactOther {
             Button { closeActions(); Task { await controller.endPoll(row) } } label: {
-                Label("End Poll", systemImage: "chart.bar.xaxis")
+                Label(L("ios.chatMore.endPoll"), systemImage: "chart.bar.xaxis")
             }
         }
         if case .text(let text) = row.body, row.poll == nil {
             Button { closeActions(); UIPasteboard.general.string = Self.readableMentions(in: text).text } label: {
-                Label("Copy Text", systemImage: "doc.on.doc")
+                Label(L("message.main.copyText"), systemImage: "doc.on.doc")
             }
             if row.isOwn {
-                Button { closeActions(); startEditing(row, text: text) } label: { Label("Edit Message", systemImage: "pencil") }
+                Button { closeActions(); startEditing(row, text: text) } label: { Label(L("message.main.editMessage"), systemImage: "pencil") }
             }
         }
         Divider()
@@ -654,7 +654,7 @@ private struct ChatContent: View {
             Button {
                 closeActions()
                 Task { if let link = await controller.permalink(of: eventId) { UIPasteboard.general.string = link } }
-            } label: { Label("Copy Link", systemImage: "link") }
+            } label: { Label(L("nav.space.copyLink"), systemImage: "link") }
             Button {
                 closeActions()
                 savedMessages.toggle(account: account, roomId: roomId, eventId: eventId)
@@ -663,29 +663,29 @@ private struct ChatContent: View {
                       systemImage: savedMessages.state.contains(roomId, eventId) ? "bookmark.slash" : "bookmark")
             }
             if !controller.nav.readers(of: eventId).isEmpty {
-                Button { closeActions(); navSheet = .readers(eventId: eventId) } label: { Label("Read Receipts", systemImage: "checkmark.circle") }
+                Button { closeActions(); navSheet = .readers(eventId: eventId) } label: { Label(L("message.main.readReceipts"), systemImage: "checkmark.circle") }
             }
             if row.isEdited {
-                Button { closeActions(); navSheet = .history(row) } label: { Label("Edit History", systemImage: "clock.arrow.circlepath") }
+                Button { closeActions(); navSheet = .history(row) } label: { Label(L("ios.chatMore.editHistory"), systemImage: "clock.arrow.circlepath") }
             }
         }
-        Button { closeActions(); profile = ProfileTarget(userId: row.sender) } label: { Label("View Profile", systemImage: "person.crop.circle") }
+        Button { closeActions(); profile = ProfileTarget(userId: row.sender) } label: { Label(L("ios.chatMore.viewProfile"), systemImage: "person.crop.circle") }
     }
 
     /// The end of the long-press actions: View Source, Report and Delete, the last one in red.
     @ViewBuilder
     private func lastActions(for row: MessageRow, eventId: String?) -> some View {
         if let eventId {
-            Button { closeActions(); navSheet = .source(row) } label: { Label("View Source", systemImage: "curlybraces") }
+            Button { closeActions(); navSheet = .source(row) } label: { Label(L("message.main.viewSource"), systemImage: "curlybraces") }
             if !row.isOwn {
-                Button { closeActions(); navSheet = .report(eventId: eventId) } label: { Label("Report Message", systemImage: "exclamationmark.bubble") }
+                Button { closeActions(); navSheet = .report(eventId: eventId) } label: { Label(L("message.main.reportMessage"), systemImage: "exclamationmark.bubble") }
             }
         }
         if row.layoutKind == .message, row.eventId != nil,
            TimelineNav.canDelete(isOwn: row.isOwn, isRedacted: row.isRedactedMessage,
                                  canRedactOwn: controller.nav.canRedactOwn, canRedactOther: controller.nav.canRedactOther) {
             Button(role: .destructive) { closeActions(); navSheet = .delete(row) } label: {
-                Label("Delete Message", systemImage: "trash")
+                Label(L("message.main.deleteMessage"), systemImage: "trash")
             }
         }
     }
@@ -814,7 +814,7 @@ private struct ChatContent: View {
                         Button { showCamera = true } label: { Label(L("ios.calls.moreCamera"), systemImage: "camera") }
                     }
                     Button { showFiles = true } label: { Label(L("common.uploadBoard.files"), systemImage: "doc") }
-                    Button { showPoll = true } label: { Label("Poll", systemImage: "chart.bar.xaxis") }
+                    Button { showPoll = true } label: { Label(L("ios.chatMore.poll"), systemImage: "chart.bar.xaxis") }
                 } label: {
                     Image(systemName: "plus")
                         .font(.system(size: 15, weight: .semibold))
@@ -1285,13 +1285,13 @@ struct ImageViewer: View {
                 Button { dismiss() } label: {
                     Image(systemName: "xmark").font(.headline).frame(width: 44, height: 44)
                 }
-                .accessibilityLabel("Close")
+                .accessibilityLabel(L("room.callChatView.close"))
                 Spacer()
                 SaveImageButton(image: image)
                 ShareLink(item: Image(uiImage: image), preview: SharePreview("Image", image: Image(uiImage: image))) {
                     Image(systemName: "square.and.arrow.up").font(.headline).frame(width: 44, height: 44)
                 }
-                .accessibilityLabel("Share or save")
+                .accessibilityLabel(L("ios.chatMore.shareOrSave"))
             }
             .foregroundStyle(.white)
             .padding(.horizontal, 8)
@@ -1553,10 +1553,10 @@ struct MessageRowView: View, Equatable {
                 captionView
             }
         case .undecryptable:
-            Label("Waiting for this message's key. Verify this device in Settings.", systemImage: "lock")
+            Label(L("ios.chatMore.waitingForThisMessageSKeyVerifyThisDeviceInSettings"), systemImage: "lock")
                 .font(.footnote).foregroundStyle(Theme.faint)
         case .redacted:
-            Text("Message deleted").font(.footnote).foregroundStyle(Theme.faint)
+            Text(L("ios.chat.messageDeleted")).font(.footnote).foregroundStyle(Theme.faint)
         case .notice(let text):
             Text(text).font(ChatStyle.bodyFont).foregroundStyle(Theme.muted)
         }
@@ -1621,7 +1621,7 @@ struct MessageRowView: View, Equatable {
                 }
                 .buttonStyle(.plain)
                 .contextMenu {
-                    Button { onReactionInfo(reaction.key) } label: { Label("Who Reacted", systemImage: "person.2") }
+                    Button { onReactionInfo(reaction.key) } label: { Label(L("ios.chatMore.whoReacted"), systemImage: "person.2") }
                 }
                 .accessibilityLabel("\(reaction.key.hasPrefix("mxc://") ? "Custom emoji" : reaction.key), \(reaction.count), \(reaction.mine ? "remove your reaction" : "add your reaction")")
             }
@@ -1724,7 +1724,7 @@ private struct ChatImage: View {
             } else if failed {
                 Image(systemName: "photo").foregroundStyle(Theme.faint)
             } else if !requested {
-                Label("Tap to load", systemImage: "photo").font(.footnote).foregroundStyle(Theme.muted)
+                Label(L("ios.chatMore.tapToLoad"), systemImage: "photo").font(.footnote).foregroundStyle(Theme.muted)
             } else {
                 ProgressView()
             }

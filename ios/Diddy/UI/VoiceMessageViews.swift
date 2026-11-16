@@ -295,7 +295,7 @@ private struct RateButton: View {
                 .padding(.vertical, -11)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Playback speed")
+        .accessibilityLabel(L("ios.chatMore.playbackSpeed"))
         .accessibilityValue(VoiceRate.label(rate))
     }
 }
@@ -320,7 +320,7 @@ private struct ActiveWaveform: View {
                 .gesture(SpatialTapGesture().onEnded { onSeek(Double($0.location.x / max(geo.size.width, 1))) })
         }
         .frame(height: 28)
-        .accessibilityLabel("Playback position")
+        .accessibilityLabel(L("ios.chatMore.playbackPosition"))
         .accessibilityValue("\(Int(progress.fraction * 100)) percent")
     }
 }
@@ -375,7 +375,7 @@ struct VoiceMicButton: View {
                 .contentShape(Rectangle())
         }
         .accessibilityLabel(L("room.voiceRecorderButton.recordVoiceMessage"))
-        .alert("Voice message", isPresented: Binding(get: { recorder.error != nil }, set: { if !$0 { recorder.error = nil } })) {
+        .alert(L("ios.chatMore.voiceMessage"), isPresented: Binding(get: { recorder.error != nil }, set: { if !$0 { recorder.error = nil } })) {
             Button(L("settings.localPlugins.ok"), role: .cancel) {}
         } message: { Text(recorder.error ?? "") }
     }

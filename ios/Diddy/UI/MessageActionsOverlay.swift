@@ -66,7 +66,7 @@ struct MessageActionsOverlay<Actions: View>: View {
                     .frame(width: 44, height: 44)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("More Emoji")
+            .accessibilityLabel(L("ios.chatMore.moreEmoji"))
         }
         .padding(.horizontal, 6)
         .padding(.vertical, 2)

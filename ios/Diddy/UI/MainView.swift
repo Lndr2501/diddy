@@ -79,11 +79,11 @@ struct MainView: View {
             }
         }
         .callSwitchAlert(calls)
-        .alert("Saved Messages", isPresented: Binding(get: { savedMessages.error != nil }, set: { if !$0 { savedMessages.error = nil } })) {
-            Button("OK", role: .cancel) {}
+        .alert(L("ios.chatMore.savedMessages"), isPresented: Binding(get: { savedMessages.error != nil }, set: { if !$0 { savedMessages.error = nil } })) {
+            Button(L("ios.common.ok"), role: .cancel) {}
         } message: { Text(savedMessages.error ?? "") }
-        .alert("Voice", isPresented: Binding(get: { calls.error != nil }, set: { if !$0 { calls.error = nil } })) {
-            Button("OK", role: .cancel) {}
+        .alert(L("ios.calls.moreVoice"), isPresented: Binding(get: { calls.error != nil }, set: { if !$0 { calls.error = nil } })) {
+            Button(L("ios.common.ok"), role: .cancel) {}
         } message: {
             Text(calls.error ?? "")
         }
@@ -237,11 +237,11 @@ extension MainView {
         Group {
             // The only Escape in the app: closes the topmost sheet. Sheets with unsaved changes
             // (interactiveDismissDisabled) stay open, like a swipe down.
-            Button("Close sheet") { closeTopSheet() }.keyboardShortcut(.cancelAction)
-            Button("Quick switcher") { showQuickSwitch = true }.keyboardShortcut("k", modifiers: .command)
+            Button(L("ios.chatMore.closeSheet")) { closeTopSheet() }.keyboardShortcut(.cancelAction)
+            Button(L("ios.chatMore.quickSwitcher")) { showQuickSwitch = true }.keyboardShortcut("k", modifiers: .command)
             Button(L("settings.page.settings")) { showSettings = true }.keyboardShortcut(",", modifiers: .command)
-            Button("Previous room") { moveRoom(-1) }.keyboardShortcut(.upArrow, modifiers: .command)
-            Button("Next room") { moveRoom(1) }.keyboardShortcut(.downArrow, modifiers: .command)
+            Button(L("ios.chatMore.previousRoom")) { moveRoom(-1) }.keyboardShortcut(.upArrow, modifiers: .command)
+            Button(L("ios.chatMore.nextRoom")) { moveRoom(1) }.keyboardShortcut(.downArrow, modifiers: .command)
         }.hidden()
     }
     private func closeTopSheet() {
@@ -348,7 +348,7 @@ struct ChannelSidebar: View {
             ShellUpdateNotice()
             if account.needsRecovery {
                 Button { showRecovery = true } label: {
-                    Label("Verify this device to read encrypted messages", systemImage: "lock.shield")
+                    Label(L("ios.chatMore.verifyThisDeviceToReadEncryptedMessages"), systemImage: "lock.shield")
                         .font(.footnote.weight(.semibold))
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(10)
@@ -383,7 +383,7 @@ struct ChannelSidebar: View {
         }
         .background(Theme.sidebar)
         .alert(L("ios.list.couldNotJoin"), isPresented: Binding(get: { joinError != nil }, set: { if !$0 { joinError = nil } })) {
-            Button("OK", role: .cancel) {}
+            Button(L("ios.common.ok"), role: .cancel) {}
         } message: { Text(joinError ?? "") }
         .leaveServerDialog(account: account, serverId: $leavingServer) { joinError = $0 }
         .sheet(isPresented: $showRecovery) { RecoveryView(account: account) }
@@ -486,7 +486,7 @@ struct ChannelSidebar: View {
                         .frame(width: 36, height: 36)
                         .contentShape(Rectangle())
                 }
-                .accessibilityLabel("New Message or Room")
+                .accessibilityLabel(L("ios.chatMore.newMessageOrRoom"))
             }
         }
         .padding(.leading, 16)
@@ -542,7 +542,7 @@ struct ChannelSidebar: View {
                 } label: {
                     roundIcon("square.and.pencil")
                 }
-                .accessibilityLabel("New Message or Room")
+                .accessibilityLabel(L("ios.chatMore.newMessageOrRoom"))
             }
         }
         .padding(.leading, 18)
@@ -657,7 +657,7 @@ struct ChannelSidebar: View {
             if direct.isEmpty && query.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(L("ios.list.noDirectMessages")).font(.subheadline).foregroundStyle(Theme.muted)
-                    Button("New Message") { sheet = .newMessage }.font(.subheadline.weight(.semibold))
+                    Button(L("nav.home.newMessage")) { sheet = .newMessage }.font(.subheadline.weight(.semibold))
                 }
                 .listRowBackground(Color.clear)
             }
@@ -694,7 +694,7 @@ struct ChannelSidebar: View {
             if query.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(L("ios.list.noChats")).font(.subheadline).foregroundStyle(Theme.muted)
-                    Button("New Message") { sheet = .newMessage }.font(.subheadline.weight(.semibold))
+                    Button(L("nav.home.newMessage")) { sheet = .newMessage }.font(.subheadline.weight(.semibold))
                 }
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
@@ -864,7 +864,7 @@ struct ChannelRow: View {
                 Spacer()
                 if account.notifyLevel(for: channel.roomId) == .mute {
                     Image(systemName: "bell.slash.fill").font(.caption2).foregroundStyle(Theme.faint)
-                        .accessibilityLabel("Muted")
+                        .accessibilityLabel(L("call.userMenu.muted"))
                 }
                 if isJoining {
                     ProgressView()
@@ -980,11 +980,11 @@ struct RoomRow: View {
             Spacer()
             if account.notifyLevel(for: room.id) == .mute {
                 Image(systemName: "bell.slash.fill").font(.caption2).foregroundStyle(Theme.faint)
-                    .accessibilityLabel("Muted")
+                    .accessibilityLabel(L("call.userMenu.muted"))
             }
             if room.hasCall {
                 Image(systemName: "speaker.wave.2.fill").foregroundStyle(Theme.online)
-                    .accessibilityLabel("Call in progress")
+                    .accessibilityLabel(L("ios.chatMore.callInProgress"))
             }
             if room.badge > 0 { UnreadBadge(count: room.badge) }
         }

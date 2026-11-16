@@ -147,7 +147,7 @@ private struct MediaOverviewContent: View {
     @ViewBuilder
     private var footer: some View {
         if shownCount == 0 && controller.reachedStart && !controller.loading {
-            Text("Nothing of this kind has been shared in this channel.")
+            Text(L("ios.chatMore.nothingOfThisKindHasBeenSharedInThisChannel"))
                 .font(.subheadline).foregroundStyle(Theme.muted)
                 .multilineTextAlignment(.center)
                 .padding(.top, 24)
@@ -155,7 +155,7 @@ private struct MediaOverviewContent: View {
         if controller.loading {
             ProgressView().padding(.top, 8)
         } else if !controller.reachedStart {
-            Button("Load Older Messages") { Task { await controller.loadOlderMessages() } }
+            Button(L("ios.chatMore.loadOlderMessages")) { Task { await controller.loadOlderMessages() } }
                 .buttonStyle(.bordered)
                 .padding(.top, 8)
         }

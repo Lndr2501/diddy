@@ -75,7 +75,7 @@ struct RoomContextMenu: View {
         }
         Divider()
         if !isDirect {
-            Button { onInvite(roomId) } label: { Label("Invite People", systemImage: "person.badge.plus") }
+            Button { onInvite(roomId) } label: { Label(L("ios.chatMore.invitePeople"), systemImage: "person.badge.plus") }
         }
         Button {
             Task {

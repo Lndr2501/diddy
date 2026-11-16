@@ -119,7 +119,7 @@ private struct OngoingCallBanner: View {
                     .font(.footnote)
                     .lineLimit(1)
             } trailing: {
-                Text("Return").font(.footnote.weight(.semibold)).foregroundStyle(tint)
+                Text(L("ios.chatMore.return")).font(.footnote.weight(.semibold)).foregroundStyle(tint)
             }
         }
         .buttonStyle(.plain)
@@ -229,7 +229,7 @@ struct ChatHeader<MenuContent: View>: View {
             }
             Button(action: onCall) { icon("phone") }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Start voice call")
+                .accessibilityLabel(L("ios.chatMore.startVoiceCall"))
             Menu { menu() } label: { icon("info.circle") }
                 .accessibilityLabel(L("settings.plugins.more"))
         }

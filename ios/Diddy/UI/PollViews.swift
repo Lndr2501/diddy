@@ -60,11 +60,11 @@ struct PollComposer: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Question") {
+                Section(L("ios.chatMore.question")) {
                     TextField("Your question", text: $question).textInputAutocapitalization(.sentences)
                         .onChange(of: question) { value in if value.count > 340 { question = String(value.prefix(340)) } }
                 }
-                Section("Answers (2–20)") {
+                Section(L("ios.chatMore.answers220")) {
                     ForEach(answers.indices, id: \.self) { index in
                         HStack {
                             TextField("Answer \(index + 1)", text: $answers[index])
@@ -78,17 +78,17 @@ struct PollComposer: View {
                         }
                     }
                     if answers.count < 20 {
-                        Button { answers.append("") } label: { Label("Add answer", systemImage: "plus.circle") }
+                        Button { answers.append("") } label: { Label(L("ios.chatMore.addAnswer"), systemImage: "plus.circle") }
                     }
                 }
                 Section(L("settings.page.settings")) {
-                    Toggle("Show results while open", isOn: $disclosed)
+                    Toggle(L("ios.chatMore.showResultsWhileOpen"), isOn: $disclosed)
                     Stepper("Maximum selections: \(maxSelections)", value: $maxSelections,
                             in: 1...max(1, answers.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }.count))
                 }
                 if let error { Text(error).foregroundStyle(Theme.danger) }
             }
-            .navigationTitle("Poll")
+            .navigationTitle(L("ios.chatMore.poll"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button(L("settings.deviceTile.cancel")) { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {

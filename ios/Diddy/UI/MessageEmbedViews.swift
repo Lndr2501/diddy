@@ -246,7 +246,7 @@ struct VideoMessageView: View {
         if loading {
             ProgressView().tint(.white)
         } else if failed {
-            Label("Can't play this video", systemImage: "exclamationmark.triangle")
+            Label(L("ios.chatMore.canTPlayThisVideo"), systemImage: "exclamationmark.triangle")
                 .font(.footnote).foregroundStyle(.white)
         } else {
             ZStack {
@@ -315,14 +315,14 @@ struct LocationMessageView: View {
             }
             Text(verbatim: location.geoURI).font(.footnote).foregroundStyle(Theme.muted)
             Menu {
-                Button("Open in Apple Maps") {
+                Button(L("ios.chatMore.openInAppleMaps")) {
                     if let url = location.location.appleMapsURL(label: location.label) { openURL(url) }
                 }
-                Button("Open in OpenStreetMap") {
+                Button(L("ios.chatMore.openInOpenstreetmap")) {
                     if let url = location.location.openStreetMapURL { openURL(url) }
                 }
             } label: {
-                Label("Open Location", systemImage: "arrow.up.right.square")
+                Label(L("ios.chatMore.openLocation"), systemImage: "arrow.up.right.square")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Theme.accent)
                     .padding(.horizontal, 12)
