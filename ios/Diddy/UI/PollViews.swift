@@ -67,13 +67,13 @@ struct PollComposer: View {
                 Section(L("ios.chatMore.answers220")) {
                     ForEach(answers.indices, id: \.self) { index in
                         HStack {
-                            TextField("Answer \(index + 1)", text: $answers[index])
+                            TextField(L("ios.dynamicUI.answerNumber", ["number": String(index + 1)]), text: $answers[index])
                                 .onChange(of: answers[index]) { value in
                                     if value.count > 340 { answers[index] = String(value.prefix(340)) }
                                 }
                             if answers.count > 2 {
                                 Button { answers.remove(at: index) } label: { Image(systemName: "minus.circle") }
-                                    .accessibilityLabel("Remove answer \(index + 1)")
+                                    .accessibilityLabel(L("ios.dynamicUI.removeAnswer", ["number": String(index + 1)]))
                             }
                         }
                     }

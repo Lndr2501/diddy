@@ -311,7 +311,7 @@ struct ResetIdentitySheet: View {
                         SecureField(L("settings.localBackup.password"), text: $password)
                             .textContentType(.password)
                     } header: {
-                        Text("Confirm It\u{2019}s You")
+                        Text(L("ios.finalUI.confirmItU2019SYou"))
                     } footer: {
                         Text(L("ios.securityUI.yourServerAsksForYourAccountPasswordToResetTheKeys"))
                     }

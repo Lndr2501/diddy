@@ -82,9 +82,9 @@ struct RoomModerationRows: View {
                             .disabled(running != nil)
                     }
                 }
-                .confirmationDialog("Cancel the invite for \(name)?", isPresented: $confirmCancelInvite, titleVisibility: .visible) {
+                .confirmationDialog(L("ios.dynamicUI.cancelInvite", ["name": name]), isPresented: $confirmCancelInvite, titleVisibility: .visible) {
                     Button(L("profile.moderation.cancelInvite"), role: .destructive) { Task { await run(.kick) } }
-                    Button("Keep Invite", role: .cancel) {}
+                    Button(L("ios.finalUI.keepInvite"), role: .cancel) {}
                 }
             }
             if let error {
@@ -139,7 +139,7 @@ struct RoomModerationRows: View {
         let canChange = RoomRoleChange.canChange(me: account.userId, target: userId, permissions: permissions)
         return HStack(spacing: 12) {
             Image(systemName: "shield").frame(width: 22)
-            Text("Role")
+            Text(L("ios.finalUI.role"))
             Spacer()
             if settingRole { ProgressView() }
             Menu {

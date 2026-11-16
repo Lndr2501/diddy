@@ -38,15 +38,15 @@ struct DiddyBadgeLibraryView: View {
                 NavigationLink {
                     DiddyCreateBadgeView(account: account)
                 } label: {
-                    Label("Create a Badge", systemImage: "plus.circle")
+                    Label(L("ios.finalUI.createABadge"), systemImage: "plus.circle")
                 }
             } footer: {
-                Text("Badges you take are shown in the profile editor, where you pick up to \(DiddyBadgeLogic.maxShown) to show next to your name.")
+                Text(L("ios.dynamicUI.badgeLibraryHelp", ["max": String(DiddyBadgeLogic.maxShown)]))
             }
         }
         .scrollContentBackground(.hidden)
         .background(Theme.sidebar)
-        .navigationTitle("Badge Library")
+        .navigationTitle(L("ios.finalUI.badgeLibrary"))
         .navigationBarTitleDisplayMode(.inline)
         .task { await account.loadDiddyProfiles() }
         .confirmationDialog(
@@ -54,7 +54,7 @@ struct DiddyBadgeLibraryView: View {
             isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
             titleVisibility: .visible
         ) {
-            Button("Delete from Library", role: .destructive) {
+            Button(L("ios.finalUI.deleteFromLibrary"), role: .destructive) {
                 if let badge = deleting { Task { await delete(badge) } }
                 deleting = nil
             }
@@ -88,7 +88,7 @@ struct DiddyBadgeLibraryView: View {
         }
         .contextMenu {
             if DiddyBadgeLogic.canDelete(badge, me: account.userId) {
-                Button("Delete from Library", role: .destructive) { deleting = badge }
+                Button(L("ios.finalUI.deleteFromLibrary"), role: .destructive) { deleting = badge }
             }
         }
     }
@@ -177,10 +177,10 @@ struct DiddyCreateBadgeView: View {
                 .disabled(uploading)
                 if uploading { HStack(spacing: 8) { ProgressView(); Text(L("ios.chat.uploading")).foregroundStyle(Theme.muted) } }
                 if imageMxc != nil {
-                    Button("Remove Image", role: .destructive) { imageMxc = nil }
+                    Button(L("ios.finalUI.removeImage"), role: .destructive) { imageMxc = nil }
                 }
             } header: {
-                Text("Emoji or Image")
+                Text(L("ios.finalUI.emojiOrImage"))
             } footer: {
                 Text(imageMxc == nil ? "Type an emoji, or upload an image instead." : "Using an uploaded image.")
             }
@@ -193,14 +193,14 @@ struct DiddyCreateBadgeView: View {
                         DiddyBadges(badges: [duplicate], size: 22, account: account)
                         Text(duplicate.name)
                         Spacer()
-                        Button("Use It") { Task { await useExisting(duplicate) } }
+                        Button(L("ios.finalUI.useIt")) { Task { await useExisting(duplicate) } }
                             .buttonStyle(.bordered)
                             .disabled(creating)
                     }
                 } header: {
-                    Text("Already in the library")
+                    Text(L("ios.finalUI.alreadyInTheLibrary"))
                 } footer: {
-                    Text("This badge already exists. Use the existing one instead of creating a copy.")
+                    Text(L("ios.finalUI.thisBadgeAlreadyExistsUseTheExistingOneInsteadOfCreatingA"))
                 }
             }
             Section {
@@ -211,7 +211,7 @@ struct DiddyCreateBadgeView: View {
                 } label: {
                     HStack {
                         if creating { ProgressView() }
-                        Text("Create Badge")
+                        Text(L("ios.finalUI.createBadge"))
                     }
                 }
                 .disabled(!canCreate || duplicate != nil)
@@ -221,7 +221,7 @@ struct DiddyCreateBadgeView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Theme.sidebar)
-        .navigationTitle("Create Badge")
+        .navigationTitle(L("ios.finalUI.createBadge"))
         .navigationBarTitleDisplayMode(.inline)
         .onChange(of: pickedImage) { item in
             guard let item else { return }

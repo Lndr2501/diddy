@@ -1889,7 +1889,7 @@ private struct PendingFileChip: View {
                 .buttonStyle(.plain)
                 .disabled(disabled)
                 .offset(x: 10, y: -10)
-                .accessibilityLabel("Remove \(file.name)")
+                .accessibilityLabel(L("ios.dynamicUI.removeFile", ["name": file.name]))
             }
             .task(id: file.id) {
                 guard file.mime.hasPrefix("image/") else { return }

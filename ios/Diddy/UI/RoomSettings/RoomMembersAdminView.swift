@@ -20,7 +20,7 @@ struct RoomMembersAdminView: View {
         let shown = visible(all)
         List {
             Section {
-                Picker("Membership", selection: $filter) {
+                Picker(L("ios.finalUI.membership"), selection: $filter) {
                     ForEach(RoomMembershipFilter.allCases) { kind in
                         Text("\(kind.title) (\(counts[kind] ?? 0))").tag(kind)
                     }
@@ -67,7 +67,7 @@ struct RoomMembersAdminView: View {
                 if let member = pendingCancel { run(.kick, member) }
                 pendingCancel = nil
             }
-            Button("Keep Invite", role: .cancel) { pendingCancel = nil }
+            Button(L("ios.finalUI.keepInvite"), role: .cancel) { pendingCancel = nil }
         } message: {
             Text(pendingCancel.map { "\($0.displayName ?? $0.userId) can no longer join with this invite." } ?? "")
         }

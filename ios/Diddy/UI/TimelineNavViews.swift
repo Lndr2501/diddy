@@ -113,7 +113,7 @@ struct ThreadSummaryButton: View {
         .padding(.leading, ChatStyle.textLeading)
         .padding(.trailing, ChatStyle.edgePadding)
         .padding(.top, 2)
-        .accessibilityLabel("Thread, \(info.replies) replies. Open thread")
+        .accessibilityLabel(L("ios.lastDynamic.threadReplies", ["count": String(info.replies)]))
     }
 }
 

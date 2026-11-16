@@ -150,7 +150,7 @@ struct DiddyOptionsSetupView: View {
                 }
             }
         } footer: {
-            Text("Looks for a room named \(DiddyOptionsRoomLogic.roomName) or tagged \(DiddyEvents.topicTag) in your servers and joins it.")
+            Text(L("ios.lastDynamic.optionsRoomFound", ["name": DiddyOptionsRoomLogic.roomName, "tag": DiddyEvents.topicTag]))
         }
     }
 

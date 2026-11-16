@@ -10,7 +10,7 @@ private struct DiscardChangesDialog: ViewModifier {
     let onLeave: () -> Void
 
     func body(content: Content) -> some View {
-        content.confirmationDialog("Discard Changes?", isPresented: $isPresented, titleVisibility: .visible) {
+        content.confirmationDialog(L("ios.finalControls.discardChanges"), isPresented: $isPresented, titleVisibility: .visible) {
             if let saveTitle, let onSave {
                 Button(saveTitle) {
                     Task { @MainActor in

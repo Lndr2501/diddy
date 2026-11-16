@@ -136,7 +136,7 @@ struct ScheduledMessagesBar: View {
                     HStack(spacing: 8) {
                         Image(systemName: "clock").foregroundStyle(Theme.accent).accessibilityHidden(true)
                         Text(SendLaterLogic.countLabel(list.count)).bold().foregroundColor(Theme.text)
-                        Text("Next: " + SendLaterLogic.formatSendAt(next.sendAt, now: Date(), clock: ChatSettings.time))
+                        Text(L("ios.dynamicUI.sendLaterNext", ["date": SendLaterLogic.formatSendAt(next.sendAt, now: Date(), clock: ChatSettings.time)]))
                             .foregroundStyle(Theme.muted)
                             .lineLimit(1)
                         Spacer(minLength: 0)

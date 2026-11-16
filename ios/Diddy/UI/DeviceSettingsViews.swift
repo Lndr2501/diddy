@@ -126,13 +126,13 @@ struct DevicesView: View {
             }
             Text(device.id).font(.caption).foregroundStyle(Theme.faint)
             if let ip = device.lastSeenIP, !ip.isEmpty {
-                Text("IP Address: \(ip)").font(.caption).foregroundStyle(Theme.faint)
+                Text(L("ios.dynamicUI.ipAddress", ["ip": ip])).font(.caption).foregroundStyle(Theme.faint)
             }
             if let seen = device.lastSeen {
-                Text("Last seen \(seen.formatted(.relative(presentation: .named)))").font(.caption).foregroundStyle(Theme.faint)
+                Text(L("ios.dynamicUI.lastSeen", ["date": seen.formatted(.relative(presentation: .named))])).font(.caption).foregroundStyle(Theme.faint)
             }
             if let key {
-                Text("Device Key: \(key)").font(.system(.caption, design: .monospaced)).foregroundStyle(Theme.faint)
+                Text(L("ios.dynamicUI.deviceKey", ["key": key])).font(.system(.caption, design: .monospaced)).foregroundStyle(Theme.faint)
                     .textSelection(.enabled)
             }
         }
@@ -276,7 +276,7 @@ private struct DevicePasswordSheet: View {
             }
             .scrollContentBackground(.hidden)
             .background(Theme.sidebar)
-            .navigationTitle("Confirm It\u{2019}s You")
+            .navigationTitle(L("ios.finalUI.confirmItU2019SYou"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button(L("ios.settings.cancel")) { dismiss() } } }
         }

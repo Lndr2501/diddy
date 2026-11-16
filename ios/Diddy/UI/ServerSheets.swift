@@ -38,7 +38,7 @@ struct AddServerView: View {
             }
             .scrollContentBackground(.hidden)
             .background(Theme.sidebar.ignoresSafeArea())
-            .navigationTitle("Add a Server")
+            .navigationTitle(L("ios.finalUI.addAServer"))
             .navigationBarTitleDisplayMode(.inline)
             .tint(Theme.accent)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button(L("ios.settings.cancel")) { dismiss() } } }
@@ -140,7 +140,7 @@ struct NewMessageView: View {
                 if let error { Text(error).foregroundStyle(Theme.danger).listRowBackground(Color.clear) }
                 UserSearch(account: account, query: $query) { start($0) }
                 if query.count < 2 {
-                    Text("Search by name, or enter a full ID like @friend:matrix.org.")
+                    Text(L("ios.finalUI.searchByNameOrEnterAFullIdLikeFriendMatrixOrg"))
                         .font(.footnote).foregroundStyle(Theme.muted).listRowBackground(Color.clear)
                 }
             }
@@ -186,14 +186,14 @@ struct InviteView: View {
             List {
                 if let link, let url = URL(string: link) {
                     Section {
-                        ShareLink(item: url) { Label("Share invite link", systemImage: "square.and.arrow.up") }
+                        ShareLink(item: url) { Label(L("ios.finalUI.shareInviteLink"), systemImage: "square.and.arrow.up") }
                             .listRowBackground(Color.clear)
-                        Button { UIPasteboard.general.string = link } label: { Label("Copy invite link", systemImage: "link") }
+                        Button { UIPasteboard.general.string = link } label: { Label(L("ios.finalUI.copyInviteLink"), systemImage: "link") }
                             .listRowBackground(Color.clear)
                     }
                 }
                 if !invited.isEmpty {
-                    Section("Invited") {
+                    Section(L("ios.finalUI.invited")) {
                         ForEach(Array(invited), id: \.self) { userId in
                             Label(userId, systemImage: "checkmark.circle.fill").foregroundStyle(Theme.online)
                                 .listRowBackground(Color.clear)
@@ -258,7 +258,7 @@ struct ChannelInfoView: View {
                             Text(summary?.name ?? "").font(.headline)
                             if let alias = summary?.canonicalAlias { Text(alias).font(.caption).foregroundStyle(Theme.muted) }
                             if summary?.isEncrypted == true {
-                                Label("End-to-end encrypted", systemImage: "lock.fill").font(.caption).foregroundStyle(Theme.muted)
+                                Label(L("ios.finalUI.endToEndEncrypted"), systemImage: "lock.fill").font(.caption).foregroundStyle(Theme.muted)
                             }
                         }
                     }
@@ -270,7 +270,7 @@ struct ChannelInfoView: View {
                     Section(L("settings.deviceTile.edit")) {
                         TextField(L("settings.badgeEditor.name"), text: $name)
                         TextField(L("ios.extraSettings.topic"), text: $topic, axis: .vertical)
-                        Button("Save Changes") { save() }
+                        Button(L("ios.finalUI.saveChanges")) { save() }
                             .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || (name == summary?.name && topic == (summary?.topic ?? "")))
                     }
                 }
@@ -284,7 +284,7 @@ struct ChannelInfoView: View {
                     }
                     if summary?.isDirect != true {
                         Button { showInvite = true } label: { Label(L("ios.chatMore.invitePeople"), systemImage: "person.badge.plus") }
-                        Button { showSettings = true } label: { Label("Channel Settings", systemImage: "gearshape") }
+                        Button { showSettings = true } label: { Label(L("ios.finalUI.channelSettings"), systemImage: "gearshape") }
                     }
                     NavigationLink {
                         MediaOverviewView(account: account, roomId: roomId)
@@ -311,7 +311,7 @@ struct ChannelInfoView: View {
                     navigator.open(id, account: account)
                 })
             }
-            .confirmationDialog("Leave \(summary?.name ?? "this channel")?", isPresented: $confirmLeave, titleVisibility: .visible) {
+            .confirmationDialog(L("ios.lastDynamic.leaveChannel", ["name": summary?.name ?? L("ios.lastDynamic.thisChannel")]), isPresented: $confirmLeave, titleVisibility: .visible) {
                 Button(L("common.leaveRoomPrompt.leave"), role: .destructive) { leave() }
             }
             .task {

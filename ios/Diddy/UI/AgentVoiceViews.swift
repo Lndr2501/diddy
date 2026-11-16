@@ -6,7 +6,7 @@ struct AgentTalkingBadge: View {
     var compact = false
 
     var body: some View {
-        Label("Redet mit Agent", systemImage: "waveform")
+        Label(L("ios.finalUI.redetMitAgent"), systemImage: "waveform")
             .labelStyle(.titleAndIcon)
             .font((compact ? Font.caption2 : Font.caption).weight(.semibold))
             .foregroundStyle(.white)

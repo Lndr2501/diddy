@@ -268,7 +268,7 @@ struct BotCardView: View {
                                  primary: true, label: playing ? "Pause" : "Play") { run(toggle) }
                 }
                 if let skip = controls.skip {
-                    playerButton("Skip", icon: "forward.end.fill", label: "Skip") { run(skip) }
+                    playerButton(L("ios.remainingUI.skip"), icon: "forward.end.fill", label: L("ios.remainingUI.skip")) { run(skip) }
                 }
                 if controls.volume != nil {
                     playerButton(track.volume.map { "\(Int($0.rounded()))%" }, icon: "speaker.wave.2.fill",
@@ -277,7 +277,7 @@ struct BotCardView: View {
                     }
                 }
                 if let dashboard = controls.dashboard {
-                    playerButton("Dashboard", icon: "square.grid.2x2.fill", label: "Dashboard") { run(dashboard) }
+                    playerButton(L("ios.finalControls.dashboard"), icon: "square.grid.2x2.fill", label: L("ios.finalControls.dashboard")) { run(dashboard) }
                 }
                 if !track.more.isEmpty {
                     playerButton(nil, icon: "ellipsis", selected: panel == .more, label: "More") {

@@ -21,7 +21,7 @@ struct DiddyWelcomeView: View {
                     Text(L("ios.registrationMore.welcomeToDiddy")).font(.title.bold())
                     // The guide has its own navigation bar, so it opens as a sheet and not pushed.
                     Button { showGuide = true } label: {
-                        Label("Matrix Guide for Discord Users", systemImage: "book")
+                        Label(L("ios.finalUI.matrixGuideForDiscordUsers"), systemImage: "book")
                     }
                 }
                 Section(L("ios.registrationMore.joinADiddyServer")) {
@@ -93,7 +93,7 @@ struct DiddyServerNotice: View {
         if !pending.isEmpty {
             HStack(spacing: 8) {
                 Button { showing = true } label: {
-                    Label("This server uses Diddy", systemImage: "sparkles")
+                    Label(L("ios.finalUI.thisServerUsesDiddy"), systemImage: "sparkles")
                 }
                 Spacer()
                 Button(action: dismissNotice) {

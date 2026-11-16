@@ -317,14 +317,14 @@ struct ServerRailEditorView: View {
                     Button { apply(ServerRailLayout.foldered(id, in: entries)) } label: { Label(L("ios.remainingUI.putInNewFolder"), systemImage: "folder.badge.plus") }
                     ForEach(folders, id: \.id) { folder in
                         Button { apply(ServerRailLayout.put(id, intoFolder: folder.id, of: entries)) } label: {
-                            Label("Put in \(folder.name ?? "Folder")", systemImage: "folder")
+                            Label(L("ios.lastDynamic.putInFolder", ["name": folder.name ?? L("ios.lastDynamic.folder")]), systemImage: "folder")
                         }
                     }
                 } label: {
                     Image(systemName: "folder.badge.plus").foregroundStyle(Theme.muted)
                         .frame(width: 44, height: 44)
                 }
-                .accessibilityLabel("Move \(info.name) to a Folder")
+                .accessibilityLabel(L("ios.lastDynamic.moveFolder", ["name": info.name]))
             }
         case .folder(let folder):
             NavigationLink {
@@ -390,7 +390,7 @@ struct FolderEditorView: View {
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel("Take \(info.name) out of the folder")
+                        .accessibilityLabel(L("ios.lastDynamic.removeFolder", ["name": info.name]))
                     }
                 }
                 .onMove { source, destination in

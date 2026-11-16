@@ -57,9 +57,9 @@ struct PluginDockControls: View {
         Toggle(L("settings.plugins.sidebar"), isOn: Binding(get: { dock.state.pinned.contains(plugin.id) }, set: { dock.state.setPinned(plugin.id, $0) }))
         if dock.state.pinned.contains(plugin.id) {
             VStack(alignment: .leading) {
-                Text("Height: \(dock.state.height(of: plugin.id)) px")
+                Text(L("ios.dynamicUI.height", ["height": String(dock.state.height(of: plugin.id))]))
                 Slider(value: Binding(get: { Double(dock.state.height(of: plugin.id)) }, set: { dock.state.setHeight(plugin.id, $0) }), in: 60...320, step: 1)
-                Text("Zoom: \(dock.state.zoom(of: plugin.id))%")
+                Text(L("ios.dynamicUI.zoom", ["zoom": String(dock.state.zoom(of: plugin.id))]))
                 Slider(value: Binding(get: { Double(dock.state.zoom(of: plugin.id)) }, set: { dock.state.setZoom(plugin.id, $0) }), in: 50...100, step: 1)
             }.font(.caption)
         }

@@ -416,7 +416,7 @@ struct ChannelSidebar: View {
             if request.isDirect {
                 Text(L("ios.list.conversationDisappears"))
             } else {
-                Text("Are you sure you want to leave this \(RoomMenuWording.noun(isDirect: false, inServer: request.inServer).lowercased())?")
+                Text(L("ios.lastDynamic.leaveRoom", ["kind": RoomMenuWording.noun(isDirect: false, inServer: request.inServer).lowercased()]))
             }
         }
         .task { await account.watchNotificationSettings() }

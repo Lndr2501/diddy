@@ -171,7 +171,7 @@ struct MembersView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     if let onClose {
                         Button { onClose() } label: { Image(systemName: "sidebar.right") }
-                            .accessibilityLabel("Hide member list")
+                            .accessibilityLabel(L("ios.finalUI.hideMemberList"))
                     } else {
                         Button(L("ios.settings.done")) { dismiss() }
                     }
@@ -179,7 +179,7 @@ struct MembersView: View {
                 if canInvite {
                     ToolbarItem(placement: .navigationBarLeading) {
                         Button { inviting = true } label: { Image(systemName: "person.badge.plus") }
-                            .accessibilityLabel("Invite people")
+                            .accessibilityLabel(L("ios.finalUI.invitePeople"))
                     }
                 }
             }
@@ -216,14 +216,14 @@ struct MembersView: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 24)
         } else if search.isEmpty {
-            Text("Nobody here yet.")
+            Text(L("ios.finalUI.nobodyHereYet"))
                 .foregroundStyle(Theme.muted)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 24)
         } else {
             VStack(spacing: 6) {
                 Image(systemName: "magnifyingglass").font(.title2).foregroundStyle(Theme.faint)
-                Text("No one matches “\(search)”.").foregroundStyle(Theme.muted)
+                Text(L("ios.dynamicUI.noMatchingMembers", ["query": search])).foregroundStyle(Theme.muted)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 24)
@@ -357,10 +357,10 @@ struct UserProfileSheet: View {
                                 }
                                 .disabled(busy != nil)
                             }
-                            .confirmationDialog("Block \(name)?", isPresented: $confirmBlock, titleVisibility: .visible) {
+                            .confirmationDialog(L("ios.dynamicUI.blockMember", ["name": name]), isPresented: $confirmBlock, titleVisibility: .visible) {
                                 Button(L("settings.ignoredUserList.block"), role: .destructive) { Task { await toggleIgnore() } }
                             } message: {
-                                Text("You will no longer see their messages or invites. You can unblock them later.")
+                                Text(L("ios.finalUI.youWillNoLongerSeeTheirMessagesOrInvitesYouCanUnblockThem"))
                             }
                         }
                     }
@@ -394,11 +394,11 @@ struct UserProfileSheet: View {
             primaryActions
             if let diddy, diddy.hasCardContent { DiddyCardModules(profile: diddy) }
             if let version = diddy?.clientVersion {
-                Text("Diddy \(version)")
+                Text(L("ios.lastDynamic.diddyVersion", ["version": version]))
                     .font(.caption)
                     .foregroundStyle(Theme.faint)
                     .frame(maxWidth: .infinity, alignment: .trailing)
-                    .accessibilityLabel("Uses Diddy \(version)")
+                    .accessibilityLabel(L("ios.dynamicUI.usesDiddy", ["version": version]))
             }
         }
         .padding(decorated ? 10 : 0)
@@ -454,7 +454,7 @@ struct UserProfileSheet: View {
     private var primaryActions: some View {
         if isSelf {
             NavigationLink { DiddyProfileEditor(account: account) } label: {
-                Label("Edit Diddy Profile", systemImage: "paintbrush.fill").bold()
+                Label(L("ios.finalUI.editDiddyProfile"), systemImage: "paintbrush.fill").bold()
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
                     .background(RoundedRectangle(cornerRadius: 10).fill(Theme.elevated))

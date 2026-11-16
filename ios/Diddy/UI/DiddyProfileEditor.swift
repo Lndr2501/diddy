@@ -404,7 +404,7 @@ struct DiddyProfileEditor: View {
         } header: {
             Text(L("profile.profileModules.interests"))
         } footer: {
-            Text("Separate them with commas, up to \(Rules.maxInterests). \(draft.interests.count)/\(Rules.maxInterests)")
+            Text(L("ios.dynamicUI.maxInterests", ["max": String(Rules.maxInterests), "count": String(draft.interests.count)]))
         }
         Section {
             ForEach(draft.links.indices, id: \.self) { index in linkRow(index) }
@@ -414,7 +414,7 @@ struct DiddyProfileEditor: View {
         } header: {
             Text(L("profile.profileModules.links"))
         } footer: {
-            Text("GitHub, GitLab, LinkedIn, Spotify, YouTube or your own website. Only https addresses. \(draft.links.count)/\(Rules.maxLinks)")
+            Text(L("ios.dynamicUI.profileLinks", ["count": String(draft.links.count), "max": String(Rules.maxLinks)]))
         }
         Section(L("profile.profileModules.activity")) {
             Picker(L("ios.securityUI.doing"), selection: $draft.activityKind) {
@@ -508,10 +508,10 @@ struct DiddyProfileEditor: View {
         } header: {
             Text(L("settings.diddyProfile.nameplate"))
         } footer: {
-            Text("The background other Diddy users see behind your row in the member and DM lists: a colour, a gradient, a picture, a GIF or a short video (up to \(Int(DiddyMediaRules.maxVideoSeconds)) seconds, muted). A nameplate ZIP with a loop and its colours can be imported too.")
+            Text(L("ios.lastDynamic.profileBackground", ["seconds": String(Int(DiddyMediaRules.maxVideoSeconds))]))
         }
         Section {
-            choicePicker("Effect", selection: $draft.effect, presets: Rules.effectPresets,
+            choicePicker(L("settings.diddyProfile.effect"), selection: $draft.effect, presets: Rules.effectPresets,
                          keepsCustom: original.effect == .custom, customName: storedProfile?.effect?.name)
             Button {
                 importTarget = .effect
@@ -527,7 +527,7 @@ struct DiddyProfileEditor: View {
             Text(L("ios.securityUI.anAnimatedOverlayOtherDiddyUsersSeeOverYourProfileCardImport"))
         }
         Section {
-            choicePicker("Frame", selection: $draft.frame, presets: Rules.framePresets,
+            choicePicker(L("ios.finalControls.frame"), selection: $draft.frame, presets: Rules.framePresets,
                          keepsCustom: original.frame == .custom, customName: storedProfile?.frame?.name)
             Button {
                 importTarget = .frame
@@ -615,7 +615,7 @@ struct DiddyProfileEditor: View {
         } header: {
             Text(L("ios.securityUI.shownBadges"))
         } footer: {
-            Text("Pick up to \(Rules.maxShownBadges) of your badges to show next to your name. \(draft.shownBadgeIds(owned: ownedIds).count)/\(Rules.maxShownBadges)")
+            Text(L("ios.dynamicUI.shownBadges", ["max": String(Rules.maxShownBadges), "count": String(draft.shownBadgeIds(owned: ownedIds).count)]))
         }
         Section {
             NavigationLink {
@@ -746,7 +746,7 @@ struct DiddyProfileEditor: View {
                 .buttonStyle(.borderless)
                 .disabled(index >= order.count - 1)
                 .accessibilityLabel(L("settings.profileCardEditor.moveDown"))
-            Toggle("Show \(Self.moduleLabel(module))", isOn: Binding(
+            Toggle(L("ios.dynamicUI.showModule", ["name": Self.moduleLabel(module)]), isOn: Binding(
                 get: { !draft.hiddenModules.contains(module) },
                 set: { draft.setModule(module, visible: $0) }
             ))

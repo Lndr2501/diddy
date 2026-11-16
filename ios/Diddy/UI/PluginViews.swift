@@ -249,7 +249,7 @@ struct PluginDetailView: View {
                 } header: {
                     Text(L("settings.plugins.customCss"))
                 } footer: {
-                    Text("Sent to the plugin, which decides whether to apply it (up to \(PluginRules.maxCustomCSS) characters). Reload the preview to see it.")
+                    Text(L("ios.lastDynamic.pluginCSS", ["max": String(PluginRules.maxCustomCSS)]))
                 }
                 Section {
                     Button(L("ios.remainingUI.removePlugin"), role: .destructive) {
@@ -343,7 +343,7 @@ struct AddPluginView: View {
                         .autocorrectionDisabled().textInputAutocapitalization(.never)
                     Button(L("settings.badgeEditor.preview")) { previewing = true }.disabled(code.isEmpty)
                 } header: { Text(L("ios.remainingUI.htmlCode")) } footer: {
-                    Text("One self-contained HTML file, at most \(PluginRules.maxLocalBytes / 1024) KB. It is saved on this device.")
+                    Text(L("ios.lastDynamic.pluginHTML", ["max": String(PluginRules.maxLocalBytes / 1024)]))
                 }
             case .file:
                 Section {

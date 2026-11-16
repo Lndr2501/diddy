@@ -8,9 +8,9 @@ enum ChatSettings {
 
         var title: String {
             switch self {
-            case .system: return "System"
-            case .twelve: return "12-hour"
-            case .twentyFour: return "24-hour"
+            case .system: return L("ios.soundLabels.system")
+            case .twelve: return L("ios.soundLabels.12Hour")
+            case .twentyFour: return L("ios.soundLabels.24Hour")
             }
         }
     }
@@ -22,9 +22,9 @@ enum ChatSettings {
 
         var title: String {
             switch self {
-            case .modern: return "Modern"
-            case .compact: return "Compact"
-            case .bubble: return "Bubble"
+            case .modern: return L("ios.soundLabels.modern")
+            case .compact: return L("ios.soundLabels.compact")
+            case .bubble: return L("ios.soundLabels.bubble")
             }
         }
     }
@@ -37,12 +37,12 @@ enum ChatSettings {
 
         var title: String {
             switch self {
-            case .none: return "None"
-            case .ultraSmall: return "Ultra Small"
-            case .extraSmall: return "Extra Small"
-            case .small: return "Small"
-            case .normal: return "Normal"
-            case .large: return "Large"
+            case .none: return L("ios.soundLabels.none")
+            case .ultraSmall: return L("ios.soundLabels.ultraSmall")
+            case .extraSmall: return L("ios.soundLabels.extraSmall")
+            case .small: return L("ios.soundLabels.small")
+            case .normal: return L("ios.soundLabels.normal")
+            case .large: return L("ios.soundLabels.large")
             }
         }
 

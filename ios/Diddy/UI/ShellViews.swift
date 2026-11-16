@@ -26,7 +26,7 @@ struct OwnStatusMenu: View {
                 .overlay(alignment: .bottomTrailing) { PresenceDot(userId: account.userId, account: account, size: max(11, size / 3.2)) }
         }
         .disabled(busy)
-        .accessibilityLabel("Account and status (\(OwnStatusOptions.info(chosen).label))")
+        .accessibilityLabel(L("ios.dynamicUI.accountStatus", ["status": OwnStatusOptions.info(chosen).label]))
         // The editor brings its own title, Save and (in a sheet) Cancel, but no navigation bar.
         .sheet(isPresented: $showing) {
             NavigationStack {
@@ -138,7 +138,7 @@ struct ShellUpdateNotice: View {
                 HStack(spacing: 8) {
                     if let url = URL(string: release.ipaUrl ?? release.pageUrl) {
                         Link(destination: url) {
-                            Label("Diddy \(release.version) is available", systemImage: "arrow.down.circle.fill")
+                            Label(L("ios.dynamicUI.updateAvailable", ["version": release.version]), systemImage: "arrow.down.circle.fill")
                         }
                     }
                     Spacer()

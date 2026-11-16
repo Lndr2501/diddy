@@ -110,14 +110,14 @@ private struct NewRoomForm: View {
                     Section {
                         Toggle(L("createChat.main.endToEndEncryption"), isOn: $encryption)
                     } footer: {
-                        Text("Encryption can't be turned off after the \(noun.lowercased()) is created.")
+                        Text(L("ios.lastDynamic.encryptionPermanent", ["kind": noun.lowercased()]))
                     }
                 }
                 Section {
                     DisclosureGroup("Advanced Options", isExpanded: $advanced) {
                         if request.effectiveAccess != .public && (NewRoomVersionSupport.knock(version)) {
                             Toggle(L("createRoom.main.knockToJoin"), isOn: $knock)
-                            Text("Anyone can ask to join this \(noun.lowercased()).")
+                            Text(L("ios.lastDynamic.joinRequest", ["kind": noun.lowercased()]))
                                 .font(.footnote).foregroundStyle(Theme.muted)
                         }
                         Toggle(L("createRoom.main.allowFederation"), isOn: $federation)
@@ -134,7 +134,7 @@ private struct NewRoomForm: View {
             }
             .scrollContentBackground(.hidden)
             .background(Theme.sidebar.ignoresSafeArea())
-            .navigationTitle("Create \(noun)")
+            .navigationTitle(L("ios.lastDynamic.createKind", ["kind": noun]))
             .navigationBarTitleDisplayMode(.inline)
             .tint(Theme.accent)
             .toolbar {

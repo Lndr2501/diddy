@@ -83,13 +83,13 @@ private struct OfflineView: View {
                 .ignoresSafeArea()
             VStack(spacing: 18) {
                 Image("DiddyLogo").resizable().frame(width: 88, height: 88)
-                Text("Can't reach your server").font(.title2.bold()).foregroundStyle(Theme.text)
-                Text("You're still signed in as \(app.unreachable.first?.userId ?? ""). Diddy keeps trying and opens as soon as the server answers.")
+                Text(L("ios.finalControls.canTReachYourServer")).font(.title2.bold()).foregroundStyle(Theme.text)
+                Text(L("ios.dynamicUI.reconnectAccount", ["name": app.unreachable.first?.userId ?? ""]))
                     .multilineTextAlignment(.center)
                     .foregroundStyle(Theme.muted)
                 HStack(spacing: 10) {
                     ProgressView()
-                    Text("Trying to reconnect…").font(.footnote).foregroundStyle(Theme.muted)
+                    Text(L("ios.finalControls.tryingToReconnect")).font(.footnote).foregroundStyle(Theme.muted)
                 }
                 Button {
                     retrying = true
@@ -98,14 +98,14 @@ private struct OfflineView: View {
                         retrying = false
                     }
                 } label: {
-                    Text("Try Again").bold()
+                    Text(L("ios.settings.tryAgain")).bold()
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 13)
                         .background(RoundedRectangle(cornerRadius: 8).fill(Theme.accent))
                         .foregroundStyle(Theme.onAccent)
                 }
                 .disabled(retrying)
-                Button("Sign in to another account") { app.addingAccount = true }
+                Button(L("ios.finalControls.signInToAnotherAccount")) { app.addingAccount = true }
                     .font(.footnote)
             }
             .padding(24)

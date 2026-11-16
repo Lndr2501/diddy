@@ -296,7 +296,7 @@ struct RoomSettingsView: View {
                 ForEach(options) { rule in Text(rule.label).tag(rule) }
             }
             .disabled(!model.canSendState("m.room.join_rules") || model.busy)
-            Text("Change how people can join the \(typeWord).").font(.caption).foregroundStyle(Theme.muted)
+            Text(L("ios.dynamicUI.changeJoin", ["kind": typeWord])).font(.caption).foregroundStyle(Theme.muted)
         }
     }
 
@@ -356,7 +356,7 @@ struct RoomSettingsView: View {
             && model.canSendState("m.room.canonical_alias") && !model.busy
         return VStack(alignment: .leading, spacing: 4) {
             Toggle(L("ios.securityUI.publishToDirectory"), isOn: binding).disabled(!enabled)
-            Text("List the \(typeWord) in the public directory to make it discoverable by others.")
+            Text(L("ios.dynamicUI.directoryHelp", ["kind": typeWord]))
                 .font(.caption).foregroundStyle(Theme.muted)
         }
     }

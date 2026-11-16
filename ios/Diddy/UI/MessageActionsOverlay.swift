@@ -55,7 +55,7 @@ struct MessageActionsOverlay<Actions: View>: View {
                     Text(emoji).font(.system(size: 26)).frame(width: 42, height: 44)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("React with \(emoji)")
+                .accessibilityLabel(L("ios.dynamicUI.reactWith", ["emoji": emoji]))
             }
             Button(action: onMoreReactions) {
                 Image(systemName: "plus")

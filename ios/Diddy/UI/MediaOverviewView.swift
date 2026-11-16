@@ -103,7 +103,7 @@ private struct MediaOverviewContent: View {
             ForEach(pictures) { row in
                 if case .image(let source, _, _, _) = row.body {
                     MediaThumb(source: source, account: account) { viewedImage = ViewedImage(image: $0) }
-                        .accessibilityLabel("Picture from \(row.senderName)")
+                        .accessibilityLabel(L("ios.dynamicUI.pictureFrom", ["name": row.senderName]))
                 }
             }
         }

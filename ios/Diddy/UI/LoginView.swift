@@ -121,7 +121,7 @@ struct LoginView: View {
                 Text(error).font(.footnote).foregroundStyle(Theme.danger)
             }
             if !app.restoreErrors.isEmpty && !isAddingAccount {
-                Text("Some saved logins could not be restored:\n" + app.restoreErrors.joined(separator: "\n"))
+                Text(L("ios.dynamicUI.restoreLogins", ["errors": app.restoreErrors.joined(separator: "\n")]))
                     .font(.caption).foregroundStyle(Theme.faint)
             }
         }

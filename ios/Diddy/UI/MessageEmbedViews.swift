@@ -46,7 +46,7 @@ private struct LinkImageEmbed: View {
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                     .contentShape(Rectangle())
                     .onTapGesture { onImage?(image) }
-                    .accessibilityLabel("Picture from \(URL(string: url)?.host ?? url)")
+                    .accessibilityLabel(L("ios.dynamicUI.pictureFrom", ["name": URL(string: url)?.host ?? url]))
             }
         }
         .task(id: url) { image = await LinkPageFetcher.image(for: url) }
@@ -236,7 +236,7 @@ struct VideoMessageView: View {
             Task { await play() }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Video \(video.filename)")
+        .accessibilityLabel(L("ios.dynamicUI.videoFile", ["name": video.filename]))
         .accessibilityHint("Plays the video")
         .accessibilityAddTraits(.isButton)
     }

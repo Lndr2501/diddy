@@ -160,7 +160,7 @@ struct ManageServerView: View {
                     .frame(width: 36, height: 36)
                     .contentShape(Rectangle())
             }
-            .accessibilityLabel("Options for \(row.name)")
+            .accessibilityLabel(L("ios.dynamicUI.optionsFor", ["name": row.name]))
         }
         .padding(.leading, CGFloat(row.depth) * 20)
         .listRowBackground(Color.clear)

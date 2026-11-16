@@ -446,7 +446,7 @@ private struct RecordingLevel: View {
                 .frame(height: 22)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Recording, \(VoiceFormat.time(time))")
+        .accessibilityLabel(L("ios.dynamicUI.recording", ["duration": VoiceFormat.time(time)]))
     }
 }
 
