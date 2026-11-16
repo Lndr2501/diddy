@@ -160,6 +160,11 @@ jobs:
           swiftc -swift-version 5 Diddy/Call/CompanionProtocol.swift Tools/companion_check/main.swift -o "$RUNNER_TEMP/diddy-companion-check"
           "$RUNNER_TEMP/diddy-companion-check"
 
+      - name: Push-to-talk checks
+        run: |
+          swiftc -swift-version 5 Diddy/Call/PushToTalkLogic.swift Tools/pushtotalk_check/main.swift -o "$RUNNER_TEMP/diddy-pushtotalk-check"
+          "$RUNNER_TEMP/diddy-pushtotalk-check"
+
       - name: Screen broadcast wire checks
         run: |
           swiftc -swift-version 5 Diddy/Call/BroadcastWire.swift Tools/broadcastwire_check/main.swift -o "$RUNNER_TEMP/diddy-broadcastwire-check"
