@@ -167,7 +167,7 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           working-directory: android
           script: |
-            adb shell getconf PAGE_SIZE
+            adb shell getconf PAGE_SIZE || echo "getconf is missing on this Android version (4 KB pages)"
             ./gradlew --no-daemon connectedDebugAndroidTest
 
       - name: Upload test report

@@ -243,7 +243,7 @@ object PluginContent {
 
     /** Checks pasted or loaded content: not empty, within the size cap, no binary data, looks like HTML. */
     fun validate(input: String): String {
-        val html = input.removePrefix("﻿")
+        val html = input.removePrefix("\uFEFF")
         if (html.isBlank()) throw PluginError("The plugin is empty.")
         if (html.toByteArray().size > PluginRules.MAX_LOCAL_BYTES) throw PluginError("The plugin is too large (at most ${PluginRules.MAX_LOCAL_BYTES / 1024} KB).")
         if (html.contains('\u0000')) throw PluginError("This looks like a binary file, not an HTML page.")

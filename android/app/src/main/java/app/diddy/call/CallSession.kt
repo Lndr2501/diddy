@@ -378,6 +378,8 @@ class CallSession(private val context: Context, val account: MatrixAccount, priv
      * opt out or protected (DRM) content. Diddy's own sound (the call, the soundboard, Watch
      * Together) is left out, so nobody hears themselves back.
      */
+    // RECORD_AUDIO is checked right below (CallManager.microphoneAllowed).
+    @android.annotation.SuppressLint("MissingPermission")
     private fun startAppAudio() {
         if (android.os.Build.VERSION.SDK_INT < 29 || !CallPrefs.shareAppAudio || companion != null || !CallManager.microphoneAllowed) return
         val track = liveKitRoom.localParticipant.getTrackPublication(Track.Source.SCREEN_SHARE)?.track as? LocalScreencastVideoTrack ?: return
@@ -403,7 +405,7 @@ class CallSession(private val context: Context, val account: MatrixAccount, priv
         screenAudio = null
         sharingAppAudio = false
         attachSoundboard()
-        runCatching { capturer.releaseAudioResources() }
+        if (android.os.Build.VERSION.SDK_INT >= 29) runCatching { capturer.releaseAudioResources() }
     }
 
     suspend fun stopScreenShare() {
