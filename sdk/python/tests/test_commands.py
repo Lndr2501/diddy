@@ -26,28 +26,28 @@ def test_parse_name_alias_case():
     assert r.parse("!play\nsecond line")[1] == "second line"
 
 
-def test_binding_by_annotations():
+async def test_binding_by_annotations():
     async def timer(ctx, seconds: int, label: str = "Timer"): ...
     c = reg().add("timer", timer)
-    assert c.bind("30 Pizza im Ofen") == ([30, "Pizza im Ofen"], {})
-    assert c.bind("30") == ([30, "Timer"], {})
-    assert c.bind('30 "quoted"') == ([30, "quoted"], {})
+    assert await c.bind("30 Pizza im Ofen") == ([30, "Pizza im Ofen"], {})
+    assert await c.bind("30") == ([30, "Timer"], {})
+    assert await c.bind('30 "quoted"') == ([30, "quoted"], {})
     with pytest.raises(UsageError):
-        c.bind("")
+        await c.bind("")
     with pytest.raises(UsageError):
-        c.bind("soon")
+        await c.bind("soon")
     assert c.usage_line("!") == "!timer <seconds> [label]"
 
 
-def test_binding_bool_float_optional_varargs_rest():
+async def test_binding_bool_float_optional_varargs_rest():
     async def f(ctx, on: bool, x: Optional[float] = None, *words: str): ...
     c = reg().add("f", f)
-    assert c.bind("an 1,5 a b") == ([True, 1.5, "a", "b"], {})
+    assert await c.bind("an 1,5 a b") == ([True, 1.5, "a", "b"], {})
     async def g(ctx, n: int, *, text: str): ...
     c = reg().add("g", g)
-    assert c.bind("2 hello   world") == ([2], {"text": "hello   world"})
+    assert await c.bind("2 hello   world") == ([2], {"text": "hello   world"})
     with pytest.raises(UsageError):
-        c.bind("2")
+        await c.bind("2")
     assert c.usage_line("!") == "!g <n> <text>"
 
 

@@ -222,6 +222,11 @@ class NioTransport:
             return
         if etype == "m.room.message" and isinstance(content, dict):
             self.bot._spawn(self.bot.handle_message(room.room_id, sender, event_id, content, ts))
+        elif etype == "m.room.redaction":
+            redacts = src.get("redacts") or content.get("redacts")
+            if redacts:
+                self.bot._spawn(self.bot.handle_redaction(room.room_id, sender, event_id,
+                                                          redacts, ts))
         elif etype == "m.reaction":
             rel = content.get("m.relates_to") or {}
             if rel.get("rel_type") == "m.annotation" and rel.get("key"):
@@ -233,6 +238,9 @@ class NioTransport:
             prev = getattr(event, "prev_membership", None)
             if membership == "join" and prev != "join" and key and key != self.user_id:
                 self.bot._spawn(self.bot.handle_member_join(room.room_id, key))
+            elif membership in ("leave", "ban") and prev == "join" and key \
+                    and key != self.user_id:
+                self.bot._spawn(self.bot.handle_member_leave(room.room_id, key))
 
     async def _request_room_key(self, event: nio.MegolmEvent) -> None:
         """Ask the sender for a missing room key (nio does not do that by itself)."""
@@ -274,6 +282,34 @@ class NioTransport:
     def power_level(self, room_id: str, user_id: str) -> int:
         room = self._room(room_id)
         return room.power_levels.get_user_level(user_id) if room else 0
+
+    def member_list(self, room_id: str) -> list[tuple[str, str, str]]:
+        """``(user id, display name, avatar mxc)`` of everyone joined."""
+        room = self._room(room_id)
+        if not room:
+            return []
+        return [(uid, room.user_name(uid) or "", getattr(u, "avatar_url", "") or "")
+                for uid, u in room.users.items()]
+
+    def avatar_url(self, room_id: str, user_id: str) -> str:
+        room = self._room(room_id)
+        user = room.users.get(user_id) if room else None
+        return (getattr(user, "avatar_url", "") or "") if user else ""
+
+    def room_topic(self, room_id: str) -> str:
+        room = self._room(room_id)
+        return (room.topic or "") if room else ""
+
+    def room_alias(self, room_id: str) -> str:
+        room = self._room(room_id)
+        return (room.canonical_alias or "") if room else ""
+
+    def is_encrypted(self, room_id: str) -> bool:
+        room = self._room(room_id)
+        return bool(room and room.encrypted)
+
+    async def set_typing(self, room_id: str, on: bool) -> None:
+        await self.client.room_typing(room_id, on, timeout=30_000)
 
     # ------------------------------------------------------------------ sending
     async def send(self, room_id: str, etype: str, content: dict) -> str:
@@ -318,6 +354,17 @@ class NioTransport:
         if not isinstance(resp, nio.UploadResponse):
             raise MatrixError(f"upload failed: {getattr(resp, 'message', resp)}")
         return resp.content_uri
+
+    async def upload_file(self, data: bytes, mimetype: str, filename: str,
+                          encrypt: bool) -> tuple[str, Optional[dict]]:
+        """Upload an attachment. In encrypted rooms it is encrypted; the second value holds the
+        keys for the ``file`` object of the message."""
+        resp, keys = await self.client.upload(io.BytesIO(data), content_type=mimetype,
+                                              filename=filename, encrypt=encrypt,
+                                              filesize=len(data))
+        if not isinstance(resp, nio.UploadResponse):
+            raise MatrixError(f"upload failed: {getattr(resp, 'message', resp)}")
+        return resp.content_uri, (keys if encrypt else None)
 
     async def set_profile(self, display_name: str, avatar: str) -> None:
         try:

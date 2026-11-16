@@ -79,13 +79,15 @@ class FakeTransport:
         self.state: dict[tuple[str, str, str], dict] = {}
         self.uploads: dict[str, bytes] = {}
         self.deleted: list[str] = []
+        self.typing: list[tuple[str, bool]] = []
         self.forbid_state = False
         self._ids = itertools.count(1)
         self._stop = asyncio.Event()
 
     def room(self, room_id: str) -> dict[str, Any]:
         return self.rooms.setdefault(room_id, {"name": room_id, "members": {self.user_id: "Bot"},
-                                               "power": {}})
+                                               "power": {}, "topic": "", "alias": "",
+                                               "encrypted": False, "avatars": {}})
 
     # transport interface -------------------------------------------------
     async def login(self) -> None:
@@ -112,6 +114,32 @@ class FakeTransport:
 
     def power_level(self, room_id: str, user_id: str) -> int:
         return self.room(room_id)["power"].get(user_id, 0)
+
+    def member_list(self, room_id: str) -> list[tuple[str, str, str]]:
+        r = self.room(room_id)
+        return [(u, n, r["avatars"].get(u, "")) for u, n in r["members"].items()]
+
+    def avatar_url(self, room_id: str, user_id: str) -> str:
+        return self.room(room_id)["avatars"].get(user_id, "")
+
+    def room_topic(self, room_id: str) -> str:
+        return self.room(room_id)["topic"]
+
+    def room_alias(self, room_id: str) -> str:
+        return self.room(room_id)["alias"]
+
+    def is_encrypted(self, room_id: str) -> bool:
+        return self.room(room_id)["encrypted"]
+
+    async def set_typing(self, room_id: str, on: bool) -> None:
+        self.typing.append((room_id, on))
+
+    async def upload_file(self, data: bytes, mimetype: str, filename: str,
+                          encrypt: bool) -> tuple[str, Optional[dict]]:
+        uri = f"mxc://test/{next(self._ids)}"
+        self.uploads[uri] = data
+        keys = {"v": "v2", "key": {"k": "fake"}, "iv": "fake", "hashes": {"sha256": "fake"}}
+        return uri, (keys if encrypt else None)
 
     async def send(self, room_id: str, etype: str, content: dict) -> str:
         self.room(room_id)
@@ -177,11 +205,18 @@ class TestClient:
         bot.ignore_older_than = None
         self.user = user
         self.room_id = room
+        self.last_event_id = ""
         self.join(user, room)
         # a fresh chat: forget cards, seen events and warnings of earlier tests on the same bot
         bot._live.clear()
         bot._seen.clear()
         bot._warned.clear()
+        bot._views.clear()
+        bot._reactions.clear()
+        bot._running = False
+        if bot._store is None:
+            from .store import Store
+            bot._store = Store(":memory:")
         self._ids = _EVENT_IDS
 
     # setup ---------------------------------------------------------------
@@ -196,10 +231,13 @@ class TestClient:
         self.t.room(room or self.room_id)["power"][user] = level
 
     async def start(self) -> None:
-        """Run the start-up (announcing in rooms, ``on_start``) without blocking."""
+        """Run the start-up (announcing in rooms, ``ready`` listeners, loops) without blocking."""
         await self.bot._ready()
 
     async def stop(self) -> None:
+        self.bot._running = False
+        for lp in self.bot._loops:
+            lp.cancel()
         for task in list(self.bot._tasks):
             task.cancel()
         await asyncio.gather(*self.bot._tasks, return_exceptions=True)
@@ -227,6 +265,7 @@ class TestClient:
         if user not in self.t.room(room)["members"]:
             self.join(user, room)
         event_id = f"$user{next(self._ids)}"
+        self.last_event_id = event_id
         await self.bot.handle_message(room, user, event_id, content, int(time.time() * 1000))
         if wait:
             await asyncio.sleep(wait)
@@ -254,11 +293,38 @@ class TestClient:
         return await self.say(f"{card['seek']} {format_time(seconds)}", user=user,
                               room=message.room_id, extra={CARD_ACTION_KEY: True})
 
-    async def react(self, message: Sent, key: str, *, user: Optional[str] = None) -> None:
-        """React to a bot message with an emoji."""
-        await self.bot.handle_reaction(message.room_id, user or self.user,
-                                       f"$user{next(self._ids)}", message.event_id, key,
-                                       int(time.time() * 1000))
+    async def react(self, message: Sent, key: str, *, user: Optional[str] = None) -> str:
+        """React to a bot message with an emoji. Returns the id of the reaction (for ``delete``)."""
+        event_id = f"$user{next(self._ids)}"
+        await self.bot.handle_reaction(message.room_id, user or self.user, event_id,
+                                       message.event_id, key, int(time.time() * 1000))
+        return event_id
+
+    async def edit(self, event_id: str, text: str, *, user: Optional[str] = None,
+                   room: Optional[str] = None) -> None:
+        """A user edits one of their messages (``chat.last_event_id`` is the latest one)."""
+        content = {"msgtype": "m.text", "body": f"* {text}",
+                   "m.new_content": {"msgtype": "m.text", "body": text},
+                   "m.relates_to": {"rel_type": "m.replace", "event_id": event_id}}
+        await self.bot.handle_message(room or self.room_id, user or self.user,
+                                      f"$user{next(self._ids)}", content, int(time.time() * 1000))
+
+    async def delete(self, event_id: str, *, user: Optional[str] = None,
+                     room: Optional[str] = None) -> None:
+        """A user deletes a message or a reaction."""
+        await self.bot.handle_redaction(room or self.room_id, user or self.user,
+                                        f"$user{next(self._ids)}", event_id,
+                                        int(time.time() * 1000))
+
+    async def leave(self, user: str, room: Optional[str] = None) -> None:
+        """A user leaves the room."""
+        self.t.room(room or self.room_id)["members"].pop(user, None)
+        await self.bot.handle_member_leave(room or self.room_id, user)
+
+    async def arrive(self, user: str, room: Optional[str] = None, *, name: str = "") -> None:
+        """A user joins the room."""
+        self.join(user, room, name=name)
+        await self.bot.handle_member_join(room or self.room_id, user)
 
     # what Diddy sees -----------------------------------------------------
     def commands(self, room: Optional[str] = None) -> Optional[dict]:

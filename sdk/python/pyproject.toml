@@ -1,6 +1,6 @@
 [project]
 name = "diddy-bot"
-version = "0.1.0"
+version = "0.2.0"
 description = "Matrix bots in a few lines, with cards, buttons and command suggestions in Diddy"
 readme = "README.md"
 license = "AGPL-3.0-only"

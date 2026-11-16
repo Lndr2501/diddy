@@ -190,3 +190,136 @@ async def test_bot_end_to_end_encrypted(tmp_path):
         bot2.stop()
         await asyncio.wait_for(runner, 40)
         await alice.c.close()
+
+
+async def test_new_features_end_to_end(tmp_path):
+    """Files in an encrypted room, view buttons, edit/delete/leave events, typing."""
+    import struct
+    import zlib
+
+    from diddybot import File, View, ui
+
+    def png(w, h):
+        def chunk(kind, data):
+            body = kind + data
+            return struct.pack(">I", len(data)) + body + struct.pack(">I", zlib.crc32(body))
+        raw = b"".join(b"\x00" + b"\x10\x20\x30" * w for _ in range(h))
+        return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0))
+                + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b""))
+
+    image = png(9, 4)
+    tag = secrets.token_hex(3)
+    bot_id = register(f"bot{tag}", "botpass")
+    alice_id = register(f"alice{tag}", "alicepass")
+    carol_id = register(f"carol{tag}", "carolpass")
+    bot = Bot(HS, bot_id, password="botpass", store_path=str(tmp_path / "botstore"),
+              edit_interval=0.1, announce=False)
+    seen = []
+
+    class Counter(View):
+        def __init__(self):
+            super().__init__(timeout=60)
+            self.n = 0
+
+        @ui.button("+1")
+        async def plus(self, ctx, button):
+            self.n += 1
+            await self.update(cards.listing(f"Count {self.n}", []))
+
+    @bot.command("pic")
+    async def pic(ctx):
+        async with ctx.typing():
+            await ctx.reply(File(image, "cover.png", caption="Cover"))
+
+    @bot.command("menu")
+    async def menu(ctx):
+        await ctx.reply(cards.listing("Count 0", []), view=Counter())
+
+    @bot.command("ask")
+    async def ask(ctx):
+        answer = await ctx.ask("Name?", timeout=15)
+        await ctx.reply(f"hello {answer}")
+
+    @bot.listen("message_edit")
+    async def edited(ctx):
+        seen.append(("edit", ctx.body))
+
+    @bot.listen("message_delete")
+    async def deleted(ctx):
+        seen.append(("delete", ctx.target))
+
+    @bot.listen("member_leave")
+    async def left(room_id, user_id):
+        seen.append(("leave", user_id))
+
+    runner = asyncio.ensure_future(bot.start())
+    alice = User(alice_id, "alicepass", str(tmp_path / "alice"))
+    carol = nio.AsyncClient(HS, carol_id)
+    try:
+        await alice.login()
+        room = await alice.c.room_create(
+            invite=[bot_id, carol_id], name="New features",
+            initial_state=[{"type": "m.room.encryption", "state_key": "",
+                            "content": {"algorithm": "m.megolm.v1.aes-sha2"}}])
+        rid = room.room_id
+        await alice.wait_for(lambda r, e: r == rid and isinstance(e, nio.RoomMemberEvent)
+                             and e.state_key == bot_id and e.membership == "join")
+        assert isinstance(await carol.login("carolpass"), nio.LoginResponse)
+        assert isinstance(await carol.join(rid), nio.JoinResponse)
+        await asyncio.sleep(1)
+        await alice.sync()
+
+        # a file in an encrypted room is encrypted and can be read with the key in the event
+        await alice.say(rid, "!pic")
+        pic_ev = await alice.wait_for(lambda r, e: r == rid and e.sender == bot_id
+                                      and content(e).get("msgtype") == "m.image")
+        c = content(pic_ev)
+        assert c["body"] == "Cover" and c["filename"] == "cover.png" and "url" not in c
+        assert c["info"]["w"] == 9 and c["info"]["h"] == 4
+        file = c["file"]
+        dl = await alice.c.download(mxc=file["url"])
+        assert isinstance(dl, nio.DownloadResponse), dl
+        from nio.crypto import decrypt_attachment
+        assert decrypt_attachment(dl.body, file["key"]["k"], file["hashes"]["sha256"],
+                                  file["iv"]) == image
+
+        # view buttons: the press is a hidden command message, the answer edits the card
+        await alice.say(rid, "!menu")
+        card = await alice.wait_for(lambda r, e: r == rid and e.sender == bot_id and
+                                    content(e).get("dev.diddy.card", {}).get("title") == "Count 0")
+        send = content(card)["dev.diddy.card"]["actions"][0]["send"]
+        assert send.startswith("!_v ")
+        await alice.say(rid, send, **{"dev.diddy.card_action": True})
+        edit = await alice.wait_for(lambda r, e: r == rid and e.sender == bot_id and
+                                    content(e).get("m.relates_to", {}).get("event_id")
+                                    == card.event_id)
+        assert content(edit)["m.new_content"]["dev.diddy.card"]["title"] == "Count 1"
+
+        # wait_for / ask: the next message of the same person is the answer
+        await alice.say(rid, "!ask")
+        await alice.wait_for(lambda r, e: r == rid and e.sender == bot_id
+                             and content(e).get("body") == "Name?")
+        await alice.say(rid, "Alice")
+        await alice.wait_for(lambda r, e: r == rid and e.sender == bot_id
+                             and content(e).get("body") == "hello Alice")
+
+        # edits, deletions and people leaving reach the bot
+        eid = await alice.say(rid, "first")
+        await alice.c.room_send(rid, "m.room.message", {
+            "msgtype": "m.text", "body": "* second",
+            "m.new_content": {"msgtype": "m.text", "body": "second"},
+            "m.relates_to": {"rel_type": "m.replace", "event_id": eid}},
+            ignore_unverified_devices=True)
+        await alice.c.room_redact(rid, eid)
+        await carol.room_leave(rid)
+        for _ in range(60):
+            if len(seen) >= 3:
+                break
+            await asyncio.sleep(0.25)
+        assert ("edit", "second") in seen and ("delete", eid) in seen
+        assert ("leave", carol_id) in seen
+    finally:
+        bot.stop()
+        await asyncio.wait_for(runner, 40)
+        await alice.c.close()
+        await carol.close()
