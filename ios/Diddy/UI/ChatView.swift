@@ -66,6 +66,7 @@ private struct ChatContent: View {
     private var summary: RoomSummary? { watch.summary }
     @EnvironmentObject private var calls: CallManager
     @StateObject private var memberStore = MemberStore()
+    @EnvironmentObject private var savedMessages: SavedMessagesStore
     @StateObject private var botCommands = BotCommandStore()
     /// Text and cursor of the composer, in an object only the composer observes: a key press
     /// redraws the composer, not the chat with every message (see ComposerObserver).
@@ -633,6 +634,13 @@ private struct ChatContent: View {
                 closeActions()
                 Task { if let link = await controller.permalink(of: eventId) { UIPasteboard.general.string = link } }
             } label: { Label("Copy Link", systemImage: "link") }
+            Button {
+                closeActions()
+                savedMessages.toggle(account: account, roomId: roomId, eventId: eventId)
+            } label: {
+                Label(savedMessages.state.contains(roomId, eventId) ? "Remove from Saved" : "Save Message",
+                      systemImage: savedMessages.state.contains(roomId, eventId) ? "bookmark.slash" : "bookmark")
+            }
             if !controller.nav.readers(of: eventId).isEmpty {
                 Button { closeActions(); navSheet = .readers(eventId: eventId) } label: { Label("Read Receipts", systemImage: "checkmark.circle") }
             }

@@ -2,6 +2,8 @@
 
 ## Unveröffentlicht
 
+- **Gespeicherte Nachrichten (macOS, Linux, Windows, iOS):** Im Nachrichtenmenü „Save message“ wählen; im Inbox-Bereich „Saved“ am Desktop bzw. unter „You → Saved Messages“ auf dem iPhone und über das Lesezeichen in der iPad-Seitenleiste ansehen. Von dort zur Nachricht springen oder das Lesezeichen entfernen; auch ältere verschlüsselte Nachrichten werden mit den Schlüsseln des Geräts geladen. Gelöschte und nicht mehr zugängliche Nachrichten lassen sich aus der Liste entfernen. Die Liste synchronisiert über Matrix-Account-Data (höchstens 300 Einträge), ohne Nachrichteninhalt auf dem Server zu speichern; parallele Änderungen werden bestmöglich zusammengeführt.
+
 ## 1.11.0 (2026-11-15)
 
 - **Kein Echo von deinen eigenen Geräten (macOS, Linux, Windows, iOS):** Mit dem iPhone als Mikro hörte man sich am Computer selbst, verzögert: Für den Call ist das iPhone ein weiterer Teilnehmer, und der Computer spielte dessen Mikrofon ab. Jetzt spielt keine Diddy-App deine eigenen anderen Geräte im selben Call ab (am Computer per „Mute for me“, das sich nicht zurückstellen lässt und nicht gemerkt wird; am iPhone über die Lautstärke des Teilnehmers). Andere hören dich normal.

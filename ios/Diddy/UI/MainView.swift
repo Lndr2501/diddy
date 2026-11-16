@@ -36,6 +36,7 @@ struct MainView: View {
     @EnvironmentObject private var calls: CallManager
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var navigator = AppNavigator()
+    @StateObject private var savedMessages = SavedMessagesStore()
     @State private var showSettings = false
     @State private var showQuickSwitch = false
     @State private var showWelcome = false
@@ -64,6 +65,7 @@ struct MainView: View {
         // own presentations and rebuild themselves (diddySheetAppearance).
         .id(themes.id)
         .environmentObject(navigator)
+        .environmentObject(savedMessages)
         .sheet(isPresented: $showSettings) {
             SettingsSheet(account: account)
         }
@@ -77,12 +79,16 @@ struct MainView: View {
             }
         }
         .callSwitchAlert(calls)
+        .alert("Saved Messages", isPresented: Binding(get: { savedMessages.error != nil }, set: { if !$0 { savedMessages.error = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: { Text(savedMessages.error ?? "") }
         .alert("Voice", isPresented: Binding(get: { calls.error != nil }, set: { if !$0 { calls.error = nil } })) {
             Button("OK", role: .cancel) {}
         } message: {
             Text(calls.error ?? "")
         }
         .task {
+            await savedMessages.refresh(account: account)
             account.diddyOptionsRooms.formUnion(UserDefaults.standard.stringArray(forKey: "diddy.lightOptionsRooms.\(account.id)") ?? [])
             await account.loadAllChannels()
         }
@@ -99,6 +105,7 @@ struct MainView: View {
             guard phase == .active else { return }
             Task {
                 await account.resume()
+                await savedMessages.refresh(account: account)
                 // Back in the app: pick up profile changes made on another device meanwhile (#207).
                 await account.loadDiddyProfiles(staleAfter: 15)
             }
@@ -294,6 +301,7 @@ struct ChannelSidebar: View {
     @EnvironmentObject private var calls: CallManager
     @State private var joinError: String?
     @State private var showRecovery = false
+    @State private var showSaved = false
     @State private var filter = ""
     @State private var joining: Set<String> = []
     @State private var sheet: SidebarSheet?
@@ -379,6 +387,7 @@ struct ChannelSidebar: View {
         } message: { Text(joinError ?? "") }
         .leaveServerDialog(account: account, serverId: $leavingServer) { joinError = $0 }
         .sheet(isPresented: $showRecovery) { RecoveryView(account: account) }
+        .sheet(isPresented: $showSaved) { SavedMessagesView(account: account).diddySheetAppearance() }
         .sheet(item: $sheet) { sheet in
             switch sheet {
             case .members(let id): MembersView(account: account, roomId: id, title: serverName)
@@ -468,6 +477,7 @@ struct ChannelSidebar: View {
                 Text(serverName).font(.headline).foregroundStyle(Theme.text).lineLimit(1)
                     .accessibilityAddTraits(.isHeader)
                 Spacer()
+                headerButton("bookmark", label: "Saved Messages") { showSaved = true }
                 headerButton("magnifyingglass", label: "Search") { showSearch = true }
                 Menu {
                     composeMenu
