@@ -79,7 +79,7 @@ struct VoiceChannelView: View {
                 .foregroundStyle(summary?.hasCall == true ? Theme.online : Theme.accent)
             Text(title).font(.title2.bold()).foregroundStyle(Theme.text)
             if let participants = summary?.callParticipants, !participants.isEmpty {
-                Text(participants.count == 1 ? "1 person in voice" : "\(participants.count) people in voice")
+                Text(L("ios.callDynamic.peopleInVoice", ["count": String(participants.count)]))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Theme.online)
                 ScrollView {
@@ -361,8 +361,8 @@ private struct CallStatusHeader: View {
         if reconnecting { return L("ios.calls.moreReconnecting") }
         guard session.connected else { return session.state }
         let count = session.members.count
-        let people = count == 1 ? "1 in voice" : "\(count) in voice"
-        return weakConnection ? "\(people) · Weak connection" : people
+        let people = L("ios.callDynamic.inVoice", ["count": String(count)])
+        return weakConnection ? L("ios.callDynamic.weakConnection", ["people": people]) : people
     }
 
     private var color: Color {
@@ -467,7 +467,7 @@ struct VoiceStatusBar: View {
                         .font(.footnote.weight(.bold))
                         .foregroundStyle(session.statusColor)
                         .lineLimit(1)
-                    Text("\(session.roomName) · \(session.members.count) in voice")
+                    Text(L("ios.callDynamic.roomPeople", ["room": session.roomName, "people": L("ios.callDynamic.inVoice", ["count": String(session.members.count)])]))
                         .font(.caption).foregroundStyle(Theme.muted).lineLimit(1)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -475,7 +475,7 @@ struct VoiceStatusBar: View {
             }
             .buttonStyle(.plain)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("\(session.roomName), \(session.state), \(session.members.count) in voice")
+            .accessibilityLabel(L("ios.callDynamic.roomStatePeople", ["room": session.roomName, "state": session.state, "people": L("ios.callDynamic.inVoice", ["count": String(session.members.count)])]))
             .accessibilityHint(L("ios.calls.moreOpensTheCall"))
             .accessibilityAddTraits(.isButton)
             barButton(session.microphoneOn ? "mic.fill" : "mic.slash.fill", tint: session.microphoneOn || session.usesPushToTalk ? Theme.muted : Theme.danger, label: session.usesPushToTalk ? L("ios.calls.moreMicrophonePushToTalk") : (session.microphoneOn ? L("ios.calls.moreMute") : L("ios.calls.moreUnmute"))) {

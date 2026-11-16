@@ -30,7 +30,7 @@ struct CompanionRequestSheet: View {
                             .font(.headline)
                         Text(pending.request.roomName.isEmpty
                              ? L("ios.calls.moreJoinItsCallAsItsCameraAndMicrophone")
-                             : "Join “\(pending.request.roomName)” as its camera and microphone.")
+                             : L("ios.callDynamic.roomCompanion", ["room": pending.request.roomName]))
                             .font(.subheadline)
                             .foregroundStyle(Theme.muted)
                         VStack(alignment: .leading, spacing: 6) {
@@ -142,7 +142,7 @@ struct CompanionCallView: View {
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Theme.text)
             }
-            Text("\(title) · the call plays on your computer")
+            Text(L("ios.callDynamic.companionTitle", ["name": title]))
                 .font(.footnote)
                 .foregroundStyle(Theme.muted)
                 .lineLimit(1)

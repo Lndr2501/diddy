@@ -2756,6 +2756,23 @@
       "openToSend": "Öffne Diddy, um es zu senden.",
       "startSharing": "Starte das Teilen in einem Diddy-Sprachkanal und wähle hier Diddy aus.",
       "stoppedSharing": "Diddy teilt deinen Bildschirm nicht mehr."
+    },
+    "callDynamic": {
+      "inVoice_one": "{{count}} Person im Sprachkanal",
+      "inVoice_other": "{{count}} Personen im Sprachkanal",
+      "peopleInVoice_one": "{{count}} Person im Sprachkanal",
+      "peopleInVoice_other": "{{count}} Personen im Sprachkanal",
+      "weakConnection": "{{people}} · Schwache Verbindung",
+      "roomPeople": "{{room}} · {{people}}",
+      "roomStatePeople": "{{room}}, {{state}}, {{people}}",
+      "zoomPercent": "Zoom {{percent}} Prozent",
+      "reaction": "Reaktion {{emoji}}",
+      "roomCompanion": "Tritt „{{room}}“ mit diesem iPhone als Kamera und Mikrofon bei.",
+      "companionTitle": "{{name}} · Der Anruf läuft auf deinem Computer",
+      "memberYou": "{{name}} (du)",
+      "memberYouAccessibility": "{{name}}, du",
+      "sharingScreen": "{{name}} teilt den Bildschirm",
+      "watchingScreen": "Bildschirm von {{name}}"
     }
   }
 }

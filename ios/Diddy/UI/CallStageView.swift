@@ -291,7 +291,7 @@ private struct PersonTile: View {
             } else if !member.microphoneOn {
                 Image(systemName: "mic.slash.fill").foregroundStyle(Theme.danger)
             }
-            Text(member.isLocal ? "\(member.name) (you)" : member.name).lineLimit(1)
+            Text(member.isLocal ? L("ios.callDynamic.memberYou", ["name": member.name]) : member.name).lineLimit(1)
         }
         .font((role == .thumb ? Font.caption2 : Font.caption).weight(.semibold))
         .foregroundStyle(.white)
@@ -302,7 +302,7 @@ private struct PersonTile: View {
     }
 
     private var accessibilityText: String {
-        var parts = [member.isLocal ? "\(member.name), you" : member.name]
+        var parts = [member.isLocal ? L("ios.callDynamic.memberYouAccessibility", ["name": member.name]) : member.name]
         if member.isConnecting { parts.append("connecting") }
         else if !member.microphoneOn { parts.append("muted") }
         else if speaking { parts.append("speaking") }
@@ -372,7 +372,7 @@ private struct ShareTile: View {
             if role != .focus { onSelect() }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(watching ? "\(member.name)'s screen" : "\(member.name) is sharing their screen")
+        .accessibilityLabel(watching ? L("ios.callDynamic.watchingScreen", ["name": member.name]) : L("ios.callDynamic.sharingScreen", ["name": member.name]))
         .accessibilityAddTraits(.isButton)
         .accessibilityHint(watchHint)
         .fullScreenCover(isPresented: $fullscreen) {
@@ -392,7 +392,7 @@ private struct ShareTile: View {
                 .font(.system(size: role == .thumb ? 18 : 30, weight: .regular))
                 .foregroundStyle(.white.opacity(0.8))
             if role != .thumb {
-                Text("\(member.name) is sharing their screen")
+                Text(L("ios.callDynamic.sharingScreen", ["name": member.name]))
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(.white)
                     .multilineTextAlignment(.center)
@@ -410,7 +410,7 @@ private struct ShareTile: View {
     }
 
     private var nameBadge: some View {
-        Label(role == .thumb ? member.name : "\(member.name)'s screen", systemImage: "display")
+        Label(role == .thumb ? member.name : L("ios.callDynamic.watchingScreen", ["name": member.name]), systemImage: "display")
             .labelStyle(.titleAndIcon)
             .lineLimit(1)
             .font((role == .thumb ? Font.caption2 : Font.caption).weight(.semibold))
@@ -512,7 +512,7 @@ private struct ZoomResetButton: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Zoom \(zoom.percent) percent")
+        .accessibilityLabel(L("ios.callDynamic.zoomPercent", ["percent": String(zoom.percent)]))
         .accessibilityHint(L("ios.calls.moreShowsTheWholePictureAgain"))
         .padding(.vertical, 2)
     }

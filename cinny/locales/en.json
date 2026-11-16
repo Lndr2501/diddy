@@ -2756,6 +2756,23 @@
       "openToSend": "Open Diddy to send it.",
       "startSharing": "Start sharing from a voice channel in Diddy, then choose Diddy here.",
       "stoppedSharing": "Diddy stopped sharing your screen."
+    },
+    "callDynamic": {
+      "inVoice_one": "{{count}} in voice",
+      "inVoice_other": "{{count}} in voice",
+      "peopleInVoice_one": "{{count}} person in voice",
+      "peopleInVoice_other": "{{count}} people in voice",
+      "weakConnection": "{{people}} · Weak connection",
+      "roomPeople": "{{room}} · {{people}}",
+      "roomStatePeople": "{{room}}, {{state}}, {{people}}",
+      "zoomPercent": "Zoom {{percent}} percent",
+      "reaction": "Reaction {{emoji}}",
+      "roomCompanion": "Join “{{room}}” as its camera and microphone.",
+      "companionTitle": "{{name}} · the call plays on your computer",
+      "memberYou": "{{name}} (you)",
+      "memberYouAccessibility": "{{name}}, you",
+      "sharingScreen": "{{name}} is sharing their screen",
+      "watchingScreen": "{{name}}'s screen"
     }
   }
 }

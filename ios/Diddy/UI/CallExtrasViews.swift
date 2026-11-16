@@ -100,7 +100,7 @@ struct CallReactionBubble: View {
             .font(.system(size: size))
             .shadow(radius: 4)
             .transition(.scale.combined(with: .opacity))
-            .accessibilityLabel("Reaction \(emoji)")
+            .accessibilityLabel(L("ios.callDynamic.reaction", ["emoji": emoji]))
     }
 }
 
