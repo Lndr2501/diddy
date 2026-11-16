@@ -149,6 +149,28 @@ sealed class MatrixToLink {
             }
         }
 
+        /**
+         * A `matrix:` URI (MSC2312: `matrix:r/alias:server`, `matrix:roomid/id:server/e/event`,
+         * `matrix:u/user:server`) as the matrix.to link it stands for; other text stays as it is.
+         */
+        fun fromMatrixUri(uri: String): String {
+            if (!uri.startsWith("matrix:")) return uri
+            val body = uri.removePrefix("matrix:").removePrefix("//").substringBefore('#')
+            val path = body.substringBefore('?')
+            val query = body.substringAfter('?', "").split("&").filter { it.startsWith("via=") }.joinToString("&")
+            val parts = path.split("/")
+            if (parts.size < 2) return uri
+            val sigil = when (parts[0]) {
+                "r" -> "#"
+                "roomid" -> "!"
+                "u" -> "@"
+                else -> return uri
+            }
+            var target = "https://matrix.to/#/" + sigil + parts[1]
+            if (parts.size >= 4 && parts[2] == "e") target += "/$" + parts[3]
+            return if (query.isEmpty()) target else "$target?$query"
+        }
+
         /** A matrix.to link of a user, room or message, percent-decoded first like desktop. */
         fun parse(href: String): MatrixToLink? {
             val raw = href.trim()

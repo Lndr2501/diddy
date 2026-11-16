@@ -34,6 +34,17 @@ fun MainScreen(account: MatrixAccount) {
         navigator.server?.let { server -> if (account.spaces.none { it.roomId == server } && account.spaces.isNotEmpty()) navigator.selectServer(null) }
         account.loadAllChannels()
     }
+    // A matrix.to or matrix: link opened from another app.
+    LaunchedEffect(app.diddy.app.ShareInbox.link) {
+        val raw = app.diddy.app.ShareInbox.link ?: return@LaunchedEffect
+        app.diddy.app.ShareInbox.link = null
+        when (val link = app.diddy.app.MatrixToLink.parse(app.diddy.app.MatrixToLink.fromMatrixUri(raw))) {
+            is app.diddy.app.MatrixToLink.User -> navigator.show(Sheet.Profile(link.userId, null))
+            is app.diddy.app.MatrixToLink.Room -> navigator.show(Sheet.JoinLink(link.roomIdOrAlias, link.via))
+            is app.diddy.app.MatrixToLink.Event -> navigator.show(Sheet.JoinLink(link.roomIdOrAlias, link.via, link.eventId))
+            null -> {}
+        }
+    }
     LaunchedEffect(AppModel.openRequest) {
         val request = AppModel.openRequest ?: return@LaunchedEffect
         if (request.first != account.id) return@LaunchedEffect
@@ -66,6 +77,7 @@ fun MainScreen(account: MatrixAccount) {
             }
         }
         app.diddy.ui.call.CallOverlay(account, navigator)
+        app.diddy.app.ShareInbox.incoming?.let { app.diddy.ui.sheets.ShareTargetSheet(account, it, navigator) }
         SheetHost(account, navigator)
     }
 }

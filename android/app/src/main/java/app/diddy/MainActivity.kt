@@ -80,8 +80,9 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handle(intent: Intent?) {
-        val data = intent?.data ?: return
-        if (data.scheme == OAuthRedirects.SCHEME) {
+        if (intent == null) return
+        val data = intent.data
+        if (data != null && data.scheme == OAuthRedirects.SCHEME) {
             waitingForOAuth = false
             OAuthRedirects.deliver(data.toString())
             return

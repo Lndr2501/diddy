@@ -83,3 +83,12 @@ class SheetLogicTest {
         assertFalse(email.acceptsPassword)
     }
 }
+
+class MatrixUriTest {
+    @org.junit.Test fun matrixUrisBecomeMatrixToLinks() {
+        org.junit.Assert.assertEquals("https://matrix.to/#/#room:x.org?via=x.org", app.diddy.app.MatrixToLink.fromMatrixUri("matrix:r/room:x.org?via=x.org&action=join"))
+        org.junit.Assert.assertEquals("https://matrix.to/#/!id:x.org/\$ev", app.diddy.app.MatrixToLink.fromMatrixUri("matrix:roomid/id:x.org/e/ev"))
+        org.junit.Assert.assertEquals("https://matrix.to/#/@a:x.org", app.diddy.app.MatrixToLink.fromMatrixUri("matrix:u/a:x.org"))
+        org.junit.Assert.assertEquals("https://matrix.to/#/@a:x.org", app.diddy.app.MatrixToLink.fromMatrixUri("https://matrix.to/#/@a:x.org"))
+    }
+}

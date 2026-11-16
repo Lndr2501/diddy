@@ -67,6 +67,8 @@ import app.diddy.matrix.ownServerName
 import app.diddy.matrix.publicRooms
 import app.diddy.matrix.roomPreview
 import app.diddy.matrix.roomVersionChoices
+import app.diddy.matrix.isDiddyOptionsRoom
+import app.diddy.matrix.serverInfo
 import app.diddy.ui.AvatarView
 import app.diddy.ui.FilledButton
 import app.diddy.ui.FullSheet
@@ -603,5 +605,52 @@ fun ChannelInfoSheet(account: MatrixAccount, roomId: String, navigator: Navigato
             },
             dismissButton = { TextButton(onClick = { confirmLeave = false }) { Text("Cancel") } },
         )
+    }
+}
+
+// MARK: - Share target
+
+/** Pick the chat for something another app shared (ios ShareTargetSheet). */
+@Composable
+fun ShareTargetSheet(account: MatrixAccount, share: app.diddy.app.IncomingShare, navigator: Navigator) {
+    var query by remember { mutableStateOf("") }
+    val chats = account.rooms
+        .filter { it.isJoined && !it.isSpace && !account.isVoiceChannel(it.id) && !account.isDiddyOptionsRoom(it.id, it.topic) }
+        .filter { query.isBlank() || it.name.contains(query.trim(), ignoreCase = true) }
+        .sortedByDescending { it.lastActivity?.time ?: 0 }
+    FullSheet("Share", { app.diddy.app.ShareInbox.cancel() }, closeLabel = "Cancel") {
+        Column(Modifier.fillMaxSize()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (share.files.isNotEmpty()) Text(
+                    share.files.joinToString(", ") { it.name }, color = Theme.muted, fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                )
+                if (share.text.isNotEmpty()) Text(
+                    share.text, color = Theme.text, maxLines = 4, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Theme.elevated).padding(12.dp),
+                )
+            }
+            SearchBar(query, { query = it }, "Search")
+            GroupHeader("Send to")
+            LazyColumn(Modifier.weight(1f)) {
+                items(chats, key = { it.id }) { room ->
+                    Row(
+                        Modifier.fillMaxWidth().clickable {
+                            app.diddy.app.ShareInbox.stage(room.id)
+                            navigator.closeAll()
+                            navigator.open(room.id, account)
+                        }.padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        AvatarView(room.avatarUrl, room.name, 38.dp, account)
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(room.name, color = Theme.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            account.server(room.id)?.let { Text(account.serverInfo(it).first, color = Theme.faint, fontSize = 12.sp, maxLines = 1) }
+                        }
+                    }
+                }
+                if (chats.isEmpty()) item { EmptyNote(if (query.isBlank()) "No chats yet." else "No chat matches “${query.trim()}”.") }
+            }
+        }
     }
 }
