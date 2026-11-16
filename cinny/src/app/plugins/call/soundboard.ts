@@ -12,7 +12,7 @@
 import { useSyncExternalStore } from 'react';
 import { deleteBlob, getBlob, putBlob } from '../../utils/blobStore';
 import { diag } from '../diagnostics';
-import { getCallPrefs } from '../../state/callPrefs';
+import { getCallPrefs, micAutoGain } from '../../state/callPrefs';
 import { getAudioPrefs, registerInputGain } from './audioDevices';
 import { applyAudioProcessingPolicy } from './audioConstraints';
 import { getSharedAudioContext } from './sharedAudio';
@@ -38,7 +38,7 @@ const blobKey = (id: string) => `clip:${id}`;
 
 /** Keep every microphone entry point on the current voice-processing policy. */
 const forceProcessingOff = (c?: MediaTrackConstraints): MediaTrackConstraints =>
-  applyAudioProcessingPolicy(c ?? {}, getCallPrefs().echoCancellation);
+  applyAudioProcessingPolicy(c ?? {}, getCallPrefs().echoCancellation, micAutoGain());
 
 /** Audio constraints with the echo preference and (optionally) the chosen microphone merged in. */
 const mergeAudioConstraints = (

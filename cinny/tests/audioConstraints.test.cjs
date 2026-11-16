@@ -86,3 +86,27 @@ test('ON passes the original constraints through unchanged', () => {
 test('ON preserves audio:true rather than forcing any processing flags', () => {
   assert.strictEqual(applyAudioProcessingPolicy(true, true), true);
 });
+
+// Windows was very quiet with "Voice processing" off: automatic gain stays on when asked for.
+test('OFF keeps automatic gain when autoGain is on, and only that', () => {
+  assert.deepEqual(applyAudioProcessingPolicy(true, false, true), {
+    ...processingOff,
+    autoGainControl: true,
+  });
+  assert.deepEqual(
+    applyAudioProcessingPolicy({ autoGainControl: false, echoCancellation: true }, false, true),
+    { ...processingOff, autoGainControl: true }
+  );
+  assert.deepEqual(applyAudioProcessingPolicy(true, false, false), processingOff);
+  assert.strictEqual(applyAudioProcessingPolicy(true, true, false), true);
+});
+
+test('automatic gain is a call preference, on by default outside macOS', () => {
+  const prefs = readFileSync(path.join(__dirname, '../src/app/state/callPrefs.ts'), 'utf8');
+  assert.match(prefs, /autoGain: autoGainSupported\(\)/);
+  assert.match(prefs, /Macintosh\|Mac OS X/);
+  for (const file of ['../src/app/plugins/call/soundboard.ts', '../src/app/plugins/call/audioDevices.ts']) {
+    const src = readFileSync(path.join(__dirname, file), 'utf8');
+    assert.match(src, /applyAudioProcessingPolicy\(.*, micAutoGain\(\)\)/, file);
+  }
+});

@@ -2,6 +2,7 @@
 
 ## Unveröffentlicht
 
+- **Calls unter Windows nicht mehr so leise (Windows, Linux):** Mit „Voice processing“ aus (Standard) war auch die automatische Mikro-Lautstärke aus, und viele Windows-Mikros kamen dann kaum an. Neue Einstellung *Settings → Calls & Audio → Automatic mic volume*, unter Windows und Linux standardmäßig an: Sie hebt ein leises Mikro auf normale Sprechlautstärke, auch ohne Voice processing. Außerdem darf Chromium den Mikro-Regler des Systems nicht mehr selbst herunterdrehen (blieb unter Windows danach dauerhaft unten). macOS bleibt unverändert (natives Mikro, sonst käme der Sprachmodus des Systems zurück); iOS nutzt eigene Audioverarbeitung und ist nicht betroffen.
 - **Update-Hinweis zeigt die neueste Version (#246, macOS, Linux, Windows, iOS):** Lag Diddy zwei oder mehr Versionen zurück, nannte der Hinweis oft nur die nächste, und „Download“ führte auf deren Seite. Der Hinweis prüfte nur alle sechs Stunden (iOS einmal pro Start) und behielt die zuerst gefundene Version, auch wenn kurz danach eine neuere erschien. Jetzt prüft er stündlich und beim Zurückkehren ins Fenster, ersetzt die angezeigte Version jedes Mal und nimmt am Desktop wie auf iOS die höchste Version aus der Release-Liste statt nur des „latest“-Eintrags.
 
 ## 1.12.0 (2026-11-16)
