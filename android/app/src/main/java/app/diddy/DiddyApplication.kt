@@ -26,6 +26,7 @@ class DiddyApplication : Application() {
         VoicePlayer.init(this)
         app.diddy.media.MusicPreviewPlayer.init(this)
         MediaLoader.install(this)
+        app.diddy.plugins.PluginStore.init(this)
         Wiring.install(this)
         thread(name = "emoji") { EmojiCatalog.load(this) }
     }
