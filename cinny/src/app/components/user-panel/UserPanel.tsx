@@ -38,6 +38,8 @@ import { DiddyStatus } from '../../plugins/diddy/types';
 import { getMxIdLocalPart } from '../../utils/matrix';
 import { nameInitials } from '../../utils/common';
 import { useOwnAgentTalking } from '../../state/agentVoice';
+import { usePushToTalkState } from '../../state/pushToTalk';
+import { pushToTalkHoldProps } from '../../features/call/pushToTalkHold';
 import { ConnectionsMenu } from '../connection-recovery/AccountSwitcher';
 import { ConnectionOverview } from '../connection-recovery/ConnectionRecovery';
 import { getConnectionProfile, recordAccount, visibleHomeserver } from '../../plugins/connections';
@@ -51,6 +53,7 @@ type ActiveCallButtonsProps = {
 function ActiveCallButtons({ callEmbed }: ActiveCallButtonsProps) {
   const { microphone, sound } = useCallControlState(callEmbed.control);
   const joined = useCallJoined(callEmbed);
+  const ptt = usePushToTalkState();
 
   const handleMicrophone = useCallback(() => {
     callEmbed.control.toggleMicrophone();
@@ -61,21 +64,38 @@ function ActiveCallButtons({ callEmbed }: ActiveCallButtonsProps) {
 
   return (
     <>
-      <IconButton
-        variant="SurfaceVariant"
-        fill="None"
-        size="300"
-        radii="300"
-        className={css.UserPanelButton}
-        data-muted={!microphone}
-        aria-label={microphone ? 'Mute microphone' : 'Unmute microphone'}
-        title={microphone ? 'Mute microphone' : 'Unmute microphone'}
-        aria-pressed={!microphone}
-        disabled={!joined}
-        onClick={handleMicrophone}
-      >
-        <Icon size="100" src={microphone ? Icons.Mic : Icons.MicMute} filled={!microphone} />
-      </IconButton>
+      {ptt.active ? (
+        <IconButton
+          variant={ptt.open ? 'Success' : 'SurfaceVariant'}
+          fill={ptt.open ? 'Soft' : 'None'}
+          size="300"
+          radii="300"
+          className={css.UserPanelButton}
+          aria-label="Push to talk: hold to talk"
+          title={ptt.heldWhileFullMuted ? 'Full mute is on' : 'Push to talk: hold to talk'}
+          aria-pressed={ptt.open}
+          disabled={!joined}
+          {...pushToTalkHoldProps}
+        >
+          <Icon size="100" src={ptt.open ? Icons.Mic : Icons.MicMute} filled={ptt.open} />
+        </IconButton>
+      ) : (
+        <IconButton
+          variant="SurfaceVariant"
+          fill="None"
+          size="300"
+          radii="300"
+          className={css.UserPanelButton}
+          data-muted={!microphone}
+          aria-label={microphone ? 'Mute microphone' : 'Unmute microphone'}
+          title={microphone ? 'Mute microphone' : 'Unmute microphone'}
+          aria-pressed={!microphone}
+          disabled={!joined}
+          onClick={handleMicrophone}
+        >
+          <Icon size="100" src={microphone ? Icons.Mic : Icons.MicMute} filled={!microphone} />
+        </IconButton>
+      )}
       <DeviceChevron kind="input" className={css.UserPanelChevron} />
       <IconButton
         variant="SurfaceVariant"

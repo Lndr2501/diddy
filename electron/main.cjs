@@ -40,6 +40,7 @@ const { createSystemAudio } = require('./lib/systemAudio.cjs');
 const { createScreenPicker, screenSourceOptions } = require('./lib/screenPicker.cjs');
 const { parseAgentVoiceLaunch, createAgentVoiceTrigger } = require('./lib/agentVoice.cjs');
 const { createAgentVoiceHotkey } = require('./lib/agentVoiceHotkey.cjs');
+const { createHotkeySlots } = require('./lib/hotkeySlots.cjs');
 const { sanitizeHotkey } = require('./lib/globalHotkey.cjs');
 const { startPortalShortcut } = require('./lib/portalShortcut.cjs');
 const { installShellInput } = require('./lib/shellInput.cjs');
@@ -356,6 +357,14 @@ const agentVoiceHotkey = createAgentVoiceHotkey({
   startPortal: startPortalShortcut,
   log: (line) => diag.writeLine(line),
 });
+// The page's other system-wide hotkeys (push-to-talk), same mechanism, one slot each.
+const hotkeySlots = createHotkeySlots({
+  globalShortcut,
+  helper: shortcutHelper,
+  helperAvailable: () => fs.existsSync(shortcutHelper),
+  startPortal: startPortalShortcut,
+  log: (line) => diag.writeLine(line),
+});
 
 /** `diddy --agent-voice start|stop|toggle` (#57). True when the launch was one of these. */
 const handleAgentVoiceLaunch = (argv) => {
@@ -413,6 +422,10 @@ const commands = {
   // Binds the page's hotkey globally (null: unbind). Answers { path: 'portal' | 'x11' | 'window', trigger?, reason? }.
   agent_voice_bind: ({ hotkey }) => agentVoiceHotkey.bind(sanitizeHotkey(hotkey)),
   agent_voice_hotkey_info: () => agentVoiceHotkey.info(),
+  // Other hotkeys of the page by slot (push-to-talk): bind system-wide (null: unbind), then wait for the key.
+  // `key` (the key code) is for the macOS shell, which reads the key itself; here the bound slot answers.
+  hotkey_bind: ({ slot, hotkey }) => hotkeySlots.bind(slot, sanitizeHotkey(hotkey)),
+  hotkey_wait: (args) => hotkeySlots.wait(args?.slot, args?.lastKey, args?.timeoutMs),
   // The update check belongs to the macOS shell; Linux has no native updater (the UI still sends this).
   updater_set_config: () => null,
 };
@@ -441,7 +454,10 @@ ipcMain.on('diddy:audio-ack', (event, id) => {
   if (trusted(event)) audioCaptures.get(event.sender.id)?.ack(id);
 });
 app.on('before-quit', () => audioCaptures.forEach((audio) => audio.close()));
-app.on('will-quit', () => agentVoiceHotkey.close());
+app.on('will-quit', () => {
+  agentVoiceHotkey.close();
+  hotkeySlots.close();
+});
 
 ipcMain.handle('diddy:invoke', async (event, cmd, args) => {
   // Only Diddy's own top-level page may call these (not Element Call's frame, not other sites).

@@ -520,6 +520,7 @@ pub fn run() {
             connections::set_account_label,
             agent_voice::agent_voice_state,
             agent_voice::agent_voice_wait,
+            agent_voice::hotkey_wait,
             updater::updater_state,
             updater::updater_action,
             updater::updater_open_release_page,

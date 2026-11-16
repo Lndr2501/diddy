@@ -53,6 +53,7 @@ import { updateCallPrefs, useCallPrefs } from '../../../state/callPrefs';
 import { SoundSettings } from './SoundSettings';
 import { browserStorage, clearAllCallVolumes } from '../../../plugins/call/volumeMemory';
 import { AgentVoiceSettings } from './AgentVoiceSettings';
+import { PushToTalkSettings } from './PushToTalkSettings';
 import { WatchTogetherSettings } from './WatchTogetherSettings';
 import { CameraDeviceList } from '../../call/DevicePicker';
 import { AvatarSurface, setAvatarAnimation, useAvatarPrefs } from '../../../state/avatarPrefs';
@@ -1042,6 +1043,7 @@ export function CallsSettings({ requestClose }: PageProps) {
   return (
     <SettingsPage title="Calls & Audio" requestClose={requestClose}>
       <CallSettings />
+      <PushToTalkSettings />
       <SoundSettings />
       <AgentVoiceSettings />
       <WatchTogetherSettings />

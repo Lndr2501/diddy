@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-hotkey-wait"
+description = "Enables the hotkey_wait command without any pre-configured scope."
+commands.allow = ["hotkey_wait"]
+
+[[permission]]
+identifier = "deny-hotkey-wait"
+description = "Denies the hotkey_wait command without any pre-configured scope."
+commands.deny = ["hotkey_wait"]

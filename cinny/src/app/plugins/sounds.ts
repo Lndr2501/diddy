@@ -45,7 +45,9 @@ export type SoundId =
   | 'ringback'
   | 'callJoined'
   | 'callDeclined'
-  | 'connectionLost';
+  | 'connectionLost'
+  | 'pttOn'
+  | 'pttOff';
 
 export type SoundInfo = { id: SoundId; title: string; description: string; url: string };
 
@@ -146,6 +148,18 @@ export const SOUND_GROUPS: { title: string; sounds: SoundInfo[] }[] = [
         title: 'Stream ends',
         description: 'You stop sharing your screen.',
         url: streamEnded,
+      },
+      {
+        id: 'pttOn',
+        title: 'Push to talk opens',
+        description: 'A soft click when holding the push-to-talk key opens your microphone.',
+        url: unmute,
+      },
+      {
+        id: 'pttOff',
+        title: 'Push to talk closes',
+        description: 'A soft click when letting go closes your microphone again.',
+        url: mute,
       },
       {
         id: 'micChange',

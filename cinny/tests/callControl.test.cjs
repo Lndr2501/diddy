@@ -22,7 +22,7 @@ const guardSource = ts.transpileModule(
 const deafenGuard = {};
 vm.runInNewContext(guardSource, { exports: deafenGuard });
 
-function setup({ missing = false, disabled = false, contentWindow = true, call = {}, state = {} } = {}) {
+function setup({ missing = false, disabled = false, contentWindow = true, call = {}, state = {}, ptt = false } = {}) {
   const calls = [];
   const diagnostics = [];
   let focused = false;
@@ -58,7 +58,14 @@ function setup({ missing = false, disabled = false, contentWindow = true, call =
     './callSounds': { playCallSound() {} },
     'matrix-widget-api': {},
     events: require('node:events'),
-    './CallControlState': {},
+    './CallControlState': {
+      CallControlState: class {
+        constructor(microphone, video, sound, screenshare, spotlight) {
+          Object.assign(this, { microphone, video, sound, screenshare, spotlight });
+        }
+      },
+    },
+    '../../state/pushToTalk': { isPushToTalkMode: () => ptt },
     '../diagnostics': { diag: (message) => diagnostics.push(message) },
     './audioDevices': { subscribeAudioPrefs: () => () => {}, applyAudioOutput() {} },
     './screenShareAudio': { screenShareAudio: {} },
@@ -194,4 +201,64 @@ test('fully muted: a microphone the call page switched on by itself is muted aga
   assert.equal(control.microphone, false, 'microphone still off');
   assert.deepEqual(JSON.parse(JSON.stringify(sent[sent.length - 1])), { audio_enabled: false, video_enabled: false });
   assert.ok(diagnostics.some((d) => /turned the microphone on while fully muted/.test(d)));
+});
+
+const recordingCall = (sent) => ({
+  transport: {
+    send: async (action, data) => {
+      sent.push(JSON.parse(JSON.stringify(data)));
+      return {};
+    },
+  },
+});
+
+test('push-to-talk asks for an absolute microphone state, also twice in a row', async () => {
+  const sent = [];
+  const state = { microphone: false, video: false, sound: true, screenshare: false, spotlight: false };
+  const { control } = setup({ call: recordingCall(sent), state, ptt: true });
+  control.setMicrophone(true);
+  control.setMicrophone(false);
+  await new Promise((resolve) => {
+    setTimeout(resolve, 10);
+  });
+  assert.deepEqual(sent, [
+    { audio_enabled: true, video_enabled: false },
+    { audio_enabled: false, video_enabled: false },
+  ]);
+});
+
+test('push-to-talk: full mute while an opening is on its way stays a full mute (#225)', async () => {
+  const sent = [];
+  const state = { microphone: false, video: false, sound: true, screenshare: false, spotlight: false };
+  const { control } = setup({ call: recordingCall(sent), state, ptt: true });
+  control.setMicrophone(true); // key pressed, the page has not answered yet
+  control.toggleSound(true); // full mute
+  control.setMicrophone(false); // PushToTalkSync closes on the full mute
+  await new Promise((resolve) => {
+    setTimeout(resolve, 10);
+  });
+  // the late answer to the opening
+  control.onMediaState({ detail: { data: { audio_enabled: true, video_enabled: false } } });
+  await new Promise((resolve) => {
+    setTimeout(resolve, 10);
+  });
+  assert.equal(control.sound, false, 'still fully muted');
+  assert.deepEqual(sent[sent.length - 1], { audio_enabled: false, video_enabled: false });
+});
+
+test('push-to-talk: lifting the full mute does not bring back the microphone from before', async () => {
+  const run = async (ptt) => {
+    const sent = [];
+    const state = { microphone: true, video: false, sound: true, screenshare: false, spotlight: false };
+    const { control } = setup({ call: recordingCall(sent), state, ptt });
+    control.toggleSound(true); // full mute: microphone off
+    control.onMediaState({ detail: { data: { audio_enabled: false, video_enabled: false } } });
+    control.toggleSound(true); // lift it
+    await new Promise((resolve) => {
+      setTimeout(resolve, 10);
+    });
+    return sent.map((s) => s.audio_enabled);
+  };
+  assert.deepEqual(await run(false), [false, true], 'voice activation restores the microphone');
+  assert.deepEqual(await run(true), [false], 'push-to-talk leaves it to the key');
 });

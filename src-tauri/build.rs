@@ -24,6 +24,7 @@ fn main() {
                 "set_account_label",
                 "agent_voice_state",
                 "agent_voice_wait",
+                "hotkey_wait",
                 "updater_state",
                 "updater_action",
                 "updater_open_release_page",
