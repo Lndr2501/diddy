@@ -21,8 +21,16 @@ object CallLogic {
 
     data class Transport(val serviceUrl: String, val alias: String)
 
-    /** One `call.member` state event: its state key, content and when the server got it. */
-    data class MemberEvent(val stateKey: String, val content: Map<String, Any?>, val originTs: Long? = null)
+    /**
+     * One `call.member` state event: its state key, content, when the server got it and who sent
+     * it (null when the source does not say).
+     */
+    data class MemberEvent(val stateKey: String, val content: Map<String, Any?>, val originTs: Long? = null, val sender: String? = null)
+
+    /** One device in the call according to Matrix. */
+    data class MemberDevice(val userId: String, val deviceId: String) {
+        val identity: String get() = identity(userId, deviceId)
+    }
 
     fun stateKey(userId: String, deviceId: String) = "_${userId}_${deviceId}_m.call"
 
@@ -110,6 +118,74 @@ object CallLogic {
         var padded = text.replace('-', '+').replace('_', '/')
         while (padded.length % 4 != 0) padded += "="
         return runCatching { Base64.getDecoder().decode(padded) }.getOrNull()
+    }
+
+    /**
+     * The devices with a live `call.member` membership (MatrixRTC). Only these get our media key
+     * and only their keys are used, so someone who merely reaches the media server, or left the
+     * call, can neither listen nor inject media. A membership counts when it is for `m.call`, has
+     * not expired, names its device, and its state key belongs to the sender (state keys are
+     * `_@user:server_DEVICE_m.call`; a sender cannot claim someone else's).
+     */
+    fun liveMembers(events: Collection<MemberEvent>, now: Long): Set<MemberDevice> {
+        val result = linkedSetOf<MemberDevice>()
+        for (event in events) {
+            val content = event.content
+            if (content["application"].str() != "m.call") continue
+            val device = content["device_id"].str()?.takeIf { it.isNotEmpty() } ?: continue
+            val created = content["created_ts"].long() ?: event.originTs ?: now
+            val expires = content["expires"].long() ?: MEMBERSHIP_EXPIRY_MS
+            if (created + expires < now) continue
+            val user = event.sender ?: event.stateKey.removePrefix("_").removeSuffix("_${device}_m.call").takeIf { it != event.stateKey.removePrefix("_") }
+            if (user == null || !user.startsWith("@") || !user.contains(':')) continue
+            if (event.stateKey != stateKey(user, device) && event.stateKey != "${user}_$device") continue
+            result += MemberDevice(user, device)
+        }
+        return result
+    }
+
+    /** Devices to send our key to: in the media room and with a live membership, never ourselves. */
+    fun keyRecipients(identities: List<String>, members: Set<MemberDevice>, ownIdentity: String): Map<String, List<String>> {
+        val allowed = members.map { it.identity }.toSet()
+        return recipients(identities.filter { it in allowed && it != ownIdentity })
+    }
+
+    /**
+     * Whether a received key may be used: it came Olm-encrypted, from the device it says it is
+     * for, and that device is in the call. Keys of devices whose membership has not arrived yet
+     * wait (see [CallSession]); keys for anyone else are dropped.
+     */
+    fun keyIsFromMember(key: ReceivedKey, senderDeviceId: String?, members: Set<MemberDevice>): Boolean {
+        val (user, device) = split(key.participantId) ?: return false
+        if (senderDeviceId != null && senderDeviceId != device) return false
+        return MemberDevice(user, device) in members
+    }
+
+    /** The next index of our own key: rotating keeps the old one usable for frames in flight. */
+    fun nextKeyIndex(index: Int): Int = (index + 1) % KEY_RING_SIZE
+
+    const val KEY_RING_SIZE = 256
+
+    /** Element Call waits this long before sending with a new key, so everybody has it first. */
+    const val USE_NEW_KEY_DELAY_MS = 5_000L
+
+    /** Several people leaving at once rotate the key once. */
+    const val ROTATE_DEBOUNCE_MS = 1_000L
+
+    /** How the call is protected, for the badge in the call screen. */
+    sealed interface Protection {
+        /** The room is not encrypted, so the call is not either (like Element Call). */
+        data object NotEncrypted : Protection
+        /** Everyone in the call sent their key. */
+        data object Encrypted : Protection
+        /** Waiting for the keys of these people; their audio and video stay silent until then. */
+        data class WaitingForKeys(val userIds: List<String>) : Protection
+    }
+
+    fun protection(encrypted: Boolean, remoteIdentities: List<String>, keyed: Set<String>): Protection {
+        if (!encrypted) return Protection.NotEncrypted
+        val missing = remoteIdentities.filter { it !in keyed }.mapNotNull { split(it)?.first }.distinct()
+        return if (missing.isEmpty()) Protection.Encrypted else Protection.WaitingForKeys(missing)
     }
 
     /** Devices to send our key to, from LiveKit identities. */

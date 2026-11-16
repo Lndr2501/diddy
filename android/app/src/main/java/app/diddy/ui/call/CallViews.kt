@@ -50,6 +50,8 @@ import androidx.compose.material.icons.filled.Headset
 import androidx.compose.material.icons.filled.HeadsetOff
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.LibraryMusic
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.PhoneInTalk
@@ -83,6 +85,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -92,6 +95,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import app.diddy.call.CallLogic
 import app.diddy.call.CallManager
 import app.diddy.call.CallMember
 import app.diddy.call.CallPrefs
@@ -311,6 +315,7 @@ private fun ConnectedCall(session: CallSession, title: String, navigator: Naviga
             title, status + if (session.deafened) " · Deafened" else "", minimizeIcon, onMinimize,
             onWatch = if (watchOffered) ({ watchLink = true }) else null,
         ) { navigator.show(Sheet.Members(session.roomId)) }
+        if (session.connected) ProtectionBadge(session)
         session.companion?.let { role ->
             Column(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 4.dp).clip(RoundedCornerShape(10.dp)).background(Theme.accent.copy(alpha = 0.15f)).padding(10.dp)) {
                 Text("This phone is your computer's ${listOfNotNull("camera".takeIf { role.media.camera }, "microphone".takeIf { role.media.microphone }, "screen".takeIf { role.media.screen }).joinToString(" and ")}. The call plays on your computer.", color = Theme.text, fontSize = 13.sp)
@@ -368,6 +373,28 @@ private fun ConnectedCall(session: CallSession, title: String, navigator: Naviga
                 TextButton(onClick = { navigator.show(Sheet.Profile(member.userId, session.roomId)); volumeFor = null }) { Text("Profile") }
             },
         )
+    }
+}
+
+/** Whether the call is end-to-end encrypted, and whose keys are still missing. */
+@Composable
+private fun ProtectionBadge(session: CallSession) {
+    val (icon, text, color) = when (val protection = session.protection) {
+        CallLogic.Protection.NotEncrypted -> Triple(Icons.Filled.LockOpen, "Not end-to-end encrypted: this room is not encrypted", Theme.muted)
+        CallLogic.Protection.Encrypted -> Triple(Icons.Filled.Lock, "End-to-end encrypted", Theme.online)
+        is CallLogic.Protection.WaitingForKeys -> Triple(
+            Icons.Filled.Lock,
+            "Encrypted · waiting for the key of ${protection.userIds.joinToString { session.account.name(it) }}",
+            Theme.warning,
+        )
+    }
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 2.dp).semantics(mergeDescendants = true) {},
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, null, tint = color, modifier = Modifier.size(14.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(text, color = color, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
