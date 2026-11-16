@@ -98,7 +98,7 @@ private struct AppIconSection: View {
         } header: {
             Text(L("settings.general.appIcon"))
         } footer: {
-            Text("Changes the icon on your home screen.")
+            Text(L("ios.extraSettings.appIconHelp"))
         }
     }
 
@@ -157,7 +157,7 @@ struct DisplaySection: View {
         } header: {
             Text(L("settings.general.display"))
         } footer: {
-            Text("Page Zoom goes from 75% to 150% and works on top of the text size set in iOS Settings.")
+            Text(L("ios.extraSettings.pageZoomHelp"))
         }
     }
 }
@@ -183,15 +183,15 @@ struct CustomThemeView: View {
                 ColorPicker(L("settings.customTheme.background"), selection: binding(\.background), supportsOpacity: false)
                 ColorPicker(L("settings.profileCardEditor.text"), selection: binding(\.text), supportsOpacity: false)
             } footer: {
-                Text("Pick the \u{201C}Custom\u{201D} theme in the theme list to use these colors.")
+                Text(L("ios.extraSettings.customThemeHelp"))
             }
             Section {
-                Button("Save Colors") { store.setCustom(draft) }
+                Button(L("ios.extraSettings.saveColors")) { store.setCustom(draft) }
                     .disabled(draft == store.custom)
                 Button(L("settings.customTheme.resetColors")) { draft = CustomThemeConfig.defaults }
                     .disabled(draft == CustomThemeConfig.defaults)
             } footer: {
-                Text("Saving rebuilds the app screens with the new colors.")
+                Text(L("ios.extraSettings.saveColorsHelp"))
             }
         }
         .scrollContentBackground(.hidden)

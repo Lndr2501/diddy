@@ -19,16 +19,16 @@ struct SoundSettingsView: View {
                     Text(group.title)
                 } footer: {
                     if group.sounds.contains(.ringtone) {
-                        Text("Diddy can only ring while it is open. The ringtone follows the silent switch and also vibrates.")
+                        Text(L("ios.extraSettings.ringtoneHelp"))
                     } else if index == Sound.groups.count - 1 {
-                        Text("Your own sounds stay on this device. Notifications while Diddy is in the background keep Diddy's sound.")
+                        Text(L("ios.extraSettings.customSoundsHelp"))
                     }
                 }
             }
         }
         .scrollContentBackground(.hidden)
         .background(Theme.sidebar)
-        .navigationTitle("Sounds")
+        .navigationTitle(L("ios.settings.sounds"))
         .navigationBarTitleDisplayMode(.inline)
         .onAppear(perform: load)
         .onDisappear { Sounds.shared.stopLoop() }
@@ -46,7 +46,7 @@ struct SoundSettingsView: View {
                 error = failure.friendlyMessage
             }
         }
-        .alert("Sound", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
+        .alert(L("settings.notificationModeSwitcher.sound"), isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
             Button(L("settings.localPlugins.ok"), role: .cancel) {}
         } message: {
             Text(error ?? "")
@@ -79,8 +79,8 @@ struct SoundSettingsView: View {
                 }
             }
             HStack(spacing: 16) {
-                Button { Sounds.shared.preview(sound) } label: { Label("Listen", systemImage: "play.circle.fill") }
-                    .accessibilityLabel("Play \(sound.title)")
+                Button { Sounds.shared.preview(sound) } label: { Label(L("ios.extraSettings.listen"), systemImage: "play.circle.fill") }
+                    .accessibilityLabel(L("ios.extraSettings.playSound", ["name": sound.title]))
                 Button {
                     target = sound
                     importing = true
@@ -95,7 +95,7 @@ struct SoundSettingsView: View {
             .font(.footnote)
             .buttonStyle(.borderless)
             if let name = customNames[sound] {
-                Text("Own sound: \(name)").font(.caption2).foregroundStyle(Theme.muted).lineLimit(1)
+                Text(L("ios.extraSettings.ownSound", ["name": name])).font(.caption2).foregroundStyle(Theme.muted).lineLimit(1)
             }
         }
         .padding(.vertical, 2)
@@ -119,7 +119,7 @@ struct CallSettingsView: View {
     var body: some View {
         List {
             Section {
-                Toggle("Noise Suppression", isOn: Binding(
+                Toggle(L("ios.extraSettings.noiseSuppression"), isOn: Binding(
                     get: { noiseSuppression },
                     set: { isOn in
                         noiseSuppression = isOn
@@ -129,67 +129,67 @@ struct CallSettingsView: View {
             } header: {
                 Text(L("call.controls.microphone"))
             } footer: {
-                Text("Filters background noise such as fans and typing out of your microphone. Takes effect at once, also during a call.")
+                Text(L("ios.extraSettings.noiseSuppressionHelp"))
             }
             Section {
-                Toggle("Voice Processing", isOn: $voiceProcessing)
+                Toggle(L("ios.extraSettings.voiceProcessing"), isOn: $voiceProcessing)
             } footer: {
-                Text("The system's echo cancellation and automatic gain. Keep it on if you use the speaker instead of headphones; off keeps music and other apps sounding normal. Applies the next time you join a call.")
+                Text(L("ios.extraSettings.voiceProcessingHelp"))
             }
             Section {
-                Toggle("Push to Talk", isOn: $pushToTalk)
+                Toggle(L("ios.extraSettings.pushToTalk"), isOn: $pushToTalk)
                 if pushToTalk {
-                    Picker("Release Delay", selection: $pushToTalkDelay) {
+                    Picker(L("ios.extraSettings.releaseDelay"), selection: $pushToTalkDelay) {
                         Text(L("settings.contactInfo.none")).tag(0)
                         Text("100 ms").tag(100)
                         Text("200 ms").tag(200)
                         Text("300 ms").tag(300)
                         Text("500 ms").tag(500)
                     }
-                    Picker("Keyboard Key", selection: $pushToTalkKeyboard) {
+                    Picker(L("ios.extraSettings.keyboardKey"), selection: $pushToTalkKeyboard) {
                         ForEach(PushToTalkKey.allCases) { key in
                             Text(key.title).tag(key.rawValue)
                         }
                     }
                 }
             } header: {
-                Text("Input Mode")
+                Text(L("ios.extraSettings.inputMode"))
             } footer: {
                 Text(pushToTalk
-                    ? "Your microphone is off until you hold Talk in the call. With a hardware keyboard (iPad), hold the keyboard key instead. Release Delay keeps it open a moment after you let go, so the end of a word is not cut off. Deafen wins: holding Talk does not undeafen you."
-                    : "Voice activity: your microphone is open while it is on. Turn on Push to Talk to be heard only while you hold Talk.")
+                    ? L("ios.extraSettings.pushToTalkHelp")
+                    : L("ios.extraSettings.voiceActivityHelp"))
             }
             Section {
-                Picker("Resolution", selection: $shareResolution) {
+                Picker(L("ios.extraSettings.resolution"), selection: $shareResolution) {
                     Text("720p").tag(1280)
                     Text("1080p").tag(1920)
                     Text("1440p").tag(2560)
                     Text("Full Screen Size").tag(0)
                 }
-                Picker("Frame Rate", selection: $shareFps) {
+                Picker(L("ios.extraSettings.frameRate"), selection: $shareFps) {
                     Text("15 fps").tag(15)
                     Text("30 fps").tag(30)
                     Text("60 fps").tag(60)
                 }
-                Picker("Picture Quality", selection: $shareQuality) {
+                Picker(L("ios.extraSettings.pictureQuality"), selection: $shareQuality) {
                     Text(L("settings.profileCardEditor.standard")).tag(0.6)
                     Text("High").tag(0.75)
                     Text("Very High").tag(0.9)
                     Text("Maximum").tag(1.0)
                 }
-                Toggle("Sound of Other Apps", isOn: $shareSound)
+                Toggle(L("ios.extraSettings.otherAppsSound"), isOn: $shareSound)
             } header: {
-                Text("Screen Sharing")
+                Text(L("ios.extraSettings.screenSharing"))
             } footer: {
-                Text("For Whole Screen sharing. Higher values look sharper and move more smoothly, and use more battery and data; on a slow connection the call lowers them by itself. Sound of other apps goes out with your microphone and can also be switched while sharing. Applies the next time you start sharing.")
+                Text(L("ios.extraSettings.screenSharingHelp"))
             }
             Section {
-                Button("Reset Volumes", role: .destructive) { confirmReset = true }
+                Button(L("ios.extraSettings.resetVolumes"), role: .destructive) { confirmReset = true }
             } header: {
-                Text("Volumes")
+                Text(L("ios.extraSettings.volumes"))
             } footer: {
                 Text(resetDone
-                    ? "All volumes are back to 100 %."
+                    ? L("ios.extraSettings.volumesReset")
                     : "Diddy remembers the volume and \u{201C}mute for me\u{201D} you set for each person and their screen share, on this device.")
             }
         }
@@ -197,8 +197,8 @@ struct CallSettingsView: View {
         .background(Theme.sidebar)
         .navigationTitle(L("settings.general.calls"))
         .navigationBarTitleDisplayMode(.inline)
-        .confirmationDialog("Reset all volumes to 100 %?", isPresented: $confirmReset, titleVisibility: .visible) {
-            Button("Reset Volumes", role: .destructive) {
+        .confirmationDialog(L("ios.extraSettings.confirmResetVolumes"), isPresented: $confirmReset, titleVisibility: .visible) {
+            Button(L("ios.extraSettings.resetVolumes"), role: .destructive) {
                 CallVolumeMemory.clearAll(UserDefaultsVolumeStorage.shared)
                 resetDone = true
             }

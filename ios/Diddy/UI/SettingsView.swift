@@ -61,14 +61,14 @@ struct SettingsView: View {
                             }
                         }
                         .swipeActions {
-                            Button("Log Out", role: .destructive) { confirmLogout = other }
+                            Button(L("ios.settings.logOut"), role: .destructive) { confirmLogout = other }
                         }
                     }
                     Button {
                         dismiss()
                         app.addingAccount = true
                     } label: {
-                        Label("Add Account", systemImage: "plus.circle.fill")
+                        Label(L("ios.settings.addAccount"), systemImage: "plus.circle.fill")
                     }
                 }
 
@@ -100,14 +100,14 @@ struct SettingsView: View {
                 isPresented: Binding(get: { confirmLogout != nil }, set: { if !$0 { confirmLogout = nil } }),
                 titleVisibility: .visible
             ) {
-                Button("Log Out", role: .destructive) {
+                Button(L("ios.settings.logOut"), role: .destructive) {
                     if let target = confirmLogout { Task { await logOut(target, localOnly: false) } }
                 }
             } message: {
                 Text(L("ios.settings.encryptedMessagesCanOnlyBeReadAgainWithYourRecoveryKeyOrAnotherVerifiedDevice"))
             }
             .alert(
-                "Could not log out",
+                L("ios.settings.couldNotLogOut"),
                 isPresented: Binding(get: { logoutFailure != nil }, set: { if !$0 { logoutFailure = nil } }),
                 presenting: logoutFailure
             ) { failure in
@@ -115,7 +115,7 @@ struct SettingsView: View {
                 Button(L("ios.settings.removeFromThisDeviceAnyway"), role: .destructive) {
                     Task { await logOut(failure.account, localOnly: true) }
                 }
-                Button("Cancel", role: .cancel) {}
+                Button(L("ios.settings.cancel"), role: .cancel) {}
             } message: { failure in
                 Text(L("ios.settings.logoutFailure", ["error": failure.message]))
             }
@@ -142,7 +142,7 @@ struct SettingsView: View {
             NavigationLink { EncryptionSettingsView(account: account) } label: {
                 SettingsRowLabel(
                     title: "Encryption", systemImage: "lock.fill", color: .green,
-                    value: isVerified ? "Verified" : "Not Verified",
+                    value: isVerified ? L("settings.verification.verified") : L("ios.settings.notVerified"),
                     valueColor: isVerified ? Theme.muted : Theme.danger)
             }
             NavigationLink { ContactInfoView(account: account) } label: {
@@ -247,11 +247,11 @@ struct CallAlertSettingsView: View {
             Section {
                 Toggle(L("ios.settings.ntfyAlerts"), isOn: $enabled)
             } footer: {
-                Text("When someone calls you from Diddy while it is closed, the ntfy app shows \u{201C}Name is calling you\u{201D}. Calls from other apps do not send this.")
+                Text(L("ios.extraSettings.ntfyIntro"))
             }
             if enabled {
                 Section {
-                    LabeledContent("Server") {
+                    LabeledContent(L("ios.extraSettings.server")) {
                         TextField(CallPushSettings.defaultServer, text: $server)
                             .multilineTextAlignment(.trailing)
                             .textInputAutocapitalization(.never)
@@ -264,7 +264,7 @@ struct CallAlertSettingsView: View {
                         copied = true
                     } label: {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(copied ? "Topic copied" : "Topic")
+                            Text(copied ? L("ios.extraSettings.topicCopied") : L("ios.extraSettings.topic"))
                             // Monospaced and unhyphenated, so it can be typed off the screen too.
                             Text(CallPushSettings.topic)
                                 .font(.footnote.monospaced())
@@ -272,13 +272,13 @@ struct CallAlertSettingsView: View {
                                 .textSelection(.enabled)
                         }
                     }
-                    .accessibilityHint("Copies the topic")
-                    Button(testing ? "Sending\u{2026}" : "Send Test Alert") {
+                    .accessibilityHint(L("ios.extraSettings.copyTopicHint"))
+                    Button(testing ? L("ios.extraSettings.sending") : L("ios.extraSettings.sendTestAlert")) {
                         testing = true
                         Task {
                             testResult = await CallPush.shared.sendTest()
-                                ? "Sent. It should appear in ntfy within a few seconds."
-                                : "Could not reach the server."
+                                ? L("ios.extraSettings.alertSent")
+                                : L("ios.extraSettings.serverUnreachable")
                             testing = false
                         }
                     }
@@ -287,10 +287,10 @@ struct CallAlertSettingsView: View {
                     Text("ntfy")
                 } footer: {
                     VStack(alignment: .leading, spacing: 6) {
-                        if !serverAllowed { Text("The server must start with https://.").foregroundStyle(Theme.danger) }
+                        if !serverAllowed { Text(L("ios.extraSettings.httpsRequired")).foregroundStyle(Theme.danger) }
                         if let testResult { Text(testResult) }
-                        Text("Install ntfy from the App Store, tap +, and subscribe to this topic on this server. Keep the topic to yourself: anyone who knows it can send you alerts.")
-                        Text("The topic is stored in your direct messages, where the other person and their server can read it.")
+                        Text(L("ios.extraSettings.ntfySetup"))
+                        Text(L("ios.extraSettings.topicPrivacy"))
                     }
                 }
             }
@@ -330,7 +330,7 @@ private struct ProfileSection: View {
                         }
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Change profile picture")
+                .accessibilityLabel(L("ios.extraSettings.changeProfilePicture"))
                 VStack(alignment: .leading, spacing: 4) {
                     TextField(L("settings.diddyProfile.displayName"), text: $name)
                         .font(.headline)
@@ -356,7 +356,7 @@ private struct ProfileSection: View {
             run {
                 guard let raw = try await item.loadTransferable(type: Data.self), let image = UIImage(data: raw),
                       let data = image.jpegData(compressionQuality: 0.85) else {
-                    throw DiddyError("This image could not be read.")
+                    throw DiddyError(L("ios.extraSettings.imageUnreadable"))
                 }
                 try await account.client.uploadAvatar(mimeType: "image/jpeg", data: data)
             }
@@ -438,12 +438,12 @@ struct RecoveryView: View {
                             Image(systemName: reveal ? "eye.slash" : "eye").foregroundStyle(Theme.muted)
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel(reveal ? "Hide recovery key" : "Show recovery key")
+                        .accessibilityLabel(reveal ? L("ios.extraSettings.hideRecoveryKey") : L("ios.extraSettings.showRecoveryKey"))
                     }
                 } header: {
-                    Text("Recovery key or passphrase")
+                    Text(L("ios.extraSettings.recoveryKeyOrPassphrase"))
                 } footer: {
-                    Text("The recovery key (or security key) or passphrase you saved when you set up encryption, for example in Diddy desktop or Element. It unlocks your message history on this device.")
+                    Text(L("ios.extraSettings.recoveryKeyHelp"))
                 }
                 }
                 if let error { Text(error).foregroundStyle(Theme.danger) }
@@ -465,7 +465,7 @@ struct RecoveryView: View {
             .onChange(of: calls.sharingScreen) { sharing in if sharing { key = ""; reveal = false } }
             .navigationTitle(L("ios.settings.verifyDevice"))
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button(L("ios.settings.cancel")) { dismiss() } } }
         }
     }
 }

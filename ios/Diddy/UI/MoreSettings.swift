@@ -30,14 +30,14 @@ struct BlockedUsersView: View {
             if let error {
                 Section {
                     Text(error).font(.footnote).foregroundStyle(Theme.danger)
-                    Button("Try Again") { Task { await load() } }
+                    Button(L("ios.settings.tryAgain")) { Task { await load() } }
                 }
             }
             Section {
                 if loading && userIds.isEmpty {
                     HStack { Spacer(); ProgressView(); Spacer() }
                 } else if userIds.isEmpty && error == nil {
-                    Text("You have not blocked anyone.").foregroundStyle(Theme.muted)
+                    Text(L("ios.extraSettings.noBlockedUsers")).foregroundStyle(Theme.muted)
                 }
                 ForEach(userIds, id: \.self) { userId in
                     HStack {
@@ -47,10 +47,10 @@ struct BlockedUsersView: View {
                     }
                 }
             } header: {
-                Text("Blocked")
+                Text(L("ios.extraSettings.blocked"))
             } footer: {
                 if !userIds.isEmpty {
-                    Text("Blocked people can't send you messages or invites. Unblock them to see their messages again.")
+                    Text(L("ios.extraSettings.blockedHelp"))
                 }
             }
         }
@@ -110,25 +110,25 @@ struct AboutView: View {
         List {
             Section("Diddy") {
                 LabeledContent(L("common.createRoom.version"), value: version)
-                LabeledContent("Server", value: account.record.serverName)
+                LabeledContent(L("ios.extraSettings.server"), value: account.record.serverName)
                 LabeledContent(L("settings.matrixId.matrixId")) {
                     Text(account.userId).textSelection(.enabled)
                 }
-                Button { UIPasteboard.general.string = account.userId } label: { Label("Copy Matrix ID", systemImage: "doc.on.doc") }
+                Button { UIPasteboard.general.string = account.userId } label: { Label(L("ios.extraSettings.copyMatrixId"), systemImage: "doc.on.doc") }
             }
             Section {
                 if let repo = URL(string: "https://github.com/Lndr2501/diddy") {
-                    Link(destination: repo) { Label("Diddy on GitHub", systemImage: "chevron.left.forwardslash.chevron.right") }
+                    Link(destination: repo) { Label(L("ios.extraSettings.diddyOnGithub"), systemImage: "chevron.left.forwardslash.chevron.right") }
                 }
                 if let issues = URL(string: "https://github.com/Lndr2501/diddy/issues") {
-                    Link(destination: issues) { Label("Report a Problem", systemImage: "ladybug.fill") }
+                    Link(destination: issues) { Label(L("ios.extraSettings.reportProblem"), systemImage: "ladybug.fill") }
                 }
             } footer: {
-                Text("Diddy for iOS is built with matrix-rust-sdk and LiveKit.")
+                Text(L("ios.extraSettings.aboutTech"))
             }
             Section {
                 if let exported {
-                    ShareLink(item: exported) { Label("Share Diagnostics File", systemImage: "square.and.arrow.up") }
+                    ShareLink(item: exported) { Label(L("ios.extraSettings.shareDiagnostics"), systemImage: "square.and.arrow.up") }
                 }
                 Button {
                     exporting = true
@@ -146,12 +146,12 @@ struct AboutView: View {
             } header: {
                 Text(L("settings.about.diagnostics"))
             } footer: {
-                Text("A text file with Diddy's log, crash reports and your device model, to attach to a bug report. It contains no messages or keys.")
+                Text(L("ios.extraSettings.diagnosticsHelp"))
             }
         }
         .scrollContentBackground(.hidden)
         .background(Theme.sidebar)
-        .navigationTitle("About Diddy")
+        .navigationTitle(L("ios.settings.aboutDiddy"))
         .navigationBarTitleDisplayMode(.inline)
     }
 }

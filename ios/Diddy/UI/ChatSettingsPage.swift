@@ -44,15 +44,15 @@ struct ChatSettingsView: View {
                 Toggle(isOn: $enterForNewline) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(L("settings.general.enterForNewline"))
-                        Text("Use the send button to send and Return for a new line.").font(.caption).foregroundStyle(Theme.muted)
+                        Text(L("ios.extraSettings.returnNewlineHelp")).font(.caption).foregroundStyle(Theme.muted)
                     }
                 }
                 Toggle(L("settings.general.markdownFormatting"), isOn: $markdown)
-                Toggle("Editor Toolbar", isOn: $editorToolbar)
+                Toggle(L("ios.extraSettings.editorToolbar"), isOn: $editorToolbar)
                 Toggle(isOn: Binding(get: { !shareActivity }, set: { shareActivity = !$0 })) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(L("settings.general.hideTypingReadReceipts"))
-                        Text("Others stop seeing that you type and how far you have read. Chats still count as read for you (a private read receipt, like on desktop).")
+                        Text(L("ios.extraSettings.privateReadHelp"))
                             .font(.caption).foregroundStyle(Theme.muted)
                     }
                 }
@@ -61,36 +61,36 @@ struct ChatSettingsView: View {
             Section {
                 Toggle(isOn: $pictures) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Animated Profile Pictures")
-                        Text("GIF, WebP and APNG profile pictures move. In a call only while the person speaks.")
+                        Text(L("ios.extraSettings.animatedAvatars"))
+                        Text(L("ios.extraSettings.animatedAvatarsHelp"))
                             .font(.caption).foregroundStyle(Theme.muted)
                     }
                 }
                 Toggle(isOn: $nameplates) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(L("settings.general.nameplates"))
-                        Text("Moving pictures, videos and gradients behind names in the member and DM lists.")
+                        Text(L("ios.extraSettings.animatedNameplatesHelp"))
                             .font(.caption).foregroundStyle(Theme.muted)
                     }
                 }
                 Toggle(isOn: $profileEffects) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Profile Effects")
-                        Text("Animated overlays other people put over their profile card.")
+                        Text(L("ios.extraSettings.profileEffects"))
+                        Text(L("ios.extraSettings.profileEffectsHelp"))
                             .font(.caption).foregroundStyle(Theme.muted)
                     }
                 }
                 Toggle(isOn: $profileFrames) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Profile Frames")
+                        Text(L("ios.extraSettings.profileFrames"))
                         Text(L("settings.general.decorativeFramesOtherPeople"))
                             .font(.caption).foregroundStyle(Theme.muted)
                     }
                 }
             } header: {
-                Text("Profile Decorations")
+                Text(L("ios.extraSettings.profileDecorations"))
             } footer: {
-                Text("What other people add to their profile. Nameplates and effects that are off show a still picture, and with Reduce Motion turned on in iOS nothing moves.")
+                Text(L("ios.extraSettings.profileDecorationsHelp"))
             }
         }
         .scrollContentBackground(.hidden)
@@ -112,7 +112,7 @@ struct ChatSettingsView: View {
 
     private var dateAndTime: some View {
         Section {
-            Picker("Time Format", selection: $timeFormat) {
+            Picker(L("ios.extraSettings.timeFormat"), selection: $timeFormat) {
                 ForEach(ChatSettings.TimeFormat.allCases) { Text($0.title).tag($0.rawValue) }
             }
             Picker(L("settings.general.dateFormat"), selection: Binding(
@@ -144,9 +144,9 @@ struct ChatSettingsView: View {
             Text(L("settings.general.dateTime"))
         } footer: {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Example: \(Date().chatTimestamp)")
+                Text(L("ios.extraSettings.dateExample", ["example": Date().chatTimestamp]))
                 if dateSelection.isEmpty {
-                    Text("Custom format with the desktop's tokens, for example YYYY, MM, DD, D, MMM, MMMM, dddd. Text in [brackets] is shown as it is. Today: \(dateExample)")
+                    Text(L("ios.extraSettings.customDateHelp", ["example": dateExample]))
                 }
             }
         }
