@@ -105,6 +105,87 @@ do {
     rejects("PCM byte limit") { try capped.append(interleaved: [1]) }
     capped.abandon()
 } catch { check(false, "PCM fixtures: \(error)") }
+// Real encoder output in `fixtures/` (ffmpeg + libopus/libvorbis, sine tones, see the README).
+let fixtures = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent("fixtures")
+func fixture(_ name: String) -> [UInt8] {
+    guard let data = try? Data(contentsOf: fixtures.appendingPathComponent(name)) else {
+        check(false, "missing fixture \(name) (run from ios/)")
+        return []
+    }
+    return Array(data)
+}
+// name: channels, packets, samples per packet, playable samples (48 kHz)
+let expected: [(String, Int, Int, Int, Int)] = [
+    ("mono-20ms.opus", 1, 76, 960, 72_000),
+    ("stereo-60ms.opus", 2, 17, 2880, 48_000),
+    ("two-streams.ogg", 1, 51, 960, 48_000),   // Vorbis and Opus in one Ogg file: the Opus stream plays
+    ("mono.webm", 1, 51, 960, 48_000),
+]
+for (name, channels, packets, perPacket, playable) in expected {
+    do {
+        let stream = try OpusContainer.parse(fixture(name))
+        check(stream.header.channels == channels, "\(name) channels \(stream.header.channels)")
+        check(stream.header.preSkip == 312, "\(name) pre-skip \(stream.header.preSkip)")
+        check(stream.packets.count == packets, "\(name) packets \(stream.packets.count)")
+        check(stream.sampleCounts.allSatisfy { $0 == perPacket }, "\(name) packet duration")
+        check(stream.playableSamples == playable, "\(name) playable \(stream.playableSamples)")
+        check(abs(stream.duration - Double(playable) / 48_000) < 0.000_1, "\(name) duration")
+    } catch { check(false, "\(name): \(error)") }
+}
+do {
+    _ = try OpusContainer.parse(fixture("vorbis.ogg"))
+    check(false, "Vorbis accepted")
+} catch { check(error as? OpusContainerError == .notOpus, "Vorbis is notOpus, got \(error)") }
+let mono = fixture("mono-20ms.opus")
+for cut in [100, mono.count / 2, mono.count - 1] {
+    do {
+        _ = try OpusContainer.parse(Array(mono.prefix(cut)))
+        check(false, "truncated fixture at \(cut) accepted")
+    } catch {
+        if case .corrupt = error as? OpusContainerError {} else { check(false, "truncated at \(cut): \(error)") }
+    }
+}
+if !mono.isEmpty {
+    var flipped = mono; flipped[mono.count / 2] ^= 0x10
+    rejects("bit flip in a real file") { _ = try OpusContainer.parse(flipped) }
+}
+check(VoiceFailure.message(for: OpusContainerError.notOpus) == OpusContainerError.notOpus.userMessage, "failure text")
+check(VoiceFailure.message(for: OpusCAFWriterError.tooLarge) == OpusContainerError.tooLarge.userMessage, "too large text")
+check(VoiceFailure.message(for: CocoaError(.fileWriteOutOfSpace)) == VoiceFailure.generic, "other errors")
+
+// Cache size limit: least recently used first, the file about to play stays.
+let day = Date(timeIntervalSince1970: 1_800_000_000)
+let cacheEntries = [
+    VoiceCacheEntry(name: "a", bytes: 50, lastUsed: day),
+    VoiceCacheEntry(name: "b", bytes: 50, lastUsed: day.addingTimeInterval(-60)),
+    VoiceCacheEntry(name: "c", bytes: 50, lastUsed: day.addingTimeInterval(60)),
+]
+check(VoiceCache.evictions(cacheEntries, limit: 150, keep: []).isEmpty, "under the limit")
+check(VoiceCache.evictions(cacheEntries, limit: 100, keep: []) == ["b"], "oldest first")
+check(VoiceCache.evictions(cacheEntries, limit: 60, keep: []) == ["b", "a"], "until it fits")
+check(VoiceCache.evictions(cacheEntries, limit: 10, keep: ["b"]) == ["a", "c"], "kept file stays")
+check(VoiceCache.isCacheName("0123456789abcdef0123456789abcdef-opus-v1.caf"), "cache name")
+check(!VoiceCache.isCacheName(UUID().uuidString + ".caf"), "temporary decode name")
+let folder = FileManager.default.temporaryDirectory.appendingPathComponent("voice-cache-\(UUID().uuidString)")
+defer { try? FileManager.default.removeItem(at: folder) }
+do {
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    let names = ["00000000000000000000000000000000.m4a", "11111111111111111111111111111111-opus-v1.caf",
+                 "22222222222222222222222222222222-opus-v1.caf"]
+    for (i, name) in names.enumerated() {
+        let url = folder.appendingPathComponent(name)
+        try Data(count: 1000).write(to: url)
+        VoiceCache.touch(url, now: day.addingTimeInterval(Double(i)))
+    }
+    let temporary = folder.appendingPathComponent(UUID().uuidString + ".caf")
+    try Data(count: 5000).write(to: temporary)
+    VoiceCache.touch(temporary, now: day.addingTimeInterval(-1000))
+    let removed = VoiceCache.prune(folder: folder, limit: 2000, keep: [names[0]])
+    check(removed == [names[1]], "prune removed \(removed)")
+    let left = Set(try FileManager.default.contentsOfDirectory(atPath: folder.path))
+    check(left == [names[0], names[2], temporary.lastPathComponent], "prune left \(left)")
+} catch { check(false, "cache folder: \(error)") }
+
 // Optional real encoder fixtures, generated without user media.
 for path in CommandLine.arguments.dropFirst() {
     do {
