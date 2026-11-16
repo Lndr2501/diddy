@@ -10,6 +10,12 @@ import app.diddy.push.Notifications
 object Wiring {
     fun install(context: Context) {
         Notifications.init(context)
+        app.diddy.push.UnifiedPushing.init(context)
+        val added = AppModel.Hooks.accountAdded
+        AppModel.Hooks.accountAdded = { account ->
+            added(account)
+            app.diddy.push.UnifiedPushing.accountAdded(account)
+        }
         val previous = AppModel.Hooks.roomsChanged
         AppModel.Hooks.roomsChanged = { account, old, new ->
             previous(account, old, new)

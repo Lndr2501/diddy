@@ -74,6 +74,13 @@
             android:name=".call.CallService"
             android:exported="false"
             android:foregroundServiceType="phoneCall|microphone|camera" />
+        <service
+            android:name=".push.DiddyPushService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="org.unifiedpush.android.connector.PUSH_EVENT" />
+            </intent-filter>
+        </service>
         <receiver
             android:name=".push.BootReceiver"
             android:exported="false">

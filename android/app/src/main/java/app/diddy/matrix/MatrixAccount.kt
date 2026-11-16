@@ -177,6 +177,8 @@ class MatrixAccount(val record: AccountRecord, val client: Client) {
     private var serverRoomIdsCache: Set<String>? = null
 
     private var syncService: SyncService? = null
+    /** The running sync, for the notification client of push messages (one process). */
+    val runningSyncService: SyncService? get() = syncService
     private var roomListController: RoomListDynamicEntriesController? = null
     private var spaceService: SpaceService? = null
     private val handles = mutableListOf<TaskHandle>()

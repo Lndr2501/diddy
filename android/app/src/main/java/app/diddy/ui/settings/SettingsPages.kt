@@ -296,6 +296,8 @@ fun NotificationsPage(account: MatrixAccount, open: (SettingsPage) -> Unit) {
     var emailFailed by remember { mutableStateOf(false) }
     var reload by remember { mutableIntStateOf(0) }
     var pushOn by remember { mutableStateOf(PushSettings.enabled) }
+    // Push works without the permission too, but Android then hides the notifications.
+    val pushPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) { PushSettings.setEnabled(context, true); pushOn = true }
     }
@@ -322,6 +324,29 @@ fun NotificationsPage(account: MatrixAccount, open: (SettingsPage) -> Unit) {
         }
     }
     Page {
+        val push = app.diddy.push.UnifiedPushing
+        val distributors = remember { push.distributors() }
+        FormSection(
+            "Push",
+            when {
+                distributors.isEmpty() -> "Install ntfy (F-Droid or Play Store) or another UnifiedPush app. Then the server wakes Diddy for each message, without a connection that stays open."
+                push.enabled -> push.status ?: "The server wakes Diddy through ${push.savedDistributor ?: "your push app"} for each message."
+                else -> "Uses ${distributors.joinToString()} so the server wakes Diddy for each message. Saves battery compared with the background connection."
+            },
+        ) {
+            FormToggle("Push Notifications (UnifiedPush)", push.enabled, enabled = distributors.isNotEmpty()) { on ->
+                if (on) {
+                    if (android.os.Build.VERSION.SDK_INT >= 33 &&
+                        context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
+                    ) pushPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                    push.enable(context) {}
+                } else push.disable()
+            }
+            if (push.enabled && distributors.size > 1) {
+                FormDivider()
+                FormButton("Choose Push App") { push.pick(context) }
+            }
+        }
         FormSection(
             "This Device",
             "Diddy keeps a quiet connection open so new messages, mentions and calls show up as notifications while the app is closed. Android shows a small permanent notification for it.",

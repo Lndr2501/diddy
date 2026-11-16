@@ -77,9 +77,22 @@ object Notifications {
     private val inForeground: Boolean
         get() = ProcessLifecycleOwner.get().lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
 
+    val inForegroundNow: Boolean get() = inForeground
+
+    private val permitted: Boolean
+        get() = Build.VERSION.SDK_INT < 33 || context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+
+    /** The open connection notifies only when push does not already do it. */
     private val canPost: Boolean
-        get() = PushSettings.enabled && !inForeground && (Build.VERSION.SDK_INT < 33 ||
-            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)
+        get() = PushSettings.enabled && !UnifiedPushing.enabled && !inForeground && permitted
+
+    /** A message that came in by push (UnifiedPush). */
+    fun postPush(account: MatrixAccount, roomId: String, title: String, body: String, mention: Boolean, noisy: Boolean) {
+        if (!::context.isInitialized || !permitted || inForeground) return
+        if (DoNotDisturb.silencesNotification(PresenceStore.of(account).ownStatus)) return
+        val sound = noisy && (if (mention) Sound.MENTION else Sound.MESSAGE).isEnabled
+        post(account, roomId, title, body, if (mention) CHANNEL_MENTIONS else CHANNEL_MESSAGES, sound, tag(account, roomId))
+    }
 
     private fun tag(account: MatrixAccount, roomId: String) = "${account.id}|$roomId"
 
