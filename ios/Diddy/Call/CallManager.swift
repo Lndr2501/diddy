@@ -432,11 +432,12 @@ final class CallSession: NSObject, ObservableObject {
         }
 
         let roomOptions = LiveKit.RoomOptions(
-            // In-app capture: iOS 27+ the whole screen with ScreenCaptureKit, older iOS only Diddy
-            // itself. The whole screen on older iOS comes from DiddyBroadcast (startWholeScreenShare).
+            // The whole screen comes from DiddyBroadcast (startWholeScreenShare) on every iOS, so
+            // in-app capture stays "Only Diddy". ScreenCaptureKit (iOS 27+, only in builds with the
+            // iOS 27 SDK) is used only when the app carries no extension (see sharesWholeScreen).
             defaultScreenShareCaptureOptions: LiveKit.ScreenShareCaptureOptions(
                 dimensions: .h1080_169, fps: 15, appAudio: true,
-                useBroadcastExtension: false, useScreenCaptureKit: true
+                useBroadcastExtension: false, useScreenCaptureKit: !BroadcastPicker.isAvailable
             ),
             // Same as the desktop: H.264 when the server allows it; the share stays within 1080p.
             defaultAudioCaptureOptions: Self.audioCaptureOptions(),
@@ -634,9 +635,10 @@ final class CallSession: NSObject, ObservableObject {
         refreshMembers()
     }
 
-    /// iOS 27+: the system picker, then ScreenCaptureKit in-process (whole screen, other apps too).
-    /// iOS 16–26: in-app ReplayKit capture, which only sees Diddy itself ("Only Diddy"); the whole
-    /// screen there comes from the broadcast extension (`startWholeScreenShare`).
+    /// In-app capture. With the broadcast extension in the app (the normal case) this is ReplayKit
+    /// in-app capture, which only sees Diddy itself ("Only Diddy"); the whole screen comes from the
+    /// extension (`startWholeScreenShare`). Without the extension, iOS 27 builds made with the
+    /// iOS 27 SDK use ScreenCaptureKit here (system picker, other apps too).
     func toggleScreenShare() async {
         do {
             _ = try await liveKitRoom.localParticipant.setScreenShare(enabled: !screenSharing)
@@ -666,8 +668,7 @@ final class CallSession: NSObject, ObservableObject {
     // MARK: Whole screen through the broadcast extension
 
     /// "Whole screen": listens for `DiddyBroadcast` and opens the iOS broadcast sheet. Sharing
-    /// starts when "Diddy" is picked there and goes on in other apps. Before iOS 27 this is the
-    /// only way to share more than Diddy itself.
+    /// starts when "Diddy" is picked there and goes on in other apps, on every iOS version.
     func startWholeScreenShare() {
         guard connected, !closed, !screenSharing, broadcastReceiver == nil else {
             if broadcastReceiver != nil { BroadcastPicker.present() }
@@ -1196,9 +1197,15 @@ final class CallSession: NSObject, ObservableObject {
         keyProvider.setKey(keyData: key, participantId: "\(message.senderId):\(device)", index: index)
     }
 
-    /// Whether this iOS can share the whole screen without an extension.
+    /// Whether in-app sharing ("Share screen" without the broadcast sheet) sees other apps too.
+    /// Only with ScreenCaptureKit, which needs iOS 27 on the device and the iOS 27 SDK at build
+    /// time: an IPA built with an older Xcode has LiveKit's ScreenCaptureKit path compiled out and
+    /// records only Diddy, also on iOS 27. With the extension in the app the whole screen always
+    /// goes through it, which works on every iOS and with every Xcode.
     static var sharesWholeScreen: Bool {
-        if #available(iOS 27.0, *) { return true }
+        #if canImport(ScreenCaptureKit)
+        if #available(iOS 27.0, *) { return !BroadcastPicker.isAvailable }
+        #endif
         return false
     }
 

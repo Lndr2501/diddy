@@ -132,8 +132,8 @@ struct ShareControl: View {
             .accessibilityLabel("Sharing your screen")
             .accessibilityHint("Opens the sharing options")
         } else if !CallSession.sharesWholeScreen && BroadcastPicker.isAvailable {
-            // Before iOS 27 only the broadcast extension sees other apps; in-app sharing stays for
-            // showing Diddy itself without the system sheet.
+            // Only the broadcast extension reliably sees other apps (also on iOS 27 with an IPA
+            // built before Xcode 27); in-app sharing stays for showing Diddy itself without the sheet.
             Menu {
                 Button {
                     session.startWholeScreenShare()

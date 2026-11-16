@@ -6,12 +6,22 @@ import UIKit
 /// window for a moment and its button is tapped (what Jitsi and LiveKit's examples do too).
 @MainActor
 enum BroadcastPicker {
-    static let extensionBundleId = (Bundle.main.bundleIdentifier ?? "app.diddy.ios") + ".broadcast"
+    private static var extensionURL: URL? {
+        Bundle.main.builtInPlugInsURL?.appendingPathComponent("DiddyBroadcast.appex")
+    }
+
+    /// The bundle ID the extension was really installed with: sideloaders rewrite IDs (AltStore and
+    /// SideStore add the team, some give the extension the app's own), so read it from the appex
+    /// instead of assuming "<app>.broadcast". A wrong ID leaves the sheet without Diddy preselected.
+    static let extensionBundleId: String = {
+        if let url = extensionURL, let id = Bundle(url: url)?.bundleIdentifier { return id }
+        return (Bundle.main.bundleIdentifier ?? "app.diddy.ios") + ".broadcast"
+    }()
 
     /// True when the app carries the extension (a build without it falls back to in-app sharing).
     static var isAvailable: Bool {
-        guard let plugins = Bundle.main.builtInPlugInsURL else { return false }
-        return FileManager.default.fileExists(atPath: plugins.appendingPathComponent("DiddyBroadcast.appex").path)
+        guard let url = extensionURL else { return false }
+        return FileManager.default.fileExists(atPath: url.path)
     }
 
     static func present() {

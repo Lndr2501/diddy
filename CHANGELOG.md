@@ -2,6 +2,8 @@
 
 ## Unveröffentlicht
 
+- **iOS 27: Bildschirm auch außerhalb der App teilen:** Auf iOS 27 fehlte im Teilen-Menü „Whole Screen“, und „Share screen“ nahm nur Diddy selbst auf; sobald man die App verließ, fror der Stream ein. Diddy ging davon aus, dass iOS 27 mit ScreenCaptureKit alles in der App aufnimmt, die IPA ist aber mit dem iOS-26-SDK gebaut, in dem dieser Weg fehlt. Jetzt läuft „Whole Screen“ auf jedem iOS über die Erweiterung „Diddy“ in der Bildschirmübertragung, „Only Diddy“ bleibt für die App allein. Außerdem liest Diddy die Bundle-ID der Erweiterung aus der App, statt sie zu raten, damit die iOS-Übertragung „Diddy“ auch nach dem Umbenennen durch AltStore, SideStore oder Sideloadly vorauswählt. Nur iOS; macOS, Linux und Windows teilen den Bildschirm ohne diese Erweiterung und sind nicht betroffen.
+
 ## 1.11.0 (2026-11-15)
 
 - **Kein Echo von deinen eigenen Geräten (macOS, Linux, Windows, iOS):** Mit dem iPhone als Mikro hörte man sich am Computer selbst, verzögert: Für den Call ist das iPhone ein weiterer Teilnehmer, und der Computer spielte dessen Mikrofon ab. Jetzt spielt keine Diddy-App deine eigenen anderen Geräte im selben Call ab (am Computer per „Mute for me“, das sich nicht zurückstellen lässt und nicht gemerkt wird; am iPhone über die Lautstärke des Teilnehmers). Andere hören dich normal.
