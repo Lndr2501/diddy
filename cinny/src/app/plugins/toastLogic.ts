@@ -52,6 +52,8 @@ export const toastPlacement = (
   };
 };
 
+import { isPollStartType, pollPreview } from './polls';
+
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v);
 
@@ -77,7 +79,7 @@ const shorten = (text: string): string => {
  */
 export const messagePreview = (eventType: string, content: unknown): string => {
   if (eventType === 'm.sticker') return 'Sticker';
-  if (eventType === 'org.matrix.msc3381.poll.start' || eventType === 'm.poll.start') return 'Poll';
+  if (isPollStartType(eventType)) return shorten(pollPreview(content));
   if (eventType !== 'm.room.message' || !isRecord(content)) return '';
   const { msgtype, body, formatted_body: formatted } = content;
   if (isRecord(content['org.matrix.msc3245.voice'])) return 'Voice message';

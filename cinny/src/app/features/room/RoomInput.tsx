@@ -24,6 +24,7 @@ import {
   PopOut,
   Scroll,
   Text,
+  color,
   toRem,
 } from 'folds';
 import { RESET } from 'jotai/utils';
@@ -125,6 +126,7 @@ import { useDebounce } from '../../hooks/useDebounce';
 import { VoiceRecorderButton } from './VoiceRecorderButton';
 import { VoiceRecording } from '../../hooks/useVoiceRecorder';
 import { sendVoiceMessage } from './sendVoiceMessage';
+import { PollDialog } from './PollDialog';
 
 const getReplyContent = (replyDraft: IReplyDraft | undefined): IEventRelation => {
   if (!replyDraft) return {};
@@ -191,6 +193,7 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
     const replyUsernameColor =
       legacyUsernameColor || direct ? colorMXID(replyUserID ?? '') : replyPowerColor;
 
+    const [pollOpen, setPollOpen] = useState(false);
     const [uploadBoard, setUploadBoard] = useState(true);
     const [selectedFiles, setSelectedFiles] = useAtom(roomIdToUploadItemsAtomFamily(roomId));
     const uploadFamilyObserverAtom = createUploadFamilyObserverAtom(
@@ -598,6 +601,7 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
             </Dialog>
           </OverlayCenter>
         </Overlay>
+        {pollOpen && <PollDialog room={room} onClose={() => setPollOpen(false)} />}
         {autocompleteQuery?.prefix === AutocompletePrefix.RoomMention && (
           <RoomMentionAutocomplete
             roomId={roomId}
@@ -686,18 +690,15 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
             )
           }
           before={
-            <IconButton
-              onClick={() => pickFile('*')}
-              aria-label="Attach file"
-              title="Attach file"
-              variant="SurfaceVariant"
-              fill="None"
-              className={css.ComposerIconButton}
-              size="300"
-              radii="Pill"
-            >
-              <Icon src={Icons.PlusCircle} />
-            </IconButton>
+            <details style={{ position: 'relative', alignSelf: 'center' }}>
+              <summary aria-label="Add attachment or poll" title="Add attachment or poll" style={{ cursor: 'pointer', listStyle: 'none' }}>
+                <Icon src={Icons.PlusCircle} />
+              </summary>
+              <div style={{ position: 'absolute', bottom: '100%', left: 0, zIndex: 10, background: color.SurfaceVariant.Container, color: color.SurfaceVariant.OnContainer, padding: 8, borderRadius: 8, display: 'grid', minWidth: 150 }}>
+                <button type="button" onClick={(e) => { pickFile('*'); e.currentTarget.closest('details')?.removeAttribute('open'); }}>Attach file</button>
+                <button type="button" onClick={(e) => { setPollOpen(true); e.currentTarget.closest('details')?.removeAttribute('open'); }}>📊 Poll</button>
+              </div>
+            </details>
           }
           after={
             <>

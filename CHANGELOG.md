@@ -2,6 +2,8 @@
 
 ## Unveröffentlicht
 
+- **Umfragen (macOS, Linux, Windows, iOS):** Im Plus-Menü eine Frage mit 2–20 Antworten erstellen, offen oder verdeckt und mit mehreren wählbaren Antworten. Im Chat abstimmen, eigene Auswahl und Stimmen sehen; verdeckte Ergebnisse erst nach dem Beenden. Ersteller und berechtigte Moderatoren können Umfragen im Nachrichtenmenü beenden. Kompatibel mit Element (MSC3381, stabile und experimentelle Ereignisse), auch in verschlüsselten Räumen; Mitteilungen zeigen die Frage statt nur „Poll“.
+
 ## 1.11.0 (2026-11-15)
 
 - **Kein Echo von deinen eigenen Geräten (macOS, Linux, Windows, iOS):** Mit dem iPhone als Mikro hörte man sich am Computer selbst, verzögert: Für den Call ist das iPhone ein weiterer Teilnehmer, und der Computer spielte dessen Mikrofon ab. Jetzt spielt keine Diddy-App deine eigenen anderen Geräte im selben Call ab (am Computer per „Mute for me“, das sich nicht zurückstellen lässt und nicht gemerkt wird; am iPhone über die Lautstärke des Teilnehmers). Andere hören dich normal.

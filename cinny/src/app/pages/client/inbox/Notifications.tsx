@@ -83,6 +83,7 @@ import { useSpoilerClickHandler } from '../../../hooks/useSpoilerClickHandler';
 import { ScreenSize, useScreenSizeContext } from '../../../hooks/useScreenSize';
 import { BackRouteHandler } from '../../../components/BackRouteHandler';
 import { useMediaAuthentication } from '../../../hooks/useMediaAuthentication';
+import { isPollStartType, pollPreview } from '../../../plugins/polls';
 import { allRoomsAtom } from '../../../state/room-list/roomList';
 import { usePowerLevels } from '../../../hooks/usePowerLevels';
 import { usePowerLevelTags } from '../../../hooks/usePowerLevelTags';
@@ -301,6 +302,7 @@ function RoomNotificationsGroupComp({
           <EncryptedContent mEvent={mEvent}>
             {() => {
               if (mEvent.isRedacted()) return <RedactedContent />;
+              if (isPollStartType(mEvent.getType())) return <Text>{pollPreview(mEvent.getContent())}</Text>;
               if (mEvent.getType() === MessageEvent.Sticker)
                 return (
                   <MSticker
@@ -354,6 +356,8 @@ function RoomNotificationsGroupComp({
           </EncryptedContent>
         );
       },
+      'm.poll.start': (event) => <Text>{pollPreview(event.content)}</Text>,
+      'org.matrix.msc3381.poll.start': (event) => <Text>{pollPreview(event.content)}</Text>,
       [MessageEvent.Sticker]: (event, displayName, getContent) => {
         if (event.unsigned?.redacted_because) {
           return <RedactedContent reason={event.unsigned?.redacted_because.content.reason} />;
