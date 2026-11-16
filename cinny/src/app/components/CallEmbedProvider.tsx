@@ -51,6 +51,7 @@ import { getPowersLevelFromMatrixEvent } from '../hooks/usePowerLevels';
 import { getRoomCreatorsForRoomId } from '../hooks/useRoomCreators';
 import { getRoomPermissionsAPI } from '../hooks/useRoomPermissions';
 import { AgentVoiceSync } from './AgentVoiceSync';
+import { SoundboardHotkeysSync } from './SoundboardHotkeysSync';
 import { WatchTogetherSync } from './WatchTogetherSync';
 import { diag } from '../plugins/diagnostics';
 import { IncomingCall, IncomingCallInfo } from './incoming-call/IncomingCall';
@@ -475,6 +476,7 @@ export function CallEmbedProvider({ children }: CallEmbedProviderProps) {
       {callEmbed && joined && <CallConnectionSounds embed={callEmbed} />}
       {callEmbed && joined && <CallSpeakingSync embed={callEmbed} />}
       <AgentVoiceSync />
+      <SoundboardHotkeysSync joined={!!joined} />
       <CompanionSync />
       {callEmbed && joined && <WatchTogetherSync key={callEmbed.roomId} embed={callEmbed} />}
       <CallEmbedRefContextProvider value={callEmbedRef}>

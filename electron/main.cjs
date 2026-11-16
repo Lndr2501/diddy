@@ -40,6 +40,7 @@ const { createSystemAudio } = require('./lib/systemAudio.cjs');
 const { createScreenPicker, screenSourceOptions } = require('./lib/screenPicker.cjs');
 const { parseAgentVoiceLaunch, createAgentVoiceTrigger } = require('./lib/agentVoice.cjs');
 const { createAgentVoiceHotkey } = require('./lib/agentVoiceHotkey.cjs');
+const { createSoundboardHotkeys } = require('./lib/soundboardHotkeys.cjs');
 const { sanitizeHotkey } = require('./lib/globalHotkey.cjs');
 const { startPortalShortcut } = require('./lib/portalShortcut.cjs');
 const { installShellInput } = require('./lib/shellInput.cjs');
@@ -357,6 +358,9 @@ const agentVoiceHotkey = createAgentVoiceHotkey({
   log: (line) => diag.writeLine(line),
 });
 
+// Soundboard shortcuts in the background: bound by the page only during a call.
+const soundboardHotkeys = createSoundboardHotkeys({ globalShortcut, log: (line) => diag.writeLine(line) });
+
 /** `diddy --agent-voice start|stop|toggle` (#57). True when the launch was one of these. */
 const handleAgentVoiceLaunch = (argv) => {
   const parsed = parseAgentVoiceLaunch(argv);
@@ -413,6 +417,9 @@ const commands = {
   // Binds the page's hotkey globally (null: unbind). Answers { path: 'portal' | 'x11' | 'window', trigger?, reason? }.
   agent_voice_bind: ({ hotkey }) => agentVoiceHotkey.bind(sanitizeHotkey(hotkey)),
   agent_voice_hotkey_info: () => agentVoiceHotkey.info(),
+  // Soundboard shortcuts while Diddy is in the background (same contract as the Tauri commands).
+  soundboard_hotkeys_bind: ({ hotkeys }) => soundboardHotkeys.bind(hotkeys),
+  soundboard_hotkeys_wait: (args) => soundboardHotkeys.wait({ after: Number(args?.after) || 0, timeoutMs: args?.timeoutMs }),
   // The update check belongs to the macOS shell; Linux has no native updater (the UI still sends this).
   updater_set_config: () => null,
 };
@@ -441,7 +448,10 @@ ipcMain.on('diddy:audio-ack', (event, id) => {
   if (trusted(event)) audioCaptures.get(event.sender.id)?.ack(id);
 });
 app.on('before-quit', () => audioCaptures.forEach((audio) => audio.close()));
-app.on('will-quit', () => agentVoiceHotkey.close());
+app.on('will-quit', () => {
+  agentVoiceHotkey.close();
+  soundboardHotkeys.close();
+});
 
 ipcMain.handle('diddy:invoke', async (event, cmd, args) => {
   // Only Diddy's own top-level page may call these (not Element Call's frame, not other sites).

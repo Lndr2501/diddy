@@ -248,6 +248,10 @@ struct CallMoreButton: View {
         .accessibilityLabel("More")
         .accessibilityHint("Reactions, soundboard, watch together, deafen and audio devices")
         .sheet(item: $sheet) { which in sheetContent(which) }
+        .background {
+            // These commands exist only in the call view; iOS never registers a global shortcut.
+            if session.connected && sheet != .soundboard { SoundboardKeyboardCommands() }
+        }
     }
 
     @ViewBuilder
