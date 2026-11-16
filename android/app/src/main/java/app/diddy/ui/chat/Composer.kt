@@ -352,6 +352,15 @@ fun Composer(
                     state.setText(command.prefix + command.name + " ")
                 }
             }
+            if (state.editing == null && botCommands.suggestions(state.text).isEmpty()) botCommands.argumentMatch(state.text)?.let { match ->
+                val hint = (if (match.option.required) "" else "optional · ") + match.option.name + (match.option.desc?.let { " — $it" } ?: "")
+                if (match.choices.isEmpty()) SuggestionRow(title = match.command.usage, subtitle = hint) {}
+                else match.choices.forEach { choice ->
+                    SuggestionRow(title = choice, subtitle = hint) {
+                        state.setText(state.text.dropLast(match.partial.length) + choice + " ")
+                    }
+                }
+            }
             if (query is ComposerQuery.User) {
                 members.members.filter {
                     it.userId != account.userId && (query.query.isEmpty() || it.name.contains(query.query, true) || it.userId.contains(query.query, true))

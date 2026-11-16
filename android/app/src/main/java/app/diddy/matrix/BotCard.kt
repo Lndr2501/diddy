@@ -323,9 +323,24 @@ object BotCardParser {
 
 // MARK: - Bot commands
 
-data class BotCommand(val name: String, val usage: String, val desc: String, val prefix: String) {
+/** One argument of a command: its name, an optional hint and fixed answers to suggest. */
+data class BotOption(val name: String, val required: Boolean, val desc: String?, val choices: List<String>)
+
+data class BotCommand(val name: String, val usage: String, val desc: String, val prefix: String, val options: List<BotOption> = emptyList()) {
     val id: String get() = prefix + name
 }
+
+/** What to suggest for the argument being typed (`!mode o` suggests "on" and "off"). */
+data class BotArgumentMatch(
+    val command: BotCommand,
+    val option: BotOption,
+    /** Which argument is being typed (0 = the first after the command). */
+    val index: Int,
+    /** What of it is typed so far. */
+    val partial: String,
+    /** Fixed answers that fit [partial]. */
+    val choices: List<String>,
+)
 
 data class BotCommandList(val prefix: String, val commands: List<BotCommand>)
 
@@ -348,6 +363,15 @@ object BotCommandParser {
         }
     }
 
+    private fun options(value: Any?): List<BotOption> =
+        ((value as? List<*>) ?: emptyList<Any?>()).take(10).mapNotNull { entry ->
+            val e = entry.obj() ?: return@mapNotNull null
+            val name = short(e["name"], 30) ?: return@mapNotNull null
+            val required = (e["required"] as? Boolean) != false
+            val choices = ((e["choices"] as? List<*>) ?: emptyList<Any?>()).take(25).mapNotNull { short(it, 40) }
+            BotOption(name, required, short(e["desc"], 80), choices)
+        }
+
     fun parse(content: Map<String, Any?>): BotCommandList? {
         val version = content["v"] as? Number ?: return null
         if (version.toDouble() != 1.0) return null
@@ -357,7 +381,7 @@ object BotCommandParser {
             val e = entry.obj() ?: return@mapNotNull null
             val name = short(e["name"], 30) ?: return@mapNotNull null
             if (!name.codePoints().allMatch(::isNamePart)) return@mapNotNull null
-            BotCommand(name, short(e["usage"], 120) ?: "$prefix$name", short(e["desc"], 160) ?: "", prefix)
+            BotCommand(name, short(e["usage"], 120) ?: "$prefix$name", short(e["desc"], 160) ?: "", prefix, options(e["options"]))
         }
         return if (commands.isEmpty()) null else BotCommandList(prefix, commands)
     }
@@ -371,6 +395,36 @@ object BotCommandParser {
         }
         if (out.size == 1 && typed.drop(out[0].prefix.length).lowercase() == out[0].name.lowercase()) return emptyList()
         return out.take(max)
+    }
+
+    /**
+     * What to suggest for the argument being typed (the same rules as `matchBotArguments` in
+     * `botCommands.ts`): [typed] is the whole message; one line without quotes is looked at, an
+     * argument typed in full needs no suggestion any more.
+     */
+    fun matchArguments(lists: List<BotCommandList>, typed: String): BotArgumentMatch? {
+        if (typed.contains('\n')) return null
+        for (list in lists) {
+            if (!typed.startsWith(list.prefix)) continue
+            val rest = typed.drop(list.prefix.length)
+            val split = rest.indexOfFirst { it.isWhitespace() }
+            if (split <= 0) continue
+            val name = rest.substring(0, split)
+            val argText = rest.substring(split).trimStart()
+            if (argText.contains('"') || argText.contains('\'')) continue
+            val command = list.commands.firstOrNull { it.name.lowercase() == name.lowercase() } ?: continue
+            if (command.options.isEmpty()) continue
+            val words = argText.split(Regex("\\s+")).filter { it.isNotEmpty() }
+            val startsNew = words.isEmpty() || argText.last().isWhitespace()
+            val index = if (startsNew) words.size else words.size - 1
+            val partial = if (startsNew) "" else words.last()
+            if (index >= command.options.size) continue
+            val option = command.options[index]
+            var choices = option.choices.filter { it.lowercase().startsWith(partial.lowercase()) }
+            if (choices.size == 1 && choices[0].lowercase() == partial.lowercase()) choices = emptyList()
+            return BotArgumentMatch(command, option, index, partial, choices)
+        }
+        return null
     }
 }
 
@@ -432,6 +486,12 @@ class BotCommandStore {
     fun suggestions(draft: String): List<BotCommand> {
         if (lists.isEmpty() || draft.isEmpty() || draft.any { it.isWhitespace() }) return emptyList()
         return BotCommandParser.match(lists, draft)
+    }
+
+    /** The argument being typed after a command ("!mode o"): fixed answers to suggest or a hint. */
+    fun argumentMatch(draft: String): BotArgumentMatch? {
+        if (lists.isEmpty() || draft.isEmpty() || !mayBeCommand(draft.takeWhile { !it.isWhitespace() })) return null
+        return BotCommandParser.matchArguments(lists, draft)
     }
 
     companion object {
