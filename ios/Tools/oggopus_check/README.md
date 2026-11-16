@@ -1,7 +1,7 @@
 Run from `ios/` on macOS or Linux with Swift 6.1 (Swift 5 language mode):
 
 ```sh
-swiftc -swift-version 5 Diddy/Matrix/OpusContainer.swift Diddy/Matrix/OpusCAFWriter.swift Tools/oggopus_check/main.swift -o /tmp/oggopus_check
+swiftc -swift-version 5 Diddy/Matrix/OpusContainer.swift Diddy/Matrix/OpusCAFWriter.swift Diddy/Matrix/VoiceCache.swift Tools/oggopus_check/main.swift -o /tmp/oggopus_check
 /tmp/oggopus_check
 ```
 

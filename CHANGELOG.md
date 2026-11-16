@@ -2,6 +2,8 @@
 
 ## Unveröffentlicht
 
+- **iOS: Sprachnachrichten im Ogg/Opus-Format (Desktop, Element):** Ogg/Opus und WebM/Opus werden beim ersten Abspielen mit einem eigenen kleinen Demuxer gelesen (Pre-Skip, Granule-Position für die Länge) und über `AVAudioConverter` in eine CAF-Datei dekodiert; Wellenform, Scrubbing und die Geschwindigkeiten 1x/1,5x/2x laufen wie bei m4a. Die dekodierten Dateien liegen im Cache (nach Konto und MXC-URL), der Ordner bleibt unter 200 MB (zuletzt benutzte Dateien bleiben). Kaputte Dateien, Vorbis statt Opus oder mehrere Streams zeigen eine klare Meldung unter dem Knopf statt eines Fehlers, und eine nicht dekodierbare Datei wird nicht erneut geladen. Senden bleibt m4a. Demuxer und Cache-Regeln sind mit echten ffmpeg-Dateien in `ios/Tools/oggopus_check` getestet (läuft in der CI); die Wiedergabe selbst ist nicht auf einem Gerät geprüft. Desktop ist nicht betroffen.
+
 ## 1.11.0 (2026-11-15)
 
 - **Kein Echo von deinen eigenen Geräten (macOS, Linux, Windows, iOS):** Mit dem iPhone als Mikro hörte man sich am Computer selbst, verzögert: Für den Call ist das iPhone ein weiterer Teilnehmer, und der Computer spielte dessen Mikrofon ab. Jetzt spielt keine Diddy-App deine eigenen anderen Geräte im selben Call ab (am Computer per „Mute for me“, das sich nicht zurückstellen lässt und nicht gemerkt wird; am iPhone über die Lautstärke des Teilnehmers). Andere hören dich normal.

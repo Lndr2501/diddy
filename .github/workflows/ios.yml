@@ -202,7 +202,7 @@ jobs:
 
       - name: Check Ogg/Opus voice message decoding
         run: |
-          swiftc -swift-version 5 Diddy/Matrix/OpusContainer.swift Diddy/Matrix/OpusCAFWriter.swift Tools/oggopus_check/main.swift -o "$RUNNER_TEMP/diddy-oggopus-check"
+          swiftc -swift-version 5 Diddy/Matrix/OpusContainer.swift Diddy/Matrix/OpusCAFWriter.swift Diddy/Matrix/VoiceCache.swift Tools/oggopus_check/main.swift -o "$RUNNER_TEMP/diddy-oggopus-check"
           "$RUNNER_TEMP/diddy-oggopus-check"
 
       - name: Check notification rule logic
