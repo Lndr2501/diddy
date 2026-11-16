@@ -55,6 +55,8 @@ object AppModel {
         restored = true
         scope.launch {
             val records = AccountList.load()
+            // Logins that never finished (the app closed in the middle) leave data behind.
+            runCatching { SessionStore.removeOrphans(records.map { it.id }.toSet()) }
             val preferred = AccountList.activeAccountId
             // The account shown first is restored first; the splash only waits for it.
             val pending = records.toMutableList()
@@ -156,9 +158,15 @@ object AppModel {
         account.start()
     }
 
+    /** Something to tell once, over everything (a logout the server did not get). */
+    var notice by mutableStateOf<String?>(null)
+
     suspend fun logout(account: MatrixAccount) {
         Hooks.beforeLogout(account)
-        account.logout()
+        account.logout()?.let { reason ->
+            notice = "${account.userId} is signed out on this phone, but the server could not be told ($reason). " +
+                "This device stays in your device list until you remove it in Settings > Security on another device."
+        }
         accounts = accounts.filter { it.id != account.id }
         saveAccountList()
         if (activeAccountId == account.id) setActive(accounts.firstOrNull()?.id)

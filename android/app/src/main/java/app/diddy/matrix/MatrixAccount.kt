@@ -4,6 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import app.diddy.util.friendlyMessage
 import app.diddy.util.ClientApiError
 import app.diddy.util.DiddyError
 import app.diddy.util.Http
@@ -308,11 +309,22 @@ class MatrixAccount(val record: AccountRecord, val client: Client) {
         }
     }
 
-    suspend fun logout() {
+    /**
+     * Signs out at the server and removes everything of this login from the phone. The local
+     * part always happens (that is what was asked for); when the server could not be told, the
+     * answer says so, because the device then stays in the account's device list.
+     */
+    suspend fun logout(): String? {
         stop()
-        try { client.logout() } catch (_: Exception) {}
+        val failure = try {
+            client.logout()
+            null
+        } catch (e: Exception) {
+            e.friendlyMessage
+        }
         SessionStore.delete(record.id)
         record.removeDirectories(SessionStore.context)
+        return failure
     }
 
     suspend fun refreshProfile() {
