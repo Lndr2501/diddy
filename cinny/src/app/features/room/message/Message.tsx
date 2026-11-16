@@ -87,6 +87,17 @@ import { useSavedMessages } from '../../../hooks/useSavedMessages';
 import { SAVED_MESSAGES_LIMIT } from '../../../utils/savedMessages';
 import { isRoomBot } from '../../../hooks/useRoomBots';
 import { BotTag } from '../../../components/message/BotTag';
+import { usePollState } from '../../../hooks/usePoll';
+import { isPollStartType } from '../../../plugins/polls';
+
+function EndPollItem({ room, mEvent, onClose }: { room: Room; mEvent: MatrixEvent; onClose: () => void }) {
+  const { canEnd, end } = usePollState(room, mEvent);
+  const [failed, setFailed] = useState(false);
+  if (!canEnd) return null;
+  return <MenuItem size="300" radii="300" onClick={() => {
+    end().then(onClose).catch(() => setFailed(true));
+  }}><Text size="T300">{failed ? 'Could not end poll · Retry' : 'End Poll'}</Text></MenuItem>;
+}
 
 export type ReactionHandler = (keyOrMxc: string, shortcode: string) => void;
 
@@ -1159,6 +1170,9 @@ export const Message = as<'div', MessageProps>(
                                 Reply in Thread
                               </Text>
                             </MenuItem>
+                          )}
+                          {isPollStartType(mEvent.getType()) && (
+                            <EndPollItem room={room} mEvent={mEvent} onClose={closeMenu} />
                           )}
                           {canEditEvent(mx, mEvent) && onEditId && (
                             <MenuItem

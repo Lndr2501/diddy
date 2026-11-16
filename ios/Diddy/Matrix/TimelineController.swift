@@ -10,6 +10,21 @@ struct ReactionChip: Hashable {
     let mine: Bool
 }
 
+struct PollSnapshot {
+    let question: String
+    let kind: PollKind
+    let maxSelections: Int
+    let answers: [PollAnswer]
+    /// The SDK counts only the most recent valid vote before the end and checks end permissions.
+    let votes: [String: [String]]
+    let ended: Bool
+    let me: String
+
+    var voters: Int { Set(votes.values.flatMap { $0 }).count }
+    var showResults: Bool { ended || kind == .disclosed }
+    var mine: [String] { answers.filter { votes[$0.id]?.contains(me) == true }.map(\.id) }
+}
+
 struct MessageRow: Identifiable {
     enum Body {
         case text(String)
@@ -40,6 +55,7 @@ struct MessageRow: Identifiable {
     var card: BotCard? = nil
     /// A shared song (`app.diddy.music`), drawn like iMessage's lyrics card.
     var music: MusicCard? = nil
+    var poll: PollSnapshot? = nil
     /// The sender's small version of a still picture; the chat shows it, the viewer the original.
     var imageThumbnail: MediaSource? = nil
     /// Goes up whenever the SDK hands over a changed version of this message (reaction, edit,
@@ -385,6 +401,31 @@ final class TimelineController: ObservableObject {
         }
     }
 
+    func createPoll(question: String, answers: [String], maxSelections: Int, disclosed: Bool) async -> Bool {
+        guard let timeline else { return false }
+        do {
+            try await timeline.createPoll(question: question, answers: answers,
+                                          maxSelections: UInt8(clamping: maxSelections),
+                                          pollKind: disclosed ? .disclosed : .undisclosed)
+            return true
+        } catch {
+            sendError = error.friendlyMessage
+            return false
+        }
+    }
+
+    func votePoll(_ row: MessageRow, answers: [String]) async {
+        guard let timeline, let id = row.remoteEventId else { return }
+        do { try await timeline.sendPollResponse(pollStartEventId: id, answers: answers) }
+        catch { sendError = error.friendlyMessage }
+    }
+
+    func endPoll(_ row: MessageRow) async {
+        guard let timeline, let id = row.remoteEventId else { return }
+        do { try await timeline.endPoll(pollStartEventId: id, text: "The poll has ended.") }
+        catch { sendError = error.friendlyMessage }
+    }
+
     func toggleReaction(_ key: String, on row: MessageRow) async {
         guard let timeline, let id = row.eventId else { return }
         do {
@@ -521,6 +562,7 @@ final class TimelineController: ObservableObject {
         var reply: (sender: String, senderId: String, text: String, avatar: String?)?
         var card: BotCard?
         var music: MusicCard?
+        var poll: PollSnapshot?
         var imageThumbnail: MediaSource?
         var membership: TimelineLayout.Membership?
         var extras = MessageExtras()
@@ -559,8 +601,10 @@ final class TimelineController: ObservableObject {
                 body = .redacted
             case .unableToDecrypt:
                 body = .undecryptable
-            case .poll(let question, _, _, _, _, _, _):
+            case .poll(let question, let kind, let maxSelections, let answers, let votes, let endTime, _):
                 body = .text("📊 \(question)")
+                poll = PollSnapshot(question: question, kind: kind, maxSelections: Int(clamping: maxSelections),
+                                    answers: answers, votes: votes, ended: endTime != nil, me: me)
             default:
                 return nil
             }
@@ -598,6 +642,7 @@ final class TimelineController: ObservableObject {
         )
         if isCall { row.callCount = 1 }
         row.music = card == nil ? music : nil
+        row.poll = poll
         row.imageThumbnail = imageThumbnail
         // A bot card or a song keeps its own look; everything else gets the desktop's rendering.
         if card == nil && music == nil {
@@ -645,6 +690,7 @@ final class TimelineController: ObservableObject {
             case .file(let file): return "📎 \(file.filename)"
             default: return message.body
             }
+        case .poll(let question, _, _, _, _, _, _): return "📊 \(question)"
         case .sticker: return "Sticker"
         case .redacted: return "Message deleted"
         case .unableToDecrypt: return "🔒 Encrypted message"

@@ -91,6 +91,7 @@ private struct ChatContent: View {
     @State private var photos: [PhotosPickerItem] = []
     @State private var showPhotos = false
     @State private var showFiles = false
+    @State private var showPoll = false
     @State private var showCamera = false
     @State private var showEmoji = false
     @State private var packs: [ImagePack] = []
@@ -228,6 +229,11 @@ private struct ChatContent: View {
             }
         }
         .sheet(isPresented: $showSearch) { MessageSearchView(account: account, roomId: roomId) }
+        .sheet(isPresented: $showPoll) {
+            PollComposer { question, answers, max, disclosed in
+                await controller.createPoll(question: question, answers: answers, maxSelections: max, disclosed: disclosed)
+            }
+        }
         .sheet(item: $searchContext) { SearchContextView(account: account, target: $0) }
         .sheet(isPresented: $showMembers) { MembersView(account: account, roomId: roomId) }
         .sheet(isPresented: $showInfo) { ChannelInfoView(account: account, roomId: roomId) }
@@ -348,6 +354,7 @@ private struct ChatContent: View {
                             onProfile: { profile = ProfileTarget(userId: row.sender) },
                             onMention: { profile = ProfileTarget(userId: $0) },
                             onReact: { key in Task { await controller.toggleReaction(key, on: row) } },
+                            onPollVote: { ids in Task { await controller.votePoll(row, answers: ids) } },
                             onImage: { viewedImage = ViewedImage(image: $0) },
                             onFile: { openedFile = $0 },
                             onCardCommand: { command in Task { await controller.sendCardAction(command) } },
@@ -605,7 +612,13 @@ private struct ChatContent: View {
                 navSheet = .thread(root: root ?? eventId)
             } label: { Label("Reply in Thread", systemImage: "bubble.left.and.bubble.right") }
         }
-        if case .text(let text) = row.body {
+        if let poll = row.poll, !poll.ended, row.remoteEventId != nil,
+           row.isOwn || controller.nav.canRedactOther {
+            Button { closeActions(); Task { await controller.endPoll(row) } } label: {
+                Label("End Poll", systemImage: "chart.bar.xaxis")
+            }
+        }
+        if case .text(let text) = row.body, row.poll == nil {
             Button { closeActions(); UIPasteboard.general.string = Self.readableMentions(in: text).text } label: {
                 Label("Copy Text", systemImage: "doc.on.doc")
             }
@@ -791,6 +804,7 @@ private struct ChatContent: View {
                         Button { showCamera = true } label: { Label("Camera", systemImage: "camera") }
                     }
                     Button { showFiles = true } label: { Label("Files", systemImage: "doc") }
+                    Button { showPoll = true } label: { Label("Poll", systemImage: "chart.bar.xaxis") }
                 } label: {
                     Image(systemName: "plus")
                         .font(.system(size: 15, weight: .semibold))
@@ -1263,6 +1277,7 @@ struct MessageRowView: View, Equatable {
     var onProfile: () -> Void = {}
     var onMention: (String) -> Void = { _ in }
     var onReact: (String) -> Void = { _ in }
+    var onPollVote: ([String]) -> Void = { _ in }
     var onImage: (UIImage) -> Void = { _ in }
     var onFile: (URL) -> Void = { _ in }
     var onCardCommand: (String) -> Void = { _ in }
@@ -1278,6 +1293,7 @@ struct MessageRowView: View, Equatable {
         onProfile: @escaping () -> Void = {},
         onMention: @escaping (String) -> Void = { _ in },
         onReact: @escaping (String) -> Void = { _ in },
+        onPollVote: @escaping ([String]) -> Void = { _ in },
         onImage: @escaping (UIImage) -> Void = { _ in },
         onFile: @escaping (URL) -> Void = { _ in },
         onCardCommand: @escaping (String) -> Void = { _ in },
@@ -1291,6 +1307,7 @@ struct MessageRowView: View, Equatable {
         self.onProfile = onProfile
         self.onMention = onMention
         self.onReact = onReact
+        self.onPollVote = onPollVote
         self.onImage = onImage
         self.onFile = onFile
         self.onCardCommand = onCardCommand
@@ -1439,6 +1456,8 @@ struct MessageRowView: View, Equatable {
     @ViewBuilder
     private var content: some View {
         switch row.body {
+        case .text where row.poll != nil:
+            if let poll = row.poll { PollCard(poll: poll, onVote: onPollVote) }
         case .text where row.card != nil:
             if let card = row.card { BotCardView(card: card, account: account, onCommand: onCardCommand) }
         case .text where row.music != nil:

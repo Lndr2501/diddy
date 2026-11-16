@@ -11,7 +11,12 @@ const compiled = ts.transpileModule(fs.readFileSync(filename, 'utf8'), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2016 },
 }).outputText;
 const mod = {};
-vm.runInNewContext(compiled, { exports: mod }, { filename });
+const pollMod = {};
+const pollSource = fs.readFileSync(path.join(__dirname, '../src/app/plugins/polls.ts'), 'utf8');
+vm.runInNewContext(ts.transpileModule(pollSource, {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2016 },
+}).outputText, { exports: pollMod });
+vm.runInNewContext(compiled, { exports: mod, require: () => pollMod }, { filename });
 const keys = (list) => [...list.map((t) => t.key)];
 const t = (key, stamp = 1) => ({ key, title: key, body: '', stamp });
 
@@ -56,6 +61,11 @@ test('message previews are short, plain and never reveal spoilers', () => {
   assert.ok(long.endsWith('…'));
   assert.equal(mod.messagePreview('m.room.encrypted', { ciphertext: 'abc' }), '');
   assert.equal(mod.messagePreview('m.sticker', {}), 'Sticker');
+  assert.equal(mod.messagePreview('m.poll.start', {
+    'm.poll': { question: { 'm.text': [{ body: 'Lunch?' }] }, answers: [
+      { 'm.id': 'a', 'm.text': [{ body: 'Yes' }] },
+    ] },
+  }), '📊 Lunch?');
   assert.equal(msg(null), '');
   assert.equal(msg({ msgtype: 'm.text', body: 42 }), '');
 });
