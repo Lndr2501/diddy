@@ -116,7 +116,7 @@ final class CallPush {
         for userId in members where userId != account.userId {
             guard let content = try? await account.stateContent(of: roomId, type: CallPushTarget.eventType, stateKey: userId),
                   let target = CallPushTarget(content: content) else { continue }
-            await send(to: target, title: "\(account.title) is calling you", message: "Open Diddy to answer.")
+            await send(to: target, title: L("ios.notificationsExtra.isCalling", ["name": account.title]), message: L("ios.notificationsExtra.openToAnswer"))
         }
     }
 
@@ -124,7 +124,7 @@ final class CallPush {
     func sendTest() async -> Bool {
         guard CallPushTarget.isAllowed(server: CallPushSettings.server) else { return false }
         let target = CallPushTarget(server: CallPushSettings.server, topic: CallPushSettings.topic)
-        return await send(to: target, title: "Diddy", message: "Call alerts are working.")
+        return await send(to: target, title: "Diddy", message: L("ios.notificationsExtra.testWorks"))
     }
 
     @discardableResult

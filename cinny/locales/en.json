@@ -2679,6 +2679,18 @@
       "emailLinkSent": "We sent a link to {{address}}. Open it, then come back and tap Continue.",
       "joinRoom": "Join {{name}}",
       "strongerPasswordReason": "Choose a stronger password: {{reason}}"
+    },
+    "notificationsExtra": {
+      "mentioned": "You were mentioned",
+      "newMessage": "New message",
+      "invitedBy": "{{name}} invited you",
+      "youWereInvited": "You were invited",
+      "incomingCall": "Incoming call",
+      "yourComputer": "Your computer",
+      "computerCameraHelp": "Your computer wants to use this iPhone as camera and microphone. Open Diddy to join.",
+      "isCalling": "{{name}} is calling you",
+      "openToAnswer": "Open Diddy to answer.",
+      "testWorks": "Call alerts are working."
     }
   }
 }

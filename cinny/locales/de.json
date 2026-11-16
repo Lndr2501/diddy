@@ -2679,6 +2679,18 @@
       "emailLinkSent": "Wir haben einen Link an {{address}} gesendet. Öffne ihn, kehre dann zurück und tippe auf „Weiter“.",
       "joinRoom": "{{name}} beitreten",
       "strongerPasswordReason": "Wähle ein stärkeres Passwort: {{reason}}"
+    },
+    "notificationsExtra": {
+      "mentioned": "Du wurdest erwähnt",
+      "newMessage": "Neue Nachricht",
+      "invitedBy": "{{name}} hat dich eingeladen",
+      "youWereInvited": "Du wurdest eingeladen",
+      "incomingCall": "Eingehender Anruf",
+      "yourComputer": "Dein Computer",
+      "computerCameraHelp": "Dein Computer möchte dieses iPhone als Kamera und Mikrofon verwenden. Öffne Diddy, um beizutreten.",
+      "isCalling": "{{name}} ruft dich an",
+      "openToAnswer": "Öffne Diddy, um anzunehmen.",
+      "testWorks": "Anrufbenachrichtigungen funktionieren."
     }
   }
 }
