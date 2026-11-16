@@ -1188,7 +1188,7 @@ final class CallSession: NSObject, ObservableObject {
     /// every LiveKit join and leave, and every 30 s for memberships that simply expire.
     private func watchCallDevices() {
         guard !closed, roomInfoHandle == nil else { return }
-        roomInfoHandle =matrixRoom.subscribeToRoomInfoUpdates(listener: RoomInfoUpdates { [weak self] _ in
+        roomInfoHandle = matrixRoom.subscribeToRoomInfoUpdates(listener: RoomInfoUpdates { [weak self] _ in
             Task { @MainActor in self?.scheduleMembershipCheck() }
         })
         membershipWatch = Task { [weak self] in
