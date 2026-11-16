@@ -320,3 +320,26 @@ async def test_options_for_diddy_suggestions():
     assert commands["color"]["options"][0]["choices"] == ["red", "blue"]
     assert commands["color"]["options"][1]["choices"] == ["on", "off"]
     assert "quiet" not in commands and "options" not in commands["help"]
+
+
+async def test_explicit_options_replace_the_derived_ones():
+    from diddybot import Bot
+    from diddybot.testing import FakeTransport, TestClient
+
+    bot = Bot(transport=FakeTransport("@b:t"))
+
+    @bot.command("raw", desc="takes the line itself", options=[])
+    async def raw(ctx, *, text: str = ""): ...
+
+    @bot.command("derived")
+    async def derived(ctx, n: int = 1): ...
+
+    @bot.command("own", options=[{"name": "speed", "choices": ["slow", "fast"]}])
+    async def own(ctx, *, text: str = ""): ...
+
+    chat = TestClient(bot)
+    await chat.start()
+    by = {c["name"]: c for c in chat.commands()["commands"]}
+    assert "options" not in by["raw"]
+    assert by["derived"]["options"][0]["name"] == "n"
+    assert by["own"]["options"] == [{"name": "speed", "required": True, "choices": ["slow", "fast"]}]

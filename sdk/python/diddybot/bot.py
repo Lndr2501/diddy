@@ -511,11 +511,14 @@ class Bot:
                 aliases: Iterable[str] = (), group: str = "Commands", power: int = 0,
                 hidden: bool = False, dm_only: bool = False,
                 checks: Iterable[Callable[..., Any]] = (),
-                describe: Optional[dict[str, str]] = None) -> Callable[[Handler], Command]:
+                describe: Optional[dict[str, str]] = None,
+                options: Optional[list[dict]] = None) -> Callable[[Handler], Command]:
         """Register a command. ``name`` defaults to the function name.
 
         ``describe={"seconds": "how long"}``: short texts Diddy shows for the arguments while
         the user types (fixed answers like ``Literal["on", "off"]`` are suggested by themselves).
+        ``options=[...]`` replaces what is derived from the signature with your own list for Diddy
+        (``options=[]``: none), for handlers that take the raw text of the line themselves.
 
         ``power``: lowest power level allowed to run it (50 = moderators). ``hidden``: not in help
         or Diddy's suggestions. ``group``: section in the help card. ``usage`` is generated from
@@ -525,7 +528,8 @@ class Bot:
             return self.registry.add(
                 name or func.__name__, func, desc=desc or _doc_line(func), usage=usage,
                 aliases=tuple(aliases), group=group, power=power, hidden=hidden,
-                dm_only=dm_only, checks=list(checks), describe=dict(describe or {}))
+                dm_only=dm_only, checks=list(checks), describe=dict(describe or {}),
+                options=None if options is None else [dict(o) for o in options])
         return deco
 
     def group(self, name: str = "", *, invoke_without_command: bool = False,

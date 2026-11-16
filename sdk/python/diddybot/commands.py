@@ -170,6 +170,8 @@ class Command:
     cog: Any = None
     #: short texts for the arguments Diddy shows while typing: ``{"seconds": "how long"}``
     describe: dict[str, str] = field(default_factory=dict)
+    #: explicit ``options`` for Diddy instead of the ones derived from the signature (``[]`` = none)
+    options: Optional[list[dict]] = None
     error_handler: Optional[Handler] = None
     _lookup: dict[str, "Command"] = field(default_factory=dict, repr=False)
 
@@ -209,6 +211,8 @@ class Command:
             names = [c.name for c in self.children.values() if not c.hidden][:25]
             return [{"name": "subcommand", "required": not self.invoke_without_command,
                      "choices": names}] if names else []
+        if self.options is not None:
+            return [dict(o) for o in self.options][:10]
         out = []
         for p in self.params[:10]:
             item: dict[str, Any] = {"name": p.name.replace("_", " "),

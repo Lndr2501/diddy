@@ -148,6 +148,8 @@ Auswahlwerten. Die Namen kommen aus der Signatur, `Literal` und `Enum` liefern d
 async def remind(ctx, wait: Duration, *, text: str): ...
 ```
 
+Mit `options=[...]` gibst du die Liste selbst vor (`options=[]`: keine), etwa wenn dein Befehl den Rest der Zeile selbst liest.
+
 ## Antworten
 
 | Aufruf | Was passiert |
