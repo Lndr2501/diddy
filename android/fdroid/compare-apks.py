@@ -3,8 +3,9 @@
 
     python3 android/fdroid/compare-apks.py first.apk second.apk
 
-F-Droid only ships Diddy's own signed APK if its rebuild from source gives the same bytes. CI builds
-the release twice (two paths, two Gradle JVMs) and runs this; exit code 1 means not reproducible.
+F-Droid only ships Diddy's own signed APK if its rebuild from source gives the same bytes. When the
+CI check (apksigcopier) fails, this names the files that differ; exit code 1 means not reproducible.
+A signed and an unsigned APK can be compared too: the signature is not a zip entry.
 """
 import hashlib
 import sys

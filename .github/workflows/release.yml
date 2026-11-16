@@ -14,8 +14,10 @@ name: Release
 #
 # Release steps: bump the version (package.json, electron/package.json, src-tauri/tauri.conf.json,
 # src-tauri/Cargo.toml + Cargo.lock, ios/project.yml, cinny/src/app/appInfo.ts,
-# android/app/build.gradle.kts), add a CHANGELOG.md
-# section, push to main, then `git tag vX.Y.Z && git push origin vX.Y.Z`.
+# android/app/build.gradle.kts: diddyVersion and diddyVersionCode), add a CHANGELOG.md section and
+# the F-Droid release notes fastlane/metadata/android/{en-US,de-DE}/changelogs/<versionCode>.txt,
+# push to main, then `git tag vX.Y.Z && git push origin vX.Y.Z`. F-Droid picks the tag up by itself
+# and rebuilds the APK from it (android/fdroid/README.md), so the tag must hold the final versions.
 #
 # Re-running: "Re-run failed jobs" on a run continues with the missing parts; "Run workflow" on a
 # tag ref repeats the whole release. An existing release gets its assets replaced.
@@ -74,6 +76,19 @@ jobs:
           if ! grep -q "^## $version" CHANGELOG.md; then
             echo "::error::No section '## $version' in CHANGELOG.md"; bad=1
           fi
+          code=$(sed -n 's/^val diddyVersionCode = \([0-9]*\)$/\1/p' android/app/build.gradle.kts)
+          expected=$(echo "$version" | awk -F. '{ print $1 * 10000 + $2 * 100 + $3 }')
+          if [ "$code" != "$expected" ]; then
+            echo "::error::android/app/build.gradle.kts has diddyVersionCode '$code', v$version needs $expected"; bad=1
+          fi
+          for locale in en-US de-DE; do
+            notes="fastlane/metadata/android/$locale/changelogs/$code.txt"
+            if [ ! -f "$notes" ]; then
+              echo "::warning::$notes is missing: F-Droid shows no release notes for $version ($locale)"
+            elif [ "$(wc -c < "$notes")" -gt 500 ]; then
+              echo "::error::$notes is longer than F-Droid's 500 characters"; bad=1
+            fi
+          done
           # Not fatal: the build jobs set it from the tag (.github/scripts/stamp-version.sh).
           app=$(sed -n "s/^export const APP_VERSION = '\(.*\)';/\1/p" cinny/src/app/appInfo.ts)
           if [ "$app" != "$version" ]; then

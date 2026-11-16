@@ -30,7 +30,7 @@ Keine WebView-Hülle um die Desktop-Oberfläche, kein Tauri-Android, kein Kotlin
 | Version | zentrale Diddy-Version, `versionCode = major·10000 + minor·100 + patch` | `stamp-version.sh` |
 | Signierung | Release-Keystore nur als CI-Secret, PR-Builds sind Debug | `android.yml`, `release.yml` |
 | Erster Push-Weg | UnifiedPush (Google-frei); FCM nicht eingebaut | `push/UnifiedPushing.kt` |
-| Distribution | signierte APK im GitHub-Release; Play Store/F-Droid separat zu entscheiden | `release.yml` |
+| Distribution | signierte APK im GitHub-Release und F-Droid (reproduzierbarer Build, dieselbe Signatur); kein Play Store | `release.yml`, `android/fdroid/` |
 
 ## Sicherheit
 
@@ -46,7 +46,7 @@ Keine WebView-Hülle um die Desktop-Oberfläche, kein Tauri-Android, kein Kotlin
 
 Homeserver → Matrix-Push-Gateway auf dem Server des UnifiedPush-Verteilers (z. B. ntfy, `/_matrix/push/v1/notify`; bietet er keins, `matrix.gateway.unifiedpush.org`) → Verteiler-App → Diddy. Wer das öffentliche Gateway nicht will, nimmt einen eigenen ntfy-Server. Diddy registriert pro Konto einen HTTP-Pusher mit `event_id_only` und lädt und entschlüsselt die Nachricht selbst über den Notification-Client des SDK. Ein Anruf-Push klingelt nur, solange der Anruf nicht abgelaufen ist. Ohne Verteiler gibt es eine Hintergrundverbindung (Foreground-Service vom Typ `remoteMessaging`, abschaltbar).
 
-FCM ist bewusst nicht drin: Es bräuchte ein Firebase-Projekt, `google-services.json` und ein Gateway mit FCM-Zugangsdaten. Das ist eine Betreiber-Entscheidung (siehe unten).
+FCM ist bewusst nicht drin (Entscheidung unten): Es bräuchte ein Firebase-Projekt, `google-services.json` und ein Gateway mit FCM-Zugangsdaten, und F-Droid nimmt keine Google-Bibliotheken.
 
 ## Bekannte Grenzen
 
@@ -57,8 +57,28 @@ FCM ist bewusst nicht drin: Es bräuchte ein Firebase-Projekt, `google-services.
 - **Telefonie-Integration:** Diddy nutzt Anrufbenachrichtigungen (CallStyle) und einen Foreground-Service vom Typ `phoneCall`, aber noch nicht Core-Telecom. Was bei einem normalen Telefonanruf mitten im Diddy-Call passiert, muss auf Geräten geprüft werden.
 - Noch nicht auf Android: Agent Voice, App-Icon wechseln und die Neuerungen aus 1.12.0 (Push-to-Talk, Umfragen, gespeicherte Nachrichten, später senden).
 
-## Offene Entscheidungen (Betreiber)
+## Entscheidungen (16.11.2026)
 
-1. Soll es zusätzlich **FCM** geben (Geräte ohne Verteiler-App)? Dafür braucht es ein Firebase-Projekt und ein Push-Gateway (z. B. Sygnal) mit FCM-Zugang, und eine zweite Build-Variante.
-2. **Play Store / F-Droid:** Konten, Richtlinien, Datenschutzerklärung, AAB, Signierstrategie (Play App Signing).
-3. Welche Geräte sind Pflicht für die Abnahme ([Testprotokoll](android-testprotokoll.md))?
+Diese Fragen waren für den Betreiber offen; er hat sie an die Entwicklung abgegeben („entscheide selbst und F-Droid“).
+
+1. **FCM: nein.** UnifiedPush und die Hintergrundverbindung decken Geräte mit und ohne Verteiler-App ab. Eine FCM-Variante hieße: Firebase-Projekt, eigenes Push-Gateway mit Google-Zugang, zweite Build-Variante mit doppeltem Testaufwand. Und sie dürfte nicht zu F-Droid. Neu prüfen nur, falls Diddy in den Play Store soll.
+2. **Vertrieb: F-Droid und GitHub, kein Play Store.** F-Droid baut jede Version aus dem Quellcode nach und liefert Diddys eigene signierte APK aus, wenn die Bytes übereinstimmen (wie bei Element X). So sind F-Droid- und GitHub-Installationen dieselbe App. Ablauf, Rezept und CI-Prüfung: [`android/fdroid/README.md`](../android/fdroid/README.md). Der Play Store bräuchte ein Entwicklerkonto, eine Datenschutzerklärung, AAB, Play App Signing und meist FCM. Das lohnt sich erst, wenn Nutzer danach fragen.
+3. **Geräte für die Abnahme:**
+   - ein aktuelles Pixel (Android 15 oder 16, 16-KB-Seiten),
+   - ein Samsung mit One UI (strenger Energiesparmodus, eigene Anrufoberfläche),
+   - ein altes Gerät mit Android 8 bis 10 (Mindestversion, App-Ton erst ab 10).
+
+   Das Tablet-Layout reicht auf einem Tablet oder Foldable; ersatzweise im Emulator.
+4. **Core-Telecom: ja, aber nach der ersten Geräteabnahme, in einem eigenen PR.** Core-Telecom meldet den Call beim System an. Damit gehen Halten bei einem Telefonanruf, die Knöpfe von Bluetooth-Headsets und Auto sowie die Wahl des Audioausgangs übers System. Es greift in die Audio-Steuerung ein, die heute LiveKit macht. Ohne Gerät lässt sich nicht prüfen, ob dabei etwas bricht, deshalb erst nach der Abnahme.
+5. **Fehlende Funktionen in einem Folge-PR, in dieser Reihenfolge:**
+   - Push-to-Talk,
+   - Umfragen,
+   - gespeicherte Nachrichten,
+   - später senden,
+   - App-Icon wechseln (Activity-Aliase),
+   - zuletzt Agent Voice.
+
+## Offen
+
+- Geräteabnahme nach dem [Testprotokoll](android-testprotokoll.md) auf den Geräten oben.
+- F-Droid: einmalig den Merge Request bei fdroiddata öffnen, mit der ersten Version nach 1.12.0 ([Schritte](../android/fdroid/README.md)). Dafür braucht es ein GitLab-Konto.

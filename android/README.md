@@ -20,6 +20,11 @@ and open it on the phone (Android 8 or later, arm64 or x86_64). Allow installati
 when asked. Releases use `app.diddy.android` and a stable signing key, so later APKs update the same
 app and keep its data. Test builds with the `.debug` app id remain separate.
 
+From the first release after 1.12.0 on, Diddy is also meant for F-Droid. F-Droid rebuilds every tag
+from source and ships the same signed APK once its bytes match. F-Droid and GitHub installs are
+therefore the same app. See [fdroid/README.md](fdroid/README.md) for how the build stays
+reproducible, the recipe, the CI check and the one-time submission.
+
 `release.yml` runs the Android unit tests, builds and verifies the signed APK, and publishes it
 alongside the desktop/iOS packages and `SHA256SUMS`. Release tags require all four repository secrets:
 `DIDDY_ANDROID_KEYSTORE` (base64 JKS), `DIDDY_ANDROID_KEYSTORE_PASSWORD`, `DIDDY_ANDROID_KEY_ALIAS`

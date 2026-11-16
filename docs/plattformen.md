@@ -43,6 +43,7 @@ Stand 2026-11-16, aus dem Code abgeleitet (`src-tauri/`, `electron/`, `ios/`, `a
 | Logdatei und Diagnose | ✅ | ✅ | 🧪 | 🧪 (Export über das Teilen-Menü) | 🧪 (Export ohne Nachrichten, Tokens, Schlüssel) |
 | Hintergrund-Benachrichtigungen | ✅ | ✅ ¹ | 🧪 ¹ | 🧪 | 🧪 |
 | Push bei geschlossener App | – | – | – | ❌ (braucht ein bezahltes Apple-Konto für APNs) | 🧪 (UnifiedPush, z. B. ntfy; kein FCM) |
+| App-Store-Vertrieb | – | – | – | ❌ (kein bezahltes Apple-Konto) | 🧪 (F-Droid vorbereitet: reproduzierbarer Build, Rezept, CI-Prüfung; Aufnahme ab der Version nach 1.12.0) |
 | Teilen aus anderen Apps (Teilen-Menü), Musik-Karten | – | – (Karten werden angezeigt) | – (Karten werden angezeigt) | 🧪 | 🧪 |
 | matrix.to- und `matrix:`-Links öffnen | ✅ | ✅ | 🧪 | 🧪 | 🧪 |
 | Tablet-/Foldable-Layout (Liste und Chat nebeneinander) | – | – | – | ✅ (iPad) | 🧪 (ab 720 dp Breite) |
