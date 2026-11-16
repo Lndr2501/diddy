@@ -143,3 +143,44 @@ test('no valid profile anywhere: nothing is copied', () => {
     stale: [],
   });
 });
+
+// --- your own profile in the account data -------------------------------------------------------
+const backup = load('ownProfileBackup');
+
+test('the account data copy is read back as a pick candidate', () => {
+  const content = backup.backupContent({ v: 1, font: 'mono' }, 5000);
+  assert.deepEqual(plain(backup.parseBackup(content, 6000)), { content: { v: 1, font: 'mono' }, ts: 5000 });
+});
+
+test('broken copies or copies from a clock far ahead are ignored', () => {
+  const now = 1_000_000_000;
+  assert.equal(backup.parseBackup(undefined, now), undefined);
+  assert.equal(backup.parseBackup({ ts: 5, profile: [] }, now), undefined);
+  assert.equal(backup.parseBackup({ ts: 'x', profile: {} }, now), undefined);
+  assert.equal(backup.parseBackup({ ts: now + 60 * 60 * 1000, profile: { v: 1 } }, now), undefined);
+  assert.ok(backup.parseBackup({ ts: now + 60 * 1000, profile: { v: 1 } }, now));
+});
+
+test('a newer account data copy wins and is copied into the rooms; an older one is updated', () => {
+  const rooms = [{ content: { v: 1, font: 'serif' }, ts: 1000 }, undefined];
+  const newerBackup = { content: { v: 1, font: 'mono' }, ts: 2000 };
+  assert.deepEqual(plain(pick.pickNewestProfile([...rooms, newerBackup], sanitize)), { font: 'mono' });
+  const healNewer = pick.staleProfileRooms([...rooms, newerBackup], sanitize);
+  assert.equal(healNewer.newest, 2);
+  assert.deepEqual(plain(healNewer.stale), [0, 1]);
+  const olderBackup = { content: { v: 1, font: 'mono' }, ts: 500 };
+  const healOlder = pick.staleProfileRooms([...rooms, olderBackup], sanitize);
+  assert.equal(healOlder.newest, 0);
+  assert.deepEqual(plain(healOlder.stale), [1, 2]);
+});
+
+test('iOS uses the same account data event for your own profile', (t) => {
+  const swift = path.join(__dirname, '../../ios/Diddy/Matrix/DiddyOwnProfileBackup.swift');
+  if (!fs.existsSync(swift)) {
+    t.skip('ios/ is not part of this tree');
+    return;
+  }
+  const src = fs.readFileSync(swift, 'utf8');
+  assert.ok(src.includes(`static let eventType = "${backup.OWN_PROFILE_EVENT}"`));
+  assert.match(src, /\["v": 1, "ts": ts, "profile": profile\]/);
+});

@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Sets up the hidden Diddy Options room, like desktop's "Set up the data room" (Settings >
 /// Profile): create a new one, use an existing room, or join the one of your servers. Without the
-/// room a profile cannot be saved or seen by others. Shown as the sections of a form.
+/// room your profile is saved on your account only and others cannot see it. Shown as the sections of a form.
 @MainActor
 struct DiddyOptionsSetupView: View {
     @ObservedObject var account: MatrixAccount
@@ -35,7 +35,7 @@ struct DiddyOptionsSetupView: View {
 
     var body: some View {
         Section {
-            Text("Diddy needs a hidden room to share profiles, badges and name styles. Without it your customization cannot be saved or seen by others. Not an admin? Ask the admin of your server to set it up; Diddy joins it automatically.")
+            Text("Your profile is saved on your account and shows on all your devices. To show it to other people, Diddy needs a hidden room on your server. Not an admin? Ask the admin of your server to set it up; Diddy joins it automatically.")
                 .font(.footnote)
                 .foregroundStyle(Theme.muted)
             Picker("Mode", selection: $mode) {

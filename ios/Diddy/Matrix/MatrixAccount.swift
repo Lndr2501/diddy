@@ -158,6 +158,12 @@ final class MatrixAccount: ObservableObject, Identifiable {
     var diddyWriteRooms: [DiddyWriteRoom] = []
     /// Your own profile event as written, so an edit here keeps the fields only desktop knows.
     var diddyOwnProfileRaw: [String: Any]?
+    /// Your profile as saved in your account data (DiddyOwnProfileBackup), and whether it was read.
+    var diddyOwnBackup: DiddyCandidate?
+    var diddyOwnBackupLoaded = false
+    /// Servers (spaces) whose options room was looked for this session (joinDiddyOptionsRoomAutomatically).
+    var diddyAutoJoinChecked: Set<String> = []
+    var diddyAutoJoinRunning = false
     var diddyLoading = false
     var diddyLoadedAt: Date?
     /// Last summary written to the diagnostics log by `loadDiddyProfiles`.

@@ -165,7 +165,7 @@ export const SETTINGS_SEARCH_INDEX: Record<string, SettingsSearchEntry> = {
       'Badge library',
       'Create custom badge',
       'Data room',
-      'Set up the data room',
+      'Share your profile with others',
       'Diagnostics',
     ],
   },

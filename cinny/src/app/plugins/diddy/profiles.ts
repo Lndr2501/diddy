@@ -59,7 +59,8 @@ import {
   LIGHT_ROOMS_EVENT,
 } from './optionsRoom';
 import { sanitizeBadgeDef, sanitizeProfile } from './sanitize';
-import { pickNewestProfile, staleProfileRooms } from './profilePick';
+import { pickNewestProfile, StoredProfile, staleProfileRooms } from './profilePick';
+import { backupContent, OWN_PROFILE_EVENT, parseBackup } from './ownProfileBackup';
 import { stampClientVersion } from './clientVersion';
 import { usePreviewOverride } from './previewOverride';
 import { APP_VERSION } from '../../appInfo';
@@ -218,6 +219,8 @@ const clearDrop = (roomId: string, reason: DropReason, event: MatrixEvent) => {
 const recentOwn = new RecentOwnData();
 /** Options rooms checked for an older copy of your profile this session (see healOwnProfile). */
 const healedRooms = new Set<string>();
+/** The account data copy of your profile was checked this session (see healOwnProfile). */
+let backupHealed = false;
 let healTimer: number | undefined;
 
 /** `recent`: the event is among the newest RECENT_WINDOW_EVENTS of the room (live or first page). */
@@ -813,6 +816,7 @@ const attach = (mx: MatrixClient) => {
     attachedTo.off(MatrixEventEvent.Decrypted, onDecrypted);
     attachedTo.off(ClientEvent.Room, onRoomChange);
     attachedTo.off(RoomEvent.MyMembership, onMyMembership);
+    attachedTo.off(ClientEvent.AccountData, onAccountData);
     window.removeEventListener(LIGHT_ROOMS_EVENT, onLightRoomsChange);
     announcer.close();
     badgeAnnouncer.close();
@@ -821,6 +825,7 @@ const attach = (mx: MatrixClient) => {
     badgePowerChecked.clear();
     scannedRooms.clear();
     healedRooms.clear();
+    backupHealed = false;
     undecryptedOwn.clear();
     window.clearTimeout(healTimer);
   }
@@ -831,6 +836,7 @@ const attach = (mx: MatrixClient) => {
   mx.on(MatrixEventEvent.Decrypted, onDecrypted);
   mx.on(ClientEvent.Room, onRoomChange);
   mx.on(RoomEvent.MyMembership, onMyMembership);
+  mx.on(ClientEvent.AccountData, onAccountData);
   window.addEventListener(LIGHT_ROOMS_EVENT, onLightRoomsChange);
   syncRooms(mx);
 };
@@ -918,6 +924,13 @@ function onMyMembership(room: Room, membership: string) {
 function onLightRoomsChange() {
   if (attachedTo) syncRooms(attachedTo);
   notify();
+}
+/** Another device saved your profile into the account data (ownProfileBackup.ts). */
+function onAccountData(event: MatrixEvent) {
+  if (event.getType() !== OWN_PROFILE_EVENT) return;
+  notify();
+  // eslint-disable-next-line no-use-before-define
+  scheduleHeal();
 }
 
 /** Newest of the state event content and the message-mode content for one key. */
@@ -1061,13 +1074,22 @@ const useDiddyVersion = (mx: MatrixClient): number => {
 
 // --- profiles ----------------------------------------------------------------------------------
 
-export const readProfile = (mx: MatrixClient, userId: string): DiddyProfile | undefined =>
+/** Your own profile as saved in your account data (ownProfileBackup.ts). */
+const readOwnBackup = (mx: MatrixClient): StoredProfile | undefined => {
+  const stored = parseBackup(mx.getAccountData(OWN_PROFILE_EVENT as never)?.getContent(), Date.now());
+  return stored && isSmallContent(stored.content as object) ? stored : undefined;
+};
+
+export const readProfile = (mx: MatrixClient, userId: string): DiddyProfile | undefined => {
   // a profile only counts when it was written by the user it belongs to; the newest one of all
   // options rooms wins, so devices that see different rooms still agree (#207)
-  pickNewestProfile(
-    getOptionsRooms(mx).map((room) => readData(room, PROFILE_EVENT, userId, userId)),
-    sanitizeProfile
+  const candidates: (StoredProfile | undefined)[] = getOptionsRooms(mx).map((room) =>
+    readData(room, PROFILE_EVENT, userId, userId)
   );
+  // your own profile also lives in your account data, also without any options room
+  if (userId === mx.getUserId()) candidates.push(readOwnBackup(mx));
+  return pickNewestProfile(candidates, sanitizeProfile);
+};
 
 /**
  * readProfile for drawing, kept per data version: every message header reads its sender's profile
@@ -1128,14 +1150,35 @@ const waitForOwnProfile = (mx: MatrixClient, timeoutMs: number): Promise<boolean
     check();
   });
 
+/** Saves the profile into your account data; false (and a log line) when the server refused. */
+const writeOwnBackup = async (mx: MatrixClient, content: object): Promise<boolean> => {
+  try {
+    await mx.setAccountData(
+      OWN_PROFILE_EVENT as never,
+      backupContent(content as Record<string, unknown>, Date.now()) as never
+    );
+    return true;
+  } catch (e) {
+    diag(`diddy: could not save the profile to the account: ${e instanceof Error ? e.message : String(e)}`);
+    return false;
+  }
+};
+
 export const setMyProfile = async (mx: MatrixClient, profile: DiddyProfile): Promise<void> => {
   if (!ownProfileKnown(mx)) throw new Error(PROFILE_LOADING);
   const rooms = getOptionsRooms(mx);
-  if (rooms.length === 0) throw new Error('No Diddy Options room found.');
   // every write carries this client's version (#75), or none when you do not share it
   const stamped = stampClientVersion(profile, getShareVersion() ? APP_VERSION : undefined);
+  // your account data first: every device of yours reads it, also without an options room
+  const backup = writeOwnBackup(mx, stamped);
+  if (rooms.length === 0) {
+    if (!(await backup)) throw new Error('Could not save your profile. Try again in a moment.');
+    backupHealed = true;
+    return;
+  }
   // into every options room: people of each of your servers read only their own room
   const written = await writeToRooms(mx, rooms, PROFILE_EVENT, stamped, mx.getSafeUserId());
+  if (await backup) backupHealed = true;
   // the write itself is the announcement: joins before it are already covered
   written.forEach((room) => {
     announcer.markSent(room.roomId);
@@ -1155,25 +1198,41 @@ const HEAL_DELAY_MS = 8000;
 const healOwnProfile = async (mx: MatrixClient): Promise<void> => {
   if (healing || attachedTo !== mx || !ownProfileKnown(mx)) return;
   const rooms = getOptionsRooms(mx);
-  if (rooms.length < 2 || rooms.every((room) => healedRooms.has(room.roomId))) return;
+  if (rooms.length === 0) return;
+  if (backupHealed && rooms.every((room) => healedRooms.has(room.roomId))) return;
   // one of our own events is still encrypted: it could be the newest profile, never overwrite it
   if (rooms.some((room) => (undecryptedOwn.get(room.roomId)?.size ?? 0) > 0)) return;
   const me = mx.getSafeUserId();
-  const perRoom = rooms.map((room) => readData(room, PROFILE_EVENT, me, me));
-  const { newest, stale } = staleProfileRooms(perRoom, sanitizeProfile);
+  // the rooms, then the account data copy (index rooms.length)
+  const candidates: (StoredProfile | undefined)[] = [
+    ...rooms.map((room) => readData(room, PROFILE_EVENT, me, me)),
+    readOwnBackup(mx),
+  ];
+  const backupIndex = rooms.length;
+  const { newest, stale } = staleProfileRooms(candidates, sanitizeProfile);
   if (newest === undefined) return;
-  const source = perRoom[newest];
+  const source = candidates[newest];
   rooms.forEach((room, i) => {
     if (!stale.includes(i)) healedRooms.add(room.roomId);
   });
-  const targets = stale.map((i) => rooms[i]).filter((room) => !healedRooms.has(room.roomId));
-  if (!source || targets.length === 0) return;
+  const backupStale = stale.includes(backupIndex) && !backupHealed;
+  backupHealed = true;
+  const targets = stale
+    .filter((i) => i < backupIndex)
+    .map((i) => rooms[i])
+    .filter((room) => !healedRooms.has(room.roomId));
+  if (!source || (targets.length === 0 && !backupStale)) return;
   healing = true;
   try {
-    targets.forEach((room) => healedRooms.add(room.roomId));
-    const written = await writeToRooms(mx, targets, PROFILE_EVENT, source.content, me);
-    written.forEach((room) => announcer.markSent(room.roomId));
-    diag(`diddy: own profile copied into ${written.length} options room(s) with an older copy`);
+    if (backupStale && (await writeOwnBackup(mx, source.content as object))) {
+      diag('diddy: own profile copied into the account data');
+    }
+    if (targets.length > 0) {
+      targets.forEach((room) => healedRooms.add(room.roomId));
+      const written = await writeToRooms(mx, targets, PROFILE_EVENT, source.content as object, me);
+      written.forEach((room) => announcer.markSent(room.roomId));
+      diag(`diddy: own profile copied into ${written.length} options room(s) with an older copy`);
+    }
   } catch (e) {
     diag(`diddy: could not copy the own profile: ${e instanceof Error ? e.message : String(e)}`);
   } finally {

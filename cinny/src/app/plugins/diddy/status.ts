@@ -3,7 +3,6 @@ import { MatrixClient, SetPresence } from 'matrix-js-sdk';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { DiddyStatus } from './types';
 import { patchMyProfile, readProfileForView, useDiddyProfile } from './profiles';
-import { getPrimaryOptionsRoom } from './optionsRoom';
 import { presenceForStatus, resolveMyStatus, silencesAlerts } from './dnd';
 
 const STATUS_KEY = 'diddyStatus';
@@ -61,12 +60,11 @@ const applyPresence = async (mx: MatrixClient, status: DiddyStatus): Promise<voi
 
 export const setMyStatus = async (mx: MatrixClient, status: DiddyStatus): Promise<void> => {
   storeLocalStatus(status);
-  if (getPrimaryOptionsRoom(mx)) {
-    try {
-      await patchMyProfile(mx, { status });
-    } catch {
-      // ignore, the local copy is enough
-    }
+  // also without an options room: the profile then lives in your account data only
+  try {
+    await patchMyProfile(mx, { status });
+  } catch {
+    // ignore, the local copy is enough
   }
   try {
     await applyPresence(mx, status);

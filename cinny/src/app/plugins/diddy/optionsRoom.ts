@@ -98,6 +98,9 @@ export const addLightOptionsRoom = (roomId: string): void => {
 
 export const removeLightOptionsRoom = (roomId: string): void => {
   setLightRoomIds(getLightRoomIds().filter((id) => id !== roomId));
+  // removed on purpose: connectMarkedRooms must not add it again by itself
+  // eslint-disable-next-line no-use-before-define
+  rememberLeftOptionsRoom(roomId);
 };
 
 export const isLightOptionsRoom = (room: Room | null | undefined): boolean =>
@@ -440,4 +443,30 @@ export const joinOptionsRoomOfSpace = async (mx: MatrixClient, spaceId: string):
     if (!hierarchy.next_batch) return;
     fromToken = hierarchy.next_batch;
   }
+};
+
+/**
+ * Joined rooms that are clearly meant as a Diddy room (named like the options room or tagged in
+ * the topic) but carry no marker: an admin made them in another client, or Diddy may not change
+ * their settings. They are used in message mode right away, the same as "Connect" in the welcome
+ * guide, so nobody has to click anything. Rooms you removed or left on purpose stay untouched.
+ * Never changes a room's settings. Returns how many rooms were connected.
+ */
+export const connectMarkedRooms = (mx: MatrixClient): number => {
+  let connected = 0;
+  mx.getRooms().forEach((room) => {
+    if (room.getMyMembership() !== 'join' || room.isSpaceRoom() || isOptionsRoom(room)) return;
+    // the room's state is not loaded yet: a marker could still be missing only here
+    if (!room.currentState.getStateEvents(EventType.RoomPowerLevels, '')) return;
+    if (wasLeftOnPurpose(room.roomId)) return;
+    const name = room.currentState.getStateEvents(EventType.RoomName, '')?.getContent()?.name;
+    const topic = room.currentState.getStateEvents(EventType.RoomTopic, '')?.getContent()?.topic;
+    const named = typeof name === 'string' && name.trim().toLowerCase() === OPTIONS_ROOM_NAME.toLowerCase();
+    const tagged = typeof topic === 'string' && topic.includes(TOPIC_TAG);
+    if (!named && !tagged) return;
+    addLightOptionsRoom(room.roomId);
+    diag(`diddy: marked room connected automatically room=${room.roomId}`);
+    connected += 1;
+  });
+  return connected;
 };

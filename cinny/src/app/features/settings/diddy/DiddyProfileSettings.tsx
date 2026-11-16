@@ -711,8 +711,8 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
   const setupCard = (
     <SettingsCard
       icon={Icons.Server}
-      title="Set up the data room"
-      description="Diddy needs a hidden room to share profiles, badges and name styles. Without it your customization cannot be saved or seen by others."
+      title="Share your profile with others"
+      description="Your profile is saved on your account and shows on all your devices. To show it to other people, Diddy needs a hidden room on your server."
       footer={
         <Hint>
           Not an admin? Ask the admin of your server to set it up; Diddy joins it automatically.
@@ -1423,9 +1423,10 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
     privacy: hasOptionsRoom ? privacyTab : null,
   };
 
-  const showSaveBar = dirty && hasOptionsRoom;
+  // without an options room the profile is still saved (account data) and shows on your devices
+  const showSaveBar = dirty;
 
-  const headerActions = hasOptionsRoom ? (
+  const headerActions = (
     <>
       <input
         ref={importInput}
@@ -1481,7 +1482,7 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
         <Text size="B300">Reset to default</Text>
       </Button>
     </>
-  ) : undefined;
+  );
 
   return (
     <Page>
@@ -1508,11 +1509,7 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
             />
 
             <div className={css.Layout}>
-              <div
-                className={hasOptionsRoom ? css.Main : `${css.Main} ${css.Disabled}`}
-                aria-disabled={!hasOptionsRoom}
-                {...(hasOptionsRoom ? {} : ({ inert: '' } as object))}
-              >
+              <div className={css.Main}>
                 <EditorTabs
                   tab={tab}
                   onChange={openTab}

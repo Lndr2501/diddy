@@ -40,6 +40,12 @@ enum DiddyLightRooms {
         all.remove(roomId)
         UserDefaults.standard.set(all.sorted(), forKey: key(accountId))
         markChangedHere(for: accountId)
+        // Removed on purpose: connectMarkedDiddyRooms must not add it again by itself.
+        var left = UserDefaults.standard.stringArray(forKey: MatrixAccount.leftOptionsRoomsKey) ?? []
+        if !left.contains(roomId) {
+            left.append(roomId)
+            UserDefaults.standard.set(left, forKey: MatrixAccount.leftOptionsRoomsKey)
+        }
     }
 
     /// The whole list as the account has it (DiddyRoomListSync), not a change made here.
@@ -187,13 +193,20 @@ extension MatrixAccount {
     }
 
     /// Joins an options room of a server and connects it (onboarding's `joinAndConnect`): when it
-    /// is not marked yet it is adopted, or used without admin rights if that is refused.
-    func connectDiddyRoom(roomId: String, via: [String]) async throws {
+    /// is not marked yet it is adopted, or used without admin rights if that is refused. With
+    /// `adopt` off (automatic joins) the room's settings are never changed: it is used without
+    /// admin rights right away, like desktop's `connectMarkedRooms`.
+    func connectDiddyRoom(roomId: String, via: [String], adopt: Bool = true) async throws {
         try await joinForDiddy(roomId, via: via)
         var marked = diddyOptionsRooms.contains(roomId)
         if !marked { marked = await hasDiddyMarker(roomId) }
         if marked {
             diddyOptionsRooms.insert(roomId)
+            await registerDiddyRoom(roomId)
+            return
+        }
+        guard adopt else {
+            DiddyLightRooms.add(roomId, for: id)
             await registerDiddyRoom(roomId)
             return
         }
@@ -221,23 +234,53 @@ extension MatrixAccount {
                                spaceName: spaces.first { $0.roomId == spaceId }?.displayName, looksLikeDiddy: true, via: entry.via)
     }
 
-    /// Joins the options room of your servers when you have none yet: what desktop does by itself
-    /// after the first sync. Asks the servers at most every ten minutes and never fails loudly.
+    /// Joins the options room of every server you are in and connects joined Diddy rooms without
+    /// the marker, what desktop does by itself (`useDiddyOptionsAutoJoin`). A server you joined
+    /// since the last look is asked right away, all of them at most every ten minutes. Never fails
+    /// loudly and never changes a room's settings.
     func joinDiddyOptionsRoomAutomatically() async {
-        guard diddyPrimaryRoom == nil, diddyOptionsRooms.isEmpty, diddyLightRoomIds.isEmpty, !spaces.isEmpty else { return }
+        guard !diddyAutoJoinRunning else { return }
+        diddyAutoJoinRunning = true
+        defer { diddyAutoJoinRunning = false }
+        connectMarkedDiddyRooms()
+        guard !spaces.isEmpty else { return }
         let key = "diddyAutoJoinAt.\(userId)"
+        let now = Date().timeIntervalSince1970
         let last = UserDefaults.standard.double(forKey: key)
-        if last > 0, Date().timeIntervalSince1970 - last < 600 { return }
-        UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: key)
-        for space in spaces {
+        let due = last <= 0 || now - last >= 600
+        let toCheck = due ? spaces : spaces.filter { !diddyAutoJoinChecked.contains($0.roomId) }
+        guard !toCheck.isEmpty else { return }
+        if due { UserDefaults.standard.set(now, forKey: key) }
+        for space in toCheck {
+            diddyAutoJoinChecked.insert(space.roomId)
             guard let choice = await findDiddyRoom(ofServer: space.roomId) else { continue }
             do {
-                try await connectDiddyRoom(roomId: choice.id, via: choice.via)
-                return
+                try await connectDiddyRoom(roomId: choice.id, via: choice.via, adopt: false)
             } catch {
                 DiagLog.shared.write("diddy: joining the options room of a server failed: \(error.friendlyMessage)")
             }
         }
+    }
+
+    /// Joined rooms that are clearly meant as a Diddy room (named like the options room or tagged
+    /// in the topic) but carry no marker are used without admin rights right away, so nobody has to
+    /// press "Connect" (desktop `connectMarkedRooms`). Rooms removed or left on purpose stay untouched.
+    @discardableResult
+    func connectMarkedDiddyRooms() -> Bool {
+        let left = Set(UserDefaults.standard.stringArray(forKey: Self.leftOptionsRoomsKey) ?? [])
+        let light = diddyLightRoomIds
+        var connected = false
+        for room in rooms where room.isJoined && !room.isSpace && !room.isDirect {
+            guard !diddyOptionsRooms.contains(room.id), !light.contains(room.id), !left.contains(room.id) else { continue }
+            // Only rooms whose marker answer is known: an unchecked room may still carry it.
+            guard diddyCheckedRooms.contains(room.id) else { continue }
+            guard DiddyOptionsRoomLogic.looksLikeDiddyRoom(name: room.name, topic: room.topic) else { continue }
+            DiddyLightRooms.add(room.id, for: id)
+            DiagLog.shared.write("diddy: marked room connected automatically room=\(room.id)")
+            connected = true
+        }
+        if connected { Task { await self.reloadDiddyProfilesForWrite() } }
+        return connected
     }
 
     // MARK: Helpers
