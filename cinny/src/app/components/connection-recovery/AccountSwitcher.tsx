@@ -89,7 +89,7 @@ export function ConnectionsMenu({
     >
       {account && <div className={css.Section}>{account}</div>}
       <Text size="L400" className={css.SectionTitle}>
-        {t('common.connectionRecovery.verbindungen')}
+        {t('common.connectionRecovery.connections')}
       </Text>
       <div className={css.Section}>
         {rows.map((row) => (
@@ -135,7 +135,7 @@ export function ConnectionsMenu({
         {onSettings && (
           <button type="button" role="menuitem" className={css.Row} onClick={onSettings}>
             <Icon size="200" src={Icons.Setting} />
-            <Text size="T300">{t('common.connectionRecovery.einstellungen')}</Text>
+            <Text size="T300">{t('common.connectionRecovery.settings')}</Text>
           </button>
         )}
         {onIntro && (

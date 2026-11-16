@@ -1175,10 +1175,10 @@
       "exit": "Exit"
     },
     "connectionRecovery": {
-      "verbindungen": "Verbindungen",
-      "einstellungen": "Einstellungen",
-      "lokalerTestserver": "Lokaler Testserver",
-      "anderenServerVerbinden": "Anderen Server verbinden",
+      "connections": "Connections",
+      "settings": "Settings",
+      "localTestServer": "Local test server",
+      "connectAnotherServer": "Connect another server",
       "accountsAndConnections": "Accounts and connections",
       "thisWindow": "This window",
       "listFailed": "The connection list could not be loaded. Your account is unchanged.",
@@ -1363,7 +1363,7 @@
       "muteStreamSound": "Mute stream sound",
       "shareStreamSound": "Share stream sound",
       "goToCallRoom": "Go to call room",
-      "sprachchat": "Sprachchat",
+      "sprachchat": "Voice chat",
       "callControls": "Call controls",
       "soundboard": "Soundboard",
       "moreCallOptions": "More call options",

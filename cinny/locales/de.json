@@ -914,7 +914,135 @@
   },
   "room": {
     "timeline": {
-      "changedRoomName": " hat den Raumnamen geändert"
+      "changedRoomName": " hat den Raumnamen geändert",
+      "changedRoomTopic": " hat das Raumthema geändert",
+      "changedRoomAvatar": " hat das Raumbild geändert",
+      "joinedTheCall": " ist dem Call beigetreten",
+      "endedTheCall": " hat den Call beendet",
+      "sent": " hat ",
+      "stateEvent": " als Statusereignis gesendet",
+      "event": " als Ereignis gesendet",
+      "hide": "Verbergen",
+      "show": "Zeigen",
+      "newMessages": "Neue Nachrichten",
+      "jumpToUnread": "Zum ersten Ungelesenen",
+      "markAsRead": "Als gelesen markieren",
+      "jumpToLatest": "Zur neuesten Nachricht",
+      "today": "Heute",
+      "yesterday": "Gestern"
+    },
+    "botCommandAutocomplete": {
+      "botCommands": "Bot-Befehle"
+    },
+    "callChatView": {
+      "chat": "Chat",
+      "close": "Schließen"
+    },
+    "commandAutocomplete": {
+      "commands": "Befehle"
+    },
+    "membersDrawer": {
+      "members": "Mitglieder",
+      "joinedmembercountMembers": "{{joinedMemberCount}} Mitglieder",
+      "close": "Schließen",
+      "admin": "Admin",
+      "bot": "Bot",
+      "showName": "Zeigen: {{name}}",
+      "sortName": "Sortieren: {{name}}",
+      "invite": "Einladen",
+      "typeName": "Name eingeben …",
+      "scrollToTop": "Nach oben",
+      "noNameMembers": "Keine Mitglieder „{{name}}“",
+      "offline": "Offline",
+      "bots": "Bots",
+      "resultCount_zero": "Keine Ergebnisse",
+      "resultCount_one": "{{count}} Ergebnis",
+      "resultCount_other": "{{count}} Ergebnisse"
+    },
+    "tombstone": {
+      "thisRoomHasBeen": "Dieser Raum wurde ersetzt und ist nicht mehr aktiv.",
+      "failedToJoinReplacement": "Dem neuen Raum ließ sich nicht beitreten!",
+      "openNewRoom": "Neuen Raum öffnen",
+      "joinNewRoom": "Neuem Raum beitreten"
+    },
+    "view": {
+      "youDoNotHave": "Du darfst in diesem Raum nicht schreiben"
+    },
+    "viewFollowing": {
+      "seenByJoin": "Gesehen von {{join}}",
+      "seenByName": "Gesehen von {{name}}",
+      "seenByCount": "Gesehen von {{count}}"
+    },
+    "viewHeader": {
+      "searchMessages": "Nachrichten durchsuchen",
+      "markAsRead": "Als gelesen markieren",
+      "notifications": "Benachrichtigungen",
+      "invite": "Einladen",
+      "copyLink": "Link kopieren",
+      "roomSettings": "Raumeinstellungen",
+      "mediaFiles": "Medien und Dateien",
+      "jumpToTime": "Zu Zeitpunkt springen",
+      "leaveRoom": "Raum verlassen",
+      "startCall": "Call starten",
+      "voice": "Sprache",
+      "video": "Video",
+      "youReInAnother": "Du bist in einem anderen Call. Wenn du einen startest, verlässt du ihn.",
+      "call": "Anrufen",
+      "pinnedMessages": "Angeheftete Nachrichten",
+      "members": "Mitglieder",
+      "hideMembers": "Mitglieder ausblenden",
+      "showMembers": "Mitglieder zeigen",
+      "moreOptions": "Weitere Optionen",
+      "moreOptions2": "Weitere Optionen"
+    },
+    "viewTyping": {
+      "isTyping": " schreibt …",
+      "and": " und ",
+      "areTyping": " schreiben …",
+      "others": "weitere",
+      "dropTypingStatus": "Tippanzeige ausblenden"
+    },
+    "threadDrawer": {
+      "messageCouldNotBe": "Die Nachricht ließ sich noch nicht entschlüsseln",
+      "thread": "Thread",
+      "close": "Schließen",
+      "closeThread": "Thread schließen",
+      "theFirstMessageOf": "Die erste Nachricht dieses Threads ließ sich nicht laden.",
+      "loadingThread": "Thread wird geladen …",
+      "n1Reply": "1 Antwort",
+      "countReplies": "{{count}} Antworten",
+      "olderRepliesCouldNot": "Ältere Antworten ließen sich nicht laden.",
+      "theReplyWasNot": "Die Antwort wurde nicht gesendet. Versuch es noch einmal.",
+      "replyInThread": "Im Thread antworten"
+    },
+    "voiceRecorderButton": {
+      "recordVoiceMessage": "Sprachnachricht aufnehmen",
+      "recordingVoiceMessage": "Sprachnachricht wird aufgenommen",
+      "discardRecording": "Aufnahme verwerfen",
+      "discard": "Verwerfen",
+      "sendVoiceMessage": "Sprachnachricht senden",
+      "send": "Senden"
+    },
+    "jumpToTime": {
+      "jumpToTime": "Zu Zeitpunkt springen",
+      "time": "Uhrzeit",
+      "date": "Datum",
+      "preset": "Vorgabe",
+      "today": "Heute",
+      "yesterday": "Gestern",
+      "beginning": "Anfang",
+      "openTimeline": "Verlauf öffnen"
+    },
+    "reactionViewer": {
+      "reactedWithSelectedshortcode": "Reagiert mit :{{selectedShortcode}}:"
+    },
+    "pinMenu": {
+      "open": "Öffnen",
+      "failedToLoadMessage": "Die Nachricht ließ sich nicht laden!",
+      "event": "-Ereignis",
+      "pinnedMessages": "Angeheftete Nachrichten",
+      "noPinnedMessages": "Keine angehefteten Nachrichten",
+      "usersWithSufficientPower": "Wer genug Rechte hat, kann Nachrichten über ihr Kontextmenü anheften."
     }
   },
   "native": {
@@ -932,5 +1060,1208 @@
     "pickerHint": "Wähle einen Bildschirm oder ein Fenster.",
     "pickerSources": "Verfügbare Bildschirme und Fenster",
     "pickerCancel": "Abbrechen"
+  },
+  "common": {
+    "accountDataEditor": {
+      "accountData": "Kontodaten",
+      "save": "Speichern",
+      "cancel": "Abbrechen",
+      "jsonContent": "JSON-Inhalt",
+      "edit": "Bearbeiten",
+      "developerTools": "Entwicklerwerkzeuge"
+    },
+    "backupRestore": {
+      "connected": "Verbunden",
+      "disconnected": "Getrennt",
+      "syncingCount": "Synchronisiere ({{count}})",
+      "restoring0": "Wiederherstellung: 0 %",
+      "restoring": "Wiederherstellung:",
+      "backupHasTrustedDecryption": "Das Backup hat einen vertrauenswürdigen Entschlüsselungsschlüssel.",
+      "backupDoesNotHave": "Das Backup hat keinen vertrauenswürdigen Entschlüsselungsschlüssel!",
+      "backupHasTrustedBy": "Das Backup hat eine vertrauenswürdige Signatur.",
+      "backupDoesNotHave2": "Das Backup hat keine vertrauenswürdige Signatur!",
+      "encryptionBackup": "Verschlüsselungs-Backup",
+      "backupDetails": "Backup-Details",
+      "version": "Version:",
+      "nil": "NIL",
+      "keys": "Schlüssel:",
+      "restoreBackup": "Backup wiederherstellen",
+      "noBackupPresentOn": "Auf dem Server gibt es kein Backup!"
+    },
+    "betaNoticeBadge": {
+      "notice": "Hinweis",
+      "thisFeatureIsUnder": "Diese Funktion wird noch getestet und kann sich ändern.",
+      "beta": "Beta"
+    },
+    "devWatermark": {
+      "devLabel": "DEV · {{label}}"
+    },
+    "deviceVerification": {
+      "close": "Schließen",
+      "pleaseAcceptTheRequest": "Nimm die Anfrage auf dem anderen Gerät an.",
+      "clickAcceptToStart": "Klick auf „Annehmen“, um die Verifizierung zu starten.",
+      "accept": "Annehmen",
+      "verificationRequestHasBeen": "Die Verifizierungsanfrage wurde angenommen.",
+      "confirmTheEmojiBelow": "Bestätige, dass die Emojis unten auf beiden Geräten in derselben Reihenfolge erscheinen:",
+      "theyMatch": "Stimmen überein",
+      "doNotMatch": "Stimmen nicht überein",
+      "yourDeviceIsVerified": "Dein Gerät ist verifiziert.",
+      "okay": "Okay",
+      "verificationHasBeenCanceled": "Die Verifizierung wurde abgebrochen.",
+      "deviceVerification": "Geräteverifizierung",
+      "waitingForRequestTo": "Warte, bis die Anfrage angenommen wird …",
+      "waitingForTheResponse": "Warte auf die Antwort des anderen Geräts …",
+      "startingVerificationUsingEmoji": "Starte die Verifizierung per Emoji-Vergleich …",
+      "unexpectedErrorVerificationIs": "Unerwarteter Fehler! Die Verifizierung läuft, aber der Prüfer fehlt."
+    },
+    "deviceVerificationSetup": {
+      "generateA": "Erstelle einen",
+      "forVerifyingIdentityIf": "zur Bestätigung deiner Identität, falls du keinen Zugriff auf andere Geräte hast. Zusätzlich kannst du eine Passphrase festlegen, die du dir leichter merkst.",
+      "recoveryKey": "Wiederherstellungsschlüssel",
+      "passphraseOptional": "Passphrase (optional)",
+      "continue": "Weiter",
+      "unexpectedError": "Unerwarteter Fehler!",
+      "authenticationStepsToPerform": "Die nötigen Anmeldeschritte für diese Aktion unterstützt dieser Client nicht.",
+      "storeTheRecoveryKey": "Bewahre den Wiederherstellungsschlüssel sicher auf. Du brauchst ihn, um deine Identität zu bestätigen, wenn du keinen Zugriff auf andere Geräte hast.",
+      "hide": "Verbergen",
+      "show": "Zeigen",
+      "copy": "Kopieren",
+      "download": "Herunterladen",
+      "setupDeviceVerification": "Geräteverifizierung einrichten",
+      "resetDeviceVerification": "Geräteverifizierung zurücksetzen",
+      "resettingDeviceVerificationIs": "Das Zurücksetzen der Geräteverifizierung lässt sich nicht rückgängig machen.",
+      "anyoneYouHaveVerified": "Alle, mit denen du dich verifiziert hast, sehen Sicherheitswarnungen, und dein Verschlüsselungs-Backup geht verloren. Das willst du so gut wie nie, außer du hast deinen",
+      "or": "oder deine",
+      "andEveryDeviceYou": "und jedes Gerät verloren, mit dem du verifizieren kannst.",
+      "recoveryPassphrase": "Wiederherstellungs-Passphrase",
+      "reset": "Zurücksetzen"
+    },
+    "hexColorPickerPopOut": {
+      "remove": "Entfernen"
+    },
+    "joinRulesSwitcher": {
+      "unsupported": "Nicht unterstützt",
+      "inviteOnly": "Nur mit Einladung",
+      "knockInvite": "Anklopfen und Einladung",
+      "spaceMembersOrKnock": "Space-Mitglieder oder Anklopfen",
+      "spaceMembers": "Space-Mitglieder",
+      "public": "Öffentlich"
+    },
+    "logoutDialog": {
+      "logout": "Abmelden",
+      "youReAboutTo": "Du meldest dich gleich ab. Bist du sicher?",
+      "unverifiedDevice": "Nicht verifiziertes Gerät",
+      "verifyYourDeviceBefore": "Verifiziere dein Gerät vor dem Abmelden, damit deine verschlüsselten Nachrichten erhalten bleiben.",
+      "alert": "Achtung",
+      "enableDeviceVerificationOr": "Richte die Geräteverifizierung ein oder exportiere deine verschlüsselten Daten in den Einstellungen, damit du den Zugriff auf deine Nachrichten nicht verlierst.",
+      "failedToLogoutMessage": "Abmelden fehlgeschlagen: {{message}}",
+      "cancel": "Abbrechen"
+    },
+    "manualVerification": {
+      "recoveryPassphrase": "Wiederherstellungs-Passphrase",
+      "recoveryKey": "Wiederherstellungsschlüssel",
+      "verifyManually": "Manuell verifizieren",
+      "selectAVerificationMethod": "Wähle eine Verifizierungsmethode.",
+      "provideRecoveryKey": "Gib deinen Wiederherstellungsschlüssel ein.",
+      "deviceVerified": "Gerät verifiziert!"
+    },
+    "secretStorage": {
+      "recoveryPassphrase": "Wiederherstellungs-Passphrase",
+      "verify": "Verifizieren",
+      "recoveryKey": "Wiederherstellungsschlüssel"
+    },
+    "uIAFlowOverlay": {
+      "stepCurrentstepStepcount": "Schritt {{currentStep}}/{{stepCount}}",
+      "exit": "Beenden"
+    },
+    "connectionRecovery": {
+      "connections": "Verbindungen",
+      "settings": "Einstellungen",
+      "localTestServer": "Lokaler Testserver",
+      "connectAnotherServer": "Anderen Server verbinden",
+      "accountsAndConnections": "Konten und Verbindungen",
+      "thisWindow": "Dieses Fenster",
+      "listFailed": "Die Verbindungsliste konnte nicht geladen werden. Dein Konto bleibt unverändert.",
+      "desktopOnly": "Getrennte Anmeldungen sind in der Diddy-Desktop-App verfügbar.",
+      "addAccount": "Konto oder Server hinzufügen …",
+      "introDiscord": "Einführung: Matrix für Discord-Umsteiger",
+      "closeOverview": "Verbindungsübersicht schließen",
+      "close": "Schließen",
+      "otherAccountHint": "Ein anderes Konto wird in einem eigenen Diddy-Fenster geöffnet. Dein bisheriger Login, Nachrichten und Verschlüsselungsschlüssel bleiben erhalten. Ein anderer Homeserver braucht einen eigenen Account; dein Konto wird nicht übertragen. Ein gespeicherter Eintrag lässt sich löschen: Das Fenster schließt, und die getrennt gespeicherte Anmeldung dieses Servers wird mitsamt ihren Schlüsseln entfernt.",
+      "open": "Öffnen",
+      "deleteConnection": "Verbindung {{title}} löschen",
+      "reallyDelete": "Wirklich löschen?",
+      "delete": "Löschen",
+      "opening": "Fenster wird geöffnet …",
+      "openOwnLogin": "Eigene Anmeldung öffnen",
+      "homeserverConnection": "Homeserver-Verbindung",
+      "noAnswer": "Diddy bekommt keine Antwort. Der Homeserver oder deine Netzwerkverbindung ist möglicherweise gerade nicht verfügbar.",
+      "youCanWait": "Du kannst warten, die Verbindung erneut versuchen oder eine getrennte Anmeldung an einem anderen Server öffnen.",
+      "prepareFailed": "Beim Vorbereiten der Anmeldung oder der Synchronisierung ist ein Fehler aufgetreten.",
+      "nothingDeleted": "Dein Konto und deine lokalen Schlüssel werden dabei nicht gelöscht.",
+      "windowFailed": "Das Fenster konnte nicht geöffnet werden.",
+      "removeFailed": "Die Verbindung konnte nicht entfernt werden.",
+      "connecting": "Verbindung zum Homeserver …",
+      "unreachable": "Homeserver nicht erreichbar",
+      "syncSlow": "Die Synchronisierung dauert länger",
+      "preparing": "Deine Anmeldung wird vorbereitet",
+      "startFailed": "Die Verbindung konnte nicht gestartet werden",
+      "yourConnections": "Deine Verbindungen",
+      "connectOtherServer": "Mit einem anderen Server verbinden",
+      "serverPlaceholder": "matrix.example.org oder http://127.0.0.1:8008",
+      "retry": "Erneut versuchen",
+      "continueWithData": "Mit vorhandenen Daten fortfahren"
+    },
+    "createRoom": {
+      "founders": "Gründer",
+      "specialPrivilegedUsersCan": "Beim Erstellen kannst du Nutzer mit besonderen Rechten festlegen. Sie haben erweiterte Kontrolle und lassen sich nur bei einem Upgrade ändern.",
+      "usernameServer": "@nutzername:server",
+      "enter": "Eingabe",
+      "noSuggestions": "Keine Vorschläge",
+      "pleaseProvideTheUser": "Gib die Nutzer-ID ein und drück Enter.",
+      "restricted": "Eingeschränkt",
+      "onlyMemberOfParent": "Nur Mitglieder des übergeordneten Space können beitreten.",
+      "private": "Privat",
+      "onlyPeopleWithInvite": "Nur wer eingeladen ist, kann beitreten.",
+      "public": "Öffentlich",
+      "anyoneWithTheAddress": "Alle mit der Adresse können beitreten.",
+      "addressOptional": "Adresse (optional)",
+      "pickAnUniqueAddress": "Wähle eine eindeutige Adresse, damit man den Raum finden kann.",
+      "thisAddressIsAlready": "Diese Adresse ist schon vergeben. Wähle eine andere.",
+      "chatRoom": "Chatraum",
+      "messagesPhotosAndVideos": "- Nachrichten, Fotos und Videos.",
+      "voiceRoom": "Sprachraum",
+      "liveAudioAndVideo": "- Gespräche live mit Ton und Video.",
+      "version": "Version",
+      "versions": "Versionen"
+    },
+    "emojiBoard": {
+      "recent": "Zuletzt verwendet",
+      "unknownPack": "Unbekanntes Paket",
+      "searchResults": "Suchergebnisse",
+      "noResultsFound": "Keine Ergebnisse",
+      "noStickerPacks": "Keine Stickerpakete!",
+      "addStickersFromUser": "Füge Sticker in den Nutzer-, Raum- oder Space-Einstellungen hinzu.",
+      "searchOrTextReaction": "Suchen oder Textreaktion ",
+      "search": "Suchen",
+      "react": "Reagieren",
+      "sticker": "Sticker",
+      "emoji": "Emoji",
+      "personalPack": "Persönliches Paket",
+      "unknown": "Unbekannt",
+      "emojiName": "Emoji {{name}}"
+    },
+    "inviteUserPrompt": {
+      "invite": "Einladen",
+      "userId": "Nutzer-ID",
+      "usernameServer": "@nutzername:server",
+      "reasonOptional": "Grund (optional)",
+      "cancel": "Abbrechen"
+    },
+    "joinAddressPrompt": {
+      "joinWithAddress": "Über Adresse beitreten",
+      "enterPublicAddressTo": "Gib die öffentliche Adresse der Community ein. Adressen sehen so aus:",
+      "communityServer": "#community:server",
+      "httpsMatrixToCommunity": "https://matrix.to/#/#community:server",
+      "httpsMatrixToXyzaj": "https://matrix.to/#/!xYzAj?via=server",
+      "address": "Adresse",
+      "invalidAddress": "Ungültige Adresse",
+      "cancel": "Abbrechen",
+      "open": "Öffnen"
+    },
+    "leaveRoomPrompt": {
+      "leaveRoom": "Raum verlassen",
+      "areYouSureYou": "Willst du diesen Raum wirklich verlassen?",
+      "failedToLeaveRoom": "Der Raum ließ sich nicht verlassen! {{message}}",
+      "leaving": "Verlasse …",
+      "leave": "Verlassen",
+      "cancel": "Abbrechen"
+    },
+    "leaveSpacePrompt": {
+      "leaveSpace": "Space verlassen",
+      "areYouSureYou": "Willst du diesen Space wirklich verlassen?",
+      "failedToLeaveSpace": "Der Space ließ sich nicht verlassen! {{message}}",
+      "leaving": "Verlasse …",
+      "leave": "Verlassen",
+      "cancel": "Abbrechen"
+    },
+    "updateNotice": {
+      "isAvailable": "ist verfügbar",
+      "youHaveAppversion": "Du hast {{appVersion}}.",
+      "download": "Herunterladen",
+      "dismiss": "Ausblenden"
+    },
+    "uploadBoard": {
+      "files": "Dateien",
+      "send": "Senden",
+      "uploadFailed": "Hochladen fehlgeschlagen",
+      "remove": "Entfernen",
+      "removeAll": "Alle entfernen"
+    },
+    "uploadCard": {
+      "retryUpload": "Hochladen wiederholen",
+      "retry": "Wiederholen",
+      "cancelUpload": "Hochladen abbrechen",
+      "theFileSizeExceeds": "Die Datei ist zu groß. Erlaubt sind höchstens",
+      "butTheUploadedFile": ", die Datei hat",
+      "spoiler": "Spoiler"
+    },
+    "userPanel": {
+      "muteMicrophone": "Mikrofon stumm",
+      "unmuteMicrophone": "Mikrofon an",
+      "deafen": "Ton aus",
+      "undeafen": "Ton an",
+      "microphoneJoinACall": "Mikrofon (tritt einem Call bei)",
+      "joinACallTo": "Tritt einem Call bei, um das Mikrofon zu nutzen",
+      "headphonesJoinACall": "Kopfhörer (tritt einem Call bei)",
+      "joinACallTo2": "Tritt einem Call bei, um die Kopfhörer zu nutzen",
+      "status": "Status",
+      "accountAndStatus": "Konto und Status ({{status}})",
+      "userSettings": "Einstellungen",
+      "agent": "Agent",
+      "talkingToAgent": "Redet mit Agent",
+      "online": "Online",
+      "idle": "Abwesend",
+      "doNotDisturb": "Nicht stören",
+      "busy": "Beschäftigt",
+      "mutesSoundsAndNotifications": "Schaltet Töne und Benachrichtigungen stumm. Ungelesen-Zähler bleiben.",
+      "invisible": "Unsichtbar"
+    },
+    "roomNotificationSwitcher": {
+      "default": "Standard",
+      "allMessages": "Alle Nachrichten",
+      "mentionKeywords": "Erwähnungen und Stichwörter",
+      "mute": "Stumm"
+    },
+    "settingsSheet": {
+      "settings": "Einstellungen"
+    },
+    "userRoomProfileRenderer": {
+      "profile": "Profil"
+    }
+  },
+  "call": {
+    "frameMenu": {
+      "copy": "Kopieren"
+    },
+    "userMenu": {
+      "thisStreamHasNo": "Dieser Stream hat keinen Ton",
+      "streamVolume": "Stream-Lautstärke",
+      "muted": "Stumm",
+      "unmuteStreamForMe": "Stream für mich wieder laut",
+      "muteStreamForMe": "Stream für mich stumm",
+      "streamVolume2": "Stream-Lautstärke",
+      "profile": "Profil",
+      "message": "Nachricht",
+      "voiceVolumeMuteFor": "Stimmlautstärke und Stummschalten für mich …",
+      "volumeMuteForMe": "Lautstärke und Stummschalten für mich …",
+      "copyName": "Namen kopieren",
+      "copyUserId": "Nutzer-ID kopieren"
+    },
+    "panel": {
+      "latencyMs": "{{latency}} ms",
+      "muteStreamSound": "Stream-Ton stumm",
+      "shareStreamSound": "Stream-Ton teilen",
+      "goToCallRoom": "Zum Call-Raum",
+      "sprachchat": "Sprachchat",
+      "callControls": "Call-Steuerung",
+      "soundboard": "Soundboard",
+      "moreCallOptions": "Weitere Call-Optionen",
+      "leaveCall": "Call verlassen",
+      "measuringPing": "Ping wird gemessen",
+      "pingLatencyMs": "Ping {{latency}} ms",
+      "stopScreenShare": "Bildschirmfreigabe beenden",
+      "shareScreen": "Bildschirm teilen",
+      "stopCamera": "Kamera aus",
+      "startCamera": "Kamera an",
+      "inVoiceChatOpen": "Im Sprachchat: {{roomName}}. Call-Raum öffnen",
+      "openRoom": "{{roomName}} öffnen",
+      "connectedTo": "Verbunden mit {{roomName}}",
+      "inVoiceChat": "Im Sprachchat"
+    },
+    "switchPrompt": {
+      "couldNotSwitchCalls": "Der Call ließ sich nicht wechseln",
+      "leaveYourCurrentCall": "Aktuellen Call verlassen?",
+      "leaveAndCall": "Verlassen und anrufen",
+      "leaveAndJoin": "Verlassen und beitreten",
+      "close": "Schließen",
+      "cancel": "Abbrechen",
+      "youReInA": "Du bist in einem Call in {{currentName}}. Wenn du {{targetName}} anrufst, verlässt du ihn.",
+      "youReInA2": "Du bist in einem Call in {{currentName}}. Wenn du {{targetName}} beitrittst, verlässt du ihn."
+    },
+    "incoming": {
+      "rejectCall": "Anruf ablehnen",
+      "ignoreCall": "Anruf ignorieren",
+      "reject": "Ablehnen",
+      "ignore": "Ignorieren",
+      "answerWithVideo": "Mit Video annehmen",
+      "answerCall": "Anruf annehmen",
+      "answer": "Annehmen",
+      "yourHomeserverDoesNot": "Dein Homeserver unterstützt keine Calls.",
+      "thisAppCannotMake": "Diese App kann hier keine Calls führen (kein WebRTC)."
+    },
+    "control": {
+      "turnOffMicrophone": "Mikrofon aus",
+      "turnOnMicrophone": "Mikrofon an",
+      "turnOffSound": "Ton aus",
+      "turnOnSound": "Ton an",
+      "stopCamera": "Kamera aus",
+      "startCamera": "Kamera an",
+      "stopScreenshare": "Bildschirmfreigabe beenden",
+      "startScreenshare": "Bildschirm teilen",
+      "end": "Beenden"
+    },
+    "liveChip": {
+      "countLive": "{{count}} live"
+    },
+    "memberGlance": {
+      "nameTalkingToAgent": "{{name}} (redet mit Agent)"
+    },
+    "memberSpeaking": {
+      "isSpeaking": " spricht …",
+      "and": " und ",
+      "areSpeaking": " sprechen …",
+      "others": "weitere"
+    },
+    "controls": {
+      "lostYourIphoneUsing": "Verbindung zum iPhone verloren. Mikrofon und Kamera dieses Computers sind wieder aktiv.",
+      "yourIphoneLeftUsing": "Dein iPhone hat den Call verlassen. Mikrofon und Kamera dieses Computers sind wieder aktiv.",
+      "ok": "OK",
+      "iphoneCameraPausedOpen": "iPhone-Kamera pausiert: Öffne Diddy auf deinem iPhone",
+      "disconnect": "Trennen",
+      "leaveCall": "Call verlassen",
+      "leave": "Verlassen",
+      "turnOffLowercase": "{{lowerCase}} aus",
+      "turnOnLowercase": "{{lowerCase}} an",
+      "turnOffSound": "Ton aus",
+      "turnOnSound": "Ton an",
+      "stopScreenshare": "Bildschirmfreigabe beenden",
+      "startScreenshare": "Bildschirm teilen",
+      "closeChat": "Chat schließen",
+      "openChat": "Chat öffnen",
+      "reactions": "Reaktionen",
+      "shareSystemSound": "Systemton teilen",
+      "stopSharing": "Teilen beenden",
+      "sharingOptions": "Freigabeoptionen",
+      "spotlightView": "Spotlight-Ansicht",
+      "phoneAsCameraMic": "Handy als Kamera und Mikrofon …",
+      "callSettings": "Call-Einstellungen",
+      "more": "Mehr",
+      "waitingForYourIphone": "Warte auf dein iPhone …",
+      "sharingWithoutSoundError": "Freigabe ohne Ton: {{error}}",
+      "sharingYourSystemSound": "Dein Systemton wird geteilt (ohne Diddy selbst)",
+      "phoneMicrophone": "Handy-Mikrofon",
+      "microphone": "Mikrofon",
+      "phoneCamera": "Handy-Kamera",
+      "camera": "Kamera",
+      "usePhoneAsCamera": "Handy als Kamera und Mikrofon nutzen",
+      "waitingForYourPhone": "Warte auf dein Handy …",
+      "phoneConnected": "Handy verbunden",
+      "iphoneUses": "iPhone: {{parts}}",
+      "iphoneCamera": "Kamera",
+      "iphoneMicrophone": "Mikrofon",
+      "iphoneScreen": "Bildschirm",
+      "iphoneConnected": "verbunden",
+      "turnOff": "{{what}} aus",
+      "turnOn": "{{what}} an",
+      "stop": "{{what}} beenden",
+      "start": "{{what}} starten"
+    },
+    "memberCard": {
+      "collapse": "Einklappen",
+      "remainingOther": "+{{remaining}} weitere Person",
+      "remainingOthers": "+{{remaining}} weitere Personen",
+      "nameTalksToAgent": "{{name}} redet mit Agent",
+      "talksToAgent": "redet mit Agent",
+      "inCall": "Im Gespräch",
+      "profileOf": "Profil von {{name}}"
+    },
+    "stage": {
+      "nameIsSharingTheir": "{{name}} teilt den Bildschirm",
+      "watch": "Ansehen",
+      "waitingForTheStream": "Warte auf den Stream …",
+      "live": "LIVE",
+      "stopWatching": "Nicht mehr ansehen",
+      "stopWatchingLabel": "{{label}} nicht mehr ansehen",
+      "streamView": "Stream-Ansicht",
+      "zoomOut": "Verkleinern",
+      "zoomZoompercentReset": "Zoom {{zoomPercent}} %, zurücksetzen",
+      "notZoomed": "Nicht gezoomt",
+      "resetZoom": "Zoom zurücksetzen",
+      "scrollOrPinchTo": "Zum Zoomen scrollen oder ziehen",
+      "zoomIn": "Vergrößern",
+      "exitFullScreen": "Vollbild beenden",
+      "fullScreen": "Vollbild",
+      "exitFullScreenEsc": "Vollbild beenden (Esc)",
+      "mutedForYou": "Für dich stumm",
+      "showLabelLarge": "{{label}} groß zeigen",
+      "watchLabel": "{{label}} ansehen",
+      "stopWatchingLabelLarge": "{{label}} nicht mehr groß zeigen",
+      "nameTalksToAgent": "{{name}}, redet mit Agent",
+      "talksToAgent": "Redet mit Agent"
+    },
+    "view": {
+      "yourHomeserverDoesNot": "Dein Homeserver unterstützt keine Calls.",
+      "yourBrowserDoesNot": "Dein Browser unterstützt kein WebRTC, das für Calls nötig ist.",
+      "voiceChatSEmpty": "Der Sprachchat ist leer. Komm als Erste oder Erster dazu!",
+      "youDonTHave": "Du darfst hier nicht beitreten.",
+      "youReInAnother": "Du bist in einem anderen Call. Wenn du beitrittst, verlässt du ihn.",
+      "participants": "Teilnehmende",
+      "countLive": "{{count}} live"
+    },
+    "companionDialog": {
+      "lookAtChosenname": "Schau auf {{chosenName}}",
+      "lookAtYourPhone": "Schau auf dein Handy",
+      "diddyOnYourPhone": "Diddy auf deinem Handy fragt, ob es diesem Call beitreten soll. Tipp dort auf „Beitreten“. Ist Diddy auf dem Handy geschlossen, öffne es: Die Anfrage wartet zwei Minuten.",
+      "cancel": "Abbrechen",
+      "yourPhoneIsIn": "Dein Handy ist im Call",
+      "phoneLowercase": "Handy: {{lowerCase}}",
+      "screenShared": "Bildschirm: geteilt",
+      "screenNotSharedStart": "Bildschirm: nicht geteilt (starte es auf dem Handy)",
+      "theMicrophoneAndCamera": "Die Mikrofon- und Kamera-Tasten in der Call-Leiste steuern jetzt dein Handy und zeigen ein kleines Handy. Mikrofon und Kamera dieses Computers bleiben aus, bis du trennst.",
+      "theCallSoundKeeps": "Der Call-Ton läuft weiter auf diesem Computer.",
+      "diddyIsInThe": "Diddy ist auf deinem Handy im Hintergrund, deshalb ist die Kamera pausiert. Öffne Diddy dort.",
+      "keepDiddyOpenOn": "Lass Diddy auf dem Handy offen: Die Kamera pausiert, wenn du die App verlässt. Das Mikrofon läuft weiter.",
+      "ifThePhoneLeaves": "Verlässt das Handy den Call oder verliert es die Verbindung, nimmt dieser Computer sein eigenes Mikrofon und seine Kamera von selbst zurück.",
+      "disconnectPhone": "Handy trennen",
+      "done": "Fertig",
+      "yourPhoneJoinsThis": "Dein Handy tritt diesem Call als zweites Gerät von dir bei und sendet, was du hier auswählst. Dafür braucht es die Diddy-App auf dem Handy (iPhone oder Android), angemeldet mit diesem Konto.",
+      "whichPhone": "Welches Handy",
+      "noOtherDeviceOf": "Kein anderes Gerät von dir gefunden. Melde dich zuerst auf deinem Handy bei Diddy an.",
+      "allMyDevices": "Alle meine Geräte",
+      "everyDeviceOfYours": "Alle deine Geräte werden gefragt; das erste Handy, das beitritt, übernimmt.",
+      "theCallSoundKeeps2": "Der Call-Ton läuft weiter hier, nicht auf dem Handy.",
+      "thisComputerSMicrophone": "Mikrofon und Kamera dieses Computers sind aus, solange das Handy sendet.",
+      "yourPhoneSaidNot": "Dein Handy hat „Nicht jetzt“ gesagt.",
+      "lostYourPhoneClosed": "Verbindung zum Handy verloren (geschlossen oder kein Netz). Mikrofon und Kamera dieses Computers sind wieder aktiv.",
+      "yourPhoneLeftThe": "Dein Handy hat den Call verlassen. Mikrofon und Kamera dieses Computers sind wieder aktiv.",
+      "yourPhoneDidNot": "Dein Handy hat nicht geantwortet. Öffne Diddy dort und versuch es noch einmal.",
+      "asking": "Frage an …",
+      "phoneAsCameraMic": "Handy als Kamera und Mikrofon",
+      "close": "Schließen",
+      "camera": "Kamera",
+      "youCanTurnIt": "Du kannst sie auf dem Handy umdrehen.",
+      "microphone": "Mikrofon",
+      "usuallyMuchBetterThan": "Meist viel besser als ein Computer-Mikrofon.",
+      "screen": "Bildschirm",
+      "thePhoneSharesIts": "Das Handy teilt seinen ganzen Bildschirm, mit Apps und Spielen.",
+      "notSeenYet": "Noch nicht gesehen",
+      "activeNow": "Gerade aktiv",
+      "seenMinutesMinAgo": "Vor {{minutes}} Min. gesehen",
+      "seenHoursHAgo": "Vor {{hours}} Std. gesehen",
+      "seenRoundDaysAgo": "Vor {{round}} Tagen gesehen",
+      "askChosenname": "{{chosenName}} fragen",
+      "askMyPhone": "Mein Handy fragen",
+      "stepOf": "Schritt {{step}} von {{steps}}",
+      "steps": {
+        "choose": "Auswählen",
+        "confirm": "Am Handy bestätigen",
+        "connected": "Verbunden"
+      },
+      "rowOn": "{{label}}: an",
+      "rowOff": "{{label}}: aus"
+    },
+    "devicePicker": {
+      "inputDevice": "Eingabegerät",
+      "allowMicrophoneAccessTo": "Erlaube den Mikrofonzugriff, um Geräte anzuzeigen",
+      "inputVolume": "Eingangslautstärke",
+      "deviceAndVolumeChanges": "Geräte- und Lautstärkeänderungen brauchen eventuell einen neuen Beitritt zum Call.",
+      "outputDevice": "Ausgabegerät",
+      "notSupportedOnThis": "Auf diesem System nicht unterstützt",
+      "outputVolume": "Ausgangslautstärke",
+      "allowCameraAccessTo": "Erlaube den Kamerazugriff, um Namen anzuzeigen",
+      "camera": "Kamera",
+      "systemDefault": "Systemstandard",
+      "inputDeviceAndVolume": "Eingabegerät und Lautstärke",
+      "outputDeviceAndVolume": "Ausgabegerät und Lautstärke"
+    },
+    "myInstantsImport": {
+      "importFromMyinstants": "Aus MyInstants importieren",
+      "close": "Schließen",
+      "searchTermOrMyinstants": "Suchbegriff oder MyInstants-Link",
+      "search": "Suchen",
+      "selectNone": "Keine auswählen",
+      "selectAll": "Alle auswählen",
+      "sizeSelectedCountShown": "{{size}} ausgewählt · {{count}} angezeigt",
+      "moreAvailable": " · weitere verfügbar",
+      "stopPreviewOfName": "Vorschau von {{name}} stoppen",
+      "previewName": "Vorschau von {{name}}",
+      "importSelectedSize": "Auswahl importieren ({{size}})",
+      "importAll": "Alle importieren",
+      "results": " (alle Ergebnisse)",
+      "loadMore": "Mehr laden",
+      "stop": "Stopp",
+      "soundsAreUploadedBy": "Die Sounds laden MyInstants-Nutzer hoch. Importiere nur, was du verwenden darfst. Clips sind auf 20 Sekunden begrenzt.",
+      "enterASearchTerm": "Gib einen Suchbegriff oder einen MyInstants-Link ein.",
+      "nothingFound": "Nichts gefunden.",
+      "previewFailedMessageof": "Vorschau fehlgeschlagen: {{messageOf}}",
+      "loadingResultsCount": "Ergebnisse werden geladen … ({{count}})",
+      "importingOf": "Importiere {{number}} von {{count}} …"
+    },
+    "prescreenControls": {
+      "join": "Beitreten"
+    },
+    "soundboard": {
+      "soundboard": "Soundboard",
+      "stop": "Stopp",
+      "addSound": "Sound hinzufügen",
+      "closeSoundboard": "Soundboard schließen",
+      "importFromMyinstants": "Aus MyInstants importieren",
+      "noSoundsYetAdd": "Noch keine Sounds. Füge kurze Clips hinzu (bis 20 Sekunden) und klick sie an, um sie für alle im Call abzuspielen.",
+      "searchCountSounds": "{{count}} Sounds durchsuchen",
+      "removeName": "{{name}} entfernen",
+      "noSoundMatchesFilter": "Kein Sound passt zu „{{filter}}“.",
+      "volume": "Lautstärke",
+      "soundboardVolume": "Soundboard-Lautstärke",
+      "othersHearYourSounds": "Andere hören deine Sounds, sobald du einem Call (erneut) beitrittst und mindestens ein Sound hinzugefügt ist."
+    },
+    "watchTogether": {
+      "watchTogether": "Zusammen schauen",
+      "close": "Schließen",
+      "pasteAYoutubeLink": "Füge einen YouTube-Link ein. Alle im Call bekommen das Video; Abspielen, Pause und Spulen sind geteilt, Lautstärke und Qualität bleiben deine.",
+      "httpsYoutuBe": "https://youtu.be/…",
+      "cancel": "Abbrechen",
+      "startForEveryone": "Für alle starten",
+      "youtubeVideoPlayer": "YouTube-Videoplayer",
+      "openOnYoutube": "Auf YouTube öffnen",
+      "closeForMe": "Für mich schließen",
+      "stopForEveryone": "Für alle beenden",
+      "unmuteVideo": "Video-Ton an",
+      "muteVideo": "Video-Ton aus",
+      "yourVideoVolume": "Deine Video-Lautstärke",
+      "quality": "Qualität",
+      "yourVideoQuality": "Deine Videoqualität",
+      "now": "jetzt",
+      "volumeAndQualityAre": "Lautstärke und Qualität gelten nur für dich. Nutze Kopfhörer: Das Video läuft auf deinem Gerät, und Lautsprecher würden in dein Mikrofon durchdringen.",
+      "youtubeDecidesTheQuality": " YouTube wählt die Qualität selbst und hat deine Wahl ignoriert; das Zahnrad im Player ändert sie nur für dich.",
+      "sponsorSegmentsAreSkipped": " Sponsorenabschnitte werden mit SponsorBlock übersprungen.",
+      "thatIsNotA": "Das ist kein YouTube-Videolink (youtube.com/watch, youtu.be oder shorts).",
+      "showTheVideo": "Video zeigen",
+      "watchAnotherVideoTogether": "Ein anderes Video zusammen schauen",
+      "skippedLabelSegmentSponsorblock": "Abschnitt „{{label}}“ übersprungen (SponsorBlock)"
+    },
+    "useSwitch": {
+      "couldNotStartThe": "Der Call ließ sich nicht starten."
+    }
+  },
+  "composer": {
+    "toolbar": {
+      "exitHyper": "{{hyper}} verlassen",
+      "heading1": "Überschrift 1",
+      "heading2": "Überschrift 2",
+      "heading3": "Überschrift 3",
+      "bold": "Fett",
+      "italic": "Kursiv",
+      "underline": "Unterstrichen",
+      "strikeThrough": "Durchgestrichen",
+      "inlineCode": "Code im Text",
+      "spoiler": "Spoiler",
+      "blockQuote": "Zitat",
+      "blockCode": "Codeblock",
+      "orderedList": "Nummerierte Liste",
+      "unorderedList": "Aufzählung",
+      "exitFormatting": "Formatierung beenden",
+      "disableMarkdown": "Markdown aus",
+      "enableMarkdown": "Markdown an"
+    },
+    "emoticonAutocomplete": {
+      "emojis": "Emojis"
+    },
+    "roomMentionAutocomplete": {
+      "rooms": "Räume",
+      "unknownRoom": "Unbekannter Raum"
+    },
+    "userMentionAutocomplete": {
+      "mentions": "Erwähnungen"
+    },
+    "input": {
+      "dragAndDropFiles": "Zieh Dateien hierher oder klick, um sie auszuwählen",
+      "sendAMessage": "Nachricht schreiben …",
+      "attachFile": "Datei anhängen",
+      "formatting": "Formatierung",
+      "stickers": "Sticker",
+      "emoji": "Emoji",
+      "sendMessage": "Nachricht senden",
+      "dropFilesIn": "Dateien in „{{room}}“ ablegen",
+      "room": "Raum"
+    },
+    "editorPreview": {
+      "sendAMessage": "Nachricht schreiben …"
+    }
+  },
+  "notifications": {
+    "host": {
+      "dismissNotification": "Benachrichtigung schließen",
+      "notifications": "Benachrichtigungen"
+    }
+  },
+  "auth": {
+    "dummy": {
+      "retry": "Erneut versuchen",
+      "cancel": "Abbrechen",
+      "failedToRegister": "Die Registrierung hat nicht geklappt."
+    },
+    "email": {
+      "email": "E-Mail",
+      "sendVerificationEmail": "Bestätigungs-E-Mail senden",
+      "cancel": "Abbrechen",
+      "sendingVerificationEmail": "Bestätigungs-E-Mail wird gesendet …",
+      "verifyEmail": "E-Mail bestätigen",
+      "verificationRequestSent": "Bestätigungsanfrage gesendet",
+      "pleaseCheckYourEmail": "Schau in dein Postfach „{{email}}“ und bestätige die Adresse, bevor du weitermachst.",
+      "continue": "Weiter",
+      "provideEmail": "E-Mail angeben",
+      "failedToSendVerification": "Die Bestätigungs-E-Mail ließ sich nicht senden.",
+      "pleaseProvideEmailTo": "Gib eine E-Mail-Adresse an, an die die Bestätigung gehen soll."
+    },
+    "fallback": {
+      "serverlabelAsksForThis": "{{serverLabel}} möchte diesen Schritt auf einer eigenen Seite. Öffne sie im Browser, schließ den Schritt ab, komm zurück und drück auf „Weiter“.",
+      "theServerDidNot": "Der Server hat keine Registrierung gestartet. Versuch es noch einmal.",
+      "theServerDoesNot": "Für den Server ist dieser Schritt noch nicht erledigt. Schließ ihn auf der Seite ab und drück dann noch einmal auf „Weiter“.",
+      "openThePageAgain": "Seite erneut öffnen",
+      "openThePage": "Seite öffnen",
+      "continue": "Weiter",
+      "cancel": "Abbrechen"
+    },
+    "password": {
+      "accountPassword": "Kontopasswort",
+      "toPerformThisAction": "Für diese Aktion musst du dich mit deinem Kontopasswort bestätigen.",
+      "password": "Passwort",
+      "invalidPassword": "Falsches Passwort!",
+      "continue": "Weiter"
+    },
+    "reCaptcha": {
+      "cancel": "Abbrechen",
+      "invalidData": "Ungültige Daten",
+      "pleaseCheckTheBox": "Hak das Kästchen unten an, um weiterzumachen.",
+      "noValidDataFound": "Für ReCAPTCHA fehlen gültige Daten."
+    },
+    "registrationToken": {
+      "registrationToken": "Registrierungstoken",
+      "retry": "Erneut versuchen",
+      "cancel": "Abbrechen",
+      "invalidRegistrationTokenProvided": "Das Registrierungstoken ist ungültig.",
+      "pleaseSubmitRegistrationToken": "Gib das Registrierungstoken ein, das du vom Admin deines Homeservers bekommen hast."
+    },
+    "sSO": {
+      "ssoLogin": "SSO-Anmeldung",
+      "toPerformThisAction": "Für diese Aktion musst du dich per SSO bestätigen.",
+      "continue": "Weiter",
+      "continueWithSso": "Weiter mit SSO"
+    },
+    "terms": {
+      "retry": "Erneut versuchen",
+      "cancel": "Abbrechen",
+      "failedToSubmitTerms": "Die Zustimmung zu den Nutzungsbedingungen ließ sich nicht senden."
+    },
+    "footer": {
+      "basedOnUpstreamname": "Basiert auf {{upstreamName}}",
+      "poweredByMatrix": "Läuft mit Matrix"
+    },
+    "layout": {
+      "homeserver": "Homeserver",
+      "lookingForHomeserver": "Suche Homeserver …",
+      "failedToConnectHomeserver": "Verbindung fehlgeschlagen. Die Homeserver-Konfiguration von {{host}} scheint unbrauchbar.",
+      "failedToConnectHomeserver2": "Verbindung fehlgeschlagen. Die base_url der Homeserver-Konfiguration scheint ungültig.",
+      "connectingToBaseurl": "Verbinde mit {{baseUrl}}",
+      "loadingAuthenticationFlow": "Anmeldeablauf wird geladen …",
+      "failedToGetAuthentication": "Der Anmeldeablauf ließ sich nicht abrufen.",
+      "noAnswer": "Der Homeserver ist nicht erreichbar oder antwortet nicht rechtzeitig.",
+      "notMatrix": "Der Homeserver ist nicht erreichbar oder kein gültiger Matrix-Server.",
+      "retry": "Erneut versuchen"
+    },
+    "orDivider": {
+      "or": "ODER"
+    },
+    "sSOLogin": {
+      "createAnAccountOn": "Konto auf {{server}} erstellen",
+      "continueWithSso": "Weiter mit SSO",
+      "continueWithName": "Weiter mit {{name}}"
+    },
+    "serverPicker": {
+      "homeserverList": "Homeserver-Liste"
+    },
+    "login": {
+      "login": "Anmelden",
+      "thisClientDoesNot": "Dieser Client kann sich nicht beim Homeserver „{{server}}“ anmelden. Es gibt weder Passwort- noch SSO-Anmeldung.",
+      "newHere": "Neu hier?",
+      "createAnAccountOn": "Konto auf {{serverLabel}} erstellen"
+    },
+    "passwordLoginForm": {
+      "hint": "Tipp",
+      "user123": "nutzer123",
+      "username": "Nutzername:",
+      "user123Server": " @nutzer123:{{server}}",
+      "matrixId": "Matrix-ID:",
+      "user123Server2": " nutzer123@{{server}}",
+      "email": "E-Mail:",
+      "username2": "Nutzername",
+      "password": "Passwort",
+      "forgetPassword": "Passwort vergessen?",
+      "login": "Anmelden",
+      "loginWithCustomServer": "Die Anmeldung an einem eigenen Server erlaubt diese Client-Installation nicht.",
+      "failedToFindYour": "Der Server deiner Matrix-ID wurde nicht gefunden.",
+      "invalidUsernameOrPassword": "Nutzername oder Passwort falsch.",
+      "thisAccountHasBeen": "Dieses Konto wurde deaktiviert.",
+      "failedToLoginPart": "Anmeldung fehlgeschlagen. Ein Teil der Anfrage ist ungültig.",
+      "failedToLoginYour": "Anmeldung fehlgeschlagen. Der Server hat zu viele Versuche gezählt; versuch es später noch einmal.",
+      "failedToLoginUnknown": "Anmeldung fehlgeschlagen. Grund unbekannt."
+    },
+    "tokenLogin": {
+      "tokenLogin": "Anmeldung per Token",
+      "invalidLoginToken": "Ungültiges Anmeldetoken.",
+      "thisAccountHasBeen": "Dieses Konto wurde deaktiviert.",
+      "failedToLoginPart": "Anmeldung fehlgeschlagen. Ein Teil der Anfrage ist ungültig.",
+      "failedToLoginYour": "Anmeldung fehlgeschlagen. Der Server hat zu viele Versuche gezählt; versuch es später noch einmal.",
+      "failedToLoginUnknown": "Anmeldung fehlgeschlagen. Grund unbekannt."
+    },
+    "passwordRegisterForm": {
+      "username": "Nutzername",
+      "thisUsernameIsFree": "Dieser Nutzername ist frei.",
+      "password": "Passwort",
+      "confirmPassword": "Passwort bestätigen",
+      "registrationToken": "Registrierungstoken",
+      "registrationTokenOptional": "Registrierungstoken (optional)",
+      "email": "E-Mail",
+      "emailOptional": "E-Mail (optional)",
+      "iAcceptServer": "Ich akzeptiere die",
+      "termsAndConditions": "Nutzungsbedingungen des Servers",
+      "createAccount": "Konto erstellen",
+      "thisUsernameIsAlready": "Dieser Nutzername ist schon vergeben.",
+      "thisUsernameContainsInvalid": "Dieser Nutzername enthält ungültige Zeichen.",
+      "thisUsernameIsReserved": "Dieser Nutzername ist reserviert.",
+      "weakPasswordPasswordRejected": "Zu schwaches Passwort. Der Server hat es abgelehnt; wähle ein stärkeres.",
+      "shortPasswordPasswordRejected": "Zu kurzes Passwort. Der Server hat es abgelehnt; wähle ein längeres.",
+      "failedToRegisterYour": "Registrierung fehlgeschlagen. Der Server hat zu viele Versuche gezählt; versuch es später noch einmal.",
+      "failedToRegisterThe": "Registrierung fehlgeschlagen. Der Homeserver erlaubt keine Registrierung.",
+      "failedToRegisterInvalid": "Registrierung fehlgeschlagen. Ungültige Anfrage.",
+      "failedToRegisterUnknown": "Registrierung fehlgeschlagen. Grund unbekannt."
+    },
+    "register": {
+      "createAnAccount": "Konto erstellen",
+      "yourAccountLivesOn": "Dein Konto liegt auf {{serverLabel}}. Wähle oben einen anderen Server, wenn du magst.",
+      "registrationHasBeenDisabled": "Auf diesem Homeserver ist die Registrierung abgeschaltet.",
+      "youHaveBeenRate": "Zu viele Versuche. Versuch es später noch einmal.",
+      "invalidRequestFailedTo": "Ungültige Anfrage! Es gibt keine Registrierungsoptionen.",
+      "thisServerDoesNot": "Dieser Server bietet keinen Weg, ein Konto zu erstellen.",
+      "alreadyHaveAnAccount": "Schon ein Konto?",
+      "logIn": "Anmelden"
+    },
+    "passwordResetForm": {
+      "passwordHasBeenReset": "Das Passwort wurde zurückgesetzt. Melde dich mit dem neuen Passwort an.",
+      "login": "Anmelden",
+      "homeserver": "Der Homeserver",
+      "willSendYouAn": "schickt dir eine E-Mail, mit der du dein Passwort zurücksetzen kannst.",
+      "email": "E-Mail",
+      "newPassword": "Neues Passwort",
+      "confirmPassword": "Passwort bestätigen",
+      "resetPassword": "Passwort zurücksetzen",
+      "failedToResetPassword": "Das Passwort ließ sich nicht zurücksetzen."
+    },
+    "resetPassword": {
+      "resetPassword": "Passwort zurücksetzen",
+      "rememberYourPassword": "Passwort wieder eingefallen?",
+      "login": "Anmelden"
+    }
+  },
+  "profile": {
+    "creatorChip": {
+      "managePowers": "Rechte verwalten"
+    },
+    "powerChip": {
+      "selfDemotion": "Eigene Rechte senken",
+      "youAreAboutTo": "Du senkst gerade deine eigenen Rechte! Du kannst sie dir danach nicht selbst zurückgeben. Bist du sicher?",
+      "demote": "Senken",
+      "sharedPower": "Gleiche Rechte",
+      "youArePromotingThe": "Du gibst dieser Person dieselben Rechte wie dir! Danach kannst du ihre Rechte nicht mehr ändern. Bist du sicher?",
+      "promote": "Befördern",
+      "errorName": "Fehler: {{name}}",
+      "managePowers": "Rechte verwalten"
+    },
+    "profileCardView": {
+      "usesDiddyClientversion": "Nutzt Diddy {{clientVersion}}",
+      "call": "Anrufen",
+      "message": "Nachricht",
+      "about": "Über mich"
+    },
+    "profileModules": {
+      "interests": "Interessen",
+      "links": "Links",
+      "sharedRooms": "Gemeinsame Räume",
+      "profile": "Profil",
+      "website": "Website",
+      "listeningTo": "Hört gerade",
+      "playing": "Spielt gerade",
+      "workingOn": "Arbeitet an",
+      "learning": "Lernt gerade",
+      "activity": "Aktivität",
+      "aboutMe": "Über mich",
+      "info": "Info",
+      "shared": "Gemeinsam"
+    },
+    "chips": {
+      "copyServer": "Server kopieren",
+      "exploreCommunity": "Community entdecken",
+      "openInBrowser": "Im Browser öffnen",
+      "copyUserId": "Nutzer-ID kopieren",
+      "copyUserLink": "Nutzerlink kopieren",
+      "share": "Teilen",
+      "spaces": "Spaces",
+      "rooms": "Räume",
+      "directMessages": "Direktnachrichten",
+      "countMutualRooms": "{{count}} gemeinsame Räume",
+      "mutualRooms": "Gemeinsame Räume",
+      "blockedUser": "Blockiert",
+      "youDoNotReceive": "Du bekommst von dieser Person keine Nachrichten oder Einladungen.",
+      "unblockUser": "Nicht mehr blockieren",
+      "blockUser": "Blockieren",
+      "moreOptions": "Weitere Optionen",
+      "inviteToRoom": "In Raum einladen",
+      "kickFromRoom": "Aus Raum entfernen",
+      "banFromRoom": "Aus Raum verbannen"
+    },
+    "hero": {
+      "openFullProfile": "Ganzes Profil öffnen",
+      "viewAvatar": "Profilbild ansehen",
+      "copied": "Kopiert",
+      "copyUserId": "Nutzer-ID kopieren",
+      "userIdCopied": "Nutzer-ID kopiert",
+      "copyUserIdUserid": "Nutzer-ID {{userId}} kopieren",
+      "about": "Über mich",
+      "bot": "Bot",
+      "thisAccountIsA": "Dieses Konto ist ein Bot"
+    },
+    "moderation": {
+      "kickedUser": "Entfernt",
+      "kickedBy": "Entfernt von:",
+      "reason": "Grund:",
+      "noReasonProvided": "Kein Grund angegeben.",
+      "bannedUser": "Verbannt",
+      "bannedBy": "Verbannt von:",
+      "unban": "Verbannung aufheben",
+      "invitedUser": "Eingeladen",
+      "invitedBy": "Eingeladen von:",
+      "cancelInvite": "Einladung zurückziehen",
+      "reasonOptional": "Grund (optional)",
+      "cancel": "Abbrechen",
+      "invite": "Einladen",
+      "kick": "Entfernen",
+      "ban": "Verbannen"
+    },
+    "roomProfile": {
+      "couldNotStartThe": "Der Call ließ sich nicht starten.",
+      "leavesYourCurrentCall": "Verlässt deinen aktuellen Call",
+      "callPrivately": "Privat anrufen"
+    }
+  },
+  "createChat": {
+    "main": {
+      "userId": "Nutzer-ID",
+      "usernameServer": "@nutzername:server",
+      "pleaseEnterAValid": "Gib eine gültige Nutzer-ID ein.",
+      "options": "Optionen",
+      "endToEndEncryption": "Ende-zu-Ende-Verschlüsselung",
+      "onceThisFeatureIs": "Einmal eingeschaltet, lässt sie sich nach dem Erstellen nicht mehr abschalten.",
+      "serverRateLimitedYour": "Der Server bremst deine Anfrage für {{millisecondsToMinutes}} Minuten!",
+      "create": "Erstellen"
+    }
+  },
+  "createRoom": {
+    "main": {
+      "type": "Art",
+      "access": "Zugang",
+      "name": "Name",
+      "topicOptional": "Thema (optional)",
+      "options": "Optionen",
+      "advancedOptions": "Erweiterte Optionen",
+      "endToEndEncryption": "Ende-zu-Ende-Verschlüsselung",
+      "onceThisFeatureIs": "Einmal eingeschaltet, lässt sie sich nach dem Erstellen nicht mehr abschalten.",
+      "knockToJoin": "Anklopfen zum Beitreten",
+      "anyoneCanSendRequest": "Alle können anfragen, diesem Raum beizutreten.",
+      "allowFederation": "Föderation erlauben",
+      "usersFromOtherServers": "Nutzer anderer Server können beitreten.",
+      "serverRateLimitedYour": "Der Server bremst deine Anfrage für {{millisecondsToMinutes}} Minuten!",
+      "create": "Erstellen"
+    },
+    "createRoomModal": {
+      "newVoiceRoom": "Neuer Sprachraum",
+      "newChatRoom": "Neuer Chatraum"
+    }
+  },
+  "createSpace": {
+    "main": {
+      "access": "Zugang",
+      "name": "Name",
+      "topicOptional": "Thema (optional)",
+      "options": "Optionen",
+      "advancedOptions": "Erweiterte Optionen",
+      "knockToJoin": "Anklopfen zum Beitreten",
+      "anyoneCanSendRequest": "Alle können anfragen, diesem Space beizutreten.",
+      "allowFederation": "Föderation erlauben",
+      "usersFromOtherServers": "Nutzer anderer Server können beitreten.",
+      "serverRateLimitedYour": "Der Server bremst deine Anfrage für {{millisecondsToMinutes}} Minuten!",
+      "create": "Erstellen"
+    },
+    "createSpaceModal": {
+      "newSpace": "Neuer Space"
+    }
+  },
+  "plugins": {
+    "dock": {
+      "expandName": "{{name}} ausklappen",
+      "collapseName": "{{name}} einklappen"
+    },
+    "frame": {
+      "reloadName": "{{name}} neu laden",
+      "reload": "Neu laden",
+      "contentMissingOnThis": "Der Inhalt fehlt auf diesem Gerät. Entferne das Plugin und füge es neu hinzu.",
+      "thisPageDoesNot": "Diese Seite spricht nicht mit Diddy. Sie wird als normale Seite gezeigt.",
+      "loadingPlugin": "Plugin wird geladen …"
+    },
+    "sPanel": {
+      "plugins": "Plugins",
+      "noActivePlugins": "Keine aktiven Plugins",
+      "turnAPluginOn": "Schalte in den Plugin-Einstellungen ein Plugin ein oder füge ein neues hinzu.",
+      "managePlugins": "Plugins verwalten"
+    }
+  },
+  "nav": {
+    "callMemberList": {
+      "inTheCall": "Im Call",
+      "muted": "Stumm",
+      "headphonesOff": "Kopfhörer aus"
+    },
+    "navItem": {
+      "removeFromFavourites": "Aus Favoriten entfernen",
+      "addToFavourites": "Zu Favoriten hinzufügen",
+      "markAsRead": "Als gelesen markieren",
+      "notifications": "Benachrichtigungen",
+      "invite": "Einladen",
+      "copyLink": "Link kopieren",
+      "roomSettings": "Raumeinstellungen",
+      "leaveRoom": "Raum verlassen",
+      "toggleChat": "Chat ein- oder ausblenden",
+      "countLive": "{{count}} live",
+      "moreOptions": "Weitere Optionen"
+    },
+    "root": {
+      "preparingLogin": "Anmeldung wird vorbereitet …"
+    },
+    "syncStatus": {
+      "connecting": "Verbinde …",
+      "connectionLost": "Verbindung verloren – erneuter Versuch …",
+      "homeserverUnreachable": "Homeserver nicht erreichbar"
+    },
+    "welcomePage": {
+      "welcomeToAppname": "Willkommen bei {{appName}}",
+      "aMatrixChatClient": "Ein Matrix-Chat-Client auf Basis von",
+      "sourceCode": "Quellcode",
+      "upstreamnameUpstream": "{{upstreamName}} (Upstream)"
+    },
+    "create": {
+      "createSpace": "Space erstellen",
+      "addSpace": "Space hinzufügen",
+      "buildASpaceFor": "Bau einen Space für deine Community.",
+      "joinWithAddress": "Über Adresse beitreten",
+      "becomeAPartOf": "Werde Teil einer bestehenden Community.",
+      "create": "Erstellen"
+    },
+    "direct": {
+      "markAsRead": "Als gelesen markieren",
+      "directMessages": "Direktnachrichten",
+      "moreOptions": "Weitere Optionen",
+      "noDirectMessages": "Keine Direktnachrichten",
+      "youDoNotHave": "Du hast noch keine Direktnachrichten.",
+      "directMessage": "Direktnachricht",
+      "createChat": "Chat starten",
+      "favourites": "Favoriten",
+      "chats": "Chats"
+    },
+    "directCreate": {
+      "createChat": "Chat starten",
+      "startAPrivateEncrypted": "Starte einen privaten, verschlüsselten Chat, indem du eine Nutzer-ID eingibst."
+    },
+    "explore": {
+      "addServer": "Server hinzufügen",
+      "addServerNameTo": "Gib einen Servernamen ein, um öffentliche Communities zu entdecken.",
+      "serverName": "Servername",
+      "failedToLoadPublic": "Öffentliche Räume ließen sich nicht laden. Versuch es noch einmal.",
+      "view": "Ansehen",
+      "exploreCommunity": "Community entdecken",
+      "featured": "Empfohlen",
+      "servers": "Server",
+      "explore": "Entdecken"
+    },
+    "featured": {
+      "featuredByClient": "Vom Client empfohlen",
+      "featuredSpaces": "Empfohlene Spaces",
+      "featuredRooms": "Empfohlene Räume",
+      "noRoomsOrSpaces": "Der Client-Anbieter empfiehlt keine Räume oder Spaces.",
+      "findAndExplorePublic": "Entdecke öffentliche Räume und Spaces, die der Client-Anbieter empfiehlt."
+    },
+    "server": {
+      "search": "Suchen",
+      "searchForKeyword": "Nach Stichwort suchen",
+      "clear": "Leeren",
+      "enter": "Eingabe",
+      "protocols": "Protokolle",
+      "presets": "Vorgaben",
+      "customLimit": "Eigenes Limit",
+      "perPageItemLimit": "Einträge pro Seite",
+      "changeLimit": "Limit ändern",
+      "resultsForTerm": "Ergebnisse für „{{term}}“",
+      "popularCommunities": "Beliebte Communities",
+      "previousPage": "Vorherige Seite",
+      "nextPage": "Nächste Seite",
+      "noCommunitiesFound": "Keine Communities gefunden!",
+      "all": "Alle",
+      "spaces": "Spaces",
+      "rooms": "Räume",
+      "pageLimit": "Einträge pro Seite: {{limit}}"
+    },
+    "createRoom": {
+      "createRoom": "Raum erstellen",
+      "buildARoomFor": "Bau einen Raum für Gespräche in Echtzeit."
+    },
+    "home": {
+      "markAsRead": "Als gelesen markieren",
+      "home": "Start",
+      "moreOptions": "Weitere Optionen",
+      "noRooms": "Keine Räume",
+      "youDoNotHave": "Du hast noch keine Räume.",
+      "createRoom": "Raum erstellen",
+      "exploreCommunityRooms": "Community-Räume entdecken",
+      "joinWithAddress": "Über Adresse beitreten",
+      "newMessage": "Neue Nachricht",
+      "messageSearch": "Nachrichtensuche",
+      "favourites": "Favoriten",
+      "rooms": "Räume",
+      "directMessages": "Direktnachrichten"
+    },
+    "search": {
+      "messageSearch": "Nachrichtensuche",
+      "search": "Suchen",
+      "home": "Start"
+    },
+    "inbox": {
+      "invites": "Einladungen",
+      "inbox": "Posteingang",
+      "notifications": "Benachrichtigungen"
+    },
+    "invites": {
+      "encrypted": "Verschlüsselt",
+      "directMessage": "Direktnachricht",
+      "space": "Space",
+      "decline": "Ablehnen",
+      "accept": "Annehmen",
+      "from": "Von:",
+      "reasonReason": "Grund: {{reason}}",
+      "primary": "Wichtig",
+      "public": "Öffentlich",
+      "spam": "Spam",
+      "noInvites": "Keine Einladungen",
+      "declineAll": "Alle ablehnen",
+      "countSpamInvites": "{{count}} Spam-Einladungen",
+      "reportAll": "Alle melden",
+      "blockAll": "Alle blockieren",
+      "hideAll": "Alle ausblenden",
+      "viewAll": "Alle ansehen",
+      "noSpamInvites": "Keine Spam-Einladungen",
+      "invites": "Einladungen",
+      "filter": "Filter",
+      "unknown": "Unbekannt",
+      "whenSomeoneYouShare": "Lädt dich jemand ein, mit dem du einen Raum teilst, erscheint die Einladung hier.",
+      "invitesFromPeopleOutside": "Einladungen von Leuten außerhalb deiner Räume erscheinen hier.",
+      "spamInvite": "Spam-Einladung",
+      "someOfTheFollowing": "Einige dieser Einladungen können schädliche Inhalte enthalten oder von gesperrten Nutzern stammen.",
+      "invitesDetectedAsSpam": "Einladungen, die als Spam erkannt wurden, erscheinen hier."
+    },
+    "notifications": {
+      "event": "-Ereignis",
+      "roomTombstoneBody": "Raum ersetzt. {{body}}",
+      "markAsRead": "Als gelesen markieren",
+      "open": "Öffnen",
+      "notificationMessages": "Benachrichtigungen",
+      "filter": "Filter",
+      "allNotifications": "Alle Benachrichtigungen",
+      "highlighted": "Hervorgehoben",
+      "scrollToTop": "Nach oben",
+      "noNotifications": "Keine Benachrichtigungen",
+      "youDonTHave": "Du hast noch keine neuen Benachrichtigungen."
+    },
+    "plugins": {
+      "plugins": "Plugins"
+    },
+    "spaceTabs": {
+      "markAsRead": "Als gelesen markieren",
+      "unpin": "Lösen",
+      "invite": "Einladen",
+      "copyLink": "Link kopieren",
+      "spaceSettings": "Space-Einstellungen",
+      "unnamed": "Unbenannt"
+    },
+    "unverified": {
+      "unverifiedDevice": "Nicht verifiziertes Gerät",
+      "unverifiedDevices": "Nicht verifizierte Geräte"
+    },
+    "space": {
+      "markAsRead": "Als gelesen markieren",
+      "invite": "Einladen",
+      "copyLink": "Link kopieren",
+      "spaceSettings": "Space-Einstellungen",
+      "eventTimeline": "Ereignisverlauf",
+      "leaveSpace": "Space verlassen",
+      "moreOptions": "Weitere Optionen",
+      "spaceUpgraded": "Space aktualisiert",
+      "thisSpaceHasBeen": "Dieser Space wurde ersetzt und ist nicht mehr aktiv.",
+      "failedToJoinReplacement": "Dem neuen Space ließ sich nicht beitreten!",
+      "openNewSpace": "Neuen Space öffnen",
+      "joinNewSpace": "Neuem Space beitreten",
+      "directMessages": "Direktnachrichten",
+      "lobby": "Lobby",
+      "search": "Suchen",
+      "rooms": "Räume"
+    },
+    "nonUIFeatures": {
+      "invitation": "Einladung",
+      "youHaveCountNew": "Du hast {{count}} neue Einladungsanfrage.",
+      "youHaveANew": "Du hast eine neue Einladung.",
+      "youHaveCountNew2": "Du hast {{count}} neue Einladungen.",
+      "newInboxNotificationFrom": "Neue Benachrichtigung von {{username}}",
+      "unknown": "Unbekannt"
+    }
+  },
+  "message": {
+    "main": {
+      "viewReactions": "Reaktionen ansehen",
+      "readReceipts": "Lesebestätigungen",
+      "viewSource": "Quelltext ansehen",
+      "copyText": "Text kopieren",
+      "copyLink": "Link kopieren",
+      "unpinMessage": "Nachricht lösen",
+      "pinMessage": "Nachricht anheften",
+      "deleteMessage": "Nachricht löschen",
+      "thisActionIsIrreversible": "Das lässt sich nicht rückgängig machen! Willst du diese Nachricht wirklich löschen?",
+      "reason": "Grund",
+      "optional": "(optional)",
+      "failedToDeleteMessage": "Die Nachricht ließ sich nicht löschen! Versuch es noch einmal.",
+      "deleting": "Lösche …",
+      "delete": "Löschen",
+      "reportMessage": "Nachricht melden",
+      "reportThisMessageTo": "Melde diese Nachricht dem Server. Er kann dann die zuständigen Leute benachrichtigen.",
+      "failedToReportMessage": "Die Nachricht ließ sich nicht melden! Versuch es noch einmal.",
+      "messageHasBeenReported": "Die Nachricht wurde dem Server gemeldet.",
+      "reporting": "Melde …",
+      "report": "Melden",
+      "addReaction": "Reaktion hinzufügen",
+      "reply": "Antworten",
+      "replyInThread": "Im Thread antworten",
+      "editMessage": "Nachricht bearbeiten"
+    },
+    "editor": {
+      "editMessage": "Nachricht bearbeiten …",
+      "save": "Speichern",
+      "cancel": "Abbrechen"
+    }
   }
 }

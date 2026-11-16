@@ -232,7 +232,7 @@ export function ConnectionOverview({ open, onClose }: { open: boolean; onClose: 
                 disabled={!desktop || pending}
                 onClick={() => setServer('http://127.0.0.1:8008')}
               >
-                <Text>{t('common.connectionRecovery.lokalerTestserver')}</Text>
+                <Text>{t('common.connectionRecovery.localTestServer')}</Text>
               </Button>
             </div>
           </Box>
@@ -304,14 +304,14 @@ export function ConnectionsButton() {
           onClick={toggle}
           aria-haspopup="menu"
           aria-expanded={!!cords}
-          aria-label={t('common.connectionRecovery.verbindungen')}
+          aria-label={t('common.connectionRecovery.connections')}
         >
           <span className={switcher.Pill}>
             <Icon size="100" src={Icons.Link} />
             <Text size="T200">
               {current
                 ? visibleHomeserver(current.server).replace(/^https?:\/\//, '')
-                : t('common.connectionRecovery.verbindungen')}
+                : t('common.connectionRecovery.connections')}
               {count > 1 ? ` · ${count}` : ''}
             </Text>
           </span>
@@ -383,7 +383,7 @@ export function ConnectionRecovery({
               fill="Soft"
               onClick={() => setOverview(true)}
             >
-              <Text>{t('common.connectionRecovery.anderenServerVerbinden')}</Text>
+              <Text>{t('common.connectionRecovery.connectAnotherServer')}</Text>
             </Button>
             {onContinue && (
               <Button className={css.Pill} variant="Secondary" fill="None" onClick={onContinue}>
