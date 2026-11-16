@@ -25,6 +25,13 @@ export const effectiveUpdateRepo = (repo: string | undefined): string =>
 export const releasesApiUrl = (repo: string): string =>
   `https://api.github.com/repos/${effectiveUpdateRepo(repo)}/releases/latest`;
 
+/**
+ * The release list, newest first by date. The notice picks the highest version from it (#246):
+ * the "latest" flag can lag behind (or be set on an older release), and the list is what iOS uses.
+ */
+export const releasesListApiUrl = (repo: string): string =>
+  `https://api.github.com/repos/${effectiveUpdateRepo(repo)}/releases?per_page=30`;
+
 export const releasesPageUrl = (repo: string): string =>
   `https://github.com/${effectiveUpdateRepo(repo)}/releases/latest`;
 
@@ -72,6 +79,17 @@ export const parseRelease = (data: unknown, repo: string): ReleaseInfo | undefin
     pageUrl: htmlUrl || releasesPageUrl(repo),
     assets,
   };
+};
+
+/** The highest usable version in a GitHub release list (`GET /repos/{repo}/releases`). */
+export const newestRelease = (data: unknown, repo: string): ReleaseInfo | undefined => {
+  if (!Array.isArray(data)) return parseRelease(data, repo);
+  let best: ReleaseInfo | undefined;
+  data.forEach((item) => {
+    const release = parseRelease(item, repo);
+    if (release && (!best || compareVersions(release.version, best.version) > 0)) best = release;
+  });
+  return best;
 };
 
 export type UpdatePlatform = 'mac' | 'linux' | 'windows' | 'other';

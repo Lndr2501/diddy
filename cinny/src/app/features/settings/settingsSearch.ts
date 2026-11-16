@@ -45,12 +45,13 @@ export const SETTINGS_SEARCH_INDEX: Record<string, SettingsSearchEntry> = {
   calls: {
     name: 'Calls & Audio',
     keywords:
-      'call voice audio sound microphone agent dictation watch together video camera webcam ptt push to talk voice activity hold key',
+      'call voice audio sound microphone quiet loud gain agc agent dictation watch together video camera webcam ptt push to talk voice activity hold key',
     titles: [
       'Calls & Audio',
       'Calls',
       'Noise suppression',
       'Voice processing',
+      'Automatic mic volume',
       'Camera',
       'Volumes of people',
       'Push to talk',

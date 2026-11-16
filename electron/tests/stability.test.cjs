@@ -125,3 +125,9 @@ test('window guard without a reliable position only limits the size', () => {
   assert.deepEqual(guardWindowBounds({ x: 0, y: 0, width: 3000, height: 800 }, [MAIN], options), { x: 0, y: 0, width: 1920, height: 800 });
   assert.equal(guardWindowBounds({ x: 0, y: 0, width: 100, height: 100 }, [], options), undefined);
 });
+
+// Chromium's analog AGC turned the Windows microphone slider down and left it there (very quiet calls).
+test('Chromium may not move the system microphone volume', () => {
+  const main = require('node:fs').readFileSync(require('node:path').join(__dirname, '../main.cjs'), 'utf8');
+  assert.match(main, /addFeatureSwitch\(app\.commandLine, 'disable-features', 'WebRtcAllowInputVolumeAdjustment'\)/);
+});

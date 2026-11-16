@@ -83,6 +83,10 @@ app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 const isWayland = process.env.XDG_SESSION_TYPE === 'wayland' || !!process.env.WAYLAND_DISPLAY;
 // Merged, not appended: a wrapper may already pass --enable-features (NixOS: WaylandWindowDecorations).
 addFeatureSwitch(app.commandLine, isWayland ? 'enable-features' : 'disable-features', 'WebRTCPipeWireCapturer');
+// With automatic gain on, Chromium also moves the system microphone slider (analog AGC) and on
+// Windows often leaves it far down: you stay quiet in every app, even after the call. Diddy's
+// "Automatic mic volume" only amplifies the signal inside Diddy.
+addFeatureSwitch(app.commandLine, 'disable-features', 'WebRtcAllowInputVolumeAdjustment');
 
 // ---- crash handling ---------------------------------------------------------------------------
 
