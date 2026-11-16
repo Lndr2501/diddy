@@ -25,6 +25,8 @@ final class Soundboard: ObservableObject {
 
     @Published private(set) var clips: [Clip] = []
     @Published private(set) var playing: String?
+    /// iPad hardware keyboard: per-device Command + digit (1–9) assignment per clip.
+    @Published private(set) var hotkeys: [String: Int] = [:]
     /// The MyInstants result (its path) that is being previewed, if any.
     @Published private(set) var previewing: String?
     @Published var volume: Double {
@@ -39,6 +41,7 @@ final class Soundboard: ObservableObject {
     static let maxSeconds: Double = 20
     private static let clipsKey = "soundboardClips"
     private static let volumeKey = "soundboardVolume"
+    private static let hotkeysKey = "soundboardHotkeysIOS"
 
     private let folder: URL
     /// The preview of a MyInstants result.
@@ -67,6 +70,8 @@ final class Soundboard: ObservableObject {
             clips = present
             if present.count != stored.count { save() }
         }
+        let saved = UserDefaults.standard.dictionary(forKey: Self.hotkeysKey) as? [String: Int] ?? [:]
+        hotkeys = saved.filter { id, digit in clips.contains(where: { $0.id == id }) && (1...9).contains(digit) }
     }
 
     // MARK: Clips
@@ -122,6 +127,8 @@ final class Soundboard: ObservableObject {
         decoded[clip.id] = nil
         decodedOrder.removeAll { $0 == clip.id }
         clips.removeAll { $0.id == clip.id }
+        hotkeys[clip.id] = nil
+        UserDefaults.standard.set(hotkeys, forKey: Self.hotkeysKey)
         save()
     }
 
@@ -129,6 +136,18 @@ final class Soundboard: ObservableObject {
         if let data = try? JSONEncoder().encode(clips) {
             UserDefaults.standard.set(data, forKey: Self.clipsKey)
         }
+    }
+
+    /// Assign or remove a shortcut. A digit belongs to one sound only; changing it frees the old one.
+    func setHotkey(_ digit: Int?, for clip: Clip) {
+        guard clips.contains(where: { $0.id == clip.id }), digit == nil || (1...9).contains(digit!) else { return }
+        if let digit, hotkeys.contains(where: { $0.key != clip.id && $0.value == digit }) { return }
+        hotkeys[clip.id] = digit
+        UserDefaults.standard.set(hotkeys, forKey: Self.hotkeysKey)
+    }
+
+    func toggle(_ clip: Clip) {
+        if playing == clip.id { stopAll() } else { play(clip) }
     }
 
     // MARK: Playing
@@ -474,6 +493,7 @@ struct SoundboardSheet: View {
             }
         }
         .sheet(isPresented: $showMyInstants) { MyInstantsSheet() }
+        .background { if session.connected { SoundboardKeyboardCommands() } }
         .presentationDetents([.medium, .large])
     }
 
@@ -486,7 +506,7 @@ struct SoundboardSheet: View {
     private func clipButton(_ clip: Soundboard.Clip) -> some View {
         let isPlaying = board.playing == clip.id
         return Button {
-            if isPlaying { board.stopAll() } else { board.play(clip) }
+            board.toggle(clip)
         } label: {
             HStack(spacing: 8) {
                 Image(systemName: isPlaying ? "stop.circle.fill" : "play.circle.fill")
@@ -503,7 +523,35 @@ struct SoundboardSheet: View {
         .accessibilityValue(isPlaying ? "Playing" : "")
         .accessibilityHint(isPlaying ? "Stops the clip" : "Plays it for everyone in the call")
         .contextMenu {
+            Menu("Keyboard shortcut") {
+                ForEach(1...9, id: \.self) { digit in
+                    Button("⌘ + \(digit)") { board.setHotkey(digit, for: clip) }
+                        .disabled(board.hotkeys.contains { $0.key != clip.id && $0.value == digit })
+                }
+                if board.hotkeys[clip.id] != nil {
+                    Button("Remove shortcut") { board.setHotkey(nil, for: clip) }
+                }
+            }
             Button(role: .destructive) { board.remove(clip) } label: { Label("Delete", systemImage: "trash") }
+        }
+    }
+}
+
+/// UIKeyCommand via SwiftUI's keyboardShortcut: iPad hardware keyboard, only in the call UI.
+/// No command exists when the call view is removed, and iOS never captures keys system-wide.
+struct SoundboardKeyboardCommands: View {
+    @ObservedObject private var board = Soundboard.shared
+
+    var body: some View {
+        ForEach(board.clips) { clip in
+            if let digit = board.hotkeys[clip.id],
+               !board.hotkeys.contains(where: { $0.key != clip.id && $0.value == digit }) {
+                Button("Play \(clip.name)") { board.toggle(clip) }
+                    .keyboardShortcut(KeyEquivalent(Character(String(digit))), modifiers: .command)
+                    .frame(width: 0, height: 0)
+                    .opacity(0)
+                    .accessibilityHidden(true)
+            }
         }
     }
 }
