@@ -213,6 +213,14 @@ test('every module main.cjs loads ships in the Linux package and the Nix package
     assert.ok(pkg.build.linux.extraResources.some((r) => r.from === `native/bin/${binary}` && r.to === binary));
     assert.ok(!pkg.build.extraResources.some((r) => r.from.startsWith('native/')));
     assert.ok(nix.includes(`--set ${variable} $out/libexec/${binary}`));
-    assert.ok(main.includes(variable) && main.includes(`'${binary}'`));
+    // the audio helper's file name lives next to its spawning code
+    const names = binary === 'diddy-system-audio' ? fs.readFileSync(path.join(root, 'lib/systemAudio.cjs'), 'utf8') : main;
+    assert.ok(main.includes(variable) && names.includes(`'${binary}'`));
   }
+  // Windows: only the process loopback helper, built by dist:win and found under the same variable
+  assert.ok(pkg.scripts['dist:win'].includes('build:audio:win'));
+  assert.ok(fs.existsSync(path.join(root, pkg.scripts['build:audio:win'].replace(/^node /, ''))));
+  assert.deepEqual(pkg.build.win.extraResources, [{ from: 'native/bin/diddy-system-audio.exe', to: 'diddy-system-audio.exe' }]);
+  assert.ok(fs.readFileSync(path.join(root, 'lib/systemAudio.cjs'), 'utf8').includes("'diddy-system-audio.exe'"));
+  assert.ok(fs.existsSync(path.join(root, 'native/windows-audio/Cargo.lock')));
 });

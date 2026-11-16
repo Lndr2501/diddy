@@ -16,7 +16,12 @@ import {
   SoundButton,
   VideoButton,
 } from './Controls';
-import { CallEmbed, useCallControlState, useScreenShareAudio } from '../../plugins/call';
+import {
+  CallEmbed,
+  shareAudioOption,
+  useCallControlState,
+  useScreenShareAudio,
+} from '../../plugins/call';
 import {
   controlCompanion,
   dismissCompanion,
@@ -190,11 +195,7 @@ export function CallControls({ callEmbed }: CallControlsProps) {
           <div className={css.ControlSplit} data-active>
             <ScreenShareButton enabled onToggle={toggleScreenshare} />
             <ShareOptionsButton
-              audio={
-                streamAudio.available
-                  ? { enabled: streamAudio.enabled, onToggle: streamAudio.toggle }
-                  : null
-              }
+              audio={shareAudioOption(streamAudio)}
               onStop={toggleScreenshare}
             />
           </div>

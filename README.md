@@ -37,7 +37,7 @@ Join a voice room in one click. Calls work on macOS, where Cinny's web client ha
 <td width="33%" valign="top">
 
 ### Screen sharing
-Streams stay sharp even when Diddy is in the background. Share with system audio on macOS 14.2+ and Linux, switch the sound on or off from the call bar, and pull any stream to the front with a click.
+Streams stay sharp even when Diddy is in the background. Share with system audio on macOS 14.2+, Linux and Windows 10 (version 2004)+, switch the sound on or off from the call bar, and pull any stream to the front with a click.
 
 </td>
 <td width="33%" valign="top">
@@ -112,7 +112,7 @@ All images show example data and are generated from the real app, see [docs/scre
 | Chat, rooms, encryption | ✅ | ✅ Electron | 🧪 Electron, new | 🧪 native app, new |
 | Voice calls | ✅ | ✅ also encrypted | 🧪 | 🧪 |
 | Screen sharing | ✅ | 🧪 Wayland portal / X11 picker | 🧪 picker | 🧪 full screen on iOS 27+, otherwise Diddy only |
-| …with system sound | ✅ macOS 14.2+ | 🧪 other apps, not Diddy's own sound | ❌ not yet | 🧪 app sound |
+| …with system sound | ✅ macOS 14.2+ | 🧪 other apps, not Diddy's own sound | 🧪 Windows 10 2004+, not Diddy's own sound | 🧪 app sound |
 | Connection profiles | ✅ macOS 14+ | 🧪 untested | 🧪 | 🧪 multiple accounts |
 | Voice messages | ✅ | 🧪 | 🧪 | 🧪 sends m4a, plays m4a and Ogg/Opus |
 | Change app icon | ✅ | 🧪 | 🧪 window icon | 🧪 |
@@ -162,7 +162,7 @@ See [android/README.md](android/README.md) for building, signing and notificatio
 3. Start Diddy and allow the microphone when asked.
 
 > [!NOTE]
-> Same Electron (Chromium) app as on Linux. Screen sharing works with the picker; sharing the system sound is not available on Windows yet, because Chromium's capture would include the call itself and the others would hear themselves. Settings live in `%APPDATA%\app.diddy.desktop`, the log in `%LOCALAPPDATA%\app.diddy.desktop\logs`.
+> Same Electron (Chromium) app as on Linux. Screen sharing works with the picker. Sharing the system sound needs Windows 10 version 2004 (build 19041) or later: a bundled helper records everything except Diddy itself, so the others never hear the call echoed back. On older Windows the option is greyed out (Chromium's own capture would include the call). Settings live in `%APPDATA%\app.diddy.desktop`, the log in `%LOCALAPPDATA%\app.diddy.desktop\logs`.
 
 </details>
 
