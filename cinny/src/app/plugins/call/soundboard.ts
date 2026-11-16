@@ -24,7 +24,14 @@ import { hotkeyToString, normalizeHotkeyMap, SoundHotkey } from './soundboardHot
 export type Clip = {
   id: string;
   name: string;
+  /** Where the clip came from on MyInstants (/media/sounds/…): such clips sync to your devices (#248). */
+  myinstants?: string;
 };
+
+/** A change you made to a MyInstants clip; the sync writes it to your account (#248). */
+export type SoundboardUserChange =
+  | { kind: 'added'; path: string; name: string }
+  | { kind: 'removed'; path: string };
 
 const CLIPS_KEY = 'soundboardClips';
 const VOLUME_KEY = 'soundboardVolume';
@@ -149,6 +156,13 @@ class Soundboard {
 
   private snapshot: Snapshot;
 
+  private userChangeListener?: (change: SoundboardUserChange) => void;
+
+  /** The account sync listens here; changes the sync itself makes are not reported. */
+  public onUserChange(listener: ((change: SoundboardUserChange) => void) | undefined) {
+    this.userChangeListener = listener;
+  }
+
   constructor() {
     try {
       this.clips = JSON.parse(localStorage.getItem(CLIPS_KEY) ?? '[]') as Clip[];
@@ -217,7 +231,7 @@ class Soundboard {
     this.emit();
   }
 
-  public async addClip(file: File): Promise<void> {
+  public async addClip(file: File, myinstants?: string): Promise<void> {
     if (!file.type.startsWith('audio/') && !/\.(mp3|wav|ogg|m4a|aac|flac|webm)$/i.test(file.name)) {
       throw new Error('Choose an audio file (mp3, wav, ogg, m4a …).');
     }
@@ -230,7 +244,17 @@ class Soundboard {
     const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
     await putBlob(blobKey(id), file);
     this.buffers.set(id, buffer);
-    this.clips = [...this.clips, { id, name: file.name.replace(/\.[^.]+$/, '').slice(0, 40) }];
+    const clip: Clip = { id, name: file.name.replace(/\.[^.]+$/, '').slice(0, 40) };
+    if (myinstants) clip.myinstants = myinstants;
+    this.clips = [...this.clips, clip];
+    localStorage.setItem(CLIPS_KEY, JSON.stringify(this.clips));
+    this.emit();
+  }
+
+  /** Remembers where an older clip came from on MyInstants (it then syncs too). */
+  public setClipSource(id: string, myinstants: string) {
+    if (!this.clips.some((c) => c.id === id && !c.myinstants)) return;
+    this.clips = this.clips.map((c) => (c.id === id ? { ...c, myinstants } : c));
     localStorage.setItem(CLIPS_KEY, JSON.stringify(this.clips));
     this.emit();
   }
@@ -240,14 +264,32 @@ class Soundboard {
     return this.clips.some((c) => c.name.toLowerCase() === wanted);
   }
 
-  /** Adds a clip from downloaded bytes, e.g. from MyInstants. Resolves false if it already exists. */
+  /**
+   * Adds a clip from downloaded bytes, e.g. from MyInstants. Resolves false if it already exists.
+   * `myinstants` is its MyInstants path; `fromSync` marks a download the account sync started.
+   */
   public async addClipFromBytes(
     name: string,
     bytes: ArrayBuffer,
-    type = 'audio/mpeg'
+    type = 'audio/mpeg',
+    myinstants?: string,
+    fromSync = false
   ): Promise<boolean> {
-    if (this.hasClipNamed(name)) return false;
-    await this.addClip(new File([bytes], `${name}.mp3`, { type }));
+    const title = name.slice(0, 40);
+    if (myinstants && this.clips.some((c) => c.myinstants === myinstants)) return false;
+    if (this.hasClipNamed(title)) {
+      // Imported before the sync existed: from now on it is known as this MyInstants sound.
+      const existing = this.clips.find((c) => c.name.toLowerCase() === title.toLowerCase());
+      if (myinstants && existing && !existing.myinstants) {
+        this.setClipSource(existing.id, myinstants);
+        if (!fromSync) this.userChangeListener?.({ kind: 'added', path: myinstants, name: title });
+      }
+      return false;
+    }
+    await this.addClip(new File([bytes], `${title}.mp3`, { type }), myinstants);
+    if (myinstants && !fromSync) {
+      this.userChangeListener?.({ kind: 'added', path: myinstants, name: title });
+    }
     return true;
   }
 
@@ -263,7 +305,8 @@ class Soundboard {
     this.previews.stop();
   }
 
-  public async removeClip(id: string): Promise<void> {
+  public async removeClip(id: string, fromSync = false): Promise<void> {
+    const removed = this.clips.find((c) => c.id === id);
     await deleteBlob(blobKey(id));
     this.buffers.delete(id);
     this.clips = this.clips.filter((c) => c.id !== id);
@@ -273,6 +316,9 @@ class Soundboard {
       delete rest[id];
       this.hotkeys = rest;
       store(HOTKEYS_KEY, JSON.stringify(rest));
+    }
+    if (removed?.myinstants && !fromSync) {
+      this.userChangeListener?.({ kind: 'removed', path: removed.myinstants });
     }
     this.emit();
   }

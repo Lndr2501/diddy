@@ -27,7 +27,7 @@ Die App ist Beta: Alles in der Tabelle ist gebaut und läuft bei den ersten Test
 | Stummschalten, Taubschalten, Kamera | 🧪 |
 | Call-Kacheln wie am Desktop: eine Kachel pro Person und pro Bildschirmübertragung (Avatar oder Kamera, Sprechring, Stumm-Symbol), Tippen holt eine Kachel groß nach vorn, der Rest als Vorschauleiste; Bildschirmübertragungen groß und im Vollbild zoombar (Pinch, Doppeltippen, gezoomt verschieben) | 🧪 |
 | „Redet mit Agent“ von Desktop-Nutzern als Hinweis auf Kachel und Profilkarte (`app.diddy.agent_voice`, nur empfangen; selbst mit einem Agenten reden gibt es auf dem iPhone nicht) | 🧪 |
-| Soundboard im Sprachkanal: eigene Clips (bis 20 s) aus Dateien oder per MyInstants-Suche (Vorhören, Mehrfachauswahl) importieren, alle im Call hören sie über dein Mikrofon | 🧪 ein Clip gleichzeitig; Clips bleiben auf dem Gerät; bei stummem Mikrofon hört ihn niemand (wie am Desktop) |
+| Soundboard im Sprachkanal: eigene Clips (bis 20 s) aus Dateien oder per MyInstants-Suche (Vorhören, Mehrfachauswahl) importieren, alle im Call hören sie über dein Mikrofon | 🧪 ein Clip gleichzeitig; MyInstants-Sounds synchronisieren sich mit deinen anderen Geräten, eigene Dateien bleiben auf dem Gerät; bei stummem Mikrofon hört ihn niemand (wie am Desktop) |
 | Klingeln in Direktnachrichten mit Annehmen und Ablehnen, kompatibel zu Desktop-Diddy und Element Call | 🧪 nur solange die App geöffnet ist |
 | Sounds aus Diddys Soundpack (wie am Desktop) für Anrufe, Bildschirmübertragung, Nachrichten, Erwähnungen und Einladungen, unter Einstellungen > Sounds abschaltbar und anhörbar | 🧪 |
 | Offline-Bildschirm: Sitzung bleibt erhalten, wenn der Server nicht erreichbar ist, und verbindet sich von selbst wieder | 🧪 |

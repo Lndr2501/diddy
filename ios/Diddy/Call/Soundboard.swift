@@ -5,8 +5,9 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 /// Soundboard, like the desktop's (`cinny/src/app/plugins/call/soundboard.ts`): short audio clips
-/// you import yourself; tapping one plays it for you and, in a call, for everybody. Clips stay on
-/// this device (the desktop does not sync them through Matrix either).
+/// you import yourself; tapping one plays it for you and, in a call, for everybody. Own files stay on
+/// this device; MyInstants sounds sync to your other devices through the account data (#248,
+/// `SoundboardSync.swift`).
 ///
 /// Into the call it goes through the microphone: `ClipMixer` adds the clip to each captured frame
 /// after noise suppression (see `NoiseSuppressor.swift`). As on the desktop, nobody hears clips
@@ -21,7 +22,18 @@ final class Soundboard: ObservableObject {
         var name: String
         /// File name inside the soundboard folder.
         let file: String
+        /// Where the clip came from on MyInstants (/media/sounds/…); such clips sync (#248).
+        var myinstants: String?
     }
+
+    /// A change you made to a MyInstants clip; `SoundboardSync` writes it to your account.
+    enum UserChange {
+        case added(path: String, name: String)
+        case removed(path: String)
+    }
+
+    /// Set by `SoundboardSync`; changes the sync itself makes are not reported.
+    var onUserChange: (@MainActor (UserChange) -> Void)?
 
     @Published private(set) var clips: [Clip] = []
     @Published private(set) var playing: String?
@@ -86,15 +98,33 @@ final class Soundboard: ObservableObject {
     }
 
     /// Adds downloaded audio (MyInstants). Returns false if a clip with that name exists already.
+    /// `myinstants` is its MyInstants path; `fromSync` marks a download the account sync started.
     @discardableResult
-    func add(data: Data, name: String, ext: String = "mp3") throws -> Bool {
+    func add(data: Data, name: String, ext: String = "mp3", myinstants: String? = nil, fromSync: Bool = false) throws -> Bool {
         let title = MyInstantsParser.clipTitle(name)
-        if hasClip(named: title) { return false }
+        if let myinstants, clips.contains(where: { $0.myinstants == myinstants }) { return false }
+        if hasClip(named: title) {
+            // Imported before the sync existed: from now on it is known as this MyInstants sound.
+            if let myinstants, let existing = clips.first(where: { $0.name.lowercased() == title.lowercased() }),
+               existing.myinstants == nil {
+                setSource(id: existing.id, myinstants: myinstants)
+                if !fromSync { onUserChange?(.added(path: myinstants, name: title)) }
+            }
+            return false
+        }
         let temp = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString).\(ext)")
         try data.write(to: temp)
         defer { try? FileManager.default.removeItem(at: temp) }
-        try register(source: temp, ext: ext, title: title)
+        try register(source: temp, ext: ext, title: title, myinstants: myinstants)
+        if let myinstants, !fromSync { onUserChange?(.added(path: myinstants, name: title)) }
         return true
+    }
+
+    /// Remembers where an older clip came from on MyInstants (it then syncs too).
+    func setSource(id: String, myinstants: String) {
+        guard let index = clips.firstIndex(where: { $0.id == id }), clips[index].myinstants == nil else { return }
+        clips[index].myinstants = myinstants
+        save()
     }
 
     func hasClip(named name: String) -> Bool {
@@ -103,7 +133,7 @@ final class Soundboard: ObservableObject {
     }
 
     /// Checks the file is audio of an allowed length, copies it into the soundboard folder.
-    private func register(source: URL, ext rawExt: String, title: String) throws {
+    private func register(source: URL, ext rawExt: String, title: String, myinstants: String? = nil) throws {
         let file: AVAudioFile
         do { file = try AVAudioFile(forReading: source) } catch {
             throw DiddyError("Choose an audio file (mp3, wav, m4a …).")
@@ -117,11 +147,11 @@ final class Soundboard: ObservableObject {
         let ext = rawExt.isEmpty || rawExt.count > 5 || !rawExt.allSatisfy({ $0.isLetter || $0.isNumber }) ? "audio" : rawExt
         let name = "\(id).\(ext)"
         try FileManager.default.copyItem(at: source, to: folder.appendingPathComponent(name))
-        clips.append(Clip(id: id, name: title, file: name))
+        clips.append(Clip(id: id, name: title, file: name, myinstants: myinstants))
         save()
     }
 
-    func remove(_ clip: Clip) {
+    func remove(_ clip: Clip, fromSync: Bool = false) {
         if playing == clip.id { stopAll() }
         try? FileManager.default.removeItem(at: folder.appendingPathComponent(clip.file))
         decoded[clip.id] = nil
@@ -129,6 +159,7 @@ final class Soundboard: ObservableObject {
         clips.removeAll { $0.id == clip.id }
         hotkeys[clip.id] = nil
         UserDefaults.standard.set(hotkeys, forKey: Self.hotkeysKey)
+        if let path = clip.myinstants, !fromSync { onUserChange?(.removed(path: path)) }
         save()
     }
 

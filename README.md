@@ -57,7 +57,7 @@ From Light and Silver to Dark, Daaark, Butter, Diddy, Red, Green, Purple and Amb
 <td valign="top">
 
 ### Plugins and sounds
-A sandboxed plugin system with a built-in gallery (to-do, timer, calendar and more), a soundboard with MyInstants import and per-device call keyboard shortcuts (optional background shortcuts on supported desktop systems; iPad hardware keyboard in the call), and a full set of app sounds you can switch off or replace.
+A sandboxed plugin system with a built-in gallery (to-do, timer, calendar and more), a soundboard with MyInstants import (imported sounds sync to all your devices) and per-device call keyboard shortcuts (optional background shortcuts on supported desktop systems; iPad hardware keyboard in the call), and a full set of app sounds you can switch off or replace.
 
 </td>
 <td valign="top">

@@ -235,7 +235,7 @@ final class MyInstantsModel: ObservableObject {
                 do {
                     let bytes = try await data(for: item)
                     let ext = (item.path as NSString).pathExtension.lowercased()
-                    if try board.add(data: bytes, name: item.name, ext: ext.isEmpty ? "mp3" : ext) { added += 1 } else { existing += 1 }
+                    if try board.add(data: bytes, name: item.name, ext: ext.isEmpty ? "mp3" : ext, myinstants: item.path) { added += 1 } else { existing += 1 }
                 } catch {
                     failed += 1
                 }
