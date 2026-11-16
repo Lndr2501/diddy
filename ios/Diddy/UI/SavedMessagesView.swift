@@ -35,7 +35,7 @@ struct SavedMessagesView: View {
             .overlay { if !saved.loaded { ProgressView() } }
             .refreshable { await saved.refresh(account: account) }
             .navigationTitle("Saved Messages")
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button(L("settings.globalPacks.close")) { dismiss() } } }
             .task { await saved.refresh(account: account) }
         }
     }
@@ -62,7 +62,7 @@ private struct SavedMessageRow: View {
             }
             HStack {
                 if issue == nil, focused?.rows.contains(where: { $0.remoteEventId == item.eventId && !$0.isRedactedMessage }) == true {
-                    Button("Open", action: open).buttonStyle(.bordered)
+                    Button(L("settings.connectedAccounts.open"), action: open).buttonStyle(.bordered)
                 }
                 Spacer()
                 Button("Remove from Saved") { saved.remove(account: account, item: item) }

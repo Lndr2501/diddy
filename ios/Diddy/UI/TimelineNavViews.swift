@@ -211,24 +211,24 @@ struct ReportMessageSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    Text("Report this message to server, which may then notify the appropriate people to take action.")
+                    Text(L("message.main.reportThisMessageTo"))
                         .foregroundStyle(Theme.muted)
                 }
-                Section("Reason") {
+                Section(L("message.main.reason")) {
                     TextField("Reason", text: $reason, axis: .vertical).lineLimit(1...4)
                 }
                 if failed {
-                    Text("Failed to report message! Please try again.").foregroundStyle(Theme.danger)
+                    Text(L("message.main.failedToReportMessage")).foregroundStyle(Theme.danger)
                 }
                 if done {
-                    Text("Message has been reported to server.").foregroundStyle(Theme.online)
+                    Text(L("message.main.messageHasBeenReported")).foregroundStyle(Theme.online)
                 }
                 Section {
                     Button(sending ? "Reporting…" : "Report", role: .destructive) { submit() }
                         .disabled(trimmed.isEmpty || sending || done)
                 }
             }
-            .navigationTitle("Report Message")
+            .navigationTitle(L("message.main.reportMessage"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button(done ? "Close" : "Cancel") { dismiss() } } }
         }
@@ -263,10 +263,10 @@ struct DeleteMessageSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    Text("This action is irreversible! Are you sure that you want to delete this message?")
+                    Text(L("message.main.thisActionIsIrreversible"))
                         .foregroundStyle(Theme.muted)
                 }
-                Section("Reason (optional)") {
+                Section(L("profile.moderation.reasonOptional")) {
                     TextField("Reason", text: $reason, axis: .vertical).lineLimit(1...4)
                 }
                 Section {
@@ -281,7 +281,7 @@ struct DeleteMessageSheet: View {
                     .disabled(deleting)
                 }
             }
-            .navigationTitle("Delete Message")
+            .navigationTitle(L("message.main.deleteMessage"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
         }
@@ -310,7 +310,7 @@ struct MessageSourceSheet: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button { UIPasteboard.general.string = text } label: { Image(systemName: "doc.on.doc") }
-                        .accessibilityLabel("Copy")
+                        .accessibilityLabel(L("settings.matrixId.copy"))
                 }
             }
         }
@@ -372,7 +372,7 @@ struct PinnedMessagesSheet: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Theme.chat)
-            .navigationTitle("Pinned Messages")
+            .navigationTitle(L("room.viewHeader.pinnedMessages"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
             .task {
@@ -414,7 +414,7 @@ private struct PinnedList: View {
                             if parent.nav.canPin, let eventId = row.remoteEventId {
                                 Button(role: .destructive) {
                                     Task { await parent.setPinned(eventId: eventId, pinned: false) }
-                                } label: { Label("Unpin Message", systemImage: "pin.slash") }
+                                } label: { Label(L("message.main.unpinMessage"), systemImage: "pin.slash") }
                             }
                         }
                         Divider().background(Theme.elevated)
@@ -444,7 +444,7 @@ struct ThreadSheet: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Theme.chat)
-            .navigationTitle("Thread")
+            .navigationTitle(L("room.threadDrawer.thread"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
             .task {
@@ -494,7 +494,7 @@ private struct ThreadBody: View {
             }
             Divider().background(Theme.elevated)
             HStack(alignment: .bottom, spacing: 8) {
-                TextField("Reply in thread", text: $draft, axis: .vertical)
+                TextField(L("room.threadDrawer.replyInThread"), text: $draft, axis: .vertical)
                     .lineLimit(1...5)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
@@ -503,14 +503,14 @@ private struct ThreadBody: View {
                     Image(systemName: "arrow.up.circle.fill").font(.system(size: 30))
                 }
                 .disabled(trimmed.isEmpty || sending)
-                .accessibilityLabel("Send")
+                .accessibilityLabel(L("room.voiceRecorderButton.send"))
             }
             .padding(10)
             .background(Theme.chat)
         }
         .sheet(item: $profile) { UserProfileSheet(account: account, userId: $0.userId, roomId: controller.roomId) }
         .alert("Message", isPresented: Binding(get: { controller.sendError != nil }, set: { if !$0 { controller.sendError = nil } })) {
-            Button("OK", role: .cancel) {}
+            Button(L("settings.localPlugins.ok"), role: .cancel) {}
         } message: { Text(controller.sendError ?? "") }
     }
 
@@ -537,11 +537,11 @@ struct JumpToDateSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Preset") {
+                Section(L("room.jumpToTime.preset")) {
                     HStack(spacing: 8) {
-                        presetButton("Today") { date = TimelineNav.presets(now: Date(), calendar: Calendar.current).today }
-                        presetButton("Yesterday") { date = TimelineNav.presets(now: Date(), calendar: Calendar.current).yesterday }
-                        presetButton("Beginning") { date = Date(timeIntervalSince1970: 1) }
+                        presetButton(L("settings.deviceTile.today")) { date = TimelineNav.presets(now: Date(), calendar: Calendar.current).today }
+                        presetButton(L("settings.deviceTile.yesterday")) { date = TimelineNav.presets(now: Date(), calendar: Calendar.current).yesterday }
+                        presetButton(L("room.jumpToTime.beginning")) { date = Date(timeIntervalSince1970: 1) }
                     }
                 }
                 Section {
@@ -556,7 +556,7 @@ struct JumpToDateSheet: View {
                         .disabled(working)
                 }
             }
-            .navigationTitle("Jump to Time")
+            .navigationTitle(L("room.viewHeader.jumpToTime"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
         }

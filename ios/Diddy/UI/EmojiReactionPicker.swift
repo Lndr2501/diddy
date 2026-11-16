@@ -25,10 +25,10 @@ struct EmojiReactionPicker: View {
             }
             .padding(16)
             .background(Theme.sidebar.ignoresSafeArea())
-            .navigationTitle("Add Reaction")
+            .navigationTitle(L("message.main.addReaction"))
             .navigationBarTitleDisplayMode(.inline)
             .tint(Theme.accent)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button(L("settings.deviceTile.cancel")) { dismiss() } } }
         }
         .presentationDetents([.medium, .large])
     }

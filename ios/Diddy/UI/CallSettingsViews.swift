@@ -47,7 +47,7 @@ struct SoundSettingsView: View {
             }
         }
         .alert("Sound", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
-            Button("OK", role: .cancel) {}
+            Button(L("settings.localPlugins.ok"), role: .cancel) {}
         } message: {
             Text(error ?? "")
         }
@@ -84,12 +84,12 @@ struct SoundSettingsView: View {
                 Button {
                     target = sound
                     importing = true
-                } label: { Label("Replace", systemImage: "folder") }
+                } label: { Label(L("settings.profileSettingsUI.replace"), systemImage: "folder") }
                 if customNames[sound] != nil {
                     Button(role: .destructive) {
                         CustomSounds.reset(sound)
                         load()
-                    } label: { Label("Reset", systemImage: "arrow.uturn.backward") }
+                    } label: { Label(L("settings.verification.reset"), systemImage: "arrow.uturn.backward") }
                 }
             }
             .font(.footnote)
@@ -127,7 +127,7 @@ struct CallSettingsView: View {
                     }
                 ))
             } header: {
-                Text("Microphone")
+                Text(L("call.controls.microphone"))
             } footer: {
                 Text("Filters background noise such as fans and typing out of your microphone. Takes effect at once, also during a call.")
             }
@@ -140,7 +140,7 @@ struct CallSettingsView: View {
                 Toggle("Push to Talk", isOn: $pushToTalk)
                 if pushToTalk {
                     Picker("Release Delay", selection: $pushToTalkDelay) {
-                        Text("None").tag(0)
+                        Text(L("settings.contactInfo.none")).tag(0)
                         Text("100 ms").tag(100)
                         Text("200 ms").tag(200)
                         Text("300 ms").tag(300)
@@ -172,7 +172,7 @@ struct CallSettingsView: View {
                     Text("60 fps").tag(60)
                 }
                 Picker("Picture Quality", selection: $shareQuality) {
-                    Text("Standard").tag(0.6)
+                    Text(L("settings.profileCardEditor.standard")).tag(0.6)
                     Text("High").tag(0.75)
                     Text("Very High").tag(0.9)
                     Text("Maximum").tag(1.0)
@@ -195,14 +195,14 @@ struct CallSettingsView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Theme.sidebar)
-        .navigationTitle("Calls")
+        .navigationTitle(L("settings.general.calls"))
         .navigationBarTitleDisplayMode(.inline)
         .confirmationDialog("Reset all volumes to 100 %?", isPresented: $confirmReset, titleVisibility: .visible) {
             Button("Reset Volumes", role: .destructive) {
                 CallVolumeMemory.clearAll(UserDefaultsVolumeStorage.shared)
                 resetDone = true
             }
-            Button("Cancel", role: .cancel) {}
+            Button(L("settings.deviceTile.cancel"), role: .cancel) {}
         }
     }
 }

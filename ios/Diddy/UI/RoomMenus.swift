@@ -9,7 +9,7 @@ struct RoomNotifyPicker: View {
     var onError: (String) -> Void = { _ in }
 
     var body: some View {
-        Picker("Notifications", selection: Binding(
+        Picker(L("settings.page.notifications"), selection: Binding(
             get: { account.notifyLevel(for: roomId) },
             set: { level in
                 Task {
@@ -55,7 +55,7 @@ struct RoomContextMenu: View {
         Button {
             Task { await account.markRoomAsRead(roomId) }
         } label: {
-            Label("Mark as Read", systemImage: "checkmark.circle")
+            Label(L("room.timeline.markAsRead"), systemImage: "checkmark.circle")
         }
         .disabled((summary?.unread ?? 0) == 0 && (summary?.mentions ?? 0) == 0)
         Button {
@@ -71,7 +71,7 @@ struct RoomContextMenu: View {
         Menu {
             RoomNotifyPicker(account: account, roomId: roomId, onError: onError)
         } label: {
-            Label("Notifications", systemImage: account.notifyLevel(for: roomId).systemImage)
+            Label(L("settings.page.notifications"), systemImage: account.notifyLevel(for: roomId).systemImage)
         }
         Divider()
         if !isDirect {
@@ -82,7 +82,7 @@ struct RoomContextMenu: View {
                 if let link = await account.roomLink(roomId) { UIPasteboard.general.string = link }
             }
         } label: {
-            Label("Copy Link", systemImage: "link")
+            Label(L("room.viewHeader.copyLink"), systemImage: "link")
         }
         Button { onSettings(roomId) } label: {
             Label("\(RoomMenuWording.noun(isDirect: isDirect, inServer: inServer)) Settings", systemImage: "gearshape")

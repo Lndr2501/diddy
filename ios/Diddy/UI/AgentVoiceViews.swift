@@ -14,7 +14,7 @@ struct AgentTalkingBadge: View {
             .padding(.vertical, 4)
             .background(Capsule().fill(Theme.accent))
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Talking to agent")
+            .accessibilityLabel(L("common.userPanel.talkingToAgent"))
     }
 }
 

@@ -211,7 +211,7 @@ struct ChatListRow: View {
                     }
                     if muted {
                         Image(systemName: "bell.slash.fill").font(.caption2).foregroundStyle(Theme.faint)
-                            .accessibilityLabel("Muted")
+                            .accessibilityLabel(L("call.userMenu.muted"))
                     }
                     if room.mentions > 0 {
                         TabBadge(count: Int(room.mentions))
@@ -377,7 +377,7 @@ struct ActivityList: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("Activity").font(.largeTitle.bold()).foregroundStyle(Theme.text)
+                Text(L("settings.profileCardEditor.activity")).font(.largeTitle.bold()).foregroundStyle(Theme.text)
                     .accessibilityAddTraits(.isHeader)
                 Spacer()
             }

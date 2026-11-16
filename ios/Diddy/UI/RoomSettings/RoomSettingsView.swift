@@ -67,7 +67,7 @@ struct RoomSettingsView: View {
                         NavigationLink {
                             RoomMembersAdminView(model: model)
                         } label: {
-                            Label("Members", systemImage: "person.2")
+                            Label(L("settings.diddyProfile.members"), systemImage: "person.2")
                         }
                     } header: {
                         Text("Manage")
@@ -111,7 +111,7 @@ struct RoomSettingsView: View {
             .tint(Theme.accent)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
+                    Button(L("call.companionDialog.done")) {
                         if hasProfileChanges { askDiscard = true } else { dismiss() }
                     }
                 }
@@ -138,7 +138,7 @@ struct RoomSettingsView: View {
                 Text("Are you sure? Once enabled, encryption cannot be disabled!")
             }
             .confirmationDialog("Remove the picture?", isPresented: $confirmRemoveAvatar, titleVisibility: .visible) {
-                Button("Remove", role: .destructive) {
+                Button(L("settings.connectedAccounts.remove"), role: .destructive) {
                     Task {
                         await model.perform {
                             try await model.sendState("m.room.avatar", content: [:])
@@ -188,10 +188,10 @@ struct RoomSettingsView: View {
                     .disabled(model.busy)
                 }
             }
-            TextField("Name", text: $name).disabled(!canName)
+            TextField(L("settings.badgeEditor.name"), text: $name).disabled(!canName)
             TextField("Topic", text: $topic, axis: .vertical).lineLimit(1...6).disabled(!canTopic)
             if profileChanged(state, canName: canName, canTopic: canTopic) {
-                Button("Save") { Task { await saveProfile(state, canName: canName, canTopic: canTopic) } }
+                Button(L("settings.profile.save")) { Task { await saveProfile(state, canName: canName, canTopic: canTopic) } }
                     .disabled(model.busy || (canName && name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty))
                 Button("Discard Changes", role: .destructive) {
                     name = state.name ?? ""
@@ -200,7 +200,7 @@ struct RoomSettingsView: View {
                 .disabled(model.busy)
             }
         } header: {
-            Text("Profile")
+            Text(L("settings.page.profile"))
         } footer: {
             if !canName || !canTopic || !canAvatar {
                 Text("Some fields are locked because your role can't change them.")
@@ -261,7 +261,7 @@ struct RoomSettingsView: View {
             encryptionRow(state)
             publishRow(state)
         } header: {
-            Text("Options")
+            Text(L("settings.about.options"))
         } footer: {
             if locked {
                 Text("Changes here apply right away. Greyed out options need a higher role.")
@@ -334,7 +334,7 @@ struct RoomSettingsView: View {
                         .background(Capsule().fill(Theme.online.opacity(0.25)))
                         .foregroundStyle(Theme.online)
                 } else {
-                    Button("Enable") { confirmEncryption = true }
+                    Button(L("settings.verification.enable")) { confirmEncryption = true }
                         .disabled(!model.canSendState("m.room.encryption") || model.busy)
                 }
             }

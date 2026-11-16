@@ -13,7 +13,7 @@ extension View {
     func wholeScreenShareAlert(isPresented: Binding<Bool>, onShare: @escaping () -> Void) -> some View {
         alert(ScreenShareNotice.title, isPresented: isPresented) {
             Button("Share Screen", role: .destructive, action: onShare)
-            Button("Cancel", role: .cancel) {}
+            Button(L("settings.deviceTile.cancel"), role: .cancel) {}
         } message: {
             Text(ScreenShareNotice.message)
         }

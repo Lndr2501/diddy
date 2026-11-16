@@ -35,7 +35,7 @@ struct OwnStatusMenu: View {
         }
         .sheet(isPresented: $showingMessage) { OwnStatusMessageView(account: account) }
         .alert("Could not save status", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
-            Button("OK", role: .cancel) {}
+            Button(L("settings.localPlugins.ok"), role: .cancel) {}
         } message: { Text(error ?? "") }
     }
 
@@ -70,7 +70,7 @@ struct ShellSyncBanner: View {
                     Label(kind.text, systemImage: "wifi.exclamationmark")
                         .lineLimit(2)
                     if kind == .error {
-                        Button("Retry") {
+                        Button(L("common.uploadCard.retry")) {
                             retrying = true
                             Task { await account.resume(); retrying = false }
                         }
@@ -107,7 +107,7 @@ struct WelcomeGuideView: View {
                         }
                     }
                     HStack {
-                        if index > 0 { Button("Back") { index -= 1 } }
+                        if index > 0 { Button(L("settings.insetList.back")) { index -= 1 } }
                         Spacer()
                         Text("\(index + 1) / \(IntroSteps.all.count)").font(.caption)
                         Button(index == IntroSteps.all.count - 1 ? "Done" : "Next") {
@@ -201,9 +201,9 @@ private struct OwnStatusMessageView: View {
             .navigationTitle("Status Message")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button(L("settings.deviceTile.cancel")) { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
+                    Button(L("settings.profile.save")) {
                         saving = true
                         Task { @MainActor in
                             defer { saving = false }

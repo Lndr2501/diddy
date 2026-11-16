@@ -151,7 +151,7 @@ struct NewMessageView: View {
             .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Find someone")
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
-            .navigationTitle("New Message")
+            .navigationTitle(L("nav.home.newMessage"))
             .navigationBarTitleDisplayMode(.inline)
             .tint(Theme.accent)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
@@ -267,8 +267,8 @@ struct ChannelInfoView: View {
                     }
                 }
                 if canEdit {
-                    Section("Edit") {
-                        TextField("Name", text: $name)
+                    Section(L("settings.deviceTile.edit")) {
+                        TextField(L("settings.badgeEditor.name"), text: $name)
                         TextField("Topic", text: $topic, axis: .vertical)
                         Button("Save Changes") { save() }
                             .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || (name == summary?.name && topic == (summary?.topic ?? "")))
@@ -279,7 +279,7 @@ struct ChannelInfoView: View {
                         LabeledContent {
                             Text("\(summary?.memberCount ?? 0)")
                         } label: {
-                            Label("Members", systemImage: "person.2.fill")
+                            Label(L("settings.diddyProfile.members"), systemImage: "person.2.fill")
                         }
                     }
                     if summary?.isDirect != true {
@@ -288,7 +288,7 @@ struct ChannelInfoView: View {
                     }
                     NavigationLink {
                         MediaOverviewView(account: account, roomId: roomId)
-                    } label: { Label("Media & Files", systemImage: "photo.on.rectangle") }
+                    } label: { Label(L("room.viewHeader.mediaFiles"), systemImage: "photo.on.rectangle") }
                 }
                 if let error { Text(error).foregroundStyle(Theme.danger) }
                 Section {
@@ -299,7 +299,7 @@ struct ChannelInfoView: View {
             }
             .scrollContentBackground(.hidden)
             .background(Theme.sidebar.ignoresSafeArea())
-            .navigationTitle("Details")
+            .navigationTitle(L("settings.profileCardEditor.details"))
             .navigationBarTitleDisplayMode(.inline)
             .tint(Theme.accent)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
@@ -312,7 +312,7 @@ struct ChannelInfoView: View {
                 })
             }
             .confirmationDialog("Leave \(summary?.name ?? "this channel")?", isPresented: $confirmLeave, titleVisibility: .visible) {
-                Button("Leave", role: .destructive) { leave() }
+                Button(L("common.leaveRoomPrompt.leave"), role: .destructive) { leave() }
             }
             .task {
                 name = summary?.name ?? ""

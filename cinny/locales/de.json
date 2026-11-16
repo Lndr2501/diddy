@@ -2263,5 +2263,83 @@
       "save": "Speichern",
       "cancel": "Abbrechen"
     }
+  },
+  "ios": {
+    "settings": {
+      "accounts": "Konten",
+      "addAccount": "Konto hinzufügen",
+      "logOut": "Abmelden",
+      "settings": "Einstellungen",
+      "done": "Fertig",
+      "account": "Konto",
+      "app": "App",
+      "help": "Hilfe",
+      "enterRecoveryKey": "Wiederherstellungsschlüssel eingeben",
+      "encryption": "Verschlüsselung",
+      "notVerified": "Nicht verifiziert",
+      "chat": "Chat",
+      "sounds": "Töne",
+      "calls": "Anrufe",
+      "watchTogether": "Gemeinsam ansehen",
+      "welcomeGuide": "Willkommensanleitung",
+      "aboutDiddy": "Über Diddy",
+      "appearance": "Erscheinungsbild",
+      "tryAgain": "Erneut versuchen",
+      "removeFromThisDeviceAnyway": "Trotzdem von diesem Gerät entfernen",
+      "cancel": "Abbrechen",
+      "couldNotLogOut": "Abmelden fehlgeschlagen",
+      "signedInAs": "Angemeldet als ",
+      "logOutOf": "Von ",
+      "thisDeviceIsNotVerifiedYetEnterYourRecoveryKeyOrVerifyItFromAnotherDeviceToReadYourEncryptedMessages": "Dieses Gerät ist noch nicht verifiziert. Gib deinen Wiederherstellungsschlüssel ein oder bestätige es auf einem anderen Gerät, um verschlüsselte Nachrichten zu lesen.",
+      "encryptedMessagesCanOnlyBeReadAgainWithYourRecoveryKeyOrAnotherVerifiedDevice": "Verschlüsselte Nachrichten kannst du nur mit deinem Wiederherstellungsschlüssel oder einem anderen verifizierten Gerät erneut lesen.",
+      "callAlerts": "Anrufhinweise",
+      "ntfyAlerts": "Über ntfy benachrichtigen",
+      "saveName": "Namen speichern",
+      "changePicture": "Tippe auf dein Bild oder deinen Namen, um sie zu ändern.",
+      "verifyDevice": "Dieses Gerät verifizieren",
+      "logOutServer": "Von {{name}} abmelden",
+      "signedInUser": "Angemeldet als {{name}}",
+      "confirmLogOut": "Von {{name}} abmelden?",
+      "logoutFailure": "Der Server hat diese Sitzung nicht beendet ({{error}}). Wenn du sie trotzdem von diesem Gerät entfernst, bleibst du auf dem Server angemeldet, bis du die Sitzung unter „Geräte“ auf einem anderen Gerät entfernst."
+    },
+    "common": {
+      "ok": "OK"
+    },
+    "list": {
+      "pickConversation": "Wähle einen Kanal oder Chat",
+      "noDirectMessages": "Noch keine Direktnachrichten.",
+      "noChats": "Noch keine Chats.",
+      "noChannels": "Dieser Server hat noch keine Kanäle.",
+      "createChannel": "Kanal erstellen",
+      "seeVoiceEverywhere": "Sieh Nachrichten und wer gerade in den Sprachkanälen ist.",
+      "conversationDisappears": "Der Chat verschwindet aus deiner Liste.",
+      "couldNotJoin": "Beitritt fehlgeschlagen",
+      "joinAllChannels_one": "Kanal beitreten",
+      "joinAllChannels_other": "Allen {{count}} Kanälen beitreten",
+      "noResults": "Keine Ergebnisse für „{{query}}“"
+    },
+    "chat": {
+      "cannotSend": "Du darfst hier keine Nachrichten senden.",
+      "replySaved": "Antwort auf gespeicherte Nachricht",
+      "replyTo": "Antwort an ",
+      "editingMessage": "Nachricht bearbeiten",
+      "uploading": "Wird hochgeladen …",
+      "messageDeleted": "Nachricht gelöscht",
+      "dmBeginning": "Hier beginnt dein Chatverlauf mit {{name}}.",
+      "welcomeChannel": "Willkommen in #{{name}}!",
+      "channelBeginning": "Hier beginnt der Kanal #{{name}}."
+    },
+    "login": {
+      "passwordsDoNotMatch": "Die Passwörter stimmen nicht überein.",
+      "registrationTokenHelp": "Dieser Server benötigt einen Registrierungscode. Frag die Person, die den Server betreibt.",
+      "acceptTerms": "Lies bitte die Bedingungen des Servers und stimme ihnen zu.",
+      "agree": "Ich stimme zu",
+      "emailConfirmation": "Dieser Server bestätigt neue Konten per E-Mail.",
+      "sendLink": "Link senden",
+      "sendAgain": "E-Mail erneut senden",
+      "moreStep": "Auf der Seite des Servers ist noch ein Schritt nötig.",
+      "openPage": "Seite öffnen",
+      "startOver": "Neu beginnen"
+    }
   }
 }

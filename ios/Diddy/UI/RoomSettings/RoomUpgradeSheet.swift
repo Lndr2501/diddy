@@ -36,7 +36,7 @@ struct RoomUpgradeSheet: View {
                         Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Theme.danger)
                     }
                 }
-                Section("Options") {
+                Section(L("settings.about.options")) {
                     Picker("\(word) Version", selection: $version) {
                         ForEach(model.roomVersions, id: \.self) { value in Text(value).tag(value) }
                     }
@@ -59,10 +59,10 @@ struct RoomUpgradeSheet: View {
                             }
                         }
                         HStack {
-                            TextField("@user:server", text: $newCreator)
+                            TextField(L("settings.ignoredUserList.userServer"), text: $newCreator)
                                 .textInputAutocapitalization(.never)
                                 .autocorrectionDisabled()
-                            Button("Add") {
+                            Button(L("settings.connectedAccounts.add")) {
                                 if let id = newCreatorId {
                                     creators.append(id)
                                     newCreator = ""
@@ -106,7 +106,7 @@ struct RoomUpgradeSheet: View {
             .navigationTitle("\(word) Upgrade")
             .navigationBarTitleDisplayMode(.inline)
             .tint(Theme.accent)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button(L("settings.deviceTile.cancel")) { dismiss() } } }
             .interactiveDismissDisabled(upgrading)
             .onAppear {
                 if version.isEmpty { version = model.defaultRoomVersion }

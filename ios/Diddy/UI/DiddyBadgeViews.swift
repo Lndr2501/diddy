@@ -19,7 +19,7 @@ struct DiddyBadgeLibraryView: View {
     var body: some View {
         List {
             Section {
-                TextField("Search badges", text: $query)
+                TextField(L("settings.badgeEditor.searchBadges"), text: $query)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
             } footer: {
@@ -30,7 +30,7 @@ struct DiddyBadgeLibraryView: View {
             }
             Section {
                 if visible.isEmpty {
-                    Text("No badges match your search.").foregroundStyle(Theme.muted)
+                    Text(L("settings.badgeEditor.noBadgesMatchYour")).foregroundStyle(Theme.muted)
                 }
                 ForEach(visible) { badge in row(badge) }
             }
@@ -58,7 +58,7 @@ struct DiddyBadgeLibraryView: View {
                 if let badge = deleting { Task { await delete(badge) } }
                 deleting = nil
             }
-            Button("Cancel", role: .cancel) { deleting = nil }
+            Button(L("settings.deviceTile.cancel"), role: .cancel) { deleting = nil }
         }
     }
 
@@ -83,7 +83,7 @@ struct DiddyBadgeLibraryView: View {
         }
         .swipeActions(edge: .trailing) {
             if DiddyBadgeLogic.canDelete(badge, me: account.userId) {
-                Button("Delete", role: .destructive) { deleting = badge }
+                Button(L("common.connectionRecovery.delete"), role: .destructive) { deleting = badge }
             }
         }
         .contextMenu {
@@ -158,18 +158,18 @@ struct DiddyCreateBadgeView: View {
                     Spacer()
                 }
             } header: {
-                Text("Preview")
+                Text(L("settings.badgeEditor.preview"))
             }
             Section {
-                TextField("Badge name", text: Binding(get: { name }, set: { name = String($0.prefix(DiddyBadgeLogic.maxNameLength)) }))
+                TextField(L("settings.badgeEditor.badgeName"), text: Binding(get: { name }, set: { name = String($0.prefix(DiddyBadgeLogic.maxNameLength)) }))
             } header: {
-                Text("Name")
+                Text(L("settings.badgeEditor.name"))
             }
             Section {
                 TextField("😀", text: $emoji)
                     .disabled(imageMxc != nil)
                 if DiddyBadgeLogic.emojiTooLong(emoji) {
-                    Text("Use a single emoji.").foregroundStyle(Theme.danger)
+                    Text(L("settings.badgeEditor.useASingleEmoji")).foregroundStyle(Theme.danger)
                 }
                 PhotosPicker(selection: $pickedImage, matching: .images) {
                     Label(imageMxc == nil ? "Upload Image" : "Replace Image", systemImage: "photo")
@@ -184,8 +184,8 @@ struct DiddyCreateBadgeView: View {
             } footer: {
                 Text(imageMxc == nil ? "Type an emoji, or upload an image instead." : "Using an uploaded image.")
             }
-            Section("Color") {
-                ColorPicker("Badge color", selection: $color, supportsOpacity: false)
+            Section(L("settings.badgeEditor.color")) {
+                ColorPicker(L("settings.badgeEditor.badgeColor"), selection: $color, supportsOpacity: false)
             }
             if let duplicate {
                 Section {
@@ -216,7 +216,7 @@ struct DiddyCreateBadgeView: View {
                 }
                 .disabled(!canCreate || duplicate != nil)
             } footer: {
-                Text("A new badge for the shared library. It is given to you right away.")
+                Text(L("settings.badgeEditor.aNewBadgeFor"))
             }
         }
         .scrollContentBackground(.hidden)

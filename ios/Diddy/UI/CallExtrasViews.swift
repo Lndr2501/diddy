@@ -26,7 +26,7 @@ private struct CallSwitchAlert: ViewModifier {
             Button(CallSwitchText.confirm(request.action), role: .destructive) {
                 Task { await calls.confirmSwitch(request) }
             }
-            Button("Cancel", role: .cancel) {}
+            Button(L("settings.deviceTile.cancel"), role: .cancel) {}
         } message: { request in
             Text(CallSwitchText.message(currentName: request.currentName, targetName: request.roomName, action: request.action))
         }
@@ -82,9 +82,9 @@ struct CallReactionsSheet: View {
             .padding()
             .frame(maxHeight: .infinity, alignment: .top)
             .background(Theme.sidebar)
-            .navigationTitle("Reactions")
+            .navigationTitle(L("call.controls.reactions"))
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button(L("settings.globalPacks.close")) { dismiss() } } }
         }
         .presentationDetents([.height(340), .large])
     }
@@ -235,9 +235,9 @@ struct CallMoreButton: View {
     var body: some View {
         Menu {
             Section {
-                Button { sheet = .reactions } label: { Label("Reactions", systemImage: "face.smiling") }
+                Button { sheet = .reactions } label: { Label(L("call.controls.reactions"), systemImage: "face.smiling") }
                     .disabled(!session.connected)
-                Button { sheet = .soundboard } label: { Label("Soundboard", systemImage: "music.note.list") }
+                Button { sheet = .soundboard } label: { Label(L("call.panel.soundboard"), systemImage: "music.note.list") }
                 if board.playing != nil {
                     Button { board.stopAll() } label: { Label("Stop All Clips", systemImage: "stop.fill") }
                 }
@@ -254,7 +254,7 @@ struct CallMoreButton: View {
         } label: {
             CallBarIcon(icon: "ellipsis")
         }
-        .accessibilityLabel("More")
+        .accessibilityLabel(L("settings.plugins.more"))
         .accessibilityHint("Reactions, soundboard, watch together, deafen and audio devices")
         .sheet(item: $sheet) { which in sheetContent(which) }
         .background {
@@ -312,7 +312,7 @@ struct CallDevicesSheet: View {
     var body: some View {
         NavigationStack {
             List {
-                Section("Microphone") {
+                Section(L("call.controls.microphone")) {
                     if inputs.isEmpty {
                         Text("No microphone found.").foregroundStyle(Theme.muted)
                     }

@@ -64,7 +64,7 @@ struct VerificationSheet: View {
             .padding()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Theme.sidebar)
-            .navigationTitle("Verify")
+            .navigationTitle(L("settings.verification.verify"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -84,9 +84,9 @@ struct VerificationSheet: View {
             Text("Verification request").font(.title2.bold()).foregroundStyle(Theme.text)
             Text(incomingText(request)).multilineTextAlignment(.center).foregroundStyle(Theme.muted)
             VStack(spacing: 10) {
-                Button { Task { await center.accept() } } label: { Text("Accept").frame(maxWidth: .infinity) }
+                Button { Task { await center.accept() } } label: { Text(L("common.deviceVerification.accept")).frame(maxWidth: .infinity) }
                     .buttonStyle(.borderedProminent)
-                Button(role: .cancel) { Task { await center.dismiss() } } label: { Text("Decline").frame(maxWidth: .infinity) }
+                Button(role: .cancel) { Task { await center.dismiss() } } label: { Text(L("nav.invites.decline")).frame(maxWidth: .infinity) }
                     .buttonStyle(.bordered)
             }
         case .requesting(let text):
@@ -122,9 +122,9 @@ struct VerificationSheet: View {
             Text("Waiting for the other side to confirm…").foregroundStyle(Theme.muted)
         case .done:
             icon("checkmark.shield.fill", color: Theme.online)
-            Text("Verified").font(.title2.bold()).foregroundStyle(Theme.text)
+            Text(L("settings.verification.verified")).font(.title2.bold()).foregroundStyle(Theme.text)
             Text("The verification is complete.").foregroundStyle(Theme.muted)
-            Button { Task { await center.dismiss() } } label: { Text("Done").frame(maxWidth: .infinity) }
+            Button { Task { await center.dismiss() } } label: { Text(L("call.companionDialog.done")).frame(maxWidth: .infinity) }
                 .buttonStyle(.borderedProminent)
         case .cancelled(let reason):
             icon("xmark.shield.fill", color: Theme.danger)

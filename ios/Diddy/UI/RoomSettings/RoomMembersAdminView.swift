@@ -52,7 +52,7 @@ struct RoomMembersAdminView: View {
         .scrollContentBackground(.hidden)
         .background(Theme.sidebar.ignoresSafeArea())
         .searchable(text: $search, prompt: "Search")
-        .navigationTitle("Members")
+        .navigationTitle(L("settings.diddyProfile.members"))
         .navigationBarTitleDisplayMode(.inline)
         .refreshable { await model.load() }
         .sheet(item: $selected, onDismiss: { Task { await model.load() } }) { member in
@@ -126,7 +126,7 @@ struct RoomMembersAdminView: View {
                 permissions: permissions, me: model.me, target: member.userId, membership: member.membership
             )
             if options.canUnban {
-                Button("Unban") { run(.unban, member) }.tint(Theme.accent)
+                Button(L("profile.moderation.unban")) { run(.unban, member) }.tint(Theme.accent)
             }
             if options.canCancelInvite {
                 Button("Cancel Invite", role: .destructive) { pendingCancel = member }

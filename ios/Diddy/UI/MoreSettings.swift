@@ -12,20 +12,20 @@ struct BlockedUsersView: View {
     var body: some View {
         List {
             Section {
-                TextField("@user:server", text: $newUserId)
+                TextField(L("settings.ignoredUserList.userServer"), text: $newUserId)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .keyboardType(.emailAddress)
                 Button {
                     Task { await block() }
                 } label: {
-                    HStack { Text("Block"); if blocking { Spacer(); ProgressView() } }
+                    HStack { Text(L("settings.ignoredUserList.block")); if blocking { Spacer(); ProgressView() } }
                 }
                 .disabled(!AccountInfo.isUserId(newUserId.trimmingCharacters(in: .whitespaces)) || blocking)
             } header: {
-                Text("Block User")
+                Text(L("settings.ignoredUserList.blockUser"))
             } footer: {
-                Text("Prevent receiving messages or invites from a user by adding their user ID.")
+                Text(L("settings.ignoredUserList.preventReceivingMessagesOr"))
             }
             if let error {
                 Section {
@@ -42,7 +42,7 @@ struct BlockedUsersView: View {
                 ForEach(userIds, id: \.self) { userId in
                     HStack {
                         PersonRow(name: account.name(of: userId), subtitle: userId, avatarUrl: account.profiles[userId]?.avatarUrl, account: account)
-                        Button("Unblock") { Task { await unblock(userId) } }
+                        Button(L("settings.ignoredUserList.unblock")) { Task { await unblock(userId) } }
                             .buttonStyle(.bordered)
                     }
                 }
@@ -56,7 +56,7 @@ struct BlockedUsersView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Theme.sidebar)
-        .navigationTitle("Blocked Users")
+        .navigationTitle(L("settings.ignoredUserList.blockedUsers"))
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
         .refreshable { await load() }
@@ -109,9 +109,9 @@ struct AboutView: View {
     var body: some View {
         List {
             Section("Diddy") {
-                LabeledContent("Version", value: version)
+                LabeledContent(L("common.createRoom.version"), value: version)
                 LabeledContent("Server", value: account.record.serverName)
-                LabeledContent("Matrix ID") {
+                LabeledContent(L("settings.matrixId.matrixId")) {
                     Text(account.userId).textSelection(.enabled)
                 }
                 Button { UIPasteboard.general.string = account.userId } label: { Label("Copy Matrix ID", systemImage: "doc.on.doc") }
@@ -144,7 +144,7 @@ struct AboutView: View {
                 }
                 .disabled(exporting)
             } header: {
-                Text("Diagnostics")
+                Text(L("settings.about.diagnostics"))
             } footer: {
                 Text("A text file with Diddy's log, crash reports and your device model, to attach to a bug report. It contains no messages or keys.")
             }

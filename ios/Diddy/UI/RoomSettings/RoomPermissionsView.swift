@@ -86,7 +86,7 @@ struct RoomPermissionsView: View {
                 Text(RoomPowerTags.creators.name).bold()
             }
         } header: {
-            Text("Founders")
+            Text(L("common.createRoom.founders"))
         } footer: {
             Text("Founders have all permissions and can only be changed during an upgrade.")
         }
@@ -261,7 +261,7 @@ struct PeekPermissionsView: View {
             .background(Theme.sidebar.ignoresSafeArea())
             .navigationTitle(RoomPowerTags.tag(for: power, in: model.state?.powerTags ?? [:]).name)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button(L("call.companionDialog.done")) { dismiss() } } }
         }
         .presentationDetents([.medium, .large])
     }
@@ -308,7 +308,7 @@ struct RoomPowersEditor: View {
                         Label("Couldn't apply the changes. Please try again.", systemImage: "exclamationmark.triangle.fill")
                             .font(.footnote.bold()).foregroundStyle(Theme.danger)
                     } else {
-                        Text("You have unsaved changes.").font(.footnote.bold())
+                        Text(L("settings.diddyProfile.youHaveUnsavedChanges")).font(.footnote.bold())
                     }
                     Button("Discard Changes", role: .destructive) {
                         edited = nil
@@ -390,7 +390,7 @@ struct RoomPowersEditor: View {
             }
             Spacer()
             if isDeleted {
-                Button("Undo", role: .destructive) { deleted.remove(power) }
+                Button(L("settings.deviceTile.undo"), role: .destructive) { deleted.remove(power) }
                     .buttonStyle(.borderless).disabled(model.busy)
             } else {
                 if !used {
@@ -400,9 +400,9 @@ struct RoomPowersEditor: View {
                         Image(systemName: "trash")
                     }
                     .buttonStyle(.borderless).disabled(model.busy)
-                    .accessibilityLabel("Delete")
+                    .accessibilityLabel(L("common.connectionRecovery.delete"))
                 }
-                Button("Edit") { editing = EditedTag(power: power) }
+                Button(L("settings.deviceTile.edit")) { editing = EditedTag(power: power) }
                     .buttonStyle(.borderless).disabled(model.busy)
             }
         }
@@ -448,8 +448,8 @@ struct RoleTagForm: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Name") {
-                    TextField("Bot", text: $name)
+                Section(L("settings.badgeEditor.name")) {
+                    TextField(L("room.membersDrawer.bot"), text: $name)
                 }
                 if power == nil {
                     Section {
@@ -460,16 +460,16 @@ struct RoleTagForm: View {
                         if powerTaken { Text("This power level already exists.").foregroundStyle(Theme.danger) }
                     }
                 }
-                Section("Color") {
+                Section(L("settings.badgeEditor.color")) {
                     Toggle("Use a color", isOn: $hasColor)
-                    if hasColor { ColorPicker("Color", selection: $color, supportsOpacity: false) }
+                    if hasColor { ColorPicker(L("settings.badgeEditor.color"), selection: $color, supportsOpacity: false) }
                 }
                 Section("Icon") {
                     if keepsPictureIcon {
                         Text("This power level has a picture as its icon. It stays as it is until you type an emoji instead.")
                             .font(.caption).foregroundStyle(Theme.muted)
                     }
-                    TextField("Emoji", text: $icon)
+                    TextField(L("settings.badgeEditor.emoji"), text: $icon)
                 }
             }
             .scrollContentBackground(.hidden)
@@ -478,8 +478,8 @@ struct RoleTagForm: View {
             .navigationBarTitleDisplayMode(.inline)
             .tint(Theme.accent)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) { Button("Save") { save() }.disabled(!valid) }
+                ToolbarItem(placement: .cancellationAction) { Button(L("settings.deviceTile.cancel")) { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) { Button(L("settings.profile.save")) { save() }.disabled(!valid) }
             }
             .onAppear {
                 guard !loaded else { return }

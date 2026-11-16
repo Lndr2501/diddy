@@ -18,7 +18,7 @@ struct MediaOverviewView: View {
                 ZStack { Theme.sidebar.ignoresSafeArea(); ProgressView() }
             }
         }
-        .navigationTitle("Media & Files")
+        .navigationTitle(L("room.viewHeader.mediaFiles"))
         .navigationBarTitleDisplayMode(.inline)
         .task {
             guard holder.controller == nil else { return }
@@ -75,7 +75,7 @@ private struct MediaOverviewContent: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Picker("Type", selection: $kind) {
+            Picker(L("createRoom.main.type"), selection: $kind) {
                 ForEach(MediaKind.allCases) { Text($0.rawValue).tag($0) }
             }
             .pickerStyle(.segmented)

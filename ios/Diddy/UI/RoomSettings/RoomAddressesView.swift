@@ -125,7 +125,7 @@ struct RoomAddressesView: View {
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                 Text(":\(server)").font(.caption).foregroundStyle(Theme.muted).lineLimit(1)
-                Button("Add") { addAlias() }
+                Button(L("settings.connectedAccounts.add")) { addAlias() }
                     .buttonStyle(.borderless)
                     .disabled(newAliasFull == nil || model.busy)
             }
@@ -170,7 +170,7 @@ struct RoomAddressesView: View {
         }
         .disabled(model.busy)
         .confirmationDialog("Delete the selected addresses?", isPresented: $confirmDelete, titleVisibility: .visible) {
-            Button("Delete", role: .destructive) {
+            Button(L("common.connectionRecovery.delete"), role: .destructive) {
                 Task {
                     await model.perform {
                         for alias in chosen { try await model.deleteLocalAlias(alias) }

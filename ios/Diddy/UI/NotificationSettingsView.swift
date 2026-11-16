@@ -34,7 +34,7 @@ struct NotificationSettingsView: View {
                     levelRow(title: item.title, description: nil, spec: item.spec)
                 }
             } header: {
-                Text("All Messages")
+                Text(L("settings.allMessages.allMessages"))
             } footer: {
                 Text("Counted in the grey badge. Applies on every device of your account.")
             }
@@ -43,7 +43,7 @@ struct NotificationSettingsView: View {
                     levelRow(title: item.title, description: mentionDescription(item.spec.ruleId), spec: item.spec)
                 }
             } header: {
-                Text("Mentions")
+                Text(L("settings.specialMessages.mentions"))
             }
             keywordSection
             emailSection
@@ -51,7 +51,7 @@ struct NotificationSettingsView: View {
         .overlay { if !loaded && error == nil { ProgressView() } }
         .scrollContentBackground(.hidden)
         .background(Theme.sidebar)
-        .navigationTitle("Notifications")
+        .navigationTitle(L("settings.page.notifications"))
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
         .refreshable { await load() }
@@ -59,7 +59,7 @@ struct NotificationSettingsView: View {
             Button("Open Settings") {
                 if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
             }
-            Button("Cancel", role: .cancel) {}
+            Button(L("settings.deviceTile.cancel"), role: .cancel) {}
         } message: {
             Text("Allow notifications for Diddy in the Settings app, then turn this on again.")
         }
@@ -73,7 +73,7 @@ struct NotificationSettingsView: View {
             Toggle("Background Notifications", isOn: Binding(get: { backgroundNotifications }, set: { setBackgroundNotifications($0) }))
             NavigationLink("Sounds") { SoundSettingsView() }
         } header: {
-            Text("This Device")
+            Text(L("settings.devices.thisDevice"))
         } footer: {
             Text("Keeps Diddy running in the background so new messages, mentions and calls show up as notifications. Uses more battery. If iOS ends Diddy, for example after a restart, open it once to start again. Message, mention and invitation sounds are under Sounds.")
         }
@@ -88,7 +88,7 @@ struct NotificationSettingsView: View {
         Section {
             emailRow
         } header: {
-            Text("Email")
+            Text(L("auth.email.email"))
         }
     }
 
@@ -96,11 +96,11 @@ struct NotificationSettingsView: View {
     private var emailRow: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text("Email Notification")
+                Text(L("settings.systemNotification.emailNotification"))
                 Spacer()
                 if email == nil && !emailFailed || emailBusy { ProgressView() }
                 if let address = email?.email {
-                    Toggle("Email Notification", isOn: Binding(
+                    Toggle(L("settings.systemNotification.emailNotification"), isOn: Binding(
                         get: { email?.enabled ?? false },
                         set: { setEmail(address, enabled: $0) }
                     ))
@@ -112,11 +112,11 @@ struct NotificationSettingsView: View {
                 if emailFailed {
                     Text("The email setting could not be loaded.").foregroundStyle(Theme.danger)
                 } else if let email, email.email == nil {
-                    Text("Your account does not have any email attached.").foregroundStyle(Theme.danger)
+                    Text(L("settings.systemNotification.yourAccountDoesNot")).foregroundStyle(Theme.danger)
                 } else if let address = email?.email {
                     Text("Send notification to your email. (\"\(address)\")").foregroundStyle(Theme.muted)
                 } else {
-                    Text("Send notification to your email.").foregroundStyle(Theme.muted)
+                    Text(L("settings.systemNotification.sendNotificationToYour")).foregroundStyle(Theme.muted)
                 }
                 if let emailError { Text(emailError).foregroundStyle(Theme.danger) }
             }
@@ -196,7 +196,7 @@ struct NotificationSettingsView: View {
                     .onSubmit { addKeyword() }
                     .disabled(addingKeyword)
                 if addingKeyword { ProgressView() }
-                Button("Save") { addKeyword() }
+                Button(L("settings.profile.save")) { addKeyword() }
                     .buttonStyle(.bordered)
                     .disabled(addingKeyword || keyword.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
@@ -217,7 +217,7 @@ struct NotificationSettingsView: View {
                 }
             }
         } header: {
-            Text("Keywords")
+            Text(L("settings.keywordMessages.keywords"))
         } footer: {
             Text("Set a notification preference for messages containing the given keyword. Swipe left on a keyword to remove it.")
         }

@@ -46,7 +46,7 @@ struct EncryptionSettingsView: View {
                     }
                 }
             } header: {
-                Text("Device Verification")
+                Text(L("settings.devices.deviceVerification"))
             } footer: {
                 Text(account.verificationState == .verified
                      ? "Other people can trust this session, and it can read your encrypted history."
@@ -64,7 +64,7 @@ struct EncryptionSettingsView: View {
                     EmptyView()
                 }
             } header: {
-                Text("Recovery Key")
+                Text(L("common.deviceVerificationSetup.recoveryKey"))
             } footer: {
                 Text("A recovery key lets you verify a new session and read your history if you have no other device. Keep it somewhere safe.")
             }
@@ -72,12 +72,12 @@ struct EncryptionSettingsView: View {
             Section {
                 LabeledContent("Backup", value: backupText)
                 if let backupInfo {
-                    LabeledContent("Version", value: backupInfo.version)
+                    LabeledContent(L("common.createRoom.version"), value: backupInfo.version)
                     if let count = backupInfo.count { LabeledContent("Keys on Server", value: String(count)) }
                 }
                 if let backupError { Text(backupError).font(.footnote).foregroundStyle(Theme.danger) }
                 if backupInfo != nil && account.backupStateNow() != .enabled {
-                    Button { showRecoveryEntry = true } label: { Label("Restore Backup", systemImage: "arrow.down.circle") }
+                    Button { showRecoveryEntry = true } label: { Label(L("common.backupRestore.restoreBackup"), systemImage: "arrow.down.circle") }
                 }
                 if backupChecked && backupInfo == nil && account.backupStateNow() != .enabled {
                     Button { Task { await createBackup() } } label: {
@@ -89,14 +89,14 @@ struct EncryptionSettingsView: View {
                     .disabled(backupBusy)
                 }
             } header: {
-                Text("Encryption Backup")
+                Text(L("common.backupRestore.encryptionBackup"))
             } footer: {
                 Text("The backup keeps your message keys on the server, encrypted, so a new session can read old messages. Restoring needs your recovery key.")
             }
 
             Section {
                 Button(role: .destructive) { showReset = true } label: {
-                    Label("Reset Device Verification", systemImage: "exclamationmark.octagon.fill")
+                    Label(L("common.deviceVerificationSetup.resetDeviceVerification"), systemImage: "exclamationmark.octagon.fill")
                 }
             } footer: {
                 Text("Starts your encryption over. Only do this if you lost your recovery key and every other verified device.")
@@ -166,7 +166,7 @@ struct RecoveryKeyDisplay: View {
                     )
                     copied = true
                 }
-                ShareLink(item: recoveryKey) { Text("Save") }
+                ShareLink(item: recoveryKey) { Text(L("settings.profile.save")) }
             }
             .buttonStyle(.bordered)
             if calls.sharingScreen {
@@ -296,7 +296,7 @@ struct ResetIdentitySheet: View {
                 switch step {
                 case .warn:
                     Section {
-                        Text("Resetting device verification is permanent.").fontWeight(.semibold)
+                        Text(L("common.deviceVerificationSetup.resettingDeviceVerificationIs")).fontWeight(.semibold)
                         Text("Anyone you have verified with will see security alerts and your encryption backup will be lost. You almost certainly do not want to do this, unless you have lost your Recovery Key or Recovery Passphrase and every device you can verify from.")
                             .foregroundStyle(Theme.muted)
                     }
@@ -308,7 +308,7 @@ struct ResetIdentitySheet: View {
                     Section { HStack { ProgressView(); Text("Resetting…").foregroundStyle(Theme.muted) } }
                 case .password(let session):
                     Section {
-                        SecureField("Password", text: $password)
+                        SecureField(L("settings.localBackup.password"), text: $password)
                             .textContentType(.password)
                     } header: {
                         Text("Confirm It\u{2019}s You")
@@ -342,7 +342,7 @@ struct ResetIdentitySheet: View {
             }
             .scrollContentBackground(.hidden)
             .background(Theme.sidebar)
-            .navigationTitle("Reset Device Verification")
+            .navigationTitle(L("common.deviceVerificationSetup.resetDeviceVerification"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

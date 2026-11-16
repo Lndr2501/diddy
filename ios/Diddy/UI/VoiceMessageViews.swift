@@ -374,9 +374,9 @@ struct VoiceMicButton: View {
                 .frame(width: width, height: height)
                 .contentShape(Rectangle())
         }
-        .accessibilityLabel("Record voice message")
+        .accessibilityLabel(L("room.voiceRecorderButton.recordVoiceMessage"))
         .alert("Voice message", isPresented: Binding(get: { recorder.error != nil }, set: { if !$0 { recorder.error = nil } })) {
-            Button("OK", role: .cancel) {}
+            Button(L("settings.localPlugins.ok"), role: .cancel) {}
         } message: { Text(recorder.error ?? "") }
     }
 }
@@ -396,7 +396,7 @@ struct VoiceRecordingBar: View {
                     .frame(width: 36, height: 36)
             }
             .disabled(sending)
-            .accessibilityLabel("Discard recording")
+            .accessibilityLabel(L("room.voiceRecorderButton.discardRecording"))
             RecordingLevel(meter: recorder.meter, pendingDuration: recorder.pending?.duration)
                 .padding(.horizontal, 14)
                 .frame(maxWidth: .infinity, minHeight: 36, alignment: .leading)
@@ -420,7 +420,7 @@ struct VoiceRecordingBar: View {
                 .background(Circle().fill(Theme.accent))
             }
             .disabled(sending)
-            .accessibilityLabel("Send voice message")
+            .accessibilityLabel(L("room.voiceRecorderButton.sendVoiceMessage"))
         }
         .background(Theme.chat)
         // Leaving the chat while recording throws the recording away.

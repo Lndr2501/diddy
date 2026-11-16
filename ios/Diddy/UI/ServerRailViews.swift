@@ -47,7 +47,7 @@ struct ServerRail: View {
                     ) {
                         Image("DiddyLogo").resizable().scaledToFill()
                     }
-                    .accessibilityLabel("Home")
+                    .accessibilityLabel(L("nav.home.home"))
                     Capsule().fill(Theme.elevated).frame(width: 32, height: 2).padding(.vertical, 2)
                 }
                 ForEach(entries) { entry in
@@ -81,7 +81,7 @@ struct ServerRail: View {
         }
         .leaveServerDialog(account: account, serverId: $leaving) { errorText = $0 }
         .alert("Server", isPresented: Binding(get: { errorText != nil }, set: { if !$0 { errorText = nil } })) {
-            Button("OK", role: .cancel) {}
+            Button(L("settings.localPlugins.ok"), role: .cancel) {}
         } message: { Text(errorText ?? "") }
     }
 
@@ -229,13 +229,13 @@ struct ServerMenuItems: View {
 
     var body: some View {
         Button { Task { await account.markServerAsRead(serverId) } } label: {
-            Label("Mark as Read", systemImage: "checkmark.circle")
+            Label(L("room.timeline.markAsRead"), systemImage: "checkmark.circle")
         }
         .disabled(account.unreadCount(inSpace: serverId) == 0 && account.mentionCount(inSpace: serverId) == 0)
         Button(action: onInvite) { Label("Invite People", systemImage: "person.badge.plus") }
         Button {
             Task { if let link = await account.roomLink(serverId) { UIPasteboard.general.string = link } }
-        } label: { Label("Copy Link", systemImage: "link") }
+        } label: { Label(L("room.viewHeader.copyLink"), systemImage: "link") }
         Divider()
         Button(action: onCreateChannel) { Label("Create Channel", systemImage: "plus.bubble") }
         if let onJoinAll {
@@ -299,7 +299,7 @@ struct ServerRailEditorView: View {
             .tint(Theme.accent)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { EditButton() }
-                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) { Button(L("call.companionDialog.done")) { dismiss() } }
             }
         }
     }
@@ -369,7 +369,7 @@ struct FolderEditorView: View {
 
     var body: some View {
         List {
-            Section("Name") {
+            Section(L("settings.badgeEditor.name")) {
                 TextField("Folder", text: $name)
                     .onSubmit { rename() }
                 Button("Save Name") { rename() }
@@ -397,7 +397,7 @@ struct FolderEditorView: View {
                     apply(ServerRailLayout.moveInFolder(folderId, from: source, to: destination, of: entries))
                 }
             } header: {
-                Text("Servers")
+                Text(L("nav.explore.servers"))
             }
             Section {
                 Button(role: .destructive) {

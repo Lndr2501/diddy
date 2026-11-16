@@ -2263,5 +2263,83 @@
       "save": "Save",
       "cancel": "Cancel"
     }
+  },
+  "ios": {
+    "settings": {
+      "accounts": "Accounts",
+      "addAccount": "Add Account",
+      "logOut": "Log Out",
+      "settings": "Settings",
+      "done": "Done",
+      "account": "Account",
+      "app": "App",
+      "help": "Help",
+      "enterRecoveryKey": "Enter Recovery Key",
+      "encryption": "Encryption",
+      "notVerified": "Not Verified",
+      "chat": "Chat",
+      "sounds": "Sounds",
+      "calls": "Calls",
+      "watchTogether": "Watch Together",
+      "welcomeGuide": "Welcome Guide",
+      "aboutDiddy": "About Diddy",
+      "appearance": "Appearance",
+      "tryAgain": "Try Again",
+      "removeFromThisDeviceAnyway": "Remove from This Device Anyway",
+      "cancel": "Cancel",
+      "couldNotLogOut": "Could not log out",
+      "signedInAs": "Signed in as ",
+      "logOutOf": "Log out of ",
+      "thisDeviceIsNotVerifiedYetEnterYourRecoveryKeyOrVerifyItFromAnotherDeviceToReadYourEncryptedMessages": "This device is not verified yet. Enter your recovery key or verify it from another device to read your encrypted messages.",
+      "encryptedMessagesCanOnlyBeReadAgainWithYourRecoveryKeyOrAnotherVerifiedDevice": "Encrypted messages can only be read again with your recovery key or another verified device.",
+      "callAlerts": "Call Alerts",
+      "ntfyAlerts": "Alert me through ntfy",
+      "saveName": "Save Name",
+      "changePicture": "Tap your picture or name to change them.",
+      "verifyDevice": "Verify this device",
+      "logOutServer": "Log out of {{name}}",
+      "signedInUser": "Signed in as {{name}}",
+      "confirmLogOut": "Log out of {{name}}?",
+      "logoutFailure": "The server did not end this session ({{error}}). If you remove it from this device anyway, it stays signed in on the server until you remove it under Devices on another device."
+    },
+    "common": {
+      "ok": "OK"
+    },
+    "list": {
+      "pickConversation": "Pick a channel or conversation",
+      "noDirectMessages": "No direct messages yet.",
+      "noChats": "No chats yet.",
+      "noChannels": "This server has no channels yet.",
+      "createChannel": "Create a channel",
+      "seeVoiceEverywhere": "See messages and who is in voice everywhere.",
+      "conversationDisappears": "The conversation disappears from your list.",
+      "couldNotJoin": "Could not join",
+      "joinAllChannels_one": "Join the channel",
+      "joinAllChannels_other": "Join all {{count}} channels",
+      "noResults": "No results for “{{query}}”"
+    },
+    "chat": {
+      "cannotSend": "You do not have permission to send messages here.",
+      "replySaved": "Replying to saved message",
+      "replyTo": "Replying to ",
+      "editingMessage": "Editing message",
+      "uploading": "Uploading…",
+      "messageDeleted": "Message deleted",
+      "dmBeginning": "This is the beginning of your direct message history with {{name}}.",
+      "welcomeChannel": "Welcome to #{{name}}!",
+      "channelBeginning": "This is the start of the #{{name}} channel."
+    },
+    "login": {
+      "passwordsDoNotMatch": "The passwords do not match.",
+      "registrationTokenHelp": "This server needs a registration token. You get it from whoever runs the server.",
+      "acceptTerms": "Please read and accept the server's terms.",
+      "agree": "I Agree",
+      "emailConfirmation": "This server confirms new accounts by email.",
+      "sendLink": "Send Link",
+      "sendAgain": "Send the Email Again",
+      "moreStep": "The server asks for one more step on its own page.",
+      "openPage": "Open Page",
+      "startOver": "Start Over"
+    }
   }
 }

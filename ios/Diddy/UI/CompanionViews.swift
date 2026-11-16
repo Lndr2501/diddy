@@ -42,9 +42,9 @@ struct CompanionRequestSheet: View {
                     .padding(.vertical, 4)
                 }
                 Section {
-                    Toggle(isOn: $camera) { Label("Camera", systemImage: "video.fill") }
-                    Toggle(isOn: $microphone) { Label("Microphone", systemImage: "mic.fill") }
-                    Toggle(isOn: $screen) { Label("Screen", systemImage: "rectangle.on.rectangle") }
+                    Toggle(isOn: $camera) { Label(L("settings.general.camera"), systemImage: "video.fill") }
+                    Toggle(isOn: $microphone) { Label(L("call.controls.microphone"), systemImage: "mic.fill") }
+                    Toggle(isOn: $screen) { Label(L("call.companionDialog.screen"), systemImage: "rectangle.on.rectangle") }
                 } header: {
                     Text("This iPhone sends")
                 } footer: {
@@ -61,7 +61,7 @@ struct CompanionRequestSheet: View {
                     Button("Not Now", action: onDecline)
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Join") { onJoin(CompanionProtocol.Media(camera: camera, microphone: microphone, screen: screen)) }
+                    Button(L("call.prescreenControls.join")) { onJoin(CompanionProtocol.Media(camera: camera, microphone: microphone, screen: screen)) }
                         .bold()
                         .disabled(!anything)
                 }

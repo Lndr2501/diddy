@@ -140,6 +140,11 @@ jobs:
           swiftc -swift-version 5 Diddy/Matrix/DiddyJSONSize.swift Diddy/Matrix/DiddyProfileDecor.swift Diddy/Matrix/DiddyProfileDraft.swift Tools/profile_editor_check/main.swift -o "$RUNNER_TEMP/diddy-profile-editor-check"
           "$RUNNER_TEMP/diddy-profile-editor-check"
 
+      - name: Check shared locale rules
+        run: |
+          swiftc -swift-version 5 Diddy/App/LocaleRules.swift Tools/locale_check/main.swift -o "$RUNNER_TEMP/diddy-locale-check"
+          "$RUNNER_TEMP/diddy-locale-check"
+
       - name: Check appearance rules
         run: |
           swiftc -swift-version 5 Diddy/App/AppearanceLogic.swift Tools/appearance_check/main.swift -o "$RUNNER_TEMP/diddy-appearance-check"

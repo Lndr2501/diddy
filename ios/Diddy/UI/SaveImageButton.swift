@@ -28,7 +28,7 @@ struct SaveImageButton: View {
         .disabled(saving)
         .accessibilityLabel("Save to Photos")
         .alert("Save image", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) {
-            Button("OK", role: .cancel) {}
+            Button(L("settings.localPlugins.ok"), role: .cancel) {}
         } message: { Text(message ?? "") }
     }
 }

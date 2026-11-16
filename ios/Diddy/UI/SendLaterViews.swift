@@ -72,7 +72,7 @@ struct SendLaterSheet: View {
             .navigationTitle("Send Later")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button(L("settings.deviceTile.cancel")) { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Schedule") {
                         onSchedule(sendAt, preferLocal)
@@ -122,7 +122,7 @@ struct ScheduledMessagesBar: View {
                     Spacer(minLength: 0)
                     Button { store.lateNotices[roomId] = nil } label: { Image(systemName: "xmark.circle.fill").frame(width: 30, height: 30) }
                         .foregroundStyle(Theme.muted)
-                        .accessibilityLabel("Dismiss")
+                        .accessibilityLabel(L("settings.legacyAvatarNotice.dismiss"))
                 }
                 .font(.footnote)
                 .padding(.leading, 14)
@@ -190,14 +190,14 @@ struct ScheduledMessagesSheet: View {
                         HStack(spacing: 16) {
                             if let local = row.local {
                                 Button { run(row) { try await store.cancel(local); onEdit(local) } } label: {
-                                    Label("Edit", systemImage: "pencil")
+                                    Label(L("settings.deviceTile.edit"), systemImage: "pencil")
                                 }
                             }
                             Button { run(row) { try await sendNow(row) } } label: {
                                 Label("Send Now", systemImage: "paperplane")
                             }
                             Button(role: .destructive) { run(row) { try await cancel(row) } } label: {
-                                Label("Cancel", systemImage: "xmark")
+                                Label(L("settings.deviceTile.cancel"), systemImage: "xmark")
                             }
                             if busy == row.id { ProgressView() }
                         }
@@ -213,7 +213,7 @@ struct ScheduledMessagesSheet: View {
             }
             .navigationTitle("Scheduled")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button(L("call.companionDialog.done")) { dismiss() } } }
             .onChange(of: rows.count) { count in if count == 0 && error == nil { dismiss() } }
         }
         .presentationDetents([.medium, .large])

@@ -293,8 +293,8 @@ struct ThemeSection: View {
         Section {
             Toggle(isOn: Binding(get: { store.useSystem }, set: { store.setUseSystem($0) })) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Match System Appearance")
-                    Text("Switch between a light and a dark theme together with your system.")
+                    Text(L("settings.general.matchSystemAppearance"))
+                    Text(L("settings.general.switchBetweenALight"))
                         .font(.caption).foregroundStyle(Theme.muted)
                 }
             }
@@ -312,7 +312,7 @@ struct ThemeSection: View {
             }
             NavigationLink(value: SettingsPage.customTheme) { Label("Custom Theme Colors", systemImage: "paintpalette.fill") }
         } header: {
-            Text("Theme")
+            Text(L("settings.general.theme"))
         } footer: {
             Text("The same color themes as the desktop app. Light themes switch the whole app to light mode.")
         }

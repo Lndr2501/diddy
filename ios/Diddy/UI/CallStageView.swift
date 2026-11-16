@@ -166,7 +166,7 @@ struct CallStageView: View {
         if !member.isConnecting {
             Button { showProfile(member.userId) } label: { Label("Show Profile", systemImage: "person.crop.circle") }
             if !member.isLocal {
-                Button { message(member.userId) } label: { Label("Message", systemImage: "bubble.left") }
+                Button { message(member.userId) } label: { Label(L("call.userMenu.message"), systemImage: "bubble.left") }
                 let muted = extras.isMuted(member.userId, kind: .voice)
                 Button { extras.toggleMuted(member.userId, kind: .voice) } label: {
                     Label(muted ? "Unmute for Me" : "Mute for Me", systemImage: muted ? "speaker.wave.2" : "speaker.slash")
@@ -176,7 +176,7 @@ struct CallStageView: View {
                 }
             }
         }
-        Button { UIPasteboard.general.string = member.name } label: { Label("Copy Name", systemImage: "doc.on.doc") }
+        Button { UIPasteboard.general.string = member.name } label: { Label(L("call.userMenu.copyName"), systemImage: "doc.on.doc") }
         Button { UIPasteboard.general.string = member.userId } label: { Label("Copy ID", systemImage: "number") }
     }
 
@@ -398,7 +398,7 @@ private struct ShareTile: View {
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
             }
-            Text("Watch")
+            Text(L("call.stage.watch"))
                 .font((role == .thumb ? Font.caption2 : Font.footnote).weight(.semibold))
                 .foregroundStyle(.white)
                 .padding(.horizontal, role == .thumb ? 8 : 14)
@@ -545,7 +545,7 @@ private struct FullscreenShare: View {
                         .frame(width: 44, height: 44)
                         .contentShape(Rectangle())
                 }
-                .accessibilityLabel("Close")
+                .accessibilityLabel(L("settings.globalPacks.close"))
             }
             .padding()
         }

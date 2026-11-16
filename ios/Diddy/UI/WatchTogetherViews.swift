@@ -27,7 +27,7 @@ struct WatchLinkSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("https://youtu.be/…", text: $input)
+                    TextField(L("call.watchTogether.httpsYoutuBe"), text: $input)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .keyboardType(.URL)
@@ -43,12 +43,12 @@ struct WatchLinkSheet: View {
                     }
                 }
             }
-            .navigationTitle("Watch together")
+            .navigationTitle(L("settings.watchTogether.watchTogether"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button(L("settings.deviceTile.cancel")) { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Start for everyone", action: submit)
+                    Button(L("call.watchTogether.startForEveryone"), action: submit)
                         .disabled(input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
@@ -226,7 +226,7 @@ private struct WatchPlayerCard: View {
                         .font(.body.weight(.semibold))
                         .frame(width: 44, height: 36)
                 }
-                .accessibilityLabel("Open on YouTube")
+                .accessibilityLabel(L("call.watchTogether.openOnYoutube"))
             }
             Menu {
                 Button { watch.closeForMe() } label: {
@@ -283,9 +283,9 @@ private struct WatchPlayerCard: View {
                 ),
                 in: 0...100
             )
-            .accessibilityLabel("Your video volume")
+            .accessibilityLabel(L("call.watchTogether.yourVideoVolume"))
             Menu {
-                Picker("Quality", selection: Binding(
+                Picker(L("call.watchTogether.quality"), selection: Binding(
                     get: { prefs.quality },
                     set: { choice in WatchTogetherPrefsStore.shared.update { $0.quality = choice } }
                 )) {
@@ -303,7 +303,7 @@ private struct WatchPlayerCard: View {
                 }
                 .foregroundStyle(Theme.text)
             }
-            .accessibilityLabel("Your video quality")
+            .accessibilityLabel(L("call.watchTogether.yourVideoQuality"))
         }
     }
 }
@@ -322,7 +322,7 @@ struct WatchTogetherSettingsView: View {
                     set: { on in prefsStore.update { $0.enabled = on } }
                 )) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Watch together")
+                        Text(L("settings.watchTogether.watchTogether"))
                         Text("Watch a YouTube video with everyone in the call. Play, pause and seeking are shared; your volume and quality stay yours.")
                             .font(.footnote).foregroundStyle(Theme.muted)
                     }
@@ -339,7 +339,7 @@ struct WatchTogetherSettingsView: View {
                         ))
                     }
                 } header: {
-                    Text("Skip segments with SponsorBlock")
+                    Text(L("settings.watchTogether.skipSegmentsWithSponsorblock"))
                 } footer: {
                     Text("Community data from SponsorBlock (sponsor.ajay.app, by Ajay Ramachandran and contributors, CC BY-NC-SA 4.0). When you skip, the video jumps for everybody in the call.")
                 }

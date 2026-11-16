@@ -38,7 +38,7 @@ test('de.json is a complete translation', () => {
   assert.equal(de.percent, 100);
 });
 
-test('every file starts with _meta and en.json keeps the ios area free', () => {
+test('every file starts with _meta and both source and German have iOS texts', () => {
   const dir = path.join(__dirname, '../locales');
   fs.readdirSync(dir)
     .filter((file) => file.endsWith('.json'))
@@ -47,24 +47,27 @@ test('every file starts with _meta and en.json keeps the ios area free', () => {
       assert.equal(Object.keys(JSON.parse(text))[0], '_meta', `${file} must start with _meta`);
     });
   const en = JSON.parse(fs.readFileSync(path.join(dir, 'en.json'), 'utf8'));
-  assert.equal(en.ios, undefined);
+  const de = JSON.parse(fs.readFileSync(path.join(dir, 'de.json'), 'utf8'));
+  assert.ok(en.ios);
+  for (const key of Object.keys(rules.flattenLocale(en)).filter((key) => key.startsWith('ios.'))) {
+    assert.ok(key in rules.flattenLocale(de), `${key} is not translated in German`);
+  }
 });
 
 test('flatten and unflatten keep nested keys', () => {
   const tree = { _meta: meta('de'), call: { bar: { mute: 'Stumm' } }, ios: { only: 'iOS' } };
-  assert.deepEqual({ ...rules.flattenLocale(tree) }, { 'call.bar.mute': 'Stumm' });
+  assert.deepEqual({ ...rules.flattenLocale(tree) }, { 'call.bar.mute': 'Stumm', 'ios.only': 'iOS' });
   assert.deepEqual(
     JSON.parse(JSON.stringify(rules.unflattenLocale({ 'a.b.c': 'x', 'a.d': 'y' }))),
     { a: { b: { c: 'x' }, d: 'y' } }
   );
 });
 
-test('a good file has no problems, also with extra plural forms and the ios area', () => {
+test('a good file has no problems, also with extra plural forms', () => {
   const file = {
     _meta: meta('pl'),
     call: { bar: { mute: 'Wycisz' } },
     room: { greeting: 'Cześć {{name}}', members_one: 'członek', members_few: '{{count}} członków' },
-    ios: { anything: 'goes' },
   };
   assert.deepEqual([...rules.validateLocale(file, source)], []);
 });
@@ -120,12 +123,15 @@ test('the system language picks the closest file', () => {
   assert.equal(rules.matchSystemLanguage(['fr'], available), undefined);
 });
 
-test('the check finds unknown keys in the code and broken files', () => {
+test('the check finds unknown keys in Swift and TS code and broken files', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'diddy-i18n-'));
   const locales = path.join(dir, 'locales');
   const src = path.join(dir, 'src');
   fs.mkdirSync(locales);
   fs.mkdirSync(src);
+  const ios = path.join(dir, 'ios');
+  fs.mkdirSync(ios);
+  fs.writeFileSync(path.join(ios, 'View.swift'), 'Text(L("ios.missing"))');
   fs.writeFileSync(
     path.join(locales, 'en.json'),
     JSON.stringify({ _meta: meta('en'), call: { mute: 'Mute', hi: 'Hi {{name}}' } })
@@ -137,14 +143,15 @@ test('the check finds unknown keys in the code and broken files', () => {
     "const a = t('call.mute'); const b = translate('call.gone'); const c = format('not.a.key');"
   );
   try {
-    const { errors, languages } = runCheck({ localesDir: locales, srcDir: src });
+    const { errors, languages } = runCheck({ localesDir: locales, srcDir: src, iosDir: ios });
     assert.ok(errors.some((e) => e.startsWith('xx.json: not valid JSON')));
     assert.ok(errors.includes('de.json: call.hi: The placeholder {{name}} is missing.'));
     assert.ok(errors.some((e) => e.startsWith('de.json: _meta.code is "fr"')));
     assert.ok(errors.some((e) => e.endsWith('uses "call.gone", which is not in en.json')));
+    assert.ok(errors.some((e) => e.endsWith('uses "ios.missing", which is not in en.json')));
     assert.ok(!errors.some((e) => e.includes('not.a.key')));
     assert.equal(languages.find((lang) => lang.code === 'de').percent, 50);
-    assert.deepEqual([...usedKeys(src).keys()].sort(), ['call.gone', 'call.mute']);
+    assert.deepEqual([...usedKeys(src, null).keys()].sort(), ['call.gone', 'call.mute']);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

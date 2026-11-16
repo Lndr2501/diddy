@@ -28,30 +28,30 @@ struct ChatSettingsView: View {
 
     var body: some View {
         List {
-            Section("Timeline") {
-                Toggle("Hide Membership Change", isOn: Binding(get: { !showMembership }, set: { showMembership = !$0 }))
+            Section(L("settings.general.timeline")) {
+                Toggle(L("settings.general.hideMembershipChange"), isOn: Binding(get: { !showMembership }, set: { showMembership = !$0 }))
             }
 
-            Section("Media & Previews") {
-                Toggle("Disable Media Auto Load", isOn: Binding(get: { !autoLoadMedia }, set: { autoLoadMedia = !$0 }))
-                Toggle("Url Preview", isOn: $urlPreviews)
-                Toggle("Url Preview in Encrypted Room", isOn: $encryptedUrlPreviews)
+            Section(L("settings.general.mediaPreviews")) {
+                Toggle(L("settings.general.disableMediaAutoLoad"), isOn: Binding(get: { !autoLoadMedia }, set: { autoLoadMedia = !$0 }))
+                Toggle(L("settings.general.urlPreview"), isOn: $urlPreviews)
+                Toggle(L("settings.general.urlPreviewInEncrypted"), isOn: $encryptedUrlPreviews)
             }
 
             dateAndTime
 
-            Section("Editor") {
+            Section(L("settings.general.editor")) {
                 Toggle(isOn: $enterForNewline) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("ENTER for Newline")
+                        Text(L("settings.general.enterForNewline"))
                         Text("Use the send button to send and Return for a new line.").font(.caption).foregroundStyle(Theme.muted)
                     }
                 }
-                Toggle("Markdown Formatting", isOn: $markdown)
+                Toggle(L("settings.general.markdownFormatting"), isOn: $markdown)
                 Toggle("Editor Toolbar", isOn: $editorToolbar)
                 Toggle(isOn: Binding(get: { !shareActivity }, set: { shareActivity = !$0 })) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Hide Typing & Read Receipts")
+                        Text(L("settings.general.hideTypingReadReceipts"))
                         Text("Others stop seeing that you type and how far you have read. Chats still count as read for you (a private read receipt, like on desktop).")
                             .font(.caption).foregroundStyle(Theme.muted)
                     }
@@ -68,7 +68,7 @@ struct ChatSettingsView: View {
                 }
                 Toggle(isOn: $nameplates) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Nameplates")
+                        Text(L("settings.general.nameplates"))
                         Text("Moving pictures, videos and gradients behind names in the member and DM lists.")
                             .font(.caption).foregroundStyle(Theme.muted)
                     }
@@ -83,7 +83,7 @@ struct ChatSettingsView: View {
                 Toggle(isOn: $profileFrames) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Profile Frames")
-                        Text("Decorative frames other people put around their profile card.")
+                        Text(L("settings.general.decorativeFramesOtherPeople"))
                             .font(.caption).foregroundStyle(Theme.muted)
                     }
                 }
@@ -95,7 +95,7 @@ struct ChatSettingsView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Theme.sidebar)
-        .navigationTitle("Chat")
+        .navigationTitle(L("settings.page.chat"))
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -115,7 +115,7 @@ struct ChatSettingsView: View {
             Picker("Time Format", selection: $timeFormat) {
                 ForEach(ChatSettings.TimeFormat.allCases) { Text($0.title).tag($0.rawValue) }
             }
-            Picker("Date Format", selection: Binding(
+            Picker(L("settings.general.dateFormat"), selection: Binding(
                 get: { dateSelection },
                 set: { choice in
                     if choice.isEmpty {
@@ -129,7 +129,7 @@ struct ChatSettingsView: View {
                 ForEach(DateFormatRules.presets, id: \.self) { preset in
                     Text(DateFormatRules.string(from: Date(), format: preset)).tag(preset)
                 }
-                Text("Custom").tag("")
+                Text(L("settings.general.custom")).tag("")
             }
             if dateSelection.isEmpty {
                 TextField("D MMM YYYY", text: Binding(
@@ -141,7 +141,7 @@ struct ChatSettingsView: View {
                 .font(.system(.body, design: .monospaced))
             }
         } header: {
-            Text("Date & Time")
+            Text(L("settings.general.dateTime"))
         } footer: {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Example: \(Date().chatTimestamp)")

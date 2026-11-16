@@ -3,6 +3,7 @@ import SwiftUI
 @main
 struct DiddyApp: App {
     @StateObject private var app = AppModel()
+    @ObservedObject private var language = AppLanguage.shared
 
     init() {
         DiagLog.shared.setUp()
@@ -13,6 +14,7 @@ struct DiddyApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
+                .id(language.revision)
                 .environmentObject(app)
                 .environmentObject(app.calls)
                 .diddyAppearance()

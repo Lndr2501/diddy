@@ -69,7 +69,7 @@ struct MessageSearchView: View {
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
             .onSubmit(of: .search) { search() }
-            .navigationTitle("Search Messages")
+            .navigationTitle(L("room.viewHeader.searchMessages"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
             .onChange(of: order) { _ in search() }
@@ -151,7 +151,7 @@ struct QuickSwitchView: View {
             List {
                 Section {
                     Button { messages = true } label: {
-                        Label("Search Messages", systemImage: "text.magnifyingglass")
+                        Label(L("room.viewHeader.searchMessages"), systemImage: "text.magnifyingglass")
                     }
                 }
                 Section("Rooms, people and servers") {
@@ -170,7 +170,7 @@ struct QuickSwitchView: View {
                 }
             }
             .searchable(text: $query, prompt: "Search (# rooms, @ people, * servers)")
-            .navigationTitle("Search")
+            .navigationTitle(L("settings.page.search"))
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
             .sheet(isPresented: $messages) { MessageSearchView(account: account, onOpen: { dismiss() }) }
         }

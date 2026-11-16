@@ -29,7 +29,7 @@ struct MessageActionsOverlay<Actions: View>: View {
                 .ignoresSafeArea()
                 .contentShape(Rectangle())
                 .onTapGesture(perform: onClose)
-                .accessibilityLabel("Close")
+                .accessibilityLabel(L("settings.globalPacks.close"))
                 .accessibilityAddTraits(.isButton)
             VStack(spacing: 10) {
                 Spacer(minLength: 12)

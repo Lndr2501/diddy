@@ -296,7 +296,7 @@ struct BotCardView: View {
                     })
                     .tint(Theme.accent)
                     .disabled(busy)
-                    .accessibilityLabel("Volume")
+                    .accessibilityLabel(L("settings.customTheme.volume"))
                     Text("\(Int(volumeValue.rounded()))%")
                         .font(.footnote.weight(.semibold).monospacedDigit())
                         .foregroundStyle(Theme.text)

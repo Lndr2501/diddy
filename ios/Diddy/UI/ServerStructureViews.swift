@@ -86,14 +86,14 @@ struct ManageServerView: View {
             .navigationBarTitleDisplayMode(.inline)
             .tint(Theme.accent)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button(L("call.companionDialog.done")) { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Menu {
                         addMenu(to: serverId)
                     } label: {
                         Image(systemName: "plus")
                     }
-                    .accessibilityLabel("Add")
+                    .accessibilityLabel(L("settings.connectedAccounts.add"))
                 }
             }
             .refreshable { await load() }
@@ -246,7 +246,7 @@ struct AddExistingView: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     if busy { ProgressView() } else {
-                        Button("Add") { add() }.disabled(selected.isEmpty)
+                        Button(L("settings.connectedAccounts.add")) { add() }.disabled(selected.isEmpty)
                     }
                 }
             }

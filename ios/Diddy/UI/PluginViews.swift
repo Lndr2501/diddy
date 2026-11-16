@@ -40,7 +40,7 @@ struct PluginCardView: View {
                     Image(systemName: "arrow.clockwise").foregroundStyle(Theme.muted)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Reload")
+                .accessibilityLabel(L("plugins.frame.reload"))
             }
             GeometryReader { geometry in
                 PluginWebContainer(webView: host.webView)
@@ -128,7 +128,7 @@ struct PluginsPanelButton: View {
                 Image(systemName: "puzzlepiece.extension.fill").foregroundStyle(Theme.muted)
                     .frame(width: 44, height: 44)
             }
-            .accessibilityLabel("Plugins")
+            .accessibilityLabel(L("settings.page.plugins"))
             .sheet(isPresented: $showing) { PluginsPanelView() }
         }
     }
@@ -156,9 +156,9 @@ struct PluginSettingsView: View {
                                 .labelsHidden()
                         }
                     }
-                    .swipeActions { Button("Remove", role: .destructive) { pendingRemoval = plugin } }
+                    .swipeActions { Button(L("settings.connectedAccounts.remove"), role: .destructive) { pendingRemoval = plugin } }
                 }
-                NavigationLink { AddPluginView() } label: { Label("Add Plugin", systemImage: "plus.circle.fill") }
+                NavigationLink { AddPluginView() } label: { Label(L("settings.localPlugins.addPlugin"), systemImage: "plus.circle.fill") }
                     .disabled(store.plugins.count >= PluginRules.maxPlugins)
             } header: {
                 Text("Your plugins")
@@ -177,7 +177,7 @@ struct PluginSettingsView: View {
                         if store.isAdded(builtin: item.slug) {
                             Image(systemName: "checkmark").foregroundStyle(Theme.online)
                         } else {
-                            Button("Add") {
+                            Button(L("settings.connectedAccounts.add")) {
                                 do { try store.addBuiltin(item) } catch { self.error = error.friendlyMessage }
                             }
                             .buttonStyle(.bordered)
@@ -202,7 +202,7 @@ struct PluginSettingsView: View {
                 if let plugin = pendingRemoval { store.remove(plugin.id) }
                 pendingRemoval = nil
             }
-            Button("Cancel", role: .cancel) { pendingRemoval = nil }
+            Button(L("settings.deviceTile.cancel"), role: .cancel) { pendingRemoval = nil }
         } message: {
             Text("The data this plugin saved on this device is deleted too.")
         }
@@ -229,15 +229,15 @@ struct PluginDetailView: View {
                 Section {
                     Toggle("Turned on", isOn: Binding(get: { plugin.enabled }, set: { store.setEnabled(plugin.id, $0) }))
                 }
-                Section("Preview") {
+                Section(L("settings.badgeEditor.preview")) {
                     PluginCardView(plugin: plugin, showsTitle: false)
                         .listRowInsets(EdgeInsets())
                         .listRowBackground(Color.clear)
                 }
                 if let id = PluginAddress.localId(plugin.url) {
-                    Section("Content") { localInfo(id) }
+                    Section(L("settings.localPlugins.content")) { localInfo(id) }
                 } else if PluginAddress.builtinSlug(plugin.url) == nil {
-                    Section("Address") { Text(plugin.url).font(.footnote).foregroundStyle(Theme.muted).textSelection(.enabled) }
+                    Section(L("settings.plugins.address")) { Text(plugin.url).font(.footnote).foregroundStyle(Theme.muted).textSelection(.enabled) }
                 }
                 Section {
                     TextEditor(text: $css)
@@ -247,7 +247,7 @@ struct PluginDetailView: View {
                         .textInputAutocapitalization(.never)
                         .onChange(of: css) { store.setCustomCss(plugin.id, $0) }
                 } header: {
-                    Text("Custom CSS")
+                    Text(L("settings.plugins.customCss"))
                 } footer: {
                     Text("Sent to the plugin, which decides whether to apply it (up to \(PluginRules.maxCustomCSS) characters). Reload the preview to see it.")
                 }
@@ -279,7 +279,7 @@ struct PluginDetailView: View {
             LabeledContent("Size", value: "\(max(1, Int((Double(record.size) / 1024).rounded()))) KB")
             LabeledContent("SHA-256", value: String(record.sha256.prefix(12)))
         } else {
-            Text("Content missing on this device. Remove the plugin and add it again.").foregroundStyle(Theme.danger)
+            Text(L("plugins.frame.contentMissingOnThis")).foregroundStyle(Theme.danger)
         }
     }
 
@@ -330,7 +330,7 @@ struct AddPluginView: View {
             switch kind {
             case .address:
                 Section {
-                    TextField("https://example.com/plugin.html", text: $address)
+                    TextField(L("settings.plugins.httpsExampleComPlugin"), text: $address)
                         .keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
                 } footer: {
                     Text("A web page that follows the plugin contract (docs/plugins.md). Only https addresses work on iOS.")
@@ -366,12 +366,12 @@ struct AddPluginView: View {
                 }
             }
             Section {
-                Button("Add Plugin") { add() }.disabled(!canAdd || busy)
+                Button(L("settings.localPlugins.addPlugin")) { add() }.disabled(!canAdd || busy)
             }
         }
         .scrollContentBackground(.hidden)
         .background(Theme.sidebar)
-        .navigationTitle("Add Plugin")
+        .navigationTitle(L("settings.localPlugins.addPlugin"))
         .navigationBarTitleDisplayMode(.inline)
         .fileImporter(isPresented: $importing, allowedContentTypes: [.html], allowsMultipleSelection: false) { result in
             readFile(result)
@@ -380,7 +380,7 @@ struct AddPluginView: View {
             NavigationStack {
                 ScrollView { PluginCardView(plugin: nil, previewHtml: previewHtml).padding(16) }
                     .background(Theme.sidebar)
-                    .navigationTitle("Preview")
+                    .navigationTitle(L("settings.badgeEditor.preview"))
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { previewing = false } } }
             }

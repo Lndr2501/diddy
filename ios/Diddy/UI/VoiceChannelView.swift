@@ -59,12 +59,12 @@ struct VoiceChannelView: View {
                 // iPhone: the channel lies over the list (MainView), there is no system back button
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button { navigator.destination = nil } label: { Image(systemName: "chevron.left") }
-                        .accessibilityLabel("Back")
+                        .accessibilityLabel(L("settings.insetList.back"))
                 }
             }
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button { showMembers = true } label: { Image(systemName: "person.2.fill") }
-                    .accessibilityLabel("Members")
+                    .accessibilityLabel(L("settings.diddyProfile.members"))
             }
         }
         .sheet(isPresented: $showMembers) { MembersView(account: account, roomId: roomId) }
@@ -283,7 +283,7 @@ private struct ConnectedVoiceView: View {
             Button { Task { await session.toggleCamera() } } label: {
                 CallBarIcon(icon: session.cameraOn ? "video.fill" : "video.slash.fill", highlight: session.cameraOn)
             }
-            .accessibilityLabel("Camera")
+            .accessibilityLabel(L("settings.general.camera"))
             .accessibilityValue(session.cameraOn ? "On" : "Off")
             // Long press: pick the camera (#201), like the camera chevron on desktop.
             .contextMenu {
@@ -330,7 +330,7 @@ private struct ConnectedVoiceView: View {
             Button { Task { await calls.leave() } } label: {
                 CallBarIcon(icon: "phone.down.fill", destructive: true)
             }
-            .accessibilityLabel("Leave call")
+            .accessibilityLabel(L("call.panel.leaveCall"))
         )
     }
 }

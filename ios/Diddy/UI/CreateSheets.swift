@@ -70,28 +70,28 @@ private struct NewRoomForm: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Name") {
+                Section(L("settings.badgeEditor.name")) {
                     TextField(isSpace ? "My Server" : (isVoice ? "Lounge" : "new-\(noun.lowercased())"), text: $name)
                 }
-                Section("Topic (Optional)") {
+                Section(L("createRoom.main.topicOptional")) {
                     TextField("What is it about?", text: $topic, axis: .vertical)
                 }
                 if !isSpace {
-                    Section("Type") {
-                        Picker("Type", selection: $isVoice) {
-                            Label("Text", systemImage: "number").tag(false)
-                            Label("Voice", systemImage: "speaker.wave.2.fill").tag(true)
+                    Section(L("createRoom.main.type")) {
+                        Picker(L("createRoom.main.type"), selection: $isVoice) {
+                            Label(L("settings.profileCardEditor.text"), systemImage: "number").tag(false)
+                            Label(L("room.viewHeader.voice"), systemImage: "speaker.wave.2.fill").tag(true)
                         }
                         .pickerStyle(.inline)
                         .labelsHidden()
                     }
                 }
                 Section {
-                    Picker("Access", selection: $access) {
+                    Picker(L("createRoom.main.access"), selection: $access) {
                         ForEach(accessChoices) { choice in Text(choice.title).tag(choice) }
                     }
                 } header: {
-                    Text("Access")
+                    Text(L("createRoom.main.access"))
                 } footer: {
                     Text(access.detail)
                 }
@@ -101,14 +101,14 @@ private struct NewRoomForm: View {
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                     } header: {
-                        Text("Address")
+                        Text(L("settings.plugins.address"))
                     } footer: {
                         Text("#\(alias.isEmpty ? "address" : alias):\(account.ownServerName)")
                     }
                 }
                 if !isSpace && request.effectiveAccess != .public {
                     Section {
-                        Toggle("End-to-End Encryption", isOn: $encryption)
+                        Toggle(L("createChat.main.endToEndEncryption"), isOn: $encryption)
                     } footer: {
                         Text("Encryption can't be turned off after the \(noun.lowercased()) is created.")
                     }
@@ -116,12 +116,12 @@ private struct NewRoomForm: View {
                 Section {
                     DisclosureGroup("Advanced Options", isExpanded: $advanced) {
                         if request.effectiveAccess != .public && (NewRoomVersionSupport.knock(version)) {
-                            Toggle("Knock to Join", isOn: $knock)
+                            Toggle(L("createRoom.main.knockToJoin"), isOn: $knock)
                             Text("Anyone can ask to join this \(noun.lowercased()).")
                                 .font(.footnote).foregroundStyle(Theme.muted)
                         }
-                        Toggle("Allow Federation", isOn: $federation)
-                        Text("Users from other servers can join.")
+                        Toggle(L("createRoom.main.allowFederation"), isOn: $federation)
+                        Text(L("createRoom.main.usersFromOtherServers"))
                             .font(.footnote).foregroundStyle(Theme.muted)
                         if !availableVersions.isEmpty {
                             Picker("Room Version", selection: Binding(get: { version ?? availableVersions[0] }, set: { version = $0 })) {
@@ -138,10 +138,10 @@ private struct NewRoomForm: View {
             .navigationBarTitleDisplayMode(.inline)
             .tint(Theme.accent)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button(L("settings.deviceTile.cancel")) { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     if busy { ProgressView() } else {
-                        Button("Create") { create() }
+                        Button(L("createChat.main.create")) { create() }
                             .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
                 }

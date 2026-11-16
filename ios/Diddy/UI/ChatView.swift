@@ -177,7 +177,7 @@ private struct ChatContent: View {
                             }
                     }
                 } else {
-                    Text("You do not have permission to send messages here.")
+                    Text(L("ios.chat.cannotSend"))
                         .font(.footnote).foregroundStyle(Theme.muted)
                         .frame(maxWidth: .infinity)
                         .padding(14)
@@ -767,18 +767,18 @@ private struct ChatContent: View {
             if !pendingFiles.isEmpty { pendingAttachments }
             if showFormatToolbar { formatToolbar }
             if replyTo == nil, restoredReplyId != nil {
-                composerContext(Text("Replying to saved message").foregroundColor(Theme.muted), symbol: "arrowshape.turn.up.left") {
+                composerContext(Text(L("ios.chat.replySaved")).foregroundColor(Theme.muted), symbol: "arrowshape.turn.up.left") {
                     restoredReplyId = nil; saveDraft()
                 }
             }
             if let replyTo {
-                composerContext(Text("Replying to ").foregroundColor(Theme.muted) + Text(replyTo.senderName).bold().foregroundColor(Theme.text),
+                composerContext(Text(L("ios.chat.replyTo")).foregroundColor(Theme.muted) + Text(replyTo.senderName).bold().foregroundColor(Theme.text),
                                 symbol: "arrowshape.turn.up.left") {
                     self.replyTo = nil
                 }
             }
             if editing != nil {
-                composerContext(Text("Editing message").foregroundColor(Theme.muted), symbol: "pencil") {
+                composerContext(Text(L("ios.chat.editingMessage")).foregroundColor(Theme.muted), symbol: "pencil") {
                     editing = nil
                     draft = ""
                 }
@@ -948,7 +948,7 @@ private struct ChatContent: View {
             if controller.uploadingAttachment {
                 HStack(spacing: 8) {
                     ProgressView()
-                    Text("Uploading…").font(.footnote).foregroundStyle(Theme.muted)
+                    Text(L("ios.chat.uploading")).font(.footnote).foregroundStyle(Theme.muted)
                     Spacer(minLength: 0)
                     Button("Cancel") { controller.cancelAttachment() }.font(.footnote.weight(.semibold))
                 }
@@ -1311,7 +1311,7 @@ private struct ChannelIntro: View {
                 AvatarView(url: summary.avatarUrl, name: title, size: 80, account: account)
                     .padding(.bottom, 4)
                 Text(title).font(.title2.bold()).foregroundStyle(Theme.text)
-                Text("This is the beginning of your direct message history with \(title).")
+                Text(L("ios.chat.dmBeginning", ["name": title]))
                     .foregroundStyle(Theme.muted)
             } else {
                 Image(systemName: "number")
@@ -1319,8 +1319,8 @@ private struct ChannelIntro: View {
                     .foregroundStyle(Theme.text)
                     .frame(width: 68, height: 68)
                     .background(Circle().fill(Theme.elevated))
-                Text("Welcome to #\(title)!").font(.title2.bold()).foregroundStyle(Theme.text)
-                Text("This is the start of the #\(title) channel.")
+                Text(L("ios.chat.welcomeChannel", ["name": title])).font(.title2.bold()).foregroundStyle(Theme.text)
+                Text(L("ios.chat.channelBeginning", ["name": title]))
                     .foregroundStyle(Theme.muted)
             }
         }

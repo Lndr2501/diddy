@@ -38,7 +38,7 @@ struct DiddyOptionsSetupView: View {
             Text("Diddy needs a hidden room to share profiles, badges and name styles. Without it your customization cannot be saved or seen by others. Not an admin? Ask the admin of your server to set it up; Diddy joins it automatically.")
                 .font(.footnote)
                 .foregroundStyle(Theme.muted)
-            Picker("Mode", selection: $mode) {
+            Picker(L("settings.diddyProfile.mode"), selection: $mode) {
                 ForEach(Mode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
             }
             .pickerStyle(.segmented)
@@ -80,8 +80,8 @@ struct DiddyOptionsSetupView: View {
         Section {
             TextField(DiddyOptionsRoomLogic.roomName, text: $roomName)
                 .disabled(working)
-            Picker("Create it in", selection: $spaceId) {
-                Text("No space (private room)").tag("")
+            Picker(L("settings.diddyProfile.createItIn"), selection: $spaceId) {
+                Text(L("settings.diddyProfile.noSpacePrivateRoom")).tag("")
                 ForEach(account.spaces) { space in Text(space.displayName).tag(space.roomId) }
             }
             .disabled(working)
@@ -96,7 +96,7 @@ struct DiddyOptionsSetupView: View {
     @ViewBuilder
     private var existingSection: some View {
         Section {
-            Picker("Room", selection: $choiceId) {
+            Picker(L("settings.diddyProfile.room"), selection: $choiceId) {
                 Text("Choose a room…").tag("")
                 ForEach(choices) { choice in Text(label(choice)).tag(choice.id) }
             }
@@ -115,7 +115,7 @@ struct DiddyOptionsSetupView: View {
                 guard let selected else { throw DiddyError("Choose a room first.") }
                 try await account.adoptRoomAsDiddyOptions(roomId: selected.id, via: selected.via, tagTopic: tagTopic)
             }
-            Button("Refresh") { Task { await loadChoices() } }.disabled(loadingChoices || working)
+            Button(L("settings.diddyProfile.refresh")) { Task { await loadChoices() } }.disabled(loadingChoices || working)
         } footer: {
             Text("The room is then hidden from the room lists in Diddy. You need permission to change its settings.")
         }

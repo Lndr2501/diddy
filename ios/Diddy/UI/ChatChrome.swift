@@ -82,7 +82,7 @@ struct CallBanner: View {
                         .foregroundStyle(Theme.text)
                         .lineLimit(1)
                 } trailing: {
-                    Text("Join").font(.footnote.weight(.semibold)).foregroundStyle(Theme.online)
+                    Text(L("call.prescreenControls.join")).font(.footnote.weight(.semibold)).foregroundStyle(Theme.online)
                 }
             }
             .buttonStyle(.plain)
@@ -203,7 +203,7 @@ struct ChatHeader<MenuContent: View>: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Back")
+                .accessibilityLabel(L("settings.insetList.back"))
             }
             Button(action: onInfo) {
                 HStack(spacing: 10) {
@@ -231,7 +231,7 @@ struct ChatHeader<MenuContent: View>: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Start voice call")
             Menu { menu() } label: { icon("info.circle") }
-                .accessibilityLabel("More")
+                .accessibilityLabel(L("settings.plugins.more"))
         }
         .padding(.horizontal, 6)
         .frame(height: 54)

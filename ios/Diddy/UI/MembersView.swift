@@ -358,7 +358,7 @@ struct UserProfileSheet: View {
                                 .disabled(busy != nil)
                             }
                             .confirmationDialog("Block \(name)?", isPresented: $confirmBlock, titleVisibility: .visible) {
-                                Button("Block", role: .destructive) { Task { await toggleIgnore() } }
+                                Button(L("settings.ignoredUserList.block"), role: .destructive) { Task { await toggleIgnore() } }
                             } message: {
                                 Text("You will no longer see their messages or invites. You can unblock them later.")
                             }

@@ -40,7 +40,7 @@ struct LoginView: View {
             .toolbar {
                 if isAddingAccount {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel") { login.reset(); dismiss() }
+                        Button(L("settings.deviceTile.cancel")) { login.reset(); dismiss() }
                     }
                 }
             }
@@ -169,7 +169,7 @@ struct LoginView: View {
             if let availability = registration.availability {
                 switch availability {
                 case .free:
-                    Label("This username is free.", systemImage: "checkmark.circle.fill")
+                    Label(L("auth.passwordRegisterForm.thisUsernameIsFree"), systemImage: "checkmark.circle.fill")
                         .font(.footnote).foregroundStyle(Theme.online)
                 case .problem(let text):
                     Text(text).font(.footnote).foregroundStyle(Theme.danger)
@@ -182,9 +182,9 @@ struct LoginView: View {
                 SecureField("Password again", text: $confirmPassword).textContentType(.newPassword)
             }
             if !confirmPassword.isEmpty && confirmPassword != newPassword {
-                Text("The passwords do not match.").font(.footnote).foregroundStyle(Theme.danger)
+                Text(L("ios.login.passwordsDoNotMatch")).font(.footnote).foregroundStyle(Theme.danger)
             }
-            registrationButton("Create Account") {
+            registrationButton(L("auth.passwordRegisterForm.createAccount")) {
                 guard newPassword == confirmPassword else {
                     registration.error = "The passwords do not match."
                     return
@@ -192,7 +192,7 @@ struct LoginView: View {
                 await registration.start(username: newUsername, password: newPassword, deviceName: LoginService.registrationDeviceName)
             }
         case .token:
-            Text("This server needs a registration token. You get it from whoever runs the server.")
+            Text(L("ios.login.registrationTokenHelp"))
                 .font(.footnote).foregroundStyle(Theme.muted)
             field("REGISTRATION TOKEN") {
                 TextField("Token", text: $token)
@@ -201,7 +201,7 @@ struct LoginView: View {
             }
             registrationButton("Continue") { await registration.submitToken(token) }
         case .terms(let policies):
-            Text("Please read and accept the server's terms.")
+            Text(L("ios.login.acceptTerms"))
                 .font(.footnote).foregroundStyle(Theme.muted)
             ForEach(policies) { policy in
                 Link(destination: policy.url) {
@@ -209,9 +209,9 @@ struct LoginView: View {
                 }
                 .font(.subheadline)
             }
-            registrationButton("I Agree") { await registration.acceptTerms() }
+            registrationButton(L("ios.login.agree")) { await registration.acceptTerms() }
         case .email:
-            Text("This server confirms new accounts by email.")
+            Text(L("ios.login.emailConfirmation"))
                 .font(.footnote).foregroundStyle(Theme.muted)
             field("EMAIL") {
                 TextField("you@example.com", text: $email)
@@ -220,23 +220,23 @@ struct LoginView: View {
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
             }
-            registrationButton("Send Link") { await registration.sendEmail(email) }
+            registrationButton(L("ios.login.sendLink")) { await registration.sendEmail(email) }
         case .waitingForEmail(let address):
             Text("We sent a link to \(address). Open it, then come back and tap Continue.")
                 .font(.footnote).foregroundStyle(Theme.muted)
             registrationButton("Continue") { await registration.confirmEmail() }
-            Button("Send the Email Again") { Task { await registration.sendEmail(address) } }
+            Button(L("ios.login.sendAgain")) { Task { await registration.sendEmail(address) } }
                 .font(.footnote)
         case .web(let url):
-            Text("The server asks for one more step on its own page.")
+            Text(L("ios.login.moreStep"))
                 .font(.footnote).foregroundStyle(Theme.muted)
-            registrationButton("Open Page") { webStep = WebStep(url: url) }
+            registrationButton(L("ios.login.openPage")) { webStep = WebStep(url: url) }
         }
         if let error = registration.error {
             Text(error).font(.footnote).foregroundStyle(Theme.danger)
         }
         if registration.step != .form {
-            Button("Start Over") { registration.reset(homeserver: login.resolvedServerURL) }
+            Button(L("ios.login.startOver")) { registration.reset(homeserver: login.resolvedServerURL) }
                 .font(.footnote)
         }
     }

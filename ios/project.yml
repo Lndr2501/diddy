@@ -33,6 +33,10 @@ targets:
     platform: iOS
     sources:
       - path: Diddy
+      # Folder reference: every desktop language JSON (including new files) ships with iOS.
+      - path: ../cinny/locales
+        type: folder
+        buildPhase: resources
       # The desktop sound pack, shared so both apps sound the same (see Diddy/App/Sounds.swift).
       - path: ../cinny/public/sound/diddy
         buildPhase: resources
@@ -67,6 +71,9 @@ targets:
       path: Diddy/Info.plist
       properties:
         CFBundleDisplayName: Diddy
+        CFBundleLocalizations:
+          - en
+          - de
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSRequiresIPhoneOS: true

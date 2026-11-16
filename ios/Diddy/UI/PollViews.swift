@@ -81,7 +81,7 @@ struct PollComposer: View {
                         Button { answers.append("") } label: { Label("Add answer", systemImage: "plus.circle") }
                     }
                 }
-                Section("Settings") {
+                Section(L("settings.page.settings")) {
                     Toggle("Show results while open", isOn: $disclosed)
                     Stepper("Maximum selections: \(maxSelections)", value: $maxSelections,
                             in: 1...max(1, answers.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }.count))
@@ -90,9 +90,9 @@ struct PollComposer: View {
             }
             .navigationTitle("Poll")
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button(L("settings.deviceTile.cancel")) { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Create") {
+                    Button(L("createChat.main.create")) {
                         let q = question.trimmingCharacters(in: .whitespacesAndNewlines)
                         let valid = answers.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
                         guard !q.isEmpty, valid.count >= 2, Set(valid.map { $0.lowercased() }).count == valid.count else {

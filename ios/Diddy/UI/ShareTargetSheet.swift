@@ -43,11 +43,11 @@ struct ShareTargetSheet: View {
             .scrollContentBackground(.hidden)
             .background(Theme.sidebar.ignoresSafeArea())
             .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search")
-            .navigationTitle("Share")
+            .navigationTitle(L("profile.chips.share"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
+                    Button(L("settings.deviceTile.cancel")) {
                         inbox.cancel()
                         dismiss()
                     }

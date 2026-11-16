@@ -21,7 +21,7 @@ struct ContactInfoView: View {
                     Text(email).foregroundStyle(Theme.text).textSelection(.enabled)
                 }
             } header: {
-                Text("Email Address")
+                Text(L("settings.contactInfo.emailAddress"))
             } footer: {
                 Text("Email address attached to your account. Change it on your server's account page.")
             }
@@ -29,7 +29,7 @@ struct ContactInfoView: View {
         .overlay { if loading && emails.isEmpty { ProgressView() } }
         .scrollContentBackground(.hidden)
         .background(Theme.sidebar)
-        .navigationTitle("Contact Information")
+        .navigationTitle(L("settings.contactInfo.contactInformation"))
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
         .refreshable { await load() }
@@ -58,7 +58,7 @@ struct DeveloperToolsView: View {
     var body: some View {
         List {
             Section {
-                Toggle("Enable Developer Tools", isOn: $enabled)
+                Toggle(L("settings.developTools.enableDeveloperTools"), isOn: $enabled)
             } footer: {
                 Text("For debugging: your access token and the raw account data of your account.")
             }
@@ -77,12 +77,12 @@ struct DeveloperToolsView: View {
                             )
                             copied = true
                         }
-                        Button("Hide") { self.token = nil; copied = false }
+                        Button(L("settings.diddyProfile.hide")) { self.token = nil; copied = false }
                     } else {
                         Button("Reveal Access Token…") { askToken = true }
                     }
                 } header: {
-                    Text("Access Token")
+                    Text(L("settings.developTools.accessToken"))
                 } footer: {
                     Text("Anyone with this token has full access to your account, including your messages. Never share it.")
                 }
@@ -91,9 +91,9 @@ struct DeveloperToolsView: View {
                         NavigationLink(type) { AccountDataView(account: account, type: type) }
                     }
                 } header: {
-                    Text("Account Data")
+                    Text(L("settings.accountData.accountData"))
                 } footer: {
-                    Text("Data stored in your global account data.")
+                    Text(L("settings.accountData.dataStoredInYour"))
                 }
                 Section {
                     TextField("Event type", text: $typeName)
@@ -108,7 +108,7 @@ struct DeveloperToolsView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Theme.sidebar)
-        .navigationTitle("Developer Tools")
+        .navigationTitle(L("settings.page.developerTools"))
         .navigationBarTitleDisplayMode(.inline)
         .onDisappear { token = nil; copied = false }
         .onChange(of: enabled) { isOn in if !isOn { token = nil } }

@@ -22,7 +22,7 @@ private struct DiscardChangesDialog: ViewModifier {
                 onDiscard()
                 onLeave()
             }
-            Button("Cancel", role: .cancel) {}
+            Button(L("settings.deviceTile.cancel"), role: .cancel) {}
         } message: {
             Text("Your changes haven't been saved.")
         }
@@ -46,10 +46,10 @@ private struct DiscardChangesBackButton: ViewModifier {
                         } label: {
                             HStack(spacing: 4) {
                                 Image(systemName: "chevron.backward").font(.body.weight(.semibold))
-                                Text("Back")
+                                Text(L("settings.insetList.back"))
                             }
                         }
-                        .accessibilityLabel("Back")
+                        .accessibilityLabel(L("settings.insetList.back"))
                     }
                 }
             }

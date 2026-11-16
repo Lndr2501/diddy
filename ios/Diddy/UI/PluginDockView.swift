@@ -40,7 +40,7 @@ struct PluginDockView: View {
                     }
                 }.frame(maxHeight: 300)
             } label: {
-                Label("Plugins", systemImage: "puzzlepiece.extension")
+                Label(L("settings.page.plugins"), systemImage: "puzzlepiece.extension")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Theme.muted)
             }
@@ -54,7 +54,7 @@ struct PluginDockControls: View {
     let plugin: UserPlugin
     @ObservedObject private var dock = PluginDockStore.shared
     var body: some View {
-        Toggle("Sidebar", isOn: Binding(get: { dock.state.pinned.contains(plugin.id) }, set: { dock.state.setPinned(plugin.id, $0) }))
+        Toggle(L("settings.plugins.sidebar"), isOn: Binding(get: { dock.state.pinned.contains(plugin.id) }, set: { dock.state.setPinned(plugin.id, $0) }))
         if dock.state.pinned.contains(plugin.id) {
             VStack(alignment: .leading) {
                 Text("Height: \(dock.state.height(of: plugin.id)) px")

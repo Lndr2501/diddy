@@ -43,7 +43,7 @@ struct DevicesView: View {
                 }
             }
             Section {
-                LabeledContent("Device Verification", value: summary)
+                LabeledContent(L("settings.devices.deviceVerification"), value: summary)
                 if account.verificationState != .verified {
                     Button { Task { await VerificationCenter.of(account).requestDeviceVerification() } } label: {
                         Label("Verify with Another Device", systemImage: "iphone.and.arrow.forward")
@@ -54,15 +54,15 @@ struct DevicesView: View {
                 }
             }
             if !current.isEmpty {
-                Section("This Device") { ForEach(current) { row($0, isCurrent: true) } }
+                Section(L("settings.devices.thisDevice")) { ForEach(current) { row($0, isCurrent: true) } }
             }
             if oidc {
                 Section {
-                    LabeledContent("Device Dashboard") {
-                        Button("Open") { Task { await openDashboard(nil) } }.buttonStyle(.bordered)
+                    LabeledContent(L("settings.otherDevices.deviceDashboard")) {
+                        Button(L("settings.connectedAccounts.open")) { Task { await openDashboard(nil) } }.buttonStyle(.bordered)
                     }
                 } footer: {
-                    Text("Manage your devices on OIDC dashboard.")
+                    Text(L("settings.otherDevices.manageYourDevicesOn"))
                 }
             }
             if !others.isEmpty {
@@ -72,7 +72,7 @@ struct DevicesView: View {
                         confirmSignOut = SignOutRequest(ids: others.map(\.id))
                     }
                 } header: {
-                    Text("Other Devices")
+                    Text(L("settings.devices.otherDevices"))
                 } footer: {
                     Text(oidc
                          ? "Your server manages sign-out on its dashboard."
@@ -83,14 +83,14 @@ struct DevicesView: View {
         .overlay { if loading && devices.isEmpty { ProgressView() } }
         .scrollContentBackground(.hidden)
         .background(Theme.sidebar)
-        .navigationTitle("Devices")
+        .navigationTitle(L("settings.page.devices"))
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
         .refreshable { await load() }
         .verificationSheet(account: account)
         .alert("Rename Device", isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
-            TextField("Name", text: $newName)
-            Button("Save") { if let device = renaming { Task { await rename(device) } } }
+            TextField(L("settings.badgeEditor.name"), text: $newName)
+            Button(L("settings.profile.save")) { if let device = renaming { Task { await rename(device) } } }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("Other people in encrypted chats can see this name.")
@@ -157,9 +157,9 @@ struct DevicesView: View {
     @ViewBuilder private func badge(_ state: DeviceTrust) -> some View {
         switch state {
         case .verified:
-            Label("Verified", systemImage: "checkmark.shield.fill").font(.caption).foregroundStyle(Theme.online)
+            Label(L("settings.verification.verified"), systemImage: "checkmark.shield.fill").font(.caption).foregroundStyle(Theme.online)
         case .unverified:
-            Label("Unverified", systemImage: "exclamationmark.shield.fill").font(.caption).foregroundStyle(Theme.danger)
+            Label(L("settings.verification.unverified"), systemImage: "exclamationmark.shield.fill").font(.caption).foregroundStyle(Theme.danger)
         case .unknown:
             EmptyView()
         }
@@ -254,7 +254,7 @@ private struct DevicePasswordSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    SecureField("Password", text: $password)
+                    SecureField(L("settings.localBackup.password"), text: $password)
                         .textContentType(.password)
                 } footer: {
                     Text(count == 1 ? "Your password confirms signing out this device." : "Your password confirms signing out \(count) devices.")

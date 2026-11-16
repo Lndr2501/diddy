@@ -144,15 +144,15 @@ struct ComposerEmojiPicker: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    Picker("Kind", selection: $stickers) {
-                        Text("Emoji").tag(false)
-                        Text("Stickers").tag(true)
+                    Picker(L("settings.profileCardEditor.kind"), selection: $stickers) {
+                        Text(L("settings.badgeEditor.emoji")).tag(false)
+                        Text(L("composer.input.stickers")).tag(true)
                     }
                     .pickerStyle(.segmented)
                     .frame(maxWidth: 220)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") { dismiss() }
+                    Button(L("call.companionDialog.done")) { dismiss() }
                 }
             }
         }

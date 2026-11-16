@@ -62,7 +62,7 @@ struct DiddyWelcomeView: View {
             .navigationTitle("Welcome")
             .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showGuide) { WelcomeGuideView() }
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done", action: onFinish) } }
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button(L("call.companionDialog.done"), action: onFinish) } }
         }
         .task { await account.loadAllChannels() }
     }
