@@ -21,7 +21,7 @@ private struct LeaveServerDialog: ViewModifier {
         ) { id in
             Button("Leave Server Only") { leave(id, withChannels: false) }
             Button("Leave Server and Its Channels", role: .destructive) { leave(id, withChannels: true) }
-            Button("Cancel", role: .cancel) {}
+            Button(L("ios.settings.cancel"), role: .cancel) {}
         } message: { _ in
             Text("Are you sure you want to leave this server? You need a new invite to come back if it is private.")
         }
@@ -117,7 +117,7 @@ struct ManageServerView: View {
                 presenting: removing
             ) { row in
                 Button("Remove from Server", role: .destructive) { remove(row) }
-                Button("Cancel", role: .cancel) {}
+                Button(L("ios.settings.cancel"), role: .cancel) {}
             } message: { row in
                 Text("\(row.name) stays as it is, it is only taken out of this server.")
             }
@@ -243,7 +243,7 @@ struct AddExistingView: View {
             .navigationBarTitleDisplayMode(.inline)
             .tint(Theme.accent)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button(L("ios.settings.cancel")) { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     if busy { ProgressView() } else {
                         Button(L("settings.connectedAccounts.add")) { add() }.disabled(selected.isEmpty)

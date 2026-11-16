@@ -80,7 +80,7 @@ struct ServerRail: View {
             }
         }
         .leaveServerDialog(account: account, serverId: $leaving) { errorText = $0 }
-        .alert("Server", isPresented: Binding(get: { errorText != nil }, set: { if !$0 { errorText = nil } })) {
+        .alert(L("ios.extraSettings.server"), isPresented: Binding(get: { errorText != nil }, set: { if !$0 { errorText = nil } })) {
             Button(L("settings.localPlugins.ok"), role: .cancel) {}
         } message: { Text(errorText ?? "") }
     }
@@ -232,7 +232,7 @@ struct ServerMenuItems: View {
             Label(L("room.timeline.markAsRead"), systemImage: "checkmark.circle")
         }
         .disabled(account.unreadCount(inSpace: serverId) == 0 && account.mentionCount(inSpace: serverId) == 0)
-        Button(action: onInvite) { Label("Invite People", systemImage: "person.badge.plus") }
+        Button(action: onInvite) { Label(L("ios.chatMore.invitePeople"), systemImage: "person.badge.plus") }
         Button {
             Task { if let link = await account.roomLink(serverId) { UIPasteboard.general.string = link } }
         } label: { Label(L("room.viewHeader.copyLink"), systemImage: "link") }
@@ -372,7 +372,7 @@ struct FolderEditorView: View {
             Section(L("settings.badgeEditor.name")) {
                 TextField("Folder", text: $name)
                     .onSubmit { rename() }
-                Button("Save Name") { rename() }
+                Button(L("ios.settings.saveName")) { rename() }
                     .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines) == (folder?.name ?? ""))
             }
             Section {

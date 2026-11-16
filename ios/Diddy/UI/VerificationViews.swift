@@ -130,13 +130,13 @@ struct VerificationSheet: View {
             icon("xmark.shield.fill", color: Theme.danger)
             Text("Verification cancelled").font(.title2.bold()).foregroundStyle(Theme.text)
             Text(reason).multilineTextAlignment(.center).foregroundStyle(Theme.muted)
-            Button { Task { await center.dismiss() } } label: { Text("Close").frame(maxWidth: .infinity) }
+            Button { Task { await center.dismiss() } } label: { Text(L("room.callChatView.close")).frame(maxWidth: .infinity) }
                 .buttonStyle(.bordered)
         case .failed(let message):
             icon("exclamationmark.triangle.fill", color: Theme.danger)
             Text("Verification failed").font(.title2.bold()).foregroundStyle(Theme.text)
             Text(message).multilineTextAlignment(.center).foregroundStyle(Theme.muted)
-            Button { Task { await center.dismiss() } } label: { Text("Close").frame(maxWidth: .infinity) }
+            Button { Task { await center.dismiss() } } label: { Text(L("room.callChatView.close")).frame(maxWidth: .infinity) }
                 .buttonStyle(.bordered)
         }
     }

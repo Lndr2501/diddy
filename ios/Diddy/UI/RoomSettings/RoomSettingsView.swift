@@ -87,7 +87,7 @@ struct RoomSettingsView: View {
                                 .font(.footnote)
                                 .foregroundStyle(Theme.muted)
                                 .multilineTextAlignment(.center)
-                            Button("Try Again") { Task { await reload() } }
+                            Button(L("ios.settings.tryAgain")) { Task { await reload() } }
                                 .buttonStyle(.borderedProminent)
                         }
                         .frame(maxWidth: .infinity)
@@ -189,7 +189,7 @@ struct RoomSettingsView: View {
                 }
             }
             TextField(L("settings.badgeEditor.name"), text: $name).disabled(!canName)
-            TextField("Topic", text: $topic, axis: .vertical).lineLimit(1...6).disabled(!canTopic)
+            TextField(L("ios.extraSettings.topic"), text: $topic, axis: .vertical).lineLimit(1...6).disabled(!canTopic)
             if profileChanged(state, canName: canName, canTopic: canTopic) {
                 Button(L("settings.profile.save")) { Task { await saveProfile(state, canName: canName, canTopic: canTopic) } }
                     .disabled(model.busy || (canName && name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty))

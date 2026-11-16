@@ -173,7 +173,7 @@ struct MembersView: View {
                         Button { onClose() } label: { Image(systemName: "sidebar.right") }
                             .accessibilityLabel("Hide member list")
                     } else {
-                        Button("Done") { dismiss() }
+                        Button(L("ios.settings.done")) { dismiss() }
                     }
                 }
                 if canInvite {
@@ -210,7 +210,7 @@ struct MembersView: View {
             VStack(spacing: 10) {
                 Image(systemName: "exclamationmark.triangle").font(.title2).foregroundStyle(Theme.faint)
                 Text(error).font(.subheadline).foregroundStyle(Theme.muted).multilineTextAlignment(.center)
-                Button("Try Again") { Task { await store.load(account: account, roomId: roomId) } }
+                Button(L("ios.settings.tryAgain")) { Task { await store.load(account: account, roomId: roomId) } }
                     .buttonStyle(.bordered)
             }
             .frame(maxWidth: .infinity)
@@ -370,7 +370,7 @@ struct UserProfileSheet: View {
             }
             .navigationBarTitleDisplayMode(.inline)
             .verificationSheet(account: account)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button(L("ios.settings.done")) { dismiss() } } }
             .task {
                 await load()
                 await account.loadDiddyProfiles()

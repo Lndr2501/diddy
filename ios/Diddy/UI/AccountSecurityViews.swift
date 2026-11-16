@@ -13,7 +13,7 @@ struct ContactInfoView: View {
             Section {
                 if let error {
                     Text(error).font(.footnote).foregroundStyle(Theme.danger)
-                    Button("Try Again") { Task { await load() } }
+                    Button(L("ios.settings.tryAgain")) { Task { await load() } }
                 } else if !loading && emails.isEmpty {
                     Text("No email address").foregroundStyle(Theme.muted)
                 }

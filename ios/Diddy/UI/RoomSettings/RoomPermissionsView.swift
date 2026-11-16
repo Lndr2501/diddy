@@ -210,7 +210,7 @@ struct RoomPermissionsView: View {
             } label: {
                 HStack {
                     if model.busy { ProgressView() }
-                    Text("Apply Changes").bold()
+                    Text(L("settings.globalPacks.applyChanges")).bold()
                 }
             }
             .disabled(model.busy)
@@ -321,7 +321,7 @@ struct RoomPowersEditor: View {
                     } label: {
                         HStack {
                             if model.busy { ProgressView() }
-                            Text("Apply Changes").bold()
+                            Text(L("settings.globalPacks.applyChanges")).bold()
                         }
                     }
                     .disabled(model.busy)

@@ -110,9 +110,9 @@ struct PluginsPanelView: View {
                 .padding(16)
             }
             .background(Theme.sidebar)
-            .navigationTitle("Plugins")
+            .navigationTitle(L("nav.plugins.plugins"))
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button(L("ios.settings.done")) { dismiss() } } }
         }
     }
 }
@@ -188,10 +188,10 @@ struct PluginSettingsView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Theme.sidebar)
-        .navigationTitle("Plugins")
+        .navigationTitle(L("nav.plugins.plugins"))
         .navigationBarTitleDisplayMode(.inline)
-        .alert("Plugins", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
-            Button("OK", role: .cancel) {}
+        .alert(L("nav.plugins.plugins"), isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
+            Button(L("ios.common.ok"), role: .cancel) {}
         } message: { Text(error ?? "") }
         .confirmationDialog(
             "Remove \(pendingRemoval?.name ?? "plugin")?",
@@ -341,14 +341,14 @@ struct AddPluginView: View {
                         .font(.system(.footnote, design: .monospaced))
                         .frame(minHeight: 160)
                         .autocorrectionDisabled().textInputAutocapitalization(.never)
-                    Button("Preview") { previewing = true }.disabled(code.isEmpty)
+                    Button(L("settings.badgeEditor.preview")) { previewing = true }.disabled(code.isEmpty)
                 } header: { Text("HTML code") } footer: {
                     Text("One self-contained HTML file, at most \(PluginRules.maxLocalBytes / 1024) KB. It is saved on this device.")
                 }
             case .file:
                 Section {
                     Button { importing = true } label: { Label(fileName ?? "Choose an .html file", systemImage: "doc") }
-                    if !code.isEmpty { Button("Preview") { previewing = true } }
+                    if !code.isEmpty { Button(L("settings.badgeEditor.preview")) { previewing = true } }
                 } footer: {
                     Text("The file is saved on this device.")
                 }
@@ -360,7 +360,7 @@ struct AddPluginView: View {
                         if busy { ProgressView() } else { Text(fetched == nil ? "Import" : "Import again") }
                     }
                     .disabled(busy || githubLink.isEmpty)
-                    if fetched != nil { Button("Preview") { previewing = true } }
+                    if fetched != nil { Button(L("settings.badgeEditor.preview")) { previewing = true } }
                 } footer: {
                     Text("Link to a single .html file in a public repository, or to a public Gist. It is loaded once and saved on this device.")
                 }
@@ -382,11 +382,11 @@ struct AddPluginView: View {
                     .background(Theme.sidebar)
                     .navigationTitle(L("settings.badgeEditor.preview"))
                     .navigationBarTitleDisplayMode(.inline)
-                    .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { previewing = false } } }
+                    .toolbar { ToolbarItem(placement: .confirmationAction) { Button(L("ios.settings.done")) { previewing = false } } }
             }
         }
-        .alert("Plugins", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
-            Button("OK", role: .cancel) {}
+        .alert(L("nav.plugins.plugins"), isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
+            Button(L("ios.common.ok"), role: .cancel) {}
         } message: { Text(error ?? "") }
     }
 

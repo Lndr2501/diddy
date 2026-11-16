@@ -207,7 +207,7 @@ struct ChatListRow: View {
                     Spacer(minLength: 4)
                     if room.hasCall {
                         Image(systemName: "speaker.wave.2.fill").font(.caption).foregroundStyle(Theme.online)
-                            .accessibilityLabel("Call in progress")
+                            .accessibilityLabel(L("ios.chatMore.callInProgress"))
                     }
                     if muted {
                         Image(systemName: "bell.slash.fill").font(.caption2).foregroundStyle(Theme.faint)

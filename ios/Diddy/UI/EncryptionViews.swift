@@ -42,7 +42,7 @@ struct EncryptionSettingsView: View {
                         Label("Verify with Another Device", systemImage: "iphone.and.arrow.forward")
                     }
                     Button { showRecoveryEntry = true } label: {
-                        Label("Enter Recovery Key", systemImage: "key.fill")
+                        Label(L("ios.settings.enterRecoveryKey"), systemImage: "key.fill")
                     }
                 }
             } header: {
@@ -104,7 +104,7 @@ struct EncryptionSettingsView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Theme.sidebar)
-        .navigationTitle("Encryption")
+        .navigationTitle(L("ios.settings.encryption"))
         .navigationBarTitleDisplayMode(.inline)
         .task { await loadBackup() }
         .refreshable { await loadBackup() }
@@ -302,7 +302,7 @@ struct ResetIdentitySheet: View {
                     }
                     if let error { Text(error).foregroundStyle(Theme.danger) }
                     Section {
-                        Button("Reset", role: .destructive) { Task { await begin() } }
+                        Button(L("settings.sound.reset"), role: .destructive) { Task { await begin() } }
                     }
                 case .busy:
                     Section { HStack { ProgressView(); Text("Resetting…").foregroundStyle(Theme.muted) } }
@@ -317,7 +317,7 @@ struct ResetIdentitySheet: View {
                     }
                     if let error { Text(error).foregroundStyle(Theme.danger) }
                     Section {
-                        Button("Reset", role: .destructive) { Task { await submitPassword(session: session) } }
+                        Button(L("settings.sound.reset"), role: .destructive) { Task { await submitPassword(session: session) } }
                             .disabled(password.isEmpty)
                     }
                 case .approve(let url, let session):

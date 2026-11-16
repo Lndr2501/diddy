@@ -63,7 +63,7 @@ struct RoomMembersAdminView: View {
             isPresented: Binding(get: { pendingCancel != nil }, set: { if !$0 { pendingCancel = nil } }),
             titleVisibility: .visible
         ) {
-            Button("Cancel Invite", role: .destructive) {
+            Button(L("profile.moderation.cancelInvite"), role: .destructive) {
                 if let member = pendingCancel { run(.kick, member) }
                 pendingCancel = nil
             }
@@ -129,7 +129,7 @@ struct RoomMembersAdminView: View {
                 Button(L("profile.moderation.unban")) { run(.unban, member) }.tint(Theme.accent)
             }
             if options.canCancelInvite {
-                Button("Cancel Invite", role: .destructive) { pendingCancel = member }
+                Button(L("profile.moderation.cancelInvite"), role: .destructive) { pendingCancel = member }
             }
         }
     }

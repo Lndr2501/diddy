@@ -175,7 +175,7 @@ struct DiddyCreateBadgeView: View {
                     Label(imageMxc == nil ? "Upload Image" : "Replace Image", systemImage: "photo")
                 }
                 .disabled(uploading)
-                if uploading { HStack(spacing: 8) { ProgressView(); Text("Uploading…").foregroundStyle(Theme.muted) } }
+                if uploading { HStack(spacing: 8) { ProgressView(); Text(L("ios.chat.uploading")).foregroundStyle(Theme.muted) } }
                 if imageMxc != nil {
                     Button("Remove Image", role: .destructive) { imageMxc = nil }
                 }

@@ -129,13 +129,13 @@ struct DiddyProfileEditor: View {
         .toolbar {
             if inSheet {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
+                    Button(L("ios.settings.cancel")) {
                         if dirty { askDiscard = true } else { dismiss() }
                     }
                 }
             }
             ToolbarItem(placement: .confirmationAction) {
-                Button("Save") { Task { await save() } }.disabled(!canSave)
+                Button(L("message.editor.save")) { Task { await save() } }.disabled(!canSave)
             }
             if loaded && account.canEditDiddyProfile {
                 ToolbarItem(placement: .navigationBarTrailing) { fileMenu }
@@ -190,7 +190,7 @@ struct DiddyProfileEditor: View {
         let shown = self.shown
         return VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("Preview").font(.footnote.weight(.semibold)).foregroundStyle(Theme.muted)
+                Text(L("settings.badgeEditor.preview")).font(.footnote.weight(.semibold)).foregroundStyle(Theme.muted)
                 Spacer()
                 if !keyboardShown {
                     Button {
@@ -277,7 +277,7 @@ struct DiddyProfileEditor: View {
                 Text(bio).font(.subheadline).foregroundStyle(Theme.text).lineLimit(3)
             }
             let accent = Color(diddyHex: shown?.cardAccent)
-            Label("Message", systemImage: "bubble.left.fill")
+            Label(L("ios.composer.message"), systemImage: "bubble.left.fill")
                 .font(.footnote.bold())
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 8)
@@ -299,19 +299,19 @@ struct DiddyProfileEditor: View {
     @ViewBuilder
     private var nameTab: some View {
         Section("Name Style") {
-            Picker("Font", selection: $draft.nameFont) {
+            Picker(L("settings.diddyProfile.font"), selection: $draft.nameFont) {
                 ForEach(Rules.fontIds, id: \.self) { Text(Rules.label($0, in: Rules.fonts)).tag($0) }
             }
-            Picker("Effect", selection: $draft.nameEffect) {
+            Picker(L("settings.diddyProfile.effect"), selection: $draft.nameEffect) {
                 ForEach(Rules.nameEffectIds, id: \.self) { Text(Rules.label($0, in: Rules.nameEffects)).tag($0) }
             }
-            Toggle("Bold", isOn: $draft.nameBold)
-            Toggle("Italic", isOn: $draft.nameItalic)
+            Toggle(L("composer.toolbar.bold"), isOn: $draft.nameBold)
+            Toggle(L("composer.toolbar.italic"), isOn: $draft.nameItalic)
         }
         Section {
-            Picker("Fill", selection: Binding(get: { draft.nameGradient != nil }, set: { draft.setNameGradient($0) })) {
-                Text("Solid").tag(false)
-                Text("Gradient").tag(true)
+            Picker(L("settings.diddyProfile.fill"), selection: Binding(get: { draft.nameGradient != nil }, set: { draft.setNameGradient($0) })) {
+                Text(L("settings.diddyProfile.solid")).tag(false)
+                Text(L("settings.diddyProfile.gradient")).tag(true)
             }
             .pickerStyle(.segmented)
             if draft.nameGradient != nil {
@@ -360,19 +360,19 @@ struct DiddyProfileEditor: View {
                 }
             }
         } header: {
-            Text("Banner")
+            Text(L("settings.diddyProfile.banner"))
         } footer: {
             Text("A picture or GIF at the top of your card.")
         }
         Section {
-            TextField("Tell people a bit about you", text: limited($draft.bio, Rules.maxBio), axis: .vertical)
+            TextField(L("settings.diddyProfile.tellPeopleABit"), text: limited($draft.bio, Rules.maxBio), axis: .vertical)
                 .lineLimit(2...6)
         } header: {
             Text("About Me")
         } footer: {
             Text("\(draft.bio.unicodeScalars.count)/\(Rules.maxBio)")
         }
-        Section("Info") {
+        Section(L("profile.profileModules.info")) {
             ForEach(Rules.aboutFields, id: \.self) { field in
                 LabeledContent(Self.aboutLabel(field)) {
                     TextField(Self.aboutPlaceholder(field), text: Binding(
@@ -387,7 +387,7 @@ struct DiddyProfileEditor: View {
             }
         }
         Section {
-            TextField("Homelab, Music, Films", text: $interestsText)
+            TextField(L("settings.profileCardEditor.homelabMusicFilms"), text: $interestsText)
                 .onChange(of: interestsText) { draft.interests = Rules.interests(from: $0) }
             if !draft.interests.isEmpty {
                 FlowLayout(spacing: 6) {
@@ -402,7 +402,7 @@ struct DiddyProfileEditor: View {
                 }
             }
         } header: {
-            Text("Interests")
+            Text(L("profile.profileModules.interests"))
         } footer: {
             Text("Separate them with commas, up to \(Rules.maxInterests). \(draft.interests.count)/\(Rules.maxInterests)")
         }
@@ -412,11 +412,11 @@ struct DiddyProfileEditor: View {
                 Button { draft.links.append("") } label: { Label("Add Link", systemImage: "plus") }
             }
         } header: {
-            Text("Links")
+            Text(L("profile.profileModules.links"))
         } footer: {
             Text("GitHub, GitLab, LinkedIn, Spotify, YouTube or your own website. Only https addresses. \(draft.links.count)/\(Rules.maxLinks)")
         }
-        Section("Activity") {
+        Section(L("profile.profileModules.activity")) {
             Picker("Doing", selection: $draft.activityKind) {
                 Text("Nothing").tag("none")
                 ForEach(Rules.activityKinds, id: \.self) { kind in
@@ -438,7 +438,7 @@ struct DiddyProfileEditor: View {
         return HStack(spacing: 10) {
             Image(systemName: kind == "web" ? "globe" : "link").foregroundStyle(Theme.muted)
             VStack(alignment: .leading, spacing: 2) {
-                TextField("https://github.com/you", text: Binding(
+                TextField(L("settings.profileCardEditor.httpsGithubComYou"), text: Binding(
                     get: { index < draft.links.count ? draft.links[index] : "" },
                     set: { value in if index < draft.links.count { draft.links[index] = String(value.prefix(Rules.maxLinkLength)) } }
                 ))
@@ -455,7 +455,7 @@ struct DiddyProfileEditor: View {
                 Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.faint)
             }
             .buttonStyle(.borderless)
-            .accessibilityLabel("Remove link")
+            .accessibilityLabel(L("settings.profileCardEditor.removeLink"))
         }
     }
 
@@ -464,9 +464,9 @@ struct DiddyProfileEditor: View {
     @ViewBuilder
     private var lookTab: some View {
         Section {
-            Picker("Style", selection: $draft.plateFullRow) {
-                Text("Fade in").tag(false)
-                Text("Whole row").tag(true)
+            Picker(L("settings.diddyProfile.style"), selection: $draft.plateFullRow) {
+                Text(L("settings.diddyProfile.fadeIn")).tag(false)
+                Text(L("settings.diddyProfile.wholeRow")).tag(true)
             }
             .pickerStyle(.segmented)
             ScrollView(.horizontal, showsIndicators: false) {
@@ -479,7 +479,7 @@ struct DiddyProfileEditor: View {
                 .padding(.vertical, 4)
             }
             if draft.platePreset != nil {
-                Toggle("Flowing", isOn: $draft.plateFlow)
+                Toggle(L("settings.diddyProfile.flowing"), isOn: $draft.plateFlow)
             } else {
                 optionalColorRow("Colour", hex: $draft.plateColor, fallback: "#7aa2f7")
             }
@@ -506,7 +506,7 @@ struct DiddyProfileEditor: View {
                 }
             }
         } header: {
-            Text("Nameplate")
+            Text(L("settings.diddyProfile.nameplate"))
         } footer: {
             Text("The background other Diddy users see behind your row in the member and DM lists: a colour, a gradient, a picture, a GIF or a short video (up to \(Int(DiddyMediaRules.maxVideoSeconds)) seconds, muted). A nameplate ZIP with a loop and its colours can be imported too.")
         }
@@ -581,7 +581,7 @@ struct DiddyProfileEditor: View {
     private func choicePicker(_ title: String, selection: Binding<DiddyProfileDraft.Choice>, presets: [(id: String, label: String)],
                               keepsCustom: Bool, customName: String?) -> some View {
         Picker(title, selection: selection) {
-            Text("None").tag(DiddyProfileDraft.Choice.none)
+            Text(L("settings.contactInfo.none")).tag(DiddyProfileDraft.Choice.none)
             ForEach(presets.map { $0.id }, id: \.self) { id in
                 Text(Rules.label(id, in: presets)).tag(DiddyProfileDraft.Choice.preset(id))
             }
@@ -598,8 +598,8 @@ struct DiddyProfileEditor: View {
 
     @ViewBuilder
     private var statusTab: some View {
-        Section("Status") {
-            Picker("Status", selection: $draft.status) {
+        Section(L("common.userPanel.status")) {
+            Picker(L("common.userPanel.status"), selection: $draft.status) {
                 ForEach(Rules.statuses, id: \.self) { value in
                     Text(DiddyProfile.Status(rawValue: value)?.title ?? value).tag(value)
                 }
@@ -671,7 +671,7 @@ struct DiddyProfileEditor: View {
     @ViewBuilder
     private var layoutTab: some View {
         Section {
-            Picker("Layout", selection: $draft.layout) {
+            Picker(L("settings.profileCardEditor.layout"), selection: $draft.layout) {
                 ForEach(Rules.layouts, id: \.self) { Text(Self.layoutLabel($0)).tag($0) }
             }
             .pickerStyle(.segmented)
@@ -679,52 +679,52 @@ struct DiddyProfileEditor: View {
         } header: {
             Text("Card Layout")
         }
-        Section("Look") {
-            Picker("Card theme", selection: $draft.cardTheme) {
-                Text("Match app").tag("auto")
-                Text("Light").tag("light")
-                Text("Dark").tag("dark")
+        Section(L("settings.profileCardEditor.look")) {
+            Picker(L("settings.profileCardEditor.cardTheme"), selection: $draft.cardTheme) {
+                Text(L("settings.profileCardEditor.matchApp")).tag("auto")
+                Text(L("settings.diddyProfile.light")).tag("light")
+                Text(L("settings.diddyProfile.dark")).tag("dark")
             }
             Toggle(isOn: $draft.glass) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Glass effect")
-                    Text("Translucent card with blur").font(.caption).foregroundStyle(Theme.muted)
+                    Text(L("settings.profileCardEditor.glassEffect"))
+                    Text(L("settings.profileCardEditor.translucentCardWithBlur")).font(.caption).foregroundStyle(Theme.muted)
                 }
             }
             Toggle(isOn: $draft.calm) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Calm card")
-                    Text("No hover animations").font(.caption).foregroundStyle(Theme.muted)
+                    Text(L("settings.profileCardEditor.calmCard"))
+                    Text(L("settings.profileCardEditor.noHoverAnimations")).font(.caption).foregroundStyle(Theme.muted)
                 }
             }
         }
         Section {
-            Picker("Layout", selection: $draft.bigLayout) {
-                Text("Expanded").tag("expanded")
-                Text("Tabs").tag("tabs")
+            Picker(L("settings.profileCardEditor.layout"), selection: $draft.bigLayout) {
+                Text(L("settings.profilePreviews.expanded")).tag("expanded")
+                Text(L("settings.profilePreviews.tabs")).tag("tabs")
             }
-            Picker("Banner", selection: $draft.bigBanner) {
-                Text("Normal").tag("normal")
-                Text("Tall").tag("tall")
-                Text("Extra tall").tag("hero")
+            Picker(L("settings.diddyProfile.banner"), selection: $draft.bigBanner) {
+                Text(L("settings.profileCardEditor.normal")).tag("normal")
+                Text(L("settings.profileCardEditor.tall")).tag("tall")
+                Text(L("settings.profileCardEditor.extraTall")).tag("hero")
             }
-            Picker("Profile picture", selection: $draft.bigAvatar) {
-                Text("Normal").tag("normal")
-                Text("Large").tag("large")
+            Picker(L("settings.diddyProfile.profilePicture"), selection: $draft.bigAvatar) {
+                Text(L("settings.profileCardEditor.normal")).tag("normal")
+                Text(L("settings.profileCardEditor.large")).tag("large")
             }
         } header: {
             Text("Big Profile")
         } footer: {
-            Text("The large view people get when they click your profile picture or your name in a call.")
+            Text(L("settings.profileCardEditor.theLargeViewPeople"))
         }
         Section {
             ForEach(draft.moduleOrder, id: \.self) { module in moduleRow(module) }
         } header: {
-            Text("Modules")
+            Text(L("settings.profileCardEditor.modules"))
         } footer: {
             switch draft.layout {
-            case "compact": Text("The compact layout only shows the bio. Pick another layout for more modules.")
-            case "tabs": Text("In the tab layout the modules are grouped into tabs; the order applies inside a tab.")
+            case "compact": Text(L("settings.profileCardEditor.theCompactLayoutOnly"))
+            case "tabs": Text(L("settings.profileCardEditor.inTheTabLayout"))
             default: Text("Show, hide and reorder the parts of your card.")
             }
         }
@@ -741,11 +741,11 @@ struct DiddyProfileEditor: View {
             Button { draft.moveModule(at: index, by: -1) } label: { Image(systemName: "chevron.up") }
                 .buttonStyle(.borderless)
                 .disabled(index == 0)
-                .accessibilityLabel("Move up")
+                .accessibilityLabel(L("settings.profileCardEditor.moveUp"))
             Button { draft.moveModule(at: index, by: 1) } label: { Image(systemName: "chevron.down") }
                 .buttonStyle(.borderless)
                 .disabled(index >= order.count - 1)
-                .accessibilityLabel("Move down")
+                .accessibilityLabel(L("settings.profileCardEditor.moveDown"))
             Toggle("Show \(Self.moduleLabel(module))", isOn: Binding(
                 get: { !draft.hiddenModules.contains(module) },
                 set: { draft.setModule(module, visible: $0) }
@@ -839,7 +839,7 @@ struct DiddyProfileEditor: View {
     private var uploadingRow: some View {
         HStack(spacing: 8) {
             ProgressView()
-            Text("Uploading…").foregroundStyle(Theme.muted)
+            Text(L("ios.chat.uploading")).foregroundStyle(Theme.muted)
         }
     }
 
@@ -991,7 +991,7 @@ struct DiddyProfileEditor: View {
             ColorPicker(title, selection: colorBinding({ hex.wrappedValue }, fallback: fallback) { hex.wrappedValue = $0 },
                         supportsOpacity: false)
             if hex.wrappedValue != nil {
-                Button("Clear") { hex.wrappedValue = nil }.buttonStyle(.borderless)
+                Button(L("nav.server.clear")) { hex.wrappedValue = nil }.buttonStyle(.borderless)
             } else {
                 Text("Not set").font(.caption).foregroundStyle(Theme.faint)
             }
@@ -1107,7 +1107,7 @@ struct DiddyImagePositionEditor: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Visible part").font(.footnote.weight(.semibold)).foregroundStyle(Theme.muted)
+            Text(L("settings.diddyProfile.visiblePart")).font(.footnote.weight(.semibold)).foregroundStyle(Theme.muted)
             GeometryReader { proxy in
                 if let image {
                     let box = current.placement(imageWidth: Double(image.size.width), imageHeight: Double(image.size.height),
@@ -1125,7 +1125,7 @@ struct DiddyImagePositionEditor: View {
             slider("Horizontal", \.x, range: 0...100, step: 1) { "\(Int($0.rounded())) %" }
             slider("Vertical", \.y, range: 0...100, step: 1) { "\(Int($0.rounded())) %" }
             slider("Zoom", \.zoom, range: 1...3, step: 0.05) { String(format: "%.1fx", $0) }
-            Button("Reset") { pos = nil }
+            Button(L("settings.sound.reset")) { pos = nil }
                 .buttonStyle(.borderless)
                 .disabled(pos == nil)
         }

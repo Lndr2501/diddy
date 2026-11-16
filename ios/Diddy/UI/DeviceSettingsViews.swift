@@ -39,7 +39,7 @@ struct DevicesView: View {
             if let error {
                 Section {
                     Text(error).font(.footnote).foregroundStyle(Theme.danger)
-                    Button("Try Again") { Task { await load() } }
+                    Button(L("ios.settings.tryAgain")) { Task { await load() } }
                 }
             }
             Section {
@@ -50,7 +50,7 @@ struct DevicesView: View {
                     }
                 }
                 NavigationLink { EncryptionSettingsView(account: account) } label: {
-                    Label("Encryption", systemImage: "lock.shield.fill")
+                    Label(L("ios.settings.encryption"), systemImage: "lock.shield.fill")
                 }
             }
             if !current.isEmpty {
@@ -91,7 +91,7 @@ struct DevicesView: View {
         .alert("Rename Device", isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
             TextField(L("settings.badgeEditor.name"), text: $newName)
             Button(L("settings.profile.save")) { if let device = renaming { Task { await rename(device) } } }
-            Button("Cancel", role: .cancel) {}
+            Button(L("ios.settings.cancel"), role: .cancel) {}
         } message: {
             Text("Other people in encrypted chats can see this name.")
         }
@@ -278,7 +278,7 @@ private struct DevicePasswordSheet: View {
             .background(Theme.sidebar)
             .navigationTitle("Confirm It\u{2019}s You")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button(L("ios.settings.cancel")) { dismiss() } } }
         }
         .interactiveDismissDisabled(busy)
     }

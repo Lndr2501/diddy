@@ -41,7 +41,7 @@ struct AddServerView: View {
             .navigationTitle("Add a Server")
             .navigationBarTitleDisplayMode(.inline)
             .tint(Theme.accent)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button(L("ios.settings.cancel")) { dismiss() } } }
             .sheet(isPresented: $creating, onDismiss: { if navigator.server != serverBeforeCreating { dismiss() } }) {
                 CreateSpaceView(account: account)
             }
@@ -154,7 +154,7 @@ struct NewMessageView: View {
             .navigationTitle(L("nav.home.newMessage"))
             .navigationBarTitleDisplayMode(.inline)
             .tint(Theme.accent)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button(L("ios.settings.cancel")) { dismiss() } } }
         }
     }
 
@@ -211,10 +211,10 @@ struct InviteView: View {
             .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Name or @user:server")
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
-            .navigationTitle("Invite People")
+            .navigationTitle(L("ios.chatMore.invitePeople"))
             .navigationBarTitleDisplayMode(.inline)
             .tint(Theme.accent)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button(L("ios.settings.done")) { dismiss() } } }
             .task { link = try? await account.room(roomId)?.matrixToPermalink() }
         }
     }
@@ -269,7 +269,7 @@ struct ChannelInfoView: View {
                 if canEdit {
                     Section(L("settings.deviceTile.edit")) {
                         TextField(L("settings.badgeEditor.name"), text: $name)
-                        TextField("Topic", text: $topic, axis: .vertical)
+                        TextField(L("ios.extraSettings.topic"), text: $topic, axis: .vertical)
                         Button("Save Changes") { save() }
                             .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || (name == summary?.name && topic == (summary?.topic ?? "")))
                     }
@@ -283,7 +283,7 @@ struct ChannelInfoView: View {
                         }
                     }
                     if summary?.isDirect != true {
-                        Button { showInvite = true } label: { Label("Invite People", systemImage: "person.badge.plus") }
+                        Button { showInvite = true } label: { Label(L("ios.chatMore.invitePeople"), systemImage: "person.badge.plus") }
                         Button { showSettings = true } label: { Label("Channel Settings", systemImage: "gearshape") }
                     }
                     NavigationLink {
@@ -302,7 +302,7 @@ struct ChannelInfoView: View {
             .navigationTitle(L("settings.profileCardEditor.details"))
             .navigationBarTitleDisplayMode(.inline)
             .tint(Theme.accent)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button(L("ios.settings.done")) { dismiss() } } }
             .sheet(isPresented: $showMembers) { MembersView(account: account, roomId: roomId) }
             .sheet(isPresented: $showInvite) { InviteView(account: account, roomId: roomId) }
             .sheet(isPresented: $showSettings) {
