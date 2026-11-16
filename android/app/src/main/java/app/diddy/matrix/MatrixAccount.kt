@@ -201,14 +201,14 @@ class MatrixAccount(val record: AccountRecord, val client: Client) {
 
     fun detailsChanged() { detailsVersion++ }
 
-    private fun setRooms(value: List<RoomSummary>) {
+    private fun updateRooms(value: List<RoomSummary>) {
         val previous = roomsById
         rooms = value
         roomsById = value.associateBy { it.id }
         onRoomsChanged?.invoke(previous, value)
     }
 
-    private fun setCategories(value: Map<String, List<ChannelCategory>>) {
+    private fun updateCategories(value: Map<String, List<ChannelCategory>>) {
         categories = value
         channelIdsCache = mutableMapOf()
         serverRoomIdsCache = null
@@ -347,7 +347,7 @@ class MatrixAccount(val record: AccountRecord, val client: Client) {
         val index = rooms.indexOfFirst { it.id == info.id }
         if (index < 0) return
         val summary = makeSummary(info, rooms[index].lastMessage, rooms[index].lastActivity)
-        if (rooms[index] != summary) setRooms(rooms.toMutableList().also { it[index] = summary })
+        if (rooms[index] != summary) updateRooms(rooms.toMutableList().also { it[index] = summary })
         resolveProfiles(summary.callParticipants, info.id)
     }
 
@@ -411,7 +411,7 @@ class MatrixAccount(val record: AccountRecord, val client: Client) {
             summarizedRooms = snapshot.associateBy { it.id() }
             if (full) lastFullSummary = Date()
             dirtySummaryIds.removeAll(dirty)
-            if (result != rooms) setRooms(result)
+            if (result != rooms) updateRooms(result)
             for (summary in result) if (summary.callParticipants.isNotEmpty()) resolveProfiles(summary.callParticipants, summary.id)
             val joined = result.filter { it.isJoined }.map { it.id }.toSet()
             if (joined != knownJoinedRooms) {
@@ -605,7 +605,7 @@ class MatrixAccount(val record: AccountRecord, val client: Client) {
         for (subspace in top.filter { it.isSubspace }) {
             result += ChannelCategory(subspace.roomId, subspace.displayName, channelsInCategory(subspace.roomId, service, 0))
         }
-        setCategories(categories + (spaceId to result))
+        updateCategories(categories + (spaceId to result))
         loadedServers = loadedServers + spaceId
     }
 
@@ -828,7 +828,7 @@ class MatrixAccount(val record: AccountRecord, val client: Client) {
         val everything = handle.rooms().map { it.spaceRoom.roomId }
         val ids = if (withChannels) (if (spaceId in everything) everything else everything + spaceId) else listOf(spaceId)
         handle.leave(ids)
-        setCategories(categories - spaceId)
+        updateCategories(categories - spaceId)
         loadedServers = loadedServers - spaceId
         reloadSpaces()
     }

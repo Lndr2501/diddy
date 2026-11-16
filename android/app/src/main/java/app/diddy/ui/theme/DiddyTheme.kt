@@ -192,7 +192,7 @@ object ThemeStore {
         refresh()
     }
 
-    fun setUseSystem(isOn: Boolean) {
+    fun changeUseSystem(isOn: Boolean) {
         if (isOn == useSystem) return
         Prefs.setBool(USE_SYSTEM_KEY, isOn)
         useSystem = isOn
@@ -211,14 +211,14 @@ object ThemeStore {
         refresh()
     }
 
-    fun setCustom(config: CustomThemeConfig) {
+    fun changeCustom(config: CustomThemeConfig) {
         if (config == custom) return
         Prefs.setString(CUSTOM_KEY, config.encoded())
         custom = config
         refresh()
     }
 
-    fun setZoom(percent: Int) {
+    fun changeZoom(percent: Int) {
         zoom = AppearanceLogic.clampZoom(percent)
         Prefs.setInt(ZOOM_KEY, zoom)
     }
