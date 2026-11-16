@@ -17,6 +17,10 @@ object Wiring {
             // A new DM gets this device's call alert target too.
             if (new.count { it.isDirect } != old.values.count { it.isDirect }) CallPush.publish(account)
         }
+        // Do Not Disturb mutes message, mention, invite and ringing sounds like on desktop.
+        AppModel.Hooks.silencesSound = { account, sound ->
+            app.diddy.matrix.DoNotDisturb.silencesSound(sound.alert, app.diddy.matrix.PresenceStore.of(account).ownStatus)
+        }
         app.diddy.call.CallWiring.install(context)
     }
 
