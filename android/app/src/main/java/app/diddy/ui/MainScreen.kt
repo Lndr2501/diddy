@@ -65,6 +65,7 @@ fun MainScreen(account: MatrixAccount) {
                 is Destination.Voice -> app.diddy.ui.call.VoiceChannelScreen(account, destination.roomId, navigator) { navigator.destination = null }
             }
         }
+        app.diddy.ui.call.CallOverlay(account, navigator)
         SheetHost(account, navigator)
     }
 }
