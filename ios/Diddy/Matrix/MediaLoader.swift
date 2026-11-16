@@ -9,12 +9,22 @@ import UIKit
 /// and keeps decoded images in memory. Cache and in-flight keys include the account, so the same
 /// mxc:// URL is always fetched with the client of the account it was seen in (another login may
 /// be on a different homeserver, or not allowed to see that media at all).
+/// The outcome of `MediaLoader.audioFile`: a file AVAudioPlayer can open, or why not.
+enum AudioFileResult: Sendable {
+    case file(URL)
+    case failed(String)
+    /// Internal: a decode failure that will not get better on a second try (remembered).
+    case undecodable(String)
+}
+
 actor MediaLoader {
     static let shared = MediaLoader()
 
     private let cache = NSCache<NSString, UIImage>()
     private var inFlight: [String: Task<Fetched, Never>] = [:]
-    private var audioInFlight: [String: Task<URL?, Never>] = [:]
+    private var audioInFlight: [String: Task<AudioFileResult, Never>] = [:]
+    /// Voice messages that cannot be decoded, by account and mxc URL, with the message shown.
+    private var audioFailures: [String: String] = [:]
 
     init() {
         cache.countLimit = 400
@@ -33,43 +43,70 @@ actor MediaLoader {
     }
 
     /// A voice message or audio file, downloaded (and decrypted) once into the caches folder.
-    /// The OS may clear that folder at any time; a missing file is simply fetched again.
-    func audioFile(source: MediaSource, mimeType: String?, accountId: String, client: Client) async -> URL? {
+    /// Ogg/Opus and WebM/Opus (desktop, Element) are decoded once into a CAF file that
+    /// AVAudioPlayer plays; the original is not kept. The OS may clear that folder at any time;
+    /// a missing file is simply fetched again. The folder is kept under `VoiceCache.maxBytes`.
+    func audioFile(source: MediaSource, mimeType: String?, accountId: String, client: Client) async -> AudioFileResult {
         let key = "\(accountId)|\(source.url())"
+        // A file that failed to decode fails the same way again: say so without downloading it again.
+        if let failure = audioFailures[key] { return .failed(failure) }
         let name = SHA256.hash(data: Data(key.utf8)).prefix(16).map { String(format: "%02x", $0) }.joined()
         let url = Self.audioFolder.appendingPathComponent("\(name).\(Self.audioExtension(mimeType))")
         let decoded = Self.audioFolder.appendingPathComponent("\(name)-opus-v1.caf")
-        if FileManager.default.fileExists(atPath: decoded.path) { return decoded }
+        if FileManager.default.fileExists(atPath: decoded.path) {
+            VoiceCache.touch(decoded)
+            return .file(decoded)
+        }
         if let handle = try? FileHandle(forReadingFrom: url) {
             let prefix = try? handle.read(upToCount: 4)
             try? handle.close()
-            if let prefix, OpusContainer.kind(ofPrefix: Array(prefix)) == nil { return url }
+            if let prefix, OpusContainer.kind(ofPrefix: Array(prefix)) == nil {
+                VoiceCache.touch(url)
+                return .file(url)
+            }
         }
         if let running = audioInFlight[key] { return await running.value }
-        let task = Task<URL?, Never> {
+        let task = Task<AudioFileResult, Never> {
             let data: Data
+            // A raw Ogg/WebM file left by an older version, which kept the download undecoded.
             if let cached = try? Data(contentsOf: url), cached.count <= Self.maxAudioBytes {
                 data = cached
             } else {
                 guard let fetched = try? await client.getMediaContent(mediaSource: source),
-                      fetched.count <= Self.maxAudioBytes else { return nil }
+                      fetched.count <= Self.maxAudioBytes else { return .failed(VoiceFailure.download) }
                 data = fetched
             }
             do {
                 try FileManager.default.createDirectory(at: Self.audioFolder, withIntermediateDirectories: true)
                 if OpusContainer.kind(ofPrefix: Array(data.prefix(4))) != nil {
-                    return try await Task.detached(priority: .userInitiated) {
+                    try await Task.detached(priority: .userInitiated) {
                         try OpusTranscoder.convert(data, to: decoded)
-                        return decoded
                     }.value
+                    try? FileManager.default.removeItem(at: url)
+                    VoiceCache.prune(folder: Self.audioFolder, keep: [decoded.lastPathComponent])
+                    return .file(decoded)
                 }
                 try data.write(to: url, options: .atomic)
-                return url
-            } catch { return nil }
+                VoiceCache.prune(folder: Self.audioFolder, keep: [url.lastPathComponent])
+                return .file(url)
+            } catch {
+                let message = VoiceFailure.message(for: error)
+                DiagLog.shared.write("media: voice message not playable (\(String(describing: error)))")
+                // Only a verdict on the file itself is remembered; disk or cancellation errors are retried.
+                if error is OpusContainerError || (error as? OpusCAFWriterError) == .tooLarge {
+                    return .undecodable(message)
+                }
+                return .failed(message)
+            }
         }
         audioInFlight[key] = task
-        let result = await task.value
+        var result = await task.value
         audioInFlight[key] = nil
+        if case .undecodable(let message) = result {
+            if audioFailures.count >= 200 { audioFailures.removeAll() }
+            audioFailures[key] = message
+            result = .failed(message)
+        }
         return result
     }
 

@@ -37,7 +37,7 @@ Join a voice room in one click. Calls work on macOS, where Cinny's web client ha
 <td width="33%" valign="top">
 
 ### Screen sharing
-Streams stay sharp even when Diddy is in the background. Share with system audio on macOS 14.2+ and Linux, switch the sound on or off from the call bar, and pull any stream to the front with a click.
+Streams stay sharp even when Diddy is in the background. Share with system audio on macOS 14.2+, Linux and Windows 10 (version 2004)+, switch the sound on or off from the call bar, and pull any stream to the front with a click.
 
 </td>
 <td width="33%" valign="top">
@@ -57,7 +57,7 @@ From Light and Silver to Dark, Daaark, Butter, Diddy, Red, Green, Purple and Amb
 <td valign="top">
 
 ### Plugins and sounds
-A sandboxed plugin system with a built-in gallery (to-do, timer, calendar and more), a soundboard with MyInstants import, and a full set of app sounds you can switch off or replace.
+A sandboxed plugin system with a built-in gallery (to-do, timer, calendar and more), a soundboard with MyInstants import and per-device call keyboard shortcuts (optional background shortcuts on supported desktop systems; iPad hardware keyboard in the call), and a full set of app sounds you can switch off or replace.
 
 </td>
 <td valign="top">
@@ -71,7 +71,8 @@ Online, Idle, Do Not Disturb and Invisible. Do Not Disturb silences message soun
 
 More details:
 
-- **Chat:** voice messages that show up as voice messages in Element, a right-click menu with *Copy Text*, *Join All Rooms* for spaces, and a calm member list split by online and offline.
+- **Chat:** voice messages that show up as voice messages in Element, polls compatible with Element (open or hidden results, multiple choices, also in encrypted rooms), a right-click menu with *Copy Text*, *Join All Rooms* for spaces, and a calm member list split by online and offline.
+- **Saved messages:** bookmark a message from its context menu (long-press on iOS), then open *Inbox → Saved* on desktop or *You → Saved Messages* on iPhone (bookmark in the sidebar on iPad). Jump back to any accessible message or remove a bookmark. The list syncs through Matrix account data without storing message content there.
 - **Notifications in the window:** while Diddy is in front, new messages and invitations slide in as cards at the top (click opens the room, swipe up dismisses), and incoming calls arrive as a banner with answer and decline. In the background the system notification is used.
 - **Calm interface:** an own icon set, neutral highlights with the accent kept for mentions and sending, room updates folded into one line ("4 joined · 4 invited"), a one-line composer and voice messages with a scrubbable waveform.
 - **Settings by topic:** *Appearance*, *Chat*, *Notifications* and *Calls & Audio*, with a search that finds every single setting.
@@ -111,11 +112,13 @@ All images show example data and are generated from the real app, see [docs/scre
 | Chat, rooms, encryption | ✅ | ✅ Electron | 🧪 Electron, new | 🧪 native app, new |
 | Voice calls | ✅ | ✅ also encrypted | 🧪 | 🧪 |
 | Screen sharing | ✅ | 🧪 Wayland portal / X11 picker | 🧪 picker | 🧪 full screen on iOS 27+, otherwise Diddy only |
-| …with system sound | ✅ macOS 14.2+ | 🧪 other apps, not Diddy's own sound | ❌ not yet | 🧪 app sound |
+| …with system sound | ✅ macOS 14.2+ | 🧪 other apps, not Diddy's own sound | 🧪 Windows 10 2004+, not Diddy's own sound | 🧪 app sound |
 | Connection profiles | ✅ macOS 14+ | 🧪 untested | 🧪 | 🧪 multiple accounts |
-| Voice messages | ✅ | 🧪 | 🧪 | 🧪 m4a, no Ogg/Opus playback |
+| Voice messages | ✅ | 🧪 | 🧪 | 🧪 sends m4a, plays m4a and Ogg/Opus |
+| Send later (text) | 🧪 | 🧪 | 🧪 | 🧪 server only in unencrypted chats |
 | Change app icon | ✅ | 🧪 | 🧪 window icon | 🧪 |
 | Call tiles, soundboard, MyInstants | ✅ | ✅ | 🧪 | 🧪 |
+| Push to talk | 🧪 also in the background (Fn, modifier, F13-F20) | 🧪 also in the background (portal / X11) | 🧪 also in the background (presses) | 🧪 Talk button, iPad keyboard key |
 | Bot cards, profiles and badges, themes, plugins, agent voice | ✅ | ✅ | 🧪 | 🧪 |
 
 ✅ works and is tested · 🧪 built, but not yet tested in daily use · ❌ not supported (yet)
@@ -163,7 +166,7 @@ See [android/README.md](android/README.md) for building, signing and notificatio
 3. Start Diddy and allow the microphone when asked.
 
 > [!NOTE]
-> Same Electron (Chromium) app as on Linux. Screen sharing works with the picker; sharing the system sound is not available on Windows yet, because Chromium's capture would include the call itself and the others would hear themselves. Settings live in `%APPDATA%\app.diddy.desktop`, the log in `%LOCALAPPDATA%\app.diddy.desktop\logs`.
+> Same Electron (Chromium) app as on Linux. Screen sharing works with the picker. Sharing the system sound needs Windows 10 version 2004 (build 19041) or later: a bundled helper records everything except Diddy itself, so the others never hear the call echoed back. On older Windows the option is greyed out (Chromium's own capture would include the call). Settings live in `%APPDATA%\app.diddy.desktop`, the log in `%LOCALAPPDATA%\app.diddy.desktop\logs`.
 
 </details>
 
@@ -216,6 +219,27 @@ Restart Diddy afterwards. The file is over 100 MB. On **NixOS** there is an opti
 ```nix
 fonts.packages = [ inputs.diddy.packages.${pkgs.system}.apple-color-emoji ];
 ```
+
+## Build a bot
+
+Bots can send cards, buttons and live progress that Diddy draws natively, while every other Matrix client still
+shows plain text. The Python library in [`sdk/python`](sdk/python/README.md) (German docs) does the protocol,
+E2EE, login and testing for you:
+
+```python
+from diddybot import Bot, cards
+
+bot = Bot.from_env(about="Says hello.")
+
+@bot.command("hello", desc="greets you")
+async def hello(ctx, name: str = ""):
+    await ctx.reply(cards.note(f"Hello {name or ctx.sender_name}!", icon="👋"))
+
+bot.run()
+```
+
+`pip install "git+https://github.com/Lndr2501/diddy.git#subdirectory=sdk/python"`, then `diddybot new mybot`.
+The protocol itself is in [docs/bot-cards.md](docs/bot-cards.md).
 
 ## Report a bug
 

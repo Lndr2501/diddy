@@ -68,6 +68,8 @@ extension Error {
 struct ClientAPIError: LocalizedError {
     let errcode: String?
     let message: String
+    /// Set when a delayed send was refused as too long (MSC4140, SendLaterLogic.maxDelayExceeded).
+    var maxDelay: SendLaterLogic.MaxDelay?
     var errorDescription: String? { message }
 }
 
@@ -154,6 +156,8 @@ final class MatrixAccount: ObservableObject, Identifiable {
     /// Whether the stored marker answers (DiddyMarkerChecks) were read this session.
     var diddyMarkerChecksLoaded = false
     var diddyPrimaryRoom: (id: String, encrypted: Bool)?
+    /// Every options room that was read, in desktop's order (profiles and badges go into all of them).
+    var diddyWriteRooms: [DiddyWriteRoom] = []
     /// Your own profile event as written, so an edit here keeps the fields only desktop knows.
     var diddyOwnProfileRaw: [String: Any]?
     var diddyLoading = false
@@ -256,6 +260,7 @@ final class MatrixAccount: ObservableObject, Identifiable {
         handles.removeAll()
         roomInfoHandles.values.forEach { $0.cancel() }
         roomInfoHandles.removeAll()
+        ScheduledMessageStore.of(self).stop()
         started = false
     }
 
@@ -270,10 +275,13 @@ final class MatrixAccount: ObservableObject, Identifiable {
         // now and then (joins and server changes reload them on their own).
         if channelsLoadedAt.map({ Date().timeIntervalSince($0) > 120 }) ?? true { await loadAllChannels() }
         await refreshRail()
+        ScheduledMessageStore.of(self).wake()
     }
 
     private func syncStateChanged(_ state: SyncServiceState) {
         syncState = state
+        // Send later: what came due while the app was closed goes out once sync runs.
+        if state == .running { ScheduledMessageStore.of(self).wake() }
         if state == .running, alertsFrom == nil {
             alertsFrom = Date().addingTimeInterval(5)
             // Give the room list a moment to fill before looking for the Diddy Options room.
@@ -291,9 +299,20 @@ final class MatrixAccount: ObservableObject, Identifiable {
         }
     }
 
-    func logout() async {
+    /// Ends the session on the server first, then removes it from this device. When the server
+    /// cannot be reached this throws and changes nothing: the account keeps running, so the
+    /// device does not stay signed in on the server unnoticed. `localOnly` ("Remove Anyway")
+    /// skips the server. A session the server already ended counts as logged out.
+    func logout(localOnly: Bool = false) async throws {
+        if !localOnly {
+            do {
+                _ = try await client.logout()
+            } catch {
+                let text = "\(error) \(error.localizedDescription)"
+                if !AccountCleanupLogic.sessionAlreadyEnded(errorText: text) { throw error }
+            }
+        }
         await stop()
-        try? await client.logout()
         SessionStore.delete(accountId: record.id)
         record.removeDirectories()
     }
@@ -845,7 +864,8 @@ final class MatrixAccount: ObservableObject, Identifiable {
             let json = (try? JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
             throw ClientAPIError(
                 errcode: json["errcode"] as? String,
-                message: json["error"] as? String ?? "The server refused the request."
+                message: json["error"] as? String ?? "The server refused the request.",
+                maxDelay: SendLaterLogic.maxDelayExceeded(json)
             )
         }
         return data

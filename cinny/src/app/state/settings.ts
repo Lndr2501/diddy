@@ -61,9 +61,11 @@ export interface Settings {
   checkUpdatesAtStart: boolean;
   /** GitHub "owner/name" the releases come from. */
   updateRepo: string;
+  /** Share theme, layout and other settings with your other devices (account data, settingsSync.ts). */
+  syncSettings: boolean;
 }
 
-const defaultSettings: Settings = {
+export const defaultSettings: Settings = {
   themeId: 'dark-theme',
   useSystemTheme: true,
   lightThemeId: 'light-theme',
@@ -101,6 +103,7 @@ const defaultSettings: Settings = {
 
   checkUpdatesAtStart: true,
   updateRepo: DEFAULT_UPDATE_REPO,
+  syncSettings: true,
 };
 
 export const getSettings = () => {

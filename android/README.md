@@ -83,7 +83,8 @@ into the APK, so all apps sound and work the same.
   manufacturers' battery savers delay push. There is no FCM build (it needs a Firebase project).
 - App sound with a shared screen works only for apps that allow recording (not for protected
   videos) and goes with the microphone, so it is silent while you are muted.
-- Not on Android yet: Agent Voice, changing the app icon.
+- Not on Android yet: Agent Voice, changing the app icon, and what 1.12.0 added elsewhere
+  (push to talk, polls, saved messages, send later).
 
 ## More
 

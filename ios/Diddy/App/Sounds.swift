@@ -16,6 +16,7 @@ enum Sound: String, CaseIterable, Identifiable {
     case message, mention, invite
     case callDeclined = "call_declined", noAnswer = "no_answer", connectionLost = "connection_lost"
     case micChange = "mic_change"
+    case pttOn = "ptt_on", pttOff = "ptt_off"
 
     var id: String { rawValue }
 
@@ -43,6 +44,8 @@ enum Sound: String, CaseIterable, Identifiable {
         case .noAnswer: return "No answer"
         case .connectionLost: return "Connection lost"
         case .micChange: return "Microphone changed"
+        case .pttOn: return "Push to talk opens"
+        case .pttOff: return "Push to talk closes"
         }
     }
 
@@ -69,6 +72,8 @@ enum Sound: String, CaseIterable, Identifiable {
         case .noAnswer: return "The person you call does not answer."
         case .connectionLost: return "Your call loses its connection."
         case .micChange: return "You pick another microphone."
+        case .pttOn: return "A soft click when holding Talk opens your microphone."
+        case .pttOff: return "A soft click when letting go closes your microphone again."
         }
     }
 
@@ -76,7 +81,7 @@ enum Sound: String, CaseIterable, Identifiable {
     static let groups: [(title: String, sounds: [Sound])] = [
         ("Messages", [.message, .mention, .invite]),
         ("Calls", [.ringtone, .ringback, .callJoined, .userJoined, .userLeft, .callLeft, .callDeclined, .noAnswer, .connectionLost]),
-        ("Your controls", [.mute, .unmute, .deafen, .undeafen, .cameraOn, .cameraOff, .screenShareStarted, .screenShareStopped, .micChange]),
+        ("Your controls", [.mute, .unmute, .deafen, .undeafen, .cameraOn, .cameraOff, .screenShareStarted, .screenShareStopped, .micChange, .pttOn, .pttOff]),
     ]
 
     /// The desktop sound pack's file for this sound, if it has one.
@@ -97,6 +102,9 @@ enum Sound: String, CaseIterable, Identifiable {
         case .cameraOff: return "camera_off"
         case .message: return "message1"
         case .micChange: return "mic_change"
+        // push-to-talk: the mute sounds, played softer (`volume`)
+        case .pttOn: return "unmute"
+        case .pttOff: return "mute"
         // Joining yourself sounds like someone else joining, as on the desktop.
         case .callJoined: return "user_join"
         case .mention: return "mention"
@@ -124,6 +132,14 @@ enum Sound: String, CaseIterable, Identifiable {
         case .invite: return .invite
         case .ringtone: return .incomingCall
         default: return .other
+        }
+    }
+
+    /// How loud it plays; the push-to-talk clicks come often, so they are soft.
+    var volume: Float {
+        switch self {
+        case .pttOn, .pttOff: return 0.4
+        default: return 1
         }
     }
 
@@ -249,6 +265,7 @@ final class Sounds {
             return nil
         }
         player.numberOfLoops = loops
+        player.volume = sound.volume
         player.currentTime = 0
         let started = player.play()
         log.debug("\(sound.rawValue, privacy: .public) played=\(started) loops=\(loops) inCall=\(self.inCall)")

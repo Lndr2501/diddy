@@ -137,6 +137,11 @@ PUT /_matrix/client/v3/rooms/{roomId}/state/dev.diddy.bot/{botUserId}
 
 ## Schnellstart für einen neuen Bot
 
+**Am einfachsten mit der Python-Library [`diddybot`](../sdk/python/README.md)**: Karten, Knöpfe, Live-Bearbeitung,
+Befehlsliste, Bot-Profil, E2EE und Tests ohne Server sind dort fertig, die Prüfung ist eine getestete Kopie von
+`parseBotCard`. `pip install "git+https://github.com/Lndr2501/diddy.git#subdirectory=sdk/python"`, dann
+`diddybot new meinbot`. Von Hand geht es so:
+
 1. Normale Nachricht senden, `body` bleibt lesbar: `{"msgtype":"m.notice","body":"Hallo","dev.diddy.card":{"v":1,"kind":"note","text":"Hallo","tone":"info","icon":"👋"}}`
 2. Etwas, das sich ändert (Fortschritt, Status)? Karte **bearbeiten** (`m.replace`, Karte auch in `m.new_content`)
    statt neue Nachrichten zu senden, und dem Rückfall-Text `* ` voranstellen wie bei jeder Bearbeitung.

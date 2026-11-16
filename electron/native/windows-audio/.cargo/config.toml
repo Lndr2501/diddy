@@ -1,0 +1,4 @@
+# The helper must run on a plain Windows install without the Visual C++ runtime.
+# Cargo reads this only when it runs in this folder (scripts/build-windows-audio.cjs does).
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]

@@ -16,15 +16,19 @@ Stand 2026-11-16, aus dem Code abgeleitet (`src-tauri/`, `electron/`, `ios/`, `a
 | Antworten, Reaktionen, Bearbeiten, Löschen, @Erwähnungen, Tippanzeige | ✅ | ✅ | 🧪 | ✅ | 🧪 |
 | Geräteverifizierung, Wiederherstellungsschlüssel, Schlüssel-Backup | ✅ | ✅ | 🧪 | ✅ | 🧪 (Schlüssel-Ansichten mit `FLAG_SECURE`) |
 | Sprachchat über MatrixRTC, auch verschlüsselt | ✅ | ✅ | 🧪 | ✅ | 🧪 |
-| Call-Schlüssel nur für `call.member`-Mitglieder, Rotation beim Verlassen, E2EE-Anzeige | ✅ (Element Call) | ✅ (Element Call) | ✅ (Element Call) | ❌ ([SECURITY-TODO](../ios/SECURITY-TODO.md)) | 🧪 |
+| Call-Schlüssel nur für `call.member`-Mitglieder, Rotation beim Verlassen, E2EE-Anzeige | ✅ (Element Call) | ✅ (Element Call) | ✅ (Element Call) | 🧪 (seit 1.12.0) | 🧪 |
 | Bildschirmübertragung | ✅ | ✅ | 🧪 | ✅ (ganzer Bildschirm erst ab iOS 27) | 🧪 (MediaProjection) |
-| System-Ton bei Bildschirmübertragung | ✅ (14.2+) | ✅ | ❌ | ✅ (nur Diddy-Ton) | 🧪 (Android 10+, nur Apps, die Aufnahme erlauben; ohne Diddy-Ton) |
+| System-Ton bei Bildschirmübertragung | ✅ (14.2+) | ✅ | 🧪 (seit 1.12.0, ohne Diddy-Ton) | ✅ (nur Diddy-Ton) | 🧪 (Android 10+, nur Apps, die Aufnahme erlauben; ohne Diddy-Ton) |
 | Rauschunterdrückung | ✅ (RNNoise) | ✅ (RNNoise) | 🧪 (RNNoise) | ✅ (RNNoise) | 🧪 (WebRTC, kein RNNoise) |
 | Mikrofon ohne Apples Voice-Processing | ✅ | – | – | – | – (eigener Schalter „Voice Processing“) |
 | Klingeln in Direktnachrichten | ✅ | ✅ ¹ | 🧪 ¹ | ✅ (nur bei geöffneter App) | 🧪 (Anrufstil mit Annehmen/Ablehnen, auch per Push) |
 | Call-Töne und Soundpack | ✅ | ✅ | 🧪 | ✅ | 🧪 |
 | Calls wie bei Discord (Kacheln, großer Stream) | ✅ | ✅ | 🧪 | 🧪 | 🧪 |
 | Soundboard, MyInstants-Import | ✅ | ✅ | 🧪 | 🧪 | 🧪 |
+| Push-to-Talk | 🧪 | 🧪 | 🧪 | 🧪 | ❌ (später) |
+| Umfragen (MSC3381) | 🧪 | 🧪 | 🧪 | 🧪 | ❌ (später) |
+| Gespeicherte Nachrichten | 🧪 | 🧪 | 🧪 | 🧪 | ❌ (später) |
+| Nachricht später senden | 🧪 | 🧪 | 🧪 | 🧪 | ❌ (später) |
 | Watch Together | ✅ | ✅ | 🧪 | 🧪 | 🧪 |
 | Handy als Kamera und Mikrofon für den Computer | ✅ | ✅ | 🧪 | 🧪 | 🧪 |
 | Sprachnachrichten | ✅ | 🧪 (Chromium-Aufnahmepfad automatisch geprüft) | 🧪 | 🧪 (spielt auch Ogg/WebM-Opus vom Linux-Desktop) | 🧪 |
@@ -55,5 +59,5 @@ Anmerkungen:
   - KDE Plasma: Systemeinstellungen > Tastenkürzel > Eigene Kürzel > Neu > Globales Kürzel > Befehl/URL, Befehl `diddy --agent-voice toggle`.
   - Sway: `bindsym $mod+v exec diddy --agent-voice toggle`. Hyprland: `bind = SUPER, V, exec, diddy --agent-voice toggle`.
 - iOS und Android brauchen einen Server mit Simplified Sliding Sync (MSC4186).
-- Windows: kein System-Ton beim Teilen, weil Chromiums Aufnahme den Call selbst enthielte und die anderen sich selbst hören würden (README).
+- Windows: System-Ton beim Teilen läuft seit 1.12.0 über einen mitinstallierten Helfer, der alles außer Diddy aufnimmt.
 - Android: Push läuft über UnifiedPush (eine Verteiler-App wie ntfy, deren Server auch das Matrix-Push-Gateway stellt). Ohne Verteiler hält eine Hintergrundverbindung die Benachrichtigungen. Nach „Beenden erzwingen“ in den Android-Einstellungen kommt nichts mehr an, bis Diddy wieder geöffnet wird; Energiesparmodi mancher Hersteller können verzögern. Details: [android/README.md](../android/README.md).

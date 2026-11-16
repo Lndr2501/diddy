@@ -37,7 +37,7 @@ Keine WebView-Hülle um die Desktop-Oberfläche, kein Tauri-Android, kein Kotlin
 - **Zugangsdaten:** Sessions und der Schlüssel der SDK-Datenbanken sind mit einem AES-GCM-Schlüssel im Android Keystore versiegelt (`SessionStore.kt`). Kein Token im Klartext in den Einstellungen.
 - **Store-Verschlüsselung:** Jedes Konto hat eigene SDK-Datenbanken mit eigenem, zufälligem Schlüssel und eigene Ordner. Daten verwaister Logins (App mitten im Login beendet) räumt der Start auf.
 - **Backup:** Logins, Stores und Schlüssel sind von Cloud-Backup und Gerätewechsel ausgeschlossen (`data_extraction_rules.xml`, `allowBackup=false`). Wiederherstellung läuft über Matrix (Wiederherstellungsschlüssel).
-- **Call-Schlüssel:** Der eigene Medienschlüssel geht nur an Geräte mit gültiger `call.member`-Mitgliedschaft; fremde Schlüssel gelten nur, wenn sie Olm-verschlüsselt vom genannten Gerät eines Mitglieds kommen. Verlässt jemand den Call, gibt es einen neuen Schlüssel (nach 5 s benutzt, wie Element Call). Der Call zeigt, ob er Ende-zu-Ende-verschlüsselt ist und wessen Schlüssel fehlt. Damit übernimmt Android die offenen Punkte aus [`ios/SECURITY-TODO.md`](../ios/SECURITY-TODO.md) nicht.
+- **Call-Schlüssel:** Der eigene Medienschlüssel geht nur an Geräte mit gültiger `call.member`-Mitgliedschaft; fremde Schlüssel gelten nur, wenn sie Olm-verschlüsselt vom genannten Gerät eines Mitglieds kommen. Verlässt jemand den Call, gibt es einen neuen Schlüssel (nach 5 s benutzt, wie Element Call). Der Call zeigt, ob er Ende-zu-Ende-verschlüsselt ist und wessen Schlüssel fehlt. Das sind dieselben Regeln, die iOS seit 1.12.0 hat (vorher offen in [`ios/SECURITY-TODO.md`](../ios/SECURITY-TODO.md)).
 - **Sensible Ansichten:** Wiederherstellungsschlüssel und Passphrase erscheinen nicht in Screenshots, beim Bildschirmteilen oder im App-Umschalter (`FLAG_SECURE`).
 - **Login:** OAuth/MAS im System-Browser (Custom Tabs) mit PKCE über das SDK.
 - **Plugins:** laufen in einer abgeschotteten WebView ohne JS-Bridge zu Nachrichten oder Tokens, gleicher Vertrag wie Desktop und iOS (`docs/plugins.md`).
@@ -55,7 +55,7 @@ FCM ist bewusst nicht drin: Es bräuchte ein Firebase-Projekt, `google-services.
 - **App-Ton beim Teilen** gibt es nur ab Android 10 und nur für Apps, die Aufnahme erlauben; DRM-Inhalte bleiben stumm. Er läuft über das Mikrofon-Signal, ist also bei stummem Mikro ebenfalls stumm.
 - **Bildschirmteilen** endet, wenn Android es beendet (z. B. Sperren auf neueren Versionen); der Audio-Call läuft weiter.
 - **Telefonie-Integration:** Diddy nutzt Anrufbenachrichtigungen (CallStyle) und einen Foreground-Service vom Typ `phoneCall`, aber noch nicht Core-Telecom. Was bei einem normalen Telefonanruf mitten im Diddy-Call passiert, muss auf Geräten geprüft werden.
-- Noch nicht auf Android: Agent Voice, App-Icon wechseln.
+- Noch nicht auf Android: Agent Voice, App-Icon wechseln und die Neuerungen aus 1.12.0 (Push-to-Talk, Umfragen, gespeicherte Nachrichten, später senden).
 
 ## Offene Entscheidungen (Betreiber)
 

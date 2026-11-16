@@ -19,6 +19,7 @@ import { getSharedAudioContext } from './sharedAudio';
 import { createNoiseSuppressor, releaseNoiseSuppressor } from './noiseSuppression';
 import { isNativeMic, nativeMicAvailable, openNativeMic, preferredNativeMic } from './nativeMic';
 import { PreviewContext, SoundPreview } from './soundPreview';
+import { hotkeyToString, normalizeHotkeyMap, SoundHotkey } from './soundboardHotkeys';
 
 export type Clip = {
   id: string;
@@ -27,6 +28,10 @@ export type Clip = {
 
 const CLIPS_KEY = 'soundboardClips';
 const VOLUME_KEY = 'soundboardVolume';
+/** Clip id -> keyboard shortcut ("Ctrl+Alt+Digit1"), on this device only like the clips. */
+const HOTKEYS_KEY = 'soundboardHotkeys';
+/** Desktop app: shortcuts also work while Diddy is in the background (during a call). */
+const HOTKEYS_GLOBAL_KEY = 'soundboardHotkeysGlobal';
 const MAX_SECONDS = 20;
 
 const blobKey = (id: string) => `clip:${id}`;
@@ -98,6 +103,25 @@ type Snapshot = {
   /** True while a call microphone is routed through the soundboard. */
   inCall: boolean;
   playing: string | undefined;
+  /** clip id -> canonical shortcut string (see soundboardHotkeys.ts) */
+  hotkeys: Record<string, string>;
+  hotkeysGlobal: boolean;
+};
+
+const readJson = (key: string): unknown => {
+  try {
+    return JSON.parse(localStorage.getItem(key) ?? 'null');
+  } catch {
+    return null;
+  }
+};
+
+const store = (key: string, value: string): void => {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // storage unavailable: the choice lasts until the app is closed
+  }
 };
 
 class Soundboard {
@@ -119,6 +143,10 @@ class Soundboard {
   /** Clips that are playing right now. */
   private active = new Set<AudioBufferSourceNode>();
 
+  private hotkeys: Record<string, string>;
+
+  private hotkeysGlobal: boolean;
+
   private snapshot: Snapshot;
 
   constructor() {
@@ -129,6 +157,11 @@ class Soundboard {
     }
     const v = Number(localStorage.getItem(VOLUME_KEY));
     this.volume = Number.isFinite(v) && v > 0 ? Math.min(1, v) : 0.8;
+    this.hotkeys = normalizeHotkeyMap(
+      readJson(HOTKEYS_KEY),
+      this.clips.map((c) => c.id)
+    );
+    this.hotkeysGlobal = readJson(HOTKEYS_GLOBAL_KEY) === true;
     this.snapshot = this.buildSnapshot();
   }
 
@@ -138,6 +171,8 @@ class Soundboard {
       volume: this.volume,
       inCall: this.mixes.size > 0,
       playing: this.playing,
+      hotkeys: this.hotkeys,
+      hotkeysGlobal: this.hotkeysGlobal,
     };
   }
 
@@ -163,6 +198,22 @@ class Soundboard {
   public setVolume(volume: number) {
     this.volume = volume;
     localStorage.setItem(VOLUME_KEY, String(volume));
+    this.emit();
+  }
+
+  /** Assigns a keyboard shortcut to a clip (undefined removes it). */
+  public setHotkey(id: string, hotkey: SoundHotkey | undefined) {
+    const next = { ...this.hotkeys };
+    if (hotkey) next[id] = hotkeyToString(hotkey);
+    else delete next[id];
+    this.hotkeys = next;
+    store(HOTKEYS_KEY, JSON.stringify(next));
+    this.emit();
+  }
+
+  public setHotkeysGlobal(global: boolean) {
+    this.hotkeysGlobal = global;
+    store(HOTKEYS_GLOBAL_KEY, JSON.stringify(global));
     this.emit();
   }
 
@@ -217,6 +268,12 @@ class Soundboard {
     this.buffers.delete(id);
     this.clips = this.clips.filter((c) => c.id !== id);
     localStorage.setItem(CLIPS_KEY, JSON.stringify(this.clips));
+    if (this.hotkeys[id] !== undefined) {
+      const rest = { ...this.hotkeys };
+      delete rest[id];
+      this.hotkeys = rest;
+      store(HOTKEYS_KEY, JSON.stringify(rest));
+    }
     this.emit();
   }
 
@@ -257,6 +314,33 @@ class Soundboard {
       }
     };
     source.start();
+  }
+
+  /**
+   * What a click on a clip (or its shortcut) does: stops it while it is the clip playing,
+   * otherwise plays it.
+   */
+  public toggle(id: string): Promise<void> {
+    if (this.playing === id) {
+      this.stopAll();
+      return Promise.resolve();
+    }
+    return this.play(id);
+  }
+
+  private recordingHotkey = false;
+
+  /** True while the menu records a shortcut: the pressed key must not play a clip meanwhile. */
+  public isRecordingHotkey(): boolean {
+    return this.recordingHotkey;
+  }
+
+  public setRecordingHotkey(recording: boolean): void {
+    this.recordingHotkey = recording;
+  }
+
+  public hasClip(id: string): boolean {
+    return this.clips.some((c) => c.id === id);
   }
 
   /** Stops every clip that is playing right now, for you and for the call. */

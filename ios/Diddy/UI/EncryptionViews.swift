@@ -140,12 +140,15 @@ struct EncryptionSettingsView: View {
 /// A recovery key, hidden behind stars until you show it, with copy and share.
 struct RecoveryKeyDisplay: View {
     let recoveryKey: String
+    @EnvironmentObject private var calls: CallManager
     @State private var shown = false
     @State private var copied = false
 
     var body: some View {
+        // While the screen goes out the key stays hidden and cannot be shown (ScreenShareNotice).
+        let visible = shown && !calls.sharingScreen
         VStack(alignment: .leading, spacing: 12) {
-            Text(shown ? recoveryKey : AccountInfo.masked(recoveryKey))
+            Text(visible ? recoveryKey : AccountInfo.masked(recoveryKey))
                 .font(.system(.body, design: .monospaced))
                 .foregroundStyle(Theme.text)
                 .textSelection(.enabled)
@@ -153,7 +156,8 @@ struct RecoveryKeyDisplay: View {
                 .padding(12)
                 .background(Theme.input, in: RoundedRectangle(cornerRadius: 10))
             HStack {
-                Button(shown ? "Hide" : "Show") { shown.toggle() }
+                Button(visible ? "Hide" : "Show") { shown.toggle() }
+                    .disabled(calls.sharingScreen)
                 Button(copied ? "Copied" : "Copy") {
                     // Only on this device, and gone from the clipboard after two minutes.
                     UIPasteboard.general.setItems(
@@ -165,7 +169,11 @@ struct RecoveryKeyDisplay: View {
                 ShareLink(item: recoveryKey) { Text("Save") }
             }
             .buttonStyle(.bordered)
+            if calls.sharingScreen {
+                Text(ScreenShareNotice.recoveryLocked).font(.caption).foregroundStyle(Theme.muted)
+            }
         }
+        .onChange(of: calls.sharingScreen) { sharing in if sharing { shown = false } }
     }
 }
 
