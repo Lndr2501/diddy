@@ -58,7 +58,7 @@ struct WatchLinkSheet: View {
 
     private func submit() {
         guard let ref = WatchYouTube.parseURL(input) else {
-            error = "That is not a YouTube video link (youtube.com/watch, youtu.be or shorts)."
+            error = L("ios.finalComputed.youtubeError")
             return
         }
         watch.startWatching(videoId: ref.videoId, start: ref.start)

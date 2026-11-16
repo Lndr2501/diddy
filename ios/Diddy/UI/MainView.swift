@@ -819,7 +819,7 @@ struct InviteRow: View {
     }
 
     private var subtitle: String {
-        if invite.isDirect { return "Wants to message you" }
+        if invite.isDirect { return L("ios.finalComputed.wantsToMessage") }
         let what = invite.isSpace ? "Server invite" : "Room invite"
         return invite.inviterName.map { "\(what) from \($0)" } ?? what
     }

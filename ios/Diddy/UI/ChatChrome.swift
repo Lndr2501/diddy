@@ -407,9 +407,9 @@ struct TypingPill: View {
 
     static func text(_ names: [String]) -> String {
         switch names.count {
-        case 1: return "\(names[0]) is typing…"
-        case 2: return "\(names[0]) and \(names[1]) are typing…"
-        default: return "Several people are typing…"
+        case 1: return L("ios.finalComputed.typingOne", ["name": names[0]])
+        case 2: return L("ios.finalComputed.typingTwo", ["first": names[0], "second": names[1]])
+        default: return L("ios.finalComputed.typingSeveral")
         }
     }
 }

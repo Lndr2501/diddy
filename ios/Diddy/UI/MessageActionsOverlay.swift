@@ -103,7 +103,7 @@ struct MessageActionsOverlay<Actions: View>: View {
         case .file(let name, _, _): return name
         case .audio: return L("ios.chatMore.voiceMessage")
         case .notice(let text): return text
-        case .undecryptable: return "Encrypted message"
+        case .undecryptable: return L("ios.finalComputed.encryptedMessage")
         case .redacted: return L("ios.chat.messageDeleted")
         }
     }

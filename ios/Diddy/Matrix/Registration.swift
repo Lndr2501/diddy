@@ -241,7 +241,7 @@ final class Registration: ObservableObject {
             let (data, response) = try await URLSession.shared.data(for: request)
             return ((response as? HTTPURLResponse)?.statusCode ?? 0, data)
         } catch {
-            self.error = "The server could not be reached: \(error.localizedDescription)"
+            self.error = L("ios.finalComputed.serverUnreachable", ["error": error.localizedDescription])
             return nil
         }
     }

@@ -133,11 +133,11 @@ private struct SavedMessageContent: View {
     private func preview(_ row: MessageRow) -> String {
         switch row.body {
         case .text(let value): return value
-        case .image: return "Photo"
-        case .file(let name, _, _): return "File: \(name)"
-        case .audio: return "Audio message"
+        case .image: return L("ios.finalComputed.photo")
+        case .file(let name, _, _): return L("ios.finalComputed.fileName", ["name": name])
+        case .audio: return L("ios.finalComputed.audioMessage")
         case .notice(let value): return value
-        case .undecryptable: return "Encrypted message (keys unavailable on this device)"
+        case .undecryptable: return L("ios.finalComputed.undecryptable")
         case .redacted: return L("ios.chatMore.thisMessageWasDeleted")
         }
     }

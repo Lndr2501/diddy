@@ -28,7 +28,7 @@ struct RoomNotifyPicker: View {
 /// Words for a room in menus and dialogs: a channel inside a server, a room outside, or a direct message.
 enum RoomMenuWording {
     static func noun(isDirect: Bool, inServer: Bool) -> String {
-        if isDirect { return "Conversation" }
+        if isDirect { return L("ios.finalComputed.conversation") }
         return inServer ? "Channel" : "Room"
     }
 

@@ -3261,6 +3261,25 @@
     "toolbarExtra": {
       "heading": "Heading",
       "link": "Link"
+    },
+    "finalComputed": {
+      "todayAt": "Today at {{time}}",
+      "yesterdayAt": "Yesterday at {{time}}",
+      "photo": "Photo",
+      "fileName": "File: {{name}}",
+      "audioMessage": "Audio message",
+      "undecryptable": "Encrypted message (keys unavailable on this device)",
+      "youtubeError": "That is not a YouTube video link (youtube.com/watch, youtu.be or shorts).",
+      "typingOne": "{{name}} is typing…",
+      "typingTwo": "{{first}} and {{second}} are typing…",
+      "typingSeveral": "Several people are typing…",
+      "conversation": "Conversation",
+      "encryptedMessage": "Encrypted message",
+      "authNotSupported": "Authentication steps to perform this action are not supported by client.",
+      "wantsToMessage": "Wants to message you",
+      "savedLimit_one": "You can save up to {{count}} message. Remove one from Saved first.",
+      "savedLimit_other": "You can save up to {{count}} messages. Remove one from Saved first.",
+      "serverUnreachable": "The server could not be reached: {{error}}"
     }
   }
 }

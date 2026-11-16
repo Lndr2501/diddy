@@ -3261,6 +3261,25 @@
     "toolbarExtra": {
       "heading": "Überschrift",
       "link": "Link"
+    },
+    "finalComputed": {
+      "todayAt": "Heute um {{time}}",
+      "yesterdayAt": "Gestern um {{time}}",
+      "photo": "Foto",
+      "fileName": "Datei: {{name}}",
+      "audioMessage": "Sprachnachricht",
+      "undecryptable": "Verschlüsselte Nachricht (Schlüssel auf diesem Gerät nicht verfügbar)",
+      "youtubeError": "Das ist kein YouTube-Videolink (youtube.com/watch, youtu.be oder Shorts).",
+      "typingOne": "{{name}} tippt …",
+      "typingTwo": "{{first}} und {{second}} tippen …",
+      "typingSeveral": "Mehrere Personen tippen …",
+      "conversation": "Unterhaltung",
+      "encryptedMessage": "Verschlüsselte Nachricht",
+      "authNotSupported": "Diddy unterstützt die für diese Aktion nötigen Authentifizierungsschritte nicht.",
+      "wantsToMessage": "Möchte dir schreiben",
+      "savedLimit_one": "Du kannst höchstens {{count}} Nachricht speichern. Entferne zuerst eine aus „Gespeichert“.",
+      "savedLimit_other": "Du kannst höchstens {{count}} Nachrichten speichern. Entferne zuerst eine aus „Gespeichert“.",
+      "serverUnreachable": "Der Server ist nicht erreichbar: {{error}}"
     }
   }
 }

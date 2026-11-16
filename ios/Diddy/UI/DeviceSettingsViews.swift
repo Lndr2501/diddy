@@ -215,7 +215,7 @@ struct DevicesView: View {
                 challenge = next
                 passwordRequest = request
             case .unsupported:
-                error = "Authentication steps to perform this action are not supported by client."
+                error = L("ios.finalComputed.authNotSupported")
             }
         } catch { self.error = error.friendlyMessage }
     }
