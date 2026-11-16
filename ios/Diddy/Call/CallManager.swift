@@ -377,9 +377,9 @@ final class CallSession: NSObject, ObservableObject {
     /// MSC4075, what Diddy desktop and Element Call send and listen for.
     private static let notificationEventType = "org.matrix.msc4075.rtc.notification"
     private static let ringLifetimeMs: UInt64 = 30_000
-    /// LiveKit 2.18 encrypts every frame with key slot 0 (2.19 follows the key index): a new key
-    /// replaces slot 0 and is used at once (CallKeyLogic.nextKeyIndex). True after the update.
-    private static let senderFollowsKeyIndex = false
+    /// LiveKit 2.19 stamps every frame with the key provider's current key index (2.18 always used
+    /// slot 0), so a new key goes into the next slot and is used after a delay, like Element Call.
+    private static let senderFollowsKeyIndex = true
 
     init(account: MatrixAccount, room: MatrixRustSDK.Room, roomName: String) {
         self.account = account

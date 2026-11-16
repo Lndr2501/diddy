@@ -1,6 +1,6 @@
 # Diddy für iPhone und iPad
 
-Eigene, native App (SwiftUI), keine Web-Ansicht: [matrix-rust-sdk](https://github.com/matrix-org/matrix-rust-sdk) (Swift-Paket `MatrixRustSDK` 26.10.27) für Chat und Verschlüsselung, [LiveKit](https://github.com/livekit/client-sdk-swift) 2.18 für Sprachkanäle und Bildschirmübertragung. Aufbau wie die Discord-App, Farben aus den Desktop-Themes (Standard: Diddy).
+Eigene, native App (SwiftUI), keine Web-Ansicht: [matrix-rust-sdk](https://github.com/matrix-org/matrix-rust-sdk) (Swift-Paket `MatrixRustSDK` 26.10.27) für Chat und Verschlüsselung, [LiveKit](https://github.com/livekit/client-sdk-swift) 2.19 für Sprachkanäle und Bildschirmübertragung. Aufbau wie die Discord-App, Farben aus den Desktop-Themes (Standard: Diddy).
 
 Die App ist Beta: Alles in der Tabelle ist gebaut und läuft bei den ersten Testern, ist aber noch nicht im Alltag geprüft.
 

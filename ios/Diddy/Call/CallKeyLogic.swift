@@ -117,9 +117,9 @@ enum CallKeyLogic {
     // MARK: Key slots
 
     /// The slot for a new key. Element Call counts up (0, 1, 2 ... 255, 0) and keeps encrypting
-    /// with the old slot until the others have the new key. LiveKit's Swift SDK 2.18 encrypts every
-    /// frame with slot 0, whatever index is set (fixed in 2.19), so there a new key has to replace
-    /// slot 0, or the old key would stay in use.
+    /// with the old slot until the others have the new key. LiveKit's Swift SDK 2.18 encrypted every
+    /// frame with slot 0, whatever index was set (fixed in 2.19), so with `senderFollowsKeyIndex`
+    /// off a new key has to replace slot 0, or the old key would stay in use.
     static func nextKeyIndex(after current: Int32, senderFollowsKeyIndex: Bool) -> Int32 {
         guard senderFollowsKeyIndex else { return 0 }
         return (current + 1) % keyRingSize
