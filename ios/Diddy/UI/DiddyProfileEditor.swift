@@ -547,9 +547,9 @@ struct DiddyProfileEditor: View {
     private var storedProfile: DiddyProfile? { account.diddyProfiles[account.userId] }
 
     private var plateMediaTitle: String {
-        if draft.plateVideoMxc != nil { return "Replace Video" }
-        if draft.plateImageMxc != nil { return "Replace Picture" }
-        return "Add Picture or Video"
+        if draft.plateVideoMxc != nil { return L("ios.uiResults.replaceVideo") }
+        if draft.plateImageMxc != nil { return L("ios.uiResults.replacePicture") }
+        return L("ios.uiResults.addPictureOrVideo")
     }
 
     private func presetSwatch(_ id: String?, label: String) -> some View {
@@ -1022,21 +1022,21 @@ struct DiddyProfileEditor: View {
 
     private static func aboutLabel(_ field: String) -> String {
         switch field {
-        case "pronouns": return "Pronouns"
-        case "location": return "Location"
-        case "age": return "Age"
-        case "education": return "School / studies"
-        default: return "Work"
+        case "pronouns": return L("settings.profileCardEditor.pronouns")
+        case "location": return L("settings.profileCardEditor.location")
+        case "age": return L("settings.profileCardEditor.age")
+        case "education": return L("settings.profileCardEditor.schoolStudies")
+        default: return L("settings.profileCardEditor.work")
         }
     }
 
     private static func aboutPlaceholder(_ field: String) -> String {
         switch field {
         case "pronouns": return "she/her"
-        case "location": return "Berlin"
+        case "location": return L("settings.profileCardEditor.berlin")
         case "age": return "27"
-        case "education": return "Computer science"
-        default: return "Developer"
+        case "education": return L("settings.profileCardEditor.computerScience")
+        default: return L("settings.profileCardEditor.developer")
         }
     }
 
@@ -1047,36 +1047,36 @@ struct DiddyProfileEditor: View {
         case "linkedin": return "LinkedIn"
         case "spotify": return "Spotify"
         case "youtube": return "YouTube"
-        default: return "Website"
+        default: return L("profile.profileModules.website")
         }
     }
 
     private static func layoutLabel(_ layout: String) -> String {
         switch layout {
-        case "compact": return "Compact"
-        case "expanded": return "Expanded"
-        case "tabs": return "Tabs"
-        default: return "Standard"
+        case "compact": return L("ios.soundLabels.compact")
+        case "expanded": return L("settings.profilePreviews.expanded")
+        case "tabs": return L("settings.profilePreviews.tabs")
+        default: return L("settings.profilePreviews.standard")
         }
     }
 
     private static func layoutText(_ layout: String) -> String {
         switch layout {
-        case "compact": return "Minimal, space-saving."
-        case "expanded": return "More space for details."
-        case "tabs": return "Organized in tabs."
-        default: return "Balanced and familiar."
+        case "compact": return L("settings.profileCardEditor.minimalSpaceSaving")
+        case "expanded": return L("settings.profileCardEditor.moreSpaceForDetails")
+        case "tabs": return L("settings.profileCardEditor.organizedInTabs")
+        default: return L("settings.profileCardEditor.balancedAndFamiliar")
         }
     }
 
     private static func moduleLabel(_ module: String) -> String {
         switch module {
-        case "about": return "Facts"
-        case "bio": return "Bio"
-        case "activity": return "Activity"
-        case "interests": return "Interests"
-        case "links": return "Links"
-        default: return "Shared rooms"
+        case "about": return L("settings.profileCardEditor.facts")
+        case "bio": return L("settings.diddyProfile.bio")
+        case "activity": return L("profile.profileModules.activity")
+        case "interests": return L("profile.profileModules.interests")
+        case "links": return L("profile.profileModules.links")
+        default: return L("profile.profileModules.sharedRooms")
         }
     }
 

@@ -101,10 +101,10 @@ struct MessageActionsOverlay<Actions: View>: View {
         case .text(let text): return MentionText.readable(text) { account.name(of: $0) }
         case .image: return row.isSticker ? "Sticker" : "Photo"
         case .file(let name, _, _): return name
-        case .audio: return "Voice message"
+        case .audio: return L("ios.chatMore.voiceMessage")
         case .notice(let text): return text
         case .undecryptable: return "Encrypted message"
-        case .redacted: return "Message deleted"
+        case .redacted: return L("ios.chat.messageDeleted")
         }
     }
 

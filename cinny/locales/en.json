@@ -3203,6 +3203,64 @@
       "small": "Small",
       "normal": "Normal",
       "large": "Large"
+    },
+    "uiResults": {
+      "startAgain": "Start again.",
+      "thePluginStoppedTapReloadToStartItAgain": "The plugin stopped. Tap reload to start it again.",
+      "onThisDevice": "On this device",
+      "needsYourRecoveryKey": "Needs your recovery key",
+      "checking": "Checking…",
+      "starting": "Starting…",
+      "restoring": "Restoring…",
+      "turningOff": "Turning off…",
+      "owner": "Owner",
+      "admins": "Admins",
+      "moderators": "Moderators",
+      "moderator": "Moderator",
+      "member": "Member",
+      "replaceVideo": "Replace Video",
+      "replacePicture": "Replace Picture",
+      "addPictureOrVideo": "Add Picture or Video",
+      "searching": "Searching",
+      "loading": "Loading",
+      "nowPlaying": "Now playing",
+      "paused": "Paused",
+      "stopped": "Stopped",
+      "error": "Error"
+    },
+    "callEncryption": {
+      "notEncrypted": "Not encrypted",
+      "encrypted": "End-to-end encrypted",
+      "keysMissing": "Encrypted, keys missing",
+      "roomUnencrypted": "This room is not encrypted, so the call is not either.",
+      "allKeysArrived": "Only the devices in this call can hear and see it. Everyone's key has arrived.",
+      "waiting_one": "Only the devices in this call can hear and see it. Waiting for the key of {{count}} device; until it arrives you cannot hear or see it.",
+      "waiting_other": "Only the devices in this call can hear and see it. Waiting for the keys of {{count}} devices; until they arrive you cannot hear or see it."
+    },
+    "slashHints": {
+      "action": "Send action message",
+      "notice": "Send notice message",
+      "sendSymbol": "Send {{symbol}} as message",
+      "startDm": "Start direct message with user. Example: /startdm userId1",
+      "join": "Join room with address. Example: /join address1 address2",
+      "leave": "Leave current room.",
+      "invite": "Invite user to room. Example: /invite userId1 userId2 [-r reason]",
+      "disinvite": "Disinvite user to room. Example: /disinvite userId1 userId2 [-r reason]",
+      "kick": "Kick user from room. Example: /kick userId1 userId2 servername [-r reason]",
+      "ban": "Ban user from room. Example: /ban userId1 userId2 servername [-r reason]",
+      "unban": "Unban user. Example: /unban userId1 userId2",
+      "ignore": "Ignore user. Example: /ignore userId1 userId2",
+      "unignore": "Unignore user. Example: /unignore userId1 userId2",
+      "myroomnick": "Change nick in current room.",
+      "myroomavatar": "Change profile picture in current room. Example /myroomavatar mxc://xyzabc",
+      "convertToDm": "Convert room to direct message",
+      "convertToRoom": "Convert direct message to room",
+      "delete": "Delete messages from users. Example: /delete userId1 servername -past 1d|2h|5m|30s [-t m.room.message] [-r spam]",
+      "acl": "Manage server access control list. Example /acl [-a servername1] [-d servername2] [-ra servername1] [-rd servername2]"
+    },
+    "toolbarExtra": {
+      "heading": "Heading",
+      "link": "Link"
     }
   }
 }

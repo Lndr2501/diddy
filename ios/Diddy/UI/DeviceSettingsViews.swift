@@ -29,7 +29,7 @@ struct DevicesView: View {
 
     /// The desktop's badge: Unverified, "N Unverified" or Verified.
     private var summary: String {
-        if account.verificationState != .verified { return "Unverified" }
+        if account.verificationState != .verified { return L("settings.verification.unverified") }
         let count = CrossSigningCheck.unverifiedCount(trust, otherDevices: others.map(\.id))
         return count > 0 ? "\(count) Unverified" : "Verified"
     }
@@ -222,7 +222,7 @@ struct DevicesView: View {
 
     /// Nil when the devices are signed out, else what to tell the user.
     private func submitPassword(_ request: SignOutRequest, password: String) async -> String? {
-        guard let challenge else { return "Start again." }
+        guard let challenge else { return L("ios.uiResults.startAgain") }
         do {
             switch try await account.signOutDevices(request.ids, password: password, challenge: challenge) {
             case .done:
@@ -233,7 +233,7 @@ struct DevicesView: View {
                 self.challenge = next
                 return message ?? "Wrong password."
             case .unsupported:
-                return "Authentication steps to perform this action are not supported by client."
+                return L("settings.otherDevices.authenticationStepsToPerform")
             }
         } catch {
             return error.friendlyMessage

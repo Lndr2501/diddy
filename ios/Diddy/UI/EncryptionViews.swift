@@ -16,19 +16,19 @@ struct EncryptionSettingsView: View {
 
     private var recoveryText: String {
         switch account.recoveryState {
-        case .enabled: return "On"
-        case .disabled: return "Off"
-        case .incomplete: return "Needs your recovery key"
-        case .unknown: return "Checking…"
+        case .enabled: return L("ios.calls.moreOn")
+        case .disabled: return L("settings.agentVoice.off")
+        case .incomplete: return L("ios.uiResults.needsYourRecoveryKey")
+        case .unknown: return L("ios.uiResults.checking")
         }
     }
 
     private var backupText: String {
         switch account.backupStateNow() {
-        case .enabled: return "On"
-        case .creating, .enabling, .resuming: return "Starting…"
-        case .downloading: return "Restoring…"
-        case .disabling: return "Turning off…"
+        case .enabled: return L("ios.calls.moreOn")
+        case .creating, .enabling, .resuming: return L("ios.uiResults.starting")
+        case .downloading: return L("ios.uiResults.restoring")
+        case .disabling: return L("ios.uiResults.turningOff")
         case .unknown: return backupInfo == nil && backupChecked ? "Off" : "Not unlocked on this device"
         }
     }

@@ -31,8 +31,8 @@ enum ChatStyle {
     /// "Today", "Yesterday" or the date, like the desktop's day divider.
     static func dayTitle(_ day: Date) -> String {
         switch TimelineLayout.day(of: day) {
-        case .today: return "Today"
-        case .yesterday: return "Yesterday"
+        case .today: return L("room.timeline.today")
+        case .yesterday: return L("room.timeline.yesterday")
         case .earlier: return day.formatted(date: .long, time: .omitted)
         }
     }

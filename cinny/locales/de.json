@@ -3203,6 +3203,64 @@
       "small": "Klein",
       "normal": "Normal",
       "large": "Groß"
+    },
+    "uiResults": {
+      "startAgain": "Starte erneut.",
+      "thePluginStoppedTapReloadToStartItAgain": "Das Plugin wurde beendet. Tippe auf „Neu laden“, um es erneut zu starten.",
+      "onThisDevice": "Auf diesem Gerät",
+      "needsYourRecoveryKey": "Wiederherstellungsschlüssel nötig",
+      "checking": "Wird geprüft …",
+      "starting": "Wird gestartet …",
+      "restoring": "Wird wiederhergestellt …",
+      "turningOff": "Wird ausgeschaltet …",
+      "owner": "Besitzer",
+      "admins": "Administratoren",
+      "moderators": "Moderatoren",
+      "moderator": "Moderator",
+      "member": "Mitglied",
+      "replaceVideo": "Video ersetzen",
+      "replacePicture": "Bild ersetzen",
+      "addPictureOrVideo": "Bild oder Video hinzufügen",
+      "searching": "Suche läuft",
+      "loading": "Wird geladen",
+      "nowPlaying": "Wird abgespielt",
+      "paused": "Pausiert",
+      "stopped": "Beendet",
+      "error": "Fehler"
+    },
+    "callEncryption": {
+      "notEncrypted": "Nicht verschlüsselt",
+      "encrypted": "Ende-zu-Ende-verschlüsselt",
+      "keysMissing": "Verschlüsselt, Schlüssel fehlen",
+      "roomUnencrypted": "Dieser Raum ist nicht verschlüsselt. Der Anruf ist es daher auch nicht.",
+      "allKeysArrived": "Nur Geräte in diesem Anruf können ihn hören und sehen. Alle Schlüssel sind eingetroffen.",
+      "waiting_one": "Nur Geräte in diesem Anruf können ihn hören und sehen. Der Schlüssel von {{count}} Gerät fehlt noch; bis er eintrifft, kannst du nichts hören oder sehen.",
+      "waiting_other": "Nur Geräte in diesem Anruf können ihn hören und sehen. Die Schlüssel von {{count}} Geräten fehlen noch; bis sie eintreffen, kannst du nichts hören oder sehen."
+    },
+    "slashHints": {
+      "action": "Aktionsnachricht senden",
+      "notice": "Hinweisnachricht senden",
+      "sendSymbol": "{{symbol}} als Nachricht senden",
+      "startDm": "Direktnachricht mit Benutzer starten. Beispiel: /startdm userId1",
+      "join": "Raum über Adresse beitreten. Beispiel: /join address1 address2",
+      "leave": "Aktuellen Raum verlassen.",
+      "invite": "Benutzer in den Raum einladen. Beispiel: /invite userId1 userId2 [-r reason]",
+      "disinvite": "Einladung zum Raum zurückziehen. Beispiel: /disinvite userId1 userId2 [-r reason]",
+      "kick": "Benutzer aus dem Raum entfernen. Beispiel: /kick userId1 userId2 servername [-r reason]",
+      "ban": "Benutzer im Raum sperren. Beispiel: /ban userId1 userId2 servername [-r reason]",
+      "unban": "Benutzer entsperren. Beispiel: /unban userId1 userId2",
+      "ignore": "Benutzer ignorieren. Beispiel: /ignore userId1 userId2",
+      "unignore": "Benutzer nicht mehr ignorieren. Beispiel: /unignore userId1 userId2",
+      "myroomnick": "Spitznamen im aktuellen Raum ändern.",
+      "myroomavatar": "Profilbild im aktuellen Raum ändern. Beispiel: /myroomavatar mxc://xyzabc",
+      "convertToDm": "Raum in Direktnachricht umwandeln",
+      "convertToRoom": "Direktnachricht in Raum umwandeln",
+      "delete": "Nachrichten von Benutzern löschen. Beispiel: /delete userId1 servername -past 1d|2h|5m|30s [-t m.room.message] [-r spam]",
+      "acl": "Server-Zugriffsliste verwalten. Beispiel: /acl [-a servername1] [-d servername2] [-ra servername1] [-rd servername2]"
+    },
+    "toolbarExtra": {
+      "heading": "Überschrift",
+      "link": "Link"
     }
   }
 }

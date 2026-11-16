@@ -972,7 +972,7 @@ private struct ChatContent: View {
                             .foregroundStyle(Theme.muted)
                             .frame(width: 38, height: 32)
                     }
-                    .accessibilityLabel(format.title)
+                    .accessibilityLabel(format.localizedTitle)
                 }
             }
             .padding(.horizontal, 8)
@@ -1141,7 +1141,7 @@ private struct ChatContent: View {
         VStack(spacing: 0) {
             if editing == nil {
                 ForEach(SlashCommand.suggestions(for: draft).prefix(6)) { command in
-                    ComposerSuggestionRow(symbol: "slash.circle", title: "/" + command.rawValue, subtitle: command.description) {
+                    ComposerSuggestionRow(symbol: "slash.circle", title: "/" + command.rawValue, subtitle: command.localizedDescription) {
                         draft = "/" + command.rawValue + " "
                         selection = NSRange(location: (draft as NSString).length, length: 0)
                     }

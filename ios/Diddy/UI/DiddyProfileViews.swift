@@ -157,11 +157,11 @@ struct DiddyCardModules: View {
 
     static func activityTitle(_ kind: String) -> String {
         switch kind {
-        case "music": return "Listening to"
-        case "game": return "Playing"
-        case "working": return "Working on"
-        case "learning": return "Learning"
-        default: return "Doing"
+        case "music": return L("profile.profileModules.listeningTo")
+        case "game": return L("profile.profileModules.playing")
+        case "working": return L("profile.profileModules.workingOn")
+        case "learning": return L("profile.profileModules.learning")
+        default: return L("ios.securityUI.doing")
         }
     }
 

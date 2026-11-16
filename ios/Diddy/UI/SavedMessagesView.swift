@@ -138,7 +138,7 @@ private struct SavedMessageContent: View {
         case .audio: return "Audio message"
         case .notice(let value): return value
         case .undecryptable: return "Encrypted message (keys unavailable on this device)"
-        case .redacted: return "This message was deleted."
+        case .redacted: return L("ios.chatMore.thisMessageWasDeleted")
         }
     }
 }

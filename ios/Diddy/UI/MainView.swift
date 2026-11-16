@@ -597,7 +597,7 @@ struct ChannelSidebar: View {
     }
 
     private var serverName: String {
-        guard let server else { return "Direct Messages" }
+        guard let server else { return L("nav.home.directMessages") }
         return account.spaces.first { $0.roomId == server }?.displayName ?? "Server"
     }
 

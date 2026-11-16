@@ -63,7 +63,7 @@ struct PluginCardView: View {
     }
 
     private var status: String? {
-        if host.crashed { return "The plugin stopped. Tap reload to start it again." }
+        if host.crashed { return L("ios.uiResults.thePluginStoppedTapReloadToStartItAgain") }
         if !host.isReady { return host.isSilent ? "This page does not talk to Diddy. It is shown as a plain page." : "Loading plugin…" }
         return host.pluginDescription
     }
@@ -209,8 +209,8 @@ struct PluginSettingsView: View {
     }
 
     private func sourceLabel(_ plugin: UserPlugin) -> String {
-        if PluginAddress.builtinSlug(plugin.url) != nil { return "Built-in" }
-        if PluginAddress.localId(plugin.url) != nil { return "On this device" }
+        if PluginAddress.builtinSlug(plugin.url) != nil { return L("settings.badgeEditor.builtIn") }
+        if PluginAddress.localId(plugin.url) != nil { return L("ios.uiResults.onThisDevice") }
         return URL(string: plugin.url)?.host ?? plugin.url
     }
 }
@@ -286,7 +286,7 @@ struct PluginDetailView: View {
     private func sourceText(_ record: PluginStore.LocalRecord) -> String {
         switch record.origin {
         case .file: return record.fileName.map { "File \($0)" } ?? "File"
-        case .paste: return "Pasted code"
+        case .paste: return L("settings.localPlugins.pastedCode")
         case .github, .gist: return record.rawUrl.flatMap { URL(string: $0)?.lastPathComponent } ?? "GitHub"
         }
     }

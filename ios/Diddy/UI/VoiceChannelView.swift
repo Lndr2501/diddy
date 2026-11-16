@@ -413,8 +413,8 @@ private struct CallEncryptionBadge: View {
     var body: some View {
         let encryption = session.encryption
         Menu {
-            Text(CallKeyLogic.title(encryption))
-            Text(CallKeyLogic.detail(encryption))
+            Text(Self.title(encryption))
+            Text(Self.detail(encryption))
         } label: {
             Image(systemName: Self.icon(encryption))
                 .font(.footnote.weight(.semibold))
@@ -422,8 +422,24 @@ private struct CallEncryptionBadge: View {
                 .frame(minWidth: 28, minHeight: 36)
                 .contentShape(Rectangle())
         }
-        .accessibilityLabel(CallKeyLogic.title(encryption))
-        .accessibilityHint(CallKeyLogic.detail(encryption))
+        .accessibilityLabel(Self.title(encryption))
+        .accessibilityHint(Self.detail(encryption))
+    }
+
+    private static func title(_ encryption: CallKeyLogic.Encryption) -> String {
+        switch encryption {
+        case .off: return L("ios.callEncryption.notEncrypted")
+        case .on: return L("ios.callEncryption.encrypted")
+        case .waiting: return L("ios.callEncryption.keysMissing")
+        }
+    }
+
+    private static func detail(_ encryption: CallKeyLogic.Encryption) -> String {
+        switch encryption {
+        case .off: return L("ios.callEncryption.roomUnencrypted")
+        case .on: return L("ios.callEncryption.allKeysArrived")
+        case .waiting(let count): return L("ios.callEncryption.waiting", ["count": String(count)])
+        }
     }
 
     private static func icon(_ encryption: CallKeyLogic.Encryption) -> String {

@@ -198,12 +198,12 @@ struct BotCardView: View {
     private func playerHeader(_ track: BotCardTrack) -> String {
         let base: String = {
             switch track.state {
-            case .searching: return "Searching"
-            case .downloading: return "Loading"
-            case .playing: return "Now playing"
-            case .paused: return "Paused"
-            case .stopped: return "Stopped"
-            case .error: return "Error"
+            case .searching: return L("ios.uiResults.searching")
+            case .downloading: return L("ios.uiResults.loading")
+            case .playing: return L("ios.uiResults.nowPlaying")
+            case .paused: return L("ios.uiResults.paused")
+            case .stopped: return L("ios.uiResults.stopped")
+            case .error: return L("ios.uiResults.error")
             }
         }()
         guard let room = track.room, track.state == .playing || track.state == .paused else { return base }

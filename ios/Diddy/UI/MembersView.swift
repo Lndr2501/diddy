@@ -8,22 +8,22 @@ enum MemberGroup: Int, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .owner: return "Owner"
-        case .admin: return "Admins"
-        case .moderator: return "Moderators"
-        case .member: return "Members"
-        case .invited: return "Invited"
+        case .owner: return L("ios.uiResults.owner")
+        case .admin: return L("ios.uiResults.admins")
+        case .moderator: return L("ios.uiResults.moderators")
+        case .member: return L("room.viewHeader.members")
+        case .invited: return L("ios.finalUI.invited")
         }
     }
 
     /// The label on someone's profile card.
     var singular: String {
         switch self {
-        case .owner: return "Owner"
-        case .admin: return "Admin"
-        case .moderator: return "Moderator"
-        case .member: return "Member"
-        case .invited: return "Invited"
+        case .owner: return L("ios.uiResults.owner")
+        case .admin: return L("room.membersDrawer.admin")
+        case .moderator: return L("ios.uiResults.moderator")
+        case .member: return L("ios.uiResults.member")
+        case .invited: return L("ios.finalUI.invited")
         }
     }
 }
