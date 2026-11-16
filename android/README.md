@@ -8,10 +8,24 @@ voice channels), not the desktop layout.
 
 1. Open the latest run of **Build Android** in GitHub Actions and download the artifact
    `diddy-android`.
-2. Unzip it and open `app-debug.apk` on the phone. Android asks once to allow installing apps
+2. Unzip it and open the APK on the phone. Android asks once to allow installing apps
    from that source.
 3. The debug build is called `app.diddy.android.debug`, so it can sit next to a later release
    build.
+
+## Install a release
+
+Download `Diddy_X.Y.Z_Android.apk` from the [GitHub release](https://github.com/Lndr2501/diddy/releases/latest)
+and open it on the phone (Android 8 or later, arm64 or x86_64). Allow installation from that source
+when asked. Releases use `app.diddy.android` and a stable signing key, so later APKs update the same
+app and keep its data. Test builds with the `.debug` app id remain separate.
+
+`release.yml` runs the Android unit tests, builds and verifies the signed APK, and publishes it
+alongside the desktop/iOS packages and `SHA256SUMS`. Release tags require all four repository secrets:
+`DIDDY_ANDROID_KEYSTORE` (base64 JKS), `DIDDY_ANDROID_KEYSTORE_PASSWORD`, `DIDDY_ANDROID_KEY_ALIAS`
+and `DIDDY_ANDROID_KEY_PASSWORD`. Keep a protected backup of the key and passwords: replacing the
+key prevents upgrades of existing installations. Non-tag builds fall back to debug when signing
+is not configured.
 
 ## Build here
 

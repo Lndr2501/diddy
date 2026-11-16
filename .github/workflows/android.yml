@@ -23,8 +23,8 @@ on:
       - ".github/workflows/android.yml"
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: android-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
 permissions:
   contents: read
@@ -34,10 +34,23 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     env:
-      HAS_KEYSTORE: ${{ secrets.DIDDY_ANDROID_KEYSTORE != '' }}
+      HAS_KEYSTORE: ${{ secrets.DIDDY_ANDROID_KEYSTORE != '' && secrets.DIDDY_ANDROID_KEYSTORE_PASSWORD != '' && secrets.DIDDY_ANDROID_KEY_ALIAS != '' && secrets.DIDDY_ANDROID_KEY_PASSWORD != '' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check release signing
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          if [ "$HAS_KEYSTORE" != 'true' ]; then
+            echo '::error::Android releases need all four DIDDY_ANDROID signing secrets'
+            exit 1
+          fi
+
+      - name: Show the tag version in the app
+        run: .github/scripts/stamp-version.sh
 
       - name: Use Java 17
         run: echo "JAVA_HOME=$JAVA_HOME_17_X64" >> "$GITHUB_ENV"
@@ -66,12 +79,23 @@ jobs:
         run: |
           if [ -n "$DIDDY_ANDROID_KEYSTORE_FILE" ]; then
             ./gradlew --no-daemon assembleRelease
+            apk=app/build/outputs/apk/release/app-release.apk
+            suffix=Android
           else
             ./gradlew --no-daemon assembleDebug
+            apk=app/build/outputs/apk/debug/app-debug.apk
+            suffix=Android_debug
           fi
+          version=$(sed -n 's/^val diddyVersion = "\(.*\)"/\1/p' app/build.gradle.kts)
+          apksigner=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)
+          "$apksigner" verify --verbose "$apk"
           mkdir -p ../dist
-          find app/build/outputs/apk -name "*.apk" -exec cp {} ../dist/ \;
+          cp "$apk" "../dist/Diddy_${version}_${suffix}.apk"
           ls -la ../dist
+
+      - name: Remove signing key
+        if: always() && env.HAS_KEYSTORE == 'true'
+        run: rm -f "$RUNNER_TEMP/diddy.jks"
 
       - name: Upload APK
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

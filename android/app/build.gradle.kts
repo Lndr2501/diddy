@@ -15,9 +15,9 @@ plugins {
 }
 
 // The Diddy version, the same for every platform. .github/scripts/stamp-version.sh writes it.
-val diddyVersion = "1.11.0"
+val diddyVersion = "1.11.1"
 
-/** 1.11.0 -> 11100. Updates need a growing versionCode; the patch level has two digits. */
+/** 1.11.1 -> 11101. Updates need a growing versionCode; the patch level has two digits. */
 fun versionCodeOf(version: String): Int {
     val (major, minor, patch) = version.split(".").map { it.toInt() }
     return major * 10000 + minor * 100 + patch

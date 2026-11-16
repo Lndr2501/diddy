@@ -1,6 +1,8 @@
 # Changelog
 
-## Unveröffentlicht
+## 1.11.1 (2026-11-16)
+
+- **Android erstmals im Release:** Die native Android-App (Android 8+, arm64 und x86_64) kommt als direkt installierbare, signierte APK dazu: Chats, Spaces, Profile, Sprachnachrichten, MatrixRTC-Calls mit Kamera und Bildschirm, Soundboard mit MyInstants, Watch Together, Handy als Kamera und Mikrofon für den Computer sowie UnifiedPush. Desktop und iPhone bekommen ihre Pakete wie bisher im selben Release. Android wird vor dem Veröffentlichen gebaut und getestet, die APK-Signatur geprüft und die Prüfsumme mitgeliefert. Auf einem echten Android-Gerät ist die App noch nicht abgenommen.
 
 - **Handy als Kamera & Mikro: welches Handy (macOS, Linux, Windows):** Der Dialog „Phone as camera & mic“ zeigt jetzt unter „Which phone“ deine anderen Geräte mit Namen und wann sie zuletzt aktiv waren, und du wählst, welches gefragt wird. „All my devices“ fragt wie bisher alle, das erste Handy, das beitritt, übernimmt. Die Wahl wird gemerkt; ist das Gerät weg, fragt Diddy wieder alle. Die Texte sagen „Phone“ statt „iPhone“, weil auch die Android-App mitmacht. iOS und Android brauchen dafür keine Änderung: Sie antworten auf die Anfrage wie bisher.
 

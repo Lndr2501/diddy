@@ -1,5 +1,11 @@
 # CI and build performance
 
+Version tags build Android alongside macOS, Linux, Windows and iOS. The Android APK is required
+before publication, is signed with the persistent Diddy key, and is checked with `apksigner`.
+Its version is checked against the tag and stamped in the build checkout like the desktop version.
+The release includes `Diddy_X.Y.Z_Android.apk` and its SHA-256 checksum. Non-tag Android builds can
+fall back to debug; release tags fail if signing secrets are missing. See `android/README.md`.
+
 The Test workflow installs Cinny once, runs type checking and both JavaScript test suites,
 builds the production frontend once and smoke-tests that exact bundle with Playwright.
 Playwright also checks the voice-recorder hook using synthetic audio and Chromium’s real
