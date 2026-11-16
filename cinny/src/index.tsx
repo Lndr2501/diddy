@@ -13,8 +13,7 @@ import './index.css';
 import { trimTrailingSlash } from './app/utils/common';
 import App from './app/pages/App';
 
-// import i18n (needs to be bundled ;))
-import './app/i18n';
+import { applyLanguage } from './app/i18n';
 import { pushSessionToSW } from './sw-session';
 import { getFallbackSession } from './app/state/sessions';
 import { installContextMenuGuard } from './app/plugins/contextMenu';
@@ -69,4 +68,7 @@ const mountApp = () => {
   root.render(<App />);
 };
 
-mountApp();
+// the chosen language is loaded first, so the app never starts in English for a moment
+applyLanguage()
+  .catch(() => undefined)
+  .finally(mountApp);

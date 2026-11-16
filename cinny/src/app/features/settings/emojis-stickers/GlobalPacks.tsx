@@ -45,6 +45,7 @@ import { allRoomsAtom } from '../../../state/room-list/roomList';
 import { AccountDataEvent } from '../../../../types/matrix/accountData';
 import { AsyncStatus, useAsyncCallback, ignoreRejection } from '../../../hooks/useAsyncCallback';
 import { stopPropagation } from '../../../utils/keyboard';
+import { useTranslation } from 'react-i18next';
 
 function GlobalPackSelector({
   packs,
@@ -55,6 +56,7 @@ function GlobalPackSelector({
   useAuthentication: boolean;
   onSelect: (addresses: PackAddress[]) => void;
 }) {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const roomToPacks = useMemo(() => {
     const rToP = new Map<string, ImagePack[]>();
@@ -109,7 +111,7 @@ function GlobalPackSelector({
       <Header size="400" variant="Surface" style={{ padding: `0 ${config.space.S300}` }}>
         <Box grow="Yes">
           <Text size="L400" truncate>
-            Room Packs
+            {t('settings.globalPacks.roomPacks')}
           </Text>
         </Box>
         <Box shrink="No">
@@ -120,7 +122,7 @@ function GlobalPackSelector({
             fill={hasSelected ? 'Solid' : 'Soft'}
             onClick={() => onSelect(selected)}
           >
-            <Text size="B300">{hasSelected ? 'Save' : 'Close'}</Text>
+            <Text size="B300">{hasSelected ? t('settings.globalPacks.save') : t('settings.globalPacks.close')}</Text>
           </Button>
         </Box>
       </Header>
@@ -165,7 +167,7 @@ function GlobalPackSelector({
                           addSelected(roomPackAddresses);
                         }}
                       >
-                        <Text size="B300">{allSelected ? 'Unselect All' : 'Select All'}</Text>
+                        <Text size="B300">{allSelected ? t('settings.globalPacks.unselectAll') : t('settings.globalPacks.selectAll')}</Text>
                       </Chip>
                     </Box>
                   </Box>
@@ -187,7 +189,7 @@ function GlobalPackSelector({
                         gap="400"
                       >
                         <SettingTile
-                          title={pack.meta.name ?? 'Unknown'}
+                          title={pack.meta.name ?? t('settings.globalPacks.unknown')}
                           description={<span className={LineClamp2}>{pack.meta.attribution}</span>}
                           before={
                             <Box alignItems="Center" gap="300">
@@ -235,10 +237,10 @@ function GlobalPackSelector({
                   }}
                 >
                   <Text size="H5" align="Center">
-                    No Packs
+                    {t('settings.globalPacks.noPacks')}
                   </Text>
                   <Text size="T200" align="Center">
-                    Pack from rooms will appear here. You do not have any room with packs yet.
+                    {t('settings.globalPacks.packFromRoomsWill')}
                   </Text>
                 </Box>
               </SequenceCard>
@@ -254,6 +256,7 @@ type GlobalPacksProps = {
   onViewPack: (imagePack: ImagePack) => void;
 };
 export function GlobalPacks({ onViewPack }: GlobalPacksProps) {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
   const globalPacks = useGlobalImagePacks();
@@ -360,7 +363,7 @@ export function GlobalPacks({ onViewPack }: GlobalPacksProps) {
         variant={removed ? 'Critical' : 'Default'}
         title={
           <span style={{ textDecoration: removed ? 'line-through' : undefined }}>
-            {pack.meta.name ?? 'Unknown'}
+            {pack.meta.name ?? t('settings.globalPacks.unknown')}
           </span>
         }
         description={<span className={LineClamp2}>{pack.meta.attribution}</span>}
@@ -408,7 +411,7 @@ export function GlobalPacks({ onViewPack }: GlobalPacksProps) {
               radii="Pill"
               onClick={() => onViewPack(pack)}
             >
-              <Text size="B300">View</Text>
+              <Text size="B300">{t('settings.globalPacks.view')}</Text>
             </Button>
           )
         }
@@ -418,11 +421,11 @@ export function GlobalPacks({ onViewPack }: GlobalPacksProps) {
 
   return (
     <>
-      <InsetSection title="Favorite Packs">
+      <InsetSection title={t('settings.globalPacks.favoritePacks')}>
         <InsetGroup>
           <InsetRow
-            title="Select Pack"
-            description="Pick emojis and stickers pack from rooms to use in all rooms."
+            title={t('settings.globalPacks.selectPack')}
+            description={t('settings.globalPacks.pickEmojisAndStickers')}
             after={
               <>
                 <Button
@@ -434,7 +437,7 @@ export function GlobalPacks({ onViewPack }: GlobalPacksProps) {
                   radii="Pill"
                   after={<Icon size="300" src={Icons.ChevronBottom} />}
                 >
-                  <Text size="B300">Select</Text>
+                  <Text size="B300">{t('settings.globalPacks.select')}</Text>
                 </Button>
                 <PopOut
                   anchor={menuCords}
@@ -498,11 +501,11 @@ export function GlobalPacks({ onViewPack }: GlobalPacksProps) {
             <Box grow="Yes" direction="Column">
               {applyState.status === AsyncStatus.Error ? (
                 <Text size="T200">
-                  <b>Failed to apply changes! Please try again.</b>
+                  <b>{t('settings.globalPacks.failedToApplyChanges')}</b>
                 </Text>
               ) : (
                 <Text size="T200">
-                  <b>Changes saved! Apply when ready.</b>
+                  <b>{t('settings.globalPacks.changesSavedApplyWhen')}</b>
                 </Text>
               )}
             </Box>
@@ -516,7 +519,7 @@ export function GlobalPacks({ onViewPack }: GlobalPacksProps) {
                 disabled={applyingChanges}
                 onClick={resetChanges}
               >
-                <Text size="B300">Reset</Text>
+                <Text size="B300">{t('settings.globalPacks.reset')}</Text>
               </Button>
               <Button
                 className={sheetCss.Pill}
@@ -527,7 +530,7 @@ export function GlobalPacks({ onViewPack }: GlobalPacksProps) {
                 before={applyingChanges && <Spinner variant="Success" fill="Solid" size="100" />}
                 onClick={ignoreRejection(applyChanges)}
               >
-                <Text size="B300">Apply Changes</Text>
+                <Text size="B300">{t('settings.globalPacks.applyChanges')}</Text>
               </Button>
             </Box>
           </Box>

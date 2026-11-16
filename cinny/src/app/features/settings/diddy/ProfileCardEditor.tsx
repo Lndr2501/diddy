@@ -39,31 +39,50 @@ import {
   SettingsCard,
   StackField,
 } from './ProfileSettingsUI';
+import { useTranslation } from 'react-i18next';
+import { translate } from '../../../i18n';
 
 type Draft = Omit<DiddyProfile, 'v' | 'shownBadges'>;
 type PatchDraft = (fn: (d: Draft) => Draft) => void;
 
 const ABOUT_LABEL: Record<keyof ProfileAbout, string> = {
-  pronouns: 'Pronouns',
-  location: 'Location',
-  age: 'Age',
-  education: 'School / studies',
-  work: 'Work',
+  get pronouns() {
+    return translate('settings.profileCardEditor.pronouns');
+  },
+  get location() {
+    return translate('settings.profileCardEditor.location');
+  },
+  get age() {
+    return translate('settings.profileCardEditor.age');
+  },
+  get education() {
+    return translate('settings.profileCardEditor.schoolStudies');
+  },
+  get work() {
+    return translate('settings.profileCardEditor.work');
+  },
 };
 const ABOUT_PLACEHOLDER: Record<keyof ProfileAbout, string> = {
   pronouns: 'she/her',
-  location: 'Berlin',
+  get location() {
+    return translate('settings.profileCardEditor.berlin');
+  },
   age: '27',
-  education: 'Computer science',
-  work: 'Developer',
+  get education() {
+    return translate('settings.profileCardEditor.computerScience');
+  },
+  get work() {
+    return translate('settings.profileCardEditor.developer');
+  },
 };
 
 export function AboutEditor({ draft, patch }: { draft: Draft; patch: PatchDraft }) {
+  const { t } = useTranslation();
   return (
     <SettingsCard
       icon={Icons.Info}
-      title="About you"
-      description="Short facts shown as chips on your card. Every field is optional."
+      title={t('settings.profileCardEditor.aboutYou')}
+      description={t('settings.profileCardEditor.shortFactsShownAs')}
     >
       <div className={css.FormGrid}>
         {ABOUT_FIELDS.map((field) => (
@@ -85,20 +104,21 @@ export function AboutEditor({ draft, patch }: { draft: Draft; patch: PatchDraft 
 }
 
 export function InterestsEditor({ draft, patch }: { draft: Draft; patch: PatchDraft }) {
+  const { t } = useTranslation();
   // the text keeps its commas while typing; the list in the draft is derived from it
   const [text, setText] = useState((draft.interests ?? []).join(', '));
   const list = draft.interests ?? [];
   return (
     <SettingsCard
       icon={Icons.Heart}
-      title="Interests"
-      description={`Shown as tags. Separate them with commas, up to ${MAX_INTERESTS}.`}
+      title={t('settings.profileCardEditor.interests')}
+      description={t('settings.profileCardEditor.shownAsTagsSeparate', { maxInterests: MAX_INTERESTS })}
       action={<Counter value={list.length} max={MAX_INTERESTS} />}
     >
       <input
         className={classNames(css.Input, css.InputFull)}
-        aria-label="Interests"
-        placeholder="Homelab, Music, Films"
+        aria-label={t('settings.profileCardEditor.interests')}
+        placeholder={t('settings.profileCardEditor.homelabMusicFilms')}
         value={text}
         onChange={(e) => {
           setText(e.target.value);
@@ -129,18 +149,21 @@ const LINK_LABEL: Record<LinkKind, string> = {
   linkedin: 'LinkedIn',
   spotify: 'Spotify',
   youtube: 'YouTube',
-  web: 'Website',
+  get web() {
+    return translate('settings.profileCardEditor.website');
+  },
 };
 
 export function LinksEditor({ draft, patch }: { draft: Draft; patch: PatchDraft }) {
+  const { t } = useTranslation();
   const links: ProfileLink[] = draft.links ?? [];
   const setLinks = (next: ProfileLink[]) =>
     patch((d) => ({ ...d, links: next.length > 0 ? next : undefined }));
   return (
     <SettingsCard
       icon={Icons.Link}
-      title="Links"
-      description="GitHub, GitLab, LinkedIn, Spotify, YouTube or your own website. Only https addresses."
+      title={t('settings.profileCardEditor.links')}
+      description={t('settings.profileCardEditor.githubGitlabLinkedinSpotify')}
       action={<Counter value={links.length} max={MAX_LINKS} />}
     >
       {links.length > 0 && (
@@ -158,10 +181,10 @@ export function LinksEditor({ draft, patch }: { draft: Draft; patch: PatchDraft 
                 <Box direction="Column" grow="Yes" gap="100" style={{ minWidth: 0 }}>
                   <input
                     className={classNames(css.Input, css.InputFull)}
-                    placeholder="https://github.com/you"
+                    placeholder={t('settings.profileCardEditor.httpsGithubComYou')}
                     value={link.url}
                     aria-invalid={bad}
-                    aria-label={`Link ${i + 1}`}
+                    aria-label={t('settings.profileCardEditor.linkNumber', { number: i + 1 })}
                     onChange={(e) => {
                       const url = e.target.value;
                       setLinks(
@@ -170,14 +193,14 @@ export function LinksEditor({ draft, patch }: { draft: Draft; patch: PatchDraft 
                     }}
                   />
                   <Hint tone={bad ? 'error' : undefined}>
-                    {bad ? 'Not a valid https address' : LINK_LABEL[link.kind]}
+                    {bad ? t('settings.profileCardEditor.notAValidHttps') : LINK_LABEL[link.kind]}
                   </Hint>
                 </Box>
                 <IconButton
                   size="300"
                   radii="300"
                   variant="Surface"
-                  aria-label="Remove link"
+                  aria-label={t('settings.profileCardEditor.removeLink')}
                   onClick={() => setLinks(links.filter((_, j) => j !== i))}
                 >
                   <Icon size="100" src={Icons.Cross} />
@@ -197,7 +220,7 @@ export function LinksEditor({ draft, patch }: { draft: Draft; patch: PatchDraft 
             before={<Icon size="100" src={Icons.Plus} />}
             onClick={() => setLinks([...links, { kind: 'web', url: '' }])}
           >
-            <Text size="B300">Add link</Text>
+            <Text size="B300">{t('settings.profileCardEditor.addLink')}</Text>
           </Button>
         </Box>
       )}
@@ -206,6 +229,7 @@ export function LinksEditor({ draft, patch }: { draft: Draft; patch: PatchDraft 
 }
 
 export function ActivityEditor({ draft, patch }: { draft: Draft; patch: PatchDraft }) {
+  const { t } = useTranslation();
   const { activity } = draft;
   const set = (next: Partial<NonNullable<Draft['activity']>>) =>
     patch((d) => ({
@@ -215,14 +239,14 @@ export function ActivityEditor({ draft, patch }: { draft: Draft; patch: PatchDra
   return (
     <SettingsCard
       icon={Icons.Play}
-      title="Activity"
-      description="What you are up to, typed in by hand. Diddy does not read it from other apps."
+      title={t('settings.profileCardEditor.activity')}
+      description={t('settings.profileCardEditor.whatYouAreUp')}
       action={
         activity && <ClearButton onClick={() => patch((d) => ({ ...d, activity: undefined }))} />
       }
     >
       <div className={css.FormGrid}>
-        <StackField label="Kind">
+        <StackField label={t('settings.profileCardEditor.kind')}>
           <select
             className={css.Input}
             value={activity?.kind ?? 'custom'}
@@ -235,20 +259,20 @@ export function ActivityEditor({ draft, patch }: { draft: Draft; patch: PatchDra
             ))}
           </select>
         </StackField>
-        <StackField label="Text">
+        <StackField label={t('settings.profileCardEditor.text')}>
           <input
             className={css.Input}
             maxLength={60}
-            placeholder="Legacy"
+            placeholder={t('settings.profileCardEditor.legacy')}
             value={activity?.text ?? ''}
             onChange={(e) => set({ text: e.target.value })}
           />
         </StackField>
-        <StackField label="Details">
+        <StackField label={t('settings.profileCardEditor.details')}>
           <input
             className={css.Input}
             maxLength={60}
-            placeholder="PIXY (UK)"
+            placeholder={t('settings.profileCardEditor.pixyUk')}
             value={activity?.detail ?? ''}
             onChange={(e) => set({ detail: e.target.value })}
           />
@@ -259,32 +283,58 @@ export function ActivityEditor({ draft, patch }: { draft: Draft; patch: PatchDra
 }
 
 const LAYOUT_INFO: Record<CardLayout, { label: string; text: string }> = {
-  compact: { label: 'Compact', text: 'Minimal, space-saving.' },
-  standard: { label: 'Standard', text: 'Balanced and familiar.' },
-  expanded: { label: 'Expanded', text: 'More space for details.' },
-  tabs: { label: 'Tabs', text: 'Organized in tabs.' },
+  compact: { get label() { return translate('settings.profileCardEditor.compact'); }, get text() { return translate('settings.profileCardEditor.minimalSpaceSaving'); } },
+  standard: { get label() { return translate('settings.profileCardEditor.standard'); }, get text() { return translate('settings.profileCardEditor.balancedAndFamiliar'); } },
+  expanded: { get label() { return translate('settings.profileCardEditor.expanded'); }, get text() { return translate('settings.profileCardEditor.moreSpaceForDetails'); } },
+  tabs: { get label() { return translate('settings.profileCardEditor.tabs'); }, get text() { return translate('settings.profileCardEditor.organizedInTabs'); } },
 };
 const BIG_LAYOUT_LABEL: Record<BigProfileLayout, string> = {
-  expanded: 'Expanded',
-  tabs: 'Tabs',
+  get expanded() {
+    return translate('settings.profileCardEditor.expanded');
+  },
+  get tabs() {
+    return translate('settings.profileCardEditor.tabs');
+  },
 };
 const BIG_BANNER_LABEL: Record<BigProfileBanner, string> = {
-  normal: 'Normal',
-  tall: 'Tall',
-  hero: 'Extra tall',
+  get normal() {
+    return translate('settings.profileCardEditor.normal');
+  },
+  get tall() {
+    return translate('settings.profileCardEditor.tall');
+  },
+  get hero() {
+    return translate('settings.profileCardEditor.extraTall');
+  },
 };
 const BIG_AVATAR_LABEL: Record<BigProfileAvatar, string> = {
-  normal: 'Normal',
-  large: 'Large',
+  get normal() {
+    return translate('settings.profileCardEditor.normal');
+  },
+  get large() {
+    return translate('settings.profileCardEditor.large');
+  },
 };
 
 const MODULE_LABEL: Record<CardModule, string> = {
-  about: 'Facts',
-  bio: 'Bio',
-  activity: 'Activity',
-  interests: 'Interests',
-  links: 'Links',
-  sharedRooms: 'Shared rooms',
+  get about() {
+    return translate('settings.profileCardEditor.facts');
+  },
+  get bio() {
+    return translate('settings.profileCardEditor.bio');
+  },
+  get activity() {
+    return translate('settings.profileCardEditor.activity');
+  },
+  get interests() {
+    return translate('settings.profileCardEditor.interests');
+  },
+  get links() {
+    return translate('settings.profileCardEditor.links');
+  },
+  get sharedRooms() {
+    return translate('settings.profileCardEditor.sharedRooms');
+  },
 };
 const MODULE_ICON: Record<CardModule, IconSrc> = {
   about: Icons.Info,
@@ -357,12 +407,19 @@ function Wire({ layout }: { layout: CardLayout }) {
 }
 
 const THEME_LABEL: Record<CardTheme, string> = {
-  auto: 'Match app',
-  light: 'Light',
-  dark: 'Dark',
+  get auto() {
+    return translate('settings.profileCardEditor.matchApp');
+  },
+  get light() {
+    return translate('settings.profileCardEditor.light');
+  },
+  get dark() {
+    return translate('settings.profileCardEditor.dark');
+  },
 };
 
 export function LayoutEditor({ draft, patch }: { draft: Draft; patch: PatchDraft }) {
+  const { t } = useTranslation();
   const [dragging, setDragging] = useState<CardModule>();
   const [over, setOver] = useState<CardModule>();
   const settings: CardLayoutSettings = draft.cardLayout ?? {};
@@ -402,8 +459,8 @@ export function LayoutEditor({ draft, patch }: { draft: Draft; patch: PatchDraft
     <>
       <SettingsCard
         icon={Icons.Category}
-        title="Layout variants"
-        description="How your profile card is shown to others. The preview shows it right away."
+        title={t('settings.profileCardEditor.layoutVariants')}
+        description={t('settings.profileCardEditor.howYourProfileCard')}
       >
         <div className={css.LayoutGrid}>
           {CARD_LAYOUTS.map((l) => (
@@ -434,12 +491,12 @@ export function LayoutEditor({ draft, patch }: { draft: Draft; patch: PatchDraft
       </SettingsCard>
       <SettingsCard
         icon={Icons.Sun}
-        title="Look"
-        description="Colors and motion of your card, the same for everyone who opens it."
+        title={t('settings.profileCardEditor.look')}
+        description={t('settings.profileCardEditor.colorsAndMotionOf')}
       >
-        <Field label="Card theme">
+        <Field label={t('settings.profileCardEditor.cardTheme')}>
           <Segmented
-            label="Card theme"
+            label={t('settings.profileCardEditor.cardTheme')}
             value={settings.theme ?? 'auto'}
             options={CARD_THEMES.map((t) => ({ id: t, label: THEME_LABEL[t] }))}
             onChange={(t) => setSettings({ ...settings, theme: t === 'auto' ? undefined : t })}
@@ -448,9 +505,9 @@ export function LayoutEditor({ draft, patch }: { draft: Draft; patch: PatchDraft
         <div className={css.Group}>
           <div className={css.GroupRow}>
             <Box direction="Column" grow="Yes" style={{ minWidth: 0 }}>
-              <Text size="T300">Glass effect</Text>
+              <Text size="T300">{t('settings.profileCardEditor.glassEffect')}</Text>
               <Text size="T200" priority="300">
-                Translucent card with blur
+                {t('settings.profileCardEditor.translucentCardWithBlur')}
               </Text>
             </Box>
             <Switch
@@ -461,9 +518,9 @@ export function LayoutEditor({ draft, patch }: { draft: Draft; patch: PatchDraft
           </div>
           <div className={css.GroupRow}>
             <Box direction="Column" grow="Yes" style={{ minWidth: 0 }}>
-              <Text size="T300">Calm card</Text>
+              <Text size="T300">{t('settings.profileCardEditor.calmCard')}</Text>
               <Text size="T200" priority="300">
-                No hover animations
+                {t('settings.profileCardEditor.noHoverAnimations')}
               </Text>
             </Box>
             <Switch
@@ -476,28 +533,28 @@ export function LayoutEditor({ draft, patch }: { draft: Draft; patch: PatchDraft
       </SettingsCard>
       <SettingsCard
         icon={Icons.User}
-        title="Big profile"
-        description="The large view people get when they click your profile picture or your name in a call."
+        title={t('settings.profileCardEditor.bigProfile')}
+        description={t('settings.profileCardEditor.theLargeViewPeople')}
       >
-        <Field label="Layout">
+        <Field label={t('settings.profileCardEditor.layout')}>
           <Segmented
-            label="Big profile layout"
+            label={t('settings.profileCardEditor.bigProfileLayout')}
             value={big.layout ?? 'expanded'}
             options={BIG_PROFILE_LAYOUTS.map((l) => ({ id: l, label: BIG_LAYOUT_LABEL[l] }))}
             onChange={(l) => setBig({ layout: l === 'expanded' ? undefined : l })}
           />
         </Field>
-        <Field label="Banner">
+        <Field label={t('settings.profileCardEditor.banner')}>
           <Segmented
-            label="Big profile banner"
+            label={t('settings.profileCardEditor.bigProfileBanner')}
             value={big.banner ?? 'tall'}
             options={BIG_PROFILE_BANNERS.map((b) => ({ id: b, label: BIG_BANNER_LABEL[b] }))}
             onChange={(b) => setBig({ banner: b === 'tall' ? undefined : b })}
           />
         </Field>
-        <Field label="Profile picture">
+        <Field label={t('settings.profileCardEditor.profilePicture')}>
           <Segmented
-            label="Big profile picture size"
+            label={t('settings.profileCardEditor.bigProfilePictureSize')}
             value={big.avatar ?? 'large'}
             options={BIG_PROFILE_AVATARS.map((a) => ({ id: a, label: BIG_AVATAR_LABEL[a] }))}
             onChange={(a) => setBig({ avatar: a === 'large' ? undefined : a })}
@@ -506,14 +563,14 @@ export function LayoutEditor({ draft, patch }: { draft: Draft; patch: PatchDraft
       </SettingsCard>
       <SettingsCard
         icon={Icons.Sort}
-        title="Modules"
-        description="Show, hide and reorder the parts of your card. Drag a row or use the arrows."
+        title={t('settings.profileCardEditor.modules')}
+        description={t('settings.profileCardEditor.showHideAndReorder')}
         footer={
           (layout === 'compact' || layout === 'tabs') && (
             <Hint>
               {layout === 'compact'
-                ? 'The compact layout only shows the bio. Pick another layout for more modules.'
-                : 'In the tab layout the modules are grouped into tabs; the order applies inside a tab.'}
+                ? t('settings.profileCardEditor.theCompactLayoutOnly')
+                : t('settings.profileCardEditor.inTheTabLayout')}
             </Hint>
           )
         }
@@ -553,7 +610,7 @@ export function LayoutEditor({ draft, patch }: { draft: Draft; patch: PatchDraft
                 size="300"
                 radii="300"
                 variant="Surface"
-                aria-label="Move up"
+                aria-label={t('settings.profileCardEditor.moveUp')}
                 disabled={i === 0}
                 onClick={() => move(i, -1)}
               >
@@ -563,7 +620,7 @@ export function LayoutEditor({ draft, patch }: { draft: Draft; patch: PatchDraft
                 size="300"
                 radii="300"
                 variant="Surface"
-                aria-label="Move down"
+                aria-label={t('settings.profileCardEditor.moveDown')}
                 disabled={i === order.length - 1}
                 onClick={() => move(i, 1)}
               >
@@ -571,7 +628,7 @@ export function LayoutEditor({ draft, patch }: { draft: Draft; patch: PatchDraft
               </IconButton>
               <Switch
                 variant="Primary"
-                aria-label={`Show ${MODULE_LABEL[m]}`}
+                aria-label={t('settings.profileCardEditor.showValue', { value: MODULE_LABEL[m] })}
                 value={!hidden.includes(m)}
                 onChange={(on) =>
                   setSettings({
@@ -591,12 +648,12 @@ export function LayoutEditor({ draft, patch }: { draft: Draft; patch: PatchDraft
 export type EditorTab = 'identity' | 'card' | 'avatar' | 'status' | 'layout' | 'privacy';
 // `short` is shown in the one-row tab strip, `label` is the accessible and hover name
 const TABS: { id: EditorTab; label: string; short: string; icon: IconSrc }[] = [
-  { id: 'identity', label: 'Identity', short: 'Identity', icon: Icons.User },
-  { id: 'card', label: 'Profile card', short: 'Card', icon: Icons.Pencil },
-  { id: 'avatar', label: 'Avatar & nameplate', short: 'Avatar', icon: Icons.Photo },
-  { id: 'status', label: 'Status & badges', short: 'Status', icon: Icons.Star },
-  { id: 'layout', label: 'Layouts', short: 'Layout', icon: Icons.Category },
-  { id: 'privacy', label: 'Privacy & data', short: 'Privacy', icon: Icons.ShieldLock },
+  { id: 'identity', get label() { return translate('settings.profileCardEditor.identity'); }, get short() { return translate('settings.profileCardEditor.identity'); }, icon: Icons.User },
+  { id: 'card', get label() { return translate('settings.profileCardEditor.profileCard'); }, get short() { return translate('settings.profileCardEditor.card'); }, icon: Icons.Pencil },
+  { id: 'avatar', get label() { return translate('settings.profileCardEditor.avatarNameplate'); }, get short() { return translate('settings.profileCardEditor.avatar'); }, icon: Icons.Photo },
+  { id: 'status', get label() { return translate('settings.profileCardEditor.statusBadges'); }, get short() { return translate('settings.profileCardEditor.status'); }, icon: Icons.Star },
+  { id: 'layout', get label() { return translate('settings.profileCardEditor.layouts'); }, get short() { return translate('settings.profileCardEditor.layout'); }, icon: Icons.Category },
+  { id: 'privacy', get label() { return translate('settings.profileCardEditor.privacyData'); }, get short() { return translate('settings.profileCardEditor.privacy'); }, icon: Icons.ShieldLock },
 ];
 
 export function EditorTabs({
@@ -608,8 +665,9 @@ export function EditorTabs({
   onChange: (t: EditorTab) => void;
   hide?: EditorTab[];
 }) {
+  const { t } = useTranslation();
   return (
-    <div className={css.Tabs} role="tablist" aria-label="Profile sections">
+    <div className={css.Tabs} role="tablist" aria-label={t('settings.profileCardEditor.profileSections')}>
       {TABS.filter((t) => !hide?.includes(t.id)).map((t) => (
         <button
           key={t.id}

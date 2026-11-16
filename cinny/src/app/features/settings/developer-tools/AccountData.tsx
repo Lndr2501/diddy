@@ -5,6 +5,7 @@ import { useAccountDataCallback } from '../../../hooks/useAccountDataCallback';
 import { CutoutCard } from '../../../components/cutout-card';
 import { InsetGroup, InsetItem, InsetRow, InsetSection } from '../inset-list';
 import * as sheetCss from '../../../components/sheet/Sheet.css';
+import { useTranslation } from 'react-i18next';
 
 type AccountDataProps = {
   expand: boolean;
@@ -12,6 +13,7 @@ type AccountDataProps = {
   onSelect: (type: string | null) => void;
 };
 export function AccountData({ expand, onExpandToggle, onSelect }: AccountDataProps) {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const [accountDataTypes, setAccountDataKeys] = useState(() =>
     Array.from(mx.store.accountData.keys())
@@ -25,11 +27,11 @@ export function AccountData({ expand, onExpandToggle, onSelect }: AccountDataPro
   );
 
   return (
-    <InsetSection title="Account Data">
+    <InsetSection title={t('settings.accountData.accountData')}>
       <InsetGroup>
         <InsetRow
-          title="Global"
-          description="Data stored in your global account data."
+          title={t('settings.accountData.global')}
+          description={t('settings.accountData.dataStoredInYour')}
           after={
             <Button
               className={sheetCss.Pill}
@@ -42,15 +44,15 @@ export function AccountData({ expand, onExpandToggle, onSelect }: AccountDataPro
                 <Icon src={expand ? Icons.ChevronTop : Icons.ChevronBottom} size="100" filled />
               }
             >
-              <Text size="B300">{expand ? 'Collapse' : 'Expand'}</Text>
+              <Text size="B300">{expand ? t('settings.accountData.collapse') : t('settings.accountData.expand')}</Text>
             </Button>
           }
         />
         {expand && (
           <InsetItem>
             <Box justifyContent="SpaceBetween">
-              <Text size="L400">Events</Text>
-              <Text size="L400">Total: {accountDataTypes.length}</Text>
+              <Text size="L400">{t('settings.accountData.events')}</Text>
+              <Text size="L400">{t('settings.accountData.totalCount', { count: accountDataTypes.length })}</Text>
             </Box>
             <CutoutCard>
               <MenuItem
@@ -63,7 +65,7 @@ export function AccountData({ expand, onExpandToggle, onSelect }: AccountDataPro
               >
                 <Box grow="Yes">
                   <Text size="T200" truncate>
-                    Add New
+                    {t('settings.accountData.addNew')}
                   </Text>
                 </Box>
               </MenuItem>

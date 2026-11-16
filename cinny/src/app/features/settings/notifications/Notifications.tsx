@@ -4,21 +4,23 @@ import { AllMessagesNotifications } from './AllMessages';
 import { SpecialMessagesNotifications } from './SpecialMessages';
 import { KeywordMessagesNotifications } from './KeywordMessages';
 import { InsetGroup, InsetRow, InsetSection, SettingsPage } from '../inset-list';
+import { useTranslation } from 'react-i18next';
 
 type NotificationsProps = {
   requestClose: () => void;
 };
 export function Notifications({ requestClose }: NotificationsProps) {
+  const { t } = useTranslation();
   return (
-    <SettingsPage title="Notifications" requestClose={requestClose}>
+    <SettingsPage title={t('settings.notifications.notifications')} requestClose={requestClose}>
       <SystemNotification />
       <AllMessagesNotifications />
       <SpecialMessagesNotifications />
       <KeywordMessagesNotifications />
-      <InsetSection title="Block Messages">
+      <InsetSection title={t('settings.notifications.blockMessages')}>
         <InsetGroup>
           <InsetRow
-            description={'This option has been moved to "Account > Blocked Users" section.'}
+            description={t('settings.notifications.thisOptionHasBeen')}
           />
         </InsetGroup>
       </InsetSection>

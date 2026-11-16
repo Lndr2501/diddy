@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { Box, color, config, Text, toRem } from 'folds';
 import { APP_ICON_IDS, AppIconId, getAppIcon, setAppIcon } from '../../../plugins/appIcon';
 import { APP_ICON_IMAGES, APP_ICON_LABELS } from '../../../plugins/appIconImages';
+import { useTranslation } from 'react-i18next';
 
 export function AppIconPicker() {
+  const { t } = useTranslation();
   const [selected, setSelected] = useState<AppIconId>(getAppIcon());
   const [failed, setFailed] = useState(false);
 
@@ -50,7 +52,7 @@ export function AppIconPicker() {
       </Box>
       {failed && (
         <Text size="T200" style={{ color: color.Critical.Main }}>
-          Could not change the icon.
+          {t('settings.appIconPicker.couldNotChangeThe')}
         </Text>
       )}
     </Box>

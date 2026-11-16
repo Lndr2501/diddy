@@ -11,10 +11,12 @@ import {
   SoundInfo,
   useSoundPrefs,
 } from '../../../plugins/sounds';
+import { useTranslation } from 'react-i18next';
 
 type SoundRowProps = { sound: SoundInfo };
 
 function SoundRow({ sound }: SoundRowProps) {
+  const { t } = useTranslation();
   const prefs = useSoundPrefs();
   const inputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string>();
@@ -28,7 +30,7 @@ function SoundRow({ sound }: SoundRowProps) {
       setError(undefined);
       playSound(sound.id, { force: true });
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'This file cannot be used.');
+      setError(e instanceof Error ? e.message : t('settings.sound.thisFileCannotBe'));
     }
   };
 
@@ -37,7 +39,7 @@ function SoundRow({ sound }: SoundRowProps) {
       className={css.SoundRow}
       title={sound.title}
       description={
-        error ?? (customName ? `${sound.description} Own sound: ${customName}` : sound.description)
+        error ?? (customName ? t('settings.sound.descriptionOwnSoundCustomname', { description: sound.description, customName }) : sound.description)
       }
       after={
         <Box alignItems="Center" gap="200">
@@ -52,7 +54,7 @@ function SoundRow({ sound }: SoundRowProps) {
               radii="Pill"
               variant="Surface"
               fill="None"
-              aria-label={`Play ${sound.title}`}
+              aria-label={t('settings.sound.playTitle', { title: sound.title })}
               onClick={() => playSound(sound.id, { force: true })}
             >
               <Icon size="100" src={Icons.Play} />
@@ -64,7 +66,7 @@ function SoundRow({ sound }: SoundRowProps) {
               fill="Soft"
               onClick={() => inputRef.current?.click()}
             >
-              <Text size="B300">Replace</Text>
+              <Text size="B300">{t('settings.sound.replace')}</Text>
             </Button>
             {customName && (
               <Button
@@ -77,7 +79,7 @@ function SoundRow({ sound }: SoundRowProps) {
                   setError(undefined);
                 }}
               >
-                <Text size="B300">Reset</Text>
+                <Text size="B300">{t('settings.sound.reset')}</Text>
               </Button>
             )}
           </Box>
@@ -105,10 +107,11 @@ function SoundRow({ sound }: SoundRowProps) {
 }
 
 export function SoundSettings() {
+  const { t } = useTranslation();
   return (
     <>
       {SOUND_GROUPS.map((group) => (
-        <InsetSection key={group.title} title={`Sounds: ${group.title}`}>
+        <InsetSection key={group.title} title={t('settings.sound.soundsTitle', { title: group.title })}>
           <InsetGroup>
             {group.sounds.map((sound) => (
               <SoundRow key={sound.id} sound={sound} />

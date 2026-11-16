@@ -1687,7 +1687,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
                 <Box grow="Yes" direction="Column">
                   <Text size="T300" priority="300">
                     <b>{senderName}</b>
-                    {t('Organisms.RoomCommon.changed_room_name')}
+                    {t('room.timeline.changedRoomName')}
                   </Text>
                 </Box>
               }

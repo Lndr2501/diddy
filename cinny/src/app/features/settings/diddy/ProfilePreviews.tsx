@@ -39,6 +39,8 @@ import { CallRosterChipView } from '../../call/CallMemberCard';
 import { PersonTileView } from '../../call/CallStage';
 import { Field, Hint, Segmented } from './ProfileSettingsUI';
 import * as css from './DiddyProfileSettings.css';
+import { useTranslation } from 'react-i18next';
+import { translate } from '../../../i18n';
 
 /*
  * Previews of the profile editor (#105): the real components of every place the profile shows
@@ -49,10 +51,18 @@ import * as css from './DiddyProfileSettings.css';
  */
 
 const LAYOUT_LABEL: Record<CardLayout, string> = {
-  compact: 'Compact',
-  standard: 'Standard',
-  expanded: 'Expanded',
-  tabs: 'Tabs',
+  get compact() {
+    return translate('settings.profilePreviews.compact');
+  },
+  get standard() {
+    return translate('settings.profilePreviews.standard');
+  },
+  get expanded() {
+    return translate('settings.profilePreviews.expanded');
+  },
+  get tabs() {
+    return translate('settings.profilePreviews.tabs');
+  },
 };
 
 /** Width of the member drawer and the room list column in the app (px). */
@@ -271,6 +281,7 @@ type ProfilePreviewPanelProps = PreviewSubject & {
  * components; animations follow this device's switches and reduced motion like everywhere else.
  */
 export function ProfilePreviewPanel({ target, onTarget, ...subject }: ProfilePreviewPanelProps) {
+  const { t } = useTranslation();
   const prefs = useAvatarPrefs();
   const reducedMotion = usePrefersReducedMotion();
   const [speaking, setSpeaking] = useState(true);
@@ -304,39 +315,40 @@ export function ProfilePreviewPanel({ target, onTarget, ...subject }: ProfilePre
   let stage: ReactNode;
   switch (target) {
     case 'window':
-      caption = `Big profile window, ${LAYOUT_LABEL[windowLayout].toLowerCase()} layout`;
+      caption = t('settings.profilePreviews.bigWindowLayout', { layout: LAYOUT_LABEL[windowLayout] });
       stage = <CardPreview subject={subject} layout={windowLayout} large />;
       break;
     case 'members':
-      caption = 'Member list of a room';
+      caption = t('settings.profilePreviews.memberListOfA');
       stage = <MembersPreview subject={subject} />;
       break;
     case 'dms':
-      caption = 'Direct messages list of the people you write with';
+      caption = t('settings.profilePreviews.directMessagesListOf');
       stage = <DirectPreview subject={subject} />;
       break;
     case 'panel':
-      caption = 'Your user panel, bottom left (only you see it)';
+      caption = t('settings.profilePreviews.yourUserPanelBottom');
       stage = <PanelPreview subject={subject} />;
       break;
     case 'call':
-      caption = 'Call stage tile and the roster above the call';
+      caption = t('settings.profilePreviews.callStageTileAnd');
       stage = <CallPreview subject={subject} speaking={speaking} />;
       break;
     default:
       caption =
         cardLayout === ownLayout
-          ? `Profile card, ${LAYOUT_LABEL[cardLayout].toLowerCase()} layout`
-          : `Profile card in the ${LAYOUT_LABEL[
-              cardLayout
-            ].toLowerCase()} layout (yours: ${LAYOUT_LABEL[ownLayout].toLowerCase()})`;
+          ? t('settings.profilePreviews.cardLayout', { layout: LAYOUT_LABEL[cardLayout] })
+          : t('settings.profilePreviews.cardLayoutYours', {
+              layout: LAYOUT_LABEL[cardLayout],
+              own: LAYOUT_LABEL[ownLayout],
+            });
       stage = <CardPreview subject={subject} layout={cardLayout} />;
   }
 
   return (
     <>
       <Segmented
-        label="Preview"
+        label={t('settings.profilePreviews.preview')}
         value={target}
         columns={3}
         options={PREVIEW_TARGETS.map((t) => ({ id: t.id, label: t.label, title: t.title }))}
@@ -344,19 +356,19 @@ export function ProfilePreviewPanel({ target, onTarget, ...subject }: ProfilePre
       />
       {target === 'card' && (
         <Segmented
-          label="Card layout shown"
+          label={t('settings.profilePreviews.cardLayoutShown')}
           value={cardLayout}
           columns={4}
           options={CARD_LAYOUTS.map((l) => ({
             id: l,
             label: LAYOUT_LABEL[l],
-            title: l === ownLayout ? 'Your layout' : 'Only in this preview',
+            title: l === ownLayout ? t('settings.profilePreviews.yourLayout') : t('settings.profilePreviews.onlyInThisPreview'),
           }))}
           onChange={setLayoutPick}
         />
       )}
       {target === 'call' && (
-        <Field label="Speaking">
+        <Field label={t('settings.profilePreviews.speaking')}>
           <Switch variant="Primary" value={speaking} onChange={setSpeaking} />
         </Field>
       )}

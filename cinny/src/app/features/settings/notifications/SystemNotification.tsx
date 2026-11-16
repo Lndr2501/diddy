@@ -8,8 +8,10 @@ import { getNotificationState, usePermissionState } from '../../../hooks/usePerm
 import { useEmailNotifications } from '../../../hooks/useEmailNotifications';
 import { AsyncStatus, useAsyncCallback } from '../../../hooks/useAsyncCallback';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
+import { useTranslation } from 'react-i18next';
 
 function EmailNotification() {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const [result, refreshResult] = useEmailNotifications();
 
@@ -68,28 +70,28 @@ function EmailNotification() {
 
   return (
     <InsetRow
-      title="Email Notification"
+      title={t('settings.systemNotification.emailNotification')}
       description={
         <>
           {stableResult && !stableResult.email && (
             <Text as="span" style={{ color: color.Critical.Main }} size="T200">
-              Your account does not have any email attached.
+              {t('settings.systemNotification.yourAccountDoesNot')}
             </Text>
           )}
           {stableResult?.email && (
-            <>Send notification to your email. {`("${stableResult.email}")`}</>
+            <>{t('settings.systemNotification.sendNotificationToYour')}{' '}{`("${stableResult.email}")`}</>
           )}
           {result === null && (
             <Text as="span" style={{ color: color.Critical.Main }} size="T200">
-              Unexpected Error!
+              {t('settings.systemNotification.unexpectedError')}
             </Text>
           )}
           {updateState.status === AsyncStatus.Error && (
             <Text as="span" style={{ color: color.Critical.Main }} size="T200">
-              Failed to update. Please try again.
+              {t('settings.systemNotification.failedToUpdatePlease')}
             </Text>
           )}
-          {stableResult === undefined && 'Send notification to your email.'}
+          {stableResult === undefined && t('settings.systemNotification.sendNotificationToYour')}
         </>
       }
       after={
@@ -110,6 +112,7 @@ function EmailNotification() {
 }
 
 export function SystemNotification() {
+  const { t } = useTranslation();
   const notifPermission = usePermissionState('notifications', getNotificationState());
   const [showNotifications, setShowNotifications] = useSetting(settingsAtom, 'showNotifications');
   const [isNotificationSounds, setIsNotificationSounds] = useSetting(
@@ -122,25 +125,25 @@ export function SystemNotification() {
   };
 
   return (
-    <InsetSection title="System">
+    <InsetSection title={t('settings.systemNotification.system')}>
       <InsetGroup>
         <InsetRow
-          title="Desktop Notifications"
+          title={t('settings.systemNotification.desktopNotifications')}
           description={
             notifPermission === 'denied' ? (
               <Text as="span" style={{ color: color.Critical.Main }} size="T200">
                 {'Notification' in window
-                  ? 'Notification permission is blocked. Please allow notification permission from browser address bar.'
-                  : 'Notifications are not supported by the system.'}
+                  ? t('settings.systemNotification.notificationPermissionIsBlocked')
+                  : t('settings.systemNotification.notificationsAreNotSupported')}
               </Text>
             ) : (
-              <span>Show desktop notifications when messages arrive.</span>
+              <span>{t('settings.systemNotification.showDesktopNotificationsWhen')}</span>
             )
           }
           after={
             notifPermission === 'prompt' ? (
               <Button size="300" radii="300" onClick={requestNotificationPermission}>
-                <Text size="B300">Enable</Text>
+                <Text size="B300">{t('settings.systemNotification.enable')}</Text>
               </Button>
             ) : (
               <Switch
@@ -153,8 +156,8 @@ export function SystemNotification() {
           }
         />
         <InsetRow
-          title="Notification Sound"
-          description="Play a sound when new messages arrive."
+          title={t('settings.systemNotification.notificationSound')}
+          description={t('settings.systemNotification.playASoundWhen')}
           after={
             <Switch
               variant="Primary"

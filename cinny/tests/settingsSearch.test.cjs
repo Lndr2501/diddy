@@ -13,6 +13,17 @@ const compiled = ts.transpileModule(fs.readFileSync(path.join(settingsDir, 'sett
 const mod = {};
 vm.runInNewContext(compiled, { exports: mod });
 const index = mod.SETTINGS_SEARCH_INDEX;
+const flatten = (node, prefix = '') =>
+  Object.entries(node).flatMap(([key, value]) =>
+    typeof value === 'string'
+      ? [[prefix + key, value]]
+      : key === '_meta'
+        ? []
+        : flatten(value, `${prefix}${key}.`)
+  );
+const english = Object.fromEntries(
+  flatten(JSON.parse(fs.readFileSync(path.join(__dirname, '../locales/en.json'), 'utf8')))
+);
 const pagesFor = (query) =>
   Object.keys(index).filter((key) => mod.entryMatches(index[key], query));
 
@@ -30,7 +41,13 @@ test('every setting title in features/settings is in the search index', () => {
   const known = new Set(Object.values(index).flatMap((entry) => [entry.name, ...entry.titles]));
   const missing = [];
   for (const file of tsxFiles(settingsDir)) {
-    for (const [, title] of fs.readFileSync(file, 'utf8').matchAll(/title="([^"]{2,80})"/g)) {
+    const text = fs.readFileSync(file, 'utf8');
+    // titles are keys of locales/en.json now (docs/translating.md); the index keeps the English text
+    const titles = [
+      ...Array.from(text.matchAll(/title="([^"]{2,80})"/g), (m) => m[1]),
+      ...Array.from(text.matchAll(/\btitle=\{t\('([\w.]+)'\)\}/g), (m) => english[m[1]]),
+    ].filter((title) => title && title.length <= 80);
+    for (const title of titles) {
       if (!known.has(title) && !NOT_SETTINGS.has(title)) {
         missing.push(`${path.relative(settingsDir, file)}: ${title}`);
       }
@@ -66,4 +83,16 @@ test('empty, unknown and odd queries', () => {
   assert.ok(pagesFor('Ënter newline').includes('chat'), 'accents are ignored');
   assert.ok(pagesFor('developer').includes('developerTools'));
   assert.ok(pagesFor('@room').includes('notifications'));
+});
+
+test('the search works in the UI language and still finds the English words', () => {
+  const german = { Appearance: 'Darstellung', Language: 'Sprache', Theme: 'Design' };
+  const entry = mod.localizeEntry(index.appearance, (text) => german[text] ?? text, 'Übersetzung');
+  assert.equal(entry.name, 'Darstellung');
+  assert.ok(mod.entryMatches(entry, 'sprache'));
+  assert.ok(mod.entryMatches(entry, 'language'));
+  assert.ok(mod.entryMatches(entry, 'ubersetzung'));
+  assert.deepEqual([...mod.matchingTitles(entry, 'design')], ['Design']);
+  assert.ok(pagesFor('language').includes('appearance'));
+  assert.ok(pagesFor('sprache').includes('appearance'));
 });

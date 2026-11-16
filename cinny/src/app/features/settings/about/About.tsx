@@ -12,11 +12,13 @@ import { WelcomeGuideSettings } from '../general/General';
 import * as sheetCss from '../../../components/sheet/Sheet.css';
 import { canInvoke, invoke } from '../../../plugins/tauri';
 import { copyToClipboard } from '../../../utils/dom';
+import { useTranslation } from 'react-i18next';
 
 type AboutProps = {
   requestClose: () => void;
 };
 export function About({ requestClose }: AboutProps) {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const desktop = canInvoke();
   const [logPath, setLogPath] = useState<string>();
@@ -35,7 +37,7 @@ export function About({ requestClose }: AboutProps) {
   const repoValid = isValidUpdateRepo(repoDraft);
 
   return (
-    <SettingsPage title="About" requestClose={requestClose}>
+    <SettingsPage title={t('settings.about.about')} requestClose={requestClose}>
       {/* centred hero like the macOS "About This Mac" window */}
       <Box
         direction="Column"
@@ -50,9 +52,9 @@ export function About({ requestClose }: AboutProps) {
           <Box direction="Column" alignItems="Center" gap="100">
             <Text size="H2">{APP_NAME}</Text>
             <Text size="T300" priority="300">
-              Version {APP_VERSION}
+              {t('settings.about.versionAppversion', { appVersion: APP_VERSION })}
             </Text>
-            <Text priority="400">A Matrix chat client based on {UPSTREAM_NAME}.</Text>
+            <Text priority="400">{t('settings.about.aMatrixChatClient', { upstreamName: UPSTREAM_NAME })}</Text>
           </Box>
 
           <Box gap="200" wrap="Wrap" justifyContent="Center">
@@ -68,7 +70,7 @@ export function About({ requestClose }: AboutProps) {
               radii="Pill"
               before={<Icon src={Icons.Code} size="100" filled />}
             >
-              <Text size="B300">Source Code</Text>
+              <Text size="B300">{t('settings.about.sourceCode')}</Text>
             </Button>
             <Button
               className={sheetCss.Pill}
@@ -88,11 +90,11 @@ export function About({ requestClose }: AboutProps) {
         </Box>
       </Box>
       <WelcomeGuideSettings />
-      <InsetSection title="Options">
+      <InsetSection title={t('settings.about.options')}>
         <InsetGroup>
           <InsetRow
-            title="Clear Cache & Reload"
-            description="Clear all your locally stored data and reload from server."
+            title={t('settings.about.clearCacheReload')}
+            description={t('settings.about.clearAllYourLocally')}
             after={
               <Button
                 className={sheetCss.Pill}
@@ -102,24 +104,24 @@ export function About({ requestClose }: AboutProps) {
                 size="300"
                 radii="Pill"
               >
-                <Text size="B300">Clear Cache</Text>
+                <Text size="B300">{t('settings.about.clearCache')}</Text>
               </Button>
             }
           />
         </InsetGroup>
       </InsetSection>
       <InsetSection
-        title="Updates"
+        title={t('settings.about.updates')}
         footer={
           desktop
-            ? 'At start Diddy looks for a newer release before the window opens and asks whether to install it. Without internet it starts at once.'
-            : 'Diddy shows a notice when a newer release exists.'
+            ? t('settings.about.atStartDiddyLooks')
+            : t('settings.about.diddyShowsANotice')
         }
       >
         <InsetGroup>
           <InsetRow
-            title="Check for updates"
-            description="Look for a newer version when Diddy starts."
+            title={t('settings.about.checkForUpdates')}
+            description={t('settings.about.lookForANewer')}
             after={
               <Switch
                 variant="Primary"
@@ -129,9 +131,9 @@ export function About({ requestClose }: AboutProps) {
             }
           />
           <InsetRow
-            title="Update repository"
+            title={t('settings.about.updateRepository')}
             description={
-              repoValid ? 'GitHub owner/name that publishes the releases.' : 'Use the form owner/name.'
+              repoValid ? t('settings.about.githubOwnerNameThat') : t('settings.about.useTheFormOwner')
             }
             after={
               <Box gap="200" alignItems="Center">
@@ -147,7 +149,7 @@ export function About({ requestClose }: AboutProps) {
                   variant={repoValid ? 'Background' : 'Critical'}
                   size="300"
                   radii="300"
-                  aria-label="Update repository"
+                  aria-label={t('settings.about.updateRepository')}
                   spellCheck={false}
                   style={{ width: toRem(200) }}
                 />
@@ -163,7 +165,7 @@ export function About({ requestClose }: AboutProps) {
                   size="300"
                   radii="Pill"
                 >
-                  <Text size="B300">Default</Text>
+                  <Text size="B300">{t('settings.about.default')}</Text>
                 </Button>
               </Box>
             }
@@ -172,13 +174,13 @@ export function About({ requestClose }: AboutProps) {
       </InsetSection>
       {desktop && (
         <InsetSection
-          title="Diagnostics"
-          footer="The log file holds technical events and errors, no message texts. Attach it to a bug report."
+          title={t('settings.about.diagnostics')}
+          footer={t('settings.about.theLogFileHolds')}
         >
           <InsetGroup>
             <InsetRow
-              title="Log file"
-              description={logPath ?? 'Not available'}
+              title={t('settings.about.logFile')}
+              description={logPath ?? t('settings.about.notAvailable')}
               after={
                 <Box gap="200">
                   <Button
@@ -189,7 +191,7 @@ export function About({ requestClose }: AboutProps) {
                     size="300"
                     radii="Pill"
                   >
-                    <Text size="B300">Open Folder</Text>
+                    <Text size="B300">{t('settings.about.openFolder')}</Text>
                   </Button>
                   <Button
                     className={sheetCss.Pill}
@@ -205,7 +207,7 @@ export function About({ requestClose }: AboutProps) {
                     size="300"
                     radii="Pill"
                   >
-                    <Text size="B300">{copied ? 'Copied' : 'Copy Path'}</Text>
+                    <Text size="B300">{copied ? t('settings.about.copied') : t('settings.about.copyPath')}</Text>
                   </Button>
                 </Box>
               }
@@ -213,7 +215,7 @@ export function About({ requestClose }: AboutProps) {
           </InsetGroup>
         </InsetSection>
       )}
-      <InsetSection title="Credits">
+      <InsetSection title={t('settings.about.credits')}>
         <InsetGroup>
           <InsetItem>
             <Box
@@ -227,71 +229,65 @@ export function About({ requestClose }: AboutProps) {
             >
               <li>
                 <Text size="T300">
-                  The{' '}
+                  {t('settings.about.the')}{' '}
                   <a
                     href="https://github.com/matrix-org/matrix-js-sdk"
                     rel="noreferrer noopener"
                     target="_blank"
                   >
-                    matrix-js-sdk
-                  </a>{' '}
-                  is ©{' '}
+                    {t('settings.about.matrixJsSdk')}
+                  </a>{' '}{t('settings.about.is')}{' '}
                   <a href="https://matrix.org/foundation" rel="noreferrer noopener" target="_blank">
-                    The Matrix.org Foundation C.I.C
-                  </a>{' '}
-                  used under the terms of{' '}
+                    {t('settings.about.theMatrixOrgFoundation')}
+                  </a>{' '}{t('settings.about.usedUnderTheTerms')}{' '}
                   <a
                     href="http://www.apache.org/licenses/LICENSE-2.0"
                     rel="noreferrer noopener"
                     target="_blank"
                   >
-                    Apache 2.0
+                    {t('settings.about.apache20')}
                   </a>
                   .
                 </Text>
               </li>
               <li>
                 <Text size="T300">
-                  The{' '}
+                  {t('settings.about.the')}{' '}
                   <a href="https://twemoji.twitter.com" target="_blank" rel="noreferrer noopener">
-                    Twemoji
-                  </a>{' '}
-                  emoji art is ©{' '}
+                    {t('settings.about.twemoji')}
+                  </a>{' '}{t('settings.about.emojiArtIs')}{' '}
                   <a href="https://twemoji.twitter.com" target="_blank" rel="noreferrer noopener">
-                    Twitter, Inc and other contributors
-                  </a>{' '}
-                  used under the terms of{' '}
+                    {t('settings.about.twitterIncAndOther')}
+                  </a>{' '}{t('settings.about.usedUnderTheTerms')}{' '}
                   <a
                     href="https://creativecommons.org/licenses/by/4.0/"
                     target="_blank"
                     rel="noreferrer noopener"
                   >
-                    CC-BY 4.0
+                    {t('settings.about.ccBy40')}
                   </a>
                   .
                 </Text>
               </li>
               <li>
                 <Text size="T300">
-                  The{' '}
+                  {t('settings.about.the')}{' '}
                   <a
                     href="https://material.io/design/sound/sound-resources.html"
                     target="_blank"
                     rel="noreferrer noopener"
                   >
-                    Material sound resources
-                  </a>{' '}
-                  are ©{' '}
+                    {t('settings.about.materialSoundResources')}
+                  </a>{' '}{t('settings.about.are')}{' '}
                   <a href="https://google.com" target="_blank" rel="noreferrer noopener">
-                    Google
-                  </a>{' '}
-                  used under the terms of{' '}
+                    {t('settings.about.google')}
+                  </a>{' '}{t('settings.about.usedUnderTheTerms')}{' '}
                   <a
                     href="https://creativecommons.org/licenses/by/4.0/"
                     target="_blank"
                     rel="noreferrer noopener"
                   >
-                    CC-BY 4.0
+                    {t('settings.about.ccBy40')}
                   </a>
                   .
                 </Text>

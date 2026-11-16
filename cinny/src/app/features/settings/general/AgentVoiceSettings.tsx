@@ -18,6 +18,8 @@ import {
 import { AgentMuteMode } from '../../../plugins/agentVoice/session';
 import { isMacOS } from '../../../utils/user-agent';
 import { canInvoke } from '../../../plugins/tauri';
+import { useTranslation } from 'react-i18next';
+import { translate } from '../../../i18n';
 
 /**
  * Records the next key (or key combination). A lone modifier such as right Option counts when it
@@ -62,23 +64,30 @@ function HotkeyRecorder({ onDone }: { onDone: () => void }) {
 }
 
 const MODES: { value: AgentHotkeyMode; label: string }[] = [
-  { value: 'hold', label: 'Hold' },
-  { value: 'toggle', label: 'Press to start / stop' },
+  { value: 'hold', get label() { return translate('settings.agentVoice.hold'); } },
+  { value: 'toggle', get label() { return translate('settings.agentVoice.pressToStartStop'); } },
 ];
 
 const MUTE_MODES: { value: AgentMuteMode; label: string }[] = [
-  { value: 'off', label: 'Off' },
-  { value: 'mute', label: 'Mute' },
-  { value: 'full', label: 'Full mute' },
+  { value: 'off', get label() { return translate('settings.agentVoice.off'); } },
+  { value: 'mute', get label() { return translate('settings.agentVoice.mute'); } },
+  { value: 'full', get label() { return translate('settings.agentVoice.fullMute'); } },
 ];
 
 const MUTE_MODE_HINTS: Record<AgentMuteMode, string> = {
-  off: 'The call stays as it is while you talk to the agent.',
-  mute: 'Mutes your microphone while you talk to the agent and unmutes you afterwards.',
-  full: 'Mutes your microphone and the sound of the call while you talk to the agent, and restores both afterwards.',
+  get off() {
+    return translate('settings.agentVoice.theCallStaysAs');
+  },
+  get mute() {
+    return translate('settings.agentVoice.mutesYourMicrophoneWhile');
+  },
+  get full() {
+    return translate('settings.agentVoice.mutesYourMicrophoneAnd');
+  },
 };
 
 export function AgentVoiceSettings() {
+  const { t } = useTranslation();
   const prefs = useAgentVoicePrefs();
   const [recording, setRecording] = useState(false);
   const stopRecording = useCallback(() => setRecording(false), []);
@@ -88,30 +97,28 @@ export function AgentVoiceSettings() {
   const linuxDesktop = desktop && !mac;
   const globalInfo = useGlobalHotkeyInfo();
 
-  let reach = 'Only while the Diddy window is focused.';
+  let reach = t('settings.agentVoice.onlyWhileTheDiddy');
   if (desktop && mac && canReadNatively(prefs.hotkey)) {
-    reach = 'Also while Diddy is in the background (macOS reads the key from the system).';
+    reach = t('settings.agentVoice.alsoWhileDiddyIs');
   } else if (prefs.hotkey?.code === FN_KEY && !fnPossible) {
-    reach = 'Fn / Globe can only be read by the Diddy app on macOS.';
+    reach = t('settings.agentVoice.fnGlobeCanOnly');
   } else if (linuxDesktop && prefs.global) {
     reach = globalHotkeyReach(globalInfo);
   }
 
   return (
     <InsetSection
-      title="Talking to an agent"
+      title={t('settings.agentVoice.talkingToAnAgent')}
       footer={
         <>
-          Works with any dictation tool (OpenWhispr, Wispr Flow, ...): set the same key here. Needs &quot;Detect dictation hotkey&quot; below to be on, also for the commands.
+          {t('settings.agentVoice.worksWithAnyDictation')}
           {desktop && (
             <>
-              {' '}
-              Other setups can tell the desktop app directly, e.g. from a key-remapping tool:{' '}
-              <code>diddy --agent-voice start</code>, <code>stop</code> or <code>toggle</code>
+              {' '}{t('settings.agentVoice.otherSetupsCanTell')}{' '}
+              <code>diddy --agent-voice start</code>, <code>stop</code>{' '}{t('settings.agentVoice.or')}{' '}<code>toggle</code>
               {mac && (
                 <>
-                  {' '}
-                  (on macOS: <code>/Applications/Diddy.app/Contents/MacOS/diddy</code>)
+                  {' '}{t('settings.agentVoice.onMacos')}{' '}<code>/Applications/Diddy.app/Contents/MacOS/diddy</code>)
                 </>
               )}
               .
@@ -122,8 +129,8 @@ export function AgentVoiceSettings() {
     >
       <InsetGroup>
         <InsetRow
-          title="Detect dictation hotkey"
-          description="While you hold the hotkey of your dictation tool, you are shown as talking to an agent."
+          title={t('settings.agentVoice.detectDictationHotkey')}
+          description={t('settings.agentVoice.whileYouHoldThe')}
           after={
             <Switch
               variant="Primary"
@@ -135,8 +142,8 @@ export function AgentVoiceSettings() {
         {prefs.enabled && (
           <>
             <InsetRow
-              title="Hotkey"
-              description={recording ? 'Press the key now (Escape cancels).' : reach}
+              title={t('settings.agentVoice.hotkey')}
+              description={recording ? t('settings.agentVoice.pressTheKeyNow') : reach}
               after={
                 <>
                   {fnPossible && !recording && (
@@ -157,7 +164,7 @@ export function AgentVoiceSettings() {
                         })
                       }
                     >
-                      <Text size="B300">Use Fn / Globe</Text>
+                      <Text size="B300">{t('settings.agentVoice.useFnGlobe')}</Text>
                     </Button>
                   )}
                   <Button
@@ -168,7 +175,7 @@ export function AgentVoiceSettings() {
                     onClick={() => setRecording((r) => !r)}
                   >
                     <Text size="B300">
-                      {recording ? 'Press a key...' : formatHotkey(prefs.hotkey, mac)}
+                      {recording ? t('settings.agentVoice.pressAKey') : formatHotkey(prefs.hotkey, mac)}
                     </Text>
                   </Button>
                   {recording && <HotkeyRecorder onDone={stopRecording} />}
@@ -177,8 +184,8 @@ export function AgentVoiceSettings() {
             />
             {linuxDesktop && (
               <InsetRow
-                title="Also in the background"
-                description="Reserves the key for Diddy system-wide (desktop shortcut portal on Wayland, global shortcut on X11 and Windows). Other apps, such as a dictation tool using the same key, then no longer get it; use a key of its own, or leave this off and let the tool run diddy --agent-voice."
+                title={t('settings.agentVoice.alsoInTheBackground')}
+                description={t('settings.agentVoice.reservesTheKeyFor')}
                 after={
                   <Switch
                     variant="Primary"
@@ -189,10 +196,10 @@ export function AgentVoiceSettings() {
               />
             )}
             <InsetRow
-              title="Hotkey works like"
+              title={t('settings.agentVoice.hotkeyWorksLike')}
               after={
                 <SegmentedControl<AgentHotkeyMode>
-                  aria-label="Hotkey mode"
+                  aria-label={t('settings.agentVoice.hotkeyMode')}
                   options={MODES}
                   value={prefs.mode}
                   onChange={(mode) => updateAgentVoicePrefs({ mode })}
@@ -200,11 +207,11 @@ export function AgentVoiceSettings() {
               }
             />
             <InsetRow
-              title="Mute in the call meanwhile"
+              title={t('settings.agentVoice.muteInTheCall')}
               description={MUTE_MODE_HINTS[prefs.muteMode]}
               after={
                 <SegmentedControl<AgentMuteMode>
-                  aria-label="Mute in the call meanwhile"
+                  aria-label={t('settings.agentVoice.muteInTheCall')}
                   options={MUTE_MODES}
                   value={prefs.muteMode}
                   onChange={(muteMode) => updateAgentVoicePrefs({ muteMode })}
@@ -212,8 +219,8 @@ export function AgentVoiceSettings() {
               }
             />
             <InsetRow
-              title="Show the others in the call"
-              description="The others in your call see that you talk to an agent."
+              title={t('settings.agentVoice.showTheOthersIn')}
+              description={t('settings.agentVoice.theOthersInYour')}
               after={
                 <Switch
                   variant="Primary"

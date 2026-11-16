@@ -3,36 +3,44 @@ import React, { useMemo } from 'react';
 import { NotificationMode, useNotificationActionsMode } from '../../../hooks/useNotificationMode';
 import { AsyncStatus, useAsyncCallback } from '../../../hooks/useAsyncCallback';
 import { SegmentedControl } from '../inset-list';
+import { useTranslation } from 'react-i18next';
 
 export const useNotificationModes = (): NotificationMode[] =>
   useMemo(() => [NotificationMode.NotifyLoud, NotificationMode.Notify, NotificationMode.OFF], []);
 
 const useNotificationModeStr = (): Record<NotificationMode, string> =>
-  useMemo(
+  {
+  const { t } = useTranslation();
+  return useMemo(
     () => ({
-      [NotificationMode.OFF]: 'Disable',
-      [NotificationMode.Notify]: 'Notify Silent',
-      [NotificationMode.NotifyLoud]: 'Notify Loud',
+      [NotificationMode.OFF]: t('settings.notificationModeSwitcher.disable'),
+      [NotificationMode.Notify]: t('settings.notificationModeSwitcher.notifySilent'),
+      [NotificationMode.NotifyLoud]: t('settings.notificationModeSwitcher.notifyLoud'),
     }),
-    []
+    [t]
   );
+};
 
 // short labels for the segmented control, the long ones are shown as tooltip
 const useNotificationModeShortStr = (): Record<NotificationMode, string> =>
-  useMemo(
+  {
+  const { t } = useTranslation();
+  return useMemo(
     () => ({
-      [NotificationMode.OFF]: 'Off',
-      [NotificationMode.Notify]: 'Silent',
-      [NotificationMode.NotifyLoud]: 'Sound',
+      [NotificationMode.OFF]: t('settings.notificationModeSwitcher.off'),
+      [NotificationMode.Notify]: t('settings.notificationModeSwitcher.silent'),
+      [NotificationMode.NotifyLoud]: t('settings.notificationModeSwitcher.sound'),
     }),
-    []
+    [t]
   );
+};
 
 type NotificationModeSwitcherProps = {
   pushRule: IPushRule;
   onChange: (mode: NotificationMode) => Promise<void>;
 };
 export function NotificationModeSwitcher({ pushRule, onChange }: NotificationModeSwitcherProps) {
+  const { t } = useTranslation();
   const modes = useNotificationModes();
   const modeToStr = useNotificationModeStr();
   const modeToShortStr = useNotificationModeShortStr();
@@ -42,7 +50,7 @@ export function NotificationModeSwitcher({ pushRule, onChange }: NotificationMod
 
   return (
     <SegmentedControl<NotificationMode>
-      aria-label="Notification mode"
+      aria-label={t('settings.notificationModeSwitcher.notificationMode')}
       options={modes.map((mode) => ({
         value: mode,
         label: modeToShortStr[mode],

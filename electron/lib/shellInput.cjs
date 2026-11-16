@@ -3,6 +3,8 @@
 // (Cut/Copy/Paste, spelling, Cmd+Q, full screen, Back/Forward) is done here.
 // The pure parts (template building, key matching) are exported for tests/shellInput.test.cjs.
 
+const { uiText } = require('./uiStrings.cjs');
+
 const MAX_SUGGESTIONS = 5;
 const isWebUrl = (value) => /^https?:\/\//i.test(typeof value === 'string' ? value : '');
 
@@ -25,26 +27,26 @@ const buildContextMenuTemplate = (params, actions) => {
       for (const suggestion of suggestions) {
         template.push({ label: suggestion, click: () => actions.replaceMisspelling(suggestion) });
       }
-      if (!suggestions.length) template.push({ label: 'No suggestions', enabled: false });
-      template.push({ label: 'Add to dictionary', click: () => actions.addToDictionary(word) });
+      if (!suggestions.length) template.push({ label: uiText('noSuggestions'), enabled: false });
+      template.push({ label: uiText('addToDictionary'), click: () => actions.addToDictionary(word) });
       separate();
     }
     template.push(
-      { role: 'undo', enabled: !!flags.canUndo },
-      { role: 'redo', enabled: !!flags.canRedo },
+      { role: 'undo', label: uiText('undo'), enabled: !!flags.canUndo },
+      { role: 'redo', label: uiText('redo'), enabled: !!flags.canRedo },
       { type: 'separator' },
-      { role: 'cut', enabled: !!flags.canCut },
-      { role: 'copy', enabled: !!flags.canCopy },
-      { role: 'paste', enabled: !!flags.canPaste },
-      { role: 'selectAll', enabled: !!flags.canSelectAll }
+      { role: 'cut', label: uiText('cut'), enabled: !!flags.canCut },
+      { role: 'copy', label: uiText('copy'), enabled: !!flags.canCopy },
+      { role: 'paste', label: uiText('paste'), enabled: !!flags.canPaste },
+      { role: 'selectAll', label: uiText('selectAll'), enabled: !!flags.canSelectAll }
     );
   } else if (typeof params.selectionText === 'string' && params.selectionText.trim()) {
-    template.push({ role: 'copy' });
+    template.push({ role: 'copy', label: uiText('copy') });
   }
 
   if (isWebUrl(params.linkURL)) {
     separate();
-    template.push({ label: 'Copy link', click: () => actions.copyLink(params.linkURL) });
+    template.push({ label: uiText('copyLink'), click: () => actions.copyLink(params.linkURL) });
   }
   return template;
 };

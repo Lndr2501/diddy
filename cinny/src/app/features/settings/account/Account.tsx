@@ -5,13 +5,15 @@ import { ConnectedAccounts } from './ConnectedAccounts';
 import { ContactInformation } from './ContactInfo';
 import { IgnoredUserList } from './IgnoredUserList';
 import { SettingsPage } from '../inset-list';
+import { useTranslation } from 'react-i18next';
 
 type AccountProps = {
   requestClose: () => void;
 };
 export function Account({ requestClose }: AccountProps) {
+  const { t } = useTranslation();
   return (
-    <SettingsPage title="Account" requestClose={requestClose}>
+    <SettingsPage title={t('settings.account.account')} requestClose={requestClose}>
       <Profile />
       <ConnectedAccounts />
       <MatrixId />

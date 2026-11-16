@@ -14,6 +14,7 @@ import {
 } from '../../../plugins/connections';
 import { ConnectionOverview } from '../../../components/connection-recovery/ConnectionRecovery';
 import { InsetGroup, InsetRow, InsetSection } from '../inset-list';
+import { useTranslation } from 'react-i18next';
 
 const errorText = (err: unknown, fallback: string): string => {
   if (typeof err === 'string') return err;
@@ -27,6 +28,7 @@ const errorText = (err: unknown, fallback: string): string => {
  * wipes its separately stored login (the original login can never be removed here).
  */
 export function ConnectedAccounts() {
+  const { t } = useTranslation();
   const desktop = canInvoke();
   const mx = useMatrixClient();
   const myId = mx.getUserId() ?? undefined;
@@ -66,7 +68,7 @@ export function ConnectedAccounts() {
         if (active) setRows(next);
       },
       () => {
-        if (active) setError('The account list could not be loaded. Your account is unchanged.');
+        if (active) setError(t('settings.connectedAccounts.theAccountListCould'));
       }
     );
     return () => {
@@ -103,16 +105,16 @@ export function ConnectedAccounts() {
     run(async () => {
       await removeConnection(row.id);
       await reload();
-    }, 'The account could not be removed.');
+    }, t('settings.connectedAccounts.theAccountCouldNot'));
   };
 
   return (
     <InsetSection
-      title="Accounts"
+      title={t('settings.connectedAccounts.accounts')}
       footer={
         desktop
-          ? 'Every other account opens in its own Diddy window with its own login. Removing one closes that window and deletes its saved login and keys; the original login stays.'
-          : 'Separate logins are available in the Diddy desktop app.'
+          ? t('settings.connectedAccounts.everyOtherAccountOpens')
+          : t('settings.connectedAccounts.separateLoginsAreAvailable')
       }
     >
       <InsetGroup>
@@ -120,7 +122,7 @@ export function ConnectedAccounts() {
           <InsetRow
             key={row.id}
             title={row.user ?? row.title}
-            description={[row.user ? row.title : undefined, row.current ? 'This window' : row.hint]
+            description={[row.user ? row.title : undefined, row.current ? t('settings.connectedAccounts.thisWindow') : row.hint]
               .filter(Boolean)
               .join(' · ')}
             after={
@@ -132,10 +134,10 @@ export function ConnectedAccounts() {
                     fill="Soft"
                     radii="300"
                     onClick={() =>
-                      run(() => openConnection(row.id), 'The window could not be opened.')
+                      run(() => openConnection(row.id), t('settings.connectedAccounts.theWindowCouldNot'))
                     }
                   >
-                    <Text size="B300">Open</Text>
+                    <Text size="B300">{t('settings.connectedAccounts.open')}</Text>
                   </Button>
                   {row.id !== 'main' && (
                     <Button
@@ -143,10 +145,10 @@ export function ConnectedAccounts() {
                       variant={armed === row.id ? 'Critical' : 'Secondary'}
                       fill={armed === row.id ? 'Solid' : 'None'}
                       radii="300"
-                      aria-label={`Remove account ${row.title}`}
+                      aria-label={t('settings.connectedAccounts.removeAccountTitle', { title: row.title })}
                       onClick={() => remove(row)}
                     >
-                      <Text size="B300">{armed === row.id ? 'Really remove?' : 'Remove'}</Text>
+                      <Text size="B300">{armed === row.id ? t('settings.connectedAccounts.reallyRemove') : t('settings.connectedAccounts.remove')}</Text>
                     </Button>
                   )}
                 </>
@@ -156,11 +158,11 @@ export function ConnectedAccounts() {
         ))}
         {desktop && (
           <InsetRow
-            title="Add an account or server"
-            description="Sign in with another account in a separate window"
+            title={t('settings.connectedAccounts.addAnAccountOr')}
+            description={t('settings.connectedAccounts.signInWithAnother')}
             after={
               <Button size="300" variant="Primary" radii="300" onClick={() => setAdd(true)}>
-                <Text size="B300">Add</Text>
+                <Text size="B300">{t('settings.connectedAccounts.add')}</Text>
               </Button>
             }
           />
