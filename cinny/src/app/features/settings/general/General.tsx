@@ -1050,8 +1050,8 @@ function CallSettings() {
         />
         {autoGainSupported() && !prefs.echoCancellation && (
           <InsetRow
-            title="Automatic mic volume"
-            description="Raises a quiet microphone to a normal speaking level, also while Voice processing is off. Your system microphone slider stays as it is. Turn it off if you play music through your microphone. Applies the next time you join a call."
+            title={t('settings.general.automaticMicVolume')}
+            description={t('settings.general.automaticMicVolumeHelp')}
             after={
               <Switch
                 variant="Primary"

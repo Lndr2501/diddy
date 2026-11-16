@@ -716,6 +716,8 @@
       "removesBackgroundNoiseSuch": "Removes background noise such as keyboard, fan and room noise from your microphone (RNNoise, open source). It runs inside Diddy and does not turn your music down. Applies the next time you join a call.",
       "voiceProcessing": "Voice processing",
       "echoCancellationNoiseSuppression": "Echo cancellation, noise suppression and auto gain. Off keeps your music and other apps sounding normal and avoids short audio glitches when you join a call. Turn it on if you use speakers instead of headphones. Applies the next time you join a call.",
+      "automaticMicVolume": "Automatic mic volume",
+      "automaticMicVolumeHelp": "Raises a quiet microphone to a normal speaking level, also while Voice processing is off. Your system microphone slider stays as it is. Turn it off if you play music through your microphone. Applies the next time you join a call.",
       "camera": "Camera",
       "usedForVideoIn": "Used for video in calls. Changing it switches the camera of a running call too.",
       "volumesOfPeople": "Volumes of people",

@@ -716,6 +716,8 @@
       "removesBackgroundNoiseSuch": "Entfernt Hintergrundgeräusche wie Tastatur, Lüfter und Raumhall aus deinem Mikrofon (RNNoise, Open Source). Läuft in Diddy und macht deine Musik nicht leiser. Gilt ab dem nächsten Call.",
       "voiceProcessing": "Sprachverarbeitung",
       "echoCancellationNoiseSuppression": "Echounterdrückung, Rauschunterdrückung und automatische Lautstärke. Aus lässt deine Musik und andere Apps normal klingen und vermeidet kurze Aussetzer beim Beitreten. Schalt es an, wenn du Lautsprecher statt Kopfhörer nutzt. Gilt ab dem nächsten Call.",
+      "automaticMicVolume": "Automatische Mikrofon-Lautstärke",
+      "automaticMicVolumeHelp": "Hebt ein leises Mikrofon auf normale Sprechlautstärke, auch wenn die Sprachverarbeitung aus ist. Der Mikrofonregler deines Systems bleibt, wie er ist. Schalte es aus, wenn du Musik über dein Mikrofon spielst. Gilt ab dem nächsten Call.",
       "camera": "Kamera",
       "usedForVideoIn": "Für Video in Calls. Ein Wechsel stellt auch die Kamera eines laufenden Calls um.",
       "volumesOfPeople": "Lautstärke einzelner Personen",
