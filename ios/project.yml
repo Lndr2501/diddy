@@ -15,7 +15,7 @@ packages:
     exactVersion: "26.10.27"
   LiveKit:
     url: https://github.com/livekit/client-sdk-swift
-    exactVersion: "2.18.0"
+    exactVersion: "2.19.0"
 
 settings:
   base:
