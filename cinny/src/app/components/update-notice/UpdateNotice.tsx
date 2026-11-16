@@ -8,14 +8,17 @@ import { canInvoke, invoke } from '../../plugins/tauri';
 import {
   effectiveUpdateRepo,
   isUpdateWanted,
-  parseRelease,
-  releasesApiUrl,
+  newestRelease,
+  releasesListApiUrl,
 } from '../../utils/updateCheck';
 import { setVisibleInterval } from '../../utils/visibleInterval';
 
 const DISMISSED_KEY = 'diddyUpdateDismissed';
 const CHECK_DELAY_MS = 10_000;
-const CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
+// Hourly (and right away when the window comes back after that): with a 6-hour gap a notice found
+// once kept naming an older release after a newer one came out (#246). 24 checks a day stay far
+// below GitHub's limit of 60 unauthenticated requests per hour.
+const CHECK_INTERVAL_MS = 60 * 60 * 1000;
 
 const readDismissed = (): string => {
   try {
@@ -47,15 +50,19 @@ export function UpdateNotice() {
     let cancelled = false;
     const check = async () => {
       try {
-        const res = await fetch(releasesApiUrl(repo), {
+        const res = await fetch(releasesListApiUrl(repo), {
           headers: { Accept: 'application/vnd.github+json' },
+          cache: 'no-cache',
         });
         if (!res.ok) return;
-        const info = parseRelease(await res.json(), repo);
+        const info = newestRelease(await res.json(), repo);
         if (cancelled || !info) return;
-        if (isUpdateWanted(info.version, APP_VERSION, readDismissed())) {
-          setRelease({ version: info.version, url: info.pageUrl });
-        }
+        // Always replace what is shown, so the notice and its link follow the newest release (#246).
+        setRelease(
+          isUpdateWanted(info.version, APP_VERSION, readDismissed())
+            ? { version: info.version, url: info.pageUrl }
+            : undefined
+        );
       } catch {
         // offline or rate limited: try again at the next interval
       }

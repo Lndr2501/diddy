@@ -125,7 +125,12 @@ struct WelcomeGuideView: View {
 
 struct ShellUpdateNotice: View {
     @AppStorage("diddy.ios.skippedUpdate") private var skipped = ""
+    @Environment(\.scenePhase) private var scenePhase
     @State private var release: UpdateRelease?
+    @State private var lastCheck: Date?
+    /// Checked once per launch, a notice kept naming an older release after a newer one came out
+    /// (#246). Now hourly while open and again when the app comes back after that.
+    private static let checkInterval: TimeInterval = 60 * 60
     var body: some View {
         Group {
             if let release, UpdateCheckLogic.isUpdateWanted(latest: release.version,
@@ -152,15 +157,29 @@ struct ShellUpdateNotice: View {
             }
         }
         .task {
-            guard let url = URL(string: UpdateCheckLogic.releasesApiUrl) else { return }
-            var request = URLRequest(url: url, timeoutInterval: 15)
-            request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
-            do {
-                let (data, response) = try await URLSession.shared.data(for: request)
-                guard (response as? HTTPURLResponse)?.statusCode == 200, !Task.isCancelled else { return }
-                release = UpdateCheckLogic.newest(in: try JSONSerialization.jsonObject(with: data))
-            } catch { /* An unavailable update service must not interrupt chat. */ }
+            while !Task.isCancelled {
+                await check()
+                try? await Task.sleep(nanoseconds: UInt64(Self.checkInterval * 1_000_000_000))
+            }
         }
+        .onChange(of: scenePhase) { phase in
+            guard phase == .active else { return }
+            if let lastCheck, Date().timeIntervalSince(lastCheck) < Self.checkInterval { return }
+            Task { await check() }
+        }
+    }
+
+    @MainActor private func check() async {
+        lastCheck = Date()
+        guard let url = URL(string: UpdateCheckLogic.releasesApiUrl) else { return }
+        var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 15)
+        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard (response as? HTTPURLResponse)?.statusCode == 200, !Task.isCancelled else { return }
+            // Always replace what is shown, so the notice follows the newest release (#246).
+            release = UpdateCheckLogic.newest(in: try JSONSerialization.jsonObject(with: data))
+        } catch { /* An unavailable update service must not interrupt chat. */ }
     }
 }
 
