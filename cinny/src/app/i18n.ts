@@ -5,12 +5,7 @@ import i18n, { TOptions } from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import dayjs from 'dayjs';
 import en from '../../locales/en.json';
-import {
-  LocaleFile,
-  LocaleMeta,
-  flattenLocale,
-  matchSystemLanguage,
-} from './utils/localeFiles';
+import { LocaleFile, LocaleMeta, flattenLocale, matchSystemLanguage } from './utils/localeFiles';
 import { SYSTEM_LANGUAGE, readCustomLanguages, readLanguagePref } from './state/language';
 import { canInvoke, invoke } from './plugins/tauri';
 import { isMacOS } from './utils/user-agent';
@@ -18,9 +13,12 @@ import { isMacOS } from './utils/user-agent';
 export const SOURCE_LANGUAGE = 'en';
 
 const english = en as unknown as LocaleFile;
-const bundledFiles = import.meta.glob<LocaleFile>(['../../locales/*.json', '!../../locales/en.json'], {
-  import: 'default',
-});
+const bundledFiles = import.meta.glob<LocaleFile>(
+  ['../../locales/*.json', '!../../locales/en.json'],
+  {
+    import: 'default',
+  }
+);
 const codeOfPath = (file: string): string => file.replace(/^.*\/([^/]+)\.json$/, '$1');
 const bundledLoaders: Record<string, () => Promise<LocaleFile>> = { en: async () => english };
 Object.keys(bundledFiles).forEach((file) => {

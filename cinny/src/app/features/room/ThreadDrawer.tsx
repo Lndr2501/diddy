@@ -53,6 +53,7 @@ import {
   renderMatrixMention,
 } from '../../plugins/react-custom-html-parser';
 import { GetContentCallback } from '../../../types/matrix/room';
+import { useTranslation } from 'react-i18next';
 
 type ThreadDrawerProps = {
   room: Room;
@@ -68,6 +69,7 @@ const toLike = (evt: MatrixEvent) => ({
 
 /** The thread of one message next to the room: the root, its replies and a field to answer (#188). */
 export function ThreadDrawer({ room, rootId }: ThreadDrawerProps) {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const screenSize = useScreenSizeContext();
   const closeThread = useSetAtom(openThreadAtom);
@@ -216,7 +218,7 @@ export function ThreadDrawer({ room, rootId }: ThreadDrawerProps) {
     } else if (encrypted) {
       body = (
         <Text size="T300" priority="300">
-          Message could not be decrypted yet
+          {t('room.threadDrawer.messageCouldNotBe')}
         </Text>
       );
     } else {
@@ -267,13 +269,13 @@ export function ThreadDrawer({ room, rootId }: ThreadDrawerProps) {
         flexShrink: 0,
         flexGrow: 0,
       }}
-      aria-label="Thread"
+      aria-label={t('room.threadDrawer.thread')}
     >
       <PageHeader>
         <Box grow="Yes" alignItems="Center" gap="200">
           <Box grow="Yes">
             <Text size="H5" truncate>
-              Thread
+              {t('room.threadDrawer.thread')}
             </Text>
           </Box>
           <TooltipProvider
@@ -282,7 +284,7 @@ export function ThreadDrawer({ room, rootId }: ThreadDrawerProps) {
             offset={4}
             tooltip={
               <Tooltip>
-                <Text>Close</Text>
+                <Text>{t('room.threadDrawer.close')}</Text>
               </Tooltip>
             }
           >
@@ -290,7 +292,7 @@ export function ThreadDrawer({ room, rootId }: ThreadDrawerProps) {
               <IconButton
                 ref={triggerRef}
                 variant="Surface"
-                aria-label="Close thread"
+                aria-label={t('room.threadDrawer.closeThread')}
                 onClick={() => closeThread(undefined)}
               >
                 <Icon src={Icons.Cross} />
@@ -308,17 +310,19 @@ export function ThreadDrawer({ room, rootId }: ThreadDrawerProps) {
               ) : (
                 <Text size="T300" priority="300">
                   {loadError
-                    ? 'The first message of this thread could not be loaded.'
-                    : 'Loading thread...'}
+                    ? t('room.threadDrawer.theFirstMessageOf')
+                    : t('room.threadDrawer.loadingThread')}
                 </Text>
               )}
               <Text size="L400" priority="300">
-                {replies.length === 1 ? '1 reply' : `${replies.length} replies`}
+                {replies.length === 1
+                  ? t('room.threadDrawer.n1Reply')
+                  : t('room.threadDrawer.countReplies', { count: replies.length })}
               </Text>
               {replies.map(renderEvent)}
               {loadError && replies.length === 0 && (
                 <Text size="T300" priority="300">
-                  Older replies could not be loaded.
+                  {t('room.threadDrawer.olderRepliesCouldNot')}
                 </Text>
               )}
             </Box>
@@ -327,15 +331,15 @@ export function ThreadDrawer({ room, rootId }: ThreadDrawerProps) {
         <Box direction="Column" gap="100" style={{ padding: config.space.S300 }}>
           {sendError && (
             <Text size="T200" style={{ color: 'var(--mx-critical, #d9534f)' }}>
-              The reply was not sent. Try again.
+              {t('room.threadDrawer.theReplyWasNot')}
             </Text>
           )}
           <Input
             variant="Background"
             size="400"
             radii="400"
-            placeholder="Reply in thread"
-            aria-label="Reply in thread"
+            placeholder={t('room.threadDrawer.replyInThread')}
+            aria-label={t('room.threadDrawer.replyInThread')}
             value={draft}
             disabled={sending}
             onChange={(evt) => setDraft(evt.currentTarget.value)}

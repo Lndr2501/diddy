@@ -12,6 +12,7 @@ import { getLoginPath } from '../../pathUtils';
 import { usePathWithOrigin } from '../../../hooks/usePathWithOrigin';
 import { serverLabel } from '../../../utils/uiaFallback';
 import { RegisterPathSearchParams } from '../../paths';
+import { useTranslation } from 'react-i18next';
 
 const useRegisterSearchParams = (searchParams: URLSearchParams): RegisterPathSearchParams =>
   useMemo(
@@ -24,6 +25,7 @@ const useRegisterSearchParams = (searchParams: URLSearchParams): RegisterPathSea
   );
 
 export function Register() {
+  const { t } = useTranslation();
   const server = useAuthServer();
   const { loginFlows, registerFlows } = useAuthFlows();
   const [searchParams] = useSearchParams();
@@ -37,25 +39,25 @@ export function Register() {
     <Box direction="Column" gap="500">
       <Box direction="Column" gap="100">
         <Text size="H2" priority="400">
-          Create an Account
+          {t('auth.register.createAnAccount')}
         </Text>
         <Text size="T300" priority="300">
-          {`Your account lives on ${serverLabel(server)}. Pick another server above if you prefer.`}
+          {t('auth.register.yourAccountLivesOn', { serverLabel: serverLabel(server) })}
         </Text>
       </Box>
       {registerFlows.status === RegisterFlowStatus.RegistrationDisabled && !sso && (
         <Text style={{ color: color.Critical.Main }} size="T300">
-          Registration has been disabled on this homeserver.
+          {t('auth.register.registrationHasBeenDisabled')}
         </Text>
       )}
       {registerFlows.status === RegisterFlowStatus.RateLimited && !sso && (
         <Text style={{ color: color.Critical.Main }} size="T300">
-          You have been rate-limited! Please try after some time.
+          {t('auth.register.youHaveBeenRate')}
         </Text>
       )}
       {registerFlows.status === RegisterFlowStatus.InvalidRequest && !sso && (
         <Text style={{ color: color.Critical.Main }} size="T300">
-          Invalid Request! Failed to get any registration options.
+          {t('auth.register.invalidRequestFailedTo')}
         </Text>
       )}
       {registerFlows.status === RegisterFlowStatus.FlowRequired && (
@@ -63,7 +65,7 @@ export function Register() {
           {/* Every flow can be completed: steps the form does not show run on the server's page. */}
           {(registerFlows.data.flows ?? []).length === 0 ? (
             <Text style={{ color: color.Critical.Main }} size="T300">
-              This server does not offer any way to create an account.
+              {t('auth.register.thisServerDoesNot')}
             </Text>
           ) : (
             <PasswordRegisterForm
@@ -91,7 +93,8 @@ export function Register() {
         </>
       )}
       <Text align="Center">
-        Already have an account? <Link to={getLoginPath(server)}>Log in</Link>
+        {t('auth.register.alreadyHaveAnAccount')}{' '}
+        <Link to={getLoginPath(server)}>{t('auth.register.logIn')}</Link>
       </Text>
     </Box>
   );

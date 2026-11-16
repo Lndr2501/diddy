@@ -16,6 +16,8 @@ import {
 import { safeText } from '../../plugins/diddy/sanitize';
 import { BreakWord, LineClamp2, LineClamp3 } from '../../styles/Text.css';
 import * as css from './styles.css';
+import { useTranslation } from 'react-i18next';
+import { translate } from '../../i18n';
 
 /** Black or white, whichever is readable on the given hex background. */
 export const readableTextOn = (hex: string): string => {
@@ -45,7 +47,9 @@ const LINK_LABEL: Record<LinkKind, string> = {
   linkedin: 'LinkedIn',
   spotify: 'Spotify',
   youtube: 'YouTube',
-  web: 'Website',
+  get web() {
+    return translate('profile.profileModules.website');
+  },
 };
 const LINK_ICON: Record<LinkKind, IconSrc> = {
   github: Icons.Code,
@@ -64,11 +68,21 @@ const ACTIVITY_ICON: Record<ActivityKind, IconSrc> = {
   custom: Icons.Star,
 };
 export const ACTIVITY_LABEL: Record<ActivityKind, string> = {
-  music: 'Listening to',
-  game: 'Playing',
-  working: 'Working on',
-  learning: 'Learning',
-  custom: 'Activity',
+  get music() {
+    return translate('profile.profileModules.listeningTo');
+  },
+  get game() {
+    return translate('profile.profileModules.playing');
+  },
+  get working() {
+    return translate('profile.profileModules.workingOn');
+  },
+  get learning() {
+    return translate('profile.profileModules.learning');
+  },
+  get custom() {
+    return translate('profile.profileModules.activity');
+  },
 };
 
 /** a pill tinted with the card's accent color, or the neutral surface color without one */
@@ -129,7 +143,7 @@ export function BioModule({
   bio,
   compact,
   long,
-  title = 'About me',
+  title = translate('profile.profileModules.aboutMe'),
   max = 160,
 }: {
   bio?: string;
@@ -193,9 +207,10 @@ export function ActivityModule({ profile, accent }: { profile?: DiddyProfile; ac
 }
 
 export function InterestsModule({ interests, accent }: { interests?: string[]; accent?: string }) {
+  const { t } = useTranslation();
   if (!interests || interests.length === 0) return null;
   return (
-    <Section title="Interests">
+    <Section title={t('profile.profileModules.interests')}>
       <Box gap="100" wrap="Wrap">
         {interests.map((tag) => (
           <span key={tag} className={css.Pill} style={tint(accent)}>
@@ -210,13 +225,14 @@ export function InterestsModule({ interests, accent }: { interests?: string[]; a
 }
 
 export function LinksModule({ links, accent }: { links?: DiddyProfile['links']; accent?: string }) {
+  const { t } = useTranslation();
   // links are checked again on display: only the validated https url of the right host is used
   const shown = (links ?? [])
     .map((l) => ({ kind: l.kind, href: safeLinkUrl(l.kind, l.url) }))
     .filter((l): l is { kind: LinkKind; href: string } => !!l.href);
   if (shown.length === 0) return null;
   return (
-    <Section title="Links">
+    <Section title={t('profile.profileModules.links')}>
       <Box gap="200" wrap="Wrap">
         {shown.map((link) => (
           <TooltipProvider
@@ -259,10 +275,38 @@ export function LinksModule({ links, accent }: { links?: DiddyProfile['links']; 
 }
 
 const TABS: { id: string; label: string; icon: IconSrc; modules: CardModule[] }[] = [
-  { id: 'info', label: 'Info', icon: Icons.User, modules: ['about', 'bio'] },
-  { id: 'activity', label: 'Activity', icon: Icons.Play, modules: ['activity', 'interests'] },
-  { id: 'links', label: 'Links', icon: Icons.Link, modules: ['links'] },
-  { id: 'shared', label: 'Shared', icon: Icons.Hash, modules: ['sharedRooms'] },
+  {
+    id: 'info',
+    get label() {
+      return translate('profile.profileModules.info');
+    },
+    icon: Icons.User,
+    modules: ['about', 'bio'],
+  },
+  {
+    id: 'activity',
+    get label() {
+      return translate('profile.profileModules.activity');
+    },
+    icon: Icons.Play,
+    modules: ['activity', 'interests'],
+  },
+  {
+    id: 'links',
+    get label() {
+      return translate('profile.profileModules.links');
+    },
+    icon: Icons.Link,
+    modules: ['links'],
+  },
+  {
+    id: 'shared',
+    get label() {
+      return translate('profile.profileModules.shared');
+    },
+    icon: Icons.Hash,
+    modules: ['sharedRooms'],
+  },
 ];
 
 type ProfileModulesProps = {
@@ -283,6 +327,7 @@ export function ProfileModules({
   layout: layoutOverride,
   bioTitle,
 }: ProfileModulesProps) {
+  const { t } = useTranslation();
   const layout: CardLayout = layoutOverride ?? profile?.cardLayout?.layout ?? 'standard';
   const settings = { ...profile?.cardLayout, layout };
   const modules = visibleModules(settings);
@@ -312,7 +357,7 @@ export function ProfileModules({
         return <LinksModule key={m} links={profile?.links} accent={accent} />;
       case 'sharedRooms':
         return sharedRooms ? (
-          <Section key={m} title="Shared rooms">
+          <Section key={m} title={t('profile.profileModules.sharedRooms')}>
             <Box>{sharedRooms}</Box>
           </Section>
         ) : null;
@@ -373,7 +418,7 @@ export function ProfileModules({
   return (
     <Box direction="Column" gap="300">
       {tabs.length > 1 && (
-        <div className={css.TabBar} role="tablist" aria-label="Profile">
+        <div className={css.TabBar} role="tablist" aria-label={t('profile.profileModules.profile')}>
           <span
             className={css.TabIndicator}
             style={{

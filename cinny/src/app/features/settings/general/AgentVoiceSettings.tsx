@@ -64,14 +64,39 @@ function HotkeyRecorder({ onDone }: { onDone: () => void }) {
 }
 
 const MODES: { value: AgentHotkeyMode; label: string }[] = [
-  { value: 'hold', get label() { return translate('settings.agentVoice.hold'); } },
-  { value: 'toggle', get label() { return translate('settings.agentVoice.pressToStartStop'); } },
+  {
+    value: 'hold',
+    get label() {
+      return translate('settings.agentVoice.hold');
+    },
+  },
+  {
+    value: 'toggle',
+    get label() {
+      return translate('settings.agentVoice.pressToStartStop');
+    },
+  },
 ];
 
 const MUTE_MODES: { value: AgentMuteMode; label: string }[] = [
-  { value: 'off', get label() { return translate('settings.agentVoice.off'); } },
-  { value: 'mute', get label() { return translate('settings.agentVoice.mute'); } },
-  { value: 'full', get label() { return translate('settings.agentVoice.fullMute'); } },
+  {
+    value: 'off',
+    get label() {
+      return translate('settings.agentVoice.off');
+    },
+  },
+  {
+    value: 'mute',
+    get label() {
+      return translate('settings.agentVoice.mute');
+    },
+  },
+  {
+    value: 'full',
+    get label() {
+      return translate('settings.agentVoice.fullMute');
+    },
+  },
 ];
 
 const MUTE_MODE_HINTS: Record<AgentMuteMode, string> = {
@@ -114,11 +139,14 @@ export function AgentVoiceSettings() {
           {t('settings.agentVoice.worksWithAnyDictation')}
           {desktop && (
             <>
-              {' '}{t('settings.agentVoice.otherSetupsCanTell')}{' '}
-              <code>diddy --agent-voice start</code>, <code>stop</code>{' '}{t('settings.agentVoice.or')}{' '}<code>toggle</code>
+              {' '}
+              {t('settings.agentVoice.otherSetupsCanTell')} <code>diddy --agent-voice start</code>,{' '}
+              <code>stop</code> {t('settings.agentVoice.or')} <code>toggle</code>
               {mac && (
                 <>
-                  {' '}{t('settings.agentVoice.onMacos')}{' '}<code>/Applications/Diddy.app/Contents/MacOS/diddy</code>)
+                  {' '}
+                  {t('settings.agentVoice.onMacos')}{' '}
+                  <code>/Applications/Diddy.app/Contents/MacOS/diddy</code>)
                 </>
               )}
               .
@@ -175,7 +203,9 @@ export function AgentVoiceSettings() {
                     onClick={() => setRecording((r) => !r)}
                   >
                     <Text size="B300">
-                      {recording ? t('settings.agentVoice.pressAKey') : formatHotkey(prefs.hotkey, mac)}
+                      {recording
+                        ? t('settings.agentVoice.pressAKey')
+                        : formatHotkey(prefs.hotkey, mac)}
                     </Text>
                   </Button>
                   {recording && <HotkeyRecorder onDone={stopRecording} />}

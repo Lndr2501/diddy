@@ -215,11 +215,7 @@ function DisplaySettings() {
           title={t('settings.general.directMessagesInSpaces')}
           description={t('settings.general.listYourDirectMessages')}
           after={
-            <Switch
-              variant="Primary"
-              value={!!directsInSpaces}
-              onChange={setDirectsInSpaces}
-            />
+            <Switch variant="Primary" value={!!directsInSpaces} onChange={setDirectsInSpaces} />
           }
         />
         <InsetRow
@@ -266,7 +262,10 @@ function AppIconSettings() {
   const { t } = useTranslation();
   if (!canChangeAppIcon()) return null;
   return (
-    <InsetSection title={t('settings.general.appIcon')} footer={t('settings.general.iconShownInThe')}>
+    <InsetSection
+      title={t('settings.general.appIcon')}
+      footer={t('settings.general.iconShownInThe')}
+    >
       <InsetGroup>
         <InsetItem>
           <AppIconPicker />
@@ -865,7 +864,9 @@ export function WelcomeGuideSettings() {
                 setShown(true);
               }}
             >
-              <Text size="B300">{shown ? t('settings.general.starting') : t('settings.general.showAgain')}</Text>
+              <Text size="B300">
+                {shown ? t('settings.general.starting') : t('settings.general.showAgain')}
+              </Text>
             </Button>
           }
         />
@@ -875,7 +876,15 @@ export function WelcomeGuideSettings() {
 }
 
 const AVATAR_PLACES: { surface: AvatarSurface; title: string; description: string }[] = [
-  { surface: 'profile', get title() { return translate('settings.general.profileCard'); }, get description() { return translate('settings.general.theBigPictureOn'); } },
+  {
+    surface: 'profile',
+    get title() {
+      return translate('settings.general.profileCard');
+    },
+    get description() {
+      return translate('settings.general.theBigPictureOn');
+    },
+  },
   {
     surface: 'chat',
     get title() {
@@ -903,7 +912,15 @@ const AVATAR_PLACES: { surface: AvatarSurface; title: string; description: strin
       return translate('settings.general.thePictureAtThe');
     },
   },
-  { surface: 'call', get title() { return translate('settings.general.calls'); }, get description() { return translate('settings.general.participantsInVoiceChat'); } },
+  {
+    surface: 'call',
+    get title() {
+      return translate('settings.general.calls');
+    },
+    get description() {
+      return translate('settings.general.participantsInVoiceChat');
+    },
+  },
 ];
 
 function AnimatedAvatarSettings() {
@@ -920,7 +937,11 @@ function AnimatedAvatarSettings() {
           title={t('settings.general.picturesMoveIn')}
           description={t('settings.general.whereAnimatedProfilePictures')}
         >
-          <div className={css.ChipRow} role="group" aria-label={t('settings.general.picturesMoveIn')}>
+          <div
+            className={css.ChipRow}
+            role="group"
+            aria-label={t('settings.general.picturesMoveIn')}
+          >
             {AVATAR_PLACES.map(({ surface, title, description }) => {
               const on = prefs[surface];
               return (
@@ -1041,7 +1062,9 @@ function CallSettings() {
                 setVolumesReset(true);
               }}
             >
-              <Text size="B300">{volumesReset ? t('settings.general.reset') : t('settings.general.resetVolumes')}</Text>
+              <Text size="B300">
+                {volumesReset ? t('settings.general.reset') : t('settings.general.resetVolumes')}
+              </Text>
             </Button>
           }
         />

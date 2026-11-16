@@ -44,7 +44,9 @@ export function AccountData({ expand, onExpandToggle, onSelect }: AccountDataPro
                 <Icon src={expand ? Icons.ChevronTop : Icons.ChevronBottom} size="100" filled />
               }
             >
-              <Text size="B300">{expand ? t('settings.accountData.collapse') : t('settings.accountData.expand')}</Text>
+              <Text size="B300">
+                {expand ? t('settings.accountData.collapse') : t('settings.accountData.expand')}
+              </Text>
             </Button>
           }
         />
@@ -52,7 +54,9 @@ export function AccountData({ expand, onExpandToggle, onSelect }: AccountDataPro
           <InsetItem>
             <Box justifyContent="SpaceBetween">
               <Text size="L400">{t('settings.accountData.events')}</Text>
-              <Text size="L400">{t('settings.accountData.totalCount', { count: accountDataTypes.length })}</Text>
+              <Text size="L400">
+                {t('settings.accountData.totalCount', { count: accountDataTypes.length })}
+              </Text>
             </Box>
             <CutoutCard>
               <MenuItem

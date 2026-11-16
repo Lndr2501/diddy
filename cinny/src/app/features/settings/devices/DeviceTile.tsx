@@ -66,12 +66,12 @@ function DeviceDetails({ device }: { device: IMyDevice }) {
     <>
       {typeof device.device_id === 'string' && (
         <Text className={BreakWord} size="T200" priority="300">
-          {t('settings.deviceTile.deviceId')}{' '}<i>{device.device_id}</i>
+          {t('settings.deviceTile.deviceId')} <i>{device.device_id}</i>
         </Text>
       )}
       {typeof device.last_seen_ip === 'string' && (
         <Text className={BreakWord} size="T200" priority="300">
-          {t('settings.deviceTile.ipAddress')}{' '}<i>{device.last_seen_ip}</i>
+          {t('settings.deviceTile.ipAddress')} <i>{device.last_seen_ip}</i>
         </Text>
       )}
     </>
@@ -99,7 +99,11 @@ export function DeviceKeyDetails({ crypto }: DeviceKeyDetailsProps) {
   return (
     <Text className={BreakWord} size="T200" priority="300">
       {t('settings.deviceTile.deviceKey')}{' '}
-      <i>{keysState.status === AsyncStatus.Success ? keysState.data.ed25519 : t('settings.deviceTile.loading')}</i>
+      <i>
+        {keysState.status === AsyncStatus.Success
+          ? keysState.data.ed25519
+          : t('settings.deviceTile.loading')}
+      </i>
     </Text>
   );
 }

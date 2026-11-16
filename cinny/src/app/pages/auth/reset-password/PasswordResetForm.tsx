@@ -28,6 +28,7 @@ import { ResetPasswordResult, resetPassword } from './resetPasswordUtil';
 import { getLoginPath, withSearchParam } from '../../pathUtils';
 import { LoginPathSearchParams } from '../../paths';
 import { getUIAError, getUIAErrorCode } from '../../../utils/matrix-uia';
+import { useTranslation } from 'react-i18next';
 
 type FormData = {
   email: string;
@@ -36,6 +37,7 @@ type FormData = {
 };
 
 function ResetPasswordComplete({ email }: { email?: string }) {
+  const { t } = useTranslation();
   const server = useAuthServer();
 
   const navigate = useNavigate();
@@ -55,12 +57,10 @@ function ResetPasswordComplete({ email }: { email?: string }) {
         <FocusTrap>
           <Dialog>
             <Box style={{ padding: config.space.S400 }} direction="Column" gap="400">
-              <Text>
-                Password has been reset successfully. Please login with your new password.
-              </Text>
+              <Text>{t('auth.passwordResetForm.passwordHasBeenReset')}</Text>
               <Button variant="Primary" onClick={handleClick}>
                 <Text size="B400" as="span">
-                  Login
+                  {t('auth.passwordResetForm.login')}
                 </Text>
               </Button>
             </Box>
@@ -75,6 +75,7 @@ type PasswordResetFormProps = {
   defaultEmail?: string;
 };
 export function PasswordResetForm({ defaultEmail }: PasswordResetFormProps) {
+  const { t } = useTranslation();
   const server = useAuthServer();
 
   const serverDiscovery = useAutoDiscoveryInfo();
@@ -167,11 +168,12 @@ export function PasswordResetForm({ defaultEmail }: PasswordResetFormProps) {
   return (
     <Box as="form" onSubmit={handleSubmit} direction="Inherit" gap="400">
       <Text size="T300" priority="400">
-        Homeserver <strong>{server}</strong> will send you an email to let you reset your password.
+        {t('auth.passwordResetForm.homeserver')} <strong>{server}</strong>{' '}
+        {t('auth.passwordResetForm.willSendYouAn')}
       </Text>
       <Box direction="Column" gap="100">
         <Text as="label" size="L400" priority="300">
-          Email
+          {t('auth.passwordResetForm.email')}
         </Text>
         <Input
           defaultValue={defaultEmail}
@@ -193,7 +195,7 @@ export function PasswordResetForm({ defaultEmail }: PasswordResetFormProps) {
           <>
             <Box direction="Column" gap="100">
               <Text as="label" size="L400" priority="300">
-                New Password
+                {t('auth.passwordResetForm.newPassword')}
               </Text>
               <PasswordInput
                 ref={passRef}
@@ -207,7 +209,7 @@ export function PasswordResetForm({ defaultEmail }: PasswordResetFormProps) {
             </Box>
             <Box direction="Column" gap="100">
               <Text as="label" size="L400" priority="300">
-                Confirm Password
+                {t('auth.passwordResetForm.confirmPassword')}
               </Text>
               <PasswordInput
                 ref={confPassRef}
@@ -226,14 +228,14 @@ export function PasswordResetForm({ defaultEmail }: PasswordResetFormProps) {
       {resetPasswordError && (
         <FieldError
           message={`${resetPasswordError.errcode}: ${
-            resetPasswordError.data?.error ?? 'Failed to reset password.'
+            resetPasswordError.data?.error ?? t('auth.passwordResetForm.failedToResetPassword')
           }`}
         />
       )}
       <span data-spacing-node />
       <Button type="submit" variant="Primary" size="500">
         <Text as="span" size="B500">
-          Reset Password
+          {t('auth.passwordResetForm.resetPassword')}
         </Text>
       </Button>
 

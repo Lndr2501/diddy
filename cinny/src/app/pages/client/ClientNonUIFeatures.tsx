@@ -42,6 +42,7 @@ import { UpdateNotice } from '../../components/update-notice/UpdateNotice';
 import { ToastHost } from '../../components/toast/ToastHost';
 import { pushToastAtom } from '../../state/toasts';
 import { messagePreview, messageToastBody } from '../../plugins/toastLogic';
+import { useTranslation } from 'react-i18next';
 
 /** The user is looking at Diddy: notify inside the window instead of through the system. */
 const windowInFocus = (): boolean => document.hasFocus() && document.visibilityState === 'visible';
@@ -163,6 +164,7 @@ function TitleUpdater() {
 }
 
 function InviteNotifications() {
+  const { t } = useTranslation();
   const audioRef = useRef<HTMLAudioElement>(null);
   const invites = useAtomValue(allInvitesAtom);
   const perviousInviteLen = usePreviousValue(invites.length, 0);
@@ -175,10 +177,10 @@ function InviteNotifications() {
 
   const notify = useCallback(
     (count: number) => {
-      const noti = new window.Notification('Invitation', {
+      const noti = new window.Notification(t('nav.nonUIFeatures.invitation'), {
         icon: APP_ICON_IMAGES[getAppIcon()],
         badge: APP_ICON_IMAGES[getAppIcon()],
-        body: `You have ${count} new invitation request.`,
+        body: t('nav.nonUIFeatures.youHaveCountNew', { count }),
         silent: true,
       });
 
@@ -188,7 +190,7 @@ function InviteNotifications() {
         noti.close();
       };
     },
-    [navigate]
+    [navigate, t]
   );
 
   const playSound = useCallback(() => {
@@ -203,8 +205,11 @@ function InviteNotifications() {
       if (showNotifications && windowInFocus()) {
         pushToast({
           key: 'invites',
-          title: 'Invitation',
-          body: count === 1 ? 'You have a new invitation.' : `You have ${count} new invitations.`,
+          title: t('nav.nonUIFeatures.invitation'),
+          body:
+            count === 1
+              ? t('nav.nonUIFeatures.youHaveANew')
+              : t('nav.nonUIFeatures.youHaveCountNew2', { count }),
           stamp: Date.now(),
         });
       } else if (showNotifications && notificationPermission('granted')) {
@@ -215,7 +220,7 @@ function InviteNotifications() {
         playSound();
       }
     }
-    }, [
+  }, [
     mx,
     invites,
     perviousInviteLen,
@@ -233,6 +238,7 @@ function InviteNotifications() {
 }
 
 function MessageNotifications() {
+  const { t } = useTranslation();
   const audioRef = useRef<HTMLAudioElement>(null);
   const notifRef = useRef<Notification>();
   const unreadCacheRef = useRef<Map<string, UnreadInfo>>(new Map());
@@ -261,7 +267,7 @@ function MessageNotifications() {
       const noti = new window.Notification(roomName, {
         icon: roomAvatar,
         badge: roomAvatar,
-        body: `New inbox notification from ${username}`,
+        body: t('nav.nonUIFeatures.newInboxNotificationFrom', { username }),
         silent: true,
       });
 
@@ -275,7 +281,7 @@ function MessageNotifications() {
       notifRef.current?.close();
       notifRef.current = noti;
     },
-    [navigate]
+    [navigate, t]
   );
 
   const playSound = useCallback((id: 'message' | 'mention') => {
@@ -324,7 +330,7 @@ function MessageNotifications() {
       if (showNotifications) {
         const avatarMxc =
           room.getAvatarFallbackMember()?.getMxcAvatarUrl() ?? room.getMxcAvatarUrl();
-        const roomName = room.name ?? 'Unknown';
+        const roomName = room.name ?? t('nav.nonUIFeatures.unknown');
         const roomAvatar = avatarMxc
           ? mxcUrlToHttp(mx, avatarMxc, useAuthentication, 96, 96, 'crop') ?? undefined
           : undefined;
@@ -360,13 +366,7 @@ function MessageNotifications() {
 
       if (notificationSound) {
         // a message that mentions you has its own sound instead of the plain message sound
-        playSound(
-          pickMessageSound(
-            highlight,
-            cachedUnreadInfo?.highlight,
-            unreadInfo.highlight
-          )
-        );
+        playSound(pickMessageSound(highlight, cachedUnreadInfo?.highlight, unreadInfo.highlight));
       }
     };
     mx.on(RoomEvent.Timeline, handleTimelineEvent);

@@ -18,12 +18,14 @@ import { parseMatrixToRoom, parseMatrixToRoomEvent, testMatrixTo } from '../../p
 import { tryDecodeURIComponent } from '../../utils/dom';
 import { SheetHeader } from '../sheet';
 import * as sheetCss from '../sheet/Sheet.css';
+import { useTranslation } from 'react-i18next';
 
 type JoinAddressProps = {
   onOpen: (roomIdOrAlias: string, via?: string[], eventId?: string) => void;
   onCancel: () => void;
 };
 export function JoinAddressPrompt({ onOpen, onCancel }: JoinAddressProps) {
+  const { t } = useTranslation();
   const [invalid, setInvalid] = useState(false);
 
   const handleSubmit: FormEventHandler<HTMLFormElement> = (evt) => {
@@ -70,7 +72,7 @@ export function JoinAddressPrompt({ onOpen, onCancel }: JoinAddressProps) {
           }}
         >
           <Dialog variant="Surface" className={sheetCss.Sheet}>
-            <SheetHeader title="Join with Address" onClose={onCancel} />
+            <SheetHeader title={t('common.joinAddressPrompt.joinWithAddress')} onClose={onCancel} />
             <Box
               as="form"
               onSubmit={handleSubmit}
@@ -79,27 +81,27 @@ export function JoinAddressPrompt({ onOpen, onCancel }: JoinAddressProps) {
             >
               <Box direction="Column" gap="200">
                 <Text priority="400" size="T300">
-                  Enter public address to join the community. Addresses looks like:
+                  {t('common.joinAddressPrompt.enterPublicAddressTo')}
                 </Text>
                 <Text as="ul" size="T200" priority="300" style={{ paddingLeft: config.space.S400 }}>
-                  <li>#community:server</li>
-                  <li>https://matrix.to/#/#community:server</li>
-                  <li>https://matrix.to/#/!xYzAj?via=server</li>
+                  <li>{t('common.joinAddressPrompt.communityServer')}</li>
+                  <li>{t('common.joinAddressPrompt.httpsMatrixToCommunity')}</li>
+                  <li>{t('common.joinAddressPrompt.httpsMatrixToXyzaj')}</li>
                 </Text>
               </Box>
               <Box direction="Column" gap="100">
-                <Text size="L400">Address</Text>
+                <Text size="L400">{t('common.joinAddressPrompt.address')}</Text>
                 <Input
                   size="500"
                   autoFocus
                   name="addressInput"
                   variant="Background"
-                  placeholder="#community:server"
+                  placeholder={t('common.joinAddressPrompt.communityServer')}
                   required
                 />
                 {invalid && (
                   <Text size="T200" style={{ color: color.Critical.Main }}>
-                    <b>Invalid Address</b>
+                    <b>{t('common.joinAddressPrompt.invalidAddress')}</b>
                   </Text>
                 )}
               </Box>
@@ -111,10 +113,10 @@ export function JoinAddressPrompt({ onOpen, onCancel }: JoinAddressProps) {
                   fill="Soft"
                   onClick={onCancel}
                 >
-                  <Text size="B400">Cancel</Text>
+                  <Text size="B400">{t('common.joinAddressPrompt.cancel')}</Text>
                 </Button>
                 <Button className={sheetCss.Pill} type="submit" variant="Primary">
-                  <Text size="B400">Open</Text>
+                  <Text size="B400">{t('common.joinAddressPrompt.open')}</Text>
                 </Button>
               </div>
             </Box>

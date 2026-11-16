@@ -93,7 +93,11 @@ const CreateSpaceModalRenderer = lazyNamed(
   'CreateSpaceModalRenderer',
   null
 );
-const SearchModalRenderer = lazyNamed(() => import('../features/search'), 'SearchModalRenderer', null);
+const SearchModalRenderer = lazyNamed(
+  () => import('../features/search'),
+  'SearchModalRenderer',
+  null
+);
 
 export const createRouter = (clientConfig: ClientConfig, screenSize: ScreenSize) => {
   const { hashRouter } = clientConfig;

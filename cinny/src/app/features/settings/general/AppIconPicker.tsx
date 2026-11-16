@@ -35,9 +35,7 @@ export function AppIconPicker() {
               padding: config.space.S100,
               borderRadius: config.radii.R400,
               background: 'transparent',
-              border: `2px solid ${
-                selected === id ? color.Primary.Main : 'transparent'
-              }`,
+              border: `2px solid ${selected === id ? color.Primary.Main : 'transparent'}`,
             }}
           >
             <img

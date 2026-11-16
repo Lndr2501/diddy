@@ -24,6 +24,8 @@ import { BreakWord } from '../../styles/Text.css';
 import { useSetting } from '../../state/hooks/settings';
 import { settingsAtom } from '../../state/settings';
 import { timeDayMonYear, timeHourMinute } from '../../utils/time';
+import { useTranslation } from 'react-i18next';
+import { translate } from '../../i18n';
 
 type UserKickAlertProps = {
   reason?: string;
@@ -31,6 +33,7 @@ type UserKickAlertProps = {
   ts?: number;
 };
 export function UserKickAlert({ reason, kickedBy, ts }: UserKickAlertProps) {
+  const { t } = useTranslation();
   const [hour24Clock] = useSetting(settingsAtom, 'hour24Clock');
   const [dateFormatString] = useSetting(settingsAtom, 'dateFormatString');
 
@@ -42,7 +45,7 @@ export function UserKickAlert({ reason, kickedBy, ts }: UserKickAlertProps) {
       <SettingTile>
         <Box direction="Column" gap="200">
           <Box gap="200" justifyContent="SpaceBetween">
-            <Text size="L400">Kicked User</Text>
+            <Text size="L400">{t('profile.moderation.kickedUser')}</Text>
             {time && date && (
               <Text size="T200">
                 {date} {time}
@@ -52,16 +55,16 @@ export function UserKickAlert({ reason, kickedBy, ts }: UserKickAlertProps) {
           <Box direction="Column">
             {kickedBy && (
               <Text size="T200">
-                Kicked by: <b>{kickedBy}</b>
+                {t('profile.moderation.kickedBy')} <b>{kickedBy}</b>
               </Text>
             )}
             <Text size="T200">
               {reason ? (
                 <>
-                  Reason: <b>{reason}</b>
+                  {t('profile.moderation.reason')} <b>{reason}</b>
                 </>
               ) : (
-                <i>No Reason Provided.</i>
+                <i>{t('profile.moderation.noReasonProvided')}</i>
               )}
             </Text>
           </Box>
@@ -79,6 +82,7 @@ type UserBanAlertProps = {
   ts?: number;
 };
 export function UserBanAlert({ userId, reason, canUnban, bannedBy, ts }: UserBanAlertProps) {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const room = useRoom();
   const [hour24Clock] = useSetting(settingsAtom, 'hour24Clock');
@@ -100,7 +104,7 @@ export function UserBanAlert({ userId, reason, canUnban, bannedBy, ts }: UserBan
       <SettingTile>
         <Box direction="Column" gap="200">
           <Box gap="200" justifyContent="SpaceBetween">
-            <Text size="L400">Banned User</Text>
+            <Text size="L400">{t('profile.moderation.bannedUser')}</Text>
             {time && date && (
               <Text size="T200">
                 {date} {time}
@@ -110,16 +114,16 @@ export function UserBanAlert({ userId, reason, canUnban, bannedBy, ts }: UserBan
           <Box direction="Column">
             {bannedBy && (
               <Text size="T200">
-                Banned by: <b>{bannedBy}</b>
+                {t('profile.moderation.bannedBy')} <b>{bannedBy}</b>
               </Text>
             )}
             <Text size="T200">
               {reason ? (
                 <>
-                  Reason: <b>{reason}</b>
+                  {t('profile.moderation.reason')} <b>{reason}</b>
                 </>
               ) : (
-                <i>No Reason Provided.</i>
+                <i>{t('profile.moderation.noReasonProvided')}</i>
               )}
             </Text>
           </Box>
@@ -137,7 +141,7 @@ export function UserBanAlert({ userId, reason, canUnban, bannedBy, ts }: UserBan
               before={banning && <Spinner size="100" variant="Critical" fill="Solid" />}
               disabled={banning}
             >
-              <Text size="B300">Unban</Text>
+              <Text size="B300">{t('profile.moderation.unban')}</Text>
             </Button>
           )}
         </Box>
@@ -154,6 +158,7 @@ type UserInviteAlertProps = {
   ts?: number;
 };
 export function UserInviteAlert({ userId, reason, canKick, invitedBy, ts }: UserInviteAlertProps) {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const room = useRoom();
   const [hour24Clock] = useSetting(settingsAtom, 'hour24Clock');
@@ -175,7 +180,7 @@ export function UserInviteAlert({ userId, reason, canKick, invitedBy, ts }: User
       <SettingTile>
         <Box direction="Column" gap="200">
           <Box gap="200" justifyContent="SpaceBetween">
-            <Text size="L400">Invited User</Text>
+            <Text size="L400">{t('profile.moderation.invitedUser')}</Text>
             {time && date && (
               <Text size="T200">
                 {date} {time}
@@ -185,16 +190,16 @@ export function UserInviteAlert({ userId, reason, canKick, invitedBy, ts }: User
           <Box direction="Column">
             {invitedBy && (
               <Text size="T200">
-                Invited by: <b>{invitedBy}</b>
+                {t('profile.moderation.invitedBy')} <b>{invitedBy}</b>
               </Text>
             )}
             <Text size="T200">
               {reason ? (
                 <>
-                  Reason: <b>{reason}</b>
+                  {t('profile.moderation.reason')} <b>{reason}</b>
                 </>
               ) : (
-                <i>No Reason Provided.</i>
+                <i>{t('profile.moderation.noReasonProvided')}</i>
               )}
             </Text>
           </Box>
@@ -214,7 +219,7 @@ export function UserInviteAlert({ userId, reason, canKick, invitedBy, ts }: User
               before={kicking && <Spinner size="100" variant="Success" fill="Soft" />}
               disabled={kicking}
             >
-              <Text size="B300">Cancel Invite</Text>
+              <Text size="B300">{t('profile.moderation.cancelInvite')}</Text>
             </Button>
           )}
         </Box>
@@ -227,19 +232,31 @@ export type ModerationAction = 'invite' | 'kick' | 'ban';
 
 const ACTION_TEXT: Record<ModerationAction, { title: string; text: string; button: string }> = {
   invite: {
-    title: 'Invite',
+    get title() {
+      return translate('profile.moderation.invite');
+    },
     text: 'will be invited back to this room.',
-    button: 'Invite',
+    get button() {
+      return translate('profile.moderation.invite');
+    },
   },
   kick: {
-    title: 'Kick',
+    get title() {
+      return translate('profile.moderation.kick');
+    },
     text: 'will be removed from this room. They can rejoin if the room allows it.',
-    button: 'Kick',
+    get button() {
+      return translate('profile.moderation.kick');
+    },
   },
   ban: {
-    title: 'Ban',
+    get title() {
+      return translate('profile.moderation.ban');
+    },
     text: 'will be removed from this room and cannot rejoin until unbanned.',
-    button: 'Ban',
+    get button() {
+      return translate('profile.moderation.ban');
+    },
   },
 };
 
@@ -251,6 +268,7 @@ type ModerationPromptProps = {
 };
 /** Confirmation dialog with an optional reason, opened from the profile card's options menu. */
 export function ModerationPrompt({ userId, displayName, action, onClose }: ModerationPromptProps) {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const room = useRoom();
   const reasonInputRef = useRef<HTMLInputElement>(null);
@@ -296,7 +314,7 @@ export function ModerationPrompt({ userId, displayName, action, onClose }: Moder
               </Text>
               <Input
                 ref={reasonInputRef}
-                placeholder="Reason (optional)"
+                placeholder={t('profile.moderation.reasonOptional')}
                 size="400"
                 variant="Background"
                 radii="400"
@@ -333,7 +351,7 @@ export function ModerationPrompt({ userId, displayName, action, onClose }: Moder
                   fill="Soft"
                   onClick={onClose}
                 >
-                  <Text size="B400">Cancel</Text>
+                  <Text size="B400">{t('profile.moderation.cancel')}</Text>
                 </Button>
               </div>
             </form>

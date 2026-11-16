@@ -122,7 +122,10 @@ export function ConnectedAccounts() {
           <InsetRow
             key={row.id}
             title={row.user ?? row.title}
-            description={[row.user ? row.title : undefined, row.current ? t('settings.connectedAccounts.thisWindow') : row.hint]
+            description={[
+              row.user ? row.title : undefined,
+              row.current ? t('settings.connectedAccounts.thisWindow') : row.hint,
+            ]
               .filter(Boolean)
               .join(' · ')}
             after={
@@ -134,7 +137,10 @@ export function ConnectedAccounts() {
                     fill="Soft"
                     radii="300"
                     onClick={() =>
-                      run(() => openConnection(row.id), t('settings.connectedAccounts.theWindowCouldNot'))
+                      run(
+                        () => openConnection(row.id),
+                        t('settings.connectedAccounts.theWindowCouldNot')
+                      )
                     }
                   >
                     <Text size="B300">{t('settings.connectedAccounts.open')}</Text>
@@ -145,10 +151,16 @@ export function ConnectedAccounts() {
                       variant={armed === row.id ? 'Critical' : 'Secondary'}
                       fill={armed === row.id ? 'Solid' : 'None'}
                       radii="300"
-                      aria-label={t('settings.connectedAccounts.removeAccountTitle', { title: row.title })}
+                      aria-label={t('settings.connectedAccounts.removeAccountTitle', {
+                        title: row.title,
+                      })}
                       onClick={() => remove(row)}
                     >
-                      <Text size="B300">{armed === row.id ? t('settings.connectedAccounts.reallyRemove') : t('settings.connectedAccounts.remove')}</Text>
+                      <Text size="B300">
+                        {armed === row.id
+                          ? t('settings.connectedAccounts.reallyRemove')
+                          : t('settings.connectedAccounts.remove')}
+                      </Text>
                     </Button>
                   )}
                 </>

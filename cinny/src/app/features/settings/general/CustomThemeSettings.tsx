@@ -107,7 +107,13 @@ export function CustomThemeSettings() {
         />
         <InsetRow
           title={t('settings.customTheme.text')}
-          after={<ColorWell label={t('settings.customTheme.text')} value={config.text} onChange={(text) => set({ text })} />}
+          after={
+            <ColorWell
+              label={t('settings.customTheme.text')}
+              value={config.text}
+              onChange={(text) => set({ text })}
+            />
+          }
         />
         <InsetRow
           title={t('settings.customTheme.resetColors')}
@@ -159,7 +165,10 @@ export function BackgroundSettings() {
   };
 
   return (
-    <InsetSection title={t('settings.customTheme.background')} footer={t('settings.customTheme.shownBehindTheApp')}>
+    <InsetSection
+      title={t('settings.customTheme.background')}
+      footer={t('settings.customTheme.shownBehindTheApp')}
+    >
       <InsetGroup>
         <InsetRow
           title={t('settings.customTheme.gradientBackground')}

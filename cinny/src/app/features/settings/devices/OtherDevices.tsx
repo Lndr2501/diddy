@@ -190,11 +190,17 @@ export function OtherDevices({ devices, refreshDeviceList, showVerification }: O
             <Box grow="Yes" direction="Column">
               {deleteError ? (
                 <Text size="T200">
-                  <b>{t('settings.otherDevices.failedToLogoutDevices', { message: deleteError.message })}</b>
+                  <b>
+                    {t('settings.otherDevices.failedToLogoutDevices', {
+                      message: deleteError.message,
+                    })}
+                  </b>
                 </Text>
               ) : (
                 <Text size="T200">
-                  <b>{t('settings.otherDevices.logoutFromSelectedDevices', { size: deleted.size })}</b>
+                  <b>
+                    {t('settings.otherDevices.logoutFromSelectedDevices', { size: deleted.size })}
+                  </b>
                 </Text>
               )}
               {authData && (

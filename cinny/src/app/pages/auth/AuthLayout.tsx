@@ -33,6 +33,7 @@ import { AuthServerProvider } from '../../hooks/useAuthServer';
 import { tryDecodeURIComponent } from '../../utils/dom';
 import { getConnectionProfile } from '../../plugins/connections';
 import { ConnectionsButton } from '../../components/connection-recovery/ConnectionRecovery';
+import { useTranslation } from 'react-i18next';
 
 const currentAuthPath = (pathname: string): string => {
   if (matchPath(LOGIN_PATH, pathname)) {
@@ -69,6 +70,7 @@ function AuthLayoutError({ message }: { message: string }) {
 }
 
 export function AuthLayout() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const { server: urlEncodedServer } = useParams();
@@ -153,7 +155,7 @@ export function AuthLayout() {
           <Box className={css.AuthCardContent} direction="Column">
             <Box direction="Column" gap="100">
               <Text as="label" size="L400" priority="300">
-                Homeserver
+                {t('auth.layout.homeserver')}
               </Text>
               <ServerPicker
                 server={server}
@@ -163,23 +165,25 @@ export function AuthLayout() {
               />
             </Box>
             {discoveryState.status === AsyncStatus.Loading && (
-              <AuthLayoutLoading message="Looking for homeserver..." />
+              <AuthLayoutLoading message={t('auth.layout.lookingForHomeserver')} />
             )}
             {discoveryState.status === AsyncStatus.Error && (
               <Box direction="Column" gap="200">
-                <AuthLayoutError message="Der Homeserver ist nicht erreichbar oder antwortet nicht rechtzeitig." />
+                <AuthLayoutError message={t('auth.layout.noAnswer')} />
                 <Button variant="Secondary" onClick={() => discoverServer(server).catch(() => {})}>
-                  <Text>Erneut versuchen</Text>
+                  <Text>{t('auth.layout.retry')}</Text>
                 </Button>
               </Box>
             )}
             {autoDiscoveryError?.action === AutoDiscoveryAction.FAIL_PROMPT && (
               <AuthLayoutError
-                message={`Failed to connect. Homeserver configuration found with ${autoDiscoveryError.host} appears unusable.`}
+                message={t('auth.layout.failedToConnectHomeserver', {
+                  host: autoDiscoveryError.host,
+                })}
               />
             )}
             {autoDiscoveryError?.action === AutoDiscoveryAction.FAIL_ERROR && (
-              <AuthLayoutError message="Failed to connect. Homeserver configuration base_url appears invalid." />
+              <AuthLayoutError message={t('auth.layout.failedToConnectHomeserver2')} />
             )}
             {discoveryState.status === AsyncStatus.Success && autoDiscoveryInfo && (
               <AuthServerProvider value={discoveryState.data.serverName}>
@@ -188,14 +192,16 @@ export function AuthLayout() {
                     baseUrl={autoDiscoveryInfo['m.homeserver'].base_url}
                     fallback={() => (
                       <AuthLayoutLoading
-                        message={`Connecting to ${autoDiscoveryInfo['m.homeserver'].base_url}`}
+                        message={t('auth.layout.connectingToBaseurl', {
+                          baseUrl: autoDiscoveryInfo['m.homeserver'].base_url,
+                        })}
                       />
                     )}
                     error={(_err, retry) => (
                       <Box direction="Column" gap="200">
-                        <AuthLayoutError message="Der Homeserver ist nicht erreichbar oder kein gültiger Matrix-Server." />
+                        <AuthLayoutError message={t('auth.layout.notMatrix')} />
                         <Button variant="Secondary" onClick={retry}>
-                          <Text>Erneut versuchen</Text>
+                          <Text>{t('auth.layout.retry')}</Text>
                         </Button>
                       </Box>
                     )}
@@ -204,10 +210,12 @@ export function AuthLayout() {
                       <SpecVersionsProvider value={specVersions}>
                         <AuthFlowsLoader
                           fallback={() => (
-                            <AuthLayoutLoading message="Loading authentication flow..." />
+                            <AuthLayoutLoading
+                              message={t('auth.layout.loadingAuthenticationFlow')}
+                            />
                           )}
                           error={() => (
-                            <AuthLayoutError message="Failed to get authentication flow information." />
+                            <AuthLayoutError message={t('auth.layout.failedToGetAuthentication')} />
                           )}
                         >
                           {(authFlows) => (

@@ -12,11 +12,13 @@ import { millisecondsToMinutes } from '../../utils/common';
 import { createRoomEncryptionState } from '../../components/create-room';
 import { useAlive } from '../../hooks/useAlive';
 import { getDirectRoomPath } from '../../pages/pathUtils';
+import { useTranslation } from 'react-i18next';
 
 type CreateChatProps = {
   defaultUserId?: string;
 };
 export function CreateChat({ defaultUserId }: CreateChatProps) {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const alive = useAlive();
   const navigate = useNavigate();
@@ -75,10 +77,10 @@ export function CreateChat({ defaultUserId }: CreateChatProps) {
   return (
     <Box as="form" onSubmit={handleSubmit} grow="Yes" direction="Column" gap="500">
       <Box direction="Column" gap="100">
-        <Text size="L400">User ID</Text>
+        <Text size="L400">{t('createChat.main.userId')}</Text>
         <Input
           defaultValue={defaultUserId}
-          placeholder="@username:server"
+          placeholder={t('createChat.main.usernameServer')}
           name="userIdInput"
           variant="SurfaceVariant"
           size="500"
@@ -92,13 +94,13 @@ export function CreateChat({ defaultUserId }: CreateChatProps) {
           <Box style={{ color: color.Critical.Main }} alignItems="Center" gap="100">
             <Icon src={Icons.Warning} filled size="50" />
             <Text size="T200" style={{ color: color.Critical.Main }}>
-              <b>Please enter a valid User ID.</b>
+              <b>{t('createChat.main.pleaseEnterAValid')}</b>
             </Text>
           </Box>
         )}
       </Box>
       <Box shrink="No" direction="Column" gap="100">
-        <Text size="L400">Options</Text>
+        <Text size="L400">{t('createChat.main.options')}</Text>
         <SequenceCard
           style={{ padding: config.space.S300 }}
           variant="SurfaceVariant"
@@ -106,8 +108,8 @@ export function CreateChat({ defaultUserId }: CreateChatProps) {
           gap="500"
         >
           <SettingTile
-            title="End-to-End Encryption"
-            description="Once this feature is enabled, it can't be disabled after the room is created."
+            title={t('createChat.main.endToEndEncryption')}
+            description={t('createChat.main.onceThisFeatureIs')}
             after={
               <Switch
                 variant="Primary"
@@ -125,9 +127,11 @@ export function CreateChat({ defaultUserId }: CreateChatProps) {
           <Text size="T300" style={{ color: color.Critical.Main }}>
             <b>
               {error instanceof MatrixError && error.name === ErrorCode.M_LIMIT_EXCEEDED
-                ? `Server rate-limited your request for ${millisecondsToMinutes(
-                    (error.data.retry_after_ms as number | undefined) ?? 0
-                  )} minutes!`
+                ? t('createChat.main.serverRateLimitedYour', {
+                    millisecondsToMinutes: millisecondsToMinutes(
+                      (error.data.retry_after_ms as number | undefined) ?? 0
+                    ),
+                  })
                 : error.message}
             </b>
           </Text>
@@ -142,7 +146,7 @@ export function CreateChat({ defaultUserId }: CreateChatProps) {
           disabled={disabled}
           before={loading && <Spinner variant="Primary" fill="Solid" size="200" />}
         >
-          <Text size="B500">Create</Text>
+          <Text size="B500">{t('createChat.main.create')}</Text>
         </Button>
       </Box>
     </Box>

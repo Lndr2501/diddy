@@ -19,6 +19,7 @@ import { canImportFromMyInstants } from '../../plugins/myinstants';
 import { MyInstantsImport } from './MyInstantsImport';
 import * as css from './styles.css';
 import { RangeInput } from '../../components/diddy/RangeInput';
+import { useTranslation } from 'react-i18next';
 
 type SoundboardMenuProps = {
   onClose: () => void;
@@ -26,6 +27,7 @@ type SoundboardMenuProps = {
 };
 // Also opened from the "more" menu of the sidebar call panel (issue #31).
 export function SoundboardMenu({ onClose, onImport }: SoundboardMenuProps) {
+  const { t } = useTranslation();
   const { clips, volume, inCall, playing } = useSoundboard();
   const fileRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string>();
@@ -55,7 +57,7 @@ export function SoundboardMenu({ onClose, onImport }: SoundboardMenuProps) {
       <Box direction="Column" gap="300" style={{ padding: config.space.S300 }}>
         <Box alignItems="Center" justifyContent="SpaceBetween" gap="200">
           <Text size="T300" className={css.PopoverTitle}>
-            Soundboard
+            {t('call.soundboard.soundboard')}
           </Text>
           <Box alignItems="Center" gap="100">
             <Button
@@ -65,7 +67,7 @@ export function SoundboardMenu({ onClose, onImport }: SoundboardMenuProps) {
               disabled={!playing}
               onClick={() => soundboard.stopAll()}
             >
-              <Text size="B300">Stop</Text>
+              <Text size="B300">{t('call.soundboard.stop')}</Text>
             </Button>
             <Button
               size="300"
@@ -73,14 +75,14 @@ export function SoundboardMenu({ onClose, onImport }: SoundboardMenuProps) {
               fill="Soft"
               onClick={() => fileRef.current?.click()}
             >
-              <Text size="B300">Add sound</Text>
+              <Text size="B300">{t('call.soundboard.addSound')}</Text>
             </Button>
             <IconButton
               size="300"
               variant="Surface"
               fill="None"
               radii="300"
-              aria-label="Close soundboard"
+              aria-label={t('call.soundboard.closeSoundboard')}
               onClick={onClose}
             >
               <Icon size="100" src={Icons.Cross} />
@@ -89,7 +91,7 @@ export function SoundboardMenu({ onClose, onImport }: SoundboardMenuProps) {
         </Box>
         {canImportFromMyInstants() && (
           <Button size="300" variant="Secondary" fill="Soft" onClick={onImport}>
-            <Text size="B300">Import from MyInstants</Text>
+            <Text size="B300">{t('call.soundboard.importFromMyinstants')}</Text>
           </Button>
         )}
         <input
@@ -103,8 +105,7 @@ export function SoundboardMenu({ onClose, onImport }: SoundboardMenuProps) {
 
         {clips.length === 0 ? (
           <Text size="T200" priority="300">
-            No sounds yet. Add short clips (up to 20 seconds) and click them to play for everyone in
-            the call.
+            {t('call.soundboard.noSoundsYetAdd')}
           </Text>
         ) : (
           <>
@@ -113,7 +114,7 @@ export function SoundboardMenu({ onClose, onImport }: SoundboardMenuProps) {
                 variant="Background"
                 size="300"
                 outlined
-                placeholder={`Search ${clips.length} sounds`}
+                placeholder={t('call.soundboard.searchCountSounds', { count: clips.length })}
                 value={filter}
                 onChange={(evt) => setFilter((evt.target as HTMLInputElement).value)}
               />
@@ -142,7 +143,7 @@ export function SoundboardMenu({ onClose, onImport }: SoundboardMenuProps) {
                       variant="Surface"
                       fill="None"
                       radii="300"
-                      aria-label={`Remove ${clip.name}`}
+                      aria-label={t('call.soundboard.removeName', { name: clip.name })}
                       onClick={() => soundboard.removeClip(clip.id)}
                     >
                       <Icon size="100" src={Icons.Cross} />
@@ -151,7 +152,7 @@ export function SoundboardMenu({ onClose, onImport }: SoundboardMenuProps) {
                 ))}
                 {visibleClips.length === 0 && (
                   <Text size="T200" priority="300">
-                    No sound matches &quot;{filter}&quot;.
+                    {t('call.soundboard.noSoundMatchesFilter', { filter })}
                   </Text>
                 )}
               </Box>
@@ -162,10 +163,10 @@ export function SoundboardMenu({ onClose, onImport }: SoundboardMenuProps) {
         <div className={css.PopoverSeparator} />
         <Box alignItems="Center" gap="300">
           <Text size="T200" style={{ fontWeight: 500 }}>
-            Volume
+            {t('call.soundboard.volume')}
           </Text>
           <RangeInput
-            aria-label="Soundboard volume"
+            aria-label={t('call.soundboard.soundboardVolume')}
             min={0.05}
             max={1}
             step={0.05}
@@ -177,7 +178,7 @@ export function SoundboardMenu({ onClose, onImport }: SoundboardMenuProps) {
 
         {!inCall && (
           <Text size="T200" priority="300">
-            Others hear your sounds after you (re)join a call with at least one sound added.
+            {t('call.soundboard.othersHearYourSounds')}
           </Text>
         )}
         {error && (
@@ -191,6 +192,7 @@ export function SoundboardMenu({ onClose, onImport }: SoundboardMenuProps) {
 }
 
 export function SoundboardButton() {
+  const { t } = useTranslation();
   const [cords, setCords] = useState<RectCords>();
   const [importing, setImporting] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -253,8 +255,8 @@ export function SoundboardButton() {
           size="400"
           onClick={handleToggle}
           aria-pressed={open}
-          aria-label="Soundboard"
-          title="Soundboard"
+          aria-label={t('call.soundboard.soundboard')}
+          title={t('call.soundboard.soundboard')}
         >
           <Icon size="400" src={Icons.Play} filled={open} />
         </IconButton>

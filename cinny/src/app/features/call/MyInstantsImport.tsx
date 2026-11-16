@@ -26,6 +26,7 @@ import {
   parseInput,
   searchMyInstants,
 } from '../../plugins/myinstants';
+import { useTranslation } from 'react-i18next';
 
 const MAX_PAGES_FOR_ALL = 15;
 const PAUSE_MS = 150;
@@ -38,6 +39,7 @@ type MyInstantsImportProps = {
 };
 
 export function MyInstantsImport({ onClose }: MyInstantsImportProps) {
+  const { t } = useTranslation();
   const [input, setInput] = useState('');
   const [results, setResults] = useState<MyInstant[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -68,7 +70,7 @@ export function MyInstantsImport({ onClose }: MyInstantsImportProps) {
     const target = parseInput(input);
     reset();
     if (!target) {
-      setError('Enter a search term or a MyInstants link.');
+      setError(t('call.myInstantsImport.enterASearchTerm'));
       return;
     }
     setBusy(true);
@@ -84,7 +86,7 @@ export function MyInstantsImport({ onClose }: MyInstantsImportProps) {
       setTerm(target.name);
       setResults(page.items);
       setNextPage(page.hasNext ? target.page + 1 : undefined);
-      if (page.items.length === 0) setStatus('Nothing found.');
+      if (page.items.length === 0) setStatus(t('call.myInstantsImport.nothingFound'));
     } catch (e) {
       setError(messageOf(e));
     } finally {
@@ -123,7 +125,7 @@ export function MyInstantsImport({ onClose }: MyInstantsImportProps) {
     try {
       await soundboard.previewToggle(item.path, () => downloadMyInstant(item));
     } catch (e) {
-      setError(`Preview failed: ${messageOf(e)}`);
+      setError(t('call.myInstantsImport.previewFailedMessageof', { messageOf: messageOf(e) }));
     }
   };
 
@@ -134,7 +136,7 @@ export function MyInstantsImport({ onClose }: MyInstantsImportProps) {
     let failed = 0;
     for (let i = 0; i < items.length; i += 1) {
       if (cancelRef.current) break;
-      setStatus(`Importing ${i + 1} of ${items.length} …`);
+      setStatus(t('call.myInstantsImport.importingOf', { number: i + 1, count: items.length }));
       try {
         // eslint-disable-next-line no-await-in-loop
         const bytes = await downloadMyInstant(items[i]);
@@ -170,7 +172,7 @@ export function MyInstantsImport({ onClose }: MyInstantsImportProps) {
     try {
       // Load the remaining result pages first.
       for (let n = 0; term && page && n < MAX_PAGES_FOR_ALL && !cancelRef.current; n += 1) {
-        setStatus(`Loading results … (${all.length})`);
+        setStatus(t('call.myInstantsImport.loadingResultsCount', { count: all.length }));
         // eslint-disable-next-line no-await-in-loop
         const next = await searchMyInstants(term, page);
         const known = new Set(all.map((r) => r.path));
@@ -211,9 +213,14 @@ export function MyInstantsImport({ onClose }: MyInstantsImportProps) {
             size="500"
           >
             <Box grow="Yes">
-              <Text size="H4">Import from MyInstants</Text>
+              <Text size="H4">{t('call.myInstantsImport.importFromMyinstants')}</Text>
             </Box>
-            <IconButton size="300" onClick={handleClose} radii="300" aria-label="Close">
+            <IconButton
+              size="300"
+              onClick={handleClose}
+              radii="300"
+              aria-label={t('call.myInstantsImport.close')}
+            >
               <Icon src={Icons.Cross} />
             </IconButton>
           </Header>
@@ -225,7 +232,7 @@ export function MyInstantsImport({ onClose }: MyInstantsImportProps) {
                   variant="Background"
                   size="400"
                   outlined
-                  placeholder="Search term or MyInstants link"
+                  placeholder={t('call.myInstantsImport.searchTermOrMyinstants')}
                   value={input}
                   onChange={(evt: React.ChangeEvent<HTMLInputElement>) =>
                     setInput(evt.target.value)
@@ -243,7 +250,7 @@ export function MyInstantsImport({ onClose }: MyInstantsImportProps) {
                 disabled={busy || !input.trim()}
                 before={busy ? <Spinner variant="Primary" fill="Solid" size="200" /> : undefined}
               >
-                <Text size="B400">Search</Text>
+                <Text size="B400">{t('call.myInstantsImport.search')}</Text>
               </Button>
             </Box>
 
@@ -259,11 +266,18 @@ export function MyInstantsImport({ onClose }: MyInstantsImportProps) {
                       setSelected(allSelected ? new Set() : new Set(results.map((r) => r.path)))
                     }
                   >
-                    <Text size="B300">{allSelected ? 'Select none' : 'Select all'}</Text>
+                    <Text size="B300">
+                      {allSelected
+                        ? t('call.myInstantsImport.selectNone')
+                        : t('call.myInstantsImport.selectAll')}
+                    </Text>
                   </Button>
                   <Text size="T200" priority="300">
-                    {selected.size} selected · {results.length} shown
-                    {nextPage ? ' · more available' : ''}
+                    {t('call.myInstantsImport.sizeSelectedCountShown', {
+                      size: selected.size,
+                      count: results.length,
+                    })}
+                    {nextPage ? t('call.myInstantsImport.moreAvailable') : ''}
                   </Text>
                 </Box>
 
@@ -314,8 +328,8 @@ export function MyInstantsImport({ onClose }: MyInstantsImportProps) {
                             radii="300"
                             aria-label={
                               preview.key === item.path
-                                ? `Stop preview of ${item.name}`
-                                : `Preview ${item.name}`
+                                ? t('call.myInstantsImport.stopPreviewOfName', { name: item.name })
+                                : t('call.myInstantsImport.previewName', { name: item.name })
                             }
                             aria-pressed={preview.key === item.path}
                             disabled={busy}
@@ -343,7 +357,9 @@ export function MyInstantsImport({ onClose }: MyInstantsImportProps) {
                     disabled={busy || selected.size === 0}
                     onClick={handleImportSelected}
                   >
-                    <Text size="B300">Import selected ({selected.size})</Text>
+                    <Text size="B300">
+                      {t('call.myInstantsImport.importSelectedSize', { size: selected.size })}
+                    </Text>
                   </Button>
                   <Button
                     variant="Primary"
@@ -353,7 +369,8 @@ export function MyInstantsImport({ onClose }: MyInstantsImportProps) {
                     onClick={handleImportAll}
                   >
                     <Text size="B300">
-                      Import all{nextPage ? ' results' : ` (${results.length})`}
+                      {t('call.myInstantsImport.importAll')}
+                      {nextPage ? t('call.myInstantsImport.results') : ` (${results.length})`}
                     </Text>
                   </Button>
                   {nextPage && (
@@ -364,7 +381,7 @@ export function MyInstantsImport({ onClose }: MyInstantsImportProps) {
                       disabled={busy}
                       onClick={loadMore}
                     >
-                      <Text size="B300">Load more</Text>
+                      <Text size="B300">{t('call.myInstantsImport.loadMore')}</Text>
                     </Button>
                   )}
                   {busy && (
@@ -376,7 +393,7 @@ export function MyInstantsImport({ onClose }: MyInstantsImportProps) {
                         cancelRef.current = true;
                       }}
                     >
-                      <Text size="B300">Stop</Text>
+                      <Text size="B300">{t('call.myInstantsImport.stop')}</Text>
                     </Button>
                   )}
                 </Box>
@@ -390,8 +407,7 @@ export function MyInstantsImport({ onClose }: MyInstantsImportProps) {
               </Text>
             )}
             <Text size="T200" priority="300">
-              Sounds are uploaded by MyInstants users. Only import what you may use. Clips are
-              limited to 20 seconds.
+              {t('call.myInstantsImport.soundsAreUploadedBy')}
             </Text>
           </Box>
         </Dialog>

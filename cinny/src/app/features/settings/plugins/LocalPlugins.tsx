@@ -223,7 +223,11 @@ export function AddLocalPluginForm({ full }: { full: boolean }) {
       return;
     }
     const record = await makeRecord(html.value, 'file', { fileName: file.name.slice(0, 200) });
-    const pluginName = defaultPluginName(name, html.value, nameFromFileName(file.name) || t('settings.localPlugins.plugin'));
+    const pluginName = defaultPluginName(
+      name,
+      html.value,
+      nameFromFileName(file.name) || t('settings.localPlugins.plugin')
+    );
     const result = await addLocalUserPlugin(pluginName, record);
     setBusy(false);
     if (!result.ok) {
@@ -231,7 +235,9 @@ export function AddLocalPluginForm({ full }: { full: boolean }) {
       return;
     }
     pinNew(result.value);
-    reset(t('settings.localPlugins.addedName', { name: result.value[result.value.length - 1].name }));
+    reset(
+      t('settings.localPlugins.addedName', { name: result.value[result.value.length - 1].name })
+    );
   };
 
   const addCode = async () => {
@@ -253,7 +259,9 @@ export function AddLocalPluginForm({ full }: { full: boolean }) {
     }
     pinNew(result.value);
     setCode('');
-    reset(t('settings.localPlugins.addedName', { name: result.value[result.value.length - 1].name }));
+    reset(
+      t('settings.localPlugins.addedName', { name: result.value[result.value.length - 1].name })
+    );
   };
 
   const addSource = async () => {
@@ -271,7 +279,8 @@ export function AddLocalPluginForm({ full }: { full: boolean }) {
       rawUrl,
       fetchedAt: Date.now(),
     });
-    const fallback = nameFromFileName(label.split('/').pop() ?? '') || t('settings.localPlugins.plugin');
+    const fallback =
+      nameFromFileName(label.split('/').pop() ?? '') || t('settings.localPlugins.plugin');
     const result = await addLocalUserPlugin(defaultPluginName(name, html, fallback), record);
     setBusy(false);
     if (!result.ok) {
@@ -281,7 +290,10 @@ export function AddLocalPluginForm({ full }: { full: boolean }) {
     pinNew(result.value);
     setSource('');
     reset(
-      t('settings.localPlugins.importedNameShorthash', { name: result.value[result.value.length - 1].name, shortHash: shortHash(record.sha256) })
+      t('settings.localPlugins.importedNameShorthash', {
+        name: result.value[result.value.length - 1].name,
+        shortHash: shortHash(record.sha256),
+      })
     );
   };
 
@@ -321,7 +333,11 @@ export function AddLocalPluginForm({ full }: { full: boolean }) {
             setError(undefined);
           }}
           disabled={full}
-          placeholder={mode === 'file' ? t('settings.localPlugins.pageTitleOrFile') : t('settings.localPlugins.pageTitle')}
+          placeholder={
+            mode === 'file'
+              ? t('settings.localPlugins.pageTitleOrFile')
+              : t('settings.localPlugins.pageTitle')
+          }
         />
       </Box>
 
@@ -345,7 +361,11 @@ export function AddLocalPluginForm({ full }: { full: boolean }) {
           }}
         >
           <Text size="T300">{t('settings.localPlugins.dropAnHtmlFile')}</Text>
-          <FilePickerButton disabled={full || busy} label={t('settings.localPlugins.chooseFile')} onFile={addFile} />
+          <FilePickerButton
+            disabled={full || busy}
+            label={t('settings.localPlugins.chooseFile')}
+            onFile={addFile}
+          />
         </div>
       )}
 
@@ -404,7 +424,10 @@ export function AddLocalPluginForm({ full }: { full: boolean }) {
 
       <Box alignItems="Center" justifyContent="SpaceBetween" gap="300" wrap="Wrap">
         <Message error={error}>
-          {notice ?? (full ? t('settings.localPlugins.youHaveReachedThe', { maxPlugins: MAX_PLUGINS }) : hint)}
+          {notice ??
+            (full
+              ? t('settings.localPlugins.youHaveReachedThe', { maxPlugins: MAX_PLUGINS })
+              : hint)}
         </Message>
         {busy && <Spinner variant="Secondary" size="200" />}
         {mode === 'paste' && (
@@ -461,7 +484,11 @@ export function LocalPluginDescription({ plugin }: { plugin: UserPlugin }) {
       </span>
     );
   }
-  const hash = <code title={t('settings.localPlugins.sha256Sha256', { sha256: record.sha256 })}>{shortHash(record.sha256)}</code>;
+  const hash = (
+    <code title={t('settings.localPlugins.sha256Sha256', { sha256: record.sha256 })}>
+      {shortHash(record.sha256)}
+    </code>
+  );
   const source = record.rawUrl ? toRawSourceUrl(record.rawUrl) : undefined;
   if ((record.origin === 'github' || record.origin === 'gist') && source?.ok) {
     // link only to an address that passes the same checks as at import time
@@ -473,17 +500,26 @@ export function LocalPluginDescription({ plugin }: { plugin: UserPlugin }) {
         : source.value.rawUrl;
     return (
       <>
-        {t('settings.localPlugins.from')}{' '}{record.origin === 'gist' ? t('settings.localPlugins.gist') : 'GitHub'}{' '}
+        {t('settings.localPlugins.from')}{' '}
+        {record.origin === 'gist' ? t('settings.localPlugins.gist') : 'GitHub'}{' '}
         <a href={href} target="_blank" rel="noreferrer noopener">
           {source.value.label}
-        </a>{' '}{t('settings.localPlugins.loadedTimeSize', { time: formatTime(record.fetchedAt), size: formatSize(record.size) })}{' '}{hash}
+        </a>{' '}
+        {t('settings.localPlugins.loadedTimeSize', {
+          time: formatTime(record.fetchedAt),
+          size: formatSize(record.size),
+        })}{' '}
+        {hash}
       </>
     );
   }
-  const what = record.origin === 'file' ? t('settings.localPlugins.fileName', { name: record.fileName ?? '' }).trim() : t('settings.localPlugins.pastedCode');
+  const what =
+    record.origin === 'file'
+      ? t('settings.localPlugins.fileName', { name: record.fileName ?? '' }).trim()
+      : t('settings.localPlugins.pastedCode');
   return (
     <>
-      {t('settings.localPlugins.local')}{' '}{what} · {formatSize(record.size)} · {hash}
+      {t('settings.localPlugins.local')} {what} · {formatSize(record.size)} · {hash}
     </>
   );
 }
@@ -566,7 +602,9 @@ export function LocalPluginTools({ plugin }: { plugin: UserPlugin }) {
     if (!pending) return;
     await replaceLocalUserPlugin(plugin.id, pending.record);
     setPending(undefined);
-    done(t('settings.localPlugins.updatedShorthash', { shortHash: shortHash(pending.record.sha256) }));
+    done(
+      t('settings.localPlugins.updatedShorthash', { shortHash: shortHash(pending.record.sha256) })
+    );
   };
 
   const pill = {
@@ -582,7 +620,11 @@ export function LocalPluginTools({ plugin }: { plugin: UserPlugin }) {
     <Box direction="Column" gap="200">
       <Text size="L400">{t('settings.localPlugins.content')}</Text>
       <Box gap="200" wrap="Wrap" alignItems="Center">
-        <FilePickerButton disabled={busy} label={t('settings.localPlugins.replaceFromFile')} onFile={replaceFile} />
+        <FilePickerButton
+          disabled={busy}
+          label={t('settings.localPlugins.replaceFromFile')}
+          onFile={replaceFile}
+        />
         <Button
           {...pill}
           disabled={busy}
@@ -593,7 +635,9 @@ export function LocalPluginTools({ plugin }: { plugin: UserPlugin }) {
             setError(undefined);
           }}
         >
-          <Text size="B300">{editing ? t('settings.localPlugins.closeCode') : t('settings.localPlugins.editCode')}</Text>
+          <Text size="B300">
+            {editing ? t('settings.localPlugins.closeCode') : t('settings.localPlugins.editCode')}
+          </Text>
         </Button>
         {fromSource && (
           <Button {...pill} disabled={busy} onClick={checkSource}>
@@ -606,13 +650,20 @@ export function LocalPluginTools({ plugin }: { plugin: UserPlugin }) {
         <Box alignItems="Center" gap="200" wrap="Wrap">
           <Message>
             {pending.changed
-              ? t('settings.localPlugins.theSourceChangedShorthash', { shortHash: shortHash(record.sha256), shortHash2: shortHash(
-                  pending.record.sha256
-                ) })
-              : t('settings.localPlugins.theSourceIsUnchanged', { shortHash: shortHash(record.sha256) })}
+              ? t('settings.localPlugins.theSourceChangedShorthash', {
+                  shortHash: shortHash(record.sha256),
+                  shortHash2: shortHash(pending.record.sha256),
+                })
+              : t('settings.localPlugins.theSourceIsUnchanged', {
+                  shortHash: shortHash(record.sha256),
+                })}
           </Message>
           <Button {...pill} onClick={() => setPending(undefined)}>
-            <Text size="B300">{pending.changed ? t('settings.localPlugins.keepCurrent') : t('settings.localPlugins.ok')}</Text>
+            <Text size="B300">
+              {pending.changed
+                ? t('settings.localPlugins.keepCurrent')
+                : t('settings.localPlugins.ok')}
+            </Text>
           </Button>
           {pending.changed && (
             <Button {...pill} variant="Primary" fill="Solid" onClick={applyPending}>

@@ -45,7 +45,6 @@ import { SettingsPages } from './settingsPages';
 import { useTranslation } from 'react-i18next';
 import { translate, translateEnglish } from '../../i18n';
 
-
 type SettingsMenuItem = {
   page: SettingsPages;
   name: string;
@@ -298,7 +297,11 @@ export function Settings({ initialPage, requestClose }: SettingsProps) {
   return (
     <div className={css.SettingsRoot}>
       {showSidebar && (
-        <nav className={css.Sidebar} data-compact={isMobile} aria-label={t('settings.page.settings')}>
+        <nav
+          className={css.Sidebar}
+          data-compact={isMobile}
+          aria-label={t('settings.page.settings')}
+        >
           <div className={css.SidebarTop}>
             {isMobile && (
               <div className={css.SidebarTopBar}>
@@ -344,7 +347,13 @@ export function Settings({ initialPage, requestClose }: SettingsProps) {
             </div>
           </div>
           <div className={css.SidebarScroll}>
-            <Scroll variant="Background" direction="Vertical" size="300" hideTrack visibility="Hover">
+            <Scroll
+              variant="Background"
+              direction="Vertical"
+              size="300"
+              hideTrack
+              visibility="Hover"
+            >
               <div className={css.SidebarList}>
                 {groups.length === 0 && (
                   <Text className={css.SidebarEmpty} size="T300" priority="300">
@@ -398,43 +407,43 @@ export function Settings({ initialPage, requestClose }: SettingsProps) {
       )}
       {showContent && (
         <SettingsCompact.Provider value={isMobile}>
-        <SettingsBreadcrumb.Provider value="Settings">
-        <div className={classNames(css.Content, isMobile && css.ContentCompact)}>
-          {activePage === SettingsPages.ChatPage && (
-            <ChatSettings requestClose={handlePageRequestClose} />
-          )}
-          {activePage === SettingsPages.CallsPage && (
-            <CallsSettings requestClose={handlePageRequestClose} />
-          )}
-          {activePage === SettingsPages.AppearancePage && (
-            <AppearanceSettings requestClose={handlePageRequestClose} />
-          )}
-          {activePage === SettingsPages.ProfilePage && (
-            <DiddyProfileSettings requestClose={handlePageRequestClose} />
-          )}
-          {activePage === SettingsPages.AccountPage && (
-            <Account requestClose={handlePageRequestClose} />
-          )}
-          {activePage === SettingsPages.NotificationPage && (
-            <Notifications requestClose={handlePageRequestClose} />
-          )}
-          {activePage === SettingsPages.DevicesPage && (
-            <Devices requestClose={handlePageRequestClose} />
-          )}
-          {activePage === SettingsPages.EmojisStickersPage && (
-            <EmojisStickers requestClose={handlePageRequestClose} />
-          )}
-          {activePage === SettingsPages.PluginsPage && (
-            <Plugins requestClose={handlePageRequestClose} />
-          )}
-          {activePage === SettingsPages.DeveloperToolsPage && (
-            <DeveloperTools requestClose={handlePageRequestClose} />
-          )}
-          {activePage === SettingsPages.AboutPage && (
-            <About requestClose={handlePageRequestClose} />
-          )}
-        </div>
-        </SettingsBreadcrumb.Provider>
+          <SettingsBreadcrumb.Provider value="Settings">
+            <div className={classNames(css.Content, isMobile && css.ContentCompact)}>
+              {activePage === SettingsPages.ChatPage && (
+                <ChatSettings requestClose={handlePageRequestClose} />
+              )}
+              {activePage === SettingsPages.CallsPage && (
+                <CallsSettings requestClose={handlePageRequestClose} />
+              )}
+              {activePage === SettingsPages.AppearancePage && (
+                <AppearanceSettings requestClose={handlePageRequestClose} />
+              )}
+              {activePage === SettingsPages.ProfilePage && (
+                <DiddyProfileSettings requestClose={handlePageRequestClose} />
+              )}
+              {activePage === SettingsPages.AccountPage && (
+                <Account requestClose={handlePageRequestClose} />
+              )}
+              {activePage === SettingsPages.NotificationPage && (
+                <Notifications requestClose={handlePageRequestClose} />
+              )}
+              {activePage === SettingsPages.DevicesPage && (
+                <Devices requestClose={handlePageRequestClose} />
+              )}
+              {activePage === SettingsPages.EmojisStickersPage && (
+                <EmojisStickers requestClose={handlePageRequestClose} />
+              )}
+              {activePage === SettingsPages.PluginsPage && (
+                <Plugins requestClose={handlePageRequestClose} />
+              )}
+              {activePage === SettingsPages.DeveloperToolsPage && (
+                <DeveloperTools requestClose={handlePageRequestClose} />
+              )}
+              {activePage === SettingsPages.AboutPage && (
+                <About requestClose={handlePageRequestClose} />
+              )}
+            </div>
+          </SettingsBreadcrumb.Provider>
         </SettingsCompact.Provider>
       )}
     </div>

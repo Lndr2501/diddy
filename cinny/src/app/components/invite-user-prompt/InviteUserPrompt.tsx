@@ -40,6 +40,7 @@ import { AsyncStatus, useAsyncCallback } from '../../hooks/useAsyncCallback';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { BreakWord } from '../../styles/Text.css';
 import { useAlive } from '../../hooks/useAlive';
+import { useTranslation } from 'react-i18next';
 
 const SEARCH_OPTIONS: UseAsyncSearchOptions = {
   limit: 1000,
@@ -54,6 +55,7 @@ type InviteUserProps = {
   requestClose: () => void;
 };
 export function InviteUserPrompt({ room, requestClose }: InviteUserProps) {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const alive = useAlive();
 
@@ -161,7 +163,7 @@ export function InviteUserPrompt({ room, requestClose }: InviteUserProps) {
         >
           <Dialog className={sheetCss.Sheet}>
             <Box grow="Yes" direction="Column">
-              <SheetHeader title="Invite" onClose={requestClose} />
+              <SheetHeader title={t('common.inviteUserPrompt.invite')} onClose={requestClose} />
               <Box
                 as="form"
                 onSubmit={handleSubmit}
@@ -170,14 +172,14 @@ export function InviteUserPrompt({ room, requestClose }: InviteUserProps) {
                 direction="Column"
               >
                 <Box direction="Column" gap="100">
-                  <Text size="L400">User ID</Text>
+                  <Text size="L400">{t('common.inviteUserPrompt.userId')}</Text>
                   <div>
                     <Input
                       size="500"
                       ref={inputRef}
                       onChange={handleSearchChange}
                       onKeyDown={handleKeyDown}
-                      placeholder="@username:server"
+                      placeholder={t('common.inviteUserPrompt.usernameServer')}
                       name="userIdInput"
                       variant="Background"
                       disabled={inviting}
@@ -246,7 +248,7 @@ export function InviteUserPrompt({ room, requestClose }: InviteUserProps) {
                   </div>
                 </Box>
                 <Box direction="Column" gap="100">
-                  <Text size="L400">Reason (Optional)</Text>
+                  <Text size="L400">{t('common.inviteUserPrompt.reasonOptional')}</Text>
                   <TextArea
                     size="500"
                     name="reasonInput"
@@ -268,7 +270,7 @@ export function InviteUserPrompt({ room, requestClose }: InviteUserProps) {
                     fill="Soft"
                     onClick={requestClose}
                   >
-                    <Text size="B400">Cancel</Text>
+                    <Text size="B400">{t('common.inviteUserPrompt.cancel')}</Text>
                   </Button>
                   <Button
                     className={sheetCss.Pill}
@@ -276,7 +278,7 @@ export function InviteUserPrompt({ room, requestClose }: InviteUserProps) {
                     disabled={!validUserId || inviting}
                     before={inviting && <Spinner size="200" variant="Primary" fill="Solid" />}
                   >
-                    <Text size="B400">Invite</Text>
+                    <Text size="B400">{t('common.inviteUserPrompt.invite')}</Text>
                   </Button>
                 </div>
               </Box>

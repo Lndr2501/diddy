@@ -15,6 +15,7 @@ import { CallControlEvent } from '../../plugins/call/CallControl';
 import { callEmbedAtom } from '../../state/callEmbed';
 import { callMutedUsersAtom, speakingUsersAtom } from '../../state/speakingUsers';
 import * as css from './styles.css';
+import { useTranslation } from 'react-i18next';
 
 type CallMemberListProps = {
   room: Room;
@@ -62,6 +63,7 @@ function useCallAudioState(roomId: string): CallAudioState {
  * voice channels in Discord). Click opens the profile, right-click the person menu.
  */
 export function CallMemberList({ room, members }: CallMemberListProps) {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
   const openUserProfile = useOpenUserRoomProfile();
@@ -74,7 +76,7 @@ export function CallMemberList({ room, members }: CallMemberListProps) {
   if (shown.length === 0) return null;
 
   return (
-    <div className={css.CallMemberList} role="group" aria-label="In the call">
+    <div className={css.CallMemberList} role="group" aria-label={t('nav.callMemberList.inTheCall')}>
       {shown.map((member) => {
         const userId = member.userId as string;
         const name = getMemberDisplayName(room, userId) ?? getMxIdLocalPart(userId) ?? userId;
@@ -126,7 +128,7 @@ export function CallMemberList({ room, members }: CallMemberListProps) {
                     src={Icons.MicMute}
                     size="100"
                     filled
-                    aria-label="Muted"
+                    aria-label={t('nav.callMemberList.muted')}
                   />
                 )}
                 {deafened && userId === myId && (
@@ -135,7 +137,7 @@ export function CallMemberList({ room, members }: CallMemberListProps) {
                     src={Icons.HeadphoneMute}
                     size="100"
                     filled
-                    aria-label="Headphones off"
+                    aria-label={t('nav.callMemberList.headphonesOff')}
                   />
                 )}
               </span>

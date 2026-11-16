@@ -6,6 +6,7 @@ import * as css from './styles.css';
 import { PackImageReader } from '../../../plugins/custom-emoji';
 import { IEmoji } from '../../../plugins/emoji';
 import { mxcUrlToHttp } from '../../../utils/matrix';
+import { translate } from '../../../i18n';
 
 export const getEmojiItemInfo = (element: Element): EmojiItemInfo | undefined => {
   const label = element.getAttribute('title');
@@ -35,7 +36,7 @@ export function EmojiItem({ emoji }: EmojiItemProps) {
       justifyContent="Center"
       className={css.EmojiItem}
       title={emoji.label}
-      aria-label={`${emoji.label} emoji`}
+      aria-label={translate('common.emojiBoard.emojiName', { name: emoji.label })}
       data-emoji-type={EmojiType.Emoji}
       data-emoji-data={emoji.unicode}
       data-emoji-shortcode={emoji.shortcode}
@@ -59,7 +60,7 @@ export function CustomEmojiItem({ mx, useAuthentication, image }: CustomEmojiIte
       justifyContent="Center"
       className={css.EmojiItem}
       title={image.body || image.shortcode}
-      aria-label={`${image.body || image.shortcode} emoji`}
+      aria-label={translate('common.emojiBoard.emojiName', { name: image.body || image.shortcode })}
       data-emoji-type={EmojiType.CustomEmoji}
       data-emoji-data={image.url}
       data-emoji-shortcode={image.shortcode}
@@ -89,7 +90,7 @@ export function StickerItem({ mx, useAuthentication, image }: StickerItemProps) 
       justifyContent="Center"
       className={css.StickerItem}
       title={image.body || image.shortcode}
-      aria-label={`${image.body || image.shortcode} emoji`}
+      aria-label={translate('common.emojiBoard.emojiName', { name: image.body || image.shortcode })}
       data-emoji-type={EmojiType.Sticker}
       data-emoji-data={image.url}
       data-emoji-shortcode={image.shortcode}

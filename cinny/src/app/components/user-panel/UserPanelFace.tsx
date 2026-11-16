@@ -8,6 +8,8 @@ import { mxcUrlToHttp } from '../../utils/matrix';
 import { nameInitials } from '../../utils/common';
 import { StatusIcon } from '../presence/StatusIcon';
 import { stateOfChosen } from '../../utils/presenceState';
+import { useTranslation } from 'react-i18next';
+import { translate } from '../../i18n';
 
 /*
  * The visible part of the user panel's profile button (#105): kept apart from UserPanel, which
@@ -21,15 +23,36 @@ export const STATUS_OPTIONS: {
   short?: string;
   description?: string;
 }[] = [
-  { status: 'online', label: 'Online' },
-  { status: 'idle', label: 'Idle' },
+  {
+    status: 'online',
+    get label() {
+      return translate('common.userPanel.online');
+    },
+  },
+  {
+    status: 'idle',
+    get label() {
+      return translate('common.userPanel.idle');
+    },
+  },
   {
     status: 'dnd',
-    label: 'Do Not Disturb',
-    short: 'Busy',
-    description: 'Mutes sounds and notifications. Unread badges stay.',
+    get label() {
+      return translate('common.userPanel.doNotDisturb');
+    },
+    get short() {
+      return translate('common.userPanel.busy');
+    },
+    get description() {
+      return translate('common.userPanel.mutesSoundsAndNotifications');
+    },
   },
-  { status: 'invisible', label: 'Invisible' },
+  {
+    status: 'invisible',
+    get label() {
+      return translate('common.userPanel.invisible');
+    },
+  },
 ];
 
 export const statusInfo = (status: DiddyStatus) =>
@@ -63,8 +86,9 @@ export function UserPanelFace({
   status,
   agentTalking,
 }: UserPanelFaceProps) {
+  const { t } = useTranslation();
   const { label: chosenLabel, short } = statusInfo(status);
-  const statusLabel = agentTalking ? 'Talking to agent' : chosenLabel;
+  const statusLabel = agentTalking ? t('common.userPanel.talkingToAgent') : chosenLabel;
   const statusShown = agentTalking ? statusLabel : short ?? chosenLabel;
   return (
     <>
@@ -89,7 +113,7 @@ export function UserPanelFace({
         {agentTalking ? (
           <span className={css.UserPanelAgentBadge} role="status" aria-label={statusLabel}>
             <Icon size="50" src={Icons.Mic} filled />
-            Agent
+            {t('common.userPanel.agent')}
           </span>
         ) : (
           <Text size="T200" priority="300" truncate title={statusLabel}>

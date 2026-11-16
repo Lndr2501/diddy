@@ -24,6 +24,7 @@ import { useHasCustomTitleBar } from '../titlebar/TitleBar';
 import { TITLE_BAR_HEIGHT } from '../titlebar/TitleBar.css';
 import { CARD_HEIGHT as CALL_BANNER_HEIGHT } from '../incoming-call/IncomingCall.css';
 import * as css from './ToastHost.css';
+import { useTranslation } from 'react-i18next';
 
 const LEAVE_MS = 260;
 const CLICK_SLOP = 4;
@@ -38,6 +39,7 @@ type ToastCardProps = {
 };
 
 function ToastCard({ toast, index, expanded, leaving, onOpen, onClose }: ToastCardProps) {
+  const { t } = useTranslation();
   // enter from above on the next frame, so the transition has a starting point
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
@@ -153,7 +155,7 @@ function ToastCard({ toast, index, expanded, leaving, onOpen, onClose }: ToastCa
       <button
         type="button"
         className={css.Close}
-        aria-label="Dismiss notification"
+        aria-label={t('notifications.host.dismissNotification')}
         tabIndex={-1}
         onClick={() => onClose(toast.key)}
       >
@@ -168,6 +170,7 @@ function ToastCard({ toast, index, expanded, leaving, onOpen, onClose }: ToastCa
  * below and fan out on hover. Click opens the room, swipe up or the close button dismisses.
  */
 export function ToastHost() {
+  const { t } = useTranslation();
   const toasts = useAtomValue(toastsAtom);
   const dismiss = useSetAtom(dismissToastAtom);
   const { navigateRoom } = useRoomNavigate();
@@ -229,9 +232,10 @@ export function ToastHost() {
     <section
       className={css.Host}
       aria-live="polite"
-      aria-label="Notifications"
+      aria-label={t('notifications.host.notifications')}
       style={{
-        top: (customTitleBar ? TITLE_BAR_HEIGHT : 0) + 12 + (callBanner ? CALL_BANNER_HEIGHT + 8 : 0),
+        top:
+          (customTitleBar ? TITLE_BAR_HEIGHT : 0) + 12 + (callBanner ? CALL_BANNER_HEIGHT + 8 : 0),
         height,
         // expanded, the gaps between the cards belong to the stack so it does not collapse
         pointerEvents: expanded ? 'auto' : undefined,

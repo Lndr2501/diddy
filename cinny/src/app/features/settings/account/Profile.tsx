@@ -228,7 +228,10 @@ function ProfileDisplayName({ profile, userId }: ProfileProps) {
 
   const hasChanges = displayName !== defaultDisplayName;
   return (
-    <InsetRow title={t('settings.profile.displayName')} description={t('settings.profile.shownToOthersInstead')}>
+    <InsetRow
+      title={t('settings.profile.displayName')}
+      description={t('settings.profile.shownToOthersInstead')}
+    >
       <Box direction="Column" grow="Yes" gap="100">
         <Box
           as="form"

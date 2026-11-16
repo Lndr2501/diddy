@@ -9,6 +9,8 @@ import {
   openConnection,
 } from '../../plugins/connections';
 import * as css from './AccountSwitcher.css';
+import { useTranslation } from 'react-i18next';
+import { translate } from '../../i18n';
 
 /** The windows that can be opened (original login + saved connections). Loads while `active`. */
 export const useConnectionRows = (active: boolean): { rows: ConnectionRow[]; failed: boolean } => {
@@ -38,7 +40,7 @@ export const useConnectionRows = (active: boolean): { rows: ConnectionRow[]; fai
 const errorText = (err: unknown): string => {
   if (typeof err === 'string') return err;
   if (err instanceof Error) return err.message;
-  return 'Das Fenster konnte nicht geöffnet werden.';
+  return translate('common.connectionRecovery.windowFailed');
 };
 
 type ConnectionsMenuProps = {
@@ -59,6 +61,7 @@ export function ConnectionsMenu({
   onManage,
   onDone,
 }: ConnectionsMenuProps) {
+  const { t } = useTranslation();
   const { rows, failed } = useConnectionRows(true);
   const [error, setError] = useState<string>();
   const busy = useRef(false);
@@ -79,10 +82,14 @@ export function ConnectionsMenu({
   };
 
   return (
-    <div className={css.Menu} role="menu" aria-label="Konten und Verbindungen">
+    <div
+      className={css.Menu}
+      role="menu"
+      aria-label={t('common.connectionRecovery.accountsAndConnections')}
+    >
       {account && <div className={css.Section}>{account}</div>}
       <Text size="L400" className={css.SectionTitle}>
-        Verbindungen
+        {t('common.connectionRecovery.verbindungen')}
       </Text>
       <div className={css.Section}>
         {rows.map((row) => (
@@ -100,7 +107,7 @@ export function ConnectionsMenu({
                 {row.title}
               </Text>
               <Text size="T200" priority="300" className={css.Ellipsis}>
-                {row.current ? 'Dieses Fenster' : row.hint}
+                {row.current ? t('common.connectionRecovery.thisWindow') : row.hint}
               </Text>
             </span>
             {row.current ? (
@@ -115,26 +122,26 @@ export function ConnectionsMenu({
         <Text size="T200" className={css.Error} role="alert">
           {error ??
             (failed
-              ? 'Die Verbindungsliste konnte nicht geladen werden. Dein Konto bleibt unverändert.'
-              : 'Getrennte Anmeldungen sind in der Diddy-Desktop-App verfügbar.')}
+              ? t('common.connectionRecovery.listFailed')
+              : t('common.connectionRecovery.desktopOnly'))}
         </Text>
       )}
       <div className={css.Divider} />
       <div className={css.Section}>
         <button type="button" role="menuitem" className={css.Row} onClick={onManage}>
           <Icon size="200" src={Icons.Plus} />
-          <Text size="T300">Konto oder Server hinzufügen …</Text>
+          <Text size="T300">{t('common.connectionRecovery.addAccount')}</Text>
         </button>
         {onSettings && (
           <button type="button" role="menuitem" className={css.Row} onClick={onSettings}>
             <Icon size="200" src={Icons.Setting} />
-            <Text size="T300">Einstellungen</Text>
+            <Text size="T300">{t('common.connectionRecovery.einstellungen')}</Text>
           </button>
         )}
         {onIntro && (
           <button type="button" role="menuitem" className={css.Row} onClick={onIntro}>
             <Icon size="200" src={Icons.Info} />
-            <Text size="T300">Einführung: Matrix für Discord-Umsteiger</Text>
+            <Text size="T300">{t('common.connectionRecovery.introDiscord')}</Text>
           </button>
         )}
       </div>

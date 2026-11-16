@@ -12,6 +12,7 @@ import {
   releasesApiUrl,
 } from '../../utils/updateCheck';
 import { setVisibleInterval } from '../../utils/visibleInterval';
+import { useTranslation } from 'react-i18next';
 
 const DISMISSED_KEY = 'diddyUpdateDismissed';
 const CHECK_DELAY_MS = 10_000;
@@ -29,6 +30,7 @@ type Release = { version: string; url: string };
 
 /** Tells the user when GitHub has a newer Diddy release than the running app (#39). */
 export function UpdateNotice() {
+  const { t } = useTranslation();
   const [release, setRelease] = useState<Release>();
   const { checkUpdatesAtStart, updateRepo } = useAtomValue(settingsAtom);
   const repo = effectiveUpdateRepo(updateRepo);
@@ -101,10 +103,10 @@ export function UpdateNotice() {
     >
       <Box grow="Yes" direction="Column">
         <Text size="T300">
-          <b>Diddy {release.version}</b> is available
+          <b>Diddy {release.version}</b> {t('common.updateNotice.isAvailable')}
         </Text>
         <Text size="T200" priority="300">
-          You have {APP_VERSION}.
+          {t('common.updateNotice.youHaveAppversion', { appVersion: APP_VERSION })}
         </Text>
       </Box>
       <Button
@@ -116,9 +118,15 @@ export function UpdateNotice() {
         radii="Pill"
         variant="Primary"
       >
-        <Text size="B300">Download</Text>
+        <Text size="B300">{t('common.updateNotice.download')}</Text>
       </Button>
-      <IconButton size="300" radii="Pill" fill="None" aria-label="Dismiss" onClick={dismiss}>
+      <IconButton
+        size="300"
+        radii="Pill"
+        fill="None"
+        aria-label={t('common.updateNotice.dismiss')}
+        onClick={dismiss}
+      >
         <Icon src={Icons.Cross} size="100" />
       </IconButton>
     </Box>

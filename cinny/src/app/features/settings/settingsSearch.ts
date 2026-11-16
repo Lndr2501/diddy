@@ -44,7 +44,8 @@ export const SETTINGS_SEARCH_INDEX: Record<string, SettingsSearchEntry> = {
 
   calls: {
     name: 'Calls & Audio',
-    keywords: 'call voice audio sound microphone agent dictation watch together video camera webcam',
+    keywords:
+      'call voice audio sound microphone agent dictation watch together video camera webcam',
     titles: [
       'Calls & Audio',
       'Calls',
@@ -218,7 +219,14 @@ export const SETTINGS_SEARCH_INDEX: Record<string, SettingsSearchEntry> = {
   developerTools: {
     name: 'Developer Tools',
     keywords: 'debug account data developer',
-    titles: ['Developer Tools', 'Enable Developer Tools', 'Access Token', 'Account Data', 'Global', 'Options'],
+    titles: [
+      'Developer Tools',
+      'Enable Developer Tools',
+      'Access Token',
+      'Account Data',
+      'Global',
+      'Options',
+    ],
   },
   about: {
     name: 'About',

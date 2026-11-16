@@ -264,7 +264,11 @@ function PluginRow({ plugin, confirming, onConfirm }: PluginRowProps) {
                 variant="Primary"
                 value={plugin.enabled}
                 onChange={(enabled) => setUserPluginEnabled(plugin.id, enabled)}
-                aria-label={plugin.enabled ? t('settings.plugins.turnOffName', { name: plugin.name }) : t('settings.plugins.turnOnName', { name: plugin.name })}
+                aria-label={
+                  plugin.enabled
+                    ? t('settings.plugins.turnOffName', { name: plugin.name })
+                    : t('settings.plugins.turnOnName', { name: plugin.name })
+                }
               />
               <Button
                 className={sheetCss.Pill}
@@ -336,7 +340,9 @@ export function Plugins({ requestClose }: PluginsProps) {
                         if (created) setPluginPinned(created.id, true);
                       }}
                     >
-                      <Text size="B300">{added ? t('settings.plugins.added') : t('settings.plugins.add')}</Text>
+                      <Text size="B300">
+                        {added ? t('settings.plugins.added') : t('settings.plugins.add')}
+                      </Text>
                     </Button>
                   }
                 />
@@ -384,7 +390,10 @@ export function Plugins({ requestClose }: PluginsProps) {
         </InsetGroup>
       </InsetSection>
       <InsetSection
-        title={t('settings.plugins.yourPluginsCountMaxplugins', { count: plugins.length, maxPlugins: MAX_PLUGINS })}
+        title={t('settings.plugins.yourPluginsCountMaxplugins', {
+          count: plugins.length,
+          maxPlugins: MAX_PLUGINS,
+        })}
         footer={t('settings.plugins.activePluginsAppearIn')}
       >
         <InsetGroup>

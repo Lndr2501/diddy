@@ -63,7 +63,9 @@ export function VerificationStatusBadge({
   if (otherUnverifiedCount > 0) {
     return (
       <Badge variant="Warning" fill="Solid" size="500">
-        <Text size="L400">{t('settings.verification.otherunverifiedcountUnverified', { otherUnverifiedCount })}</Text>
+        <Text size="L400">
+          {t('settings.verification.otherunverifiedcountUnverified', { otherUnverifiedCount })}
+        </Text>
       </Badge>
     );
   }
@@ -84,16 +86,18 @@ function LearnStartVerificationFromOtherDevice() {
         <ul style={{ margin: `${config.space.S100} 0` }}>
           <li>{t('settings.verification.openYourOtherVerified')}</li>
           <li>
-            {t('settings.verification.open')}{' '}<i>{t('settings.verification.settings')}</i>.
+            {t('settings.verification.open')} <i>{t('settings.verification.settings')}</i>.
           </li>
           <li>
-            {t('settings.verification.findThisDeviceIn')}{' '}<i>{t('settings.verification.devicesSessions')}</i>{' '}{t('settings.verification.section')}
+            {t('settings.verification.findThisDeviceIn')}{' '}
+            <i>{t('settings.verification.devicesSessions')}</i> {t('settings.verification.section')}
           </li>
           <li>{t('settings.verification.initiateVerification')}</li>
         </ul>
       </Text>
       <Text size="T200">
-        {t('settings.verification.ifYouDoNot')}{' '}<i>{t('settings.verification.verifyManually')}</i>{' '}{t('settings.verification.button')}
+        {t('settings.verification.ifYouDoNot')} <i>{t('settings.verification.verifyManually')}</i>{' '}
+        {t('settings.verification.button')}
       </Text>
     </Box>
   );
@@ -122,7 +126,11 @@ export function VerifyCurrentDeviceTile({
           <>
             {t('settings.verification.startVerificationFromOther')}{' '}
             <Text as="a" size="T200" onClick={() => setLearnMore(!learnMore)}>
-              <b>{learnMore ? t('settings.verification.viewLess') : t('settings.verification.learnMore')}</b>
+              <b>
+                {learnMore
+                  ? t('settings.verification.viewLess')
+                  : t('settings.verification.learnMore')}
+              </b>
             </Text>
           </>
         }

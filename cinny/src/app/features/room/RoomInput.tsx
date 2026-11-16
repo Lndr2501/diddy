@@ -125,6 +125,7 @@ import { useDebounce } from '../../hooks/useDebounce';
 import { VoiceRecorderButton } from './VoiceRecorderButton';
 import { VoiceRecording } from '../../hooks/useVoiceRecorder';
 import { sendVoiceMessage } from './sendVoiceMessage';
+import { useTranslation } from 'react-i18next';
 
 const getReplyContent = (replyDraft: IReplyDraft | undefined): IEventRelation => {
   if (!replyDraft) return {};
@@ -154,6 +155,7 @@ interface RoomInputProps {
 }
 export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
   ({ editor, fileDropContainerRef, roomId, room }, ref) => {
+    const { t } = useTranslation();
     const mx = useMatrixClient();
     const useAuthentication = useMediaAuthentication();
     const [enterForNewline] = useSetting(settingsAtom, 'enterForNewline');
@@ -591,9 +593,11 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
               >
                 <Icon size="600" src={Icons.File} />
                 <Text size="H4" align="Center">
-                  {`Drop Files in "${room?.name || 'Room'}"`}
+                  {t('composer.input.dropFilesIn', {
+                    room: room?.name || t('composer.input.room'),
+                  })}
                 </Text>
-                <Text align="Center">Drag and drop files here or click for selection dialog</Text>
+                <Text align="Center">{t('composer.input.dragAndDropFiles')}</Text>
               </Box>
             </Dialog>
           </OverlayCenter>
@@ -641,7 +645,7 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
         <CustomEditor
           editableName="RoomInput"
           editor={editor}
-          placeholder="Send a message..."
+          placeholder={t('composer.input.sendAMessage')}
           onKeyDown={handleKeyDown}
           onKeyUp={handleKeyUp}
           onPaste={handlePaste}
@@ -688,8 +692,8 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
           before={
             <IconButton
               onClick={() => pickFile('*')}
-              aria-label="Attach file"
-              title="Attach file"
+              aria-label={t('composer.input.attachFile')}
+              title={t('composer.input.attachFile')}
               variant="SurfaceVariant"
               fill="None"
               className={css.ComposerIconButton}
@@ -709,8 +713,8 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
                 size="300"
                 radii="Pill"
                 onClick={() => setToolbar(!toolbar)}
-                aria-label="Formatting"
-                title="Formatting"
+                aria-label={t('composer.input.formatting')}
+                title={t('composer.input.formatting')}
                 aria-pressed={toolbar}
               >
                 <Icon src={toolbar ? Icons.AlphabetUnderline : Icons.Alphabet} />
@@ -751,8 +755,8 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
                     {!hideStickerBtn && (
                       <IconButton
                         aria-pressed={emojiBoardTab === EmojiBoardTab.Sticker}
-                        aria-label="Stickers"
-                        title="Stickers"
+                        aria-label={t('composer.input.stickers')}
+                        title={t('composer.input.stickers')}
                         onClick={() => setEmojiBoardTab(EmojiBoardTab.Sticker)}
                         variant="SurfaceVariant"
                         fill="None"
@@ -768,8 +772,8 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
                     )}
                     <IconButton
                       ref={emojiBtnRef}
-                      aria-label="Emoji"
-                      title="Emoji"
+                      aria-label={t('composer.input.emoji')}
+                      title={t('composer.input.emoji')}
                       aria-pressed={
                         hideStickerBtn ? !!emojiBoardTab : emojiBoardTab === EmojiBoardTab.Emoji
                       }
@@ -797,7 +801,7 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
                 radii="Pill"
                 className={css.SendButton}
                 data-ready={hasText || selectedFiles.length > 0}
-                aria-label="Send message"
+                aria-label={t('composer.input.sendMessage')}
               >
                 <Icon src={Icons.Send} />
               </IconButton>

@@ -79,7 +79,10 @@ function EmailNotification() {
             </Text>
           )}
           {stableResult?.email && (
-            <>{t('settings.systemNotification.sendNotificationToYour')}{' '}{`("${stableResult.email}")`}</>
+            <>
+              {t('settings.systemNotification.sendNotificationToYour')}{' '}
+              {`("${stableResult.email}")`}
+            </>
           )}
           {result === null && (
             <Text as="span" style={{ color: color.Critical.Main }} size="T200">

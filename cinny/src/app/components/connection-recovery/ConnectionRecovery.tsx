@@ -17,8 +17,10 @@ import {
 import { ConnectionsMenu } from './AccountSwitcher';
 import * as switcher from './AccountSwitcher.css';
 import * as css from './ConnectionRecovery.css';
+import { useTranslation } from 'react-i18next';
 
 export function ConnectionOverview({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t } = useTranslation();
   const dialog = useRef<HTMLDialogElement>(null);
   const headingId = useId();
   const inputId = useId();
@@ -49,10 +51,7 @@ export function ConnectionOverview({ open, onClose }: { open: boolean; onClose: 
           if (active) setRows(buildConnectionRows(data, getConnectionProfile()?.id));
         },
         () => {
-          if (active)
-            setError(
-              'Die Verbindungsliste konnte nicht geladen werden. Dein Konto bleibt unverändert.'
-            );
+          if (active) setError(t('common.connectionRecovery.listFailed'));
         }
       );
     }
@@ -75,7 +74,7 @@ export function ConnectionOverview({ open, onClose }: { open: boolean; onClose: 
           ? err
           : err instanceof Error
           ? err.message
-          : 'Das Fenster konnte nicht geöffnet werden.'
+          : t('common.connectionRecovery.windowFailed')
       );
     } finally {
       pendingRef.current = false;
@@ -105,7 +104,7 @@ export function ConnectionOverview({ open, onClose }: { open: boolean; onClose: 
           ? err
           : err instanceof Error
           ? err.message
-          : 'Die Verbindung konnte nicht entfernt werden.'
+          : t('common.connectionRecovery.removeFailed')
       );
       // The entry may already be gone (data cleanup failed after the removal) - reload either way.
       try {
@@ -131,7 +130,7 @@ export function ConnectionOverview({ open, onClose }: { open: boolean; onClose: 
       <Box direction="Column" gap="400">
         <Box justifyContent="SpaceBetween" alignItems="Center" gap="200">
           <Text as="h2" id={headingId} className={css.Title}>
-            Deine Verbindungen
+            {t('common.connectionRecovery.yourConnections')}
           </Text>
           <Button
             className={css.Pill}
@@ -139,29 +138,21 @@ export function ConnectionOverview({ open, onClose }: { open: boolean; onClose: 
             fill="None"
             onClick={onClose}
             disabled={pending}
-            aria-label="Verbindungsübersicht schließen"
+            aria-label={t('common.connectionRecovery.closeOverview')}
           >
-            <Text>Schließen</Text>
+            <Text>{t('common.connectionRecovery.close')}</Text>
           </Button>
         </Box>
-        <Text size="T300">
-          Ein anderes Konto wird in einem eigenen Diddy-Fenster geöffnet. Dein bisheriger Login,
-          Nachrichten und Verschlüsselungsschlüssel bleiben erhalten. Ein anderer Homeserver braucht
-          einen eigenen Account; dein Konto wird nicht übertragen. Ein gespeicherter Eintrag lässt
-          sich löschen: Das Fenster schließt, und die getrennt gespeicherte Anmeldung dieses Servers
-          wird mitsamt ihren Schlüsseln entfernt.
-        </Text>
+        <Text size="T300">{t('common.connectionRecovery.otherAccountHint')}</Text>
         {!desktop && (
-          <Text className={css.Error}>
-            Getrennte Anmeldungen sind in der Diddy-Desktop-App verfügbar.
-          </Text>
+          <Text className={css.Error}>{t('common.connectionRecovery.desktopOnly')}</Text>
         )}
         {rows.map((row) => (
           <div key={row.id} className={css.Connection}>
             <Box direction="Column" gap="100" style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
               <Text size="L400">{row.title}</Text>
               <Text size="T200" priority="300">
-                {row.current ? 'Dieses Fenster' : row.hint}
+                {row.current ? t('common.connectionRecovery.thisWindow') : row.hint}
               </Text>
             </Box>
             <Box alignItems="Center" gap="200">
@@ -171,7 +162,11 @@ export function ConnectionOverview({ open, onClose }: { open: boolean; onClose: 
                 disabled={!desktop || pending || row.current}
                 onClick={() => void act(() => openConnection(row.id))}
               >
-                <Text>{row.current ? 'Dieses Fenster' : 'Öffnen'}</Text>
+                <Text>
+                  {row.current
+                    ? t('common.connectionRecovery.thisWindow')
+                    : t('common.connectionRecovery.open')}
+                </Text>
               </Button>
               {desktop && row.id !== 'main' && !row.current && (
                 <Button
@@ -179,7 +174,7 @@ export function ConnectionOverview({ open, onClose }: { open: boolean; onClose: 
                   variant={confirmRemove === row.id ? 'Critical' : 'Secondary'}
                   fill="None"
                   disabled={pending}
-                  aria-label={`Verbindung ${row.title} löschen`}
+                  aria-label={t('common.connectionRecovery.deleteConnection', { title: row.title })}
                   onClick={() => {
                     if (confirmRemove !== row.id) {
                       armRemove(row);
@@ -188,7 +183,11 @@ export function ConnectionOverview({ open, onClose }: { open: boolean; onClose: 
                     removeRow(row).catch(() => {});
                   }}
                 >
-                  <Text>{confirmRemove === row.id ? 'Wirklich löschen?' : 'Löschen'}</Text>
+                  <Text>
+                    {confirmRemove === row.id
+                      ? t('common.connectionRecovery.reallyDelete')
+                      : t('common.connectionRecovery.delete')}
+                  </Text>
                 </Button>
               )}
             </Box>
@@ -197,14 +196,14 @@ export function ConnectionOverview({ open, onClose }: { open: boolean; onClose: 
         <form onSubmit={submit}>
           <Box direction="Column" gap="200">
             <Text as="label" htmlFor={inputId} size="L400">
-              Mit einem anderen Server verbinden
+              {t('common.connectionRecovery.connectOtherServer')}
             </Text>
             <input
               id={inputId}
               className={css.Input}
               value={server}
               onChange={(event) => setServer(event.target.value)}
-              placeholder="matrix.example.org oder http://127.0.0.1:8008"
+              placeholder={t('common.connectionRecovery.serverPlaceholder')}
               autoCapitalize="off"
               autoCorrect="off"
               spellCheck={false}
@@ -219,7 +218,11 @@ export function ConnectionOverview({ open, onClose }: { open: boolean; onClose: 
                 variant="Primary"
                 disabled={!desktop || pending || !server.trim()}
               >
-                <Text>{pending ? 'Fenster wird geöffnet …' : 'Eigene Anmeldung öffnen'}</Text>
+                <Text>
+                  {pending
+                    ? t('common.connectionRecovery.opening')
+                    : t('common.connectionRecovery.openOwnLogin')}
+                </Text>
               </Button>
               <Button
                 className={css.Pill}
@@ -229,7 +232,7 @@ export function ConnectionOverview({ open, onClose }: { open: boolean; onClose: 
                 disabled={!desktop || pending}
                 onClick={() => setServer('http://127.0.0.1:8008')}
               >
-                <Text>Lokaler Testserver</Text>
+                <Text>{t('common.connectionRecovery.lokalerTestserver')}</Text>
               </Button>
             </div>
           </Box>
@@ -246,6 +249,7 @@ export function ConnectionOverview({ open, onClose }: { open: boolean; onClose: 
 
 /** Top-right entry: shows how many windows exist and opens the same menu as the account switcher. */
 export function ConnectionsButton() {
+  const { t } = useTranslation();
   const [cords, setCords] = useState<RectCords>();
   const [manage, setManage] = useState(false);
   const [count, setCount] = useState(1);
@@ -300,14 +304,14 @@ export function ConnectionsButton() {
           onClick={toggle}
           aria-haspopup="menu"
           aria-expanded={!!cords}
-          aria-label="Verbindungen"
+          aria-label={t('common.connectionRecovery.verbindungen')}
         >
           <span className={switcher.Pill}>
             <Icon size="100" src={Icons.Link} />
             <Text size="T200">
               {current
                 ? visibleHomeserver(current.server).replace(/^https?:\/\//, '')
-                : 'Verbindungen'}
+                : t('common.connectionRecovery.verbindungen')}
               {count > 1 ? ` · ${count}` : ''}
             </Text>
           </span>
@@ -330,18 +334,19 @@ export function ConnectionRecovery({
   onRetry: () => void;
   onContinue?: () => void;
 }) {
+  const { t } = useTranslation();
   const [overview, setOverview] = useState(false);
   const waiting = phase === 'connecting' || phase === 'syncing' || phase === 'initializing';
   const heading =
     phase === 'connecting'
-      ? 'Verbindung zum Homeserver …'
+      ? t('common.connectionRecovery.connecting')
       : phase === 'unreachable'
-      ? 'Homeserver nicht erreichbar'
+      ? t('common.connectionRecovery.unreachable')
       : phase === 'syncing'
-      ? 'Die Synchronisierung dauert länger'
+      ? t('common.connectionRecovery.syncSlow')
       : phase === 'initializing'
-      ? 'Deine Anmeldung wird vorbereitet'
-      : 'Die Verbindung konnte nicht gestartet werden';
+      ? t('common.connectionRecovery.preparing')
+      : t('common.connectionRecovery.startFailed');
   return (
     <SplashScreen>
       <Box
@@ -350,7 +355,10 @@ export function ConnectionRecovery({
         justifyContent="Center"
         style={{ padding: '60px 0 24px' }}
       >
-        <section className={css.Card} aria-label="Homeserver-Verbindung">
+        <section
+          className={css.Card}
+          aria-label={t('common.connectionRecovery.homeserverConnection')}
+        >
           <Box alignItems="Center" gap="300">
             {waiting && <Spinner size="300" variant="Secondary" />}
             <Text size="H3" role="status">
@@ -360,14 +368,14 @@ export function ConnectionRecovery({
           <div className={css.Server}>{visibleHomeserver(baseUrl)}</div>
           <Text size="T300">
             {phase === 'unreachable'
-              ? 'Diddy bekommt keine Antwort. Der Homeserver oder deine Netzwerkverbindung ist möglicherweise gerade nicht verfügbar.'
+              ? t('common.connectionRecovery.noAnswer')
               : waiting
-              ? 'Du kannst warten, die Verbindung erneut versuchen oder eine getrennte Anmeldung an einem anderen Server öffnen.'
-              : 'Beim Vorbereiten der Anmeldung oder der Synchronisierung ist ein Fehler aufgetreten.'}
+              ? t('common.connectionRecovery.youCanWait')
+              : t('common.connectionRecovery.prepareFailed')}
           </Text>
           <div className={css.Actions}>
             <Button className={css.Pill} variant="Primary" onClick={onRetry}>
-              <Text>Erneut versuchen</Text>
+              <Text>{t('common.connectionRecovery.retry')}</Text>
             </Button>
             <Button
               className={css.Pill}
@@ -375,16 +383,16 @@ export function ConnectionRecovery({
               fill="Soft"
               onClick={() => setOverview(true)}
             >
-              <Text>Anderen Server verbinden</Text>
+              <Text>{t('common.connectionRecovery.anderenServerVerbinden')}</Text>
             </Button>
             {onContinue && (
               <Button className={css.Pill} variant="Secondary" fill="None" onClick={onContinue}>
-                <Text>Mit vorhandenen Daten fortfahren</Text>
+                <Text>{t('common.connectionRecovery.continueWithData')}</Text>
               </Button>
             )}
           </div>
           <Text size="T200" priority="300">
-            Dein Konto und deine lokalen Schlüssel werden dabei nicht gelöscht.
+            {t('common.connectionRecovery.nothingDeleted')}
           </Text>
         </section>
       </Box>

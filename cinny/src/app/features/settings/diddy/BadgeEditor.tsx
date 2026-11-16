@@ -86,7 +86,10 @@ function BadgeLibrary() {
     <SettingsCard
       icon={Icons.Category}
       title={t('settings.badgeEditor.badgeLibrary')}
-      description={t('settings.badgeEditor.builtInAndCommunity', { count: owned.length, count2: defs.length })}
+      description={t('settings.badgeEditor.builtInAndCommunity', {
+        count: owned.length,
+        count2: defs.length,
+      })}
       footer={error && <Hint tone="error">{error}</Hint>}
     >
       <input
@@ -147,7 +150,9 @@ function BadgeLibrary() {
                   }
                   onClick={() => handleToggle(badge)}
                 >
-                  <Text size="B300">{isOwned ? t('settings.badgeEditor.remove') : t('settings.badgeEditor.addToMe')}</Text>
+                  <Text size="B300">
+                    {isOwned ? t('settings.badgeEditor.remove') : t('settings.badgeEditor.addToMe')}
+                  </Text>
                 </Button>
                 {canDelete(badge) && (
                   <Button
@@ -207,14 +212,14 @@ function YourBadges() {
     <SettingsCard
       icon={Icons.Star}
       title={t('settings.badgeEditor.equippedBadges')}
-      description={t('settings.badgeEditor.pickUpToMaxshownbadges', { maxShownBadges: MAX_SHOWN_BADGES })}
+      description={t('settings.badgeEditor.pickUpToMaxshownbadges', {
+        maxShownBadges: MAX_SHOWN_BADGES,
+      })}
       action={<Counter value={shownIds.length} max={MAX_SHOWN_BADGES} />}
       footer={error && <Hint tone="error">{error}</Hint>}
     >
       {owned.length === 0 ? (
-        <Hint>
-          {t('settings.badgeEditor.youDoNotHave')}
-        </Hint>
+        <Hint>{t('settings.badgeEditor.youDoNotHave')}</Hint>
       ) : (
         <Box gap="200" wrap="Wrap">
           {owned.map((badge) => {
@@ -360,7 +365,11 @@ function CreateBadge() {
       <Field
         label={t('settings.badgeEditor.emojiOrImage')}
         top
-        hint={imageMxc ? t('settings.badgeEditor.usingAnUploadedImage') : t('settings.badgeEditor.typeAnEmojiOr')}
+        hint={
+          imageMxc
+            ? t('settings.badgeEditor.usingAnUploadedImage')
+            : t('settings.badgeEditor.typeAnEmojiOr')
+        }
       >
         <Box direction="Column" gap="200" style={{ minWidth: 0 }}>
           <Box gap="200" alignItems="Center" wrap="Wrap">

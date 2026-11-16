@@ -17,8 +17,10 @@ import {
 } from '../../../components/page';
 import { BackRouteHandler } from '../../../components/BackRouteHandler';
 import { CreateChat } from '../../../features/create-chat';
+import { useTranslation } from 'react-i18next';
 
 export function DirectCreate() {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const screenSize = useScreenSizeContext();
 
@@ -60,8 +62,8 @@ export function DirectCreate() {
                 <Box direction="Column" gap="700">
                   <PageHero
                     icon={<Icon size="600" src={Icons.Mention} />}
-                    title="Create Chat"
-                    subTitle="Start a private, encrypted chat by entering a user ID."
+                    title={t('nav.directCreate.createChat')}
+                    subTitle={t('nav.directCreate.startAPrivateEncrypted')}
                   />
                   <CreateChat defaultUserId={userId} />
                 </Box>

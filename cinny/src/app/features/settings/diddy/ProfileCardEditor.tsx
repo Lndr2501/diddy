@@ -112,7 +112,9 @@ export function InterestsEditor({ draft, patch }: { draft: Draft; patch: PatchDr
     <SettingsCard
       icon={Icons.Heart}
       title={t('settings.profileCardEditor.interests')}
-      description={t('settings.profileCardEditor.shownAsTagsSeparate', { maxInterests: MAX_INTERESTS })}
+      description={t('settings.profileCardEditor.shownAsTagsSeparate', {
+        maxInterests: MAX_INTERESTS,
+      })}
       action={<Counter value={list.length} max={MAX_INTERESTS} />}
     >
       <input
@@ -283,10 +285,38 @@ export function ActivityEditor({ draft, patch }: { draft: Draft; patch: PatchDra
 }
 
 const LAYOUT_INFO: Record<CardLayout, { label: string; text: string }> = {
-  compact: { get label() { return translate('settings.profileCardEditor.compact'); }, get text() { return translate('settings.profileCardEditor.minimalSpaceSaving'); } },
-  standard: { get label() { return translate('settings.profileCardEditor.standard'); }, get text() { return translate('settings.profileCardEditor.balancedAndFamiliar'); } },
-  expanded: { get label() { return translate('settings.profileCardEditor.expanded'); }, get text() { return translate('settings.profileCardEditor.moreSpaceForDetails'); } },
-  tabs: { get label() { return translate('settings.profileCardEditor.tabs'); }, get text() { return translate('settings.profileCardEditor.organizedInTabs'); } },
+  compact: {
+    get label() {
+      return translate('settings.profileCardEditor.compact');
+    },
+    get text() {
+      return translate('settings.profileCardEditor.minimalSpaceSaving');
+    },
+  },
+  standard: {
+    get label() {
+      return translate('settings.profileCardEditor.standard');
+    },
+    get text() {
+      return translate('settings.profileCardEditor.balancedAndFamiliar');
+    },
+  },
+  expanded: {
+    get label() {
+      return translate('settings.profileCardEditor.expanded');
+    },
+    get text() {
+      return translate('settings.profileCardEditor.moreSpaceForDetails');
+    },
+  },
+  tabs: {
+    get label() {
+      return translate('settings.profileCardEditor.tabs');
+    },
+    get text() {
+      return translate('settings.profileCardEditor.organizedInTabs');
+    },
+  },
 };
 const BIG_LAYOUT_LABEL: Record<BigProfileLayout, string> = {
   get expanded() {
@@ -648,12 +678,66 @@ export function LayoutEditor({ draft, patch }: { draft: Draft; patch: PatchDraft
 export type EditorTab = 'identity' | 'card' | 'avatar' | 'status' | 'layout' | 'privacy';
 // `short` is shown in the one-row tab strip, `label` is the accessible and hover name
 const TABS: { id: EditorTab; label: string; short: string; icon: IconSrc }[] = [
-  { id: 'identity', get label() { return translate('settings.profileCardEditor.identity'); }, get short() { return translate('settings.profileCardEditor.identity'); }, icon: Icons.User },
-  { id: 'card', get label() { return translate('settings.profileCardEditor.profileCard'); }, get short() { return translate('settings.profileCardEditor.card'); }, icon: Icons.Pencil },
-  { id: 'avatar', get label() { return translate('settings.profileCardEditor.avatarNameplate'); }, get short() { return translate('settings.profileCardEditor.avatar'); }, icon: Icons.Photo },
-  { id: 'status', get label() { return translate('settings.profileCardEditor.statusBadges'); }, get short() { return translate('settings.profileCardEditor.status'); }, icon: Icons.Star },
-  { id: 'layout', get label() { return translate('settings.profileCardEditor.layouts'); }, get short() { return translate('settings.profileCardEditor.layout'); }, icon: Icons.Category },
-  { id: 'privacy', get label() { return translate('settings.profileCardEditor.privacyData'); }, get short() { return translate('settings.profileCardEditor.privacy'); }, icon: Icons.ShieldLock },
+  {
+    id: 'identity',
+    get label() {
+      return translate('settings.profileCardEditor.identity');
+    },
+    get short() {
+      return translate('settings.profileCardEditor.identity');
+    },
+    icon: Icons.User,
+  },
+  {
+    id: 'card',
+    get label() {
+      return translate('settings.profileCardEditor.profileCard');
+    },
+    get short() {
+      return translate('settings.profileCardEditor.card');
+    },
+    icon: Icons.Pencil,
+  },
+  {
+    id: 'avatar',
+    get label() {
+      return translate('settings.profileCardEditor.avatarNameplate');
+    },
+    get short() {
+      return translate('settings.profileCardEditor.avatar');
+    },
+    icon: Icons.Photo,
+  },
+  {
+    id: 'status',
+    get label() {
+      return translate('settings.profileCardEditor.statusBadges');
+    },
+    get short() {
+      return translate('settings.profileCardEditor.status');
+    },
+    icon: Icons.Star,
+  },
+  {
+    id: 'layout',
+    get label() {
+      return translate('settings.profileCardEditor.layouts');
+    },
+    get short() {
+      return translate('settings.profileCardEditor.layout');
+    },
+    icon: Icons.Category,
+  },
+  {
+    id: 'privacy',
+    get label() {
+      return translate('settings.profileCardEditor.privacyData');
+    },
+    get short() {
+      return translate('settings.profileCardEditor.privacy');
+    },
+    icon: Icons.ShieldLock,
+  },
 ];
 
 export function EditorTabs({
@@ -667,7 +751,11 @@ export function EditorTabs({
 }) {
   const { t } = useTranslation();
   return (
-    <div className={css.Tabs} role="tablist" aria-label={t('settings.profileCardEditor.profileSections')}>
+    <div
+      className={css.Tabs}
+      role="tablist"
+      aria-label={t('settings.profileCardEditor.profileSections')}
+    >
       {TABS.filter((t) => !hide?.includes(t.id)).map((t) => (
         <button
           key={t.id}

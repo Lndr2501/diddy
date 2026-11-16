@@ -39,7 +39,13 @@ function SoundRow({ sound }: SoundRowProps) {
       className={css.SoundRow}
       title={sound.title}
       description={
-        error ?? (customName ? t('settings.sound.descriptionOwnSoundCustomname', { description: sound.description, customName }) : sound.description)
+        error ??
+        (customName
+          ? t('settings.sound.descriptionOwnSoundCustomname', {
+              description: sound.description,
+              customName,
+            })
+          : sound.description)
       }
       after={
         <Box alignItems="Center" gap="200">
@@ -111,7 +117,10 @@ export function SoundSettings() {
   return (
     <>
       {SOUND_GROUPS.map((group) => (
-        <InsetSection key={group.title} title={t('settings.sound.soundsTitle', { title: group.title })}>
+        <InsetSection
+          key={group.title}
+          title={t('settings.sound.soundsTitle', { title: group.title })}
+        >
           <InsetGroup>
             {group.sounds.map((sound) => (
               <SoundRow key={sound.id} sound={sound} />

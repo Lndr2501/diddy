@@ -3,6 +3,7 @@ import { Box, Button, config, Menu, PopOut, RectCords, Text } from 'folds';
 import React, { MouseEventHandler, ReactNode, useState } from 'react';
 import { stopPropagation } from '../utils/keyboard';
 import * as sheetCss from './sheet/Sheet.css';
+import { useTranslation } from 'react-i18next';
 
 type HexColorPickerPopOutProps = {
   children: (onOpen: MouseEventHandler<HTMLElement>, opened: boolean) => ReactNode;
@@ -10,6 +11,7 @@ type HexColorPickerPopOutProps = {
   onRemove?: () => void;
 };
 export function HexColorPickerPopOut({ picker, onRemove, children }: HexColorPickerPopOutProps) {
+  const { t } = useTranslation();
   const [cords, setCords] = useState<RectCords>();
 
   const handleOpen: MouseEventHandler<HTMLElement> = (evt) => {
@@ -46,7 +48,7 @@ export function HexColorPickerPopOut({ picker, onRemove, children }: HexColorPic
                   radii="400"
                   onClick={() => onRemove()}
                 >
-                  <Text size="B300">Remove</Text>
+                  <Text size="B300">{t('common.hexColorPickerPopOut.remove')}</Text>
                 </Button>
               )}
             </Box>

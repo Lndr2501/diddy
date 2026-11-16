@@ -59,6 +59,7 @@ import {
   watchUrl,
 } from '../../plugins/watchTogether/youtube';
 import * as css from './styles.css';
+import { useTranslation } from 'react-i18next';
 
 const TICK_MS = 500;
 const HANDSHAKE_MS = 250;
@@ -67,6 +68,7 @@ const HANDSHAKE_TRIES = 60;
 // --- link dialog ---------------------------------------------------------------------------------
 
 function WatchLinkDialog({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation();
   const [input, setInput] = useState('');
   const [error, setError] = useState<string>();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -76,7 +78,7 @@ function WatchLinkDialog({ onClose }: { onClose: () => void }) {
   const submit = () => {
     const ref = parseYouTubeUrl(input);
     if (!ref) {
-      setError('That is not a YouTube video link (youtube.com/watch, youtu.be or shorts).');
+      setError(t('call.watchTogether.thatIsNotA'));
       return;
     }
     startWatching(ref.videoId, ref.start);
@@ -96,23 +98,27 @@ function WatchLinkDialog({ onClose }: { onClose: () => void }) {
             size="500"
           >
             <Box grow="Yes">
-              <Text size="H4">Watch together</Text>
+              <Text size="H4">{t('call.watchTogether.watchTogether')}</Text>
             </Box>
-            <IconButton size="300" onClick={onClose} radii="300" aria-label="Close">
+            <IconButton
+              size="300"
+              onClick={onClose}
+              radii="300"
+              aria-label={t('call.watchTogether.close')}
+            >
               <Icon src={Icons.Cross} />
             </IconButton>
           </Header>
           <Box style={{ padding: config.space.S400 }} direction="Column" gap="300">
             <Text size="T300" priority="300">
-              Paste a YouTube link. Everybody in the call gets the video; play, pause and seeking
-              are shared, volume and quality stay yours.
+              {t('call.watchTogether.pasteAYoutubeLink')}
             </Text>
             <Input
               ref={inputRef}
               variant="Background"
               size="400"
               outlined
-              placeholder="https://youtu.be/…"
+              placeholder={t('call.watchTogether.httpsYoutuBe')}
               value={input}
               onChange={(evt: React.ChangeEvent<HTMLInputElement>) => {
                 setInput(evt.target.value);
@@ -130,10 +136,10 @@ function WatchLinkDialog({ onClose }: { onClose: () => void }) {
             )}
             <Box justifyContent="End" gap="200">
               <Button variant="Secondary" fill="Soft" size="400" onClick={onClose}>
-                <Text size="B400">Cancel</Text>
+                <Text size="B400">{t('call.watchTogether.cancel')}</Text>
               </Button>
               <Button variant="Primary" size="400" onClick={submit} disabled={!input.trim()}>
-                <Text size="B400">Start for everyone</Text>
+                <Text size="B400">{t('call.watchTogether.startForEveryone')}</Text>
               </Button>
             </Box>
           </Box>
@@ -146,6 +152,7 @@ function WatchLinkDialog({ onClose }: { onClose: () => void }) {
 // --- call bar button -----------------------------------------------------------------------------
 
 export function WatchTogetherButton() {
+  const { t } = useTranslation();
   const prefs = useWatchPrefs();
   const watch = useWatch();
   const [asking, setAsking] = useState(false);
@@ -158,9 +165,9 @@ export function WatchTogetherButton() {
     else setAsking(true);
   };
 
-  let label = 'Watch together';
-  if (hidden) label = 'Show the video';
-  else if (running) label = 'Watch another video together';
+  let label = t('call.watchTogether.watchTogether');
+  if (hidden) label = t('call.watchTogether.showTheVideo');
+  else if (running) label = t('call.watchTogether.watchAnotherVideoTogether');
 
   return (
     <>
@@ -221,6 +228,7 @@ function YouTubePlayer({
   categories,
   onQuality,
 }: YouTubePlayerProps) {
+  const { t } = useTranslation();
   const frameRef = useRef<HTMLIFrameElement>(null);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<number>();
@@ -274,7 +282,7 @@ function YouTubePlayer({
     if (result.change) changeWatch(result.change);
     if (result.skipped) {
       const label = CATEGORY_LABELS[result.skipped.category].toLowerCase();
-      showWatchToast(`Skipped ${label} segment (SponsorBlock)`);
+      showWatchToast(t('call.watchTogether.skippedLabelSegmentSponsorblock', { label }));
     }
   };
   const tickRef = useRef(tick);
@@ -407,7 +415,7 @@ function YouTubePlayer({
         ref={frameRef}
         className={css.WatchIframe}
         src={src}
-        title="YouTube video player"
+        title={t('call.watchTogether.youtubeVideoPlayer')}
         allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
         referrerPolicy="strict-origin-when-cross-origin"
         allowFullScreen
@@ -417,7 +425,7 @@ function YouTubePlayer({
           <Text size="T300">{playerErrorText(error)}</Text>
           <a href={watchUrl(shared.videoId)} target="_blank" rel="noreferrer noopener">
             <Text size="T200" style={{ color: '#fff', textDecoration: 'underline' }}>
-              Open on YouTube
+              {t('call.watchTogether.openOnYoutube')}
             </Text>
           </a>
         </div>
@@ -429,6 +437,7 @@ function YouTubePlayer({
 // --- panel ---------------------------------------------------------------------------------------
 
 export function WatchTogetherPanel() {
+  const { t } = useTranslation();
   const prefs = useWatchPrefs();
   const watch = useWatch();
   const [reported, setReported] = useState<{ current?: string; levels: string[] }>({
@@ -478,7 +487,7 @@ export function WatchTogetherPanel() {
         <Icon size="200" src={Icons.Play} filled />
         <Box grow="Yes" style={{ minWidth: 0 }}>
           <Text size="H6" truncate>
-            Watch together
+            {t('call.watchTogether.watchTogether')}
           </Text>
         </Box>
         <Button
@@ -494,10 +503,10 @@ export function WatchTogetherPanel() {
           <Text size="B300">YouTube</Text>
         </Button>
         <Button size="300" variant="Secondary" fill="Soft" onClick={closeWatchForMe}>
-          <Text size="B300">Close for me</Text>
+          <Text size="B300">{t('call.watchTogether.closeForMe')}</Text>
         </Button>
         <Button size="300" variant="Critical" fill="Soft" onClick={stopWatchingForEveryone}>
-          <Text size="B300">Stop for everyone</Text>
+          <Text size="B300">{t('call.watchTogether.stopForEveryone')}</Text>
         </Button>
       </div>
       {toast}
@@ -518,7 +527,9 @@ export function WatchTogetherPanel() {
             variant="SurfaceVariant"
             fill="None"
             onClick={() => updateWatchPrefs({ muted: !prefs.muted })}
-            aria-label={prefs.muted ? 'Unmute video' : 'Mute video'}
+            aria-label={
+              prefs.muted ? t('call.watchTogether.unmuteVideo') : t('call.watchTogether.muteVideo')
+            }
           >
             <Icon size="200" src={prefs.muted ? Icons.VolumeMute : Icons.VolumeHigh} />
           </IconButton>
@@ -526,18 +537,18 @@ export function WatchTogetherPanel() {
             min={0}
             max={100}
             value={prefs.volume}
-            aria-label="Your video volume"
+            aria-label={t('call.watchTogether.yourVideoVolume')}
             onChange={(evt) => updateWatchPrefs({ volume: Number(evt.target.value), muted: false })}
           />
         </div>
         <Box alignItems="Center" gap="100">
           <Text size="T200" priority="300">
-            Quality
+            {t('call.watchTogether.quality')}
           </Text>
           <select
             className={css.WatchSelect}
             value={prefs.quality}
-            aria-label="Your video quality"
+            aria-label={t('call.watchTogether.yourVideoQuality')}
             onChange={(evt) => updateWatchPrefs({ quality: evt.target.value as QualityChoice })}
           >
             {QUALITY_CHOICES.map((q) => (
@@ -548,17 +559,15 @@ export function WatchTogetherPanel() {
           </select>
           {reported.current && reported.current !== 'unknown' && (
             <Text size="T200" priority="300">
-              now {QUALITY_LABELS[reported.current] ?? reported.current}
+              {t('call.watchTogether.now')} {QUALITY_LABELS[reported.current] ?? reported.current}
             </Text>
           )}
         </Box>
       </div>
       <Text size="T200" priority="300">
-        Volume and quality are yours only. Use headphones: the video plays on your device and
-        speakers would leak into your microphone.
-        {qualityIgnored &&
-          ' YouTube decides the quality itself and ignored your choice; the gear in the player changes it for you only.'}
-        {prefs.categories.length > 0 && ' Sponsor segments are skipped with SponsorBlock.'}
+        {t('call.watchTogether.volumeAndQualityAre')}
+        {qualityIgnored && t('call.watchTogether.youtubeDecidesTheQuality')}
+        {prefs.categories.length > 0 && t('call.watchTogether.sponsorSegmentsAreSkipped')}
       </Text>
     </div>
   );

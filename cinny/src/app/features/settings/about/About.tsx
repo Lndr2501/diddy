@@ -54,7 +54,9 @@ export function About({ requestClose }: AboutProps) {
             <Text size="T300" priority="300">
               {t('settings.about.versionAppversion', { appVersion: APP_VERSION })}
             </Text>
-            <Text priority="400">{t('settings.about.aMatrixChatClient', { upstreamName: UPSTREAM_NAME })}</Text>
+            <Text priority="400">
+              {t('settings.about.aMatrixChatClient', { upstreamName: UPSTREAM_NAME })}
+            </Text>
           </Box>
 
           <Box gap="200" wrap="Wrap" justifyContent="Center">
@@ -113,9 +115,7 @@ export function About({ requestClose }: AboutProps) {
       <InsetSection
         title={t('settings.about.updates')}
         footer={
-          desktop
-            ? t('settings.about.atStartDiddyLooks')
-            : t('settings.about.diddyShowsANotice')
+          desktop ? t('settings.about.atStartDiddyLooks') : t('settings.about.diddyShowsANotice')
         }
       >
         <InsetGroup>
@@ -126,14 +126,18 @@ export function About({ requestClose }: AboutProps) {
               <Switch
                 variant="Primary"
                 value={settings.checkUpdatesAtStart}
-                onChange={(value: boolean) => setSettings({ ...settings, checkUpdatesAtStart: value })}
+                onChange={(value: boolean) =>
+                  setSettings({ ...settings, checkUpdatesAtStart: value })
+                }
               />
             }
           />
           <InsetRow
             title={t('settings.about.updateRepository')}
             description={
-              repoValid ? t('settings.about.githubOwnerNameThat') : t('settings.about.useTheFormOwner')
+              repoValid
+                ? t('settings.about.githubOwnerNameThat')
+                : t('settings.about.useTheFormOwner')
             }
             after={
               <Box gap="200" alignItems="Center">
@@ -207,7 +211,9 @@ export function About({ requestClose }: AboutProps) {
                     size="300"
                     radii="Pill"
                   >
-                    <Text size="B300">{copied ? t('settings.about.copied') : t('settings.about.copyPath')}</Text>
+                    <Text size="B300">
+                      {copied ? t('settings.about.copied') : t('settings.about.copyPath')}
+                    </Text>
                   </Button>
                 </Box>
               }
@@ -236,10 +242,12 @@ export function About({ requestClose }: AboutProps) {
                     target="_blank"
                   >
                     {t('settings.about.matrixJsSdk')}
-                  </a>{' '}{t('settings.about.is')}{' '}
+                  </a>{' '}
+                  {t('settings.about.is')}{' '}
                   <a href="https://matrix.org/foundation" rel="noreferrer noopener" target="_blank">
                     {t('settings.about.theMatrixOrgFoundation')}
-                  </a>{' '}{t('settings.about.usedUnderTheTerms')}{' '}
+                  </a>{' '}
+                  {t('settings.about.usedUnderTheTerms')}{' '}
                   <a
                     href="http://www.apache.org/licenses/LICENSE-2.0"
                     rel="noreferrer noopener"
@@ -255,10 +263,12 @@ export function About({ requestClose }: AboutProps) {
                   {t('settings.about.the')}{' '}
                   <a href="https://twemoji.twitter.com" target="_blank" rel="noreferrer noopener">
                     {t('settings.about.twemoji')}
-                  </a>{' '}{t('settings.about.emojiArtIs')}{' '}
+                  </a>{' '}
+                  {t('settings.about.emojiArtIs')}{' '}
                   <a href="https://twemoji.twitter.com" target="_blank" rel="noreferrer noopener">
                     {t('settings.about.twitterIncAndOther')}
-                  </a>{' '}{t('settings.about.usedUnderTheTerms')}{' '}
+                  </a>{' '}
+                  {t('settings.about.usedUnderTheTerms')}{' '}
                   <a
                     href="https://creativecommons.org/licenses/by/4.0/"
                     target="_blank"
@@ -278,10 +288,12 @@ export function About({ requestClose }: AboutProps) {
                     rel="noreferrer noopener"
                   >
                     {t('settings.about.materialSoundResources')}
-                  </a>{' '}{t('settings.about.are')}{' '}
+                  </a>{' '}
+                  {t('settings.about.are')}{' '}
                   <a href="https://google.com" target="_blank" rel="noreferrer noopener">
                     {t('settings.about.google')}
-                  </a>{' '}{t('settings.about.usedUnderTheTerms')}{' '}
+                  </a>{' '}
+                  {t('settings.about.usedUnderTheTerms')}{' '}
                   <a
                     href="https://creativecommons.org/licenses/by/4.0/"
                     target="_blank"

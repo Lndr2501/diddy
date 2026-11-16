@@ -19,9 +19,7 @@ export function Notifications({ requestClose }: NotificationsProps) {
       <KeywordMessagesNotifications />
       <InsetSection title={t('settings.notifications.blockMessages')}>
         <InsetGroup>
-          <InsetRow
-            description={t('settings.notifications.thisOptionHasBeen')}
-          />
+          <InsetRow description={t('settings.notifications.thisOptionHasBeen')} />
         </InsetGroup>
       </InsetSection>
     </SettingsPage>

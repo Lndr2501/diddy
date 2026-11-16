@@ -122,7 +122,9 @@ function GlobalPackSelector({
             fill={hasSelected ? 'Solid' : 'Soft'}
             onClick={() => onSelect(selected)}
           >
-            <Text size="B300">{hasSelected ? t('settings.globalPacks.save') : t('settings.globalPacks.close')}</Text>
+            <Text size="B300">
+              {hasSelected ? t('settings.globalPacks.save') : t('settings.globalPacks.close')}
+            </Text>
           </Button>
         </Box>
       </Header>
@@ -167,7 +169,11 @@ function GlobalPackSelector({
                           addSelected(roomPackAddresses);
                         }}
                       >
-                        <Text size="B300">{allSelected ? t('settings.globalPacks.unselectAll') : t('settings.globalPacks.selectAll')}</Text>
+                        <Text size="B300">
+                          {allSelected
+                            ? t('settings.globalPacks.unselectAll')
+                            : t('settings.globalPacks.selectAll')}
+                        </Text>
                       </Chip>
                     </Box>
                   </Box>

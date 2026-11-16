@@ -16,8 +16,10 @@ import {
 import { useCreateSelected } from '../../../hooks/router/useCreateSelected';
 import { JoinAddressPrompt } from '../../../components/join-address-prompt';
 import { _RoomSearchParams } from '../../paths';
+import { useTranslation } from 'react-i18next';
 
 export function CreateTab() {
+  const { t } = useTranslation();
   const createSelected = useCreateSelected();
 
   const navigate = useNavigate();
@@ -40,7 +42,7 @@ export function CreateTab() {
 
   return (
     <SidebarItem active={createSelected}>
-      <SidebarItemTooltip tooltip="Add Space">
+      <SidebarItemTooltip tooltip={t('nav.create.addSpace')}>
         {(triggerRef) => (
           <PopOut
             anchor={menuCords}
@@ -73,9 +75,9 @@ export function CreateTab() {
                       onClick={handleCreateSpace}
                     >
                       <SettingTile before={<Icon size="400" src={Icons.Space} />}>
-                        <Text size="H6">Create Space</Text>
+                        <Text size="H6">{t('nav.create.createSpace')}</Text>
                         <Text size="T300" priority="300">
-                          Build a space for your community.
+                          {t('nav.create.buildASpaceFor')}
                         </Text>
                       </SettingTile>
                     </SequenceCard>
@@ -90,9 +92,9 @@ export function CreateTab() {
                       onClick={handleJoinWithAddress}
                     >
                       <SettingTile before={<Icon size="400" src={Icons.Link} />}>
-                        <Text size="H6">Join with Address</Text>
+                        <Text size="H6">{t('nav.create.joinWithAddress')}</Text>
                         <Text size="T300" priority="300">
-                          Become a part of existing community.
+                          {t('nav.create.becomeAPartOf')}
                         </Text>
                       </SettingTile>
                     </SequenceCard>
@@ -102,7 +104,7 @@ export function CreateTab() {
             }
           >
             <SidebarAvatar
-              aria-label="Create"
+              aria-label={t('nav.create.create')}
               className={css.SidebarAddAvatar}
               data-open={!!menuCords}
               as="button"

@@ -315,7 +315,9 @@ export function ProfilePreviewPanel({ target, onTarget, ...subject }: ProfilePre
   let stage: ReactNode;
   switch (target) {
     case 'window':
-      caption = t('settings.profilePreviews.bigWindowLayout', { layout: LAYOUT_LABEL[windowLayout] });
+      caption = t('settings.profilePreviews.bigWindowLayout', {
+        layout: LAYOUT_LABEL[windowLayout],
+      });
       stage = <CardPreview subject={subject} layout={windowLayout} large />;
       break;
     case 'members':
@@ -362,7 +364,10 @@ export function ProfilePreviewPanel({ target, onTarget, ...subject }: ProfilePre
           options={CARD_LAYOUTS.map((l) => ({
             id: l,
             label: LAYOUT_LABEL[l],
-            title: l === ownLayout ? t('settings.profilePreviews.yourLayout') : t('settings.profilePreviews.onlyInThisPreview'),
+            title:
+              l === ownLayout
+                ? t('settings.profilePreviews.yourLayout')
+                : t('settings.profilePreviews.onlyInThisPreview'),
           }))}
           onChange={setLayoutPick}
         />

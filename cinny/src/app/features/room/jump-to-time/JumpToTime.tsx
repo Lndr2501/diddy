@@ -31,12 +31,14 @@ import { getToday, getYesterday, timeDayMonthYear, timeHourMinute } from '../../
 import { DatePicker, TimePicker } from '../../../components/time-date';
 import { useSetting } from '../../../state/hooks/settings';
 import { settingsAtom } from '../../../state/settings';
+import { useTranslation } from 'react-i18next';
 
 type JumpToTimeProps = {
   onCancel: () => void;
   onSubmit: (eventId: string) => void;
 };
 export function JumpToTime({ onCancel, onSubmit }: JumpToTimeProps) {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const room = useRoom();
   const alive = useAlive();
@@ -106,7 +108,7 @@ export function JumpToTime({ onCancel, onSubmit }: JumpToTimeProps) {
               size="500"
             >
               <Box grow="Yes">
-                <Text size="H4">Jump to Time</Text>
+                <Text size="H4">{t('room.jumpToTime.jumpToTime')}</Text>
               </Box>
               <IconButton size="300" onClick={onCancel} radii="300">
                 <Icon src={Icons.Cross} />
@@ -116,7 +118,7 @@ export function JumpToTime({ onCancel, onSubmit }: JumpToTimeProps) {
               <Box direction="Row" gap="300">
                 <Box direction="Column" gap="100">
                   <Text size="L400" priority="400">
-                    Time
+                    {t('room.jumpToTime.time')}
                   </Text>
                   <Box gap="100" alignItems="Center">
                     <Chip
@@ -157,7 +159,7 @@ export function JumpToTime({ onCancel, onSubmit }: JumpToTimeProps) {
                 </Box>
                 <Box direction="Column" gap="100">
                   <Text size="L400" priority="400">
-                    Date
+                    {t('room.jumpToTime.date')}
                   </Text>
                   <Box gap="100" alignItems="Center">
                     <Chip
@@ -198,7 +200,7 @@ export function JumpToTime({ onCancel, onSubmit }: JumpToTimeProps) {
                 </Box>
               </Box>
               <Box direction="Column" gap="100">
-                <Text size="L400">Preset</Text>
+                <Text size="L400">{t('room.jumpToTime.preset')}</Text>
                 <Box gap="200">
                   {createTs < todayTs && (
                     <Chip
@@ -207,7 +209,7 @@ export function JumpToTime({ onCancel, onSubmit }: JumpToTimeProps) {
                       aria-pressed={ts === todayTs}
                       onClick={handleToday}
                     >
-                      <Text size="B300">Today</Text>
+                      <Text size="B300">{t('room.jumpToTime.today')}</Text>
                     </Chip>
                   )}
                   {createTs < yesterdayTs && (
@@ -217,7 +219,7 @@ export function JumpToTime({ onCancel, onSubmit }: JumpToTimeProps) {
                       aria-pressed={ts === yesterdayTs}
                       onClick={handleYesterday}
                     >
-                      <Text size="B300">Yesterday</Text>
+                      <Text size="B300">{t('room.jumpToTime.yesterday')}</Text>
                     </Chip>
                   )}
                   <Chip
@@ -226,7 +228,7 @@ export function JumpToTime({ onCancel, onSubmit }: JumpToTimeProps) {
                     aria-pressed={ts === createTs}
                     onClick={handleBeginning}
                   >
-                    <Text size="B300">Beginning</Text>
+                    <Text size="B300">{t('room.jumpToTime.beginning')}</Text>
                   </Chip>
                 </Box>
               </Box>
@@ -249,7 +251,7 @@ export function JumpToTime({ onCancel, onSubmit }: JumpToTimeProps) {
                 }
                 onClick={handleSubmit}
               >
-                <Text size="B400">Open Timeline</Text>
+                <Text size="B400">{t('room.jumpToTime.openTimeline')}</Text>
               </Button>
             </Box>
           </Dialog>

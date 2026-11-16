@@ -170,7 +170,7 @@ export class CallControl extends EventEmitter implements CallControlState {
     });
     this.onBodyMutation();
   }
-  
+
   private onBodyMutation() {
     if (!this.document) return;
 
@@ -322,7 +322,10 @@ export class CallControl extends EventEmitter implements CallControlState {
   public async restartMicrophone(): Promise<void> {
     if (this.restarting || !this.microphone) return;
     this.restarting = true;
-    const wait = (ms: number) => new Promise<void>((resolve) => { window.setTimeout(resolve, ms); });
+    const wait = (ms: number) =>
+      new Promise<void>((resolve) => {
+        window.setTimeout(resolve, ms);
+      });
     const withTimeout = (promise: Promise<unknown>) => Promise.race([promise, wait(2000)]);
     try {
       await withTimeout(this.toggleMicrophone(true));

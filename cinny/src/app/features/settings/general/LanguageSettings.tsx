@@ -111,7 +111,8 @@ export function LanguageSettings() {
         return;
       }
       const path = await saveTextFileAs(name, text, { name: 'JSON', extensions: ['json'] });
-      if (path) setNotice({ tone: 'success', text: t('settings.language.exported', { name: path }) });
+      if (path)
+        setNotice({ tone: 'success', text: t('settings.language.exported', { name: path }) });
     } catch (e) {
       setNotice({ tone: 'error', text: e instanceof Error ? e.message : String(e) });
     }
@@ -237,7 +238,13 @@ export function LanguageSettings() {
           description={t('settings.language.translateDescription')}
           after={
             <Box gap="200" wrap="Wrap" justifyContent="End">
-              <Button size="300" variant="Secondary" fill="Soft" radii="300" onClick={exportTemplate}>
+              <Button
+                size="300"
+                variant="Secondary"
+                fill="Soft"
+                radii="300"
+                onClick={exportTemplate}
+              >
                 <Text size="B300">{t('settings.language.export')}</Text>
               </Button>
               <Button

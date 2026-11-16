@@ -8,8 +8,7 @@ import { useTranslation } from 'react-i18next';
 export const useNotificationModes = (): NotificationMode[] =>
   useMemo(() => [NotificationMode.NotifyLoud, NotificationMode.Notify, NotificationMode.OFF], []);
 
-const useNotificationModeStr = (): Record<NotificationMode, string> =>
-  {
+const useNotificationModeStr = (): Record<NotificationMode, string> => {
   const { t } = useTranslation();
   return useMemo(
     () => ({
@@ -22,8 +21,7 @@ const useNotificationModeStr = (): Record<NotificationMode, string> =>
 };
 
 // short labels for the segmented control, the long ones are shown as tooltip
-const useNotificationModeShortStr = (): Record<NotificationMode, string> =>
-  {
+const useNotificationModeShortStr = (): Record<NotificationMode, string> => {
   const { t } = useTranslation();
   return useMemo(
     () => ({

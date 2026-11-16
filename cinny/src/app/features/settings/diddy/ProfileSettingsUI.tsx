@@ -255,7 +255,13 @@ export function AngleField({
   );
 }
 
-export function ClearButton({ onClick, label = translate('settings.profileSettingsUI.clear') }: { onClick: () => void; label?: string }) {
+export function ClearButton({
+  onClick,
+  label = translate('settings.profileSettingsUI.clear'),
+}: {
+  onClick: () => void;
+  label?: string;
+}) {
   return (
     <Button size="300" variant="Secondary" fill="None" radii="300" onClick={onClick}>
       <Text size="B300">{label}</Text>
@@ -357,7 +363,9 @@ export function UploadField({
           disabled={busy}
           onClick={() => inputRef.current?.click()}
         >
-          <Text size="B300">{mxc ? t('settings.profileSettingsUI.replace') : t('settings.profileSettingsUI.upload')}</Text>
+          <Text size="B300">
+            {mxc ? t('settings.profileSettingsUI.replace') : t('settings.profileSettingsUI.upload')}
+          </Text>
         </Button>
         {mxc && (
           <Button

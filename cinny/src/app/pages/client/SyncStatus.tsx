@@ -5,6 +5,7 @@ import { useSyncState } from '../../hooks/useSyncState';
 import { ContainerColor } from '../../styles/ContainerColor.css';
 import { ConnectionsButton } from '../../components/connection-recovery/ConnectionRecovery';
 import { syncBanner } from '../../plugins/syncBanner';
+import { useTranslation } from 'react-i18next';
 
 type StateData = {
   current: SyncState | null;
@@ -15,6 +16,7 @@ type SyncStatusProps = {
   mx: MatrixClient;
 };
 export function SyncStatus({ mx }: SyncStatusProps) {
+  const { t } = useTranslation();
   const [stateData, setStateData] = useState<StateData>({
     current: null,
     previous: undefined,
@@ -43,7 +45,7 @@ export function SyncStatus({ mx }: SyncStatusProps) {
           alignItems="Center"
           justifyContent="Center"
         >
-          <Text size="L400">Connecting...</Text>
+          <Text size="L400">{t('nav.syncStatus.connecting')}</Text>
         </Box>
         <Line variant="Success" size="300" />
       </Box>
@@ -59,7 +61,7 @@ export function SyncStatus({ mx }: SyncStatusProps) {
           alignItems="Center"
           justifyContent="Center"
         >
-          <Text size="L400">Verbindung verloren – erneuter Versuch …</Text>
+          <Text size="L400">{t('nav.syncStatus.connectionLost')}</Text>
           <ConnectionsButton />
         </Box>
         <Line variant="Warning" size="300" />
@@ -76,7 +78,7 @@ export function SyncStatus({ mx }: SyncStatusProps) {
           alignItems="Center"
           justifyContent="Center"
         >
-          <Text size="L400">Homeserver nicht erreichbar</Text>
+          <Text size="L400">{t('nav.syncStatus.homeserverUnreachable')}</Text>
           <ConnectionsButton />
         </Box>
         <Line variant="Critical" size="300" />
