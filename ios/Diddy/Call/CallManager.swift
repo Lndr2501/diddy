@@ -313,11 +313,24 @@ final class CallSession: NSObject, ObservableObject {
     /// Ping, reactions, held speaking, volumes (CallLiveExtras.swift).
     let extras = CallLiveExtras()
     private let keyProvider: LiveKit.BaseKeyProvider
-    private var encrypted = false
+    /// The room is encrypted, so the media is too (Element Call's per-device keys).
+    @Published private(set) var encrypted = false
+    /// LiveKit identities ("@user:server:DEVICE") whose media key has arrived.
+    @Published private(set) var keysFrom: Set<String> = []
     /// Set once teardown starts: late LiveKit callbacks must not touch the dying room or republish tracks.
     private var closed = false
     private var ownKey = Data()
-    private let ownKeyIndex: Int32 = 0
+    private var ownKeyIndex: Int32 = 0
+    /// The live call devices of the room other than this one, with their membership's `created_ts`.
+    private var callDevices: [CallDevice: UInt64] = [:]
+    /// The devices that have our current key, with the membership they had when it was sent.
+    private var keySharedWith: [CallDevice: UInt64] = [:]
+    /// A key rollout runs (sending, waiting before use); calls meanwhile ask for one more round.
+    private var keyRollout: Task<Void, Never>?
+    private var keyRolloutAgain = false
+    private var membershipCheck: Task<Void, Never>?
+    private var membershipWatch: Task<Void, Never>?
+    private var roomInfoHandle: TaskHandle?
     private var toDeviceHandle: TaskHandle?
     /// The whole-screen share from the broadcast extension (BroadcastReceiver.swift).
     private var broadcastReceiver: BroadcastReceiver?
@@ -364,6 +377,9 @@ final class CallSession: NSObject, ObservableObject {
     /// MSC4075, what Diddy desktop and Element Call send and listen for.
     private static let notificationEventType = "org.matrix.msc4075.rtc.notification"
     private static let ringLifetimeMs: UInt64 = 30_000
+    /// LiveKit 2.18 encrypts every frame with key slot 0 (2.19 follows the key index): a new key
+    /// replaces slot 0 and is used at once (CallKeyLogic.nextKeyIndex). True after the update.
+    private static let senderFollowsKeyIndex = false
 
     init(account: MatrixAccount, room: MatrixRustSDK.Room, roomName: String) {
         self.account = account
@@ -396,6 +412,7 @@ final class CallSession: NSObject, ObservableObject {
     private var ownDeviceId: String { account.deviceId }
     private var ownIdentity: String { "\(ownUserId):\(ownDeviceId)" }
     private var stateKey: String { "_\(ownUserId)_\(ownDeviceId)_m.call" }
+    private var ownDevice: CallDevice { CallDevice(userId: ownUserId, deviceId: ownDeviceId) }
 
     // MARK: Connect / disconnect
 
@@ -455,7 +472,7 @@ final class CallSession: NSObject, ObservableObject {
         }
 
         if encrypted {
-            keyProvider.setKey(keyData: ownKey, participantId: liveKitRoom.localParticipant.identity?.stringValue ?? ownIdentity, index: ownKeyIndex)
+            keyProvider.setKey(keyData: ownKey, participantId: localKeyIdentity, index: ownKeyIndex)
         }
         refreshMembers()
         // Membership, keys and microphone go out together, so the others hear you sooner.
@@ -467,14 +484,19 @@ final class CallSession: NSObject, ObservableObject {
             }
             await self.startMicrophone(allowed: await micPermission.value)
         }
-        let present = Array(liveKitRoom.remoteParticipants.values)
-        let keys = Task { if self.encrypted { await self.distributeKey(to: present) } }
+        // The key goes to the devices with a live call membership, not to whoever is in LiveKit.
+        let keys = Task {
+            guard self.encrypted else { return }
+            await self.refreshCallDevices()
+            await self.keyRollout?.value
+        }
         do {
             try await sendMembership()
         } catch {
             throw DiddyError("You do not have permission to join a call in this room. An admin has to allow it.")
         }
         await keys.value
+        if encrypted { watchCallDevices() }
         reactionHandle = matrixRoom.subscribeToMessageLikeEvents(
             eventType: messageLikeEventTypeFromString(s: CallReactions.eventType),
             listener: CallReactionListener { [weak self] event in
@@ -515,6 +537,11 @@ final class CallSession: NSObject, ObservableObject {
         membershipRefresh?.cancel()
         toDeviceHandle?.cancel()
         toDeviceHandle = nil
+        roomInfoHandle?.cancel()
+        roomInfoHandle = nil
+        membershipCheck?.cancel()
+        membershipWatch?.cancel()
+        keyRollout?.cancel()
         agentVoiceHandle?.cancel()
         agentVoiceHandle = nil
         watchTogether.stop()
@@ -1139,16 +1166,6 @@ final class CallSession: NSObject, ObservableObject {
         return (userId, deviceId)
     }
 
-    /// User id -> device ids of the given participants, the shape to-device sending wants.
-    private static func deviceRecipients(of participants: [LiveKit.RemoteParticipant]) -> [String: [String]] {
-        var recipients: [String: [String]] = [:]
-        for participant in participants {
-            guard let identity = participant.identity?.stringValue, let parts = split(identity: identity) else { continue }
-            recipients[parts.userId, default: []].append(parts.deviceId)
-        }
-        return recipients
-    }
-
     /// The devices in the call except ours, from the LiveKit identities ("@user:server:DEVICE").
     private func watchDevices() -> [WatchDevice] {
         var devices: [WatchDevice] = []
@@ -1159,23 +1176,131 @@ final class CallSession: NSObject, ObservableObject {
         return devices
     }
 
-    private func distributeKey(to participants: [LiveKit.RemoteParticipant]) async {
-        guard encrypted, !ownKey.isEmpty else { return }
-        let recipients = Self.deviceRecipients(of: participants)
-        guard !recipients.isEmpty else { return }
+    private var localKeyIdentity: String { liveKitRoom.localParticipant.identity?.stringValue ?? ownIdentity }
+
+    /// What the call header shows: encrypted or not, and whose keys are still missing.
+    var encryption: CallKeyLogic.Encryption {
+        let remote = liveKitRoom.remoteParticipants.values.compactMap { $0.identity?.stringValue }
+        return CallKeyLogic.encryption(roomEncrypted: encrypted, remote: remote, keysFrom: keysFrom)
+    }
+
+    /// Follows the call memberships of the room: every room update (a `call.member` event is one),
+    /// every LiveKit join and leave, and every 30 s for memberships that simply expire.
+    private func watchCallDevices() {
+        guard !closed, roomInfoHandle == nil else { return }
+        roomInfoHandle =matrixRoom.subscribeToRoomInfoUpdates(listener: RoomInfoUpdates { [weak self] _ in
+            Task { @MainActor in self?.scheduleMembershipCheck() }
+        })
+        membershipWatch = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 30_000_000_000)
+                guard !Task.isCancelled, let self, !self.closed else { return }
+                await self.refreshCallDevices()
+            }
+        }
+    }
+
+    /// Room updates come in bursts; one read of the memberships after they settle.
+    private func scheduleMembershipCheck(afterMs delay: UInt64 = 300) {
+        guard encrypted, !closed else { return }
+        membershipCheck?.cancel()
+        membershipCheck = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: delay * 1_000_000)
+            guard !Task.isCancelled else { return }
+            await self?.refreshCallDevices()
+        }
+    }
+
+    /// Reads the live call memberships of the room and hands out keys to match.
+    private func refreshCallDevices() async {
+        guard encrypted, !closed else { return }
+        let events: [RoomStateEvent]
+        do {
+            events = try await matrixRoom.stateEvents(eventType: .callMember)
+        } catch {
+            // unknown is not "everyone left": keep what we know
+            DiagLog.shared.write("call: memberships not readable: \(error.friendlyMessage)")
+            return
+        }
+        guard !closed else { return }
+        let now = UInt64(Date().timeIntervalSince1970 * 1000)
+        var devices = CallKeyLogic.members(events.map {
+            CallMemberEvent(sender: $0.sender, stateKey: $0.stateKey, contentJson: $0.contentJson, timestamp: $0.timestamp)
+        }, now: now)
+        devices[ownDevice] = nil
+        callDevices = devices
+        ensureKeyDistribution()
+    }
+
+    /// Element Call's key rollout (matrix-js-sdk RTCEncryptionManager): when a device that had our
+    /// key left, a new key goes to everyone still here and is used after a short delay; devices
+    /// that joined get the current key. One rollout at a time, calls meanwhile make one more round.
+    private func ensureKeyDistribution() {
+        guard encrypted, !closed, !ownKey.isEmpty else { return }
+        guard keyRollout == nil else {
+            keyRolloutAgain = true
+            return
+        }
+        keyRollout = Task { [weak self] in
+            await self?.rolloutKey()
+            guard let self else { return }
+            self.keyRollout = nil
+            if self.keyRolloutAgain, !self.closed {
+                self.keyRolloutAgain = false
+                self.ensureKeyDistribution()
+            }
+        }
+    }
+
+    private func rolloutKey() async {
+        let members = callDevices
+        guard CallKeyLogic.needsNewKey(sharedWith: keySharedWith, members: members) else {
+            let waiting = CallKeyLogic.waitingForKey(sharedWith: keySharedWith, members: members)
+            guard !waiting.isEmpty else { return }
+            if await sendKey(ownKey, index: ownKeyIndex, to: waiting) {
+                for device in waiting { keySharedWith[device] = members[device] }
+            }
+            return
+        }
+        let key: Data
+        do {
+            key = try Self.randomKey()
+        } catch {
+            lastError = error.friendlyMessage
+            return
+        }
+        let index = CallKeyLogic.nextKeyIndex(after: ownKeyIndex, senderFollowsKeyIndex: Self.senderFollowsKeyIndex)
+        DiagLog.shared.write("call: a device left the call, new media key (index \(index)) for \(members.count) device(s)")
+        // Not sent: the old key stays and the next membership update tries again.
+        guard await sendKey(key, index: index, to: Array(members.keys)), !closed else { return }
+        keySharedWith = members
+        let delay = CallKeyLogic.useDelayMs(senderFollowsKeyIndex: Self.senderFollowsKeyIndex)
+        if delay > 0 { try? await Task.sleep(nanoseconds: delay * 1_000_000) }
+        guard !closed else { return }
+        ownKey = key
+        ownKeyIndex = index
+        keyProvider.setKey(keyData: key, participantId: localKeyIdentity, index: index)
+    }
+
+    /// Our media key to `devices` (Element Call's `io.element.call.encryption_keys`).
+    private func sendKey(_ key: Data, index: Int32, to devices: [CallDevice]) async -> Bool {
+        let recipients = CallKeyLogic.recipients(devices, excluding: ownDevice)
+        guard !recipients.isEmpty else { return true }
         let content: [String: Any] = [
-            "keys": ["index": ownKeyIndex, "key": ownKey.base64EncodedString()],
+            "keys": ["index": index, "key": key.base64EncodedString()],
             "room_id": roomId,
             "member": ["claimed_device_id": ownDeviceId, "id": ownIdentity],
             "session": ["call_id": "", "application": "m.call", "scope": "m.room"],
             "sent_ts": UInt64(Date().timeIntervalSince1970 * 1000),
         ]
         guard let data = try? JSONSerialization.data(withJSONObject: content),
-              let json = String(data: data, encoding: .utf8) else { return }
+              let json = String(data: data, encoding: .utf8) else { return false }
         do {
             _ = try await account.client.sendEncryptedToDeviceMessage(eventType: Self.keysEventType, recipients: recipients, content: json)
+            return true
         } catch {
             lastError = "Could not share the call key: \(error.friendlyMessage)"
+            return false
         }
     }
 
@@ -1193,7 +1318,9 @@ final class CallSession: NSObject, ObservableObject {
               let device = member["claimed_device_id"] as? String
         else { return }
         // Element Call maps the key to the sender's LiveKit identity for legacy members.
-        keyProvider.setKey(keyData: key, participantId: "\(message.senderId):\(device)", index: index)
+        let identity = "\(message.senderId):\(device)"
+        keyProvider.setKey(keyData: key, participantId: identity, index: index)
+        if !keysFrom.contains(identity) { keysFrom.insert(identity) }
     }
 
     /// Whether this iOS can share the whole screen without an extension.
@@ -1360,7 +1487,8 @@ extension CallSession: LiveKit.RoomDelegate {
     nonisolated func room(_ room: LiveKit.Room, participantDidConnect participant: LiveKit.RemoteParticipant) {
         Task { @MainActor in
             guard !self.closed else { return }
-            await self.distributeKey(to: [participant])
+            // Their membership may reach us after LiveKit does; a room update brings it as well.
+            self.scheduleMembershipCheck()
             self.refreshMembers()
             self.playForOthers(.userJoined)
         }
@@ -1368,6 +1496,7 @@ extension CallSession: LiveKit.RoomDelegate {
 
     nonisolated func room(_ room: LiveKit.Room, participantDidDisconnect participant: LiveKit.RemoteParticipant) {
         Task { @MainActor in
+            self.scheduleMembershipCheck()
             self.refreshMembers()
             self.playForOthers(.userLeft)
         }
