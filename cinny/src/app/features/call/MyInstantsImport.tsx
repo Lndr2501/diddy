@@ -141,7 +141,7 @@ export function MyInstantsImport({ onClose }: MyInstantsImportProps) {
         // eslint-disable-next-line no-await-in-loop
         const bytes = await downloadMyInstant(items[i]);
         // eslint-disable-next-line no-await-in-loop
-        const isNew = await soundboard.addClipFromBytes(items[i].name, bytes);
+        const isNew = await soundboard.addClipFromBytes(items[i].name, bytes, 'audio/mpeg', items[i].path);
         if (isNew) added += 1;
         else existing += 1;
       } catch {

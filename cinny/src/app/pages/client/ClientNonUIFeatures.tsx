@@ -45,6 +45,7 @@ import { useScheduledMessagesRunner } from '../../features/room/send-later/useSe
 import { pushToastAtom } from '../../state/toasts';
 import { messagePreview, messageToastBody } from '../../plugins/toastLogic';
 import { useTranslation } from 'react-i18next';
+import { useSoundboardSync } from '../../hooks/useSoundboardSync';
 
 /** The user is looking at Diddy: notify inside the window instead of through the system. */
 const windowInFocus = (): boolean => document.hasFocus() && document.visibilityState === 'visible';
@@ -419,6 +420,7 @@ function DiddyStatusFeature() {
   useDiddyStatusSync();
   useClientVersionSync();
   useSettingsSync();
+  useSoundboardSync();
   return null;
 }
 

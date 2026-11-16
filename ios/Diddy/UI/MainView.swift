@@ -94,6 +94,8 @@ struct MainView: View {
         }
         // Nameplates, name styles and badges of everyone; again once the room list has arrived.
         .task(id: account.rooms.isEmpty) { await account.loadDiddyProfiles() }
+        // MyInstants sounds of the soundboard from your other devices (#248).
+        .task(id: account.id) { SoundboardSync.shared.start(account: account) }
         .onChange(of: account.spaces.map(\.roomId)) { ids in
             // The server you were on may be gone: you left it, or were removed.
             if let server = navigator.server, !ids.contains(server) { navigator.server = nil }
@@ -106,6 +108,7 @@ struct MainView: View {
             Task {
                 await account.resume()
                 await savedMessages.refresh(account: account)
+                SoundboardSync.shared.start(account: account)
                 // Back in the app: pick up profile changes made on another device meanwhile (#207).
                 await account.loadDiddyProfiles(staleAfter: 15)
             }

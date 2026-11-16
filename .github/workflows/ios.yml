@@ -210,6 +210,11 @@ jobs:
           swiftc -swift-version 5 Diddy/Matrix/SendLaterLogic.swift Tools/sendlater_check/main.swift -o "$RUNNER_TEMP/diddy-sendlater-check"
           "$RUNNER_TEMP/diddy-sendlater-check"
 
+      - name: Check soundboard sync rules
+        run: |
+          swiftc -swift-version 5 Diddy/Call/SoundboardSyncLogic.swift Tools/soundboardsync_check/main.swift -o "$RUNNER_TEMP/diddy-soundboardsync-check"
+          "$RUNNER_TEMP/diddy-soundboardsync-check"
+
       - name: Check message search rules
         run: |
           swiftc -swift-version 5 Diddy/Matrix/MessageSearchLogic.swift Tools/messagesearch_check/main.swift -o "$RUNNER_TEMP/diddy-messagesearch-check"
