@@ -712,12 +712,20 @@ fun ChatCallBanner(account: MatrixAccount, roomId: String, title: String, naviga
 fun CallSettingsPage() {
     val (noise, setNoise) = rememberBoolPref(CallPrefs.NOISE_SUPPRESSION_KEY, true)
     val (processing, setProcessing) = rememberBoolPref(CallPrefs.VOICE_PROCESSING_KEY, true)
+    val (appAudio, setAppAudio) = rememberBoolPref(CallPrefs.SHARE_APP_AUDIO_KEY, true)
     var confirmReset by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(vertical = 8.dp)) {
         FormSection("Microphone", "Filters background noise such as fans and typing out of your microphone. Applies the next time you join a call.") {
             FormToggle("Noise Suppression", noise, onChange = setNoise)
             FormDivider()
             FormToggle("Voice Processing", processing, "Echo cancellation and automatic gain. Keep it on with the speaker; off keeps music sounding natural.", onChange = setProcessing)
+        }
+        if (android.os.Build.VERSION.SDK_INT >= 29) FormSection(
+            "Screen Sharing",
+            "Sends the sound of videos and games along with your screen, mixed into your microphone (so it stops while you are muted). " +
+                "Apps that do not allow recording and protected videos stay silent. Diddy's own sound is never sent back.",
+        ) {
+            FormToggle("Share App Sound", appAudio, onChange = setAppAudio)
         }
         FormSection("Volumes", "Long-press someone in a call to change how loud they are. Diddy remembers it per person.") {
             FormButton("Reset Volumes", color = Theme.danger) { confirmReset = true }

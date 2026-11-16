@@ -46,10 +46,13 @@ import org.matrix.rustcomponents.sdk.TimelineListener
 object CallPrefs {
     const val NOISE_SUPPRESSION_KEY = "call.noiseSuppression"
     const val VOICE_PROCESSING_KEY = "call.voiceProcessing"
+    const val SHARE_APP_AUDIO_KEY = "call.shareAppAudio"
     private const val VOLUMES_KEY = "call.volumes"
 
     val noiseSuppression: Boolean get() = Prefs.bool(NOISE_SUPPRESSION_KEY, true)
     val voiceProcessing: Boolean get() = Prefs.bool(VOICE_PROCESSING_KEY, true)
+    /** Sound of other apps goes along with a shared screen (Android 10+, where the app allows it). */
+    val shareAppAudio: Boolean get() = Prefs.bool(SHARE_APP_AUDIO_KEY, true)
 
     private fun volumes(): Map<String, Any?> = app.diddy.util.Json.obj(Prefs.string(VOLUMES_KEY)) ?: emptyMap()
 

@@ -29,7 +29,11 @@ import io.livekit.android.room.participant.Participant
 import io.livekit.android.room.participant.RemoteParticipant
 import io.livekit.android.room.track.CameraPosition
 import io.livekit.android.room.track.LocalAudioTrackOptions
+import io.livekit.android.audio.AudioBufferCallback
+import io.livekit.android.audio.ScreenAudioCapturer
+import io.livekit.android.room.track.LocalScreencastVideoTrack
 import io.livekit.android.room.track.LocalVideoTrack
+import livekit.org.webrtc.ScreenCapturerAndroid
 import io.livekit.android.room.track.RemoteAudioTrack
 import io.livekit.android.room.track.Track
 import io.livekit.android.room.track.VideoTrack
@@ -256,6 +260,7 @@ class CallSession(private val context: Context, val account: MatrixAccount, priv
             // An empty content ends our membership for everyone else.
             runCatching { matrixRoom.sendStateEventRaw(CallLogic.MEMBER_EVENT_TYPE, stateKey, "{}") }
         }
+        stopAppAudio()
         runCatching { liveKitRoom.localParticipant.setScreenShareEnabled(false) }
         runCatching { liveKitRoom.localParticipant.setCameraEnabled(false) }
         eventsJob?.cancel()
@@ -342,6 +347,12 @@ class CallSession(private val context: Context, val account: MatrixAccount, priv
         runCatching { track.switchCamera(position = if (front) CameraPosition.FRONT else CameraPosition.BACK) }
     }
 
+    /** Sound of other apps while the screen is shared, mixed into the microphone track. */
+    private var screenAudio: ScreenAudioCapturer? = null
+    /** Whether the shared screen carries app sound (for the hint in the call screen). */
+    var sharingAppAudio by mutableStateOf(false)
+        private set
+
     /** Starts sharing the screen with the permission Android gave (MediaProjection). */
     suspend fun startScreenShare(permission: Intent) {
         try {
@@ -349,15 +360,55 @@ class CallSession(private val context: Context, val account: MatrixAccount, priv
                 scope.launch { stopScreenShare() }
             }))
             screenSharing = started
-            if (started) Sounds.play(Sound.SCREEN_SHARE_STARTED) else lastError = "Screen sharing did not start."
+            if (started) {
+                Sounds.play(Sound.SCREEN_SHARE_STARTED)
+                startAppAudio()
+            } else {
+                lastError = "Screen sharing did not start."
+            }
         } catch (e: Exception) {
             lastError = "Screen sharing did not start: ${e.friendlyMessage}"
         }
         refreshMembers()
     }
 
+    /**
+     * App sound with the shared screen (AudioPlaybackCapture, Android 10+). Only what Android
+     * lets other apps record: media, games and unknown sound, never calls, and never apps that
+     * opt out or protected (DRM) content. Diddy's own sound (the call, the soundboard, Watch
+     * Together) is left out, so nobody hears themselves back.
+     */
+    private fun startAppAudio() {
+        if (android.os.Build.VERSION.SDK_INT < 29 || !CallPrefs.shareAppAudio || companion != null || !CallManager.microphoneAllowed) return
+        val track = liveKitRoom.localParticipant.getTrackPublication(Track.Source.SCREEN_SHARE)?.track as? LocalScreencastVideoTrack ?: return
+        val projection = (track.capturer as? ScreenCapturerAndroid)?.mediaProjection ?: return
+        try {
+            screenAudio = ScreenAudioCapturer(projection) { builder ->
+                builder.addMatchingUsage(android.media.AudioAttributes.USAGE_MEDIA)
+                builder.addMatchingUsage(android.media.AudioAttributes.USAGE_GAME)
+                builder.addMatchingUsage(android.media.AudioAttributes.USAGE_UNKNOWN)
+                builder.excludeUid(android.os.Process.myUid())
+            }
+            sharingAppAudio = true
+            attachSoundboard()
+            DiagLog.write("call: app sound shared with the screen")
+        } catch (e: Exception) {
+            screenAudio = null
+            DiagLog.write("call: app sound not available: ${e.javaClass.simpleName}")
+        }
+    }
+
+    private fun stopAppAudio() {
+        val capturer = screenAudio ?: return
+        screenAudio = null
+        sharingAppAudio = false
+        attachSoundboard()
+        runCatching { capturer.releaseAudioResources() }
+    }
+
     suspend fun stopScreenShare() {
         if (!screenSharing) return
+        stopAppAudio()
         runCatching { liveKitRoom.localParticipant.setScreenShareEnabled(false) }
         screenSharing = false
         Sounds.play(Sound.SCREEN_SHARE_STOPPED)
@@ -514,10 +565,11 @@ class CallSession(private val context: Context, val account: MatrixAccount, priv
         }
     }
 
-    /** Soundboard clips are mixed into the microphone track. */
+    /** Soundboard clips, and app sound while the screen is shared, are mixed into the microphone track. */
     private fun attachSoundboard() {
         val track = liveKitRoom.localParticipant.getTrackPublication(Track.Source.MICROPHONE)?.track as? io.livekit.android.room.track.LocalAudioTrack
-        track?.setAudioBufferCallback(ClipMixer)
+        val app = screenAudio
+        track?.setAudioBufferCallback(if (app == null) ClipMixer else MixedAudio(listOf(ClipMixer, app)))
     }
 
     // MARK: Ringing others
@@ -817,5 +869,17 @@ class CallSession(private val context: Context, val account: MatrixAccount, priv
             }
             return order.mapNotNull { byUser[it] }
         }
+    }
+}
+
+/** Several mixers on one microphone track (LiveKit takes one): each adds its sound in turn. */
+private class MixedAudio(private val parts: List<AudioBufferCallback>) : AudioBufferCallback {
+    override fun onBuffer(buffer: java.nio.ByteBuffer, audioFormat: Int, channelCount: Int, sampleRate: Int, bytesRead: Int, captureTimeNs: Long): Long {
+        var time = captureTimeNs
+        for (part in parts) {
+            buffer.rewind()
+            time = part.onBuffer(buffer, audioFormat, channelCount, sampleRate, bytesRead, time)
+        }
+        return time
     }
 }
