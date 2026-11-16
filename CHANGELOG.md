@@ -8,6 +8,7 @@
 - **Android: Tablets und Foldables:** Ab 720 dp Breite stehen Chatliste und Chat nebeneinander.
 - **Android: Schutz und Aufräumen:** Wiederherstellungsschlüssel und Passphrase erscheinen nicht in Screenshots, beim Bildschirmteilen und im App-Umschalter. Ein Logout, den der Server nicht mitbekommt, wird gemeldet. Reste abgebrochener Logins werden beim Start entfernt.
 - **Bot-Karten: Knöpfe mit Argumenten (iOS, Android):** Knöpfe wie `!seek +10` oder `/me winkt` fehlten auf iPhone und Android, obwohl Doku und Desktop sie erlauben. Gemeinsame Testfälle in `docs/fixtures/bot-cards.json` prüfen jetzt Desktop und Android gegen dieselben Karten. macOS, Linux und Windows waren nicht betroffen.
+- **System-Ton beim Teilen bricht beim Raumwechsel ab (Linux, Windows):** Jeder Wechsel innerhalb der App (Raum, Einstellungen) beendete die System-Ton-Aufnahme eines laufenden Bildschirmteilens, weil Electron ihn als Navigation meldet. Jetzt endet sie nur, wenn die Seite wirklich neu lädt. macOS und iOS waren nicht betroffen, Android hat eigenen Code.
 - **CI: Android mit Lint und Emulator:** `Build Android` prüft Lint und startet die App auf Android 8 und auf Android 15 mit 16-KB-Speicherseiten. Feature-Matrix (`docs/plattformen.md`) jetzt mit Windows und Android, dazu `docs/android-architektur.md` und `docs/android-testprotokoll.md`.
 
 ## 1.12.0 (2026-11-16)

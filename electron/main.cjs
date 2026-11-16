@@ -459,7 +459,9 @@ const audioFor = (contents) => {
     const helper = audioHelper();
     const audio = createSystemAudio({ helper, log: (line) => diag.writeLine(line), send: (message) => { if (!contents.isDestroyed()) contents.send('diddy:audio-data', message); } });
     audioCaptures.set(contents.id, audio);
-    contents.on('did-start-navigation', (_event, _url, _inPlace, isMainFrame) => { if (isMainFrame) audio.close(); });
+    // Only a new document ends the capture. The page routes by hash, so every room switch is a
+    // same-document navigation; closing then cut the system sound of a running share.
+    contents.on('did-start-navigation', (details) => { if (details.isMainFrame && !details.isSameDocument) audio.close(); });
     contents.on('render-process-gone', () => audio.close());
     contents.once('destroyed', () => { audio.close(); audioCaptures.delete(contents.id); });
   }
