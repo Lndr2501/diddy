@@ -44,7 +44,8 @@ export const SETTINGS_SEARCH_INDEX: Record<string, SettingsSearchEntry> = {
 
   calls: {
     name: 'Calls & Audio',
-    keywords: 'call voice audio sound microphone agent dictation watch together video camera webcam',
+    keywords:
+      'call voice audio sound microphone agent dictation watch together video camera webcam ptt push to talk voice activity hold key',
     titles: [
       'Calls & Audio',
       'Calls',
@@ -52,6 +53,10 @@ export const SETTINGS_SEARCH_INDEX: Record<string, SettingsSearchEntry> = {
       'Voice processing',
       'Camera',
       'Volumes of people',
+      'Push to talk',
+      'Input mode',
+      'Push-to-talk key',
+      'Release delay',
       'Sounds',
       'New message',
       'Mention',
@@ -59,6 +64,8 @@ export const SETTINGS_SEARCH_INDEX: Record<string, SettingsSearchEntry> = {
       'Incoming call',
       'Outgoing call',
       'Microphone changed',
+      'Push to talk opens',
+      'Push to talk closes',
       'Connection lost',
       'Talking to an agent',
       'Mute in the call meanwhile',

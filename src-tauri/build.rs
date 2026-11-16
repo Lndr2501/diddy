@@ -26,6 +26,7 @@ fn main() {
                 "agent_voice_wait",
                 "soundboard_hotkeys_bind",
                 "soundboard_hotkeys_wait",
+                "hotkey_wait",
                 "updater_state",
                 "updater_action",
                 "updater_open_release_page",

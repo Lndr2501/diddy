@@ -7,6 +7,7 @@ import { applyAudioOutput, subscribeAudioPrefs } from './audioDevices';
 import { screenShareAudio } from './screenShareAudio';
 import { audioMuteStep, pageMicDecision } from './deafenGuard';
 import { ElementMediaStateDetail, ElementMediaStatePayload, ElementWidgetActions } from './types';
+import { isPushToTalkMode } from '../../state/pushToTalk';
 
 export enum CallControlEvent {
   StateUpdate = 'state_update',
@@ -396,6 +397,14 @@ export class CallControl extends EventEmitter implements CallControlState {
     return this.setMediaState(payload);
   }
 
+  /**
+   * Asks for the microphone on or off, silently and as an absolute state, so a request that is
+   * still on its way cannot be undone by the next one (push-to-talk, PushToTalkSync.tsx).
+   */
+  public setMicrophone(enabled: boolean): Promise<boolean> {
+    return this.setMediaState({ audio_enabled: enabled, video_enabled: this.video });
+  }
+
   public toggleVideo() {
     playCallSound(this.video ? 'cameraOff' : 'cameraOn');
     const payload: ElementMediaStatePayload = {
@@ -431,8 +440,9 @@ export class CallControl extends EventEmitter implements CallControlState {
       return;
     }
 
-    // Un-deafen: bring the microphone back if it was live before.
-    const restoreMic = this.micWasOnBeforeDeafen && !this.microphone;
+    // Un-deafen: bring the microphone back if it was live before. With push-to-talk the key
+    // decides (a key still held opens it again), never the state from before the full mute.
+    const restoreMic = this.micWasOnBeforeDeafen && !this.microphone && !isPushToTalkMode();
     this.micWasOnBeforeDeafen = false;
     if (!quiet) playCallSound('undeafen');
     if (restoreMic) {

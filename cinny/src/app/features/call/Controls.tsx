@@ -24,6 +24,7 @@ import * as css from './styles.css';
 import { callChatAtom } from '../../state/callEmbed';
 import type { ShareAudioOption } from '../../plugins/call';
 import { AsyncStatus, useAsyncCallback, ignoreRejection } from '../../hooks/useAsyncCallback';
+import { pushToTalkHoldProps } from './pushToTalkHold';
 
 export function ControlDivider() {
   return (
@@ -40,16 +41,69 @@ function PhoneBadge() {
   );
 }
 
+/** "PTT" on the microphone button while push-to-talk runs. */
+function PushToTalkBadge() {
+  return (
+    <span className={css.PushToTalkBadge} aria-hidden>
+      PTT
+    </span>
+  );
+}
+
+/** Push-to-talk on the microphone button: it shows whether the microphone is open, holding talks. */
+export type MicrophonePushToTalk = {
+  open: boolean;
+  /** the push-to-talk key, for the tooltip */
+  keyLabel?: string;
+  /** held, but full mute keeps the microphone closed */
+  fullMuted: boolean;
+};
+
 type MicrophoneButtonProps = {
   enabled: boolean;
   onToggle: () => Promise<unknown>;
   /** works your iPhone (camera & mic) instead of this computer */
   phone?: boolean;
+  ptt?: MicrophonePushToTalk;
 };
-export function MicrophoneButton({ enabled, onToggle, phone }: MicrophoneButtonProps) {
+export function MicrophoneButton({ enabled, onToggle, phone, ptt }: MicrophoneButtonProps) {
   const [micState, toggleMic] = useAsyncCallback(onToggle);
   const loading = micState.status === AsyncStatus.Loading;
   const what = phone ? 'Phone Microphone' : 'Microphone';
+
+  if (ptt) {
+    let tip = ptt.keyLabel ? `Hold to talk (${ptt.keyLabel})` : 'Hold to talk';
+    if (ptt.fullMuted) tip = 'Full mute is on: turn on sound to talk';
+    else if (ptt.open) tip = `Talking${phone ? ' on your iPhone' : ''}`;
+    return (
+      <TooltipProvider
+        position="Top"
+        delay={500}
+        tooltip={
+          <Tooltip>
+            <Text size="T200">{tip}</Text>
+          </Tooltip>
+        }
+      >
+        {(anchorRef) => (
+          <IconButton
+            ref={anchorRef}
+            variant={ptt.open ? 'Success' : 'SurfaceVariant'}
+            fill="Soft"
+            radii="400"
+            size="400"
+            className={css.ControlButton}
+            aria-label={`Push to talk: hold to talk${phone ? ' on your iPhone' : ''}`}
+            aria-pressed={ptt.open}
+            {...pushToTalkHoldProps}
+          >
+            <Icon size="400" src={ptt.open ? Icons.Mic : Icons.MicMute} filled={ptt.open} />
+            {phone ? <PhoneBadge /> : <PushToTalkBadge />}
+          </IconButton>
+        )}
+      </TooltipProvider>
+    );
+  }
 
   return (
     <TooltipProvider

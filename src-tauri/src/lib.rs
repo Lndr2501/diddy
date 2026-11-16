@@ -523,6 +523,7 @@ pub fn run() {
             agent_voice::agent_voice_wait,
             soundboard_hotkeys::soundboard_hotkeys_bind,
             soundboard_hotkeys::soundboard_hotkeys_wait,
+            agent_voice::hotkey_wait,
             updater::updater_state,
             updater::updater_action,
             updater::updater_open_release_page,

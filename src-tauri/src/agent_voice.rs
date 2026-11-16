@@ -8,6 +8,10 @@
 //!
 //! The page asks `agent_voice_wait`, which answers only when the key or the trigger changed (the
 //! key is read here every 30 ms, without a round trip to the page each time), or after 25 s.
+//!
+//! `hotkey_wait` is the same wait for any other hotkey of the page (push-to-talk): just the key,
+//! no trigger. The page names a slot for the Linux shell, which binds keys per slot; here the key
+//! itself is enough, so the slot is not read.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -58,7 +62,7 @@ pub fn handle_launch(args: &[String]) -> bool {
     }
 }
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AgentVoiceState {
     /// the hotkey is held according to the system; null when this key / platform cannot be read
     key: Option<bool>,
@@ -74,6 +78,28 @@ pub fn agent_voice_state(key: String) -> AgentVoiceState {
 const WAIT_MAX_MS: u64 = 25_000;
 const WAIT_STEP_MS: u64 = 30;
 
+/// Reads `read` every WAIT_STEP_MS on a blocking thread and answers once it differs from `last` or
+/// `timeout_ms` (at most WAIT_MAX_MS) passed. None when the thread failed.
+async fn wait_for_change<T, F>(read: F, last: T, timeout_ms: Option<u64>) -> Option<T>
+where
+    T: PartialEq + Send + 'static,
+    F: Fn() -> T + Send + 'static,
+{
+    let limit = timeout_ms.unwrap_or(WAIT_MAX_MS).min(WAIT_MAX_MS);
+    tauri::async_runtime::spawn_blocking(move || {
+        let start = std::time::Instant::now();
+        loop {
+            let now = read();
+            if now != last || start.elapsed().as_millis() as u64 >= limit {
+                return now;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(WAIT_STEP_MS));
+        }
+    })
+    .await
+    .ok()
+}
+
 /// Like `agent_voice_state`, but answers only once the state differs from what the page last saw
 /// (`last_key`, `last_trigger`) or `timeout_ms` passed.
 #[tauri::command]
@@ -83,19 +109,24 @@ pub async fn agent_voice_wait(
     last_trigger: bool,
     timeout_ms: Option<u64>,
 ) -> AgentVoiceState {
-    let limit = timeout_ms.unwrap_or(WAIT_MAX_MS).min(WAIT_MAX_MS);
-    tauri::async_runtime::spawn_blocking(move || {
-        let start = std::time::Instant::now();
-        loop {
-            let now = AgentVoiceState { key: native::key_down(&key), trigger: TRIGGER.load(Ordering::SeqCst) };
-            if now.key != last_key || now.trigger != last_trigger || start.elapsed().as_millis() as u64 >= limit {
-                return now;
-            }
-            std::thread::sleep(std::time::Duration::from_millis(WAIT_STEP_MS));
-        }
-    })
-    .await
-    .unwrap_or(AgentVoiceState { key: None, trigger: TRIGGER.load(Ordering::SeqCst) })
+    let read = move || AgentVoiceState { key: native::key_down(&key), trigger: TRIGGER.load(Ordering::SeqCst) };
+    wait_for_change(read, AgentVoiceState { key: last_key, trigger: last_trigger }, timeout_ms)
+        .await
+        .unwrap_or(AgentVoiceState { key: None, trigger: TRIGGER.load(Ordering::SeqCst) })
+}
+
+#[derive(serde::Serialize, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HotkeyState {
+    /// the key is held according to the system; null when this key / platform cannot be read
+    key: Option<bool>,
+}
+
+/// A hotkey of the page other than agent voice (push-to-talk): answers once the key differs from
+/// `last_key` or `timeout_ms` passed. Same keys as agent voice (Fn, modifiers, F13-F20, alone).
+#[tauri::command]
+pub async fn hotkey_wait(key: String, last_key: Option<bool>, timeout_ms: Option<u64>) -> HotkeyState {
+    let read = move || HotkeyState { key: native::key_down(&key) };
+    wait_for_change(read, HotkeyState { key: last_key }, timeout_ms).await.unwrap_or(HotkeyState { key: None })
 }
 
 /// macOS virtual key codes (kVK_*) of the keys that can be read natively. Keep in sync with

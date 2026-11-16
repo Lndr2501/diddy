@@ -294,6 +294,13 @@ final class CallSession: NSObject, ObservableObject {
     @Published private(set) var outgoing: OutgoingRing = .none
     /// Others in the call who told us they talk to an agent (their user ids).
     @Published private(set) var agentTalkingUsers: Set<String> = []
+    /// Push-to-talk is the input mode (Settings > Calls), followed during the call.
+    @Published private(set) var pushToTalkMode = CallPrefs.pushToTalk
+    /// The Talk button or the keyboard key is held (deafen may still keep the microphone closed).
+    @Published private(set) var pushToTalkHeld = false
+    private var pushToTalkGate = PushToTalkGate()
+    private var pushToTalkRelease: Task<Void, Never>?
+    private var pushToTalkSwitching = false
     /// A hint under the tiles that clears itself, so an old problem does not look like a current one.
     @Published var lastError: String? {
         didSet {
@@ -474,6 +481,11 @@ final class CallSession: NSObject, ObservableObject {
                 self.microphoneOn = false
                 return
             }
+            // Push-to-talk: closed until Talk is held; the first press publishes the microphone.
+            if self.usesPushToTalk {
+                self.microphoneOn = false
+                return
+            }
             await self.startMicrophone(allowed: await micPermission.value)
         }
         let present = Array(liveKitRoom.remoteParticipants.values)
@@ -494,6 +506,11 @@ final class CallSession: NSObject, ObservableObject {
         await microphone.value
         connected = true
         state = "Voice connected"
+        // Push-to-talk switched on or off in Settings during the call.
+        NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in Task { await self?.pushToTalkSettingChanged() } }
+            .store(in: &observers)
         watchTogether.start()
         extras.startMeter { [weak self] in self?.microphoneOn ?? false }
         extras.startPing(room: liveKitRoom)
@@ -512,6 +529,10 @@ final class CallSession: NSObject, ObservableObject {
         guard !closed else { return }
         agentVoice.leave()
         closed = true
+        pushToTalkRelease?.cancel()
+        pushToTalkRelease = nil
+        pushToTalkGate.reset()
+        pushToTalkHeld = false
         let wasConnected = connected
         // Drop every video track from the UI first, so no SwiftUIVideoView renders a track of a room
         // that is being torn down (the likely crash after leaving a call).
@@ -549,6 +570,11 @@ final class CallSession: NSObject, ObservableObject {
     // MARK: Controls
 
     func toggleMicrophone() async {
+        // Push-to-talk owns the microphone: holding Talk opens it.
+        if usesPushToTalk {
+            lastError = "Push to talk is on: hold Talk to speak."
+            return
+        }
         let enable = !microphoneOn
         if enable {
             guard await AVCaptureDevice.requestAccess(for: .audio) else {
@@ -578,6 +604,16 @@ final class CallSession: NSObject, ObservableObject {
     /// Discord semantics: deafen silences everyone and mutes the microphone; undeafen restores
     /// both, but stays muted if you had muted yourself before.
     func toggleDeafen() async {
+        // Push-to-talk: deafen closes the microphone at once; undeafen leaves it to Talk (a held
+        // button opens it again), it never brings back the state from before.
+        if usesPushToTalk {
+            deafened.toggle()
+            applyDeafen()
+            Sounds.shared.play(deafened ? .deafen : .undeafen)
+            handlePushToTalk(pushToTalkGate.setDeafened(deafened), sound: false)
+            await followPushToTalk()
+            return
+        }
         if !deafened { mutedBeforeDeafen = !microphoneOn }
         deafened.toggle()
         applyDeafen()
@@ -588,6 +624,71 @@ final class CallSession: NSObject, ObservableObject {
             microphoneOn = enable
         } catch { lastError = error.friendlyMessage }
         refreshMembers()
+    }
+
+    // MARK: Push-to-talk
+
+    /// Push-to-talk runs for this call: on in Settings, and not while this iPhone is your computer's
+    /// microphone (the computer's push-to-talk key steers it then, through CompanionProtocol).
+    var usesPushToTalk: Bool { pushToTalkMode && companion == nil }
+
+    /// The Talk button or the keyboard key went down (true) or up (false).
+    func pushToTalk(_ source: PushToTalkSource, down: Bool) {
+        guard usesPushToTalk, connected, !closed else { return }
+        handlePushToTalk(pushToTalkGate.set(source, down: down, releaseDelayMs: CallPrefs.pushToTalkDelayMs))
+    }
+
+    private func handlePushToTalk(_ step: PushToTalkGate.Step, sound: Bool = true) {
+        pushToTalkHeld = pushToTalkGate.isHeld
+        switch step {
+        case .none:
+            return
+        case .closeAfterDelay:
+            pushToTalkRelease?.cancel()
+            let delay = UInt64(CallPrefs.pushToTalkDelayMs)
+            pushToTalkRelease = Task { [weak self] in
+                try? await Task.sleep(nanoseconds: delay * 1_000_000)
+                guard !Task.isCancelled, let self else { return }
+                self.handlePushToTalk(self.pushToTalkGate.releaseDelayElapsed())
+            }
+        case .open, .close:
+            pushToTalkRelease?.cancel()
+            pushToTalkRelease = nil
+            if sound { Sounds.shared.play(step == .open ? .pttOn : .pttOff) }
+            Task { await followPushToTalk() }
+        }
+    }
+
+    /// Brings the microphone to what push-to-talk wants, one switch at a time: a quick press and
+    /// release while the first switch still runs ends closed, not open.
+    private func followPushToTalk() async {
+        guard !pushToTalkSwitching else { return }
+        pushToTalkSwitching = true
+        defer { pushToTalkSwitching = false }
+        while !closed, usesPushToTalk, microphoneOn != pushToTalkGate.open {
+            let enable = pushToTalkGate.open
+            do {
+                try await switchMicrophone(enable)
+                microphoneOn = enable
+            } catch {
+                lastError = error.friendlyMessage
+                break
+            }
+        }
+        refreshMembers()
+    }
+
+    private func pushToTalkSettingChanged() async {
+        let mode = CallPrefs.pushToTalk
+        guard mode != pushToTalkMode, !closed else { return }
+        pushToTalkMode = mode
+        pushToTalkRelease?.cancel()
+        pushToTalkRelease = nil
+        pushToTalkGate.reset()
+        _ = pushToTalkGate.setDeafened(deafened)
+        pushToTalkHeld = false
+        // Switched on during the call: closed until Talk is held. Switched off: stays as it is.
+        if usesPushToTalk, microphoneOn { await followPushToTalk() }
     }
 
     func toggleSpeaker() {

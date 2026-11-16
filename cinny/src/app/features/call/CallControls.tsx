@@ -32,6 +32,9 @@ import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { CompanionDialog } from './CompanionDialog';
 import { useResizeObserver } from '../../hooks/useResizeObserver';
 import { AsyncStatus, useAsyncCallback, ignoreRejection } from '../../hooks/useAsyncCallback';
+import { usePushToTalkPrefs, usePushToTalkState } from '../../state/pushToTalk';
+import { formatHotkey } from '../../plugins/agentVoice/hotkey';
+import { isMacOS } from '../../utils/user-agent';
 
 type CallControlsProps = {
   callEmbed: CallEmbed;
@@ -64,6 +67,16 @@ export function CallControls({ callEmbed }: CallControlsProps) {
   let phoneState: 'idle' | 'waiting' | 'connected' = 'idle';
   if (phone) phoneState = 'connected';
   else if (companion.phase === 'waiting') phoneState = 'waiting';
+
+  const pttState = usePushToTalkState();
+  const pttPrefs = usePushToTalkPrefs();
+  const ptt = pttState.active
+    ? {
+        open: pttState.open,
+        keyLabel: pttPrefs.hotkey ? formatHotkey(pttPrefs.hotkey, isMacOS()) : undefined,
+        fullMuted: pttState.heldWhileFullMuted,
+      }
+    : undefined;
 
   const handleSpotlightToggle = useCallback(() => callEmbed.control.toggleSpotlight(), [callEmbed]);
   const handleReactionsClick = useCallback(() => callEmbed.control.toggleReactions(), [callEmbed]);
@@ -176,6 +189,7 @@ export function CallControls({ callEmbed }: CallControlsProps) {
             enabled={phoneMic ? !!phone?.microphone : microphone}
             onToggle={handleMicrophoneToggle}
             phone={phoneMic}
+            ptt={ptt}
           />
           <DeviceChevron kind="input" size="bar" className={css.ControlChevron} />
         </div>

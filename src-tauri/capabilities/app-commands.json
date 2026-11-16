@@ -33,6 +33,7 @@
     "allow-agent-voice-state",
     "allow-agent-voice-wait",
     "allow-soundboard-hotkeys-bind",
-    "allow-soundboard-hotkeys-wait"
+    "allow-soundboard-hotkeys-wait",
+    "allow-hotkey-wait"
   ]
 }

@@ -42,6 +42,7 @@ const { createScreenPicker, screenSourceOptions } = require('./lib/screenPicker.
 const { parseAgentVoiceLaunch, createAgentVoiceTrigger } = require('./lib/agentVoice.cjs');
 const { createAgentVoiceHotkey } = require('./lib/agentVoiceHotkey.cjs');
 const { createSoundboardHotkeys } = require('./lib/soundboardHotkeys.cjs');
+const { createHotkeySlots } = require('./lib/hotkeySlots.cjs');
 const { sanitizeHotkey } = require('./lib/globalHotkey.cjs');
 const { startPortalShortcut } = require('./lib/portalShortcut.cjs');
 const { installShellInput } = require('./lib/shellInput.cjs');
@@ -358,6 +359,14 @@ const agentVoiceHotkey = createAgentVoiceHotkey({
   startPortal: startPortalShortcut,
   log: (line) => diag.writeLine(line),
 });
+// The page's other system-wide hotkeys (push-to-talk), same mechanism, one slot each.
+const hotkeySlots = createHotkeySlots({
+  globalShortcut,
+  helper: shortcutHelper,
+  helperAvailable: () => fs.existsSync(shortcutHelper),
+  startPortal: startPortalShortcut,
+  log: (line) => diag.writeLine(line),
+});
 
 // Soundboard shortcuts in the background: bound by the page only during a call.
 const soundboardHotkeys = createSoundboardHotkeys({ globalShortcut, log: (line) => diag.writeLine(line) });
@@ -421,6 +430,10 @@ const commands = {
   // Soundboard shortcuts while Diddy is in the background (same contract as the Tauri commands).
   soundboard_hotkeys_bind: ({ hotkeys }) => soundboardHotkeys.bind(hotkeys),
   soundboard_hotkeys_wait: (args) => soundboardHotkeys.wait({ after: Number(args?.after) || 0, timeoutMs: args?.timeoutMs }),
+  // Other hotkeys of the page by slot (push-to-talk): bind system-wide (null: unbind), then wait for the key.
+  // `key` (the key code) is for the macOS shell, which reads the key itself; here the bound slot answers.
+  hotkey_bind: ({ slot, hotkey }) => hotkeySlots.bind(slot, sanitizeHotkey(hotkey)),
+  hotkey_wait: (args) => hotkeySlots.wait(args?.slot, args?.lastKey, args?.timeoutMs),
   // The update check belongs to the macOS shell; Linux has no native updater (the UI still sends this).
   updater_set_config: () => null,
 };
@@ -467,6 +480,7 @@ app.on('before-quit', () => audioCaptures.forEach((audio) => audio.close()));
 app.on('will-quit', () => {
   agentVoiceHotkey.close();
   soundboardHotkeys.close();
+  hotkeySlots.close();
 });
 
 ipcMain.handle('diddy:invoke', async (event, cmd, args) => {

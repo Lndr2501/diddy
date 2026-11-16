@@ -117,6 +117,7 @@ All images show example data and are generated from the real app, see [docs/scre
 | Voice messages | ✅ | 🧪 | 🧪 | 🧪 sends m4a, plays m4a and Ogg/Opus |
 | Change app icon | ✅ | 🧪 | 🧪 window icon | 🧪 |
 | Call tiles, soundboard, MyInstants | ✅ | ✅ | 🧪 | 🧪 |
+| Push to talk | 🧪 also in the background (Fn, modifier, F13-F20) | 🧪 also in the background (portal / X11) | 🧪 also in the background (presses) | 🧪 Talk button, iPad keyboard key |
 | Bot cards, profiles and badges, themes, plugins, agent voice | ✅ | ✅ | 🧪 | 🧪 |
 
 ✅ works and is tested · 🧪 built, but not yet tested in daily use · ❌ not supported (yet)

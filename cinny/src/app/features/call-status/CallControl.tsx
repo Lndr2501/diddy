@@ -5,6 +5,8 @@ import { StatusDivider } from './components';
 import { CallEmbed, useCallControlState } from '../../plugins/call';
 import { AsyncStatus, useAsyncCallback, ignoreRejection } from '../../hooks/useAsyncCallback';
 import { callEmbedAtom } from '../../state/callEmbed';
+import { usePushToTalkState } from '../../state/pushToTalk';
+import { pushToTalkHoldProps } from '../call/pushToTalkHold';
 
 type MicrophoneButtonProps = {
   enabled: boolean;
@@ -14,6 +16,38 @@ type MicrophoneButtonProps = {
 function MicrophoneButton({ enabled, onToggle, disabled }: MicrophoneButtonProps) {
   const [micState, toggleMic] = useAsyncCallback(onToggle);
   const loading = micState.status === AsyncStatus.Loading;
+  const ptt = usePushToTalkState();
+
+  if (ptt.active) {
+    return (
+      <TooltipProvider
+        position="Top"
+        tooltip={
+          <Tooltip>
+            <Text size="T200">
+              {ptt.heldWhileFullMuted ? 'Full mute is on' : 'Push to talk: hold to talk'}
+            </Text>
+          </Tooltip>
+        }
+      >
+        {(anchorRef) => (
+          <IconButton
+            ref={anchorRef}
+            variant={ptt.open ? 'Success' : 'SurfaceVariant'}
+            fill="Soft"
+            radii="Pill"
+            size="300"
+            disabled={disabled}
+            aria-label="Push to talk: hold to talk"
+            aria-pressed={ptt.open}
+            {...pushToTalkHoldProps}
+          >
+            <Icon size="100" src={ptt.open ? Icons.Mic : Icons.MicMute} filled={ptt.open} />
+          </IconButton>
+        )}
+      </TooltipProvider>
+    );
+  }
 
   return (
     <TooltipProvider

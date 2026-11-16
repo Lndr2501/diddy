@@ -110,6 +110,9 @@ struct CallSettingsView: View {
     @AppStorage(CallPrefs.shareFpsKey) private var shareFps = BroadcastWire.Config.standard.fps
     @AppStorage(CallPrefs.shareQualityKey) private var shareQuality = BroadcastWire.Config.standard.quality
     @AppStorage(CallPrefs.shareSystemSoundKey) private var shareSound = true
+    @AppStorage(CallPrefs.pushToTalkKey) private var pushToTalk = false
+    @AppStorage(CallPrefs.pushToTalkDelayKey) private var pushToTalkDelay = PushToTalkPrefs.defaultReleaseDelayMs
+    @AppStorage(CallPrefs.pushToTalkKeyboardKey) private var pushToTalkKeyboard = PushToTalkKey.none.rawValue
     @State private var confirmReset = false
     @State private var resetDone = false
 
@@ -132,6 +135,29 @@ struct CallSettingsView: View {
                 Toggle("Voice Processing", isOn: $voiceProcessing)
             } footer: {
                 Text("The system's echo cancellation and automatic gain. Keep it on if you use the speaker instead of headphones; off keeps music and other apps sounding normal. Applies the next time you join a call.")
+            }
+            Section {
+                Toggle("Push to Talk", isOn: $pushToTalk)
+                if pushToTalk {
+                    Picker("Release Delay", selection: $pushToTalkDelay) {
+                        Text("None").tag(0)
+                        Text("100 ms").tag(100)
+                        Text("200 ms").tag(200)
+                        Text("300 ms").tag(300)
+                        Text("500 ms").tag(500)
+                    }
+                    Picker("Keyboard Key", selection: $pushToTalkKeyboard) {
+                        ForEach(PushToTalkKey.allCases) { key in
+                            Text(key.title).tag(key.rawValue)
+                        }
+                    }
+                }
+            } header: {
+                Text("Input Mode")
+            } footer: {
+                Text(pushToTalk
+                    ? "Your microphone is off until you hold Talk in the call. With a hardware keyboard (iPad), hold the keyboard key instead. Release Delay keeps it open a moment after you let go, so the end of a word is not cut off. Deafen wins: holding Talk does not undeafen you."
+                    : "Voice activity: your microphone is open while it is on. Turn on Push to Talk to be heard only while you hold Talk.")
             }
             Section {
                 Picker("Resolution", selection: $shareResolution) {
