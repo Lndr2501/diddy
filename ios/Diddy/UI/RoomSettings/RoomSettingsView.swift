@@ -57,37 +57,37 @@ struct RoomSettingsView: View {
                         NavigationLink {
                             RoomAddressesView(model: model)
                         } label: {
-                            Label("Addresses", systemImage: "number")
+                            Label(L("ios.securityUI.addresses"), systemImage: "number")
                         }
                         NavigationLink {
                             RoomPermissionsView(model: model)
                         } label: {
-                            Label("Roles & Permissions", systemImage: "lock.shield")
+                            Label(L("ios.securityUI.rolesPermissions"), systemImage: "lock.shield")
                         }
                         NavigationLink {
                             RoomMembersAdminView(model: model)
                         } label: {
-                            Label("Members", systemImage: "person.2")
+                            Label(L("settings.diddyProfile.members"), systemImage: "person.2")
                         }
                     } header: {
-                        Text("Manage")
+                        Text(L("ios.securityUI.manage"))
                     } footer: {
-                        Text("Addresses, roles and the members who are invited, banned or have left.")
+                        Text(L("ios.securityUI.addressesRolesAndTheMembersWhoAreInvitedBannedOrHaveLeft"))
                     }
-                    Section("Advanced") { upgradeRows(state) }
+                    Section(L("ios.securityUI.advanced")) { upgradeRows(state) }
                 } else if let error = model.loadError {
                     Section {
                         VStack(spacing: 10) {
                             Image(systemName: "exclamationmark.triangle")
                                 .font(.title2)
                                 .foregroundStyle(Theme.danger)
-                            Text("Couldn't load the settings")
+                            Text(L("ios.securityUI.couldnTLoadTheSettings"))
                                 .font(.headline)
                             Text(error)
                                 .font(.footnote)
                                 .foregroundStyle(Theme.muted)
                                 .multilineTextAlignment(.center)
-                            Button("Try Again") { Task { await reload() } }
+                            Button(L("ios.settings.tryAgain")) { Task { await reload() } }
                                 .buttonStyle(.borderedProminent)
                         }
                         .frame(maxWidth: .infinity)
@@ -98,7 +98,7 @@ struct RoomSettingsView: View {
                         HStack(spacing: 10) {
                             Spacer()
                             ProgressView()
-                            Text("Loading settings").foregroundStyle(Theme.muted)
+                            Text(L("ios.securityUI.loadingSettings")).foregroundStyle(Theme.muted)
                             Spacer()
                         }
                     }
@@ -111,7 +111,7 @@ struct RoomSettingsView: View {
             .tint(Theme.accent)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
+                    Button(L("call.companionDialog.done")) {
                         if hasProfileChanges { askDiscard = true } else { dismiss() }
                     }
                 }
@@ -128,17 +128,17 @@ struct RoomSettingsView: View {
                 photo = nil
                 Task { await uploadAvatar(item) }
             }
-            .confirmationDialog("Enable Encryption", isPresented: $confirmEncryption, titleVisibility: .visible) {
-                Button("Enable E2E Encryption") {
+            .confirmationDialog(L("ios.securityUI.enableEncryption"), isPresented: $confirmEncryption, titleVisibility: .visible) {
+                Button(L("ios.securityUI.enableE2EEncryption")) {
                     Task {
                         await model.perform { try await model.sendState("m.room.encryption", content: RoomEncryptionRule.content) }
                     }
                 }
             } message: {
-                Text("Are you sure? Once enabled, encryption cannot be disabled!")
+                Text(L("ios.securityUI.areYouSureOnceEnabledEncryptionCannotBeDisabled"))
             }
-            .confirmationDialog("Remove the picture?", isPresented: $confirmRemoveAvatar, titleVisibility: .visible) {
-                Button("Remove", role: .destructive) {
+            .confirmationDialog(L("ios.securityUI.removeThePicture"), isPresented: $confirmRemoveAvatar, titleVisibility: .visible) {
+                Button(L("settings.connectedAccounts.remove"), role: .destructive) {
                     Task {
                         await model.perform {
                             try await model.sendState("m.room.avatar", content: [:])
@@ -183,29 +183,29 @@ struct RoomSettingsView: View {
                 .disabled(model.busy)
                 if state.avatarUrl != nil {
                     Button(role: .destructive) { confirmRemoveAvatar = true } label: {
-                        Label("Remove Picture", systemImage: "trash")
+                        Label(L("ios.securityUI.removePicture"), systemImage: "trash")
                     }
                     .disabled(model.busy)
                 }
             }
-            TextField("Name", text: $name).disabled(!canName)
-            TextField("Topic", text: $topic, axis: .vertical).lineLimit(1...6).disabled(!canTopic)
+            TextField(L("settings.badgeEditor.name"), text: $name).disabled(!canName)
+            TextField(L("ios.extraSettings.topic"), text: $topic, axis: .vertical).lineLimit(1...6).disabled(!canTopic)
             if profileChanged(state, canName: canName, canTopic: canTopic) {
-                Button("Save") { Task { await saveProfile(state, canName: canName, canTopic: canTopic) } }
+                Button(L("settings.profile.save")) { Task { await saveProfile(state, canName: canName, canTopic: canTopic) } }
                     .disabled(model.busy || (canName && name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty))
-                Button("Discard Changes", role: .destructive) {
+                Button(L("ios.remainingUI.discardChanges"), role: .destructive) {
                     name = state.name ?? ""
                     topic = state.topic ?? ""
                 }
                 .disabled(model.busy)
             }
         } header: {
-            Text("Profile")
+            Text(L("settings.page.profile"))
         } footer: {
             if !canName || !canTopic || !canAvatar {
-                Text("Some fields are locked because your role can't change them.")
+                Text(L("ios.securityUI.someFieldsAreLockedBecauseYourRoleCanTChangeThem"))
             } else {
-                Text("Name and topic are saved with Save; the picture changes right away.")
+                Text(L("ios.securityUI.nameAndTopicAreSavedWithSaveThePictureChangesRightAway"))
             }
         }
     }
@@ -238,7 +238,7 @@ struct RoomSettingsView: View {
     private func uploadAvatar(_ item: PhotosPickerItem) async {
         await model.perform {
             guard let data = try await item.loadTransferable(type: Data.self) else {
-                throw DiddyError("This picture could not be read.")
+                throw DiddyError(L("ios.errorsExtra.thisPictureCouldNotBeRead"))
             }
             let limit = await account.diddyUploadLimit()
             let file = try DiddyMediaPrep.picture(data, limit: limit)
@@ -261,12 +261,12 @@ struct RoomSettingsView: View {
             encryptionRow(state)
             publishRow(state)
         } header: {
-            Text("Options")
+            Text(L("settings.about.options"))
         } footer: {
             if locked {
-                Text("Changes here apply right away. Greyed out options need a higher role.")
+                Text(L("ios.securityUI.changesHereApplyRightAwayGreyedOutOptionsNeedAHigherRole"))
             } else {
-                Text("Changes here apply right away.")
+                Text(L("ios.securityUI.changesHereApplyRightAway"))
             }
         }
     }
@@ -296,7 +296,7 @@ struct RoomSettingsView: View {
                 ForEach(options) { rule in Text(rule.label).tag(rule) }
             }
             .disabled(!model.canSendState("m.room.join_rules") || model.busy)
-            Text("Change how people can join the \(typeWord).").font(.caption).foregroundStyle(Theme.muted)
+            Text(L("ios.dynamicUI.changeJoin", ["kind": typeWord])).font(.caption).foregroundStyle(Theme.muted)
         }
     }
 
@@ -313,11 +313,11 @@ struct RoomSettingsView: View {
             }
         )
         return VStack(alignment: .leading, spacing: 4) {
-            Picker("Message History Visibility", selection: binding) {
+            Picker(L("ios.securityUI.messageHistoryVisibility"), selection: binding) {
                 ForEach(RoomHistoryVisibilityKind.menu) { kind in Text(kind.label).tag(kind) }
             }
             .disabled(!model.canSendState("m.room.history_visibility") || model.busy)
-            Text("Changes to history visibility will only apply to future messages. The visibility of existing history will have no effect.")
+            Text(L("ios.securityUI.changesToHistoryVisibilityWillOnlyApplyToFutureMessagesTheVi"))
                 .font(.caption).foregroundStyle(Theme.muted)
         }
     }
@@ -325,16 +325,16 @@ struct RoomSettingsView: View {
     private func encryptionRow(_ state: RoomStateSnapshot) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text("Room Encryption")
+                Text(L("ios.securityUI.roomEncryption"))
                 Spacer()
                 if state.isEncrypted {
-                    Text("Enabled")
+                    Text(L("ios.securityUI.enabled"))
                         .font(.caption.weight(.bold))
                         .padding(.horizontal, 8).padding(.vertical, 2)
                         .background(Capsule().fill(Theme.online.opacity(0.25)))
                         .foregroundStyle(Theme.online)
                 } else {
-                    Button("Enable") { confirmEncryption = true }
+                    Button(L("settings.verification.enable")) { confirmEncryption = true }
                         .disabled(!model.canSendState("m.room.encryption") || model.busy)
                 }
             }
@@ -355,8 +355,8 @@ struct RoomSettingsView: View {
         let enabled = model.directoryPublished != nil && state.joinRule.allowsDirectory
             && model.canSendState("m.room.canonical_alias") && !model.busy
         return VStack(alignment: .leading, spacing: 4) {
-            Toggle("Publish to Directory", isOn: binding).disabled(!enabled)
-            Text("List the \(typeWord) in the public directory to make it discoverable by others.")
+            Toggle(L("ios.securityUI.publishToDirectory"), isOn: binding).disabled(!enabled)
+            Text(L("ios.dynamicUI.directoryHelp", ["kind": typeWord]))
                 .font(.caption).foregroundStyle(Theme.muted)
         }
     }
@@ -387,7 +387,7 @@ struct RoomSettingsView: View {
             }
             .disabled(account.room(tombstone.replacement) == nil)
         } else {
-            Button("Upgrade") { showUpgrade = true }
+            Button(L("ios.securityUI.upgrade")) { showUpgrade = true }
                 .disabled(!model.canSendState("m.room.tombstone") || model.busy)
         }
     }

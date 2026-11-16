@@ -92,7 +92,7 @@ final class Registration: ObservableObject {
     func start(username input: String, password: String, deviceName: String) async {
         let name = RegistrationLogic.localpart(input)
         if let problem = RegistrationLogic.usernameProblem(name) { error = problem; return }
-        guard !password.isEmpty else { error = "Choose a password."; return }
+        guard !password.isEmpty else { error = L("ios.registrationMore.chooseAPassword"); return }
         username = name
         self.password = password
         self.deviceName = deviceName
@@ -104,7 +104,7 @@ final class Registration: ObservableObject {
 
     func submitToken(_ token: String) async {
         let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { error = "Enter the registration token."; return }
+        guard !trimmed.isEmpty else { error = L("ios.registrationMore.enterTheRegistrationToken"); return }
         pendingToken = trimmed
         await advance()
     }
@@ -116,7 +116,7 @@ final class Registration: ObservableObject {
     /// Asks the server to send the confirmation link.
     func sendEmail(_ address: String) async {
         let trimmed = address.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard trimmed.contains("@"), let homeserver else { error = "Enter your email address."; return }
+        guard trimmed.contains("@"), let homeserver else { error = L("ios.registrationMore.enterYourEmailAddress"); return }
         error = nil
         busy = true
         defer { busy = false }
@@ -151,7 +151,7 @@ final class Registration: ObservableObject {
     // MARK: - Requests
 
     private func send(auth: [String: Any]?) async {
-        guard let homeserver else { error = "Choose a server first."; return }
+        guard let homeserver else { error = L("ios.registrationMore.chooseAServerFirst"); return }
         error = nil
         busy = true
         defer { busy = false }
@@ -169,7 +169,7 @@ final class Registration: ObservableObject {
             session = challenge.session ?? session
             if flow.isEmpty || !challenge.flows.contains(flow) {
                 guard let picked = RegistrationLogic.pickFlow(challenge.flows) else {
-                    error = "This server does not offer a way to create an account here."
+                    error = L("ios.registrationMore.thisServerDoesNotOfferAWayToCreateAnAccountHere")
                     step = .form
                     return
                 }
@@ -191,7 +191,7 @@ final class Registration: ObservableObject {
     private func advance(policies: [RegistrationLogic.Policy] = [], retry: Bool = false) async {
         guard let next = RegistrationLogic.nextStage(flow: flow, completed: completed) else {
             // Every step is done, yet no account: send once more with the session only.
-            if !retry { await send(auth: [:]) } else { error = "The server did not finish the registration. Try again."; step = .form }
+            if !retry { await send(auth: [:]) } else { error = L("ios.registrationMore.theServerDidNotFinishTheRegistrationTryAgain"); step = .form }
             return
         }
         switch next {
@@ -220,12 +220,12 @@ final class Registration: ObservableObject {
             guard let homeserver, let session,
                   let url = RegistrationLogic.fallbackURL(homeserver: homeserver, stage: next, session: session)
             else {
-                error = "The server asked for a step Diddy cannot show."
+                error = L("ios.registrationMore.theServerAskedForAStepDiddyCannotShow")
                 step = .form
                 return
             }
             if case .web = step, retry {
-                error = "That step is not done yet. Open the page again and complete it."
+                error = L("ios.registrationMore.thatStepIsNotDoneYetOpenThePageAgainAndCompleteIt")
             }
             step = .web(url)
         }
@@ -241,15 +241,15 @@ final class Registration: ObservableObject {
             let (data, response) = try await URLSession.shared.data(for: request)
             return ((response as? HTTPURLResponse)?.statusCode ?? 0, data)
         } catch {
-            self.error = "The server could not be reached: \(error.localizedDescription)"
+            self.error = L("ios.finalComputed.serverUnreachable", ["error": error.localizedDescription])
             return nil
         }
     }
 
     private static func stageError(code: String, message: String?, step: Step) -> String {
         switch step {
-        case .token: return "The server did not accept this token."
-        case .waitingForEmail: return "The email link has not been opened yet."
+        case .token: return L("ios.registrationMore.theServerDidNotAcceptThisToken")
+        case .waitingForEmail: return L("ios.registrationMore.theEmailLinkHasNotBeenOpenedYet")
         default: return RegistrationLogic.message(errcode: code, error: message)
         }
     }

@@ -16,32 +16,32 @@ struct AddServerView: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("Address or link", text: $address)
+                    TextField(L("ios.remainingUI.addressOrLink"), text: $address)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
-                    Button("Join Server") { run { try await join() } }
+                    Button(L("ios.remainingUI.joinServer")) { run { try await join() } }
                         .disabled(address.trimmingCharacters(in: .whitespaces).isEmpty || busy)
                 } header: {
-                    Text("Join a server")
+                    Text(L("ios.remainingUI.joinAServer"))
                 } footer: {
-                    Text("For example #community:matrix.org or a matrix.to link.")
+                    Text(L("ios.remainingUI.forExampleCommunityMatrixOrgOrAMatrixToLink"))
                 }
                 Section {
-                    Button("Create a Server") { serverBeforeCreating = navigator.server; creating = true }
+                    Button(L("ios.remainingUI.createAServer")) { serverBeforeCreating = navigator.server; creating = true }
                 } header: {
-                    Text("Create your own")
+                    Text(L("ios.remainingUI.createYourOwn"))
                 } footer: {
-                    Text("Choose who can join, the address, encryption and more.")
+                    Text(L("ios.remainingUI.chooseWhoCanJoinTheAddressEncryptionAndMore"))
                 }
                 if let error { Text(error).foregroundStyle(Theme.danger) }
                 if busy { HStack { Spacer(); ProgressView(); Spacer() } }
             }
             .scrollContentBackground(.hidden)
             .background(Theme.sidebar.ignoresSafeArea())
-            .navigationTitle("Add a Server")
+            .navigationTitle(L("ios.finalUI.addAServer"))
             .navigationBarTitleDisplayMode(.inline)
             .tint(Theme.accent)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button(L("ios.settings.cancel")) { dismiss() } } }
             .sheet(isPresented: $creating, onDismiss: { if navigator.server != serverBeforeCreating { dismiss() } }) {
                 CreateSpaceView(account: account)
             }
@@ -140,7 +140,7 @@ struct NewMessageView: View {
                 if let error { Text(error).foregroundStyle(Theme.danger).listRowBackground(Color.clear) }
                 UserSearch(account: account, query: $query) { start($0) }
                 if query.count < 2 {
-                    Text("Search by name, or enter a full ID like @friend:matrix.org.")
+                    Text(L("ios.finalUI.searchByNameOrEnterAFullIdLikeFriendMatrixOrg"))
                         .font(.footnote).foregroundStyle(Theme.muted).listRowBackground(Color.clear)
                 }
             }
@@ -151,10 +151,10 @@ struct NewMessageView: View {
             .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Find someone")
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
-            .navigationTitle("New Message")
+            .navigationTitle(L("nav.home.newMessage"))
             .navigationBarTitleDisplayMode(.inline)
             .tint(Theme.accent)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button(L("ios.settings.cancel")) { dismiss() } } }
         }
     }
 
@@ -186,14 +186,14 @@ struct InviteView: View {
             List {
                 if let link, let url = URL(string: link) {
                     Section {
-                        ShareLink(item: url) { Label("Share invite link", systemImage: "square.and.arrow.up") }
+                        ShareLink(item: url) { Label(L("ios.finalUI.shareInviteLink"), systemImage: "square.and.arrow.up") }
                             .listRowBackground(Color.clear)
-                        Button { UIPasteboard.general.string = link } label: { Label("Copy invite link", systemImage: "link") }
+                        Button { UIPasteboard.general.string = link } label: { Label(L("ios.finalUI.copyInviteLink"), systemImage: "link") }
                             .listRowBackground(Color.clear)
                     }
                 }
                 if !invited.isEmpty {
-                    Section("Invited") {
+                    Section(L("ios.finalUI.invited")) {
                         ForEach(Array(invited), id: \.self) { userId in
                             Label(userId, systemImage: "checkmark.circle.fill").foregroundStyle(Theme.online)
                                 .listRowBackground(Color.clear)
@@ -211,10 +211,10 @@ struct InviteView: View {
             .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Name or @user:server")
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
-            .navigationTitle("Invite People")
+            .navigationTitle(L("ios.chatMore.invitePeople"))
             .navigationBarTitleDisplayMode(.inline)
             .tint(Theme.accent)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button(L("ios.settings.done")) { dismiss() } } }
             .task { link = try? await account.room(roomId)?.matrixToPermalink() }
         }
     }
@@ -258,7 +258,7 @@ struct ChannelInfoView: View {
                             Text(summary?.name ?? "").font(.headline)
                             if let alias = summary?.canonicalAlias { Text(alias).font(.caption).foregroundStyle(Theme.muted) }
                             if summary?.isEncrypted == true {
-                                Label("End-to-end encrypted", systemImage: "lock.fill").font(.caption).foregroundStyle(Theme.muted)
+                                Label(L("ios.finalUI.endToEndEncrypted"), systemImage: "lock.fill").font(.caption).foregroundStyle(Theme.muted)
                             }
                         }
                     }
@@ -267,10 +267,10 @@ struct ChannelInfoView: View {
                     }
                 }
                 if canEdit {
-                    Section("Edit") {
-                        TextField("Name", text: $name)
-                        TextField("Topic", text: $topic, axis: .vertical)
-                        Button("Save Changes") { save() }
+                    Section(L("settings.deviceTile.edit")) {
+                        TextField(L("settings.badgeEditor.name"), text: $name)
+                        TextField(L("ios.extraSettings.topic"), text: $topic, axis: .vertical)
+                        Button(L("ios.finalUI.saveChanges")) { save() }
                             .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || (name == summary?.name && topic == (summary?.topic ?? "")))
                     }
                 }
@@ -279,16 +279,16 @@ struct ChannelInfoView: View {
                         LabeledContent {
                             Text("\(summary?.memberCount ?? 0)")
                         } label: {
-                            Label("Members", systemImage: "person.2.fill")
+                            Label(L("settings.diddyProfile.members"), systemImage: "person.2.fill")
                         }
                     }
                     if summary?.isDirect != true {
-                        Button { showInvite = true } label: { Label("Invite People", systemImage: "person.badge.plus") }
-                        Button { showSettings = true } label: { Label("Channel Settings", systemImage: "gearshape") }
+                        Button { showInvite = true } label: { Label(L("ios.chatMore.invitePeople"), systemImage: "person.badge.plus") }
+                        Button { showSettings = true } label: { Label(L("ios.finalUI.channelSettings"), systemImage: "gearshape") }
                     }
                     NavigationLink {
                         MediaOverviewView(account: account, roomId: roomId)
-                    } label: { Label("Media & Files", systemImage: "photo.on.rectangle") }
+                    } label: { Label(L("room.viewHeader.mediaFiles"), systemImage: "photo.on.rectangle") }
                 }
                 if let error { Text(error).foregroundStyle(Theme.danger) }
                 Section {
@@ -299,10 +299,10 @@ struct ChannelInfoView: View {
             }
             .scrollContentBackground(.hidden)
             .background(Theme.sidebar.ignoresSafeArea())
-            .navigationTitle("Details")
+            .navigationTitle(L("settings.profileCardEditor.details"))
             .navigationBarTitleDisplayMode(.inline)
             .tint(Theme.accent)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button(L("ios.settings.done")) { dismiss() } } }
             .sheet(isPresented: $showMembers) { MembersView(account: account, roomId: roomId) }
             .sheet(isPresented: $showInvite) { InviteView(account: account, roomId: roomId) }
             .sheet(isPresented: $showSettings) {
@@ -311,8 +311,8 @@ struct ChannelInfoView: View {
                     navigator.open(id, account: account)
                 })
             }
-            .confirmationDialog("Leave \(summary?.name ?? "this channel")?", isPresented: $confirmLeave, titleVisibility: .visible) {
-                Button("Leave", role: .destructive) { leave() }
+            .confirmationDialog(L("ios.lastDynamic.leaveChannel", ["name": summary?.name ?? L("ios.lastDynamic.thisChannel")]), isPresented: $confirmLeave, titleVisibility: .visible) {
+                Button(L("common.leaveRoomPrompt.leave"), role: .destructive) { leave() }
             }
             .task {
                 name = summary?.name ?? ""

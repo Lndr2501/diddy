@@ -13,9 +13,9 @@ struct PushToTalkButton: View {
     private var talking: Bool { session.microphoneOn }
 
     private var text: String {
-        if session.deafened && session.pushToTalkHeld { return "Deafened: undeafen to talk" }
-        if talking { return "Talking…" }
-        return "Hold to Talk"
+        if session.deafened && session.pushToTalkHeld { return L("ios.calls.moreDeafenedUndeafenToTalk") }
+        if talking { return L("ios.calls.moreTalkingInProgress") }
+        return L("ios.calls.moreHoldToTalk")
     }
 
     private var fill: Color {
@@ -67,9 +67,9 @@ struct PushToTalkButton: View {
         .padding(.horizontal, compact ? 10 : 16)
         .padding(.bottom, compact ? 4 : 8)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Push to talk")
-        .accessibilityValue(talking ? "Talking" : "Microphone off")
-        .accessibilityHint("Hold to talk. With VoiceOver, double-tap to start and double-tap again to stop.")
+        .accessibilityLabel(L("ios.calls.pushToTalk"))
+        .accessibilityValue(talking ? L("ios.calls.moreTalking") : L("ios.calls.moreMicrophoneOff"))
+        .accessibilityHint(L("ios.calls.moreHoldToTalkWithVoiceoverDoubleTapToStartAndDoubleTapAgainToSt"))
         .accessibilityAddTraits(.isButton)
         // VoiceOver cannot hold: a double-tap starts, the next one stops
         .accessibilityAction {

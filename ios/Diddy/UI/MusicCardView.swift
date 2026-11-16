@@ -103,7 +103,7 @@ struct MusicCardView: View {
         case "apple":
             HStack(spacing: 2) {
                 Image(systemName: "apple.logo").font(.system(size: 13, weight: .semibold))
-                Text("Music").font(.system(size: 15, weight: .semibold))
+                Text(L("ios.finalUI.music")).font(.system(size: 15, weight: .semibold))
             }
             .foregroundStyle(.white.opacity(0.5))
         case "spotify":

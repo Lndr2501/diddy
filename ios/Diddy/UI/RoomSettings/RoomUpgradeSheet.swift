@@ -27,8 +27,8 @@ struct RoomUpgradeSheet: View {
                 Section {
                     Label {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("This can't be undone").bold().foregroundStyle(Theme.danger)
-                            Text("A new \(word.lowercased()) replaces this one. Members have to join the new \(word.lowercased()); this one stays readable.")
+                            Text(L("ios.finalUI.thisCanTBeUndone")).bold().foregroundStyle(Theme.danger)
+                            Text(L("ios.lastDynamic.upgradeDescription", ["kind": word.lowercased()]))
                                 .font(.footnote)
                                 .foregroundStyle(Theme.muted)
                         }
@@ -36,7 +36,7 @@ struct RoomUpgradeSheet: View {
                         Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Theme.danger)
                     }
                 }
-                Section("Options") {
+                Section(L("settings.about.options")) {
                     Picker("\(word) Version", selection: $version) {
                         ForEach(model.roomVersions, id: \.self) { value in Text(value).tag(value) }
                     }
@@ -55,14 +55,14 @@ struct RoomUpgradeSheet: View {
                                 }
                                 .buttonStyle(.borderless)
                                 .disabled(upgrading)
-                                .accessibilityLabel("Remove \(id)")
+                                .accessibilityLabel(L("ios.lastDynamic.removeId", ["id": id]))
                             }
                         }
                         HStack {
-                            TextField("@user:server", text: $newCreator)
+                            TextField(L("settings.ignoredUserList.userServer"), text: $newCreator)
                                 .textInputAutocapitalization(.never)
                                 .autocorrectionDisabled()
-                            Button("Add") {
+                            Button(L("settings.connectedAccounts.add")) {
                                 if let id = newCreatorId {
                                     creators.append(id)
                                     newCreator = ""
@@ -72,9 +72,9 @@ struct RoomUpgradeSheet: View {
                             .disabled(newCreatorId == nil || upgrading)
                         }
                     } header: {
-                        Text("Additional Creators")
+                        Text(L("ios.finalUI.additionalCreators"))
                     } footer: {
-                        Text("Creators have all permissions and can only be changed during an upgrade.")
+                        Text(L("ios.finalUI.creatorsHaveAllPermissionsAndCanOnlyBeChangedDuringAnUpgr"))
                     }
                 }
                 if let error {
@@ -90,14 +90,14 @@ struct RoomUpgradeSheet: View {
                     } label: {
                         HStack {
                             if upgrading { ProgressView() }
-                            Text("Upgrade \(word)")
+                            Text(L("ios.lastDynamic.upgradeKind", ["kind": word]))
                         }
                     }
                     .disabled(upgrading || version.isEmpty)
-                    .confirmationDialog("Upgrade this \(word.lowercased()) to version \(version)?", isPresented: $confirming, titleVisibility: .visible) {
-                        Button("Upgrade \(word)", role: .destructive) { Task { await upgrade() } }
+                    .confirmationDialog(L("ios.lastDynamic.upgradeConfirm", ["kind": word.lowercased(), "version": version]), isPresented: $confirming, titleVisibility: .visible) {
+                        Button(L("ios.lastDynamic.upgradeKind", ["kind": word]), role: .destructive) { Task { await upgrade() } }
                     } message: {
-                        Text("This can't be undone.")
+                        Text(L("ios.finalUI.thisCanTBeUndone"))
                     }
                 }
             }
@@ -106,7 +106,7 @@ struct RoomUpgradeSheet: View {
             .navigationTitle("\(word) Upgrade")
             .navigationBarTitleDisplayMode(.inline)
             .tint(Theme.accent)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button(L("settings.deviceTile.cancel")) { dismiss() } } }
             .interactiveDismissDisabled(upgrading)
             .onAppear {
                 if version.isEmpty { version = model.defaultRoomVersion }

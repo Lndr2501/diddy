@@ -19,7 +19,7 @@ struct DiddyBadgeLibraryView: View {
     var body: some View {
         List {
             Section {
-                TextField("Search badges", text: $query)
+                TextField(L("settings.badgeEditor.searchBadges"), text: $query)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
             } footer: {
@@ -30,7 +30,7 @@ struct DiddyBadgeLibraryView: View {
             }
             Section {
                 if visible.isEmpty {
-                    Text("No badges match your search.").foregroundStyle(Theme.muted)
+                    Text(L("settings.badgeEditor.noBadgesMatchYour")).foregroundStyle(Theme.muted)
                 }
                 ForEach(visible) { badge in row(badge) }
             }
@@ -38,15 +38,15 @@ struct DiddyBadgeLibraryView: View {
                 NavigationLink {
                     DiddyCreateBadgeView(account: account)
                 } label: {
-                    Label("Create a Badge", systemImage: "plus.circle")
+                    Label(L("ios.finalUI.createABadge"), systemImage: "plus.circle")
                 }
             } footer: {
-                Text("Badges you take are shown in the profile editor, where you pick up to \(DiddyBadgeLogic.maxShown) to show next to your name.")
+                Text(L("ios.dynamicUI.badgeLibraryHelp", ["max": String(DiddyBadgeLogic.maxShown)]))
             }
         }
         .scrollContentBackground(.hidden)
         .background(Theme.sidebar)
-        .navigationTitle("Badge Library")
+        .navigationTitle(L("ios.finalUI.badgeLibrary"))
         .navigationBarTitleDisplayMode(.inline)
         .task { await account.loadDiddyProfiles() }
         .confirmationDialog(
@@ -54,11 +54,11 @@ struct DiddyBadgeLibraryView: View {
             isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
             titleVisibility: .visible
         ) {
-            Button("Delete from Library", role: .destructive) {
+            Button(L("ios.finalUI.deleteFromLibrary"), role: .destructive) {
                 if let badge = deleting { Task { await delete(badge) } }
                 deleting = nil
             }
-            Button("Cancel", role: .cancel) { deleting = nil }
+            Button(L("settings.deviceTile.cancel"), role: .cancel) { deleting = nil }
         }
     }
 
@@ -83,12 +83,12 @@ struct DiddyBadgeLibraryView: View {
         }
         .swipeActions(edge: .trailing) {
             if DiddyBadgeLogic.canDelete(badge, me: account.userId) {
-                Button("Delete", role: .destructive) { deleting = badge }
+                Button(L("common.connectionRecovery.delete"), role: .destructive) { deleting = badge }
             }
         }
         .contextMenu {
             if DiddyBadgeLogic.canDelete(badge, me: account.userId) {
-                Button("Delete from Library", role: .destructive) { deleting = badge }
+                Button(L("ios.finalUI.deleteFromLibrary"), role: .destructive) { deleting = badge }
             }
         }
     }
@@ -158,34 +158,34 @@ struct DiddyCreateBadgeView: View {
                     Spacer()
                 }
             } header: {
-                Text("Preview")
+                Text(L("settings.badgeEditor.preview"))
             }
             Section {
-                TextField("Badge name", text: Binding(get: { name }, set: { name = String($0.prefix(DiddyBadgeLogic.maxNameLength)) }))
+                TextField(L("settings.badgeEditor.badgeName"), text: Binding(get: { name }, set: { name = String($0.prefix(DiddyBadgeLogic.maxNameLength)) }))
             } header: {
-                Text("Name")
+                Text(L("settings.badgeEditor.name"))
             }
             Section {
                 TextField("😀", text: $emoji)
                     .disabled(imageMxc != nil)
                 if DiddyBadgeLogic.emojiTooLong(emoji) {
-                    Text("Use a single emoji.").foregroundStyle(Theme.danger)
+                    Text(L("settings.badgeEditor.useASingleEmoji")).foregroundStyle(Theme.danger)
                 }
                 PhotosPicker(selection: $pickedImage, matching: .images) {
                     Label(imageMxc == nil ? "Upload Image" : "Replace Image", systemImage: "photo")
                 }
                 .disabled(uploading)
-                if uploading { HStack(spacing: 8) { ProgressView(); Text("Uploading…").foregroundStyle(Theme.muted) } }
+                if uploading { HStack(spacing: 8) { ProgressView(); Text(L("ios.chat.uploading")).foregroundStyle(Theme.muted) } }
                 if imageMxc != nil {
-                    Button("Remove Image", role: .destructive) { imageMxc = nil }
+                    Button(L("ios.finalUI.removeImage"), role: .destructive) { imageMxc = nil }
                 }
             } header: {
-                Text("Emoji or Image")
+                Text(L("ios.finalUI.emojiOrImage"))
             } footer: {
                 Text(imageMxc == nil ? "Type an emoji, or upload an image instead." : "Using an uploaded image.")
             }
-            Section("Color") {
-                ColorPicker("Badge color", selection: $color, supportsOpacity: false)
+            Section(L("settings.badgeEditor.color")) {
+                ColorPicker(L("settings.badgeEditor.badgeColor"), selection: $color, supportsOpacity: false)
             }
             if let duplicate {
                 Section {
@@ -193,14 +193,14 @@ struct DiddyCreateBadgeView: View {
                         DiddyBadges(badges: [duplicate], size: 22, account: account)
                         Text(duplicate.name)
                         Spacer()
-                        Button("Use It") { Task { await useExisting(duplicate) } }
+                        Button(L("ios.finalUI.useIt")) { Task { await useExisting(duplicate) } }
                             .buttonStyle(.bordered)
                             .disabled(creating)
                     }
                 } header: {
-                    Text("Already in the library")
+                    Text(L("ios.finalUI.alreadyInTheLibrary"))
                 } footer: {
-                    Text("This badge already exists. Use the existing one instead of creating a copy.")
+                    Text(L("ios.finalUI.thisBadgeAlreadyExistsUseTheExistingOneInsteadOfCreatingA"))
                 }
             }
             Section {
@@ -211,17 +211,17 @@ struct DiddyCreateBadgeView: View {
                 } label: {
                     HStack {
                         if creating { ProgressView() }
-                        Text("Create Badge")
+                        Text(L("ios.finalUI.createBadge"))
                     }
                 }
                 .disabled(!canCreate || duplicate != nil)
             } footer: {
-                Text("A new badge for the shared library. It is given to you right away.")
+                Text(L("settings.badgeEditor.aNewBadgeFor"))
             }
         }
         .scrollContentBackground(.hidden)
         .background(Theme.sidebar)
-        .navigationTitle("Create Badge")
+        .navigationTitle(L("ios.finalUI.createBadge"))
         .navigationBarTitleDisplayMode(.inline)
         .onChange(of: pickedImage) { item in
             guard let item else { return }
@@ -235,7 +235,7 @@ struct DiddyCreateBadgeView: View {
         error = nil
         defer { uploading = false }
         do {
-            guard let data = try await item.loadTransferable(type: Data.self) else { throw DiddyError("This picture could not be read.") }
+            guard let data = try await item.loadTransferable(type: Data.self) else { throw DiddyError(L("ios.errorsExtra.thisPictureCouldNotBeRead")) }
             let limit = await account.diddyUploadLimit()
             let file = try DiddyMediaPrep.picture(data, limit: limit)
             imageMxc = try await account.uploadDiddyMedia(file.data, mimeType: file.mimeType, filename: "badge.\(file.ext)")

@@ -18,7 +18,7 @@ struct MediaOverviewView: View {
                 ZStack { Theme.sidebar.ignoresSafeArea(); ProgressView() }
             }
         }
-        .navigationTitle("Media & Files")
+        .navigationTitle(L("room.viewHeader.mediaFiles"))
         .navigationBarTitleDisplayMode(.inline)
         .task {
             guard holder.controller == nil else { return }
@@ -75,7 +75,7 @@ private struct MediaOverviewContent: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Picker("Type", selection: $kind) {
+            Picker(L("createRoom.main.type"), selection: $kind) {
                 ForEach(MediaKind.allCases) { Text($0.rawValue).tag($0) }
             }
             .pickerStyle(.segmented)
@@ -103,7 +103,7 @@ private struct MediaOverviewContent: View {
             ForEach(pictures) { row in
                 if case .image(let source, _, _, _) = row.body {
                     MediaThumb(source: source, account: account) { viewedImage = ViewedImage(image: $0) }
-                        .accessibilityLabel("Picture from \(row.senderName)")
+                        .accessibilityLabel(L("ios.dynamicUI.pictureFrom", ["name": row.senderName]))
                 }
             }
         }
@@ -147,7 +147,7 @@ private struct MediaOverviewContent: View {
     @ViewBuilder
     private var footer: some View {
         if shownCount == 0 && controller.reachedStart && !controller.loading {
-            Text("Nothing of this kind has been shared in this channel.")
+            Text(L("ios.chatMore.nothingOfThisKindHasBeenSharedInThisChannel"))
                 .font(.subheadline).foregroundStyle(Theme.muted)
                 .multilineTextAlignment(.center)
                 .padding(.top, 24)
@@ -155,7 +155,7 @@ private struct MediaOverviewContent: View {
         if controller.loading {
             ProgressView().padding(.top, 8)
         } else if !controller.reachedStart {
-            Button("Load Older Messages") { Task { await controller.loadOlderMessages() } }
+            Button(L("ios.chatMore.loadOlderMessages")) { Task { await controller.loadOlderMessages() } }
                 .buttonStyle(.bordered)
                 .padding(.top, 8)
         }

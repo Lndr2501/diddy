@@ -1,6 +1,6 @@
-# Diddy übersetzen (Desktop)
+# Diddy übersetzen (Desktop und iOS)
 
-Diddy verwendet je Sprache eine UTF-8-Datei unter `cinny/locales/<code>.json`. `en.json` ist die Vorlage und die Rückfallebene für fehlende Texte. `ios` ist als eigener Namensraum für die spätere iOS-App reserviert.
+Desktop und iOS verwenden **dieselben** UTF-8-Dateien unter `cinny/locales/<code>.json` (keine Kopien). `en.json` ist die Vorlage und Rückfallebene für fehlende Texte. Nur iOS-spezifische Texte stehen unter `ios.*`; auch diese müssen in `en.json` stehen und werden vom Check geprüft. Eine neue Sprachdatei wird beim nächsten iOS-Build automatisch mitgebündelt.
 
 ## Sprache hinzufügen
 
@@ -10,4 +10,6 @@ Diddy verwendet je Sprache eine UTF-8-Datei unter `cinny/locales/<code>.json`. `
 
 ## Eigene Datei ohne Neubau laden
 
-Unter **Einstellungen → Erscheinungsbild → Sprache** kannst du mit **Export template** die aktuelle Sprache als JSON-Vorlage speichern. Übersetze sie und wähle **Load language file…**. Diddy prüft die Datei und zeigt Fehler an; eine gültige Datei wird nur auf diesem Gerät gespeichert, sofort ausgewählt und kann dort wieder entfernt werden. Eine eigene Datei mit demselben Sprachcode ersetzt bis zum Entfernen die mitgelieferte Datei. **System** folgt der Systemsprache, andernfalls nutzt Diddy Englisch.
+Auf dem Desktop unter **Einstellungen → Erscheinungsbild → Sprache** kannst du mit **Export template** die aktuelle Sprache als JSON-Vorlage speichern. Übersetze sie und wähle **Load language file…**. Diddy prüft die Datei und zeigt Fehler an; eine gültige Datei wird nur auf diesem Gerät gespeichert, sofort ausgewählt und kann dort wieder entfernt werden. Eine eigene Datei mit demselben Sprachcode ersetzt bis zum Entfernen die mitgelieferte Datei. **System** folgt der Systemsprache, andernfalls nutzt Diddy Englisch.
+
+Auf iOS findest du **Einstellungen → Sprache** direkt in der App. Du kannst dort jede mitgelieferte Sprache samt Fertigstellungsgrad wählen oder über **Sprachdatei laden…** eine eigene JSON-Datei importieren und wieder entfernen. Der Wechsel wirkt sofort. Der Check `npm run i18n:check` prüft auch statische `L("…")`-Schlüssel im Swift-Code. System-Berechtigungsdialoge (Mikrofon, Kamera, Fotos, lokales Netzwerk) lesen hingegen ausschließlich `ios/Diddy/{en,de}.lproj/InfoPlist.strings`; diese Dateien bitte separat übersetzen.

@@ -79,11 +79,11 @@ struct MainView: View {
             }
         }
         .callSwitchAlert(calls)
-        .alert("Saved Messages", isPresented: Binding(get: { savedMessages.error != nil }, set: { if !$0 { savedMessages.error = nil } })) {
-            Button("OK", role: .cancel) {}
+        .alert(L("ios.chatMore.savedMessages"), isPresented: Binding(get: { savedMessages.error != nil }, set: { if !$0 { savedMessages.error = nil } })) {
+            Button(L("ios.common.ok"), role: .cancel) {}
         } message: { Text(savedMessages.error ?? "") }
-        .alert("Voice", isPresented: Binding(get: { calls.error != nil }, set: { if !$0 { calls.error = nil } })) {
-            Button("OK", role: .cancel) {}
+        .alert(L("ios.calls.moreVoice"), isPresented: Binding(get: { calls.error != nil }, set: { if !$0 { calls.error = nil } })) {
+            Button(L("ios.common.ok"), role: .cancel) {}
         } message: {
             Text(calls.error ?? "")
         }
@@ -237,11 +237,11 @@ extension MainView {
         Group {
             // The only Escape in the app: closes the topmost sheet. Sheets with unsaved changes
             // (interactiveDismissDisabled) stay open, like a swipe down.
-            Button("Close sheet") { closeTopSheet() }.keyboardShortcut(.cancelAction)
-            Button("Quick switcher") { showQuickSwitch = true }.keyboardShortcut("k", modifiers: .command)
-            Button("Settings") { showSettings = true }.keyboardShortcut(",", modifiers: .command)
-            Button("Previous room") { moveRoom(-1) }.keyboardShortcut(.upArrow, modifiers: .command)
-            Button("Next room") { moveRoom(1) }.keyboardShortcut(.downArrow, modifiers: .command)
+            Button(L("ios.chatMore.closeSheet")) { closeTopSheet() }.keyboardShortcut(.cancelAction)
+            Button(L("ios.chatMore.quickSwitcher")) { showQuickSwitch = true }.keyboardShortcut("k", modifiers: .command)
+            Button(L("settings.page.settings")) { showSettings = true }.keyboardShortcut(",", modifiers: .command)
+            Button(L("ios.chatMore.previousRoom")) { moveRoom(-1) }.keyboardShortcut(.upArrow, modifiers: .command)
+            Button(L("ios.chatMore.nextRoom")) { moveRoom(1) }.keyboardShortcut(.downArrow, modifiers: .command)
         }.hidden()
     }
     private func closeTopSheet() {
@@ -280,7 +280,7 @@ struct EmptyChannelView: View {
             Theme.chat.ignoresSafeArea()
             VStack(spacing: 12) {
                 Image("DiddyLogo").resizable().frame(width: 72, height: 72).opacity(0.8)
-                Text("Pick a channel or conversation").font(.headline).foregroundStyle(Theme.muted)
+                Text(L("ios.list.pickConversation")).font(.headline).foregroundStyle(Theme.muted)
             }
         }
     }
@@ -348,7 +348,7 @@ struct ChannelSidebar: View {
             ShellUpdateNotice()
             if account.needsRecovery {
                 Button { showRecovery = true } label: {
-                    Label("Verify this device to read encrypted messages", systemImage: "lock.shield")
+                    Label(L("ios.chatMore.verifyThisDeviceToReadEncryptedMessages"), systemImage: "lock.shield")
                         .font(.footnote.weight(.semibold))
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(10)
@@ -382,8 +382,8 @@ struct ChannelSidebar: View {
             }
         }
         .background(Theme.sidebar)
-        .alert("Could not join", isPresented: Binding(get: { joinError != nil }, set: { if !$0 { joinError = nil } })) {
-            Button("OK", role: .cancel) {}
+        .alert(L("ios.list.couldNotJoin"), isPresented: Binding(get: { joinError != nil }, set: { if !$0 { joinError = nil } })) {
+            Button(L("ios.common.ok"), role: .cancel) {}
         } message: { Text(joinError ?? "") }
         .leaveServerDialog(account: account, serverId: $leavingServer) { joinError = $0 }
         .sheet(isPresented: $showRecovery) { RecoveryView(account: account) }
@@ -411,12 +411,12 @@ struct ChannelSidebar: View {
             Button(RoomMenuWording.leaveTitle(isDirect: request.isDirect, inServer: request.inServer), role: .destructive) {
                 leave(request)
             }
-            Button("Cancel", role: .cancel) {}
+            Button(L("settings.deviceTile.cancel"), role: .cancel) {}
         } message: { request in
             if request.isDirect {
-                Text("The conversation disappears from your list.")
+                Text(L("ios.list.conversationDisappears"))
             } else {
-                Text("Are you sure you want to leave this \(RoomMenuWording.noun(isDirect: false, inServer: request.inServer).lowercased())?")
+                Text(L("ios.lastDynamic.leaveRoom", ["kind": RoomMenuWording.noun(isDirect: false, inServer: request.inServer).lowercased()]))
             }
         }
         .task { await account.watchNotificationSettings() }
@@ -486,7 +486,7 @@ struct ChannelSidebar: View {
                         .frame(width: 36, height: 36)
                         .contentShape(Rectangle())
                 }
-                .accessibilityLabel("New Message or Room")
+                .accessibilityLabel(L("ios.chatMore.newMessageOrRoom"))
             }
         }
         .padding(.leading, 16)
@@ -510,10 +510,10 @@ struct ChannelSidebar: View {
 
     @ViewBuilder
     private var composeMenu: some View {
-        Button { sheet = .newMessage } label: { Label("New Message", systemImage: "square.and.pencil") }
-        Button { sheet = .createRoom } label: { Label("Create Room", systemImage: "plus.bubble") }
+        Button { sheet = .newMessage } label: { Label(L("nav.home.newMessage"), systemImage: "square.and.pencil") }
+        Button { sheet = .createRoom } label: { Label(L("nav.createRoom.createRoom"), systemImage: "plus.bubble") }
         Divider()
-        Button { sheet = .explore } label: { Label("Explore", systemImage: "safari") }
+        Button { sheet = .explore } label: { Label(L("nav.explore.explore"), systemImage: "safari") }
     }
 
     /// The iPhone header: a large "Chats" with the compose button, or the server's name (its menu)
@@ -534,7 +534,7 @@ struct ChannelSidebar: View {
                 roundButton("magnifyingglass", label: "Search") { showSearch = true }
                 roundButton("person.2", label: "Members") { sheet = .members(server) }
             } else {
-                Text("Chats").font(.largeTitle.bold()).foregroundStyle(Theme.text)
+                Text(L("nav.direct.chats")).font(.largeTitle.bold()).foregroundStyle(Theme.text)
                     .accessibilityAddTraits(.isHeader)
                 Spacer(minLength: 8)
                 Menu {
@@ -542,7 +542,7 @@ struct ChannelSidebar: View {
                 } label: {
                     roundIcon("square.and.pencil")
                 }
-                .accessibilityLabel("New Message or Room")
+                .accessibilityLabel(L("ios.chatMore.newMessageOrRoom"))
             }
         }
         .padding(.leading, 18)
@@ -586,7 +586,7 @@ struct ChannelSidebar: View {
                 .textInputAutocapitalization(.never)
             if !filter.isEmpty {
                 Button { filter = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.faint) }
-                    .accessibilityLabel("Clear")
+                    .accessibilityLabel(L("settings.profileSettingsUI.clear"))
             }
         }
         .padding(.horizontal, 10)
@@ -597,7 +597,7 @@ struct ChannelSidebar: View {
     }
 
     private var serverName: String {
-        guard let server else { return "Direct Messages" }
+        guard let server else { return L("nav.home.directMessages") }
         return account.spaces.first { $0.roomId == server }?.displayName ?? "Server"
     }
 
@@ -656,8 +656,8 @@ struct ChannelSidebar: View {
             }
             if direct.isEmpty && query.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("No direct messages yet.").font(.subheadline).foregroundStyle(Theme.muted)
-                    Button("New Message") { sheet = .newMessage }.font(.subheadline.weight(.semibold))
+                    Text(L("ios.list.noDirectMessages")).font(.subheadline).foregroundStyle(Theme.muted)
+                    Button(L("nav.home.newMessage")) { sheet = .newMessage }.font(.subheadline.weight(.semibold))
                 }
                 .listRowBackground(Color.clear)
             }
@@ -693,8 +693,8 @@ struct ChannelSidebar: View {
         if all.isEmpty {
             if query.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("No chats yet.").font(.subheadline).foregroundStyle(Theme.muted)
-                    Button("New Message") { sheet = .newMessage }.font(.subheadline.weight(.semibold))
+                    Text(L("ios.list.noChats")).font(.subheadline).foregroundStyle(Theme.muted)
+                    Button(L("nav.home.newMessage")) { sheet = .newMessage }.font(.subheadline.weight(.semibold))
                 }
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
@@ -711,8 +711,8 @@ struct ChannelSidebar: View {
         if categories.isEmpty {
             if account.loadedServers.contains(server) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("This server has no channels yet.").font(.subheadline).foregroundStyle(Theme.muted)
-                    Button("Create a channel") { sheet = .createChannel(server) }.font(.subheadline.weight(.semibold))
+                    Text(L("ios.list.noChannels")).font(.subheadline).foregroundStyle(Theme.muted)
+                    Button(L("ios.list.createChannel")) { sheet = .createChannel(server) }.font(.subheadline.weight(.semibold))
                 }
                 .listRowBackground(Color.clear)
             } else {
@@ -725,9 +725,9 @@ struct ChannelSidebar: View {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 6) {
                         if joiningAll { ProgressView() }
-                        Text("Join all \(unjoined.count) channels").font(.subheadline.weight(.semibold)).foregroundStyle(Theme.accent)
+                        Text(L("ios.list.joinAllChannels", ["count": String(unjoined.count)])).font(.subheadline.weight(.semibold)).foregroundStyle(Theme.accent)
                     }
-                    Text("See messages and who is in voice everywhere.").font(.caption).foregroundStyle(Theme.muted)
+                    Text(L("ios.list.seeVoiceEverywhere")).font(.caption).foregroundStyle(Theme.muted)
                 }
             }
             .disabled(joiningAll)
@@ -769,7 +769,7 @@ struct ChannelSidebar: View {
     }
 
     private var noResults: some View {
-        Text("No results for \u{201C}\(query)\u{201D}")
+        Text(L("ios.list.noResults", ["query": query]))
             .font(.subheadline)
             .foregroundStyle(Theme.muted)
             .listRowBackground(Color.clear)
@@ -806,10 +806,10 @@ struct InviteRow: View {
                 }
             }
             HStack(spacing: 8) {
-                Button("Accept") { respond(accept: true) }
+                Button(L("common.deviceVerification.accept")) { respond(accept: true) }
                     .buttonStyle(.borderedProminent)
                     .tint(Theme.online)
-                Button("Decline") { respond(accept: false) }
+                Button(L("nav.invites.decline")) { respond(accept: false) }
                     .buttonStyle(.bordered)
             }
             .font(.footnote.weight(.semibold))
@@ -819,7 +819,7 @@ struct InviteRow: View {
     }
 
     private var subtitle: String {
-        if invite.isDirect { return "Wants to message you" }
+        if invite.isDirect { return L("ios.finalComputed.wantsToMessage") }
         let what = invite.isSpace ? "Server invite" : "Room invite"
         return invite.inviterName.map { "\(what) from \($0)" } ?? what
     }
@@ -864,12 +864,12 @@ struct ChannelRow: View {
                 Spacer()
                 if account.notifyLevel(for: channel.roomId) == .mute {
                     Image(systemName: "bell.slash.fill").font(.caption2).foregroundStyle(Theme.faint)
-                        .accessibilityLabel("Muted")
+                        .accessibilityLabel(L("call.userMenu.muted"))
                 }
                 if isJoining {
                     ProgressView()
                 } else if !account.isJoined(channel) {
-                    Text("Join").font(.caption.weight(.semibold)).foregroundStyle(Theme.accent)
+                    Text(L("call.prescreenControls.join")).font(.caption.weight(.semibold)).foregroundStyle(Theme.accent)
                 } else if let mentions = summary?.mentions, mentions > 0 {
                     UnreadBadge(count: mentions)
                 }
@@ -980,11 +980,11 @@ struct RoomRow: View {
             Spacer()
             if account.notifyLevel(for: room.id) == .mute {
                 Image(systemName: "bell.slash.fill").font(.caption2).foregroundStyle(Theme.faint)
-                    .accessibilityLabel("Muted")
+                    .accessibilityLabel(L("call.userMenu.muted"))
             }
             if room.hasCall {
                 Image(systemName: "speaker.wave.2.fill").foregroundStyle(Theme.online)
-                    .accessibilityLabel("Call in progress")
+                    .accessibilityLabel(L("ios.chatMore.callInProgress"))
             }
             if room.badge > 0 { UnreadBadge(count: room.badge) }
         }
@@ -1012,7 +1012,7 @@ struct UserPanel: View {
                 Image(systemName: "gearshape.fill").foregroundStyle(Theme.muted)
                     .frame(width: 44, height: 44)
             }
-            .accessibilityLabel("Settings")
+            .accessibilityLabel(L("settings.page.settings"))
         }
         .padding(.leading, 12)
         .padding(.trailing, 4)

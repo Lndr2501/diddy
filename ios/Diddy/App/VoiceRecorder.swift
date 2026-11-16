@@ -155,7 +155,7 @@ final class VoiceRecorder: ObservableObject {
         error = nil
         guard await Self.requestPermission() else {
             state = .idle
-            error = "Microphone access is off. Turn it on under Settings > Diddy."
+            error = L("ios.errorsExtra.microphoneAccessIsOffTurnItOnUnderSettingsDiddy")
             return
         }
         // A voice message that is still playing would end up in the recording.
@@ -164,7 +164,7 @@ final class VoiceRecorder: ObservableObject {
             try VoiceAudioSession.acquire(recording: true)
         } catch {
             state = .idle
-            self.error = "The microphone is not available right now."
+            self.error = L("ios.errorsExtra.theMicrophoneIsNotAvailableRightNow")
             log.error("session: \(error.localizedDescription, privacy: .public)")
             return
         }
@@ -179,13 +179,13 @@ final class VoiceRecorder: ObservableObject {
         do {
             let recorder = try AVAudioRecorder(url: url, settings: settings)
             recorder.isMeteringEnabled = true
-            guard recorder.record() else { throw DiddyError("Recording did not start.") }
+            guard recorder.record() else { throw DiddyError(L("ios.errorsExtra.recordingDidNotStart")) }
             self.recorder = recorder
             fileURL = url
         } catch {
             VoiceAudioSession.release(recording: true)
             state = .idle
-            self.error = "Could not start recording."
+            self.error = L("ios.errorsExtra.couldNotStartRecording")
             log.error("record: \(error.localizedDescription, privacy: .public)")
             return
         }
@@ -264,7 +264,7 @@ final class VoiceRecorder: ObservableObject {
         let size = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? UInt64) ?? 0
         guard duration >= VoiceWaveform.minDuration, size > 0 else {
             try? FileManager.default.removeItem(at: url)
-            error = "Hold on a little longer to record a voice message."
+            error = L("ios.errorsExtra.holdOnALittleLongerToRecordAVoiceMessage")
             return nil
         }
         return VoiceRecording(url: url, duration: duration, waveform: VoiceWaveform.wire(fromLevels: collected), size: size)

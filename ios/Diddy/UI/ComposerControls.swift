@@ -43,7 +43,7 @@ struct ComposerEditor: UIViewRepresentable {
         view.backgroundColor = .clear
         view.textColor = .label
         view.textContainerInset = UIEdgeInsets(top: 8, left: 6, bottom: 8, right: 6 + trailingInset)
-        view.accessibilityLabel = "Message"
+        view.accessibilityLabel = L("ios.composer.message")
         view.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         return view
     }
@@ -139,20 +139,20 @@ struct ComposerEmojiPicker: View {
                 .padding(.bottom, 16)
             }
             .background(Theme.chat.ignoresSafeArea())
-            .searchable(text: $search, prompt: stickers ? "Search stickers" : "Search emoji")
+            .searchable(text: $search, prompt: stickers ? L("ios.composer.searchStickers") : L("ios.composer.searchEmoji"))
             .navigationTitle(stickers ? "Stickers" : "Emoji")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    Picker("Kind", selection: $stickers) {
-                        Text("Emoji").tag(false)
-                        Text("Stickers").tag(true)
+                    Picker(L("settings.profileCardEditor.kind"), selection: $stickers) {
+                        Text(L("settings.badgeEditor.emoji")).tag(false)
+                        Text(L("composer.input.stickers")).tag(true)
                     }
                     .pickerStyle(.segmented)
                     .frame(maxWidth: 220)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") { dismiss() }
+                    Button(L("call.companionDialog.done")) { dismiss() }
                 }
             }
         }
@@ -188,7 +188,7 @@ struct ComposerEmojiPicker: View {
         ForEach(packs) { pack in
             let found = images(in: pack)
             if !found.isEmpty {
-                sectionTitle(pack.name ?? "Custom Pack")
+                sectionTitle(pack.name ?? L("ios.composer.customPack"))
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: stickers ? 80 : 44))], spacing: 8) {
                     ForEach(found) { image in
                         Button { onCustom(image, stickers) } label: {
@@ -230,11 +230,11 @@ struct ComposerEmojiPicker: View {
             Image(systemName: stickers ? "photo.on.rectangle" : "face.smiling")
                 .font(.system(size: 32))
                 .foregroundStyle(Theme.faint)
-            Text(search.isEmpty ? (stickers ? "No Stickers Yet" : "No Emoji") : "No Results")
+            Text(search.isEmpty ? (stickers ? L("ios.composer.noStickers") : L("ios.composer.noEmoji")) : L("ios.composer.noResults"))
                 .font(.headline)
                 .foregroundStyle(Theme.text)
             if search.isEmpty, stickers {
-                Text("Sticker packs from your account and this room appear here.")
+                Text(L("ios.composer.stickerPacksHelp"))
                     .font(.footnote)
                     .foregroundStyle(Theme.muted)
                     .multilineTextAlignment(.center)

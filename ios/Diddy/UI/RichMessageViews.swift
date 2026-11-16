@@ -170,7 +170,7 @@ struct RichMessageBody: View {
         VStack(alignment: .leading, spacing: 4) {
             RichBlocksView(blocks: document.blocks, state: state, ownUserId: account.userId, editedOnLast: edited && lastIsLine)
             if edited && !lastIsLine {
-                Text("(edited)").font(.caption2).foregroundColor(Theme.faint)
+                Text(L("ios.chatMore.edited")).font(.caption2).foregroundColor(Theme.faint)
             }
         }
         .environment(\.openURL, OpenURLAction { url in handle(url) })
@@ -250,7 +250,7 @@ private struct RichBlocksView: View {
 
     private func line(_ inlines: [RichInline], font: Font, edited: Bool) -> some View {
         var text = builder.text(inlines, font: font)
-        if edited { text = text + Text(" (edited)").font(.caption2).foregroundColor(Theme.faint) }
+        if edited { text = text + Text(L("ios.chatMore.edited")).font(.caption2).foregroundColor(Theme.faint) }
         return text
             .foregroundStyle(Theme.text)
             .fixedSize(horizontal: false, vertical: true)

@@ -758,7 +758,7 @@ final class MatrixAccount: ObservableObject, Identifiable {
             text = text.removingPercentEncoding ?? text
         }
         guard text.hasPrefix("#") || text.hasPrefix("!") else {
-            throw DiddyError("Enter an address like #community:matrix.org or a matrix.to link.")
+            throw DiddyError(L("ios.errorsExtra.enterAnAddressLikeCommunityMatrixOrgOrAMatrixToLink"))
         }
         let room = try await client.joinRoomByIdOrAlias(roomIdOrAlias: text, serverNames: via)
         await reloadSpaces()
@@ -790,7 +790,7 @@ final class MatrixAccount: ObservableObject, Identifiable {
     /// Creates a channel any server member can join. The SDK's request type cannot set a room type,
     /// which voice channels need, so this goes to the client API directly.
     func createChannel(in spaceId: String, name: String, topic: String, isVoice: Bool, encrypted: Bool) async throws -> String {
-        guard let space = room(spaceId) else { throw DiddyError("This server is not available yet.") }
+        guard let space = room(spaceId) else { throw DiddyError(L("ios.errorsExtra.thisServerIsNotAvailableYet")) }
         let via = [(try? client.userIdServerName()) ?? record.serverName]
         var state: [[String: Any]] = [
             [
@@ -830,7 +830,7 @@ final class MatrixAccount: ObservableObject, Identifiable {
 
     private func postCreateRoom(_ body: [String: Any]) async throws -> String {
         let json = try await clientRequest("/_matrix/client/v3/createRoom", body: body)
-        guard let id = json["room_id"] as? String else { throw DiddyError("The server could not create the channel.") }
+        guard let id = json["room_id"] as? String else { throw DiddyError(L("ios.errorsExtra.theServerCouldNotCreateTheChannel")) }
         return id
     }
 
@@ -850,7 +850,7 @@ final class MatrixAccount: ObservableObject, Identifiable {
     private func clientRequestData(_ path: String, body: [String: Any]?, method: String?) async throws -> Data {
         let session = try client.session()
         let base = session.homeserverUrl.hasSuffix("/") ? String(session.homeserverUrl.dropLast()) : session.homeserverUrl
-        guard let url = URL(string: base + path) else { throw DiddyError("Invalid homeserver URL.") }
+        guard let url = URL(string: base + path) else { throw DiddyError(L("ios.errorsExtra.invalidHomeserverUrl")) }
         var request = URLRequest(url: url)
         request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
         if let method { request.httpMethod = method }
@@ -893,7 +893,7 @@ final class MatrixAccount: ObservableObject, Identifiable {
             if room(roomId) != nil { return }
             try await Task.sleep(nanoseconds: 250_000_000)
         }
-        throw DiddyError("The room did not arrive from the server in time.")
+        throw DiddyError(L("ios.errorsExtra.theRoomDidNotArriveFromTheServerInTime"))
     }
 
     /// Leaves a server, and its channels too as on Discord unless `withChannels` is off (desktop

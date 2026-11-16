@@ -81,18 +81,18 @@ struct ExploreView: View {
         NavigationStack {
             List {
                 Section {
-                    Picker("Where", selection: $source) {
-                        Text("Featured").tag(Source.featured)
+                    Picker(L("ios.finalUI.where"), selection: $source) {
+                        Text(L("nav.explore.featured")).tag(Source.featured)
                         ForEach(servers, id: \.self) { server in
                             Text(server == account.ownServerName ? "\(server) (your server)" : server).tag(Source.server(server))
                         }
                     }
                     HStack {
-                        TextField("Another server, like matrix.org", text: $customServer)
+                        TextField(L("ios.finalUI.anotherServerLikeMatrixOrg"), text: $customServer)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                             .onSubmit { addCustomServer() }
-                        Button("Browse") { addCustomServer() }
+                        Button(L("ios.finalUI.browse")) { addCustomServer() }
                             .disabled(RoomDirectory.cleanServerName(customServer) == nil)
                     }
                 }
@@ -101,7 +101,7 @@ struct ExploreView: View {
                     featuredSections
                 case .server:
                     Section {
-                        Picker("Show", selection: $filter) {
+                        Picker(L("settings.diddyProfile.show"), selection: $filter) {
                             ForEach(PublicRoomTypeFilter.allCases) { Text($0.title).tag($0) }
                         }
                         .pickerStyle(.segmented)
@@ -113,11 +113,11 @@ struct ExploreView: View {
                         }
                         if loading { HStack { Spacer(); ProgressView(); Spacer() }.listRowBackground(Color.clear) }
                         if !loading && results.isEmpty && error == nil {
-                            Text("No public rooms or servers found.").foregroundStyle(Theme.muted).listRowBackground(Color.clear)
+                            Text(L("ios.finalUI.noPublicRoomsOrServersFound")).foregroundStyle(Theme.muted).listRowBackground(Color.clear)
                         }
                         if let error { Text(error).foregroundStyle(Theme.danger).listRowBackground(Color.clear) }
                         if nextBatch != nil && !loading {
-                            Button("Load more") { Task { await load(more: true) } }
+                            Button(L("call.myInstantsImport.loadMore")) { Task { await load(more: true) } }
                                 .listRowBackground(Color.clear)
                         }
                     }
@@ -129,10 +129,10 @@ struct ExploreView: View {
             .searchable(text: $term, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search public rooms")
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
-            .navigationTitle("Explore")
+            .navigationTitle(L("nav.explore.explore"))
             .navigationBarTitleDisplayMode(.inline)
             .tint(Theme.accent)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button(L("call.companionDialog.done")) { dismiss() } } }
             .task(id: key) {
                 guard case .server = source else { return }
                 if !key.term.isEmpty { try? await Task.sleep(nanoseconds: 400_000_000) } // wait for a pause in typing
@@ -154,12 +154,12 @@ struct ExploreView: View {
         let spaces = featured.filter(\.isSpace)
         let rooms = featured.filter { !$0.isSpace }
         if !spaces.isEmpty {
-            Section("Featured Spaces") {
+            Section(L("nav.featured.featuredSpaces")) {
                 ForEach(spaces) { item in featuredRow(item) }
             }
         }
         if !rooms.isEmpty {
-            Section("Featured Rooms") {
+            Section(L("nav.featured.featuredRooms")) {
                 ForEach(rooms) { item in featuredRow(item) }
             }
         }
@@ -194,7 +194,7 @@ struct ExploreView: View {
                 }
                 Spacer()
                 if account.summary(for: entry.roomId)?.isJoined == true {
-                    Text("Joined").font(.caption.weight(.semibold)).foregroundStyle(Theme.online)
+                    Text(L("ios.finalUI.joined")).font(.caption.weight(.semibold)).foregroundStyle(Theme.online)
                 }
             }
         }
@@ -286,10 +286,10 @@ struct PublicRoomPreviewSheet: View {
                             .font(.footnote).foregroundStyle(Theme.faint)
                     }
                     if needsInvite {
-                        Text("You need an invitation to join.").font(.footnote).foregroundStyle(Theme.muted)
+                        Text(L("ios.finalUI.youNeedAnInvitationToJoin")).font(.footnote).foregroundStyle(Theme.muted)
                     }
                     if knocked {
-                        Text("Request sent. You are in once someone lets you in.").font(.footnote).foregroundStyle(Theme.online)
+                        Text(L("ios.finalUI.requestSentYouAreInOnceSomeoneLetsYouIn")).font(.footnote).foregroundStyle(Theme.online)
                     }
                     if let error { Text(error).font(.footnote).foregroundStyle(Theme.danger) }
                     actionButton
@@ -300,7 +300,7 @@ struct PublicRoomPreviewSheet: View {
             .navigationTitle(entry.isSpace ? "Server" : "Room")
             .navigationBarTitleDisplayMode(.inline)
             .tint(Theme.accent)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button(L("settings.deviceTile.cancel")) { dismiss() } } }
         }
     }
 
@@ -309,14 +309,14 @@ struct PublicRoomPreviewSheet: View {
         if busy {
             ProgressView()
         } else if joined {
-            Button("Open") { open(entry.roomId) }
+            Button(L("settings.connectedAccounts.open")) { open(entry.roomId) }
                 .buttonStyle(.borderedProminent)
         } else if canKnock {
-            Button("Request to Join") { run { try await account.knockOnRoom(entry.joinTarget, via: via); knocked = true } }
+            Button(L("ios.finalUI.requestToJoin")) { run { try await account.knockOnRoom(entry.joinTarget, via: via); knocked = true } }
                 .buttonStyle(.borderedProminent)
                 .disabled(knocked)
         } else if !needsInvite {
-            Button("Join") {
+            Button(L("call.prescreenControls.join")) {
                 run {
                     let id = try await account.joinRoom(entry.joinTarget, via: via)
                     open(id)

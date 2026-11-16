@@ -7,7 +7,7 @@
 //   - plurals: the key gets an i18next suffix (`_zero`, `_one`, `_two`, `_few`, `_many`, `_other`,
 //     CLDR plural categories) and the app passes `count`; `{{count}}` may be left out in a form
 //   - `en.json` is the source; missing texts fall back to English
-//   - the top-level area `ios` belongs to the iOS app and is not checked against `en.json`
+//   - the top-level area `ios` belongs to the iOS app and follows the same rules
 // No imports: tests and scripts/i18n-check.cjs load this file on its own.
 
 export type LocaleMeta = {
@@ -36,12 +36,12 @@ const PLACEHOLDER = /\{\{\s*([A-Za-z0-9_]+)\s*\}\}/g;
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-/** `settings.appearance.theme` -> text, without `_meta` and the reserved areas. */
+/** `settings.appearance.theme` -> text, without `_meta`. */
 export const flattenLocale = (tree: unknown): Record<string, string> => {
   const flat: Record<string, string> = {};
   const walk = (node: Record<string, unknown>, prefix: string) => {
     Object.keys(node).forEach((name) => {
-      if (!prefix && (name === META_KEY || RESERVED_AREAS.includes(name))) return;
+      if (!prefix && name === META_KEY) return;
       const value = node[name];
       const key = prefix ? `${prefix}.${name}` : name;
       if (typeof value === 'string') flat[key] = value;
@@ -128,7 +128,7 @@ export const validateLocale = (
   // only strings and objects below the areas
   const walk = (node: Record<string, unknown>, prefix: string) => {
     Object.keys(node).forEach((name) => {
-      if (!prefix && (name === META_KEY || RESERVED_AREAS.includes(name))) return;
+      if (!prefix && name === META_KEY) return;
       const value = node[name];
       const key = prefix ? `${prefix}.${name}` : name;
       if (typeof value !== 'string' && !isObject(value)) {

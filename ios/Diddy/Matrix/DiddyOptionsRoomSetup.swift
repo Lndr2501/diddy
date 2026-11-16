@@ -139,7 +139,7 @@ extension MatrixAccount {
         } catch {
             throw DiddyError("Could not create the room: \(error.friendlyMessage)")
         }
-        guard let roomId = json["room_id"] as? String else { throw DiddyError("The server could not create the room.") }
+        guard let roomId = json["room_id"] as? String else { throw DiddyError(L("ios.errorsExtra.theServerCouldNotCreateTheRoom")) }
         if let spaceId, !spaceId.isEmpty {
             // The room exists and works without the space child entry, so a failure here is ignored.
             _ = try? await clientRequest(
@@ -161,7 +161,7 @@ extension MatrixAccount {
             if current != nil { break }
             try? await Task.sleep(nanoseconds: 500_000_000)
         }
-        guard let levels = current else { throw DiddyError("Could not read this room's permissions yet. Try again in a moment.") }
+        guard let levels = current else { throw DiddyError(L("ios.errorsExtra.couldNotReadThisRoomSPermissionsYetTryAgainInAMoment")) }
         do {
             _ = try await clientRequest(base + "/state/m.room.power_levels", body: DiddyOptionsRoomLogic.adoptedPowerLevels(levels), method: "PUT")
             _ = try await clientRequest(base + "/state/\(DiddyEvents.marker)", body: ["v": 1], method: "PUT")
@@ -258,7 +258,7 @@ extension MatrixAccount {
             if rooms.contains(where: { $0.id == roomId && $0.isJoined }) { return }
             try? await Task.sleep(nanoseconds: 500_000_000)
         }
-        throw DiddyError("Joining the room takes too long. Try again in a moment.")
+        throw DiddyError(L("ios.errorsExtra.joiningTheRoomTakesTooLongTryAgainInAMoment"))
     }
 
     /// Makes the new room known and reads it, so the profile can be saved right away.

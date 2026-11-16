@@ -40,7 +40,7 @@ extension MatrixAccount {
         let base = session.homeserverUrl.hasSuffix("/") ? String(session.homeserverUrl.dropLast()) : session.homeserverUrl
         let name = filename.addingPercentEncoding(withAllowedCharacters: .alphanumerics.union(CharacterSet(charactersIn: ".-_"))) ?? "upload"
         guard let url = URL(string: base + "/_matrix/media/v3/upload?filename=" + name) else {
-            throw DiddyError("Invalid homeserver URL.")
+            throw DiddyError(L("ios.errorsExtra.invalidHomeserverUrl"))
         }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -72,7 +72,7 @@ enum DiddyMediaPrep {
         if isAnimated(data) {
             throw DiddyError("This animation is too large (max \(megabytes(limit)) MB).")
         }
-        guard let image = UIImage(data: data) else { throw DiddyError("This picture could not be read.") }
+        guard let image = UIImage(data: data) else { throw DiddyError(L("ios.errorsExtra.thisPictureCouldNotBeRead")) }
         for side in [2560.0, 1600.0, 1024.0] {
             if let jpeg = scaled(image, maxSide: side).jpegData(compressionQuality: 0.85), jpeg.count <= limit {
                 return File(data: jpeg, mimeType: "image/jpeg", ext: "jpg")
@@ -86,7 +86,7 @@ enum DiddyMediaPrep {
     static func nameplateVideo(_ source: URL, limit: Int) async throws -> (video: File, poster: File) {
         let asset = AVURLAsset(url: source)
         let duration = try await asset.load(.duration).seconds
-        guard duration.isFinite, duration > 0 else { throw DiddyError("This video cannot be played here.") }
+        guard duration.isFinite, duration > 0 else { throw DiddyError(L("ios.errorsExtra.thisVideoCannotBePlayedHere")) }
         guard duration <= DiddyMediaRules.maxVideoSeconds else {
             throw DiddyError("Video too long (max \(Int(DiddyMediaRules.maxVideoSeconds)) seconds).")
         }
@@ -95,12 +95,12 @@ enum DiddyMediaPrep {
         generator.appliesPreferredTrackTransform = true
         generator.maximumSize = CGSize(width: 960, height: 960)
         let frame = try await generator.image(at: CMTime(seconds: min(0.05, duration / 2), preferredTimescale: 600)).image
-        guard let poster = UIImage(cgImage: frame).pngData() else { throw DiddyError("This video cannot be played here.") }
+        guard let poster = UIImage(cgImage: frame).pngData() else { throw DiddyError(L("ios.errorsExtra.thisVideoCannotBePlayedHere")) }
 
         let output = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathExtension("mp4")
         defer { try? FileManager.default.removeItem(at: output) }
         guard let export = AVAssetExportSession(asset: asset, presetName: AVAssetExportPresetMediumQuality) else {
-            throw DiddyError("This video cannot be converted.")
+            throw DiddyError(L("ios.errorsExtra.thisVideoCannotBeConverted"))
         }
         export.outputURL = output
         export.outputFileType = .mp4
@@ -109,7 +109,7 @@ enum DiddyMediaPrep {
             export.exportAsynchronously { continuation.resume() }
         }
         guard export.status == .completed else {
-            throw DiddyError(export.error?.localizedDescription ?? "This video cannot be converted.")
+            throw DiddyError(export.error?.localizedDescription ?? L("ios.errorsExtra.thisVideoCannotBeConverted"))
         }
         let video = try Data(contentsOf: output)
         guard video.count <= limit, poster.count <= limit else {

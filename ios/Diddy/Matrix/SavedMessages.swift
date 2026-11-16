@@ -141,7 +141,7 @@ final class SavedMessagesStore: ObservableObject {
                     next = SavedMessagesLogic.remove(base, roomId: roomId, eventId: eventId, now: SavedMessagesLogic.now)
                 } else {
                     guard let saved = SavedMessagesLogic.save(base, roomId: roomId, eventId: eventId, now: SavedMessagesLogic.now) else {
-                        error = "You can save up to \(SavedMessagesLogic.limit) messages. Remove one from Saved first."
+                        error = L("ios.finalComputed.savedLimit", ["count": String(SavedMessagesLogic.limit)])
                         return
                     }
                     next = saved

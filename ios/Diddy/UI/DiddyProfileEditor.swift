@@ -76,7 +76,7 @@ struct DiddyProfileEditor: View {
             if !loaded {
                 HStack(spacing: 10) {
                     ProgressView()
-                    Text("Loading your profile").foregroundStyle(Theme.muted)
+                    Text(L("ios.securityUI.loadingYourProfile")).foregroundStyle(Theme.muted)
                 }
                 .frame(maxWidth: .infinity)
                 .listRowBackground(Color.clear)
@@ -85,13 +85,13 @@ struct DiddyProfileEditor: View {
                     DiddyOptionsSetupView(account: account) { Task { await reload() } }
                 } else {
                     Section {
-                        Text("This app could not read your current profile from your encrypted Diddy Options room yet (the message keys are missing). Verify this device in Settings, then try again, or edit your profile in Diddy desktop.")
+                        Text(L("ios.securityUI.thisAppCouldNotReadYourCurrentProfileFromYourEncryptedDiddyO"))
                             .foregroundStyle(Theme.muted)
                     }
                 }
             } else {
                 Section {
-                    Picker("Part", selection: $tab) {
+                    Picker(L("ios.securityUI.part"), selection: $tab) {
                         ForEach(Tab.allCases, id: \.self) { Text($0.rawValue).tag($0) }
                     }
                     .pickerStyle(.segmented)
@@ -112,10 +112,10 @@ struct DiddyProfileEditor: View {
                 // from another room (chosen there), which has to be added here by hand.
                 Section {
                     NavigationLink { DiddyDataRoomView(account: account) } label: {
-                        Label("Data Room", systemImage: "externaldrive.connected.to.line.below")
+                        Label(L("ios.remainingUI.dataRoom"), systemImage: "externaldrive.connected.to.line.below")
                     }
                 } footer: {
-                    Text("The room your profile, badges and name styles are shared through. Missing profiles of others? Add the room your desktop uses.")
+                    Text(L("ios.securityUI.theRoomYourProfileBadgesAndNameStylesAreSharedThroughMissing"))
                 }
             }
         }
@@ -124,18 +124,18 @@ struct DiddyProfileEditor: View {
         }
         .scrollContentBackground(.hidden)
         .background(Theme.sidebar)
-        .navigationTitle("Diddy Profile")
+        .navigationTitle(L("ios.securityUI.diddyProfile"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if inSheet {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
+                    Button(L("ios.settings.cancel")) {
                         if dirty { askDiscard = true } else { dismiss() }
                     }
                 }
             }
             ToolbarItem(placement: .confirmationAction) {
-                Button("Save") { Task { await save() } }.disabled(!canSave)
+                Button(L("message.editor.save")) { Task { await save() } }.disabled(!canSave)
             }
             if loaded && account.canEditDiddyProfile {
                 ToolbarItem(placement: .navigationBarTrailing) { fileMenu }
@@ -190,7 +190,7 @@ struct DiddyProfileEditor: View {
         let shown = self.shown
         return VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("Preview").font(.footnote.weight(.semibold)).foregroundStyle(Theme.muted)
+                Text(L("settings.badgeEditor.preview")).font(.footnote.weight(.semibold)).foregroundStyle(Theme.muted)
                 Spacer()
                 if !keyboardShown {
                     Button {
@@ -277,7 +277,7 @@ struct DiddyProfileEditor: View {
                 Text(bio).font(.subheadline).foregroundStyle(Theme.text).lineLimit(3)
             }
             let accent = Color(diddyHex: shown?.cardAccent)
-            Label("Message", systemImage: "bubble.left.fill")
+            Label(L("ios.composer.message"), systemImage: "bubble.left.fill")
                 .font(.footnote.bold())
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 8)
@@ -298,35 +298,35 @@ struct DiddyProfileEditor: View {
 
     @ViewBuilder
     private var nameTab: some View {
-        Section("Name Style") {
-            Picker("Font", selection: $draft.nameFont) {
+        Section(L("ios.securityUI.nameStyle")) {
+            Picker(L("settings.diddyProfile.font"), selection: $draft.nameFont) {
                 ForEach(Rules.fontIds, id: \.self) { Text(Rules.label($0, in: Rules.fonts)).tag($0) }
             }
-            Picker("Effect", selection: $draft.nameEffect) {
+            Picker(L("settings.diddyProfile.effect"), selection: $draft.nameEffect) {
                 ForEach(Rules.nameEffectIds, id: \.self) { Text(Rules.label($0, in: Rules.nameEffects)).tag($0) }
             }
-            Toggle("Bold", isOn: $draft.nameBold)
-            Toggle("Italic", isOn: $draft.nameItalic)
+            Toggle(L("composer.toolbar.bold"), isOn: $draft.nameBold)
+            Toggle(L("composer.toolbar.italic"), isOn: $draft.nameItalic)
         }
         Section {
-            Picker("Fill", selection: Binding(get: { draft.nameGradient != nil }, set: { draft.setNameGradient($0) })) {
-                Text("Solid").tag(false)
-                Text("Gradient").tag(true)
+            Picker(L("settings.diddyProfile.fill"), selection: Binding(get: { draft.nameGradient != nil }, set: { draft.setNameGradient($0) })) {
+                Text(L("settings.diddyProfile.solid")).tag(false)
+                Text(L("settings.diddyProfile.gradient")).tag(true)
             }
             .pickerStyle(.segmented)
             if draft.nameGradient != nil {
-                ColorPicker("Start", selection: colorBinding({ draft.nameGradient?.from }, fallback: "#7aa2f7") { draft.nameGradient?.from = $0 },
+                ColorPicker(L("ios.securityUI.start"), selection: colorBinding({ draft.nameGradient?.from }, fallback: "#7aa2f7") { draft.nameGradient?.from = $0 },
                             supportsOpacity: false)
-                ColorPicker("End", selection: colorBinding({ draft.nameGradient?.to }, fallback: "#c084fc") { draft.nameGradient?.to = $0 },
+                ColorPicker(L("ios.securityUI.end"), selection: colorBinding({ draft.nameGradient?.to }, fallback: "#c084fc") { draft.nameGradient?.to = $0 },
                             supportsOpacity: false)
                 angleRow("Angle", Binding(get: { draft.nameGradient?.angle ?? 90 }, set: { draft.nameGradient?.angle = $0 }))
             } else {
                 optionalColorRow("Colour", hex: $draft.nameColor, fallback: "#ffffff")
             }
         } header: {
-            Text("Name Colour")
+            Text(L("ios.securityUI.nameColour"))
         } footer: {
-            Text("A solid colour or a two-colour gradient. Without a colour your name has the normal text colour.")
+            Text(L("ios.securityUI.aSolidColourOrATwoColourGradientWithoutAColourYourNameHasThe"))
         }
     }
 
@@ -342,9 +342,9 @@ struct DiddyProfileEditor: View {
             }
             optionalColorRow("Accent", hex: $draft.cardAccent, fallback: "#7aa2f7")
         } header: {
-            Text("Header & Accent")
+            Text(L("ios.securityUI.headerAccent"))
         } footer: {
-            Text("The header colours show when there is no banner. The accent colours the buttons and the outline of your card.")
+            Text(L("ios.securityUI.theHeaderColoursShowWhenThereIsNoBannerTheAccentColoursTheBu"))
         }
         Section {
             PhotosPicker(selection: $bannerItem, matching: .images) {
@@ -354,25 +354,25 @@ struct DiddyProfileEditor: View {
             if uploading == .banner { uploadingRow }
             if let mxc = draft.bannerMxc {
                 DiddyImagePositionEditor(mxc: mxc, ratio: 640.0 / 192.0, pos: $draft.bannerPos, account: account)
-                Button("Remove Banner", role: .destructive) {
+                Button(L("ios.securityUI.removeBanner"), role: .destructive) {
                     draft.bannerMxc = nil
                     draft.bannerPos = nil
                 }
             }
         } header: {
-            Text("Banner")
+            Text(L("settings.diddyProfile.banner"))
         } footer: {
-            Text("A picture or GIF at the top of your card.")
+            Text(L("ios.securityUI.aPictureOrGifAtTheTopOfYourCard"))
         }
         Section {
-            TextField("Tell people a bit about you", text: limited($draft.bio, Rules.maxBio), axis: .vertical)
+            TextField(L("settings.diddyProfile.tellPeopleABit"), text: limited($draft.bio, Rules.maxBio), axis: .vertical)
                 .lineLimit(2...6)
         } header: {
-            Text("About Me")
+            Text(L("ios.securityUI.aboutMe"))
         } footer: {
             Text("\(draft.bio.unicodeScalars.count)/\(Rules.maxBio)")
         }
-        Section("Info") {
+        Section(L("profile.profileModules.info")) {
             ForEach(Rules.aboutFields, id: \.self) { field in
                 LabeledContent(Self.aboutLabel(field)) {
                     TextField(Self.aboutPlaceholder(field), text: Binding(
@@ -387,7 +387,7 @@ struct DiddyProfileEditor: View {
             }
         }
         Section {
-            TextField("Homelab, Music, Films", text: $interestsText)
+            TextField(L("settings.profileCardEditor.homelabMusicFilms"), text: $interestsText)
                 .onChange(of: interestsText) { draft.interests = Rules.interests(from: $0) }
             if !draft.interests.isEmpty {
                 FlowLayout(spacing: 6) {
@@ -402,30 +402,30 @@ struct DiddyProfileEditor: View {
                 }
             }
         } header: {
-            Text("Interests")
+            Text(L("profile.profileModules.interests"))
         } footer: {
-            Text("Separate them with commas, up to \(Rules.maxInterests). \(draft.interests.count)/\(Rules.maxInterests)")
+            Text(L("ios.dynamicUI.maxInterests", ["max": String(Rules.maxInterests), "count": String(draft.interests.count)]))
         }
         Section {
             ForEach(draft.links.indices, id: \.self) { index in linkRow(index) }
             if draft.links.count < Rules.maxLinks {
-                Button { draft.links.append("") } label: { Label("Add Link", systemImage: "plus") }
+                Button { draft.links.append("") } label: { Label(L("ios.securityUI.addLink"), systemImage: "plus") }
             }
         } header: {
-            Text("Links")
+            Text(L("profile.profileModules.links"))
         } footer: {
-            Text("GitHub, GitLab, LinkedIn, Spotify, YouTube or your own website. Only https addresses. \(draft.links.count)/\(Rules.maxLinks)")
+            Text(L("ios.dynamicUI.profileLinks", ["count": String(draft.links.count), "max": String(Rules.maxLinks)]))
         }
-        Section("Activity") {
-            Picker("Doing", selection: $draft.activityKind) {
-                Text("Nothing").tag("none")
+        Section(L("profile.profileModules.activity")) {
+            Picker(L("ios.securityUI.doing"), selection: $draft.activityKind) {
+                Text(L("ios.securityUI.nothing")).tag("none")
                 ForEach(Rules.activityKinds, id: \.self) { kind in
                     Text(DiddyCardModules.activityTitle(kind)).tag(kind)
                 }
             }
             if draft.activityKind != "none" {
-                TextField("What", text: limited($draft.activityText, Rules.maxActivityLength))
-                TextField("Details (optional)", text: limited($draft.activityDetail, Rules.maxActivityLength))
+                TextField(L("ios.securityUI.what"), text: limited($draft.activityText, Rules.maxActivityLength))
+                TextField(L("ios.securityUI.detailsOptional"), text: limited($draft.activityDetail, Rules.maxActivityLength))
             }
         }
     }
@@ -438,7 +438,7 @@ struct DiddyProfileEditor: View {
         return HStack(spacing: 10) {
             Image(systemName: kind == "web" ? "globe" : "link").foregroundStyle(Theme.muted)
             VStack(alignment: .leading, spacing: 2) {
-                TextField("https://github.com/you", text: Binding(
+                TextField(L("settings.profileCardEditor.httpsGithubComYou"), text: Binding(
                     get: { index < draft.links.count ? draft.links[index] : "" },
                     set: { value in if index < draft.links.count { draft.links[index] = String(value.prefix(Rules.maxLinkLength)) } }
                 ))
@@ -455,7 +455,7 @@ struct DiddyProfileEditor: View {
                 Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.faint)
             }
             .buttonStyle(.borderless)
-            .accessibilityLabel("Remove link")
+            .accessibilityLabel(L("settings.profileCardEditor.removeLink"))
         }
     }
 
@@ -464,9 +464,9 @@ struct DiddyProfileEditor: View {
     @ViewBuilder
     private var lookTab: some View {
         Section {
-            Picker("Style", selection: $draft.plateFullRow) {
-                Text("Fade in").tag(false)
-                Text("Whole row").tag(true)
+            Picker(L("settings.diddyProfile.style"), selection: $draft.plateFullRow) {
+                Text(L("settings.diddyProfile.fadeIn")).tag(false)
+                Text(L("settings.diddyProfile.wholeRow")).tag(true)
             }
             .pickerStyle(.segmented)
             ScrollView(.horizontal, showsIndicators: false) {
@@ -479,7 +479,7 @@ struct DiddyProfileEditor: View {
                 .padding(.vertical, 4)
             }
             if draft.platePreset != nil {
-                Toggle("Flowing", isOn: $draft.plateFlow)
+                Toggle(L("settings.diddyProfile.flowing"), isOn: $draft.plateFlow)
             } else {
                 optionalColorRow("Colour", hex: $draft.plateColor, fallback: "#7aa2f7")
             }
@@ -491,7 +491,7 @@ struct DiddyProfileEditor: View {
                 importTarget = .nameplate
                 importing = true
             } label: {
-                Label("Import ZIP or File…", systemImage: "square.and.arrow.down")
+                Label(L("ios.securityUI.importZipOrFile"), systemImage: "square.and.arrow.down")
             }
             .disabled(uploading != nil)
             if uploading == .nameplate { uploadingRow }
@@ -506,50 +506,50 @@ struct DiddyProfileEditor: View {
                 }
             }
         } header: {
-            Text("Nameplate")
+            Text(L("settings.diddyProfile.nameplate"))
         } footer: {
-            Text("The background other Diddy users see behind your row in the member and DM lists: a colour, a gradient, a picture, a GIF or a short video (up to \(Int(DiddyMediaRules.maxVideoSeconds)) seconds, muted). A nameplate ZIP with a loop and its colours can be imported too.")
+            Text(L("ios.lastDynamic.profileBackground", ["seconds": String(Int(DiddyMediaRules.maxVideoSeconds))]))
         }
         Section {
-            choicePicker("Effect", selection: $draft.effect, presets: Rules.effectPresets,
+            choicePicker(L("settings.diddyProfile.effect"), selection: $draft.effect, presets: Rules.effectPresets,
                          keepsCustom: original.effect == .custom, customName: storedProfile?.effect?.name)
             Button {
                 importTarget = .effect
                 importing = true
             } label: {
-                Label("Import Own Effect…", systemImage: "square.and.arrow.down")
+                Label(L("ios.securityUI.importOwnEffect"), systemImage: "square.and.arrow.down")
             }
             .disabled(uploading != nil)
             if uploading == .effect { uploadingRow }
         } header: {
-            Text("Profile Effect")
+            Text(L("ios.securityUI.profileEffect"))
         } footer: {
-            Text("An animated overlay other Diddy users see over your profile card. Import your own from a ZIP effect pack or from one animated PNG, WebP or GIF with a transparent background.")
+            Text(L("ios.securityUI.anAnimatedOverlayOtherDiddyUsersSeeOverYourProfileCardImport"))
         }
         Section {
-            choicePicker("Frame", selection: $draft.frame, presets: Rules.framePresets,
+            choicePicker(L("ios.finalControls.frame"), selection: $draft.frame, presets: Rules.framePresets,
                          keepsCustom: original.frame == .custom, customName: storedProfile?.frame?.name)
             Button {
                 importTarget = .frame
                 importing = true
             } label: {
-                Label("Import Own Frame…", systemImage: "square.and.arrow.down")
+                Label(L("ios.securityUI.importOwnFrame"), systemImage: "square.and.arrow.down")
             }
             .disabled(uploading != nil)
             if uploading == .frame { uploadingRow }
         } header: {
-            Text("Profile Frame")
+            Text(L("ios.securityUI.profileFrame"))
         } footer: {
-            Text("A decorative frame other Diddy users see around your profile card. Import your own from a ZIP frame pack or from one PNG or WebP with a transparent background.")
+            Text(L("ios.securityUI.aDecorativeFrameOtherDiddyUsersSeeAroundYourProfileCardImpor"))
         }
     }
 
     private var storedProfile: DiddyProfile? { account.diddyProfiles[account.userId] }
 
     private var plateMediaTitle: String {
-        if draft.plateVideoMxc != nil { return "Replace Video" }
-        if draft.plateImageMxc != nil { return "Replace Picture" }
-        return "Add Picture or Video"
+        if draft.plateVideoMxc != nil { return L("ios.uiResults.replaceVideo") }
+        if draft.plateImageMxc != nil { return L("ios.uiResults.replacePicture") }
+        return L("ios.uiResults.addPictureOrVideo")
     }
 
     private func presetSwatch(_ id: String?, label: String) -> some View {
@@ -581,7 +581,7 @@ struct DiddyProfileEditor: View {
     private func choicePicker(_ title: String, selection: Binding<DiddyProfileDraft.Choice>, presets: [(id: String, label: String)],
                               keepsCustom: Bool, customName: String?) -> some View {
         Picker(title, selection: selection) {
-            Text("None").tag(DiddyProfileDraft.Choice.none)
+            Text(L("settings.contactInfo.none")).tag(DiddyProfileDraft.Choice.none)
             ForEach(presets.map { $0.id }, id: \.self) { id in
                 Text(Rules.label(id, in: presets)).tag(DiddyProfileDraft.Choice.preset(id))
             }
@@ -598,8 +598,8 @@ struct DiddyProfileEditor: View {
 
     @ViewBuilder
     private var statusTab: some View {
-        Section("Status") {
-            Picker("Status", selection: $draft.status) {
+        Section(L("common.userPanel.status")) {
+            Picker(L("common.userPanel.status"), selection: $draft.status) {
                 ForEach(Rules.statuses, id: \.self) { value in
                     Text(DiddyProfile.Status(rawValue: value)?.title ?? value).tag(value)
                 }
@@ -607,43 +607,43 @@ struct DiddyProfileEditor: View {
         }
         Section {
             if account.diddyOwnBadges.isEmpty {
-                Text("You do not have any badges yet. Take one from the badge library or create your own.")
+                Text(L("ios.securityUI.youDoNotHaveAnyBadgesYetTakeOneFromTheBadgeLibraryOrCreateYo"))
                     .foregroundStyle(Theme.muted)
             } else {
                 ForEach(account.diddyOwnBadges) { badge in badgeRow(badge) }
             }
         } header: {
-            Text("Shown Badges")
+            Text(L("ios.securityUI.shownBadges"))
         } footer: {
-            Text("Pick up to \(Rules.maxShownBadges) of your badges to show next to your name. \(draft.shownBadgeIds(owned: ownedIds).count)/\(Rules.maxShownBadges)")
+            Text(L("ios.dynamicUI.shownBadges", ["max": String(Rules.maxShownBadges), "count": String(draft.shownBadgeIds(owned: ownedIds).count)]))
         }
         Section {
             NavigationLink {
                 DiddyBadgeLibraryView(account: account)
             } label: {
-                Label("Badge Library", systemImage: "star.circle")
+                Label(L("ios.securityUI.badgeLibrary"), systemImage: "star.circle")
             }
             NavigationLink {
                 DiddyCreateBadgeView(account: account)
             } label: {
-                Label("Create a Badge", systemImage: "plus.circle")
+                Label(L("ios.securityUI.createABadge"), systemImage: "plus.circle")
             }
         } footer: {
-            Text("Taking, creating and deleting badges is saved right away.")
+            Text(L("ios.securityUI.takingCreatingAndDeletingBadgesIsSavedRightAway"))
         }
         Section {
             Toggle(isOn: $shareVersion) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Show My Diddy Version")
+                    Text(L("ios.securityUI.showMyDiddyVersion"))
                     Text("\(DiddyClientVersion.current ?? "This version"), small on your profile card. Switched off, it is removed from your profile.")
                         .font(.caption)
                         .foregroundStyle(Theme.muted)
                 }
             }
         } header: {
-            Text("What Others See")
+            Text(L("ios.securityUI.whatOthersSee"))
         } footer: {
-            Text("Your profile card, badges and name style are shared with everyone in the data room who uses Diddy. Fields you leave empty are not shared.")
+            Text(L("ios.securityUI.yourProfileCardBadgesAndNameStyleAreSharedWithEveryoneInTheD"))
         }
     }
 
@@ -671,61 +671,61 @@ struct DiddyProfileEditor: View {
     @ViewBuilder
     private var layoutTab: some View {
         Section {
-            Picker("Layout", selection: $draft.layout) {
+            Picker(L("settings.profileCardEditor.layout"), selection: $draft.layout) {
                 ForEach(Rules.layouts, id: \.self) { Text(Self.layoutLabel($0)).tag($0) }
             }
             .pickerStyle(.segmented)
             Text(Self.layoutText(draft.layout)).font(.footnote).foregroundStyle(Theme.muted)
         } header: {
-            Text("Card Layout")
+            Text(L("ios.securityUI.cardLayout"))
         }
-        Section("Look") {
-            Picker("Card theme", selection: $draft.cardTheme) {
-                Text("Match app").tag("auto")
-                Text("Light").tag("light")
-                Text("Dark").tag("dark")
+        Section(L("settings.profileCardEditor.look")) {
+            Picker(L("settings.profileCardEditor.cardTheme"), selection: $draft.cardTheme) {
+                Text(L("settings.profileCardEditor.matchApp")).tag("auto")
+                Text(L("settings.diddyProfile.light")).tag("light")
+                Text(L("settings.diddyProfile.dark")).tag("dark")
             }
             Toggle(isOn: $draft.glass) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Glass effect")
-                    Text("Translucent card with blur").font(.caption).foregroundStyle(Theme.muted)
+                    Text(L("settings.profileCardEditor.glassEffect"))
+                    Text(L("settings.profileCardEditor.translucentCardWithBlur")).font(.caption).foregroundStyle(Theme.muted)
                 }
             }
             Toggle(isOn: $draft.calm) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Calm card")
-                    Text("No hover animations").font(.caption).foregroundStyle(Theme.muted)
+                    Text(L("settings.profileCardEditor.calmCard"))
+                    Text(L("settings.profileCardEditor.noHoverAnimations")).font(.caption).foregroundStyle(Theme.muted)
                 }
             }
         }
         Section {
-            Picker("Layout", selection: $draft.bigLayout) {
-                Text("Expanded").tag("expanded")
-                Text("Tabs").tag("tabs")
+            Picker(L("settings.profileCardEditor.layout"), selection: $draft.bigLayout) {
+                Text(L("settings.profilePreviews.expanded")).tag("expanded")
+                Text(L("settings.profilePreviews.tabs")).tag("tabs")
             }
-            Picker("Banner", selection: $draft.bigBanner) {
-                Text("Normal").tag("normal")
-                Text("Tall").tag("tall")
-                Text("Extra tall").tag("hero")
+            Picker(L("settings.diddyProfile.banner"), selection: $draft.bigBanner) {
+                Text(L("settings.profileCardEditor.normal")).tag("normal")
+                Text(L("settings.profileCardEditor.tall")).tag("tall")
+                Text(L("settings.profileCardEditor.extraTall")).tag("hero")
             }
-            Picker("Profile picture", selection: $draft.bigAvatar) {
-                Text("Normal").tag("normal")
-                Text("Large").tag("large")
+            Picker(L("settings.diddyProfile.profilePicture"), selection: $draft.bigAvatar) {
+                Text(L("settings.profileCardEditor.normal")).tag("normal")
+                Text(L("settings.profileCardEditor.large")).tag("large")
             }
         } header: {
-            Text("Big Profile")
+            Text(L("ios.securityUI.bigProfile"))
         } footer: {
-            Text("The large view people get when they click your profile picture or your name in a call.")
+            Text(L("settings.profileCardEditor.theLargeViewPeople"))
         }
         Section {
             ForEach(draft.moduleOrder, id: \.self) { module in moduleRow(module) }
         } header: {
-            Text("Modules")
+            Text(L("settings.profileCardEditor.modules"))
         } footer: {
             switch draft.layout {
-            case "compact": Text("The compact layout only shows the bio. Pick another layout for more modules.")
-            case "tabs": Text("In the tab layout the modules are grouped into tabs; the order applies inside a tab.")
-            default: Text("Show, hide and reorder the parts of your card.")
+            case "compact": Text(L("settings.profileCardEditor.theCompactLayoutOnly"))
+            case "tabs": Text(L("settings.profileCardEditor.inTheTabLayout"))
+            default: Text(L("ios.securityUI.showHideAndReorderThePartsOfYourCard"))
             }
         }
     }
@@ -741,12 +741,12 @@ struct DiddyProfileEditor: View {
             Button { draft.moveModule(at: index, by: -1) } label: { Image(systemName: "chevron.up") }
                 .buttonStyle(.borderless)
                 .disabled(index == 0)
-                .accessibilityLabel("Move up")
+                .accessibilityLabel(L("settings.profileCardEditor.moveUp"))
             Button { draft.moveModule(at: index, by: 1) } label: { Image(systemName: "chevron.down") }
                 .buttonStyle(.borderless)
                 .disabled(index >= order.count - 1)
-                .accessibilityLabel("Move down")
-            Toggle("Show \(Self.moduleLabel(module))", isOn: Binding(
+                .accessibilityLabel(L("settings.profileCardEditor.moveDown"))
+            Toggle(L("ios.dynamicUI.showModule", ["name": Self.moduleLabel(module)]), isOn: Binding(
                 get: { !draft.hiddenModules.contains(module) },
                 set: { draft.setModule(module, visible: $0) }
             ))
@@ -773,7 +773,7 @@ struct DiddyProfileEditor: View {
             }
             .disabled(!canSave)
             if dirty {
-                Button("Discard Changes", role: .destructive) { revert() }.disabled(saving)
+                Button(L("ios.remainingUI.discardChanges"), role: .destructive) { revert() }.disabled(saving)
             }
         } footer: {
             Text(dirty ? "You have unsaved changes." : "Saved changes show for everyone in your Diddy Options room.")
@@ -839,14 +839,14 @@ struct DiddyProfileEditor: View {
     private var uploadingRow: some View {
         HStack(spacing: 8) {
             ProgressView()
-            Text("Uploading…").foregroundStyle(Theme.muted)
+            Text(L("ios.chat.uploading")).foregroundStyle(Theme.muted)
         }
     }
 
     private func uploadBanner(_ item: PhotosPickerItem) async {
         await runUpload(.banner) {
             guard let data = try await item.loadTransferable(type: Data.self) else {
-                throw DiddyError("This picture could not be read.")
+                throw DiddyError(L("ios.errorsExtra.thisPictureCouldNotBeRead"))
             }
             let limit = await account.diddyUploadLimit()
             let file = try DiddyMediaPrep.picture(data, limit: limit)
@@ -862,7 +862,7 @@ struct DiddyProfileEditor: View {
             let limit = await account.diddyUploadLimit()
             if item.supportedContentTypes.contains(where: { $0.conforms(to: .movie) }) {
                 guard let movie = try await item.loadTransferable(type: DiddyPickedMovie.self) else {
-                    throw DiddyError("This video could not be read.")
+                    throw DiddyError(L("ios.errorsExtra.thisVideoCouldNotBeRead"))
                 }
                 defer { try? FileManager.default.removeItem(at: movie.url) }
                 let prepared = try await DiddyMediaPrep.nameplateVideo(movie.url, limit: limit)
@@ -872,7 +872,7 @@ struct DiddyProfileEditor: View {
                 draft.plateVideoMxc = video
             } else {
                 guard let data = try await item.loadTransferable(type: Data.self) else {
-                    throw DiddyError("This picture could not be read.")
+                    throw DiddyError(L("ios.errorsExtra.thisPictureCouldNotBeRead"))
                 }
                 let file = try DiddyMediaPrep.picture(data, limit: limit)
                 draft.plateImageMxc = try await account.uploadDiddyMedia(file.data, mimeType: file.mimeType, filename: "nameplate.\(file.ext)")
@@ -890,13 +890,13 @@ struct DiddyProfileEditor: View {
                 exportDocument = DiddyProfileDocument(text: DiddyProfileTransfer.export(draft, stored: account.diddyOwnProfileRaw ?? [:]))
                 exporting = true
             } label: {
-                Label("Export Profile…", systemImage: "square.and.arrow.up")
+                Label(L("ios.securityUI.exportProfile"), systemImage: "square.and.arrow.up")
             }
             Button {
                 importTarget = .profile
                 importing = true
             } label: {
-                Label("Import Profile…", systemImage: "square.and.arrow.down")
+                Label(L("ios.securityUI.importProfile"), systemImage: "square.and.arrow.down")
             }
             Button(role: .destructive) {
                 draft = DiddyProfileTransfer.reset(draft)
@@ -904,14 +904,14 @@ struct DiddyProfileEditor: View {
                 error = nil
                 notice = nil
             } label: {
-                Label("Reset to Default", systemImage: "arrow.counterclockwise")
+                Label(L("ios.securityUI.resetToDefault"), systemImage: "arrow.counterclockwise")
             }
             .disabled(!DiddyProfileTransfer.canReset(draft))
         } label: {
             Image(systemName: "ellipsis.circle")
         }
         .disabled(saving || uploading != nil)
-        .accessibilityLabel("Profile file")
+        .accessibilityLabel(L("ios.securityUI.profileFile"))
     }
 
     private var importTypes: [UTType] {
@@ -991,9 +991,9 @@ struct DiddyProfileEditor: View {
             ColorPicker(title, selection: colorBinding({ hex.wrappedValue }, fallback: fallback) { hex.wrappedValue = $0 },
                         supportsOpacity: false)
             if hex.wrappedValue != nil {
-                Button("Clear") { hex.wrappedValue = nil }.buttonStyle(.borderless)
+                Button(L("nav.server.clear")) { hex.wrappedValue = nil }.buttonStyle(.borderless)
             } else {
-                Text("Not set").font(.caption).foregroundStyle(Theme.faint)
+                Text(L("ios.securityUI.notSet")).font(.caption).foregroundStyle(Theme.faint)
             }
         }
     }
@@ -1022,21 +1022,21 @@ struct DiddyProfileEditor: View {
 
     private static func aboutLabel(_ field: String) -> String {
         switch field {
-        case "pronouns": return "Pronouns"
-        case "location": return "Location"
-        case "age": return "Age"
-        case "education": return "School / studies"
-        default: return "Work"
+        case "pronouns": return L("settings.profileCardEditor.pronouns")
+        case "location": return L("settings.profileCardEditor.location")
+        case "age": return L("settings.profileCardEditor.age")
+        case "education": return L("settings.profileCardEditor.schoolStudies")
+        default: return L("settings.profileCardEditor.work")
         }
     }
 
     private static func aboutPlaceholder(_ field: String) -> String {
         switch field {
         case "pronouns": return "she/her"
-        case "location": return "Berlin"
+        case "location": return L("settings.profileCardEditor.berlin")
         case "age": return "27"
-        case "education": return "Computer science"
-        default: return "Developer"
+        case "education": return L("settings.profileCardEditor.computerScience")
+        default: return L("settings.profileCardEditor.developer")
         }
     }
 
@@ -1047,36 +1047,36 @@ struct DiddyProfileEditor: View {
         case "linkedin": return "LinkedIn"
         case "spotify": return "Spotify"
         case "youtube": return "YouTube"
-        default: return "Website"
+        default: return L("profile.profileModules.website")
         }
     }
 
     private static func layoutLabel(_ layout: String) -> String {
         switch layout {
-        case "compact": return "Compact"
-        case "expanded": return "Expanded"
-        case "tabs": return "Tabs"
-        default: return "Standard"
+        case "compact": return L("ios.soundLabels.compact")
+        case "expanded": return L("settings.profilePreviews.expanded")
+        case "tabs": return L("settings.profilePreviews.tabs")
+        default: return L("settings.profilePreviews.standard")
         }
     }
 
     private static func layoutText(_ layout: String) -> String {
         switch layout {
-        case "compact": return "Minimal, space-saving."
-        case "expanded": return "More space for details."
-        case "tabs": return "Organized in tabs."
-        default: return "Balanced and familiar."
+        case "compact": return L("settings.profileCardEditor.minimalSpaceSaving")
+        case "expanded": return L("settings.profileCardEditor.moreSpaceForDetails")
+        case "tabs": return L("settings.profileCardEditor.organizedInTabs")
+        default: return L("settings.profileCardEditor.balancedAndFamiliar")
         }
     }
 
     private static func moduleLabel(_ module: String) -> String {
         switch module {
-        case "about": return "Facts"
-        case "bio": return "Bio"
-        case "activity": return "Activity"
-        case "interests": return "Interests"
-        case "links": return "Links"
-        default: return "Shared rooms"
+        case "about": return L("settings.profileCardEditor.facts")
+        case "bio": return L("settings.diddyProfile.bio")
+        case "activity": return L("profile.profileModules.activity")
+        case "interests": return L("profile.profileModules.interests")
+        case "links": return L("profile.profileModules.links")
+        default: return L("profile.profileModules.sharedRooms")
         }
     }
 
@@ -1107,7 +1107,7 @@ struct DiddyImagePositionEditor: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Visible part").font(.footnote.weight(.semibold)).foregroundStyle(Theme.muted)
+            Text(L("settings.diddyProfile.visiblePart")).font(.footnote.weight(.semibold)).foregroundStyle(Theme.muted)
             GeometryReader { proxy in
                 if let image {
                     let box = current.placement(imageWidth: Double(image.size.width), imageHeight: Double(image.size.height),
@@ -1125,7 +1125,7 @@ struct DiddyImagePositionEditor: View {
             slider("Horizontal", \.x, range: 0...100, step: 1) { "\(Int($0.rounded())) %" }
             slider("Vertical", \.y, range: 0...100, step: 1) { "\(Int($0.rounded())) %" }
             slider("Zoom", \.zoom, range: 1...3, step: 0.05) { String(format: "%.1fx", $0) }
-            Button("Reset") { pos = nil }
+            Button(L("settings.sound.reset")) { pos = nil }
                 .buttonStyle(.borderless)
                 .disabled(pos == nil)
         }

@@ -505,7 +505,7 @@ extension MatrixAccount {
     func updateDiddyProfile(build: ([String: Any]) -> [String: Any]) async throws {
         await reloadDiddyProfilesForWrite()
         guard diddyPrimaryRoom != nil, canEditDiddyProfile else {
-            throw DiddyError("No Diddy Options room was found. Set one up in the profile editor first.")
+            throw DiddyError(L("ios.errorsExtra.noDiddyOptionsRoomWasFoundSetOneUpInTheProfileEditorFirst"))
         }
         var content = build(diddyOwnProfileRaw ?? [:])
         content["v"] = 1
@@ -520,7 +520,7 @@ extension MatrixAccount {
     /// sent as a normal event with the key in `content["app.diddy.key"]`, encrypted like any message
     /// when the room is. Refuses content readers would drop for its size.
     func writeDiddyData(type: String, key: String, content raw: [String: Any]) async throws {
-        guard let primary = diddyPrimaryRoom else { throw DiddyError("No Diddy Options room found.") }
+        guard let primary = diddyPrimaryRoom else { throw DiddyError(L("ios.errorsExtra.noDiddyOptionsRoomFound")) }
         try await writeDiddyData(type: type, key: key, content: raw, in: primary)
     }
 
@@ -533,7 +533,7 @@ extension MatrixAccount {
     /// Writes the same data into several options rooms (desktop's `writeToRooms`). Succeeds when
     /// at least one room took it, throws the first error when none did.
     func writeDiddyData(type: String, key: String, content raw: [String: Any], to targets: [DiddyWriteRoom]) async throws {
-        guard !targets.isEmpty else { throw DiddyError("No Diddy Options room found.") }
+        guard !targets.isEmpty else { throw DiddyError(L("ios.errorsExtra.noDiddyOptionsRoomFound")) }
         var firstError: Error?
         var written = 0
         for target in targets {
@@ -552,7 +552,7 @@ extension MatrixAccount {
         var content = raw
         content[DiddyEvents.keyField] = nil
         guard let size = DiddyProfileDraft.encodedSize(content, key: key) else {
-            throw DiddyError("Your data could not be saved: it contains a value that is not valid JSON.")
+            throw DiddyError(L("ios.errorsExtra.yourDataCouldNotBeSavedItContainsAValueThatIsNotValidJson"))
         }
         if size > DiddyEvents.maxContentBytes {
             throw DiddyError("Too much data to save (\(size) of \(DiddyEvents.maxContentBytes) characters). Shorten links or texts.")
@@ -570,7 +570,7 @@ extension MatrixAccount {
         }
         if !asState {
             // Message mode: a normal event carrying the key, encrypted like any message.
-            guard let room = room(primary.id) else { throw DiddyError("The Diddy Options room is not available yet.") }
+            guard let room = room(primary.id) else { throw DiddyError(L("ios.errorsExtra.theDiddyOptionsRoomIsNotAvailableYet")) }
             content[DiddyEvents.keyField] = key
             let data = try JSONSerialization.data(withJSONObject: content)
             do {

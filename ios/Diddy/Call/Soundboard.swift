@@ -228,7 +228,7 @@ final class Soundboard: ObservableObject {
         stopPreview()
         prepareLocalPlayback()
         guard let player = try? AVAudioPlayer(data: data) else {
-            throw DiddyError("This sound could not be played.")
+            throw DiddyError(L("ios.errorsExtra.thisSoundCouldNotBePlayed"))
         }
         player.volume = Float(volume)
         player.play()
@@ -426,14 +426,14 @@ struct SoundboardSheet: View {
                             Image(systemName: "music.note.list")
                                 .font(.system(size: 40))
                                 .foregroundStyle(Theme.faint)
-                            Text("No clips yet. Add short audio files (up to \(Int(Soundboard.maxSeconds)) seconds) with the + button.")
+                            Text(L("ios.lastDynamic.noClips", ["seconds": String(Int(Soundboard.maxSeconds))]))
                                 .multilineTextAlignment(.center)
                                 .foregroundStyle(Theme.muted)
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.top, 32)
                     } else if visibleClips.isEmpty {
-                        Text("No clips match \u{201C}\(filter)\u{201D}.")
+                        Text(L("ios.lastDynamic.noClipsMatch", ["query": filter]))
                             .foregroundStyle(Theme.muted)
                             .frame(maxWidth: .infinity)
                             .padding(.top, 24)
@@ -447,36 +447,36 @@ struct SoundboardSheet: View {
                         Slider(value: $board.volume, in: 0...1)
                         Image(systemName: "speaker.wave.3.fill").foregroundStyle(Theme.muted)
                     }
-                    .accessibilityLabel("Soundboard volume")
+                    .accessibilityLabel(L("call.soundboard.soundboardVolume"))
                     if let error {
                         Text(error).font(.footnote).foregroundStyle(Theme.danger)
                     }
                     if !session.microphoneOn {
-                        Label("Your microphone is muted, so nobody hears your clips.", systemImage: "mic.slash.fill")
+                        Label(L("ios.finalControls.yourMicrophoneIsMutedSoNobodyHearsYourClips"), systemImage: "mic.slash.fill")
                             .font(.footnote)
                             .foregroundStyle(Theme.danger)
                     }
-                    Text("Everyone in the call hears clips while your microphone is on. Hold a clip to delete it.")
+                    Text(L("ios.finalControls.everyoneInTheCallHearsClipsWhileYourMicrophoneIsOnHoldACl"))
                         .font(.footnote)
                         .foregroundStyle(Theme.muted)
                 }
                 .padding()
             }
             .background(Theme.sidebar)
-            .navigationTitle("Soundboard")
+            .navigationTitle(L("call.panel.soundboard"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button(L("room.callChatView.close")) { dismiss() } }
                 ToolbarItemGroup(placement: .primaryAction) {
                     if board.playing != nil {
                         Button { board.stopAll() } label: { Image(systemName: "stop.fill") }
-                            .accessibilityLabel("Stop All Clips")
+                            .accessibilityLabel(L("ios.calls.stopAllClips"))
                     }
                     Menu {
-                        Button { importing = true } label: { Label("Add from Files", systemImage: "folder") }
-                        Button { showMyInstants = true } label: { Label("Import from MyInstants", systemImage: "magnifyingglass") }
+                        Button { importing = true } label: { Label(L("ios.finalControls.addFromFiles"), systemImage: "folder") }
+                        Button { showMyInstants = true } label: { Label(L("call.soundboard.importFromMyinstants"), systemImage: "magnifyingglass") }
                     } label: { Image(systemName: "plus") }
-                        .accessibilityLabel("Add clip")
+                        .accessibilityLabel(L("ios.finalControls.addClip"))
                 }
             }
             .modifier(ClipSearch(active: board.clips.count > 8, text: $filter))
@@ -529,10 +529,10 @@ struct SoundboardSheet: View {
                         .disabled(board.hotkeys.contains { $0.key != clip.id && $0.value == digit })
                 }
                 if board.hotkeys[clip.id] != nil {
-                    Button("Remove shortcut") { board.setHotkey(nil, for: clip) }
+                    Button(L("ios.finalControls.removeShortcut")) { board.setHotkey(nil, for: clip) }
                 }
             }
-            Button(role: .destructive) { board.remove(clip) } label: { Label("Delete", systemImage: "trash") }
+            Button(role: .destructive) { board.remove(clip) } label: { Label(L("message.main.delete"), systemImage: "trash") }
         }
     }
 }
@@ -546,7 +546,7 @@ struct SoundboardKeyboardCommands: View {
         ForEach(board.clips) { clip in
             if let digit = board.hotkeys[clip.id],
                !board.hotkeys.contains(where: { $0.key != clip.id && $0.value == digit }) {
-                Button("Play \(clip.name)") { board.toggle(clip) }
+                Button(L("ios.lastDynamic.playClip", ["name": clip.name])) { board.toggle(clip) }
                     .keyboardShortcut(KeyEquivalent(Character(String(digit))), modifiers: .command)
                     .frame(width: 0, height: 0)
                     .opacity(0)

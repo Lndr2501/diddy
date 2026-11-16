@@ -52,13 +52,13 @@ extension MatrixAccount {
     /// Deletes a custom badge from the library for everyone. Only its creator can.
     func deleteDiddyBadge(_ badge: DiddyBadge) async throws {
         try requireDiddyRoom()
-        guard DiddyBadgeLogic.canDelete(badge, me: userId) else { throw DiddyError("Only the creator can delete this badge.") }
+        guard DiddyBadgeLogic.canDelete(badge, me: userId) else { throw DiddyError(L("ios.errorsExtra.onlyTheCreatorCanDeleteThisBadge")) }
         try await writeDiddyData(type: DiddyEvents.badge, key: badge.id, content: [:], to: diddyAllWriteRooms)
         await loadDiddyProfiles(force: true)
     }
 
     private func requireDiddyRoom() throws {
-        if diddyPrimaryRoom == nil { throw DiddyError("No Diddy Options room found.") }
+        if diddyPrimaryRoom == nil { throw DiddyError(L("ios.errorsExtra.noDiddyOptionsRoomFound")) }
     }
 
     /// Older options rooms let every member write badge state, so anyone could replace or empty

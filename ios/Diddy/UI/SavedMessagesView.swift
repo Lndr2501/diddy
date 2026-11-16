@@ -15,8 +15,8 @@ struct SavedMessagesView: View {
                 if saved.state.saved.isEmpty && saved.loaded {
                     VStack(spacing: 10) {
                         Image(systemName: "bookmark").font(.largeTitle)
-                        Text("No Saved Messages").font(.headline)
-                        Text("Long-press a message and choose Save Message. Your bookmarks sync across your devices.")
+                        Text(L("ios.chatMore.noSavedMessages")).font(.headline)
+                        Text(L("ios.chatMore.longPressAMessageAndChooseSaveMessageYourBookmarksSyncA"))
                             .font(.subheadline).multilineTextAlignment(.center)
                     }
                     .foregroundStyle(Theme.muted)
@@ -34,8 +34,8 @@ struct SavedMessagesView: View {
             }
             .overlay { if !saved.loaded { ProgressView() } }
             .refreshable { await saved.refresh(account: account) }
-            .navigationTitle("Saved Messages")
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
+            .navigationTitle(L("ios.chatMore.savedMessages"))
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button(L("settings.globalPacks.close")) { dismiss() } } }
             .task { await saved.refresh(account: account) }
         }
     }
@@ -58,14 +58,14 @@ private struct SavedMessageRow: View {
             } else if let focused {
                 SavedMessageContent(controller: focused, eventId: item.eventId, open: open)
             } else {
-                ProgressView().accessibilityLabel("Loading message")
+                ProgressView().accessibilityLabel(L("ios.chatMore.loadingMessage"))
             }
             HStack {
                 if issue == nil, focused?.rows.contains(where: { $0.remoteEventId == item.eventId && !$0.isRedactedMessage }) == true {
-                    Button("Open", action: open).buttonStyle(.bordered)
+                    Button(L("settings.connectedAccounts.open"), action: open).buttonStyle(.bordered)
                 }
                 Spacer()
-                Button("Remove from Saved") { saved.remove(account: account, item: item) }
+                Button(L("ios.chatMore.removeFromSaved")) { saved.remove(account: account, item: item) }
                     .font(.caption)
             }
         }
@@ -117,7 +117,7 @@ private struct SavedMessageContent: View {
             }
             .foregroundStyle(Theme.muted)
             if row.isRedactedMessage {
-                Text("This message was deleted.").foregroundStyle(Theme.muted)
+                Text(L("ios.chatMore.thisMessageWasDeleted")).foregroundStyle(Theme.muted)
             } else {
                 Button(action: open) {
                     Text(preview(row)).lineLimit(4).foregroundStyle(Theme.text)
@@ -126,19 +126,19 @@ private struct SavedMessageContent: View {
                 .buttonStyle(.plain)
             }
         } else {
-            ProgressView().accessibilityLabel("Decrypting message")
+            ProgressView().accessibilityLabel(L("ios.chatMore.decryptingMessage"))
         }
     }
 
     private func preview(_ row: MessageRow) -> String {
         switch row.body {
         case .text(let value): return value
-        case .image: return "Photo"
-        case .file(let name, _, _): return "File: \(name)"
-        case .audio: return "Audio message"
+        case .image: return L("ios.finalComputed.photo")
+        case .file(let name, _, _): return L("ios.finalComputed.fileName", ["name": name])
+        case .audio: return L("ios.finalComputed.audioMessage")
         case .notice(let value): return value
-        case .undecryptable: return "Encrypted message (keys unavailable on this device)"
-        case .redacted: return "This message was deleted."
+        case .undecryptable: return L("ios.finalComputed.undecryptable")
+        case .redacted: return L("ios.chatMore.thisMessageWasDeleted")
         }
     }
 }

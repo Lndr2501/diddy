@@ -29,7 +29,7 @@ struct MessageActionsOverlay<Actions: View>: View {
                 .ignoresSafeArea()
                 .contentShape(Rectangle())
                 .onTapGesture(perform: onClose)
-                .accessibilityLabel("Close")
+                .accessibilityLabel(L("settings.globalPacks.close"))
                 .accessibilityAddTraits(.isButton)
             VStack(spacing: 10) {
                 Spacer(minLength: 12)
@@ -55,7 +55,7 @@ struct MessageActionsOverlay<Actions: View>: View {
                     Text(emoji).font(.system(size: 26)).frame(width: 42, height: 44)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("React with \(emoji)")
+                .accessibilityLabel(L("ios.dynamicUI.reactWith", ["emoji": emoji]))
             }
             Button(action: onMoreReactions) {
                 Image(systemName: "plus")
@@ -66,7 +66,7 @@ struct MessageActionsOverlay<Actions: View>: View {
                     .frame(width: 44, height: 44)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("More Emoji")
+            .accessibilityLabel(L("ios.chatMore.moreEmoji"))
         }
         .padding(.horizontal, 6)
         .padding(.vertical, 2)
@@ -101,10 +101,10 @@ struct MessageActionsOverlay<Actions: View>: View {
         case .text(let text): return MentionText.readable(text) { account.name(of: $0) }
         case .image: return row.isSticker ? "Sticker" : "Photo"
         case .file(let name, _, _): return name
-        case .audio: return "Voice message"
+        case .audio: return L("ios.chatMore.voiceMessage")
         case .notice(let text): return text
-        case .undecryptable: return "Encrypted message"
-        case .redacted: return "Message deleted"
+        case .undecryptable: return L("ios.finalComputed.encryptedMessage")
+        case .redacted: return L("ios.chat.messageDeleted")
         }
     }
 

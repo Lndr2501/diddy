@@ -164,20 +164,20 @@ struct CallStageView: View {
     @ViewBuilder
     private func personMenu(_ member: CallMember) -> some View {
         if !member.isConnecting {
-            Button { showProfile(member.userId) } label: { Label("Show Profile", systemImage: "person.crop.circle") }
+            Button { showProfile(member.userId) } label: { Label(L("ios.calls.showProfile"), systemImage: "person.crop.circle") }
             if !member.isLocal {
-                Button { message(member.userId) } label: { Label("Message", systemImage: "bubble.left") }
+                Button { message(member.userId) } label: { Label(L("call.userMenu.message"), systemImage: "bubble.left") }
                 let muted = extras.isMuted(member.userId, kind: .voice)
                 Button { extras.toggleMuted(member.userId, kind: .voice) } label: {
-                    Label(muted ? "Unmute for Me" : "Mute for Me", systemImage: muted ? "speaker.wave.2" : "speaker.slash")
+                    Label(muted ? L("ios.calls.moreUnmuteForMe") : L("ios.calls.moreMuteForMe"), systemImage: muted ? "speaker.wave.2" : "speaker.slash")
                 }
                 Button { volumeTarget = VolumeTarget(userId: member.userId, name: member.name, kind: .voice) } label: {
-                    Label("Volume\u{2026}", systemImage: "slider.horizontal.3")
+                    Label(L("ios.calls.volumeMenu"), systemImage: "slider.horizontal.3")
                 }
             }
         }
-        Button { UIPasteboard.general.string = member.name } label: { Label("Copy Name", systemImage: "doc.on.doc") }
-        Button { UIPasteboard.general.string = member.userId } label: { Label("Copy ID", systemImage: "number") }
+        Button { UIPasteboard.general.string = member.name } label: { Label(L("call.userMenu.copyName"), systemImage: "doc.on.doc") }
+        Button { UIPasteboard.general.string = member.userId } label: { Label(L("ios.calls.copyId"), systemImage: "number") }
     }
 
     /// The sound of somebody's screen share, for you only.
@@ -186,10 +186,10 @@ struct CallStageView: View {
         if !member.isLocal {
             if session.watchedShares.contains(member.id) {
                 Button { stopWatching(StageItem(kind: .share, member: member)) } label: {
-                    Label("Stop Watching", systemImage: "eye.slash")
+                    Label(L("ios.calls.stopWatching"), systemImage: "eye.slash")
                 }
             } else {
-                Button { session.watchShare(member.id) } label: { Label("Watch Stream", systemImage: "eye") }
+                Button { session.watchShare(member.id) } label: { Label(L("ios.calls.watchStream"), systemImage: "eye") }
             }
             if member.shareHasAudio {
                 let muted = extras.isMuted(member.userId, kind: .stream)
@@ -197,10 +197,10 @@ struct CallStageView: View {
                     Label(muted ? "Unmute Stream for Me" : "Mute Stream for Me", systemImage: muted ? "speaker.wave.2" : "speaker.slash")
                 }
                 Button { volumeTarget = VolumeTarget(userId: member.userId, name: member.name, kind: .stream) } label: {
-                    Label("Stream Volume\u{2026}", systemImage: "slider.horizontal.3")
+                    Label(L("ios.calls.streamVolume"), systemImage: "slider.horizontal.3")
                 }
             } else {
-                Button {} label: { Label("This Stream Has No Sound", systemImage: "speaker.slash") }.disabled(true)
+                Button {} label: { Label(L("ios.calls.streamSilent"), systemImage: "speaker.slash") }.disabled(true)
             }
         }
     }
@@ -263,7 +263,7 @@ private struct PersonTile: View {
             if member.talkingToAgent { AgentTalkingBadge(compact: role != .focus).padding(role == .thumb ? 4 : 8) }
         }
         .overlay(alignment: .topTrailing) {
-            if role == .focus { StageIconButton(icon: "square.grid.2x2", label: "Back to grid", action: onBack) }
+            if role == .focus { StageIconButton(icon: "square.grid.2x2", label: L("ios.calls.moreBackToGrid"), action: onBack) }
         }
         .overlay(alignment: .bottomTrailing) {
             if let onFlip, member.isLocal, member.camera != nil, role != .thumb {
@@ -281,7 +281,7 @@ private struct PersonTile: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityText)
         .accessibilityAddTraits(.isButton)
-        .accessibilityHint(role == .focus ? "Back to the grid" : "Show large")
+        .accessibilityHint(role == .focus ? L("ios.calls.moreBackToTheGrid") : L("ios.calls.moreShowLarge"))
     }
 
     private var nameTag: some View {
@@ -291,7 +291,7 @@ private struct PersonTile: View {
             } else if !member.microphoneOn {
                 Image(systemName: "mic.slash.fill").foregroundStyle(Theme.danger)
             }
-            Text(member.isLocal ? "\(member.name) (you)" : member.name).lineLimit(1)
+            Text(member.isLocal ? L("ios.callDynamic.memberYou", ["name": member.name]) : member.name).lineLimit(1)
         }
         .font((role == .thumb ? Font.caption2 : Font.caption).weight(.semibold))
         .foregroundStyle(.white)
@@ -302,7 +302,7 @@ private struct PersonTile: View {
     }
 
     private var accessibilityText: String {
-        var parts = [member.isLocal ? "\(member.name), you" : member.name]
+        var parts = [member.isLocal ? L("ios.callDynamic.memberYouAccessibility", ["name": member.name]) : member.name]
         if member.isConnecting { parts.append("connecting") }
         else if !member.microphoneOn { parts.append("muted") }
         else if speaking { parts.append("speaking") }
@@ -356,12 +356,12 @@ private struct ShareTile: View {
                         ZoomResetButton(zoom: $zoom)
                     }
                     if watching {
-                        StageIconButton(icon: "arrow.up.left.and.arrow.down.right", label: "Full screen") { fullscreen = true }
+                        StageIconButton(icon: "arrow.up.left.and.arrow.down.right", label: L("ios.calls.moreFullScreen")) { fullscreen = true }
                         if !member.isLocal {
-                            StageIconButton(icon: "eye.slash", label: "Stop watching", action: onStopWatching)
+                            StageIconButton(icon: "eye.slash", label: L("ios.calls.moreStopWatching"), action: onStopWatching)
                         }
                     }
-                    StageIconButton(icon: "square.grid.2x2", label: "Back to grid", action: onBack)
+                    StageIconButton(icon: "square.grid.2x2", label: L("ios.calls.moreBackToGrid"), action: onBack)
                 }
             }
         }
@@ -372,7 +372,7 @@ private struct ShareTile: View {
             if role != .focus { onSelect() }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(watching ? "\(member.name)'s screen" : "\(member.name) is sharing their screen")
+        .accessibilityLabel(watching ? L("ios.callDynamic.watchingScreen", ["name": member.name]) : L("ios.callDynamic.sharingScreen", ["name": member.name]))
         .accessibilityAddTraits(.isButton)
         .accessibilityHint(watchHint)
         .fullScreenCover(isPresented: $fullscreen) {
@@ -381,8 +381,8 @@ private struct ShareTile: View {
     }
 
     private var watchHint: String {
-        if !watching { return "Watch the stream" }
-        return role == .focus ? "Back to the grid. Pinch or double tap to zoom." : "Show large"
+        if !watching { return L("ios.calls.moreWatchTheStream") }
+        return role == .focus ? L("ios.calls.moreBackToTheGridPinchOrDoubleTapToZoom") : L("ios.calls.moreShowLarge")
     }
 
     /// Instead of the picture until you tap Watch.
@@ -392,13 +392,13 @@ private struct ShareTile: View {
                 .font(.system(size: role == .thumb ? 18 : 30, weight: .regular))
                 .foregroundStyle(.white.opacity(0.8))
             if role != .thumb {
-                Text("\(member.name) is sharing their screen")
+                Text(L("ios.callDynamic.sharingScreen", ["name": member.name]))
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(.white)
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
             }
-            Text("Watch")
+            Text(L("call.stage.watch"))
                 .font((role == .thumb ? Font.caption2 : Font.footnote).weight(.semibold))
                 .foregroundStyle(.white)
                 .padding(.horizontal, role == .thumb ? 8 : 14)
@@ -410,7 +410,7 @@ private struct ShareTile: View {
     }
 
     private var nameBadge: some View {
-        Label(role == .thumb ? member.name : "\(member.name)'s screen", systemImage: "display")
+        Label(role == .thumb ? member.name : L("ios.callDynamic.watchingScreen", ["name": member.name]), systemImage: "display")
             .labelStyle(.titleAndIcon)
             .lineLimit(1)
             .font((role == .thumb ? Font.caption2 : Font.caption).weight(.semibold))
@@ -512,8 +512,8 @@ private struct ZoomResetButton: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Zoom \(zoom.percent) percent")
-        .accessibilityHint("Shows the whole picture again")
+        .accessibilityLabel(L("ios.callDynamic.zoomPercent", ["percent": String(zoom.percent)]))
+        .accessibilityHint(L("ios.calls.moreShowsTheWholePictureAgain"))
         .padding(.vertical, 2)
     }
 }
@@ -545,7 +545,7 @@ private struct FullscreenShare: View {
                         .frame(width: 44, height: 44)
                         .contentShape(Rectangle())
                 }
-                .accessibilityLabel("Close")
+                .accessibilityLabel(L("settings.globalPacks.close"))
             }
             .padding()
         }

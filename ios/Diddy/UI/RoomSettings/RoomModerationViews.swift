@@ -82,9 +82,9 @@ struct RoomModerationRows: View {
                             .disabled(running != nil)
                     }
                 }
-                .confirmationDialog("Cancel the invite for \(name)?", isPresented: $confirmCancelInvite, titleVisibility: .visible) {
-                    Button("Cancel Invite", role: .destructive) { Task { await run(.kick) } }
-                    Button("Keep Invite", role: .cancel) {}
+                .confirmationDialog(L("ios.dynamicUI.cancelInvite", ["name": name]), isPresented: $confirmCancelInvite, titleVisibility: .visible) {
+                    Button(L("profile.moderation.cancelInvite"), role: .destructive) { Task { await run(.kick) } }
+                    Button(L("ios.finalUI.keepInvite"), role: .cancel) {}
                 }
             }
             if let error {
@@ -139,7 +139,7 @@ struct RoomModerationRows: View {
         let canChange = RoomRoleChange.canChange(me: account.userId, target: userId, permissions: permissions)
         return HStack(spacing: 12) {
             Image(systemName: "shield").frame(width: 22)
-            Text("Role")
+            Text(L("ios.finalUI.role"))
             Spacer()
             if settingRole { ProgressView() }
             Menu {
@@ -253,7 +253,7 @@ struct ModerationReasonSheet: View {
             Form {
                 Section {
                     Text("\(name) \(action.text)")
-                    TextField("Reason (optional)", text: $reason)
+                    TextField(L("profile.moderation.reasonOptional"), text: $reason)
                         .disabled(working)
                 }
                 if let error {
@@ -276,7 +276,7 @@ struct ModerationReasonSheet: View {
             .navigationTitle("\(action.title) \(name)?")
             .navigationBarTitleDisplayMode(.inline)
             .tint(Theme.accent)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button(L("settings.deviceTile.cancel")) { dismiss() } } }
             .interactiveDismissDisabled(working)
         }
         .presentationDetents([.medium])

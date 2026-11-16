@@ -32,12 +32,20 @@ const sourceFiles = (dir) =>
   });
 
 // t('area.key'), translate('area.key'), i18n.t('area.key'); keys always have a dot
-const KEY_CALL = /(?:(?<![\w$.])t|\btranslate|\bi18n\.t)\(\s*['"]([A-Za-z][\w-]*(?:\.[\w-]+)+)['"]/g;
+const KEY_CALL = /(?:(?<![\w$.])t|\btranslate|\bi18n\.t|(?<![\w$.])L)\(\s*['"]([A-Za-z][\w-]*(?:\.[\w-]+)+)['"]/g;
 
 /** Keys used in the code, with the first file that uses each. */
-const usedKeys = (dir = path.join(cinnyDir, 'src')) => {
+const usedKeys = (dir = path.join(cinnyDir, 'src'), iosDir = path.join(cinnyDir, '../ios/Diddy')) => {
   const keys = new Map();
-  sourceFiles(dir).forEach((file) => {
+  const files = sourceFiles(dir);
+  if (iosDir && fs.existsSync(iosDir)) {
+    const swiftFiles = (folder) => fs.readdirSync(folder, { withFileTypes: true }).flatMap((entry) => {
+      const full = path.join(folder, entry.name);
+      return entry.isDirectory() ? swiftFiles(full) : entry.name.endsWith('.swift') ? [full] : [];
+    });
+    files.push(...swiftFiles(iosDir));
+  }
+  files.forEach((file) => {
     const text = fs.readFileSync(file, 'utf8');
     Array.from(text.matchAll(KEY_CALL)).forEach((match) => {
       if (!keys.has(match[1])) keys.set(match[1], path.relative(cinnyDir, file));
@@ -50,7 +58,7 @@ const usedKeys = (dir = path.join(cinnyDir, 'src')) => {
  * Runs every check. Returns { errors: string[], languages: [{ code, name, percent }],
  * unused: string[] } and does not print anything.
  */
-const runCheck = ({ localesDir = path.join(cinnyDir, 'locales'), srcDir } = {}) => {
+const runCheck = ({ localesDir = path.join(cinnyDir, 'locales'), srcDir, iosDir } = {}) => {
   const rules = loadRules();
   const errors = [];
   const languages = [];
@@ -68,9 +76,6 @@ const runCheck = ({ localesDir = path.join(cinnyDir, 'locales'), srcDir } = {}) 
   const source = rules.flattenLocale(en);
   rules.validateLocale(en, source, true).forEach((p) => errors.push(`en.json: ${p.key}: ${p.message}`));
   if (en._meta?.code !== 'en') errors.push('en.json: _meta.code must be "en"');
-  rules.RESERVED_AREAS.forEach((area) => {
-    if (area in en) errors.push(`en.json: "${area}" is reserved for the iOS app`);
-  });
   // a placeholder that is not a plain name is most likely a typo ({{ name }, {name}})
   Object.keys(source).forEach((key) => {
     if (/\{\{(?![A-Za-z0-9_]+\}\})|(?<!\{)\{[A-Za-z]+\}(?!\})/.test(source[key])) {
@@ -97,7 +102,7 @@ const runCheck = ({ localesDir = path.join(cinnyDir, 'locales'), srcDir } = {}) 
       });
     });
 
-  const used = usedKeys(srcDir);
+  const used = usedKeys(srcDir, iosDir === undefined && srcDir ? null : iosDir ?? path.join(cinnyDir, '../ios/Diddy'));
   used.forEach((file, key) => {
     if (!rules.knownInSource(key, source)) errors.push(`${file}: uses "${key}", which is not in en.json`);
   });
