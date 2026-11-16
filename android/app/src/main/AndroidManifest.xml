@@ -73,7 +73,7 @@
         <service
             android:name=".call.CallService"
             android:exported="false"
-            android:foregroundServiceType="microphone|camera" />
+            android:foregroundServiceType="phoneCall|microphone|camera" />
         <receiver
             android:name=".push.BootReceiver"
             android:exported="false">

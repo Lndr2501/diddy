@@ -226,6 +226,7 @@ class CallSession(private val context: Context, val account: MatrixAccount, priv
         try {
             liveKitRoom.localParticipant.setMicrophoneEnabled(enable)
             microphoneOn = enable
+            if (enable) attachSoundboard()
             Sounds.play(if (enable) Sound.UNMUTE else Sound.MUTE)
         } catch (e: Exception) {
             lastError = e.friendlyMessage
@@ -387,10 +388,17 @@ class CallSession(private val context: Context, val account: MatrixAccount, priv
         try {
             liveKitRoom.localParticipant.setMicrophoneEnabled(true)
             microphoneOn = true
+            attachSoundboard()
         } catch (e: Exception) {
             microphoneOn = false
             lastError = "The microphone could not be started: ${e.friendlyMessage}"
         }
+    }
+
+    /** Soundboard clips are mixed into the microphone track. */
+    private fun attachSoundboard() {
+        val track = liveKitRoom.localParticipant.getTrackPublication(Track.Source.MICROPHONE)?.track as? io.livekit.android.room.track.LocalAudioTrack
+        track?.setAudioBufferCallback(ClipMixer)
     }
 
     // MARK: Ringing others

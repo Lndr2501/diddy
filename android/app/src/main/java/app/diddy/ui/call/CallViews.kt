@@ -49,6 +49,7 @@ import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Headset
 import androidx.compose.material.icons.filled.HeadsetOff
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.PhoneInTalk
@@ -105,6 +106,7 @@ import app.diddy.ui.sheets.FormSection
 import app.diddy.ui.sheets.FormToggle
 import app.diddy.ui.theme.Theme
 import io.livekit.android.renderer.TextureViewRenderer
+import app.diddy.util.friendlyMessage
 import io.livekit.android.room.track.VideoTrack
 import kotlinx.coroutines.launch
 
@@ -123,8 +125,13 @@ suspend fun startCall(account: MatrixAccount, roomId: String, title: String, nav
 fun CallOverlay(account: MatrixAccount, navigator: Navigator) {
     val scope = rememberCoroutineScope()
     val session = CallManager.current
+    val context = LocalContext.current
     val mic = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) CallManager.current?.let { s -> scope.launch { if (!s.microphoneOn) s.toggleMicrophone(true) } }
+        if (granted) CallManager.current?.let { s ->
+            // The call service may now keep the microphone running in the background.
+            app.diddy.call.CallService.start(context, s.roomName)
+            scope.launch { if (!s.microphoneOn) s.toggleMicrophone(true) }
+        }
     }
     var asked by remember { mutableStateOf(false) }
     LaunchedEffect(session) {
@@ -429,7 +436,9 @@ private fun ControlBar(session: CallSession) {
         val data = result.data
         if (result.resultCode == Activity.RESULT_OK && data != null) scope.launch { session.startScreenShare(data) }
     }
-    Row(Modifier.fillMaxWidth().background(Theme.sidebar).padding(horizontal = 8.dp, vertical = 12.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+    var soundboard by remember { mutableStateOf(false) }
+    if (soundboard) SoundboardSheet(session) { soundboard = false }
+    Row(Modifier.fillMaxWidth().background(Theme.sidebar).padding(horizontal = 4.dp, vertical = 12.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
         BarButton(if (session.speakerOn) Icons.AutoMirrored.Filled.VolumeUp else Icons.Filled.VolumeDown, "Speaker", highlight = session.speakerOn) { session.toggleSpeaker() }
         Box {
             BarButton(
@@ -452,6 +461,7 @@ private fun ControlBar(session: CallSession) {
             }
         }
         BarButton(if (session.deafened) Icons.Filled.HeadsetOff else Icons.Filled.Headset, "Deafen", warn = session.deafened) { scope.launch { session.toggleDeafen() } }
+        BarButton(Icons.Filled.LibraryMusic, "Soundboard", highlight = app.diddy.call.Soundboard.playing != null) { soundboard = true }
         BarButton(Icons.Filled.CallEnd, "Leave", destructive = true) { scope.launch { CallManager.leave() } }
     }
 }
@@ -472,9 +482,59 @@ private fun BarButton(icon: ImageVector, label: String, highlight: Boolean = fal
         else -> Theme.text
     }
     Box(
-        Modifier.size(50.dp).clip(CircleShape).background(background).combinedClickable(onClick = onClick, onLongClick = onLongClick),
+        Modifier.size(46.dp).clip(CircleShape).background(background).combinedClickable(onClick = onClick, onLongClick = onLongClick),
         contentAlignment = Alignment.Center,
-    ) { Icon(icon, label, tint = tint, modifier = Modifier.size(24.dp)) }
+    ) { Icon(icon, label, tint = tint, modifier = Modifier.size(22.dp)) }
+}
+
+/** The soundboard: tap a sound to play it for everyone in the call (ios SoundboardView). */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun SoundboardSheet(session: CallSession, onClose: () -> Unit) {
+    val board = app.diddy.call.Soundboard
+    var error by remember { mutableStateOf<String?>(null) }
+    var removing by remember { mutableStateOf<app.diddy.call.Soundboard.Clip?>(null) }
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) try { board.add(uri) } catch (e: Exception) { error = e.friendlyMessage }
+    }
+    app.diddy.ui.FullSheet("Soundboard", onClose, closeLabel = "Done", action = "Add", onAction = { picker.launch("audio/*") }) {
+        Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (!session.microphoneOn) Text("Your microphone is off: only you hear the sounds. Turn it on to play them for everyone.", color = Theme.muted, fontSize = 13.sp)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.VolumeDown, null, tint = Theme.muted)
+                Slider(board.volume.toFloat(), { board.changeVolume(it.toDouble()) }, Modifier.weight(1f),
+                    colors = SliderDefaults.colors(thumbColor = Theme.accent, activeTrackColor = Theme.accent))
+                Icon(Icons.AutoMirrored.Filled.VolumeUp, null, tint = Theme.muted)
+            }
+            if (board.clips.isEmpty()) Text("No sounds yet. Tap Add to pick audio files of up to 20 seconds.", color = Theme.muted)
+            LazyVerticalGrid(GridCells.Adaptive(100.dp), Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(board.clips, key = { it.id }) { clip ->
+                    Box(
+                        Modifier.height(64.dp).clip(RoundedCornerShape(12.dp))
+                            .background(if (board.playing == clip.id) Theme.accent else Theme.elevated)
+                            .combinedClickable(onClick = { board.play(clip) }, onLongClick = { removing = clip })
+                            .padding(8.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(clip.name, color = if (board.playing == clip.id) Theme.onAccent else Theme.text, fontSize = 13.sp, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+            }
+            if (board.playing != null) TextButton(onClick = { board.stopAll() }) { Text("Stop All", color = Theme.danger) }
+            Text("Long-press a sound to remove it.", color = Theme.faint, fontSize = 12.sp)
+        }
+    }
+    removing?.let { clip ->
+        AlertDialog(
+            onDismissRequest = { removing = null },
+            title = { Text("Remove ${clip.name}?") },
+            confirmButton = { TextButton(onClick = { board.remove(clip); removing = null }) { Text("Remove", color = Theme.danger) } },
+            dismissButton = { TextButton(onClick = { removing = null }) { Text("Cancel") } },
+        )
+    }
+    error?.let { message ->
+        AlertDialog(onDismissRequest = { error = null }, title = { Text("Soundboard") }, text = { Text(message) }, confirmButton = { TextButton(onClick = { error = null }) { Text("OK") } })
+    }
 }
 
 // MARK: - Bits elsewhere in the app

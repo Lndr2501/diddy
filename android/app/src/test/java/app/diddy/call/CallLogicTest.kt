@@ -65,3 +65,11 @@ class CallLogicTest {
         assertEquals(true, merged[0].microphoneOn)
     }
 }
+
+class ClipMixerTest {
+    @org.junit.Test fun monoAndResample() {
+        org.junit.Assert.assertArrayEquals(shortArrayOf(15, -5), ClipMixer.toMono(shortArrayOf(10, 20, -10, 0), 2))
+        org.junit.Assert.assertEquals(96, ClipMixer.resample(ShortArray(48) { it.toShort() }, 24000, 48000).size)
+        org.junit.Assert.assertEquals(10, ClipMixer.resample(ShortArray(10), 48000, 48000).size)
+    }
+}

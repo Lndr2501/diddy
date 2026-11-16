@@ -214,6 +214,7 @@ object CallManager {
         showCallScreen = false
         Sounds.inCall = false
         DiagLog.write("call: leaving")
+        Soundboard.stopAll()
         session.disconnect()
         CallService.stop(context)
         if (!silently) Sounds.play(Sound.CALL_LEFT)
@@ -294,7 +295,8 @@ class CallService : Service() {
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setContentIntent(open)
             .build()
-        var type = 0
+        // A call (MANAGE_OWN_CALLS), plus microphone and camera once they are allowed.
+        var type = if (Build.VERSION.SDK_INT >= 29) ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL else 0
         if (Build.VERSION.SDK_INT >= 30) {
             if (CallManager.microphoneAllowed) type = type or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
             if (CallManager.cameraAllowed) type = type or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
@@ -331,6 +333,7 @@ class CallService : Service() {
 object CallWiring {
     fun install(context: Context) {
         CallManager.init(context)
+        Soundboard.init(context)
         val previous = AppModel.Hooks.roomsChanged
         AppModel.Hooks.roomsChanged = { account, old, new ->
             previous(account, old, new)
