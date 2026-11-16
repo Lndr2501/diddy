@@ -327,3 +327,36 @@ async def test_extensions(tmp_path, monkeypatch):
     bot.unload_extension("ext_demo")
     assert bot.torn_down and await chat.say("!demo") == [] and "Demo" not in bot.cogs
     sys.modules.pop("ext_demo", None)
+
+
+async def test_auto_join_filter_declines_unwanted_invites():
+    """auto_join may be a function (inviter, room_id): others are declined, not joined."""
+    from types import SimpleNamespace
+
+    from diddybot.matrix import NioTransport
+
+    joined, left = [], []
+
+    class Client:
+        invited_rooms = {"!a:x": SimpleNamespace(inviter="@friend:good"),
+                         "!b:x": SimpleNamespace(inviter="@spam:evil")}
+
+        async def room_leave(self, room_id):
+            left.append(room_id)
+
+    class B:
+        auto_join = staticmethod(lambda inviter, room: inviter.endswith(":good"))
+
+        def _spawn(self, coro):
+            return asyncio.ensure_future(coro)
+
+    t = NioTransport.__new__(NioTransport)
+    t.bot, t.client, t._joining = B(), Client(), set()
+
+    async def fake_join(room_id):
+        joined.append(room_id)
+        t._joining.discard(room_id)
+    t._join = fake_join
+    await t._accept_invites()
+    await asyncio.sleep(0.05)
+    assert joined == ["!a:x"] and left == ["!b:x"]

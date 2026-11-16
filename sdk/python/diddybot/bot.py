@@ -9,6 +9,7 @@ import inspect
 import logging
 import os
 import re
+import signal
 import time
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Iterable, Optional, Union
@@ -379,7 +380,7 @@ class Bot:
         banner: Optional[tuple] = None,
         accent: str = "",
         encryption: bool = True,
-        auto_join: bool = True,
+        auto_join: Union[bool, Callable[[str, str], bool]] = True,
         help_command: bool = True,
         help_note: str = "",
         announce: bool = True,
@@ -776,8 +777,17 @@ class Bot:
         if not logging.getLogger().handlers:
             logging.basicConfig(level=logging.INFO,
                                 format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+        async def main() -> None:
+            loop = asyncio.get_running_loop()
+            for sig in (signal.SIGINT, signal.SIGTERM):  # Ctrl+C and ``docker stop`` end cleanly
+                try:
+                    loop.add_signal_handler(sig, self.stop)
+                except (NotImplementedError, RuntimeError):  # e.g. Windows
+                    pass
+            await self.start()
+
         try:
-            asyncio.run(self.start())
+            asyncio.run(main())
         except KeyboardInterrupt:
             pass
 

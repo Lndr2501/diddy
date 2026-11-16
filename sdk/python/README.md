@@ -400,7 +400,7 @@ async def test_count():
 | `display_name`, `avatar` (Bilddatei) | Profil des Kontos, wird beim Start gesetzt, wenn es sich geändert hat |
 | `about`, `banner=("#von", "#bis"[, winkel])`, `accent` | Bot-Profil in Diddy |
 | `DIDDY_BOT_OWNERS` / `owners` | Matrix-IDs der Besitzer (für `checks.owner()`), mit Komma getrennt |
-| `encryption`, `auto_join`, `announce`, `help_command`, `help_note` | Standard alles an |
+| `encryption`, `auto_join`, `announce`, `help_command`, `help_note` | Standard alles an. `auto_join` darf auch eine Funktion `(einlader, raum_id) -> bool` sein: nur gewünschte Einladungen werden angenommen, die anderen abgelehnt |
 | `strict`, `edit_interval`, `ignore_older_than`, `error_text` | siehe oben |
 
 Für alles andere: `bot.client` ist der `nio.AsyncClient` darunter ([matrix-nio](https://matrix-nio.readthedocs.io/)).
