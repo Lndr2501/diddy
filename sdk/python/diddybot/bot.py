@@ -426,6 +426,8 @@ class Bot:
         self._views: dict[str, View] = {}
         self._loops: list[Loop] = []
         self._later: list[Awaitable[Any]] = []
+        self._raw_event_callbacks: list[tuple[Any, Any]] = []
+        self._raw_to_device_callbacks: list[tuple[Any, Any]] = []
         self._store: Optional[Store] = None
         self._running = False
         self._tasks: set[asyncio.Task] = set()
@@ -568,6 +570,21 @@ class Bot:
         longer answers errors by itself. A command's own ``@cmd.error`` goes first."""
         self._error_handlers.append(_need_async(func))
         return func
+
+    # ------------------------------------------------------------------ raw nio access
+    def add_event_callback(self, callback: Callable[..., Any], types: Any) -> None:
+        """Escape hatch to matrix-nio: ``callback(room, event)`` for nio events of ``types`` (e.g.
+        ``nio.CallInviteEvent`` or ``nio.Event`` for everything). Works before and after login;
+        the library's own handling keeps running. For special protocols such as calls."""
+        self._raw_event_callbacks.append((callback, types))
+        if getattr(self._t, "client", None) is not None:
+            self._t.client.add_event_callback(callback, types)
+
+    def add_to_device_callback(self, callback: Callable[..., Any], types: Any) -> None:
+        """Like :meth:`add_event_callback` for to-device messages: ``callback(event)``."""
+        self._raw_to_device_callbacks.append((callback, types))
+        if getattr(self._t, "client", None) is not None:
+            self._t.client.add_to_device_callback(callback, types)
 
     # ------------------------------------------------------------------ events
     def listen(self, event: Any = "") -> Callable[[Handler], Handler]:
@@ -791,10 +808,17 @@ class Bot:
         except KeyboardInterrupt:
             pass
 
-    async def start(self) -> None:
-        """Log in, sync and handle events until :meth:`stop`."""
-        self._started_ms = int(time.time() * 1000)
+    async def login(self) -> None:
+        """Log in (saved token first, else password). :meth:`start` does this itself; call it
+        earlier only when you need the connection before the sync loop starts."""
         await self._t.login()
+
+    async def start(self, *, login: bool = True) -> None:
+        """Log in, sync and handle events until :meth:`stop`. ``login=False`` after an earlier
+        :meth:`login`."""
+        self._started_ms = int(time.time() * 1000)
+        if login:
+            await self._t.login()
         try:
             await self._t.run(self._ready)
         finally:

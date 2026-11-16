@@ -403,7 +403,9 @@ async def test_count():
 | `encryption`, `auto_join`, `announce`, `help_command`, `help_note` | Standard alles an. `auto_join` darf auch eine Funktion `(einlader, raum_id) -> bool` sein: nur gewünschte Einladungen werden angenommen, die anderen abgelehnt |
 | `strict`, `edit_interval`, `ignore_older_than`, `error_text` | siehe oben |
 
-Für alles andere: `bot.client` ist der `nio.AsyncClient` darunter ([matrix-nio](https://matrix-nio.readthedocs.io/)).
+Für alles andere: `bot.client` ist der `nio.AsyncClient` darunter ([matrix-nio](https://matrix-nio.readthedocs.io/)). Eigene nio-Ereignisse
+(z. B. Anruf-Signalisierung) greifst du mit `bot.add_event_callback(callback, nio.CallInviteEvent)` und
+`bot.add_to_device_callback(callback, typen)` ab; das geht schon vor dem Login.
 
 ## Betrieb
 

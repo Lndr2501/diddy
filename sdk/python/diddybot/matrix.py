@@ -65,6 +65,10 @@ class NioTransport:
         client = nio.AsyncClient(self.homeserver, user, device_id=device_id or None,
                                  store_path=self.store_path, config=config)
         client.add_event_callback(self._on_event, nio.Event)
+        for cb, types in self.bot._raw_event_callbacks:
+            client.add_event_callback(cb, types)
+        for cb, types in self.bot._raw_to_device_callbacks:
+            client.add_to_device_callback(cb, types)
         return client
 
     def _creds_path(self) -> str:

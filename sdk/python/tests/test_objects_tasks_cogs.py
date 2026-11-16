@@ -360,3 +360,37 @@ async def test_auto_join_filter_declines_unwanted_invites():
     await t._accept_invites()
     await asyncio.sleep(0.05)
     assert joined == ["!a:x"] and left == ["!b:x"]
+
+
+async def test_raw_nio_callbacks_reach_every_new_client():
+    import nio
+
+    from diddybot.matrix import NioTransport
+
+    seen = []
+    bot = Bot(transport=FakeTransport("@b:t"))
+    bot.add_event_callback(lambda room, ev: seen.append(ev), nio.Event)   # before login: stored
+    bot.add_to_device_callback(lambda ev: seen.append(ev), nio.ToDeviceEvent)
+    t = NioTransport(bot, homeserver="http://x", user_id="@b:t", store_path="/tmp/diddybot-cb-test",
+                     encryption=False)
+    client = t._new_client("@b:t", None)
+    assert any(c.func is bot._raw_event_callbacks[0][0] for c in client.event_callbacks)
+    assert any(c.func is bot._raw_to_device_callbacks[0][0] for c in client.to_device_callbacks)
+    await client.close()
+
+
+async def test_start_without_login_after_earlier_login():
+    bot = Bot(transport=FakeTransport("@b:t"))
+    calls = []
+    orig = bot._t.login
+
+    async def login():
+        calls.append("login")
+        await orig()
+    bot._t.login = login
+    await bot.login()
+    runner = asyncio.ensure_future(bot.start(login=False))
+    await asyncio.sleep(0.05)
+    bot.stop()
+    await asyncio.wait_for(runner, 5)
+    assert calls == ["login"]
