@@ -61,6 +61,15 @@ class CallLogicTest {
         assertArrayEquals(byteArrayOf(-5, -1), CallLogic.decodeBase64("-_8"))
     }
 
+    @Test fun lateRingsDoNotRing() {
+        assertEquals(true, CallLogic.ringIsLive(true, 2000, 0, 1000))
+        assertEquals(false, CallLogic.ringIsLive(true, 2000, 0, 2000))
+        assertEquals(false, CallLogic.ringIsLive(false, 2000, 0, 1000))
+        // No expiry: sent time plus the ring lifetime.
+        assertEquals(true, CallLogic.ringIsLive(true, 0, 1000, 1000 + CallLogic.RING_LIFETIME_MS - 1))
+        assertEquals(false, CallLogic.ringIsLive(true, 0, 1000, 1000 + CallLogic.RING_LIFETIME_MS))
+    }
+
     @Test fun onePerPersonMergesDevices() {
         val phone = CallMember("@a:x:P", "@a:x", "A", null, isLocal = false, isSpeaking = false, microphoneOn = false)
         val desk = CallMember("@a:x:D", "@a:x", "A", null, isLocal = false, isSpeaking = true, microphoneOn = true)

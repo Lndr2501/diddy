@@ -82,6 +82,9 @@
             </intent-filter>
         </service>
         <receiver
+            android:name=".call.CallActionReceiver"
+            android:exported="false" />
+        <receiver
             android:name=".push.BootReceiver"
             android:exported="false">
             <intent-filter>

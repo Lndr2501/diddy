@@ -209,7 +209,13 @@ object UnifiedPushing {
                         if (event.event.senderId() == account.userId) return
                         val messageLike = (runCatching { event.event.content() }.getOrNull() as? TimelineEventContent.MessageLike)?.content
                         if (messageLike is MessageLikeEventContent.RtcNotification) {
-                            Notifications.announceCall(account, roomId, roomName)
+                            val ring = messageLike.notificationType == org.matrix.rustcomponents.sdk.RtcNotificationType.RING
+                            // A push that arrives late (Doze, offline) must not ring for a call that is over.
+                            if (app.diddy.call.CallLogic.ringIsLive(ring, messageLike.expirationTs.toLong(), event.event.timestamp().toLong(), System.currentTimeMillis())) {
+                                Notifications.announceCall(account, roomId, roomName)
+                            } else if (!ring) {
+                                Notifications.postPush(account, roomId, roomName, "$sender started a call", mention = false, noisy = true)
+                            }
                             return
                         }
                         val text = preview(messageLike) ?: return

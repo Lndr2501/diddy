@@ -10,10 +10,15 @@ import kotlinx.coroutines.launch
 object IntentRouter {
     const val EXTRA_ACCOUNT = "app.diddy.account"
     const val EXTRA_ROOM = "app.diddy.room"
+    const val EXTRA_ANSWER = "app.diddy.answer"
 
     fun handle(context: Context, intent: Intent) {
         val account = intent.getStringExtra(EXTRA_ACCOUNT)
         val room = intent.getStringExtra(EXTRA_ROOM)
+        if (account != null && room != null && intent.getBooleanExtra(EXTRA_ANSWER, false)) {
+            AppModel.scope.launch { app.diddy.call.CallManager.answerFromNotification(account, room) }
+            return
+        }
         if (account != null && room != null) {
             AppModel.scope.launch { AppModel.open(room, account) }
             return

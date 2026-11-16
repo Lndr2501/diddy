@@ -274,6 +274,35 @@ object CallManager {
         incoming = null
     }
 
+    /** Answer in the call notification: Diddy has just opened, maybe from scratch. */
+    suspend fun answerFromNotification(accountId: String, roomId: String) {
+        Notifications.removeCall(accountId, roomId)
+        val ringing = incoming
+        if (ringing != null && ringing.account.id == accountId && ringing.roomId == roomId) {
+            answerIncoming()
+            return
+        }
+        // Rung by push while Diddy was closed: wait for the login to come back.
+        var waited = 0
+        while ((AppModel.restoring || AppModel.accounts.none { it.id == accountId }) && waited < 20_000) {
+            delay(250)
+            waited += 250
+        }
+        val account = AppModel.accounts.firstOrNull { it.id == accountId } ?: run {
+            error = "The call could not be answered: the account is not available."
+            return
+        }
+        onAnswer?.invoke(account)
+        join(account, roomId, account.summary(roomId)?.name ?: "Call", present = true)
+    }
+
+    /** Decline in the call notification. */
+    suspend fun declineFromNotification(accountId: String, roomId: String) {
+        Notifications.removeCall(accountId, roomId)
+        val ringing = incoming
+        if (ringing != null && ringing.account.id == accountId && ringing.roomId == roomId) declineIncoming()
+    }
+
     fun answerIncoming() {
         val call = incoming ?: return
         endRinging()
@@ -297,6 +326,12 @@ class CallService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val title = intent?.getStringExtra(EXTRA_TITLE) ?: "Call"
         val open = android.app.PendingIntent.getActivity(this, 1, Intent(this, MainActivity::class.java), android.app.PendingIntent.FLAG_IMMUTABLE)
+        val hangUp = android.app.PendingIntent.getBroadcast(
+            this, 3,
+            Intent(this, CallActionReceiver::class.java).setAction(CallActionReceiver.ACTION_HANG_UP),
+            android.app.PendingIntent.FLAG_IMMUTABLE,
+        )
+        val room = androidx.core.app.Person.Builder().setName(title).setImportant(true).build()
         val notification = NotificationCompat.Builder(this, Notifications.CHANNEL_CALLS)
             .setSmallIcon(R.drawable.ic_launcher_monochrome)
             .setContentTitle(title)
@@ -305,6 +340,8 @@ class CallService : Service() {
             .setSilent(true)
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setContentIntent(open)
+            .setStyle(NotificationCompat.CallStyle.forOngoingCall(room, hangUp))
+            .setUsesChronometer(true)
             .build()
         // A call (MANAGE_OWN_CALLS), plus microphone and camera once they are allowed.
         var type = if (Build.VERSION.SDK_INT >= 29) ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL else 0
@@ -337,6 +374,32 @@ class CallService : Service() {
         fun stop(context: Context) {
             context.stopService(Intent(context, CallService::class.java))
         }
+    }
+}
+
+/** Hang up and Decline from the call notifications. */
+class CallActionReceiver : android.content.BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        val pending = goAsync()
+        AppModel.scope.launch {
+            try {
+                when (intent.action) {
+                    ACTION_HANG_UP -> CallManager.leave()
+                    ACTION_DECLINE -> {
+                        val account = intent.getStringExtra(app.diddy.IntentRouter.EXTRA_ACCOUNT) ?: return@launch
+                        val room = intent.getStringExtra(app.diddy.IntentRouter.EXTRA_ROOM) ?: return@launch
+                        CallManager.declineFromNotification(account, room)
+                    }
+                }
+            } finally {
+                pending.finish()
+            }
+        }
+    }
+
+    companion object {
+        const val ACTION_HANG_UP = "app.diddy.call.HANG_UP"
+        const val ACTION_DECLINE = "app.diddy.call.DECLINE"
     }
 }
 
