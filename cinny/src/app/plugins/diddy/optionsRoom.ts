@@ -24,6 +24,14 @@ import {
 import { diag } from '../diagnostics';
 import { BADGE_STATE_LEVEL } from './badgePower';
 import { getHierarchyPage } from './hierarchyCache';
+import {
+  parseRoomLists,
+  reconcileRoomLists,
+  RoomLists,
+  roomListsContent,
+  ROOM_LISTS_EVENT,
+  sameRoomLists,
+} from './roomListSync';
 
 /** Synchronous read of the "Developer Tools" setting (it lives in localStorage). */
 export const isDeveloperToolsOn = (): boolean => {
@@ -64,7 +72,7 @@ if (typeof window !== 'undefined' && typeof window.addEventListener === 'functio
   });
 }
 
-const setLightRoomIds = (ids: string[]) => {
+const setLightRoomIds = (ids: string[], share = true) => {
   lightRoomCache = undefined;
   try {
     localStorage.setItem(LIGHT_ROOMS_KEY, JSON.stringify(ids));
@@ -72,6 +80,8 @@ const setLightRoomIds = (ids: string[]) => {
     // ignore (storage full / unavailable)
   }
   window.dispatchEvent(new CustomEvent(LIGHT_ROOMS_EVENT));
+  // eslint-disable-next-line @typescript-eslint/no-use-before-define
+  if (share) shareRoomLists();
 };
 
 export const addLightOptionsRoom = (roomId: string): void => {
@@ -80,6 +90,9 @@ export const addLightOptionsRoom = (roomId: string): void => {
     ids.push(roomId);
     diag(`diddy: room selected as message-mode options room room=${roomId}`);
   }
+  // picked again on purpose: it is no longer a room that was left for good
+  // eslint-disable-next-line @typescript-eslint/no-use-before-define
+  forgetLeftOptionsRoom(roomId);
   setLightRoomIds(ids);
 };
 
@@ -104,19 +117,121 @@ const getLeftRoomIds = (): string[] => {
   }
 };
 
-/** Call when the user leaves an options room themselves: it will not be auto-joined again. */
-export const rememberLeftOptionsRoom = (roomId: string): void => {
-  const ids = getLeftRoomIds();
-  if (ids.includes(roomId)) return;
-  ids.push(roomId);
+const setLeftRoomIds = (ids: string[], share = true) => {
   try {
     localStorage.setItem(LEFT_ROOMS_KEY, JSON.stringify(ids));
   } catch {
     // ignore (storage full / unavailable)
   }
+  // eslint-disable-next-line @typescript-eslint/no-use-before-define
+  if (share) shareRoomLists();
+};
+
+/** Call when the user leaves an options room themselves: it will not be auto-joined again. */
+export const rememberLeftOptionsRoom = (roomId: string): void => {
+  const ids = getLeftRoomIds();
+  if (ids.includes(roomId)) return;
+  setLeftRoomIds([...ids, roomId]);
+};
+
+const forgetLeftOptionsRoom = (roomId: string): void => {
+  const ids = getLeftRoomIds();
+  if (ids.includes(roomId)) setLeftRoomIds(ids.filter((id) => id !== roomId), false);
 };
 
 export const wasLeftOnPurpose = (roomId: string): boolean => getLeftRoomIds().includes(roomId);
+
+// --- the same lists on every device of the account (roomListSync.ts) ----------------------------
+
+const MERGED_KEY = 'diddyRoomListsMerged';
+let listClient: MatrixClient | undefined;
+/** The account data was read for listClient (then local changes are written right away). */
+let listsReconciled = false;
+/** Local changes made before the account data was known: joined with it instead of replaced. */
+let localChangesPending = false;
+
+const mergedUsers = (): string[] => {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(MERGED_KEY) ?? '[]');
+    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : [];
+  } catch {
+    return [];
+  }
+};
+const markMerged = (userId: string) => {
+  const users = mergedUsers();
+  if (users.includes(userId)) return;
+  try {
+    localStorage.setItem(MERGED_KEY, JSON.stringify([...users, userId]));
+  } catch {
+    // ignore
+  }
+};
+
+const localRoomLists = (): RoomLists => ({ light: getLightRoomIds(), left: getLeftRoomIds() });
+
+const storeRoomListsLocally = (lists: RoomLists) => {
+  const before = localRoomLists();
+  if (sameRoomLists(before, lists)) return;
+  setLeftRoomIds(lists.left, false);
+  setLightRoomIds(lists.light, false);
+  diag(`diddy: options room lists taken from the account light=${lists.light.length} left=${lists.left.length}`);
+};
+
+const writeRoomLists = (mx: MatrixClient, lists: RoomLists) => {
+  mx.setAccountData(ROOM_LISTS_EVENT as never, roomListsContent(lists) as never).catch((e) =>
+    diag(`diddy: could not save the options room lists: ${e instanceof Error ? e.message : String(e)}`)
+  );
+};
+
+function shareRoomLists() {
+  const mx = listClient;
+  if (!mx) return;
+  if (!listsReconciled) {
+    localChangesPending = true;
+    return;
+  }
+  const remote = parseRoomLists(mx.getAccountData(ROOM_LISTS_EVENT as never)?.getContent());
+  const local = localRoomLists();
+  if (!remote || !sameRoomLists(remote, local)) writeRoomLists(mx, local);
+}
+
+const reconcileWithAccount = (mx: MatrixClient) => {
+  if (listClient !== mx) return;
+  const event = mx.getAccountData(ROOM_LISTS_EVENT as never);
+  // before the first sync the account data may simply not be loaded yet
+  if (!event && !mx.isInitialSyncComplete()) return;
+  const userId = mx.getSafeUserId();
+  const merged = listsReconciled ? !localChangesPending : mergedUsers().includes(userId) && !localChangesPending;
+  const { next, write } = reconcileRoomLists(localRoomLists(), parseRoomLists(event?.getContent()), merged);
+  listsReconciled = true;
+  localChangesPending = false;
+  markMerged(userId);
+  storeRoomListsLocally(next);
+  if (write) writeRoomLists(mx, next);
+};
+
+const onListAccountData = (event: { getType: () => string }) => {
+  if (event.getType() === ROOM_LISTS_EVENT && listClient) reconcileWithAccount(listClient);
+};
+const onListSync = () => {
+  if (listClient && !listsReconciled) reconcileWithAccount(listClient);
+};
+
+/** Keeps the message-mode and left-room lists of this device in step with the account. */
+export const attachRoomListSync = (mx: MatrixClient): void => {
+  if (listClient === mx) return;
+  if (listClient) {
+    listClient.off(ClientEvent.AccountData, onListAccountData);
+    listClient.off(ClientEvent.Sync, onListSync);
+  }
+  listClient = mx;
+  listsReconciled = false;
+  localChangesPending = false;
+  mx.on(ClientEvent.AccountData, onListAccountData);
+  mx.on(ClientEvent.Sync, onListSync);
+  reconcileWithAccount(mx);
+};
 
 export const isOptionsRoom = (room: Room | null | undefined): boolean =>
   !!room && (!!room.currentState.getStateEvents(OPTIONS_MARKER_EVENT, '') || isLightOptionsRoom(room));

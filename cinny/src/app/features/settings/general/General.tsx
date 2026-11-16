@@ -833,10 +833,16 @@ function Messages() {
 export function WelcomeGuideSettings() {
   const mx = useMatrixClient();
   const [shown, setShown] = useState(false);
+  const [syncSettings, setSyncSettings] = useSetting(settingsAtom, 'syncSettings');
 
   return (
     <InsetSection title="Diddy">
       <InsetGroup>
+        <InsetRow
+          title="Sync settings between devices"
+          description="Theme, message layout, editor, timeline and date settings follow your account to every Diddy device. Zoom and notifications stay per device."
+          after={<Switch variant="Primary" value={syncSettings} onChange={setSyncSettings} />}
+        />
         <InsetRow
           title="Welcome guide"
           description="Show the setup walkthrough for Diddy servers again."

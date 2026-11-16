@@ -219,11 +219,12 @@ export const SETTINGS_SEARCH_INDEX: Record<string, SettingsSearchEntry> = {
   },
   about: {
     name: 'About',
-    keywords: 'version cache reload credits source',
+    keywords: 'version cache reload credits source sync devices',
     titles: [
       'About',
       'Diddy',
       'Welcome guide',
+      'Sync settings between devices',
       'Updates',
       'Check for updates',
       'Update repository',
