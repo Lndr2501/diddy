@@ -28,3 +28,48 @@ export const pickNewestProfile = <T>(
   });
   return best?.profile;
 };
+
+/** Same JSON whatever the key order (sanitized profiles are compared, not raw events). */
+const stableJson = (value: unknown): string => {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`;
+  if (value && typeof value === 'object') {
+    const obj = value as Record<string, unknown>;
+    return `{${Object.keys(obj)
+      .filter((k) => obj[k] !== undefined)
+      .sort()
+      .map((k) => `${JSON.stringify(k)}:${stableJson(obj[k])}`)
+      .join(',')}}`;
+  }
+  return JSON.stringify(value) ?? 'null';
+};
+
+/**
+ * Which rooms hold an older or different copy of the newest profile (or none at all), so the
+ * newest one can be copied there. `newest` is the index of the winning room, undefined when no
+ * room holds a valid profile (then nothing is copied anywhere).
+ */
+export const staleProfileRooms = <T>(
+  candidates: ReadonlyArray<StoredProfile | undefined>,
+  sanitize: (content: unknown) => T | undefined
+): { newest?: number; stale: number[] } => {
+  let newest: number | undefined;
+  let best: { profile: T; ts: number } | undefined;
+  candidates.forEach((candidate, i) => {
+    if (!candidate || !Number.isFinite(candidate.ts)) return;
+    if (best && candidate.ts <= best.ts) return;
+    const profile = sanitize(candidate.content);
+    if (profile !== undefined) {
+      best = { profile, ts: candidate.ts };
+      newest = i;
+    }
+  });
+  if (!best || newest === undefined) return { stale: [] };
+  const want = stableJson(best.profile);
+  const stale: number[] = [];
+  candidates.forEach((candidate, i) => {
+    if (i === newest) return;
+    const profile = candidate ? sanitize(candidate.content) : undefined;
+    if (profile === undefined || stableJson(profile) !== want) stale.push(i);
+  });
+  return { newest, stale };
+};

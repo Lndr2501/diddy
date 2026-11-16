@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Files Diddy hands to other apps: downloaded attachments, voice messages and diagnostics. -->
+<paths>
+    <cache-path name="cache" path="." />
+</paths>

@@ -51,6 +51,7 @@ import {
   PROFILE_EVENT,
 } from './types';
 import {
+  attachRoomListSync,
   getOptionsRooms,
   getPrimaryOptionsRoom,
   isLightOptionsRoom,
@@ -58,7 +59,7 @@ import {
   LIGHT_ROOMS_EVENT,
 } from './optionsRoom';
 import { sanitizeBadgeDef, sanitizeProfile } from './sanitize';
-import { pickNewestProfile } from './profilePick';
+import { pickNewestProfile, staleProfileRooms } from './profilePick';
 import { stampClientVersion } from './clientVersion';
 import { usePreviewOverride } from './previewOverride';
 import { APP_VERSION } from '../../appInfo';
@@ -182,9 +183,19 @@ type DropReason = 'tooLarge' | 'future' | 'noKey' | 'badSender' | 'undecrypted';
 const MAX_DROP_IDS = 5000;
 /** roomId -> reason -> ids of dropped events (a set, so seeing an event twice counts once) */
 const droppedIds = new Map<string, Map<DropReason, Set<string>>>();
+/** roomId -> ids of our own events that could not be decrypted yet (they may hold a newer profile). */
+const undecryptedOwn = new Map<string, Set<string>>();
 const noteDrop = (roomId: string, reason: DropReason, event: MatrixEvent) => {
   const id = event.getId();
   if (!id) return;
+  if (reason === 'undecrypted' && event.getSender() === attachedTo?.getUserId()) {
+    let own = undecryptedOwn.get(roomId);
+    if (!own) {
+      own = new Set();
+      undecryptedOwn.set(roomId, own);
+    }
+    if (own.size < MAX_DROP_IDS) own.add(id);
+  }
   let byReason = droppedIds.get(roomId);
   if (!byReason) {
     byReason = new Map();
@@ -200,10 +211,14 @@ const noteDrop = (roomId: string, reason: DropReason, event: MatrixEvent) => {
 const clearDrop = (roomId: string, reason: DropReason, event: MatrixEvent) => {
   const id = event.getId();
   if (id) droppedIds.get(roomId)?.get(reason)?.delete(id);
+  if (id && reason === 'undecrypted') undecryptedOwn.get(roomId)?.delete(id);
 };
 
 /** Own entries among the newest events of each room (no re-send on every app start). */
 const recentOwn = new RecentOwnData();
+/** Options rooms checked for an older copy of your profile this session (see healOwnProfile). */
+const healedRooms = new Set<string>();
+let healTimer: number | undefined;
 
 /** `recent`: the event is among the newest RECENT_WINDOW_EVENTS of the room (live or first page). */
 const ingestEvent = (event: MatrixEvent, roomId: string | undefined, recent = true): boolean => {
@@ -476,6 +491,8 @@ const backfillRoom = (mx: MatrixClient, room: Room) => {
       );
       // also without new data: waiting profile writes may go ahead now
       notify();
+      // eslint-disable-next-line no-use-before-define
+      scheduleHeal();
     })
     .catch((e) => {
       diag(
@@ -490,6 +507,8 @@ const backfillRoom = (mx: MatrixClient, room: Room) => {
         // nothing more to learn this session; do not block profile writes forever
         scannedRooms.add(room.roomId);
         notify();
+        // eslint-disable-next-line no-use-before-define
+        scheduleHeal();
       }
     });
 };
@@ -782,6 +801,8 @@ const syncRooms = (mx: MatrixClient) => {
     if (badgesAsMessages(room)) backfillRoom(mx, room);
   });
   if (changed) notify();
+  // eslint-disable-next-line no-use-before-define
+  scheduleHeal();
 };
 
 const attach = (mx: MatrixClient) => {
@@ -799,8 +820,12 @@ const attach = (mx: MatrixClient) => {
     stateWritesRejected.clear();
     badgePowerChecked.clear();
     scannedRooms.clear();
+    healedRooms.clear();
+    undecryptedOwn.clear();
+    window.clearTimeout(healTimer);
   }
   attachedTo = mx;
+  attachRoomListSync(mx);
   mx.on(RoomStateEvent.Events, onStateEvent);
   mx.on(RoomEvent.Timeline, onTimelineEvent);
   mx.on(MatrixEventEvent.Decrypted, onDecrypted);
@@ -885,6 +910,8 @@ function onMyMembership(room: Room, membership: string) {
     backfillTries.delete(room.roomId);
     membersRequested.delete(room.roomId);
     scannedRooms.delete(room.roomId);
+    healedRooms.delete(room.roomId);
+    undecryptedOwn.delete(room.roomId);
   }
   onRoomChange();
 }
@@ -986,6 +1013,39 @@ export const writeDiddyData = async (
   }
 };
 
+/**
+ * Writes the same data into several options rooms. Members of each room only read that room, so
+ * a profile or badge written into one room alone never reached people who share another options
+ * room with you (another server). Succeeds when at least one room took it; the rooms that did are
+ * returned. Throws the first error when none did.
+ */
+const writeToRooms = async (
+  mx: MatrixClient,
+  rooms: Room[],
+  eventType: string,
+  content: object,
+  key: string
+): Promise<Room[]> => {
+  if (rooms.length === 0) throw new Error('No Diddy Options room found.');
+  const results = await Promise.allSettled(
+    rooms.map((room) => writeDiddyData(mx, room, eventType, content, key))
+  );
+  const written = rooms.filter((_, i) => results[i].status === 'fulfilled');
+  results.forEach((r, i) => {
+    if (r.status === 'rejected')
+      diag(
+        `diddy: write failed type=${eventType} room=${rooms[i].roomId}: ${
+          r.reason instanceof Error ? r.reason.message : String(r.reason)
+        }`
+      );
+  });
+  if (written.length === 0) {
+    const failed = results.find((r): r is PromiseRejectedResult => r.status === 'rejected');
+    throw failed?.reason ?? new Error('Could not save.');
+  }
+  return written;
+};
+
 const useDiddyVersion = (mx: MatrixClient): number => {
   attach(mx);
   return useSyncExternalStore(
@@ -1070,14 +1130,65 @@ const waitForOwnProfile = (mx: MatrixClient, timeoutMs: number): Promise<boolean
 
 export const setMyProfile = async (mx: MatrixClient, profile: DiddyProfile): Promise<void> => {
   if (!ownProfileKnown(mx)) throw new Error(PROFILE_LOADING);
-  const room = getPrimaryOptionsRoom(mx);
-  if (!room) throw new Error('No Diddy Options room found.');
+  const rooms = getOptionsRooms(mx);
+  if (rooms.length === 0) throw new Error('No Diddy Options room found.');
   // every write carries this client's version (#75), or none when you do not share it
   const stamped = stampClientVersion(profile, getShareVersion() ? APP_VERSION : undefined);
-  await writeDiddyData(mx, room, PROFILE_EVENT, stamped, mx.getSafeUserId());
+  // into every options room: people of each of your servers read only their own room
+  const written = await writeToRooms(mx, rooms, PROFILE_EVENT, stamped, mx.getSafeUserId());
   // the write itself is the announcement: joins before it are already covered
-  announcer.markSent(room.roomId);
+  written.forEach((room) => {
+    announcer.markSent(room.roomId);
+    healedRooms.add(room.roomId);
+  });
 };
+
+// --- rooms with an older copy of your own profile ----------------------------------------------
+// Before profiles went into every options room, a profile change reached only the first room. The
+// other rooms (other servers, rooms another device used) kept an old copy, and message-mode rooms
+// skipped re-sending because "a profile of yours is recent there". Once per room and session the
+// newest profile is copied into rooms whose copy differs.
+
+let healing = false;
+const HEAL_DELAY_MS = 8000;
+
+const healOwnProfile = async (mx: MatrixClient): Promise<void> => {
+  if (healing || attachedTo !== mx || !ownProfileKnown(mx)) return;
+  const rooms = getOptionsRooms(mx);
+  if (rooms.length < 2 || rooms.every((room) => healedRooms.has(room.roomId))) return;
+  // one of our own events is still encrypted: it could be the newest profile, never overwrite it
+  if (rooms.some((room) => (undecryptedOwn.get(room.roomId)?.size ?? 0) > 0)) return;
+  const me = mx.getSafeUserId();
+  const perRoom = rooms.map((room) => readData(room, PROFILE_EVENT, me, me));
+  const { newest, stale } = staleProfileRooms(perRoom, sanitizeProfile);
+  if (newest === undefined) return;
+  const source = perRoom[newest];
+  rooms.forEach((room, i) => {
+    if (!stale.includes(i)) healedRooms.add(room.roomId);
+  });
+  const targets = stale.map((i) => rooms[i]).filter((room) => !healedRooms.has(room.roomId));
+  if (!source || targets.length === 0) return;
+  healing = true;
+  try {
+    targets.forEach((room) => healedRooms.add(room.roomId));
+    const written = await writeToRooms(mx, targets, PROFILE_EVENT, source.content, me);
+    written.forEach((room) => announcer.markSent(room.roomId));
+    diag(`diddy: own profile copied into ${written.length} options room(s) with an older copy`);
+  } catch (e) {
+    diag(`diddy: could not copy the own profile: ${e instanceof Error ? e.message : String(e)}`);
+  } finally {
+    healing = false;
+  }
+};
+
+function scheduleHeal() {
+  const mx = attachedTo;
+  if (!mx) return;
+  window.clearTimeout(healTimer);
+  healTimer = window.setTimeout(() => {
+    void healOwnProfile(mx);
+  }, HEAL_DELAY_MS);
+}
 
 /** Updates parts of your profile, keeping everything else. */
 export const patchMyProfile = async (
@@ -1247,13 +1358,30 @@ export const createCustomBadge = async (
   mx: MatrixClient,
   def: Omit<BadgeDef, 'id' | 'createdBy' | 'global'>
 ): Promise<string> => {
-  const room = getPrimaryOptionsRoom(mx);
-  if (!room) throw new Error('No Diddy Options room found.');
   const id = makeBadgeId(mx.getSafeUserId(), Date.now(), Math.random().toString(36).slice(2, 6));
-  await writeDiddyData(mx, room, BADGE_DEF_EVENT, { ...def, createdBy: mx.getSafeUserId() }, id);
-  badgeAnnouncer.markSent(room.roomId);
+  // into every options room, so the badge can be given to people of any of your servers
+  const written = await writeToRooms(
+    mx,
+    getOptionsRooms(mx),
+    BADGE_DEF_EVENT,
+    { ...def, createdBy: mx.getSafeUserId() },
+    id
+  );
+  written.forEach((room) => badgeAnnouncer.markSent(room.roomId));
   return id;
 };
+
+/** Options rooms in which `userId` is a joined member (where their badges are read). */
+const roomsOfMember = (mx: MatrixClient, userId: string): Room[] =>
+  getOptionsRooms(mx).filter((room) => room.getMember(userId)?.membership === 'join');
+
+/** Rooms that hold any version of this key (where a removal has to go). */
+const roomsWithKey = (mx: MatrixClient, type: string, key: string): Room[] =>
+  getOptionsRooms(mx).filter(
+    (room) =>
+      !!room.currentState.getStateEvents(type, key) ||
+      (messageData.get(room.roomId)?.get(type)?.get(key)?.size ?? 0) > 0
+  );
 
 /** Deletes a custom badge from the library. Only its creator can (empty definition = deleted). */
 export const deleteBadgeDef = async (mx: MatrixClient, badge: BadgeDef): Promise<void> => {
@@ -1261,8 +1389,9 @@ export const deleteBadgeDef = async (mx: MatrixClient, badge: BadgeDef): Promise
   if (!room) throw new Error('No Diddy Options room found.');
   if (badge.global || badge.createdBy !== mx.getSafeUserId())
     throw new Error('Only the creator can delete this badge.');
-  await writeDiddyData(mx, room, BADGE_DEF_EVENT, {}, badge.id);
-  badgeAnnouncer.markSent(room.roomId);
+  const rooms = roomsWithKey(mx, BADGE_DEF_EVENT, badge.id);
+  const written = await writeToRooms(mx, rooms.length > 0 ? rooms : [room], BADGE_DEF_EVENT, {}, badge.id);
+  written.forEach((r) => badgeAnnouncer.markSent(r.roomId));
 };
 
 export const awardBadge = async (
@@ -1272,9 +1401,26 @@ export const awardBadge = async (
 ): Promise<void> => {
   const room = getPrimaryOptionsRoom(mx);
   if (!room) throw new Error('No Diddy Options room found.');
-  const content: BadgeAward = { by: mx.getSafeUserId(), at: Date.now() };
-  await writeDiddyData(mx, room, BADGE_AWARD_EVENT, content, awardStateKey(badgeId, userId));
-  badgeAnnouncer.markSent(room.roomId);
+  const me = mx.getSafeUserId();
+  // the award goes where the person is a member: their friends there read only that room
+  const memberRooms = roomsOfMember(mx, userId);
+  const targets = memberRooms.length > 0 ? memberRooms : [room];
+  // a custom badge of ours that a target room does not know yet: its definition goes along
+  const global = GLOBAL_BADGES.some((g) => g.id === badgeId);
+  if (!global) {
+    const def = getOptionsRooms(mx)
+      .map((r) => readData(r, BADGE_DEF_EVENT, badgeId, me))
+      .filter((c): c is Candidate => !!c && Object.keys(c.content).length > 0)
+      .sort((a, b) => b.ts - a.ts)[0];
+    const missing = def
+      ? targets.filter((r) => !readCandidates(r, BADGE_DEF_EVENT, badgeId).length)
+      : [];
+    if (def && missing.length > 0)
+      await writeToRooms(mx, missing, BADGE_DEF_EVENT, def.content, badgeId).catch(() => []);
+  }
+  const content: BadgeAward = { by: me, at: Date.now() };
+  const written = await writeToRooms(mx, targets, BADGE_AWARD_EVENT, content, awardStateKey(badgeId, userId));
+  written.forEach((r) => badgeAnnouncer.markSent(r.roomId));
 };
 
 export const revokeBadge = async (
@@ -1284,7 +1430,10 @@ export const revokeBadge = async (
 ): Promise<void> => {
   const room = getPrimaryOptionsRoom(mx);
   if (!room) throw new Error('No Diddy Options room found.');
-  await writeDiddyData(mx, room, BADGE_AWARD_EVENT, {}, awardStateKey(badgeId, userId));
+  const key = awardStateKey(badgeId, userId);
+  // removed everywhere the award was ever written
+  const rooms = roomsWithKey(mx, BADGE_AWARD_EVENT, key);
+  await writeToRooms(mx, rooms.length > 0 ? rooms : [room], BADGE_AWARD_EVENT, {}, key);
 };
 
 // --- moderation --------------------------------------------------------------------------------

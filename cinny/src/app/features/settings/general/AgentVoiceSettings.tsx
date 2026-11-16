@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { Button, Switch, Text } from 'folds';
+import React, { useCallback, useState } from 'react';
+import { Button, color, Switch, Text } from 'folds';
 import { InsetGroup, InsetRow, InsetSection, SegmentedControl } from '../inset-list';
 import {
   updateAgentVoicePrefs,
@@ -12,54 +12,13 @@ import {
   FN_KEY,
   formatHotkey,
   globalHotkeyReach,
-  hotkeyFromEvent,
-  isModifierCode,
+  hotkeysClash,
 } from '../../../plugins/agentVoice/hotkey';
+import { HotkeyRecorder } from './HotkeyRecorder';
+import { usePushToTalkPrefs } from '../../../state/pushToTalk';
 import { AgentMuteMode } from '../../../plugins/agentVoice/session';
 import { isMacOS } from '../../../utils/user-agent';
 import { canInvoke } from '../../../plugins/tauri';
-
-/**
- * Records the next key (or key combination). A lone modifier such as right Option counts when it
- * is let go without another key, so Ctrl + Shift + Space can still be recorded.
- */
-function HotkeyRecorder({ onDone }: { onDone: () => void }) {
-  useEffect(() => {
-    let pendingModifier: string | undefined;
-    const onKeyDown = (evt: KeyboardEvent) => {
-      evt.preventDefault();
-      evt.stopPropagation();
-      if (evt.code === 'Escape') {
-        onDone();
-        return;
-      }
-      if (isModifierCode(evt.code)) {
-        pendingModifier = evt.code;
-        return;
-      }
-      pendingModifier = undefined;
-      const hotkey = hotkeyFromEvent(evt);
-      if (!hotkey) return;
-      updateAgentVoicePrefs({ hotkey });
-      onDone();
-    };
-    const onKeyUp = (evt: KeyboardEvent) => {
-      evt.preventDefault();
-      evt.stopPropagation();
-      if (pendingModifier && evt.code === pendingModifier) {
-        updateAgentVoicePrefs({ hotkey: hotkeyFromEvent(evt) });
-        onDone();
-      }
-    };
-    window.addEventListener('keydown', onKeyDown, true);
-    window.addEventListener('keyup', onKeyUp, true);
-    return () => {
-      window.removeEventListener('keydown', onKeyDown, true);
-      window.removeEventListener('keyup', onKeyUp, true);
-    };
-  }, [onDone]);
-  return null;
-}
 
 const MODES: { value: AgentHotkeyMode; label: string }[] = [
   { value: 'hold', label: 'Hold' },
@@ -87,6 +46,8 @@ export function AgentVoiceSettings() {
   const fnPossible = mac && desktop;
   const linuxDesktop = desktop && !mac;
   const globalInfo = useGlobalHotkeyInfo();
+  const ptt = usePushToTalkPrefs();
+  const clash = ptt.mode === 'ptt' && hotkeysClash(prefs.hotkey, ptt.hotkey);
 
   let reach = 'Only while the Diddy window is focused.';
   if (desktop && mac && canReadNatively(prefs.hotkey)) {
@@ -136,7 +97,21 @@ export function AgentVoiceSettings() {
           <>
             <InsetRow
               title="Hotkey"
-              description={recording ? 'Press the key now (Escape cancels).' : reach}
+              description={
+                recording ? (
+                  'Press the key now (Escape cancels).'
+                ) : (
+                  <>
+                    {reach}
+                    {clash && (
+                      <Text as="span" size="T200" style={{ color: color.Critical.Main }}>
+                        {' '}
+                        Push to talk uses the same key: pick another one for one of them.
+                      </Text>
+                    )}
+                  </>
+                )
+              }
               after={
                 <>
                   {fnPossible && !recording && (
@@ -171,7 +146,12 @@ export function AgentVoiceSettings() {
                       {recording ? 'Press a key...' : formatHotkey(prefs.hotkey, mac)}
                     </Text>
                   </Button>
-                  {recording && <HotkeyRecorder onDone={stopRecording} />}
+                  {recording && (
+                    <HotkeyRecorder
+                      onRecord={(hotkey) => updateAgentVoicePrefs({ hotkey })}
+                      onDone={stopRecording}
+                    />
+                  )}
                 </>
               }
             />

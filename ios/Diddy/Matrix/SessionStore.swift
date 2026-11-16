@@ -51,6 +51,13 @@ enum AccountList {
         }
     }
 
+    /// False when a list is saved but cannot be read (damaged). It then looks empty, and nothing may
+    /// be cleaned up on that basis.
+    static var isReadable: Bool {
+        guard let data = UserDefaults.standard.data(forKey: key) else { return true }
+        return (try? JSONDecoder().decode([AccountRecord].self, from: data)) != nil
+    }
+
     static var activeAccountId: String? {
         get { UserDefaults.standard.string(forKey: activeKey) }
         set { UserDefaults.standard.set(newValue, forKey: activeKey) }
@@ -130,6 +137,21 @@ enum SessionStore {
         )
     }
 
+    /// The account ids of all saved sessions in the Keychain.
+    static func allAccountIds() -> [String] {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecReturnAttributes as String: true,
+            kSecMatchLimit as String: kSecMatchLimitAll,
+        ]
+        var result: AnyObject?
+        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
+              let items = result as? [[String: Any]]
+        else { return [] }
+        return items.compactMap { $0[kSecAttrAccount as String] as? String }
+    }
+
     static func delete(accountId: String) {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -137,6 +159,49 @@ enum SessionStore {
             kSecAttrAccount as String: accountId,
         ]
         SecItemDelete(query as CFDictionary)
+    }
+}
+
+/// Removes what a login left behind when it never became an account on the list (the app died
+/// during the login, or the list was lost): its folders and its Keychain item. It never touches a
+/// listed account or a login that is running right now.
+enum AccountCleanup {
+    /// Ids of logins in progress. LoginService adds one when it creates a login's folders and
+    /// removes it when it deletes them; once a login succeeded the id stays (it is on the list
+    /// from then on, and the start-up pass has long run).
+    private static var inProgress: Set<String> = []
+    private static let lock = NSLock()
+
+    static func began(_ accountId: String) {
+        lock.lock(); defer { lock.unlock() }
+        inProgress.insert(accountId)
+    }
+
+    static func ended(_ accountId: String) {
+        lock.lock(); defer { lock.unlock() }
+        inProgress.remove(accountId)
+    }
+
+    /// Run once at start, before any login can begin.
+    static func run() {
+        // A list that cannot be read looks empty; deleting on that basis would erase real accounts.
+        guard AccountList.isReadable else { return }
+        let listed = Set(AccountList.load().map(\.id))
+        lock.lock()
+        let running = inProgress
+        lock.unlock()
+        let fileManager = FileManager.default
+        for base in [fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0],
+                     fileManager.urls(for: .cachesDirectory, in: .userDomainMask)[0]] {
+            let accounts = base.appendingPathComponent("Accounts", isDirectory: true)
+            let names = (try? fileManager.contentsOfDirectory(atPath: accounts.path)) ?? []
+            for id in AccountCleanupLogic.orphans(found: names, listed: listed, inProgress: running) {
+                try? fileManager.removeItem(at: accounts.appendingPathComponent(id, isDirectory: true))
+            }
+        }
+        for id in AccountCleanupLogic.orphans(found: SessionStore.allAccountIds(), listed: listed, inProgress: running) {
+            SessionStore.delete(accountId: id)
+        }
     }
 }
 

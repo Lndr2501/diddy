@@ -14,11 +14,92 @@ import {
   Text,
   toRem,
 } from 'folds';
-import { soundboard, useSoundboard } from '../../plugins/call';
+import { Clip, soundboard, useSoundboard } from '../../plugins/call';
 import { canImportFromMyInstants } from '../../plugins/myinstants';
 import { MyInstantsImport } from './MyInstantsImport';
+import { canInvoke } from '../../plugins/tauri';
+import { isMacOS } from '../../utils/user-agent';
+import { useAgentVoicePrefs } from '../../state/agentVoice';
+import {
+  findHotkeyConflicts,
+  formatHotkey,
+  HotkeyConflict,
+  hotkeyFromEvent,
+  SoundHotkey,
+} from '../../plugins/call/soundboardHotkeys';
 import * as css from './styles.css';
 import { RangeInput } from '../../components/diddy/RangeInput';
+
+const describeConflict = (conflict: HotkeyConflict, clips: Clip[]): string => {
+  switch (conflict.kind) {
+    case 'duplicate':
+      return `same shortcut as "${clips.find((c) => c.id === conflict.otherId)?.name ?? 'another sound'}", only one plays`;
+    case 'agent-voice':
+      return 'clashes with the "talking to an agent" key';
+    case 'typing':
+      return 'types text, so it only works while you are not in an input field';
+    default:
+      return 'only works while Diddy is in the foreground (needs Ctrl, Alt or Command)';
+  }
+};
+
+type HotkeyButtonProps = {
+  clipName: string;
+  hotkey: string | undefined;
+  conflicts: HotkeyConflict[] | undefined;
+  recording: boolean;
+  onRecord: () => void;
+  /** a shortcut, undefined to remove it, null when recording was cancelled */
+  onDone: (hotkey: SoundHotkey | undefined | null) => void;
+};
+
+/** Shows the shortcut of a clip; a click records a new one (Backspace removes, Escape cancels). */
+function HotkeyButton({ clipName, hotkey, conflicts, recording, onRecord, onDone }: HotkeyButtonProps) {
+  const mac = isMacOS();
+  useEffect(() => {
+    if (!recording) return undefined;
+    soundboard.setRecordingHotkey(true);
+    const onKeyDown = (evt: KeyboardEvent) => {
+      evt.preventDefault();
+      evt.stopPropagation();
+      if (evt.code === 'Escape') onDone(null);
+      else if (evt.code === 'Backspace' || evt.code === 'Delete') onDone(undefined);
+      else {
+        const next = hotkeyFromEvent(evt);
+        if (next) onDone(next);
+      }
+    };
+    const onBlur = () => onDone(null);
+    window.addEventListener('keydown', onKeyDown, true);
+    window.addEventListener('blur', onBlur);
+    return () => {
+      soundboard.setRecordingHotkey(false);
+      window.removeEventListener('keydown', onKeyDown, true);
+      window.removeEventListener('blur', onBlur);
+    };
+  }, [recording, onDone]);
+
+  let label = 'Key';
+  if (recording) label = 'Press a key';
+  else if (hotkey) label = formatHotkey(hotkey, mac);
+  return (
+    <Button
+      size="300"
+      variant={conflicts?.length ? 'Warning' : 'Secondary'}
+      fill={hotkey || recording ? 'Soft' : 'None'}
+      radii="300"
+      onClick={recording ? () => onDone(null) : onRecord}
+      aria-label={`Shortcut for ${clipName}`}
+      title={
+        recording
+          ? 'Press the shortcut. Backspace removes it, Escape cancels.'
+          : `Set a keyboard shortcut for ${clipName}`
+      }
+    >
+      <Text size="B300">{label}</Text>
+    </Button>
+  );
+}
 
 type SoundboardMenuProps = {
   onClose: () => void;
@@ -26,7 +107,17 @@ type SoundboardMenuProps = {
 };
 // Also opened from the "more" menu of the sidebar call panel (issue #31).
 export function SoundboardMenu({ onClose, onImport }: SoundboardMenuProps) {
-  const { clips, volume, inCall, playing } = useSoundboard();
+  const { clips, volume, inCall, playing, hotkeys, hotkeysGlobal } = useSoundboard();
+  const [recordingId, setRecordingId] = useState<string>();
+  const agentVoice = useAgentVoicePrefs();
+  const mac = isMacOS();
+  const conflicts = findHotkeyConflicts(hotkeys, {
+    agentHotkey: agentVoice.enabled ? agentVoice.hotkey : undefined,
+    mac,
+    global: hotkeysGlobal && canInvoke(),
+    order: clips.map((c) => c.id),
+  });
+  const hasHotkeys = Object.keys(hotkeys).length > 0;
   const fileRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string>();
   const [filter, setFilter] = useState('');
@@ -128,15 +219,24 @@ export function SoundboardMenu({ onClose, onImport }: SoundboardMenuProps) {
                       variant={playing === clip.id ? 'Primary' : 'Secondary'}
                       fill="Soft"
                       radii="Pill"
-                      onClick={() =>
-                        playing === clip.id ? soundboard.stopAll() : soundboard.play(clip.id)
-                      }
+                      onClick={() => soundboard.toggle(clip.id)}
                       title={clip.name}
                     >
                       <Text size="B300" truncate style={{ maxWidth: toRem(110) }}>
                         {clip.name}
                       </Text>
                     </Button>
+                    <HotkeyButton
+                      clipName={clip.name}
+                      hotkey={hotkeys[clip.id]}
+                      conflicts={conflicts[clip.id]}
+                      recording={recordingId === clip.id}
+                      onRecord={() => setRecordingId(clip.id)}
+                      onDone={(hotkey) => {
+                        setRecordingId(undefined);
+                        if (hotkey !== null) soundboard.setHotkey(clip.id, hotkey);
+                      }}
+                    />
                     <IconButton
                       size="300"
                       variant="Surface"
@@ -174,6 +274,34 @@ export function SoundboardMenu({ onClose, onImport }: SoundboardMenuProps) {
             style={{ flexGrow: 1 }}
           />
         </Box>
+
+        {canInvoke() && (hasHotkeys || hotkeysGlobal) && (
+          <Box alignItems="Center" gap="200">
+            <input
+              id="soundboard-hotkeys-global"
+              type="checkbox"
+              checked={hotkeysGlobal}
+              onChange={(evt) => soundboard.setHotkeysGlobal(evt.target.checked)}
+            />
+            <Text as="label" htmlFor="soundboard-hotkeys-global" size="T200">
+              Shortcuts also work while Diddy is in the background (in a call)
+            </Text>
+          </Box>
+        )}
+        {hasHotkeys && (
+          <Text size="T200" priority="300">
+            Shortcuts only work during a call. Letters without Ctrl, Alt or Command only work while
+            you are not typing.
+          </Text>
+        )}
+        {Object.entries(conflicts).map(([id, list]) => {
+          const name = clips.find((c) => c.id === id)?.name ?? '';
+          return list.map((conflict) => (
+            <Text key={`${id}-${conflict.kind}`} size="T200" style={{ color: color.Warning.Main }}>
+              {name}: {describeConflict(conflict, clips)}
+            </Text>
+          ));
+        })}
 
         {!inCall && (
           <Text size="T200" priority="300">

@@ -87,6 +87,22 @@ export const CallPanelTitleButton = style([
   },
 ]);
 
+// The call's lock: green when everyone's key is there, amber while one is missing, grey unencrypted.
+export const CallPanelEncryption = style([
+  DefaultReset,
+  {
+    flexShrink: 0,
+    display: 'inline-flex',
+    alignItems: 'center',
+    lineHeight: 0,
+    color: color.Success.Main,
+    selectors: {
+      '&[data-state="waiting"]': { color: color.Warning.Main },
+      '&[data-state="off"]': { color: color.SurfaceVariant.OnContainer, opacity: 0.6 },
+    },
+  },
+]);
+
 export const CallPanelCount = style([
   DefaultReset,
   {

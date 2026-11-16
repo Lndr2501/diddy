@@ -32,13 +32,14 @@ class Stream {
   addTrack(track) { this.audio.push(track); }
 }
 
-function setup({ bridge = true, worklet, native } = {}) {
+function setup({ bridge = true, worklet, native, unavailable } = {}) {
   const calls = [], contexts = [], sockets = [], diagnostics = [], timers = new Map();
   const acquisitions = [];
   let timerId = 0, statsStopped = 0, nodes = 0;
   const window = {
     ...(native ? { __DIDDY_SYS_AUDIO__: native } : {}),
     ...(!native && bridge ? { __CINNY_SYS_AUDIO__: { port: 1, token: 'mock-fixture' } } : {}),
+    ...(unavailable !== undefined ? { __DIDDY_SYS_AUDIO_UNAVAILABLE__: unavailable } : {}),
     setTimeout: (callback) => { const id = ++timerId; timers.set(id, callback); return id; },
     clearTimeout: (id) => timers.delete(id),
   };
@@ -306,4 +307,33 @@ test('Linux late native start is stopped after video cancellation', async () => 
   stream.video.stop(); native.starts[0].resolve('late');
   await assert.rejects(capture, { name: 'AbortError' });
   assert.ok(native.stopped.includes('late')); assert.equal(native.listeners.size, 0);
+});
+
+test('older Windows: no capture, the share menu shows the option greyed out with the reason', async () => {
+  const reason = 'Needs Windows 10 version 2004 or later.';
+  const env = setup({ bridge: false, unavailable: reason });
+  const snapshot = env.screenShareAudio.getSnapshot();
+  assert.equal(snapshot.available, false);
+  assert.equal(snapshot.unavailableReason, reason);
+  assert.equal(env.shareAudioOption({ ...snapshot, toggle() {} }).unavailable, reason);
+  // sharing stays video-only and never starts an audio context
+  const stream = await env.complete(env.capture());
+  assert.equal(stream.audio.length, 0);
+  assert.equal(env.contexts.length, 0);
+  stream.video.stop();
+});
+
+test('share menu option: toggle with a bridge, nothing without bridge or reason', () => {
+  const toggle = () => {};
+  const native = { start: async () => 'id', stop: async () => {}, subscribe: () => () => {} };
+  const withBridge = setup({ native, unavailable: 'ignored when a bridge exists' });
+  const snapshot = withBridge.screenShareAudio.getSnapshot();
+  assert.equal(snapshot.unavailableReason, undefined);
+  const option = withBridge.shareAudioOption({ ...snapshot, toggle });
+  assert.equal(option.enabled, true);
+  assert.equal(option.onToggle, toggle);
+  const browser = setup({ bridge: false });
+  assert.equal(browser.shareAudioOption({ ...browser.screenShareAudio.getSnapshot(), toggle }), null);
+  const blank = setup({ bridge: false, unavailable: '' });
+  assert.equal(blank.shareAudioOption({ ...blank.screenShareAudio.getSnapshot(), toggle }), null);
 });

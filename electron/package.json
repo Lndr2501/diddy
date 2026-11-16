@@ -2,7 +2,7 @@
   "name": "diddy",
   "productName": "Diddy",
   "desktopName": "Diddy.desktop",
-  "version": "1.11.0",
+  "version": "1.12.0",
   "description": "Diddy - a Matrix chat client (Linux and Windows shell, Electron)",
   "private": true,
   "main": "main.cjs",
@@ -11,8 +11,9 @@
     "test": "node --test tests/*.test.cjs",
     "build:audio": "mkdir -p native/bin && cc -std=c11 -O2 -Wall -Wextra -Werror native/system-audio.c -o native/bin/diddy-system-audio $(pkg-config --cflags --libs libpulse) -lm",
     "build:shortcut": "mkdir -p native/bin && cc -std=c11 -O2 -Wall -Wextra -Werror native/global-shortcut.c -o native/bin/diddy-global-shortcut $(pkg-config --cflags --libs gio-2.0)",
+    "build:audio:win": "node native/build-windows-audio.cjs",
     "dist:linux": "npm run build:audio && npm run build:shortcut && electron-builder --linux AppImage deb rpm --publish never",
-    "dist:win": "electron-builder --win nsis --x64 --publish never"
+    "dist:win": "npm run build:audio:win && electron-builder --win nsis --x64 --publish never"
   },
   "devDependencies": {
     "electron": "45.2.3",
@@ -115,7 +116,13 @@
       ],
       "icon": "../src-tauri/icons/icon.ico",
       "executableName": "Diddy",
-      "artifactName": "Diddy_${version}_x64-setup.${ext}"
+      "artifactName": "Diddy_${version}_x64-setup.${ext}",
+      "extraResources": [
+        {
+          "from": "native/bin/diddy-system-audio.exe",
+          "to": "diddy-system-audio.exe"
+        }
+      ]
     },
     "nsis": {
       "oneClick": true,

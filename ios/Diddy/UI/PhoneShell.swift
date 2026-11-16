@@ -434,6 +434,7 @@ struct YouView: View {
     @ObservedObject var account: MatrixAccount
     @Binding var showSettings: Bool
     @EnvironmentObject private var calls: CallManager
+    @State private var showSaved = false
 
     var body: some View {
         ScrollView {
@@ -456,6 +457,7 @@ struct YouView: View {
                 }
 
                 VStack(spacing: 0) {
+                    youRow("bookmark.fill", "Saved Messages") { showSaved = true }
                     youRow("gearshape.fill", "Settings") { showSettings = true }
                 }
                 .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.elevated))
@@ -472,6 +474,7 @@ struct YouView: View {
             .padding(.bottom, 24)
         }
         .background(Theme.sidebar)
+        .sheet(isPresented: $showSaved) { SavedMessagesView(account: account).diddySheetAppearance() }
     }
 
     private func youRow(_ symbol: String, _ title: String, action: @escaping () -> Void) -> some View {

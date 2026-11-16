@@ -66,6 +66,7 @@ private struct ChatContent: View {
     private var summary: RoomSummary? { watch.summary }
     @EnvironmentObject private var calls: CallManager
     @StateObject private var memberStore = MemberStore()
+    @EnvironmentObject private var savedMessages: SavedMessagesStore
     @StateObject private var botCommands = BotCommandStore()
     /// Text and cursor of the composer, in an object only the composer observes: a key press
     /// redraws the composer, not the chat with every message (see ComposerObserver).
@@ -90,6 +91,7 @@ private struct ChatContent: View {
     @State private var photos: [PhotosPickerItem] = []
     @State private var showPhotos = false
     @State private var showFiles = false
+    @State private var showPoll = false
     @State private var showCamera = false
     @State private var showEmoji = false
     @State private var packs: [ImagePack] = []
@@ -146,6 +148,8 @@ private struct ChatContent: View {
     @FocusState private var composerFocused: Bool
     /// Raised by a reply, so the keyboard comes up even after a swipe (see ComposerEditor.focusToken).
     @State private var composerFocusToken = 0
+    /// Send later: the date sheet of the send button's long-press menu (SendLaterViews.swift).
+    @State private var showSendLater = false
 
     private var title: String { summary?.name ?? "Channel" }
     private var roomId: String { controller.roomId }
@@ -227,6 +231,11 @@ private struct ChatContent: View {
             }
         }
         .sheet(isPresented: $showSearch) { MessageSearchView(account: account, roomId: roomId) }
+        .sheet(isPresented: $showPoll) {
+            PollComposer { question, answers, max, disclosed in
+                await controller.createPoll(question: question, answers: answers, maxSelections: max, disclosed: disclosed)
+            }
+        }
         .sheet(item: $searchContext) { SearchContextView(account: account, target: $0) }
         .sheet(isPresented: $showMembers) { MembersView(account: account, roomId: roomId) }
         .sheet(isPresented: $showInfo) { ChannelInfoView(account: account, roomId: roomId) }
@@ -247,6 +256,12 @@ private struct ChatContent: View {
             }
         }
         .sheet(isPresented: $showCamera) { ComposerCamera { image in Task { await addFiles([], images: [image]) } } }
+        .sheet(isPresented: $showSendLater) {
+            SendLaterSheet(store: ScheduledMessageStore.of(account), roomId: roomId) { sendAt, preferLocal in
+                scheduleLater(at: sendAt, preferLocal: preferLocal)
+            }
+        }
+        .task { await ScheduledMessageStore.of(account).prepare(roomId: roomId) }
         // Files dragged in from other apps become attachments (#216, ChatDrop.swift).
         .onDrop(of: [.item], isTargeted: $dropTargeted) { providers in
             guard canSend, editing == nil, ChatDrop.accepts(providers) else { return false }
@@ -347,6 +362,7 @@ private struct ChatContent: View {
                             onProfile: { profile = ProfileTarget(userId: row.sender) },
                             onMention: { profile = ProfileTarget(userId: $0) },
                             onReact: { key in Task { await controller.toggleReaction(key, on: row) } },
+                            onPollVote: { ids in Task { await controller.votePoll(row, answers: ids) } },
                             onImage: { viewedImage = ViewedImage(image: $0) },
                             onFile: { openedFile = $0 },
                             onCardCommand: { command in Task { await controller.sendCardAction(command) } },
@@ -604,7 +620,13 @@ private struct ChatContent: View {
                 navSheet = .thread(root: root ?? eventId)
             } label: { Label("Reply in Thread", systemImage: "bubble.left.and.bubble.right") }
         }
-        if case .text(let text) = row.body {
+        if let poll = row.poll, !poll.ended, row.remoteEventId != nil,
+           row.isOwn || controller.nav.canRedactOther {
+            Button { closeActions(); Task { await controller.endPoll(row) } } label: {
+                Label("End Poll", systemImage: "chart.bar.xaxis")
+            }
+        }
+        if case .text(let text) = row.body, row.poll == nil {
             Button { closeActions(); UIPasteboard.general.string = Self.readableMentions(in: text).text } label: {
                 Label("Copy Text", systemImage: "doc.on.doc")
             }
@@ -633,6 +655,13 @@ private struct ChatContent: View {
                 closeActions()
                 Task { if let link = await controller.permalink(of: eventId) { UIPasteboard.general.string = link } }
             } label: { Label("Copy Link", systemImage: "link") }
+            Button {
+                closeActions()
+                savedMessages.toggle(account: account, roomId: roomId, eventId: eventId)
+            } label: {
+                Label(savedMessages.state.contains(roomId, eventId) ? "Remove from Saved" : "Save Message",
+                      systemImage: savedMessages.state.contains(roomId, eventId) ? "bookmark.slash" : "bookmark")
+            }
             if !controller.nav.readers(of: eventId).isEmpty {
                 Button { closeActions(); navSheet = .readers(eventId: eventId) } label: { Label("Read Receipts", systemImage: "checkmark.circle") }
             }
@@ -753,6 +782,8 @@ private struct ChatContent: View {
                     editing = nil
                     draft = ""
                 }
+            } else {
+                ScheduledMessagesBar(store: ScheduledMessageStore.of(account), roomId: roomId, onEdit: editScheduled)
             }
             composerInputRow
         }
@@ -783,6 +814,7 @@ private struct ChatContent: View {
                         Button { showCamera = true } label: { Label("Camera", systemImage: "camera") }
                     }
                     Button { showFiles = true } label: { Label("Files", systemImage: "doc") }
+                    Button { showPoll = true } label: { Label("Poll", systemImage: "chart.bar.xaxis") }
                 } label: {
                     Image(systemName: "plus")
                         .font(.system(size: 15, weight: .semibold))
@@ -833,6 +865,15 @@ private struct ChatContent: View {
                 .disabled(sending)
                 .opacity(sending ? 0.6 : 1)
                 .accessibilityLabel(editing == nil ? "Send" : "Save edit")
+                .accessibilityHint(canScheduleLater ? "Touch and hold to send later" : "")
+                // Long press: Send later (text only, like the desktop's right-click menu).
+                .contextMenu {
+                    if canScheduleLater {
+                        SendLaterMenu(store: ScheduledMessageStore.of(account), roomId: roomId,
+                                      onPick: { scheduleLater(at: $0, preferLocal: false) },
+                                      onCustom: { showSendLater = true })
+                    }
+                }
             } else if editing == nil {
                 VoiceMicButton(recorder: recorder, width: 36, height: ComposerEditor.minHeight)
             }
@@ -1029,6 +1070,53 @@ private struct ChatContent: View {
             }
             sending = false
         }
+    }
+
+    /// Text (also /me, /notice and the like) can be scheduled; attachments, songs and edits cannot.
+    private var canScheduleLater: Bool {
+        guard editing == nil, pendingFiles.isEmpty, pendingMusic == nil, !trimmedDraft.isEmpty else { return false }
+        return SlashCommand.command(in: draft).map(\.sendsMessage) ?? true
+    }
+
+    /// Schedules the composer's message (ScheduledMessages.swift) and empties the composer.
+    private func scheduleLater(at sendAt: Date, preferLocal: Bool) {
+        guard canScheduleLater, !sending else { return }
+        let original = draft
+        var allTokens = tokens
+        for (name, id) in mentions { allTokens["@" + name] = .user(id: id) }
+        let command = SlashCommand.command(in: draft)
+        var replyId = restoredReplyId
+        if case .eventId(let id)? = replyTo?.eventId { replyId = id }
+        guard let message = ComposerFormatter.message(from: draft, tokens: allTokens, markdown: ChatSettings.markdown,
+            command: command?.sendsMessage == true ? command : nil, isReply: replyId != nil,
+            replyUserId: replyTo?.sender, ownUserId: account.userId) else { return }
+        let msgtype: String
+        switch command {
+        case .me?: msgtype = "m.emote"
+        case .notice?: msgtype = "m.notice"
+        default: msgtype = "m.text"
+        }
+        let content = SendLaterLogic.messageContent(body: message.body, html: message.html, msgtype: msgtype,
+                                                    mentionedUserIds: message.mentionedUserIds, replyEventId: replyId)
+        draft = ""; mentions = [:]; tokens = [:]; replyTo = nil; restoredReplyId = nil
+        selection = NSRange(location: 0, length: 0)
+        saveDraft()
+        controller.setTyping(false)
+        let store = ScheduledMessageStore.of(account)
+        let targetRoom = roomId
+        Task {
+            await store.schedule(roomId: targetRoom, content: content, draftText: original, replyEventId: replyId,
+                                 sendAt: sendAt, preferLocal: preferLocal)
+        }
+    }
+
+    /// Edit a scheduled message: its text goes back into the composer (the schedule is already cancelled).
+    private func editScheduled(_ item: SendLaterLogic.Scheduled) {
+        if trimmedDraft.isEmpty { draft = item.draftText } else { draft += "\n" + item.draftText }
+        selection = NSRange(location: (draft as NSString).length, length: 0)
+        if replyTo == nil, restoredReplyId == nil { restoredReplyId = item.replyEventId }
+        saveDraft()
+        composerFocusToken += 1
     }
 
     private func saveDraft() {
@@ -1255,6 +1343,7 @@ struct MessageRowView: View, Equatable {
     var onProfile: () -> Void = {}
     var onMention: (String) -> Void = { _ in }
     var onReact: (String) -> Void = { _ in }
+    var onPollVote: ([String]) -> Void = { _ in }
     var onImage: (UIImage) -> Void = { _ in }
     var onFile: (URL) -> Void = { _ in }
     var onCardCommand: (String) -> Void = { _ in }
@@ -1270,6 +1359,7 @@ struct MessageRowView: View, Equatable {
         onProfile: @escaping () -> Void = {},
         onMention: @escaping (String) -> Void = { _ in },
         onReact: @escaping (String) -> Void = { _ in },
+        onPollVote: @escaping ([String]) -> Void = { _ in },
         onImage: @escaping (UIImage) -> Void = { _ in },
         onFile: @escaping (URL) -> Void = { _ in },
         onCardCommand: @escaping (String) -> Void = { _ in },
@@ -1283,6 +1373,7 @@ struct MessageRowView: View, Equatable {
         self.onProfile = onProfile
         self.onMention = onMention
         self.onReact = onReact
+        self.onPollVote = onPollVote
         self.onImage = onImage
         self.onFile = onFile
         self.onCardCommand = onCardCommand
@@ -1431,6 +1522,8 @@ struct MessageRowView: View, Equatable {
     @ViewBuilder
     private var content: some View {
         switch row.body {
+        case .text where row.poll != nil:
+            if let poll = row.poll { PollCard(poll: poll, onVote: onPollVote) }
         case .text where row.card != nil:
             if let card = row.card { BotCardView(card: card, account: account, onCommand: onCardCommand) }
         case .text where row.music != nil:

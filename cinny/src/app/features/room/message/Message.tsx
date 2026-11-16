@@ -83,8 +83,21 @@ import { PowerIcon } from '../../../components/power';
 import { DiddyName } from '../../../components/diddy/DiddyName';
 import colorMXID from '../../../../util/colorMXID';
 import { getPowerTagIconSrc } from '../../../hooks/useMemberPowerTag';
+import { useSavedMessages } from '../../../hooks/useSavedMessages';
+import { SAVED_MESSAGES_LIMIT } from '../../../utils/savedMessages';
 import { isRoomBot } from '../../../hooks/useRoomBots';
 import { BotTag } from '../../../components/message/BotTag';
+import { usePollState } from '../../../hooks/usePoll';
+import { isPollStartType } from '../../../plugins/polls';
+
+function EndPollItem({ room, mEvent, onClose }: { room: Room; mEvent: MatrixEvent; onClose: () => void }) {
+  const { canEnd, end } = usePollState(room, mEvent);
+  const [failed, setFailed] = useState(false);
+  if (!canEnd) return null;
+  return <MenuItem size="300" radii="300" onClick={() => {
+    end().then(onClose).catch(() => setFailed(true));
+  }}><Text size="T300">{failed ? 'Could not end poll · Retry' : 'End Poll'}</Text></MenuItem>;
+}
 
 export type ReactionHandler = (keyOrMxc: string, shortcode: string) => void;
 
@@ -383,6 +396,60 @@ export const MessageCopyLinkItem = as<
     >
       <Text className={css.MessageMenuItemText} as="span" size="T300" truncate>
         Copy Link
+      </Text>
+    </MenuItem>
+  );
+});
+
+export const MessageSaveItem = as<
+  'button',
+  {
+    room: Room;
+    mEvent: MatrixEvent;
+    onClose?: () => void;
+  }
+>(({ room, mEvent, onClose, ...props }, ref) => {
+  const { isSaved, save, remove } = useSavedMessages();
+  const eventId = mEvent.getId() ?? '';
+  const saved = isSaved(room.roomId, eventId);
+
+  const handleClick = () => {
+    if (eventId) {
+      if (saved) {
+        remove([{ room_id: room.roomId, event_id: eventId }]).catch(() => {
+          // eslint-disable-next-line no-alert
+          window.alert('Could not remove this bookmark. Please try again.');
+        });
+      } else {
+        save(room.roomId, eventId)
+          .then((result) => {
+            if (result === 'full') {
+              // eslint-disable-next-line no-alert
+              window.alert(
+                `You can save up to ${SAVED_MESSAGES_LIMIT} messages. Remove some from Inbox > Saved first.`
+              );
+            }
+          })
+          .catch(() => {
+            // eslint-disable-next-line no-alert
+            window.alert('Could not save this message. Please try again.');
+          });
+      }
+    }
+    onClose?.();
+  };
+
+  return (
+    <MenuItem
+      size="300"
+      after={<Icon size="100" src={Icons.Bookmark} filled={saved} />}
+      radii="300"
+      onClick={handleClick}
+      {...props}
+      ref={ref}
+    >
+      <Text className={css.MessageMenuItemText} as="span" size="T300" truncate>
+        {saved ? 'Remove from saved' : 'Save message'}
       </Text>
     </MenuItem>
   );
@@ -1104,6 +1171,9 @@ export const Message = as<'div', MessageProps>(
                               </Text>
                             </MenuItem>
                           )}
+                          {isPollStartType(mEvent.getType()) && (
+                            <EndPollItem room={room} mEvent={mEvent} onClose={closeMenu} />
+                          )}
                           {canEditEvent(mx, mEvent) && onEditId && (
                             <MenuItem
                               size="300"
@@ -1141,6 +1211,7 @@ export const Message = as<'div', MessageProps>(
                           )}
                           <MessageCopyTextItem mEvent={mEvent} onClose={closeMenu} />
                           <MessageCopyLinkItem room={room} mEvent={mEvent} onClose={closeMenu} />
+                          <MessageSaveItem room={room} mEvent={mEvent} onClose={closeMenu} />
                           {canPinEvent && (
                             <MessagePinItem room={room} mEvent={mEvent} onClose={closeMenu} />
                           )}
@@ -1318,6 +1389,7 @@ export const Event = as<'div', EventProps>(
                           )}
                           <MessageCopyTextItem mEvent={mEvent} onClose={closeMenu} />
                           <MessageCopyLinkItem room={room} mEvent={mEvent} onClose={closeMenu} />
+                          <MessageSaveItem room={room} mEvent={mEvent} onClose={closeMenu} />
                         </Box>
                         {((!mEvent.isRedacted() && canDelete && !stateEvent) ||
                           (mEvent.getSender() !== mx.getUserId() && !stateEvent)) && (

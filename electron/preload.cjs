@@ -18,10 +18,14 @@ if (connection) {
 }
 
 // Only the trusted top frame gets the audio transport; the call iframe uses its parent's wrapper.
-// Linux only: the capture helper is built for PulseAudio/PipeWire. On Windows, Chromium's loopback
-// capture would include the call itself (the others would hear themselves), so screen sharing there
-// stays video-only and the page offers no system-audio switch.
-if (process.platform === 'linux') contextBridge.exposeInMainWorld('__DIDDY_SYS_AUDIO__', {
+// Linux: PulseAudio/PipeWire helper. Windows 10 2004+: process loopback helper that records everything
+// except Diddy's process tree. Chromium's own loopback would include the call itself (the others would
+// hear themselves), so older Windows gets no transport, only the reason (the page greys the option out).
+const audioSupport = ipcRenderer.sendSync('diddy:audio-support') ?? { available: false };
+if (!audioSupport.available && typeof audioSupport.reason === 'string') {
+  contextBridge.exposeInMainWorld('__DIDDY_SYS_AUDIO_UNAVAILABLE__', audioSupport.reason);
+}
+if (audioSupport.available) contextBridge.exposeInMainWorld('__DIDDY_SYS_AUDIO__', {
   start: () => ipcRenderer.invoke('diddy:audio-start'),
   stop: (id) => ipcRenderer.invoke('diddy:audio-stop', id),
   subscribe: (listener) => {

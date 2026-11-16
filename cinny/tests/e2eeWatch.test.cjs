@@ -31,7 +31,7 @@ vm.runInNewContext(
   },
   { filename }
 );
-const { E2eeTracker, installE2eeWatch } = exported;
+const { E2eeTracker, installE2eeWatch, watchE2eeKeys } = exported;
 
 const init = { kind: 'init', data: { keyProviderOptions: { ratchetWindowSize: 10, keyringSize: 256 } } };
 
@@ -159,4 +159,42 @@ test('the installed hooks set a missing flag before the transform is created', (
   assert.equal(posted.at(-2).data.participantIdentity, 'frank');
   assert.equal(posted.at(-1).kind, 'decode');
   assert.ok(diagLines.some((l) => /no encryption flag/.test(l)));
+});
+
+test('remembers whose keys reached the worker, never its own', () => {
+  let changes = 0;
+  const t = new E2eeTracker(() => {}, () => 0, () => {
+    changes += 1;
+  });
+  t.outgoing(init);
+  assert.equal(changes, 1, 'the LiveKit worker is a change');
+  t.outgoing({ kind: 'setKey', data: { participantIdentity: '@me:hs:DESK', key: {}, keyIndex: 0, isPublisher: true } });
+  t.outgoing({ kind: 'setKey', data: { participantIdentity: '@a:hs:A1', key: {}, keyIndex: 0, isPublisher: false } });
+  t.outgoing({ kind: 'setKey', data: { participantIdentity: '@a:hs:A1', key: {}, keyIndex: 1 } });
+  t.outgoing({ kind: 'setKey', data: { participantIdentity: '@b:hs:B1', key: {}, keyIndex: 0, updateCurrentKeyIndex: false } });
+  assert.deepEqual([...t.keyed].sort(), ['@a:hs:A1', '@b:hs:B1']);
+  assert.equal(changes, 3, 'one change per new identity');
+});
+
+test('watchE2eeKeys reports the keys of the call window, also when subscribed early', () => {
+  class FakeWorker {
+    postMessage() {}
+
+    addEventListener() {}
+  }
+  const win = { Worker: FakeWorker };
+  const seen = [];
+  const stop = watchE2eeKeys(win, (keys) => seen.push({ livekit: keys.livekit, keyed: [...keys.keyed] }));
+  assert.deepEqual(seen, [{ livekit: false, keyed: [] }], 'current state right away');
+  installE2eeWatch(win);
+  const worker = new win.Worker('blob:y');
+  worker.postMessage(init);
+  worker.postMessage({ kind: 'setKey', data: { participantIdentity: '@a:hs:A1', key: {}, keyIndex: 0 } });
+  assert.deepEqual(seen.at(-1), { livekit: true, keyed: ['@a:hs:A1'] });
+  stop();
+  worker.postMessage({ kind: 'setKey', data: { participantIdentity: '@b:hs:B1', key: {}, keyIndex: 0 } });
+  assert.equal(seen.length, 3, 'nothing after unsubscribing');
+  const late = [];
+  watchE2eeKeys(win, (keys) => late.push([...keys.keyed].sort()));
+  assert.deepEqual(late, [['@a:hs:A1', '@b:hs:B1']], 'a late subscriber gets what is known');
 });

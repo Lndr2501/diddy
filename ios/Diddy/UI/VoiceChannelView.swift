@@ -173,6 +173,10 @@ private struct ConnectedVoiceView: View {
                     CallStageView(session: session, account: callAccount, showProfile: showProfile)
                 }
                 notices
+                // Push-to-talk (Settings > Calls): the big Talk button, and the keyboard key
+                if session.usesPushToTalk {
+                    PushToTalkButton(session: session, compact: landscape)
+                }
             }
             controls
         }
@@ -310,9 +314,14 @@ private struct ConnectedVoiceView: View {
         )
         slot(
             Button { Task { await session.toggleMicrophone() } } label: {
-                CallBarIcon(icon: session.microphoneOn ? "mic.fill" : "mic.slash.fill", warn: !session.microphoneOn)
+                // with push-to-talk a closed microphone is normal, not a warning; Talk opens it
+                CallBarIcon(
+                    icon: session.microphoneOn ? "mic.fill" : "mic.slash.fill",
+                    highlight: session.usesPushToTalk && session.microphoneOn,
+                    warn: !session.microphoneOn && !session.usesPushToTalk
+                )
             }
-            .accessibilityLabel("Microphone")
+            .accessibilityLabel(session.usesPushToTalk ? "Microphone, push to talk" : "Microphone")
             .accessibilityValue(session.microphoneOn ? "On" : "Muted")
         )
         slot(ShareControl(session: session, extras: extras))
@@ -385,11 +394,52 @@ private struct CallStatusHeader: View {
                 .accessibilityLabel("Deafened")
                 .accessibilityHint("Undeafens you")
             }
-            if session.connected { PingBadge(extras: extras) }
+            if session.connected {
+                CallEncryptionBadge(session: session)
+                PingBadge(extras: extras)
+            }
         }
         .padding(.horizontal, horizontalPadding)
         .frame(minHeight: 36)
         .accessibilityElement(children: .contain)
+    }
+}
+
+/// The lock in the call header: whether the call is end-to-end encrypted (the room is) and
+/// whether everyone's media key has arrived. A tap tells what it means.
+private struct CallEncryptionBadge: View {
+    @ObservedObject var session: CallSession
+
+    var body: some View {
+        let encryption = session.encryption
+        Menu {
+            Text(CallKeyLogic.title(encryption))
+            Text(CallKeyLogic.detail(encryption))
+        } label: {
+            Image(systemName: Self.icon(encryption))
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Self.color(encryption))
+                .frame(minWidth: 28, minHeight: 36)
+                .contentShape(Rectangle())
+        }
+        .accessibilityLabel(CallKeyLogic.title(encryption))
+        .accessibilityHint(CallKeyLogic.detail(encryption))
+    }
+
+    private static func icon(_ encryption: CallKeyLogic.Encryption) -> String {
+        switch encryption {
+        case .off: return "lock.open.fill"
+        case .on: return "lock.fill"
+        case .waiting: return "exclamationmark.lock.fill"
+        }
+    }
+
+    private static func color(_ encryption: CallKeyLogic.Encryption) -> Color {
+        switch encryption {
+        case .off: return Theme.muted
+        case .on: return Theme.online
+        case .waiting: return Color.orange
+        }
     }
 }
 
@@ -428,7 +478,7 @@ struct VoiceStatusBar: View {
             .accessibilityLabel("\(session.roomName), \(session.state), \(session.members.count) in voice")
             .accessibilityHint("Opens the call")
             .accessibilityAddTraits(.isButton)
-            barButton(session.microphoneOn ? "mic.fill" : "mic.slash.fill", tint: session.microphoneOn ? Theme.muted : Theme.danger, label: session.microphoneOn ? "Mute" : "Unmute") {
+            barButton(session.microphoneOn ? "mic.fill" : "mic.slash.fill", tint: session.microphoneOn || session.usesPushToTalk ? Theme.muted : Theme.danger, label: session.usesPushToTalk ? "Microphone, push to talk" : (session.microphoneOn ? "Mute" : "Unmute")) {
                 Task { await session.toggleMicrophone() }
             }
             barButton(session.deafened ? "speaker.slash.fill" : "headphones", tint: session.deafened ? Theme.danger : Theme.muted, label: session.deafened ? "Undeafen" : "Deafen") {

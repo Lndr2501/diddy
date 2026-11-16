@@ -5,6 +5,7 @@ name: Release
 #   linux.yml  (Electron)         Diddy_X.Y.Z_x86_64.AppImage (+ .zsync for AppImageUpdate), Diddy_X.Y.Z_amd64.deb, Diddy_X.Y.Z_x86_64.rpm
 #   windows.yml (Electron)        Diddy_X.Y.Z_x64-setup.exe
 #   ios.yml    (SwiftUI)          Diddy_X.Y.Z_iOS_unsigned.ipa (or Diddy_X.Y.Z_iOS.ipa when signed)
+#   android.yml (Compose)        Diddy_X.Y.Z_Android.apk (signed)
 #   + SHA256SUMS over all of them
 #
 # The build jobs only hold read access; the last job (publish) is the only one with write access
@@ -12,7 +13,8 @@ name: Release
 # matching "## X.Y.Z" section of CHANGELOG.md (up to its first "### Stand" subsection).
 #
 # Release steps: bump the version (package.json, electron/package.json, src-tauri/tauri.conf.json,
-# src-tauri/Cargo.toml + Cargo.lock, ios/project.yml, cinny/src/app/appInfo.ts), add a CHANGELOG.md
+# src-tauri/Cargo.toml + Cargo.lock, ios/project.yml, cinny/src/app/appInfo.ts,
+# android/app/build.gradle.kts), add a CHANGELOG.md
 # section, push to main, then `git tag vX.Y.Z && git push origin vX.Y.Z`.
 #
 # Re-running: "Re-run failed jobs" on a run continues with the missing parts; "Run workflow" on a
@@ -22,6 +24,7 @@ name: Release
 # (APPLE_CERTIFICATE, APPLE_CERTIFICATE_PASSWORD, APPLE_SIGNING_IDENTITY, notarization:
 # APPLE_ID, APPLE_PASSWORD, APPLE_TEAM_ID) and iOS (APPLE_TEAM_ID, ASC_KEY_ID, ASC_ISSUER_ID,
 # ASC_KEY_P8). Linux packages and the Windows installer are not signed.
+# Android releases require the four DIDDY_ANDROID signing secrets documented in android/README.md.
 on:
   push:
     tags:
@@ -67,6 +70,7 @@ jobs:
           check src-tauri/tauri.conf.json "$(node -p "require('./src-tauri/tauri.conf.json').version")"
           check src-tauri/Cargo.toml "$(sed -n 's/^version = "\(.*\)"/\1/p' src-tauri/Cargo.toml | head -n 1)"
           check ios/project.yml "$(sed -n 's/^ *MARKETING_VERSION: "\(.*\)"/\1/p' ios/project.yml | head -n 1)"
+          check android/app/build.gradle.kts "$(sed -n 's/^val diddyVersion = "\(.*\)"/\1/p' android/app/build.gradle.kts)"
           if ! grep -q "^## $version" CHANGELOG.md; then
             echo "::error::No section '## $version' in CHANGELOG.md"; bad=1
           fi
@@ -91,6 +95,11 @@ jobs:
     needs: check
     uses: ./.github/workflows/windows.yml
 
+  android:
+    needs: check
+    uses: ./.github/workflows/android.yml
+    secrets: inherit
+
   ios:
     # The IPA is a bonus: a failing iOS build does not hold back the desktop packages (publish below
     # does not need it to succeed). Re-run the failed jobs afterwards to add it to the release.
@@ -103,8 +112,8 @@ jobs:
       contents: write
 
   publish:
-    needs: [check, macos, linux, windows, ios]
-    if: ${{ !cancelled() && needs.macos.result == 'success' && needs.linux.result == 'success' && needs.windows.result == 'success' }}
+    needs: [check, macos, linux, windows, ios, android]
+    if: ${{ !cancelled() && needs.macos.result == 'success' && needs.linux.result == 'success' && needs.windows.result == 'success' && needs.android.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -131,7 +140,7 @@ jobs:
         run: |
           ls -l dist
           missing=0
-          for f in "Diddy_${VERSION}_aarch64.dmg" "Diddy_${VERSION}_x86_64.AppImage" "Diddy_${VERSION}_x86_64.AppImage.zsync" "Diddy_${VERSION}_amd64.deb" "Diddy_${VERSION}_x86_64.rpm" "Diddy_${VERSION}_x64-setup.exe"; do
+          for f in "Diddy_${VERSION}_aarch64.dmg" "Diddy_${VERSION}_x86_64.AppImage" "Diddy_${VERSION}_x86_64.AppImage.zsync" "Diddy_${VERSION}_amd64.deb" "Diddy_${VERSION}_x86_64.rpm" "Diddy_${VERSION}_x64-setup.exe" "Diddy_${VERSION}_Android.apk"; do
             if [ ! -s "dist/$f" ]; then echo "::error::dist/$f is missing"; missing=1; fi
           done
           if ! ls dist/*.ipa >/dev/null 2>&1; then
@@ -170,12 +179,13 @@ jobs:
           | Fedora / openSUSE | \`Diddy_${version}_x86_64.rpm\` | \`sudo dnf install ./Diddy_*.rpm\` |
           | Windows 10 / 11 (x64) | \`Diddy_${version}_x64-setup.exe\` | Run the installer. It is not signed: if Windows SmartScreen warns, click "More info", then "Run anyway" |
           | iPhone / iPad | \`Diddy_${version}_iOS_unsigned.ipa\` | Sideload with AltStore, SideStore or Sideloadly (see ios/README.md) |
+          | Android 8+ (arm64 / x86_64) | \`Diddy_${version}_Android.apk\` | Open the APK on your phone and allow installation from that source. Signed with Diddy's release key; future APKs update the same app |
 
           The Linux packages and the Windows installer are not signed. \`SHA256SUMS\` lists the checksums of all files.
 
           NOTES
           cat "$RUNNER_TEMP/changes.md" >> "$RUNNER_TEMP/notes.md"
-          (cd dist && shopt -s nullglob && sha256sum -- *.dmg *.AppImage *.deb *.rpm *.exe *.ipa > SHA256SUMS && cat SHA256SUMS)
+          (cd dist && shopt -s nullglob && sha256sum -- *.dmg *.AppImage *.zsync *.deb *.rpm *.exe *.ipa *.apk > SHA256SUMS && cat SHA256SUMS)
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "Release $TAG exists: replacing its assets and text"
             gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --clobber

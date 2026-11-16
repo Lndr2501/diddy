@@ -1,5 +1,11 @@
 # CI and build performance
 
+Version tags build Android alongside macOS, Linux, Windows and iOS. The Android APK is required
+before publication, is signed with the persistent Diddy key, and is checked with `apksigner`.
+Its version is checked against the tag and stamped in the build checkout like the desktop version.
+The release includes `Diddy_X.Y.Z_Android.apk` and its SHA-256 checksum. Non-tag Android builds can
+fall back to debug; release tags fail if signing secrets are missing. See `android/README.md`.
+
 The Test workflow installs Cinny once, runs type checking and both JavaScript test suites,
 builds the production frontend once and smoke-tests that exact bundle with Playwright.
 Playwright also checks the voice-recorder hook using synthetic audio and Chromium’s real
@@ -123,8 +129,13 @@ setter, gain scaling, replacement elements, persistence, mute and rejoin.
 
 `windows.yml` builds the frontend on Linux (the same build as the Linux packages) and hands it to
 a Windows job. That job checks out with LF line endings (the Electron tests read sources line by
-line), runs `electron` tests, builds the NSIS installer (`npm run dist:win`), checks that the
-Linux capture helpers are not packaged, and starts the packaged `Diddy.exe` once with
-`electron/tests/start-smoke.cjs` (page loaded, desktop API present, log in `%LOCALAPPDATA%`). The
-same smoke test runs on the Linux package. `release.yml` publishes `Diddy_X.Y.Z_x64-setup.exe`;
+line), runs `electron` tests and the unit tests of the system-audio helper
+(`electron/native/windows-audio`, Rust, cached with `rust-cache`), builds the NSIS installer
+(`npm run dist:win`, which first builds the helper with a static C runtime into
+`native/bin/diddy-system-audio.exe`), checks that the Linux capture helpers are not packaged and the
+Windows one is, and runs the packaged helper with `--probe` (process loopback capture for 300 ms,
+`READY` and `probe ok` required; the step starts the Windows audio service first). Then it starts
+the packaged `Diddy.exe` once with `electron/tests/start-smoke.cjs` (page loaded, desktop API
+present, log in `%LOCALAPPDATA%`, system-audio bridge present, and on Windows one capture started
+and stopped through the bridge). The same smoke test runs on the Linux package. `release.yml` publishes `Diddy_X.Y.Z_x64-setup.exe`;
 it is not code-signed.

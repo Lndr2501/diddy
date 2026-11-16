@@ -53,6 +53,7 @@ import { updateCallPrefs, useCallPrefs } from '../../../state/callPrefs';
 import { SoundSettings } from './SoundSettings';
 import { browserStorage, clearAllCallVolumes } from '../../../plugins/call/volumeMemory';
 import { AgentVoiceSettings } from './AgentVoiceSettings';
+import { PushToTalkSettings } from './PushToTalkSettings';
 import { WatchTogetherSettings } from './WatchTogetherSettings';
 import { CameraDeviceList } from '../../call/DevicePicker';
 import { AvatarSurface, setAvatarAnimation, useAvatarPrefs } from '../../../state/avatarPrefs';
@@ -833,10 +834,16 @@ function Messages() {
 export function WelcomeGuideSettings() {
   const mx = useMatrixClient();
   const [shown, setShown] = useState(false);
+  const [syncSettings, setSyncSettings] = useSetting(settingsAtom, 'syncSettings');
 
   return (
     <InsetSection title="Diddy">
       <InsetGroup>
+        <InsetRow
+          title="Sync settings between devices"
+          description="Theme, message layout, editor, timeline and date settings follow your account to every Diddy device. Zoom and notifications stay per device."
+          after={<Switch variant="Primary" value={syncSettings} onChange={setSyncSettings} />}
+        />
         <InsetRow
           title="Welcome guide"
           description="Show the setup walkthrough for Diddy servers again."
@@ -1042,6 +1049,7 @@ export function CallsSettings({ requestClose }: PageProps) {
   return (
     <SettingsPage title="Calls & Audio" requestClose={requestClose}>
       <CallSettings />
+      <PushToTalkSettings />
       <SoundSettings />
       <AgentVoiceSettings />
       <WatchTogetherSettings />
