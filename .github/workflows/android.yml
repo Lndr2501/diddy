@@ -16,10 +16,12 @@ on:
       - "cinny/public/sound/diddy/**"
       - "cinny/src/app/plugins/builtin/**"
       - "ios/Diddy/Matrix/EmojiData.swift"
+      - "fastlane/**"
       - ".github/workflows/android.yml"
   pull_request:
     paths:
       - "android/**"
+      - "fastlane/**"
       - ".github/workflows/android.yml"
 
 concurrency:
@@ -178,3 +180,56 @@ jobs:
           path: android/app/build/reports/androidTests
           if-no-files-found: ignore
 
+  # F-Droid rebuilds every release from source and ships Diddy's own signed APK only when its build
+  # gives the same bytes (android/fdroid/README.md). This builds the unsigned release twice, in two
+  # paths, with separate Gradle homes and Gradle on Java 17 and 21, compares both and runs F-Droid's
+  # scanner (non-free libraries, trackers). Not for release tags, like the emulator.
+  fdroid:
+    name: F-Droid (reproducible build, scanner)
+    if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          path: first
+
+      - name: Second copy in another path
+        run: |
+          cp -a first "$RUNNER_TEMP/second"
+          echo "sdk.dir=$ANDROID_HOME" > first/android/local.properties
+          echo "sdk.dir=$ANDROID_HOME" > "$RUNNER_TEMP/second/android/local.properties"
+
+      - name: Release build
+        working-directory: first/android
+        run: JAVA_HOME="$JAVA_HOME_17_X64" ./gradlew --no-daemon --no-build-cache assembleRelease
+
+      - name: Release build again (other path, Gradle home and JVM)
+        working-directory: ${{ runner.temp }}/second/android
+        run: |
+          JAVA_HOME="$JAVA_HOME_21_X64" GRADLE_USER_HOME="$RUNNER_TEMP/gradle-second" \
+            ./gradlew --no-daemon --no-build-cache -Porg.gradle.java.installations.fromEnv=JAVA_HOME_17_X64 assembleRelease
+
+      - name: Compare
+        run: |
+          python3 first/android/fdroid/compare-apks.py \
+            first/android/app/build/outputs/apk/release/app-release-unsigned.apk \
+            "$RUNNER_TEMP/second/android/app/build/outputs/apk/release/app-release-unsigned.apk"
+
+      - name: F-Droid scanner
+        run: |
+          python3 -m venv "$RUNNER_TEMP/fdroidserver"
+          "$RUNNER_TEMP/fdroidserver/bin/pip" install --quiet fdroidserver==2.4.5
+          "$RUNNER_TEMP/fdroidserver/bin/python" first/android/fdroid/scan.py first
+
+      - name: Upload both APKs
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: android-fdroid-apks
+          path: |
+            first/android/app/build/outputs/apk/release/app-release-unsigned.apk
+            ${{ runner.temp }}/second/android/app/build/outputs/apk/release/app-release-unsigned.apk
+          if-no-files-found: ignore

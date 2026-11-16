@@ -109,8 +109,8 @@ android {
             // F-Droid rebuilds the release from the tag and must get the same bytes (reproducible build,
             // android/fdroid/README.md). The git revision file is not needed for that.
             vcsInfo.include = false
-            val release = signingConfigs.getByName("release")
-            if (release.storeFile != null) signingConfig = release
+            // F-Droid deletes the signingConfigs block before it builds; the release then stays unsigned.
+            signingConfigs.findByName("release")?.takeIf { it.storeFile != null }?.let { signingConfig = it }
         }
     }
 
