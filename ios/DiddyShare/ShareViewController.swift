@@ -15,7 +15,7 @@ final class ShareViewController: UIViewController {
         let spinner = UIActivityIndicatorView(style: .medium)
         spinner.color = .white
         spinner.startAnimating()
-        status.text = "Opening Diddy…"
+        status.text = ExtensionLanguage.text("ios.extensions.opening")
         status.textColor = .white
         status.font = .preferredFont(forTextStyle: .headline)
         let stack = UIStackView(arrangedSubviews: [spinner, status])
@@ -66,14 +66,14 @@ final class ShareViewController: UIViewController {
             link = ShareHandoff.inlineURL(text: manifest.text, urls: manifest.urls)
         }
         guard let link else {
-            finish(message: "Nothing Diddy can send.")
+            finish(message: ExtensionLanguage.text("ios.extensions.nothingToSend"))
             return
         }
         if openApp(link) {
             try? await Task.sleep(nanoseconds: 300_000_000)
             extensionContext?.completeRequest(returningItems: nil)
         } else {
-            finish(message: "Open Diddy to send it.")
+            finish(message: ExtensionLanguage.text("ios.extensions.openToSend"))
         }
     }
 

@@ -2749,6 +2749,13 @@
       "youDoNotHavePermissionToJoinACallInThisRoomAnAdminHasToAllow": "You do not have permission to join a call in this room. An admin has to allow it.",
       "yourHomeserverDoesNotOfferAMatrixrtcVoiceServerMsc4143RtcFoc": "Your homeserver does not offer a MatrixRTC voice server (MSC4143 rtc_foci / LiveKit). Voice channels need one, like on the desktop app.",
       "thisMicrophoneIsNotAvailableAnyMore": "This microphone is not available any more."
+    },
+    "extensions": {
+      "opening": "Opening Diddy…",
+      "nothingToSend": "Nothing Diddy can send.",
+      "openToSend": "Open Diddy to send it.",
+      "startSharing": "Start sharing from a voice channel in Diddy, then choose Diddy here.",
+      "stoppedSharing": "Diddy stopped sharing your screen."
     }
   }
 }

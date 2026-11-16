@@ -33,9 +33,9 @@ final class SampleHandler: RPBroadcastSampleHandler {
                 self?.receive(on: connection)
             case .waiting, .failed:
                 // nobody listens: Diddy is not in a call (or did not ask for this broadcast)
-                self?.end("Start sharing from a voice channel in Diddy, then choose Diddy here.")
+                self?.end(ExtensionLanguage.text("ios.extensions.startSharing"))
             case .cancelled:
-                self?.end("Diddy stopped sharing your screen.")
+                self?.end(ExtensionLanguage.text("ios.extensions.stoppedSharing"))
             default:
                 break
             }
@@ -147,7 +147,7 @@ final class SampleHandler: RPBroadcastSampleHandler {
                 }
             }
             if isComplete || error != nil {
-                self.end("Diddy stopped sharing your screen.")
+                self.end(ExtensionLanguage.text("ios.extensions.stoppedSharing"))
             } else {
                 self.receive(on: connection)
             }

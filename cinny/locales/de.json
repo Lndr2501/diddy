@@ -2749,6 +2749,13 @@
       "youDoNotHavePermissionToJoinACallInThisRoomAnAdminHasToAllow": "Du darfst diesem Anruf nicht beitreten. Die Administration muss es erlauben.",
       "yourHomeserverDoesNotOfferAMatrixrtcVoiceServerMsc4143RtcFoc": "Dein Homeserver bietet keinen MatrixRTC-Sprachserver (MSC4143 rtc_foci / LiveKit). Sprachkanäle benötigen einen, wie in der Desktop-App.",
       "thisMicrophoneIsNotAvailableAnyMore": "Dieses Mikrofon ist nicht mehr verfügbar."
+    },
+    "extensions": {
+      "opening": "Diddy wird geöffnet …",
+      "nothingToSend": "Diddy kann nichts davon senden.",
+      "openToSend": "Öffne Diddy, um es zu senden.",
+      "startSharing": "Starte das Teilen in einem Diddy-Sprachkanal und wähle hier Diddy aus.",
+      "stoppedSharing": "Diddy teilt deinen Bildschirm nicht mehr."
     }
   }
 }

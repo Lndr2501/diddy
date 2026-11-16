@@ -121,6 +121,11 @@ targets:
     sources:
       - path: DiddyBroadcast
       - path: Diddy/Call/BroadcastWire.swift
+      - path: Diddy/App/LocaleRules.swift
+      - path: Extensions/ExtensionLanguage.swift
+      - path: ../cinny/locales
+        type: folder
+        buildPhase: resources
     info:
       path: DiddyBroadcast/Info.plist
       properties:
@@ -146,6 +151,11 @@ targets:
     sources:
       - path: DiddyShare
       - path: Diddy/App/ShareHandoff.swift
+      - path: Diddy/App/LocaleRules.swift
+      - path: Extensions/ExtensionLanguage.swift
+      - path: ../cinny/locales
+        type: folder
+        buildPhase: resources
     info:
       path: DiddyShare/Info.plist
       properties:
