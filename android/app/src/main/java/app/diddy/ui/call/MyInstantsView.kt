@@ -117,7 +117,10 @@ fun MyInstantsSheet(onClose: () -> Unit) {
                 for (item in results.filter { it.path in selected }) {
                     try {
                         val (bytes, ext) = data(item)
-                        if (Soundboard.add(bytes, item.name, ext)) added++ else existing++
+                        val fresh = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { Soundboard.add(bytes, item.name, ext) }
+                        if (fresh) added++ else existing++
+                    } catch (e: kotlinx.coroutines.CancellationException) {
+                        throw e
                     } catch (_: Exception) {
                         failed++
                     }
@@ -162,10 +165,12 @@ fun MyInstantsSheet(onClose: () -> Unit) {
                                 try {
                                     val (bytes, _) = data(item)
                                     if (loadingPreview == item.path) Soundboard.preview(bytes, item.path)
+                                } catch (e: kotlinx.coroutines.CancellationException) {
+                                    throw e
                                 } catch (e: Exception) {
-                                    error = e.friendlyMessage
+                                    if (loadingPreview == item.path) error = e.friendlyMessage
                                 }
-                                loadingPreview = null
+                                if (loadingPreview == item.path) loadingPreview = null
                             }
                         }, contentAlignment = Alignment.Center) {
                             if (loadingPreview == item.path) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = Theme.accent)

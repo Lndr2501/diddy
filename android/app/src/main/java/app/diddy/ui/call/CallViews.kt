@@ -293,7 +293,12 @@ private fun ConnectedCall(session: CallSession, title: String, navigator: Naviga
     var volumeFor by remember { mutableStateOf<CallMember?>(null) }
     var watchLink by remember { mutableStateOf(false) }
     if (watchLink) WatchLinkSheet(session.watchTogether) { watchLink = false }
-    val watchOffered = app.diddy.call.WatchPrefsStore.prefs.enabled && session.watchTogether.available
+    val watchEnabled = app.diddy.call.WatchPrefsStore.prefs.enabled
+    // Turned on during the call: start listening now.
+    LaunchedEffect(watchEnabled, session.connected) {
+        if (watchEnabled && session.connected && session.companion == null) session.watchTogether.start()
+    }
+    val watchOffered = watchEnabled && session.watchTogether.available && session.companion == null
     val status = when {
         session.outgoing == CallSession.OutgoingRing.RINGING -> "Ringing…"
         session.outgoing == CallSession.OutgoingRing.NO_ANSWER -> "No answer"
@@ -323,7 +328,7 @@ private fun ConnectedCall(session: CallSession, title: String, navigator: Naviga
                 }
             }
         }
-        WatchTogetherArea(session.watchTogether)
+        if (session.companion == null) WatchTogetherArea(session.watchTogether)
         val watched = session.members.firstOrNull { it.id == session.watchedShare && it.screenShare != null }
         Box(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 10.dp)) {
             if (watched != null) {

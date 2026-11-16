@@ -215,7 +215,8 @@ class CallSession(private val context: Context, val account: MatrixAccount, priv
         ensureOpen()
         connected = true
         state = "Voice connected"
-        watchTogether.start()
+        // As the computer's silent camera, the phone shows no shared video either.
+        if (companion == null) watchTogether.start()
         scheduleMembershipRefresh()
         refreshMembers()
     }

@@ -28,6 +28,11 @@ object Wiring {
         AppModel.Hooks.silencesSound = { account, sound ->
             app.diddy.matrix.DoNotDisturb.silencesSound(sound.alert, app.diddy.matrix.PresenceStore.of(account).ownStatus)
         }
+        val beforeLogout = AppModel.Hooks.beforeLogout
+        AppModel.Hooks.beforeLogout = { account ->
+            app.diddy.push.UnifiedPushing.accountRemoved(account)
+            beforeLogout(account)
+        }
         app.diddy.call.CallWiring.install(context)
     }
 

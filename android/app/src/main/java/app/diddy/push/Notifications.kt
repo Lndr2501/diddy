@@ -84,14 +84,14 @@ object Notifications {
 
     /** The open connection notifies only when push does not already do it. */
     private val canPost: Boolean
-        get() = PushSettings.enabled && !UnifiedPushing.enabled && !inForeground && permitted
+        get() = PushSettings.enabled && !UnifiedPushing.active && !inForeground && permitted
 
     /** A message that came in by push (UnifiedPush). */
-    fun postPush(account: MatrixAccount, roomId: String, title: String, body: String, mention: Boolean, noisy: Boolean) {
+    fun postPush(account: MatrixAccount, roomId: String, title: String, body: String, mention: Boolean, noisy: Boolean, direct: Boolean = false) {
         if (!::context.isInitialized || !permitted || inForeground) return
         if (DoNotDisturb.silencesNotification(PresenceStore.of(account).ownStatus)) return
         val sound = noisy && (if (mention) Sound.MENTION else Sound.MESSAGE).isEnabled
-        post(account, roomId, title, body, if (mention) CHANNEL_MENTIONS else CHANNEL_MESSAGES, sound, tag(account, roomId))
+        post(account, roomId, title, body, if (mention || direct) CHANNEL_MENTIONS else CHANNEL_MESSAGES, sound, tag(account, roomId))
     }
 
     private fun tag(account: MatrixAccount, roomId: String) = "${account.id}|$roomId"

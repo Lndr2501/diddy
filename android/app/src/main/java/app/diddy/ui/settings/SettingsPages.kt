@@ -325,7 +325,12 @@ fun NotificationsPage(account: MatrixAccount, open: (SettingsPage) -> Unit) {
     }
     Page {
         val push = app.diddy.push.UnifiedPushing
-        val distributors = remember { push.distributors() }
+        var distributors by remember { mutableStateOf(push.distributors()) }
+        // Back from installing ntfy: look again.
+        androidx.lifecycle.compose.LifecycleResumeEffect(Unit) {
+            distributors = push.distributors()
+            onPauseOrDispose {}
+        }
         FormSection(
             "Push",
             when {

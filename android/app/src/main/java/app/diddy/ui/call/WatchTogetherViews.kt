@@ -221,6 +221,11 @@ fun WatchTogetherSettingsPage() {
 @Composable
 fun CompanionOfferDialog() {
     val pending = app.diddy.call.CompanionService.pending ?: return
+    LaunchedEffect(pending) {
+        // Gone by itself when the computer has stopped waiting.
+        kotlinx.coroutines.delay(maxOf(0L, 2 * 60 * 1000L - (System.currentTimeMillis() - pending.receivedAt)))
+        if (app.diddy.call.CompanionService.pending == pending) app.diddy.call.CompanionService.pending = null
+    }
     val media = pending.request.media
     var camera by remember(pending) { mutableStateOf(media.camera) }
     var microphone by remember(pending) { mutableStateOf(media.microphone) }

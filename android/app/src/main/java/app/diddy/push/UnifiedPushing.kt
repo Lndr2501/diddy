@@ -88,6 +88,16 @@ object UnifiedPushing {
         enabled = Prefs.bool(ENABLED_KEY)
     }
 
+    /** Push really works: on, and at least one account has its pusher on the server. */
+    val active: Boolean
+        get() = enabled && AppModel.accounts.any { Prefs.has(endpointKey(it.id)) }
+
+    /** Signing out: the server forgets the pusher with the device; the distributor forgets us too. */
+    fun accountRemoved(account: MatrixAccount) {
+        Prefs.remove(endpointKey(account.id))
+        runCatching { UnifiedPush.unregister(context, account.id) }
+    }
+
     fun distributors(): List<String> = runCatching { UnifiedPush.getDistributors(context) }.getOrDefault(emptyList())
 
     val savedDistributor: String? get() = runCatching { UnifiedPush.getSavedDistributor(context) }.getOrNull()
@@ -174,28 +184,37 @@ object UnifiedPushing {
     /** A push arrived: read the event with the notification client and show it. */
     internal fun message(content: ByteArray, accountId: String) {
         val (roomId, eventId) = UnifiedPushLogic.parse(content) ?: return
+        // Keeps the phone awake while the event is fetched and decrypted (at most 30 seconds).
+        val wake = (context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager)
+            .newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "diddy:push").apply { acquire(30_000) }
         AppModel.scope.launch {
-            val account = accountFor(accountId) ?: return@launch
-            if (Notifications.inForegroundNow) return@launch // the running sync shows it
+            try { handleMessage(accountId, roomId, eventId) } finally { if (wake.isHeld) wake.release() }
+        }
+    }
+
+    private suspend fun handleMessage(accountId: String, roomId: String, eventId: String) {
+        run {
+            val account = accountFor(accountId) ?: return
+            if (Notifications.inForegroundNow) return // the running sync shows it
             try {
                 val setup = account.runningSyncService?.let { NotificationProcessSetup.SingleProcess(it) } ?: NotificationProcessSetup.MultipleProcesses
                 val client = account.client.notificationClient(setup)
                 val status = client.getNotification(roomId, eventId)
-                val item = (status as? NotificationStatus.Event)?.item ?: return@launch
+                val item = (status as? NotificationStatus.Event)?.item ?: return
                 val roomName = item.roomInfo.displayName
                 val sender = item.senderInfo.displayName ?: "Someone"
                 when (val event = item.event) {
                     is NotificationEvent.Invite -> Notifications.postPush(account, roomId, roomName, "$sender invited you", mention = true, noisy = true)
                     is NotificationEvent.Timeline -> {
-                        if (event.event.senderId() == account.userId) return@launch
+                        if (event.event.senderId() == account.userId) return
                         val messageLike = (runCatching { event.event.content() }.getOrNull() as? TimelineEventContent.MessageLike)?.content
                         if (messageLike is MessageLikeEventContent.RtcNotification) {
                             Notifications.announceCall(account, roomId, roomName)
-                            return@launch
+                            return
                         }
-                        val text = preview(messageLike) ?: return@launch
+                        val text = preview(messageLike) ?: return
                         val body = if (item.roomInfo.isDm) text else "$sender: $text"
-                        Notifications.postPush(account, roomId, roomName, body, mention = item.hasMention == true, noisy = item.isNoisy != false)
+                        Notifications.postPush(account, roomId, roomName, body, mention = item.hasMention == true, noisy = item.isNoisy != false, direct = item.roomInfo.isDm)
                     }
                 }
             } catch (e: Exception) {

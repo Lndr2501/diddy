@@ -74,7 +74,12 @@ data class CompanionRole(val requestId: String, val deviceId: String, val media:
  * computer, offers it, and hands the computer's later commands to the running call.
  */
 object CompanionService {
-    data class Pending(val accountId: String, val request: CompanionProtocol.Request)
+    data class Pending(val accountId: String, val request: CompanionProtocol.Request, val receivedAt: Long = System.currentTimeMillis()) {
+        /** The computer stops waiting after a while; an old request is not offered anymore. */
+        val fresh: Boolean get() = System.currentTimeMillis() - receivedAt < MAX_AGE_MS
+    }
+
+    private const val MAX_AGE_MS = 2 * 60 * 1000L
 
     var pending by mutableStateOf<Pending?>(null)
     private val handles = mutableMapOf<String, TaskHandle>()
@@ -126,6 +131,11 @@ object CompanionService {
     /** "Join": joins the call as camera, microphone and/or screen of the computer. */
     fun accept(media: CompanionProtocol.Media) {
         val current = pending ?: return
+        if (!current.fresh) {
+            pending = null
+            CallManager.error = "Your computer stopped waiting. Ask again from the computer."
+            return
+        }
         val account = AppModel.accounts.firstOrNull { it.id == current.accountId } ?: return
         pending = null
         val role = CompanionRole(current.request.id, current.request.deviceId, media)
