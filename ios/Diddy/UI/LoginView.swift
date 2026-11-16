@@ -172,7 +172,7 @@ struct LoginView: View {
                     Label(L("auth.passwordRegisterForm.thisUsernameIsFree"), systemImage: "checkmark.circle.fill")
                         .font(.footnote).foregroundStyle(Theme.online)
                 case .problem(let text):
-                    Text(text).font(.footnote).foregroundStyle(Theme.danger)
+                    Text(localizedRegistrationError(text)).font(.footnote).foregroundStyle(Theme.danger)
                 }
             }
             field(L("ios.registrationMore.password")) {
@@ -233,11 +233,33 @@ struct LoginView: View {
             registrationButton(L("ios.login.openPage")) { webStep = WebStep(url: url) }
         }
         if let error = registration.error {
-            Text(error).font(.footnote).foregroundStyle(Theme.danger)
+            Text(localizedRegistrationError(error)).font(.footnote).foregroundStyle(Theme.danger)
         }
         if registration.step != .form {
             Button(L("ios.login.startOver")) { registration.reset(homeserver: login.resolvedServerURL) }
                 .font(.footnote)
+        }
+    }
+
+    private func localizedRegistrationError(_ message: String) -> String {
+        let passwordPrefix = "Choose a stronger password: "
+        if message.hasPrefix(passwordPrefix) {
+            return L("ios.registrationMore.strongerPasswordReason", ["reason": String(message.dropFirst(passwordPrefix.count))])
+        }
+        switch message {
+        case "Choose a username.": return L("ios.registrationMore.chooseAUsername")
+        case "Use only letters, numbers and . _ = - /": return L("ios.registrationMore.useOnlyLettersNumbersAnd")
+        case "This username is already taken.": return L("ios.registrationMore.thisUsernameIsAlreadyTaken")
+        case "This username is not allowed. Use only letters, numbers and . _ = - /": return L("ios.registrationMore.thisUsernameIsNotAllowedUseOnlyLettersNumbersAnd")
+        case "This username is reserved.": return L("ios.registrationMore.thisUsernameIsReserved")
+        case "Choose a stronger password.": return L("ios.registrationMore.chooseAStrongerPassword")
+        case "Choose a longer password.": return L("ios.registrationMore.chooseALongerPassword")
+        case "This server does not accept new accounts. Try another server.": return L("ios.registrationMore.thisServerDoesNotAcceptNewAccountsTryAnotherServer")
+        case "Too many attempts. Wait a moment, then try again.": return L("ios.registrationMore.tooManyAttemptsWaitAMomentThenTryAgain")
+        case "This email address already belongs to an account.": return L("ios.registrationMore.thisEmailAddressAlreadyBelongsToAnAccount")
+        case "This server does not accept this email address.": return L("ios.registrationMore.thisServerDoesNotAcceptThisEmailAddress")
+        case "The server could not create the account.": return L("ios.registrationMore.theServerCouldNotCreateTheAccount")
+        default: return message // Server-provided errors stay verbatim.
         }
     }
 
