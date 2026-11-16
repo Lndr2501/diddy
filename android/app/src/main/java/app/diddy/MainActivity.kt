@@ -41,6 +41,7 @@ class MainActivity : ComponentActivity() {
             }
         }
         AppModel.restore()
+        Wiring.appStarted(this)
         handle(intent)
     }
 

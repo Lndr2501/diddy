@@ -22,3 +22,9 @@ suspend fun startCall(account: MatrixAccount, roomId: String, title: String, nav
 fun VoiceChannelScreen(account: MatrixAccount, roomId: String, navigator: Navigator, onBack: () -> Unit) {
     app.diddy.ui.chat.ChatScreen(account, roomId, navigator, onBack)
 }
+
+@Composable
+fun CallSettingsPage() {}
+
+@Composable
+fun WatchTogetherSettingsPage() {}

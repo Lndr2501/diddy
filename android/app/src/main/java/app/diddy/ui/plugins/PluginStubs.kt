@@ -6,3 +6,6 @@ import app.diddy.ui.Navigator
 
 @Composable
 fun PluginDockSection(account: MatrixAccount, navigator: Navigator) {}
+
+@Composable
+fun PluginSettingsPage(account: MatrixAccount) {}

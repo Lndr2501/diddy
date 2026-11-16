@@ -147,6 +147,7 @@ fun ChatScreen(account: MatrixAccount, roomId: String, navigator: Navigator, onB
     }
     DisposableEffect(roomId) {
         Sounds.openRoomId = roomId
+        app.diddy.push.Notifications.clearRoom(account, roomId)
         onDispose {
             controller?.setTyping(false)
             controller?.close()

@@ -89,7 +89,7 @@ fun TimelineNavSheetView(
         is NavSheet.Thread -> ThreadSheet(account, controller, sheet.root, navigator, onClose)
         NavSheet.Pinned -> PinnedSheet(account, controller, onClose, onJump)
         NavSheet.JumpToDate -> JumpToDateSheet(account, controller.roomId, onClose, onJump)
-        NavSheet.Search -> SearchSheet(account, controller.roomId, navigator, onClose, onJump)
+        NavSheet.Search -> MessageSearchSheet(account, controller.roomId, onClose) { _, eventId -> onJump(eventId) }
     }
 }
 
@@ -300,9 +300,12 @@ private fun JumpToDateSheet(account: MatrixAccount, roomId: String, onClose: () 
     }
 }
 
-/** Server-side message search in this room (`POST /search`); encrypted rooms cannot be searched there. */
+/**
+ * Server-side message search (`POST /search`) in one room, or in all rooms without one; encrypted
+ * rooms cannot be searched there.
+ */
 @Composable
-private fun SearchSheet(account: MatrixAccount, roomId: String, navigator: Navigator, onClose: () -> Unit, onJump: (String) -> Unit) {
+fun MessageSearchSheet(account: MatrixAccount, roomId: String?, onClose: () -> Unit, onJump: (String, String) -> Unit) {
     val scope = rememberCoroutineScope()
     var term by remember { mutableStateOf("") }
     var results by remember { mutableStateOf<List<Map<String, Any?>>>(emptyList()) }
@@ -317,8 +320,8 @@ private fun SearchSheet(account: MatrixAccount, roomId: String, navigator: Navig
         scope.launch {
             try {
                 val body = mapOf("search_categories" to mapOf("room_events" to mapOf(
-                    "search_term" to query, "order_by" to "recent", "filter" to mapOf("rooms" to listOf(roomId)),
-                )))
+                    "search_term" to query, "order_by" to "recent",
+                ) + (roomId?.let { mapOf("filter" to mapOf("rooms" to listOf(it))) } ?: emptyMap())))
                 val path = "/_matrix/client/v3/search" + (if (!fresh && next != null) "?next_batch=" + java.net.URLEncoder.encode(next, "UTF-8") else "")
                 val json = account.clientRequest(path, body)
                 val events = json["search_categories"].obj()?.get("room_events").obj()
@@ -352,8 +355,9 @@ private fun SearchSheet(account: MatrixAccount, roomId: String, navigator: Navig
                     val sender = event["sender"].str() ?: ""
                     val target = content?.get("m.relates_to").obj()?.takeIf { it["rel_type"].str() == "m.replace" }?.get("event_id").str() ?: event["event_id"].str()
                     val ts = event["origin_server_ts"].long()
+                    val room = event["room_id"].str() ?: roomId
                     Row(
-                        Modifier.fillMaxWidth().clickable { target?.let(onJump) }.padding(horizontal = 16.dp, vertical = 10.dp),
+                        Modifier.fillMaxWidth().clickable { if (target != null && room != null) onJump(room, target) }.padding(horizontal = 16.dp, vertical = 10.dp),
                     ) {
                         AvatarView(account.profiles[sender]?.avatarUrl, account.name(sender), 32.dp, account)
                         Spacer(Modifier.width(10.dp))
@@ -361,6 +365,7 @@ private fun SearchSheet(account: MatrixAccount, roomId: String, navigator: Navig
                             Row {
                                 Text(account.name(sender), color = Theme.text, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                                 ts?.let { Text("  " + ChatSettings.chatTimestamp(Date(it)), color = Theme.faint, fontSize = 12.sp) }
+                                if (roomId == null) room?.let { account.summary(it)?.name }?.let { Text("  in $it", color = Theme.faint, fontSize = 12.sp, maxLines = 1) }
                             }
                             Text(body, color = Theme.text, fontSize = 15.sp, maxLines = 4, overflow = TextOverflow.Ellipsis)
                         }
