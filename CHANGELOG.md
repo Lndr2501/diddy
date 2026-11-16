@@ -1,5 +1,9 @@
 # Changelog
 
+## Unveröffentlicht
+
+- **Update-Hinweis zeigt die neueste Version (#246, macOS, Linux, Windows, iOS):** Lag Diddy zwei oder mehr Versionen zurück, nannte der Hinweis oft nur die nächste, und „Download“ führte auf deren Seite. Der Hinweis prüfte nur alle sechs Stunden (iOS einmal pro Start) und behielt die zuerst gefundene Version, auch wenn kurz danach eine neuere erschien. Jetzt prüft er stündlich und beim Zurückkehren ins Fenster, ersetzt die angezeigte Version jedes Mal und nimmt am Desktop wie auf iOS die höchste Version aus der Release-Liste statt nur des „latest“-Eintrags.
+
 ## 1.12.0 (2026-11-16)
 
 - **macOS: kein Mini-Fenster mehr beim Start (#243):** Beim Start ging zuerst ein kleines Fenster mit der ganzen App auf, erst nach dem Schließen kam das normale Fenster. Das kleine Fenster war das Update-Fenster: Seine Seite `updater.html` fehlte im Build, und der lokale Server lieferte stattdessen die App aus. Die Seite wird jetzt mitgebaut, ein Test prüft das. Nur macOS (Linux und Windows haben kein Update-Fenster, iOS und Android nicht betroffen).
