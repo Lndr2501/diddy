@@ -84,6 +84,12 @@ Knöpfe und die Zeitleiste senden ihre Befehle mit dem Zusatzfeld `"dev.diddy.ca
 Nachrichten im Chat aus (nur kurze, befehlsförmige Texte, also nie eine echte Nachricht), damit der Raum nicht mit
 `!pause`, `!seek 1:23` usw. zugemüllt wird. Der Bot liest sie wie jede andere Nachricht.
 
+### Knöpfe mit Rückruf (Konvention der Python-Library)
+
+Die Library `diddybot` baut Knöpfe, die Python-Code aufrufen, aus ganz normalen Knöpfen: `send` ist `!_v <6-stellige Kennung> <Nr>`
+(passt auf die Verstecken-Regel oben, die Klicks erscheinen also nicht im Chat). Der Bot ordnet Kennung und Nummer seiner
+`View` zu und bearbeitet die Karte. Das ist keine Protokolländerung; andere Bots können es genauso halten.
+
 ## Befehle anmelden (Vorschläge beim Tippen)
 
 Ein Bot meldet seine Befehle als Raum-Zustand (State-Event) an. Diddy schlägt sie dann beim Tippen vor
@@ -104,6 +110,18 @@ PUT /_matrix/client/v3/rooms/{roomId}/state/dev.diddy.commands/{botUserId}
 - `prefix`: ein oder zwei Satzzeichen (`!`, `%`, `.` …), nie ein Buchstabe. `name` ohne Präfix, nur Buchstaben,
   Ziffern, `_`, `-`, `/`. `usage` und `desc` sind optional; höchstens 100 Befehle.
 - `state_key` ist die Matrix-ID des Bots, so kann jeder Bot im Raum seine eigene Liste haben.
+- Optional pro Befehl: `options`, die Argumente, damit Diddy beim Tippen das aktuelle Argument erklärt und Werte vorschlägt:
+
+  ```json
+  { "name": "mode", "usage": "!mode <an|aus>", "desc": "Modus wechseln",
+    "options": [ { "name": "setting", "desc": "an oder aus", "choices": ["an", "aus"] },
+                 { "name": "reason", "desc": "warum", "required": false } ] }
+  ```
+
+  Höchstens 10 Optionen; `name` höchstens 30 Zeichen, `desc` höchstens 80, `required` gilt, solange es nicht `false` ist;
+  `choices` höchstens 25 Werte zu je höchstens 40 Zeichen. Diddy ordnet die getippten Wörter der Reihe nach den Optionen zu
+  (nur einzeilige Eingaben ohne Anführungszeichen), filtert `choices` nach Wortanfang ohne Rücksicht auf Groß-/Kleinschreibung
+  und zeigt nichts, wenn das Wort schon genau ein Wert ist. Ältere Clients ignorieren `options`.
 - Zustandsereignisse zu setzen braucht die entsprechende Berechtigung im Raum (Standard: Moderator, Stufe 50). Fehlt sie,
   bleibt es still bei „keine Vorschläge“, der Bot funktioniert trotzdem.
 - Räume mit Ende-zu-Ende-Verschlüsselung: Zustandsereignisse sind nie verschlüsselt, die Liste ist also für alle im Raum

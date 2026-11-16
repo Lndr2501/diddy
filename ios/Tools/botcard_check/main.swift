@@ -148,4 +148,24 @@ check(BotCommandParser.match(lists, typed: "!pause").isEmpty, "exact match needs
 check(BotCommandParser.match(lists, typed: "hello").isEmpty, "other prefix")
 check(BotCommandParser.match(lists, typed: "?x").isEmpty, "wrong prefix")
 
+// command options and argument suggestions (the same cases as cinny/tests/botCommands.test.cjs)
+let optionContent = try! JSONSerialization.jsonObject(with: Data(#"{"v":1,"prefix":"!","commands":[{"name":"mode","usage":"!mode <on|off> [note]","options":[{"name":"setting","desc":"on or off","choices":["on","off","auto"]},{"name":"note","required":false}]},{"name":"ping"},{"name":"x","options":[{"name":"a","desc":"d","required":false,"choices":["one",5,"","two"]},{"name":"b"},{"desc":"no name"},"junk"]},{"name":"none","options":"nope"}]}"#.utf8)) as! [String: Any]
+let optionList = BotCommandParser.parse(content: optionContent)!
+check(optionList.commands[2].options == [BotOption(name: "a", required: false, desc: "d", choices: ["one", "two"]), BotOption(name: "b", required: true, desc: nil, choices: [])], "options are read, bad entries dropped")
+check(optionList.commands[1].options.isEmpty && optionList.commands[3].options.isEmpty, "no options is fine")
+let manyOptions = (0..<14).map { #"{"name":"o\#($0)"}"# }.joined(separator: ",")
+let manyContent = try! JSONSerialization.jsonObject(with: Data(#"{"v":1,"prefix":"!","commands":[{"name":"m","options":[\#(manyOptions)]}]}"#.utf8)) as! [String: Any]
+check(BotCommandParser.parse(content: manyContent)?.commands[0].options.count == 10, "at most 10 options")
+func arg(_ typed: String) -> (Int, String, [String])? {
+    BotCommandParser.matchArguments([optionList], typed: typed).map { ($0.index, $0.partial, $0.choices) }
+}
+check(arg("!mode ")?.2 == ["on", "off", "auto"] && arg("!mode ")?.0 == 0, "first argument: all choices")
+check(arg("!mode o")?.2 == ["on", "off"] && arg("!mode o")?.1 == "o", "partial filters")
+check(arg("!MODE OF")?.2 == ["off"], "case does not matter")
+check(arg("!mode off")?.2 == [], "typed in full needs no suggestion")
+check(arg("!mode on ")?.0 == 1 && arg("!mode on ")?.2 == [], "second argument is a hint only")
+check(arg("!mode on x y") == nil, "more words than options")
+check(arg("!mode") == nil && arg("!ping ") == nil && arg("!nope x") == nil, "name stage, no options, unknown command")
+check(arg("?mode o") == nil && arg("!mode \"o") == nil && arg("!mode o\nsecond") == nil && arg("hello !mode o") == nil, "other prefix, quotes, newline, not at start")
+
 if failures == 0 { print("botcard checks passed") } else { print("\(failures) failures"); exit(1) }

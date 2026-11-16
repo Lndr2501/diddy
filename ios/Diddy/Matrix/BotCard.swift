@@ -391,12 +391,33 @@ enum BotCardParser {
 
 // MARK: - Bot commands
 
+/// One argument of a command: its name, an optional hint and fixed answers to suggest.
+struct BotOption: Equatable {
+    let name: String
+    let required: Bool
+    let desc: String?
+    let choices: [String]
+}
+
 struct BotCommand: Equatable, Identifiable {
     let name: String
     let usage: String
     let desc: String
     let prefix: String
+    var options: [BotOption] = []
     var id: String { prefix + name }
+}
+
+/// What to suggest for the argument being typed (`!mode o` suggests "on" and "off").
+struct BotArgumentMatch: Equatable {
+    let command: BotCommand
+    let option: BotOption
+    /// Which argument is being typed (0 = the first after the command).
+    let index: Int
+    /// What of it is typed so far.
+    let partial: String
+    /// Fixed answers that fit `partial`.
+    let choices: [String]
 }
 
 struct BotCommandList: Equatable {
@@ -426,6 +447,18 @@ enum BotCommandParser {
         }
     }
 
+    private static func options(from value: Any?) -> [BotOption] {
+        var out: [BotOption] = []
+        for case let entry as [String: Any] in ((value as? [Any]) ?? []).prefix(10) {
+            guard let name = short(entry["name"], 30) else { continue }
+            var required = true
+            if let flag = entry["required"] as? NSNumber, BotCardParser.isBool(flag), !flag.boolValue { required = false }
+            let choices = ((entry["choices"] as? [Any]) ?? []).prefix(25).compactMap { short($0, 40) }
+            out.append(BotOption(name: name, required: required, desc: short(entry["desc"], 80), choices: choices))
+        }
+        return out
+    }
+
     /// The command list of a `dev.diddy.commands` state event content, or nil when empty / invalid.
     static func parse(content: [String: Any]) -> BotCommandList? {
         guard let version = content["v"] as? NSNumber, !BotCardParser.isBool(version), version.doubleValue == 1,
@@ -439,7 +472,8 @@ enum BotCommandParser {
                 name: name,
                 usage: short(entry["usage"], 120) ?? "\(prefix)\(name)",
                 desc: short(entry["desc"], 160) ?? "",
-                prefix: prefix
+                prefix: prefix,
+                options: options(from: entry["options"])
             ))
         }
         return commands.isEmpty ? nil : BotCommandList(prefix: prefix, commands: commands)
@@ -455,5 +489,31 @@ enum BotCommandParser {
         // A typed word that equals a command exactly needs no suggestion any more.
         if out.count == 1, typed.dropFirst(out[0].prefix.count).lowercased() == out[0].name.lowercased() { return [] }
         return Array(out.prefix(max))
+    }
+
+    /// What to suggest for the argument being typed (the same rules as `matchBotArguments` in
+    /// `botCommands.ts`): `typed` is the whole message; one line without quotes is looked at, an
+    /// argument typed in full needs no suggestion any more.
+    static func matchArguments(_ lists: [BotCommandList], typed: String) -> BotArgumentMatch? {
+        if typed.contains("\n") { return nil }
+        for list in lists where typed.hasPrefix(list.prefix) {
+            let rest = String(typed.dropFirst(list.prefix.count))
+            guard let split = rest.firstIndex(where: { $0.isWhitespace }), split != rest.startIndex else { continue }
+            let name = String(rest[rest.startIndex..<split])
+            let argText = String(rest[split...].drop(while: { $0.isWhitespace }))
+            if argText.contains("\"") || argText.contains("'") { continue }
+            guard let command = list.commands.first(where: { $0.name.lowercased() == name.lowercased() }),
+                  !command.options.isEmpty else { continue }
+            let words = argText.split(whereSeparator: { $0.isWhitespace }).map(String.init)
+            let startsNew = words.isEmpty || (argText.last?.isWhitespace ?? false)
+            let index = startsNew ? words.count : words.count - 1
+            let partial = startsNew ? "" : words[words.count - 1]
+            guard index < command.options.count else { continue }
+            let option = command.options[index]
+            var choices = option.choices.filter { $0.lowercased().hasPrefix(partial.lowercased()) }
+            if choices.count == 1, choices[0].lowercased() == partial.lowercased() { choices = [] }
+            return BotArgumentMatch(command: command, option: option, index: index, partial: partial, choices: choices)
+        }
+        return nil
     }
 }

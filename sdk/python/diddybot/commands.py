@@ -168,6 +168,8 @@ class Command:
     children: dict[str, "Command"] = field(default_factory=dict)
     invoke_without_command: bool = False
     cog: Any = None
+    #: short texts for the arguments Diddy shows while typing: ``{"seconds": "how long"}``
+    describe: dict[str, str] = field(default_factory=dict)
     error_handler: Optional[Handler] = None
     _lookup: dict[str, "Command"] = field(default_factory=dict, repr=False)
 
@@ -199,6 +201,24 @@ class Command:
             else:
                 parts.append(f"[{p.label}]")
         return " ".join(parts)
+
+    def options_content(self) -> list[dict]:
+        """The ``options`` of this command in ``dev.diddy.commands`` (what Diddy suggests for the
+        arguments while you type): subcommand names for a group, else one entry per argument."""
+        if self.children:
+            names = [c.name for c in self.children.values() if not c.hidden][:25]
+            return [{"name": "subcommand", "required": not self.invoke_without_command,
+                     "choices": names}] if names else []
+        out = []
+        for p in self.params[:10]:
+            item: dict[str, Any] = {"name": p.name.replace("_", " "),
+                                    "required": p.required and p.mode != "varargs"}
+            if self.describe.get(p.name):
+                item["desc"] = self.describe[p.name]
+            if p.choices:
+                item["choices"] = p.choices[:25]
+            out.append(item)
+        return out
 
     def row(self, prefix: str) -> tuple[str, str]:
         """``(usage with aliases, description)`` as the help card lists the command."""
@@ -476,15 +496,20 @@ class CommandRegistry:
     def visible(self) -> list[Command]:
         return [c for c in self.commands.values() if not c.hidden]
 
+    def _entry(self, c: Command) -> dict:
+        entry: dict[str, Any] = {"name": c.name, "usage": c.usage_line(self.prefix),
+                                 "desc": c.desc or ""}
+        options = c.options_content()
+        if options:
+            entry["options"] = options
+        return entry
+
     def commands_content(self) -> dict:
         """Content of the ``dev.diddy.commands`` state event (suggestions while typing)."""
         return {
             "v": VERSION,
             "prefix": self.prefix,
-            "commands": [
-                {"name": c.name, "usage": c.usage_line(self.prefix), "desc": c.desc or ""}
-                for c in self.visible()[:COMMANDS_MAX]
-            ],
+            "commands": [self._entry(c) for c in self.visible()[:COMMANDS_MAX]],
         }
 
     def help_card(self, note: str = "", title_for: Optional[Callable[[str], str]] = None) -> cards.Card:

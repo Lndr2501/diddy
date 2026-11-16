@@ -369,6 +369,26 @@ def _command_name_ok(name: str) -> bool:
     return bool(name) and all(c.isalpha() or c.isnumeric() or c in "_/-" for c in name)
 
 
+def _options(v: Any) -> list[dict]:
+    out = []
+    for o in _list(v)[:10]:
+        if not _is_object(o):
+            continue
+        name = _text(o.get("name"), 30, _CTRL_COMMANDS)
+        if not name:
+            continue
+        item: dict = {"name": name, "required": o.get("required") is not False}
+        desc = _text(o.get("desc"), 80, _CTRL_COMMANDS)
+        if desc:
+            item["desc"] = desc
+        choices = [c for c in (_text(x, 40, _CTRL_COMMANDS) for x in _list(o.get("choices"))[:25])
+                   if c]
+        if choices:
+            item["choices"] = choices
+        out.append(item)
+    return out
+
+
 def parse_commands(content: Any) -> Optional[dict]:
     """The command list Diddy reads from a ``dev.diddy.commands`` state content, or ``None``."""
     if not _is_object(content) or content.get("v") != 1 or isinstance(content.get("v"), bool):
@@ -383,11 +403,15 @@ def parse_commands(content: Any) -> Optional[dict]:
         name = _text(c.get("name"), 30, _CTRL_COMMANDS)
         if not name or not _command_name_ok(name):
             continue
-        commands.append({
+        entry = {
             "name": name,
             "usage": _text(c.get("usage"), 120, _CTRL_COMMANDS) or f"{prefix}{name}",
             "desc": _text(c.get("desc"), 160, _CTRL_COMMANDS) or "",
-        })
+        }
+        options = _options(c.get("options"))
+        if options:
+            entry["options"] = options
+        commands.append(entry)
     return {"prefix": prefix, "commands": commands} if commands else None
 
 

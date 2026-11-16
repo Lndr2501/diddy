@@ -116,6 +116,13 @@ EDGE = [
     ("commands", {"v": 1, "prefix": "!", "commands": [
         {"name": "play", "usage": "!play <x>", "desc": "plays"}, {"name": "24/7"},
         {"name": "bad name"}, {"name": "émoji"}, {"name": "²"}, {"name": "x" * 40}]}),
+    ("commands", {"v": 1, "prefix": "!", "commands": [
+        {"name": "mode", "options": [
+            {"name": "setting", "desc": "on or off", "choices": ["on", "off", 5, "", "x" * 60]},
+            {"name": "note", "required": False}, {"name": "r", "required": 0}, {"desc": "no name"},
+            "junk", {"name": "n" * 40, "desc": "d" * 100, "choices": ["a"] * 30}]},
+        {"name": "many", "options": [{"name": f"o{i}"} for i in range(14)]},
+        {"name": "bad", "options": "nope"}, {"name": "empty", "options": []}]}),
     ("commands", {"v": 1, "prefix": "a", "commands": [{"name": "x"}]}),
     ("commands", {"v": 1, "prefix": "/", "commands": [{"name": "x"}]}),
     ("commands", {"v": 1, "prefix": "!!", "commands": []}),
@@ -139,6 +146,13 @@ ALPHABET = ["a", "Z", "ä", " ", " ", "﻿", "\u0085", "\n", "\t", "\u0007", "�
 def rand_text(r, n=None):
     n = r.choice([0, 1, 3, 10, 30, 130, 330]) if n is None else n
     return "".join(r.choice(ALPHABET) for _ in range(n))
+
+
+def rand_options(r):
+    return [{"name": rand_text(r, r.choice([0, 3, 31])), "desc": rand_text(r),
+             "required": rand_value(r),
+             "choices": [rand_text(r, r.choice([0, 5, 41])) for _ in range(r.choice([0, 3, 27]))]}
+            for _ in range(r.choice([0, 2, 12]))]
 
 
 def rand_value(r, depth=0):
@@ -186,7 +200,8 @@ def test_random_cards_match_diddy():
                                  "body": r.choice(["!", "/"]) + rand_text(r, r.choice([1, 5, 31]))}))
         cases.append(("commands", {"v": 1, "prefix": r.choice(["!", "!!", ".", "a", "?"]),
                                    "commands": [{"name": rand_text(r, r.choice([1, 4, 31])),
-                                                 "usage": rand_text(r), "desc": rand_text(r)}
+                                                 "usage": rand_text(r), "desc": rand_text(r),
+                                                 "options": rand_options(r)}
                                                 for _ in range(3)]}))
         cases.append(("profile", {"v": 1, "about": rand_text(r),
                                   "banner": {"from": rand_value(r), "to": "#abc",

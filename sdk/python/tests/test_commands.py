@@ -71,7 +71,8 @@ def test_commands_content_is_what_diddy_suggests():
     r.add("24/7", _f, desc="radio")
     content = r.commands_content()
     assert protocol.parse_commands(content) == {"prefix": "!", "commands": [
-        {"name": "play", "usage": "!play <query>", "desc": "plays"},
+        {"name": "play", "usage": "!play <query>", "desc": "plays",
+         "options": [{"name": "query", "required": True}]},
         {"name": "24/7", "usage": "!24/7", "desc": "radio"}]}
 
 
