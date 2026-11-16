@@ -125,18 +125,18 @@ struct ShareControl: View {
                     get: { extras.shareSystemSound },
                     set: { on in Task { await session.setShareSystemSound(on) } }
                 )) {
-                    Label("Share System Sound", systemImage: "speaker.wave.2")
+                    Label(L("ios.calls.shareSystemSound"), systemImage: "speaker.wave.2")
                 }
                 Button(role: .destructive) {
                     Task { await session.stopScreenShare() }
                 } label: {
-                    Label("Stop Sharing", systemImage: "rectangle.on.rectangle.slash")
+                    Label(L("ios.calls.stopSharing"), systemImage: "rectangle.on.rectangle.slash")
                 }
             } label: {
                 CallBarIcon(icon: "rectangle.on.rectangle", highlight: true)
             }
-            .accessibilityLabel("Sharing your screen")
-            .accessibilityHint("Opens the sharing options")
+            .accessibilityLabel(L("ios.calls.sharingYourScreen"))
+            .accessibilityHint(L("ios.calls.moreOpensTheSharingOptions"))
         } else if !CallSession.sharesWholeScreen && BroadcastPicker.isAvailable {
             // Only the broadcast extension reliably sees other apps (also on iOS 27 with an IPA
             // built before Xcode 27); in-app sharing stays for showing Diddy itself without the sheet.
@@ -144,19 +144,19 @@ struct ShareControl: View {
                 Button {
                     session.startWholeScreenShare()
                 } label: {
-                    Label("Whole Screen", systemImage: "iphone")
+                    Label(L("ios.calls.wholeScreen"), systemImage: "iphone")
                 }
                 Button {
                     Task { await session.toggleScreenShare() }
                 } label: {
-                    Label("Only Diddy", systemImage: "app")
+                    Label(L("ios.calls.onlyDiddy"), systemImage: "app")
                 }
             } label: {
                 CallBarIcon(icon: "rectangle.on.rectangle", highlight: session.awaitingBroadcast)
             }
             .disabled(!session.connected)
-            .accessibilityLabel("Share screen")
-            .accessibilityHint("Whole screen keeps sharing while you use other apps")
+            .accessibilityLabel(L("call.panel.shareScreen"))
+            .accessibilityHint(L("ios.calls.moreWholeScreenKeepsSharingWhileYouUseOtherApps"))
         } else {
             Button {
                 // From iOS 27 this sends the whole screen, so say so first.
@@ -165,7 +165,7 @@ struct ShareControl: View {
                 CallBarIcon(icon: "rectangle.on.rectangle")
             }
             .disabled(!session.connected)
-            .accessibilityLabel("Share screen")
+            .accessibilityLabel(L("call.panel.shareScreen"))
         }
     }
 }
@@ -239,7 +239,7 @@ struct CallMoreButton: View {
                     .disabled(!session.connected)
                 Button { sheet = .soundboard } label: { Label(L("call.panel.soundboard"), systemImage: "music.note.list") }
                 if board.playing != nil {
-                    Button { board.stopAll() } label: { Label("Stop All Clips", systemImage: "stop.fill") }
+                    Button { board.stopAll() } label: { Label(L("ios.calls.stopAllClips"), systemImage: "stop.fill") }
                 }
                 if watchOffered {
                     watchButton
@@ -247,15 +247,15 @@ struct CallMoreButton: View {
             }
             Section {
                 Button { Task { await session.toggleDeafen() } } label: {
-                    Label(session.deafened ? "Undeafen" : "Deafen", systemImage: session.deafened ? "headphones" : "speaker.slash")
+                    Label(session.deafened ? L("ios.calls.moreUndeafen") : L("ios.calls.moreDeafen"), systemImage: session.deafened ? "headphones" : "speaker.slash")
                 }
-                Button { sheet = .devices } label: { Label("Audio Devices", systemImage: "slider.horizontal.3") }
+                Button { sheet = .devices } label: { Label(L("ios.calls.audioDevices"), systemImage: "slider.horizontal.3") }
             }
         } label: {
             CallBarIcon(icon: "ellipsis")
         }
         .accessibilityLabel(L("settings.plugins.more"))
-        .accessibilityHint("Reactions, soundboard, watch together, deafen and audio devices")
+        .accessibilityHint(L("ios.calls.moreReactionsSoundboardWatchTogetherDeafenAndAudioDevices"))
         .sheet(item: $sheet) { which in sheetContent(which) }
         .background {
             // These commands exist only in the call view; iOS never registers a global shortcut.
@@ -266,7 +266,7 @@ struct CallMoreButton: View {
     @ViewBuilder
     private var watchButton: some View {
         if watch.hidden {
-            Button { watch.reopen() } label: { Label("Show the Video", systemImage: "play.rectangle") }
+            Button { watch.reopen() } label: { Label(L("ios.calls.showVideo"), systemImage: "play.rectangle") }
         } else {
             Button { sheet = .watchLink } label: {
                 Label(watch.running ? "Watch Another Video" : "Watch Together", systemImage: "play.rectangle")
@@ -314,7 +314,7 @@ struct CallDevicesSheet: View {
             List {
                 Section(L("call.controls.microphone")) {
                     if inputs.isEmpty {
-                        Text("No microphone found.").foregroundStyle(Theme.muted)
+                        Text(L("ios.calls.noMicrophone")).foregroundStyle(Theme.muted)
                     }
                     ForEach(inputs, id: \.uid) { port in
                         Button { select(port.uid) } label: {
@@ -329,34 +329,34 @@ struct CallDevicesSheet: View {
                     }
                     Button { select(nil) } label: {
                         HStack {
-                            Text("System Default").foregroundStyle(Theme.text)
+                            Text(L("ios.calls.systemDefault")).foregroundStyle(Theme.text)
                             Spacer()
                             if preferredInput == nil { Image(systemName: "checkmark").foregroundStyle(Theme.accent) }
                         }
                     }
-                    volumeRow("Input volume", value: extras.inputVolume) { extras.setInputVolume($0) }
+                    volumeRow(L("ios.calls.moreInputVolume"), value: extras.inputVolume) { extras.setInputVolume($0) }
                 }
                 Section {
                     HStack {
-                        Text("Speaker, Headphones, AirPlay").foregroundStyle(Theme.text)
+                        Text(L("ios.calls.speakerHeadphonesAirplay")).foregroundStyle(Theme.text)
                         Spacer()
                         RoutePickerButton()
                             .frame(width: 44, height: 44)
-                            .accessibilityLabel("Choose output")
+                            .accessibilityLabel(L("ios.calls.chooseOutput"))
                     }
-                    volumeRow("Output volume", value: extras.outputVolume) { extras.setOutputVolume($0) }
+                    volumeRow(L("ios.calls.moreOutputVolume"), value: extras.outputVolume) { extras.setOutputVolume($0) }
                 } header: {
-                    Text("Output")
+                    Text(L("ios.calls.output"))
                 } footer: {
-                    Text("The volume of the whole device is set with the volume buttons. Output volume turns the call down further.")
+                    Text(L("ios.calls.outputHelp"))
                 }
                 if let error { Section { Text(error).foregroundStyle(Theme.danger) } }
             }
             .scrollContentBackground(.hidden)
             .background(Theme.sidebar)
-            .navigationTitle("Audio Devices")
+            .navigationTitle(L("ios.calls.audioDevices"))
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button(L("ios.settings.done")) { dismiss() } } }
             .onReceive(NotificationCenter.default.publisher(for: AVAudioSession.routeChangeNotification)) { _ in refresh() }
         }
     }
@@ -426,7 +426,7 @@ struct PersonVolumeSheet: View {
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.borderless)
-                        .accessibilityLabel(muted ? "Unmute for Me" : "Mute for Me")
+                        .accessibilityLabel(muted ? L("ios.calls.moreUnmuteForMe") : L("ios.calls.moreMuteForMe"))
                     }
                     Slider(
                         value: Binding(get: { shown }, set: { extras.setLevel($0, of: userId, kind: kind) }),
@@ -435,10 +435,10 @@ struct PersonVolumeSheet: View {
                     )
                     .accessibilityLabel(title)
                 } footer: {
-                    Text("Only you hear this change. Diddy remembers it for this person on this device.")
+                    Text(L("ios.calls.personalVolumeHelp"))
                 }
                 Section {
-                    Button("Reset to 100 %") {
+                    Button(L("ios.calls.resetVolume")) {
                         extras.setLevel(1, of: userId, kind: kind)
                     }
                     .disabled(!muted && level == 1)
@@ -448,7 +448,7 @@ struct PersonVolumeSheet: View {
             .background(Theme.sidebar)
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button(L("ios.settings.done")) { dismiss() } } }
         }
         .presentationDetents([.height(320), .medium])
     }

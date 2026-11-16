@@ -18,7 +18,7 @@ struct VoiceChannelView: View {
     @State private var profile: ProfileTarget?
 
     private var summary: RoomSummary? { account.summary(for: roomId) }
-    private var title: String { summary?.name ?? "Voice" }
+    private var title: String { summary?.name ?? L("ios.calls.moreVoice") }
 
     /// iPhone in landscape inside this call: the call draws its own slim header row instead of the
     /// navigation bar, so the stage gets nearly the whole height.
@@ -53,7 +53,7 @@ struct VoiceChannelView: View {
             if showsClose {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button { calls.showCallScreen = false } label: { Image(systemName: "chevron.down") }
-                        .accessibilityLabel("Minimize call")
+                        .accessibilityLabel(L("ios.calls.minimizeCall"))
                 }
             } else if horizontalSizeClass == .compact && !besideList {
                 // iPhone: the channel lies over the list (MainView), there is no system back button
@@ -95,7 +95,7 @@ struct VoiceChannelView: View {
                 }
                 .frame(maxHeight: 280)
             } else {
-                Text("No one is here yet.").foregroundStyle(Theme.muted)
+                Text(L("ios.calls.noOneHere")).foregroundStyle(Theme.muted)
             }
             Spacer()
             Button {
@@ -107,7 +107,7 @@ struct VoiceChannelView: View {
             } label: {
                 HStack {
                     if joining { ProgressView().tint(.white) }
-                    Text(joining ? "Connecting…" : (calls.current == nil ? "Join Voice" : "Switch to This Channel")).bold()
+                    Text(joining ? L("ios.calls.moreConnecting") : (calls.current == nil ? L("ios.calls.moreJoinVoice") : L("ios.calls.moreSwitchToThisChannel"))).bold()
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
@@ -220,14 +220,14 @@ private struct ConnectedVoiceView: View {
     @ViewBuilder
     private var notices: some View {
         if session.awaitingBroadcast {
-            Label("Choose Diddy and tap Start Broadcast.", systemImage: "info.circle")
+            Label(L("ios.calls.chooseBroadcast"), systemImage: "info.circle")
                 .font(.footnote)
                 .foregroundStyle(Theme.muted)
                 .padding(.horizontal)
                 .padding(.bottom, 6)
         }
         if session.screenSharing && !CallSession.sharesWholeScreen && !session.sharingWholeScreen {
-            Label("Sharing Diddy only. Choose Whole Screen to share other apps too.", systemImage: "info.circle")
+            Label(L("ios.calls.sharingDiddyOnly"), systemImage: "info.circle")
                 .font(.footnote)
                 .foregroundStyle(Theme.muted)
                 .padding(.horizontal)
@@ -276,26 +276,26 @@ private struct ConnectedVoiceView: View {
             Button { session.toggleSpeaker() } label: {
                 CallBarIcon(icon: session.speakerOn ? "speaker.wave.2.fill" : "speaker.fill", highlight: session.speakerOn)
             }
-            .accessibilityLabel("Speaker")
-            .accessibilityValue(session.speakerOn ? "On" : "Off")
+            .accessibilityLabel(L("ios.calls.speaker"))
+            .accessibilityValue(session.speakerOn ? L("ios.calls.moreOn") : L("settings.agentVoice.off"))
         )
         slot(
             Button { Task { await session.toggleCamera() } } label: {
                 CallBarIcon(icon: session.cameraOn ? "video.fill" : "video.slash.fill", highlight: session.cameraOn)
             }
             .accessibilityLabel(L("settings.general.camera"))
-            .accessibilityValue(session.cameraOn ? "On" : "Off")
+            .accessibilityValue(session.cameraOn ? L("ios.calls.moreOn") : L("settings.agentVoice.off"))
             // Long press: pick the camera (#201), like the camera chevron on desktop.
             .contextMenu {
                 if session.cameras.count > 1 {
                     Button {
                         Task { await session.flipCamera() }
                     } label: {
-                        Label("Flip Camera", systemImage: "arrow.triangle.2.circlepath.camera")
+                        Label(L("ios.calls.flipCamera"), systemImage: "arrow.triangle.2.circlepath.camera")
                     }
                 }
                 if session.cameras.isEmpty {
-                    Text("No camera found")
+                    Text(L("ios.calls.noCamera"))
                 } else {
                     ForEach(session.cameras) { camera in
                         Button {
@@ -321,8 +321,8 @@ private struct ConnectedVoiceView: View {
                     warn: !session.microphoneOn && !session.usesPushToTalk
                 )
             }
-            .accessibilityLabel(session.usesPushToTalk ? "Microphone, push to talk" : "Microphone")
-            .accessibilityValue(session.microphoneOn ? "On" : "Muted")
+            .accessibilityLabel(session.usesPushToTalk ? L("ios.calls.moreMicrophonePushToTalk") : L("ios.calls.moreMicrophone"))
+            .accessibilityValue(session.microphoneOn ? L("ios.calls.moreOn") : L("call.userMenu.muted"))
         )
         slot(ShareControl(session: session, extras: extras))
         slot(CallMoreButton(session: session, extras: extras, watch: session.watchTogether))
@@ -354,11 +354,11 @@ private struct CallStatusHeader: View {
 
     private var text: String {
         switch session.outgoing {
-        case .ringing: return "Ringing…"
-        case .noAnswer: return "No answer"
+        case .ringing: return L("ios.calls.moreRinging")
+        case .noAnswer: return L("ios.calls.moreNoAnswer")
         case .none: break
         }
-        if reconnecting { return "Reconnecting…" }
+        if reconnecting { return L("ios.calls.moreReconnecting") }
         guard session.connected else { return session.state }
         let count = session.members.count
         let people = count == 1 ? "1 in voice" : "\(count) in voice"
@@ -381,7 +381,7 @@ private struct CallStatusHeader: View {
             Spacer(minLength: 4)
             if session.deafened {
                 Button { Task { await session.toggleDeafen() } } label: {
-                    Label("Deafened", systemImage: "speaker.slash.fill")
+                    Label(L("ios.calls.deafened"), systemImage: "speaker.slash.fill")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 8)
@@ -391,8 +391,8 @@ private struct CallStatusHeader: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Deafened")
-                .accessibilityHint("Undeafens you")
+                .accessibilityLabel(L("ios.calls.deafened"))
+                .accessibilityHint(L("ios.calls.moreUndeafensYou"))
             }
             if session.connected {
                 CallEncryptionBadge(session: session)
@@ -476,15 +476,15 @@ struct VoiceStatusBar: View {
             .buttonStyle(.plain)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("\(session.roomName), \(session.state), \(session.members.count) in voice")
-            .accessibilityHint("Opens the call")
+            .accessibilityHint(L("ios.calls.moreOpensTheCall"))
             .accessibilityAddTraits(.isButton)
-            barButton(session.microphoneOn ? "mic.fill" : "mic.slash.fill", tint: session.microphoneOn || session.usesPushToTalk ? Theme.muted : Theme.danger, label: session.usesPushToTalk ? "Microphone, push to talk" : (session.microphoneOn ? "Mute" : "Unmute")) {
+            barButton(session.microphoneOn ? "mic.fill" : "mic.slash.fill", tint: session.microphoneOn || session.usesPushToTalk ? Theme.muted : Theme.danger, label: session.usesPushToTalk ? L("ios.calls.moreMicrophonePushToTalk") : (session.microphoneOn ? L("ios.calls.moreMute") : L("ios.calls.moreUnmute"))) {
                 Task { await session.toggleMicrophone() }
             }
-            barButton(session.deafened ? "speaker.slash.fill" : "headphones", tint: session.deafened ? Theme.danger : Theme.muted, label: session.deafened ? "Undeafen" : "Deafen") {
+            barButton(session.deafened ? "speaker.slash.fill" : "headphones", tint: session.deafened ? Theme.danger : Theme.muted, label: session.deafened ? L("ios.calls.moreUndeafen") : L("ios.calls.moreDeafen")) {
                 Task { await session.toggleDeafen() }
             }
-            barButton("phone.down.fill", tint: Theme.danger, label: "Leave call") {
+            barButton("phone.down.fill", tint: Theme.danger, label: L("ios.calls.moreLeaveCall")) {
                 Task { await calls.leave() }
             }
         }

@@ -164,7 +164,7 @@ struct CallSettingsView: View {
                     Text("720p").tag(1280)
                     Text("1080p").tag(1920)
                     Text("1440p").tag(2560)
-                    Text("Full Screen Size").tag(0)
+                    Text(L("ios.calls.fullScreenSize")).tag(0)
                 }
                 Picker(L("ios.extraSettings.frameRate"), selection: $shareFps) {
                     Text("15 fps").tag(15)
@@ -173,9 +173,9 @@ struct CallSettingsView: View {
                 }
                 Picker(L("ios.extraSettings.pictureQuality"), selection: $shareQuality) {
                     Text(L("settings.profileCardEditor.standard")).tag(0.6)
-                    Text("High").tag(0.75)
-                    Text("Very High").tag(0.9)
-                    Text("Maximum").tag(1.0)
+                    Text(L("ios.calls.high")).tag(0.75)
+                    Text(L("ios.calls.veryHigh")).tag(0.9)
+                    Text(L("ios.calls.maximum")).tag(1.0)
                 }
                 Toggle(L("ios.extraSettings.otherAppsSound"), isOn: $shareSound)
             } header: {
