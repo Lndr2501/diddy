@@ -48,7 +48,8 @@ test('on equal times the first room in order wins, like before', () => {
 
 test('desktop reads profiles through the newest pick', () => {
   const src = fs.readFileSync(path.join(__dirname, '../src/app/plugins/diddy/profiles.ts'), 'utf8');
-  assert.match(src, /pickNewestProfile\(\s*getOptionsRooms\(mx\)/);
+  assert.match(src, /getOptionsRooms\(mx\)\.map\(\(room\) =>\s*readData\(room, PROFILE_EVENT, userId, userId\)/);
+  assert.match(src, /return pickNewestProfile\(candidates, sanitizeProfile\)/);
 });
 
 test('iOS resolves profiles the same way', (t) => {

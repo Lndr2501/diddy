@@ -853,8 +853,8 @@ export function WelcomeGuideSettings() {
     <InsetSection title="Diddy">
       <InsetGroup>
         <InsetRow
-          title="Sync settings between devices"
-          description="Theme, message layout, editor, timeline and date settings follow your account to every Diddy device. Zoom and notifications stay per device."
+          title={t('settings.general.syncSettingsBetweenDevices')}
+          description={t('settings.general.syncSettingsDescription')}
           after={<Switch variant="Primary" value={syncSettings} onChange={setSyncSettings} />}
         />
         <InsetRow

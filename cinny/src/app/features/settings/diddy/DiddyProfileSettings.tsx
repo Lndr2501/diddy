@@ -738,8 +738,8 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
   const setupCard = (
     <SettingsCard
       icon={Icons.Server}
-      title={t('settings.diddyProfile.setUpTheData')}
-      description={t('settings.diddyProfile.diddyNeedsAHidden')}
+      title={t('settings.diddyProfile.shareYourProfile')}
+      description={t('settings.diddyProfile.profileSavedOnAccount')}
       footer={<Hint>{t('settings.diddyProfile.notAnAdminAsk')}</Hint>}
     >
       <Hint>{t('settings.diddyProfile.onAPrivateServer')}</Hint>
@@ -1458,9 +1458,10 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
     privacy: hasOptionsRoom ? privacyTab : null,
   };
 
-  const showSaveBar = dirty && hasOptionsRoom;
+  // without an options room the profile is still saved (account data) and shows on your devices
+  const showSaveBar = dirty;
 
-  const headerActions = hasOptionsRoom ? (
+  const headerActions = (
     <>
       <input
         ref={importInput}
@@ -1516,7 +1517,7 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
         <Text size="B300">{t('settings.diddyProfile.resetToDefault')}</Text>
       </Button>
     </>
-  ) : undefined;
+  );
 
   return (
     <Page>
@@ -1547,11 +1548,7 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
             />
 
             <div className={css.Layout}>
-              <div
-                className={hasOptionsRoom ? css.Main : `${css.Main} ${css.Disabled}`}
-                aria-disabled={!hasOptionsRoom}
-                {...(hasOptionsRoom ? {} : ({ inert: '' } as object))}
-              >
+              <div className={css.Main}>
                 <EditorTabs
                   tab={tab}
                   onChange={openTab}

@@ -327,6 +327,13 @@ extension MatrixAccount {
         diddyLoadedAt = Date()
         // Message-mode rooms and rooms left on purpose are the same on every device (account data).
         await syncDiddyRoomLists()
+        // Your own profile also lives in your account data, also without any options room. The
+        // copy written here last wins over an older read (the sync may not have brought it back yet).
+        let backup = await readOwnProfileBackup()
+        if backup.loaded {
+            diddyOwnBackupLoaded = true
+            if let fetched = backup.candidate, fetched.ts >= (diddyOwnBackup?.ts ?? 0) { diddyOwnBackup = fetched }
+        }
 
         // The marker is checked once per room; most rooms answer "not found". Only the marker
         // counts, like desktop's `isOptionsRoom`: a room that merely carries the topic tag is no
@@ -390,8 +397,10 @@ extension MatrixAccount {
         for room in loaded {
             for userId in (room.data.byKey[DiddyEvents.profile] ?? [:]).keys where !userIds.contains(userId) { userIds.append(userId) }
         }
+        if diddyOwnBackup != nil, !userIds.contains(self.userId) { userIds.append(self.userId) }
         for userId in userIds {
-            let perRoom = loaded.map { $0.data.newest(type: DiddyEvents.profile, key: userId, from: userId) }
+            var perRoom = loaded.map { $0.data.newest(type: DiddyEvents.profile, key: userId, from: userId) }
+            if userId == self.userId { perRoom.append(diddyOwnBackup) }
             guard let picked = DiddyProfilePick.newest(perRoom, parse: { DiddyProfile($0.content) }) else {
                 rejected.insert(userId)
                 continue
@@ -471,10 +480,9 @@ extension MatrixAccount {
             .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         if diddyBadgeLibrary != library { diddyBadgeLibrary = library }
         diddyOwnProfileRaw = ownRaw
-        // No options room yet: join the one of your servers, like desktop does after the first sync.
-        if diddyPrimaryRoom == nil {
-            Task { await self.joinDiddyOptionsRoomAutomatically() }
-        } else {
+        // Join the options rooms of your servers and connect marked rooms, like desktop does.
+        Task { await self.joinDiddyOptionsRoomAutomatically() }
+        if diddyPrimaryRoom != nil {
             Task { await self.hardenDiddyBadgePower() }
         }
     }
@@ -483,7 +491,8 @@ extension MatrixAccount {
     /// primary options room must be one this side can read completely. In an encrypted room that
     /// means the messages were read, and none of yours is still waiting for its key.
     var canEditDiddyProfile: Bool {
-        guard let primary = diddyPrimaryRoom else { return false }
+        // Without an options room the profile is saved in your account data only.
+        guard let primary = diddyPrimaryRoom else { return diddyOwnBackupLoaded }
         if !primary.encrypted || diddyOwnProfileRaw != nil { return true }
         return diddyFeeds[primary.id]?.isCompleteFor(sender: userId) == true
     }
@@ -504,13 +513,31 @@ extension MatrixAccount {
     /// drop for its size (desktop's limit and message, see `DiddyProfileDraft.encodedSize`).
     func updateDiddyProfile(build: ([String: Any]) -> [String: Any]) async throws {
         await reloadDiddyProfilesForWrite()
-        guard diddyPrimaryRoom != nil, canEditDiddyProfile else {
-            throw DiddyError(L("ios.errorsExtra.noDiddyOptionsRoomWasFoundSetOneUpInTheProfileEditorFirst"))
+        guard canEditDiddyProfile else {
+            throw DiddyError(diddyPrimaryRoom == nil
+                ? L("ios.errorsExtra.diddyProfileStillLoading")
+                : L("ios.errorsExtra.encryptedProfileNotReadable"))
         }
         var content = build(diddyOwnProfileRaw ?? [:])
         content["v"] = 1
-        // Into every options room: the people of each of your servers only read their own room.
-        try await writeDiddyData(type: DiddyEvents.profile, key: userId, content: content, to: diddyAllWriteRooms)
+        if let size = DiddyProfileDraft.encodedSize(content, key: userId), size > DiddyEvents.maxContentBytes {
+            throw DiddyError("Too much data to save (\(size) of \(DiddyEvents.maxContentBytes) characters). Shorten links or texts.")
+        }
+        // Your account data first: every device of yours reads it, also without an options room.
+        var backupError: Error?
+        do {
+            try await writeOwnProfileBackup(content)
+        } catch {
+            backupError = error
+            DiagLog.shared.write("diddy: could not save the profile to the account: \(error.friendlyMessage)")
+        }
+        let targets = diddyAllWriteRooms
+        if targets.isEmpty {
+            if let backupError { throw DiddyError(L("ios.errorsExtra.couldNotSaveProfile", ["error": backupError.friendlyMessage])) }
+        } else {
+            // Into every options room: the people of each of your servers only read their own room.
+            try await writeDiddyData(type: DiddyEvents.profile, key: userId, content: content, to: targets)
+        }
         await loadDiddyProfiles(force: true)
     }
 

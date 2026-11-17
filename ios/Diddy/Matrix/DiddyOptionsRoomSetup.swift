@@ -40,6 +40,12 @@ enum DiddyLightRooms {
         all.remove(roomId)
         UserDefaults.standard.set(all.sorted(), forKey: key(accountId))
         markChangedHere(for: accountId)
+        // Removed on purpose: connectMarkedDiddyRooms must not add it again by itself.
+        var left = UserDefaults.standard.stringArray(forKey: MatrixAccount.leftOptionsRoomsKey) ?? []
+        if !left.contains(roomId) {
+            left.append(roomId)
+            UserDefaults.standard.set(left, forKey: MatrixAccount.leftOptionsRoomsKey)
+        }
     }
 
     /// The whole list as the account has it (DiddyRoomListSync), not a change made here.
@@ -98,13 +104,21 @@ extension MatrixAccount {
     /// The rooms of one space, up to three pages, without sub-spaces. Errors of a space are ignored
     /// (no permission, federation problems, ...).
     private func hierarchyRooms(of spaceId: String) async -> [(room: DiddyOptionsRoomLogic.HierarchyRoom, via: [String])] {
+        await hierarchyRooms(of: spaceId, complete: false) ?? []
+    }
+
+    /// With `complete`, nil when a page could not be read or there are more than three pages.
+    private func hierarchyRooms(of spaceId: String, complete: Bool) async -> [(room: DiddyOptionsRoomLogic.HierarchyRoom, via: [String])]? {
         var out: [(room: DiddyOptionsRoomLogic.HierarchyRoom, via: [String])] = []
         var childVia: [String: [String]] = [:]
         var token: String?
         for _ in 0..<3 {
             var path = "/_matrix/client/v1/rooms/\(Self.setupPath(spaceId))/hierarchy?limit=100&max_depth=1"
             if let token, let encoded = token.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) { path += "&from=\(encoded)" }
-            guard let json = try? await clientRequest(path) else { break }
+            guard let json = try? await clientRequest(path) else {
+                if complete { return nil }
+                break
+            }
             for entry in json["rooms"] as? [[String: Any]] ?? [] {
                 guard let roomId = entry["room_id"] as? String else { continue }
                 if roomId == spaceId {
@@ -123,6 +137,7 @@ extension MatrixAccount {
             token = json["next_batch"] as? String
             if token == nil { break }
         }
+        if complete && token != nil { return nil }
         return out.map { (room: $0.room, via: DiddyOptionsRoomLogic.viaServers(roomId: $0.room.roomId, childVia: childVia[$0.room.roomId])) }
     }
 
@@ -187,13 +202,20 @@ extension MatrixAccount {
     }
 
     /// Joins an options room of a server and connects it (onboarding's `joinAndConnect`): when it
-    /// is not marked yet it is adopted, or used without admin rights if that is refused.
-    func connectDiddyRoom(roomId: String, via: [String]) async throws {
+    /// is not marked yet it is adopted, or used without admin rights if that is refused. With
+    /// `adopt` off (automatic joins) the room's settings are never changed: it is used without
+    /// admin rights right away, like desktop's `connectMarkedRooms`.
+    func connectDiddyRoom(roomId: String, via: [String], adopt: Bool = true) async throws {
         try await joinForDiddy(roomId, via: via)
         var marked = diddyOptionsRooms.contains(roomId)
         if !marked { marked = await hasDiddyMarker(roomId) }
         if marked {
             diddyOptionsRooms.insert(roomId)
+            await registerDiddyRoom(roomId)
+            return
+        }
+        guard adopt else {
+            DiddyLightRooms.add(roomId, for: id)
             await registerDiddyRoom(roomId)
             return
         }
@@ -221,23 +243,100 @@ extension MatrixAccount {
                                spaceName: spaces.first { $0.roomId == spaceId }?.displayName, looksLikeDiddy: true, via: entry.via)
     }
 
-    /// Joins the options room of your servers when you have none yet: what desktop does by itself
-    /// after the first sync. Asks the servers at most every ten minutes and never fails loudly.
+    /// Joins the options room of every server you are in and connects joined Diddy rooms without
+    /// the marker, what desktop does by itself (`useDiddyOptionsAutoJoin`). A server you joined
+    /// since the last look is asked right away, all of them at most every ten minutes. Never fails
+    /// loudly and never changes a room's settings.
     func joinDiddyOptionsRoomAutomatically() async {
-        guard diddyPrimaryRoom == nil, diddyOptionsRooms.isEmpty, diddyLightRoomIds.isEmpty, !spaces.isEmpty else { return }
+        guard !diddyAutoJoinRunning else { return }
+        diddyAutoJoinRunning = true
+        defer { diddyAutoJoinRunning = false }
+        connectMarkedDiddyRooms()
+        guard !spaces.isEmpty else { return }
         let key = "diddyAutoJoinAt.\(userId)"
+        let now = Date().timeIntervalSince1970
         let last = UserDefaults.standard.double(forKey: key)
-        if last > 0, Date().timeIntervalSince1970 - last < 600 { return }
-        UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: key)
-        for space in spaces {
-            guard let choice = await findDiddyRoom(ofServer: space.roomId) else { continue }
+        let due = last <= 0 || now - last >= 600
+        let toCheck = due ? spaces : spaces.filter { !diddyAutoJoinChecked.contains($0.roomId) }
+        guard !toCheck.isEmpty else { return }
+        if due { UserDefaults.standard.set(now, forKey: key) }
+        let mayCreate = Date() >= diddyAutoCreateFrom
+        for space in toCheck {
+            diddyAutoJoinChecked.insert(space.roomId)
+            guard let choice = await findDiddyRoom(ofServer: space.roomId) else {
+                if mayCreate { await createDiddyOptionsRoomIfMissing(spaceId: space.roomId) }
+                continue
+            }
             do {
-                try await connectDiddyRoom(roomId: choice.id, via: choice.via)
-                return
+                try await connectDiddyRoom(roomId: choice.id, via: choice.via, adopt: false)
             } catch {
                 DiagLog.shared.write("diddy: joining the options room of a server failed: \(error.friendlyMessage)")
             }
         }
+    }
+
+    /// Creates the options room of a space you created yourself when it has none (DiddyAutoCreate),
+    /// so the other members' Diddy joins it by itself.
+    private func createDiddyOptionsRoomIfMissing(spaceId: String) async {
+        func readClaims() async -> [String: DiddyAutoCreate.Entry]? {
+            // nil only when the server could not be asked; no event yet is an empty list
+            let text: String?
+            do { text = try await client.accountData(eventType: DiddyAutoCreate.eventType) } catch { return nil }
+            let json = text.flatMap { $0.data(using: .utf8) }
+                .flatMap { (try? JSONSerialization.jsonObject(with: $0)) as? [String: Any] }
+            return DiddyAutoCreate.parse(json)
+        }
+        guard let claims = await readClaims(), claims[spaceId] == nil else { return }
+        guard let state = try? await clientRequestArray("/_matrix/client/v3/rooms/\(Self.setupPath(spaceId))/state") else { return }
+        let facts = DiddyAutoCreate.facts(state: state, me: userId)
+        guard DiddyAutoCreate.shouldCreate(isCreator: facts.isCreator, canAddRooms: facts.canAddRooms,
+                                           joinedMembers: facts.joinedMembers, claimed: false, hasDiddyRoom: false) else { return }
+        let rooms = await hierarchyRooms(of: spaceId, complete: true)
+        let hasDiddyRoom = rooms.map { list in
+            list.contains { DiddyOptionsRoomLogic.looksLikeDiddyRoom(name: $0.room.name, topic: $0.room.topic) }
+        }
+        // read again: another device may have claimed the space meanwhile
+        guard let latest = await readClaims(),
+              DiddyAutoCreate.shouldCreate(isCreator: facts.isCreator, canAddRooms: facts.canAddRooms, joinedMembers: facts.joinedMembers,
+                                           claimed: latest[spaceId] != nil, hasDiddyRoom: hasDiddyRoom) else { return }
+        let at = Int64(Date().timeIntervalSince1970 * 1000)
+        func save(_ claims: [String: DiddyAutoCreate.Entry], roomId: String?) async throws {
+            let content = DiddyAutoCreate.content(claims, spaceId: spaceId, entry: DiddyAutoCreate.Entry(at: at, roomId: roomId))
+            let data = try JSONSerialization.data(withJSONObject: content)
+            try await client.setAccountData(eventType: DiddyAutoCreate.eventType, content: String(decoding: data, as: UTF8.self))
+        }
+        do {
+            // Claimed before the room exists: a second device or a later run never makes another one.
+            try await save(latest, roomId: nil)
+            let before = Set(diddyOptionsRooms)
+            try await createDiddyOptionsRoom(name: DiddyOptionsRoomLogic.roomName, spaceId: spaceId)
+            let roomId = diddyOptionsRooms.subtracting(before).first
+            DiagLog.shared.write("diddy: options room created automatically space=\(spaceId) room=\(roomId ?? "?")")
+            if let roomId { try? await save(await readClaims() ?? latest, roomId: roomId) }
+        } catch {
+            DiagLog.shared.write("diddy: could not create the options room of a space: \(error.friendlyMessage)")
+        }
+    }
+
+    /// Joined rooms that are clearly meant as a Diddy room (named like the options room or tagged
+    /// in the topic) but carry no marker are used without admin rights right away, so nobody has to
+    /// press "Connect" (desktop `connectMarkedRooms`). Rooms removed or left on purpose stay untouched.
+    @discardableResult
+    func connectMarkedDiddyRooms() -> Bool {
+        let left = Set(UserDefaults.standard.stringArray(forKey: Self.leftOptionsRoomsKey) ?? [])
+        let light = diddyLightRoomIds
+        var connected = false
+        for room in rooms where room.isJoined && !room.isSpace && !room.isDirect {
+            guard !diddyOptionsRooms.contains(room.id), !light.contains(room.id), !left.contains(room.id) else { continue }
+            // Only rooms whose marker answer is known: an unchecked room may still carry it.
+            guard diddyCheckedRooms.contains(room.id) else { continue }
+            guard DiddyOptionsRoomLogic.looksLikeDiddyRoom(name: room.name, topic: room.topic) else { continue }
+            DiddyLightRooms.add(room.id, for: id)
+            DiagLog.shared.write("diddy: marked room connected automatically room=\(room.id)")
+            connected = true
+        }
+        if connected { Task { await self.reloadDiddyProfilesForWrite() } }
+        return connected
     }
 
     // MARK: Helpers

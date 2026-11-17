@@ -423,7 +423,9 @@
       "ownLayers_one": "{{name}} ({{count}} layer)",
       "ownLayers_other": "{{name}} ({{count}} layers)",
       "yourEffect": "Your effect",
-      "yourFrame": "Your frame"
+      "yourFrame": "Your frame",
+      "shareYourProfile": "Share your profile with others",
+      "profileSavedOnAccount": "Your profile is saved on your account and shows on all your devices. To show it to other people, Diddy needs a hidden room on your server."
     },
     "legacyAvatarNotice": {
       "yourOldDiddyPicture": "Your old Diddy picture",
@@ -736,7 +738,9 @@
       "yourAccount": "Your account",
       "thePictureAtThe": "The picture at the bottom left and in settings.",
       "participantsInVoiceChat": "Participants in voice chat and call status.",
-      "enterForNewlineDescription": "Use {{key}} + ENTER to send message and ENTER for newline."
+      "enterForNewlineDescription": "Use {{key}} + ENTER to send message and ENTER for newline.",
+      "syncSettingsBetweenDevices": "Sync settings between devices",
+      "syncSettingsDescription": "Theme, message layout, editor, timeline and date settings follow your account to every Diddy device. Zoom and notifications stay per device."
     },
     "sound": {
       "descriptionOwnSoundCustomname": "{{description}} Own sound: {{customName}}",
@@ -2750,7 +2754,10 @@
       "yourComputerIsNoLongerInTheCallSoThisIphoneLeftToo": "Your computer is no longer in the call, so this iPhone left too.",
       "youDoNotHavePermissionToJoinACallInThisRoomAnAdminHasToAllow": "You do not have permission to join a call in this room. An admin has to allow it.",
       "yourHomeserverDoesNotOfferAMatrixrtcVoiceServerMsc4143RtcFoc": "Your homeserver does not offer a MatrixRTC voice server (MSC4143 rtc_foci / LiveKit). Voice channels need one, like on the desktop app.",
-      "thisMicrophoneIsNotAvailableAnyMore": "This microphone is not available any more."
+      "thisMicrophoneIsNotAvailableAnyMore": "This microphone is not available any more.",
+      "diddyProfileStillLoading": "Your Diddy profile is still loading. Try again in a moment.",
+      "encryptedProfileNotReadable": "Your current profile could not be read from your encrypted Diddy Options room yet.",
+      "couldNotSaveProfile": "Could not save your profile. {{error}}"
     },
     "extensions": {
       "opening": "Opening Diddy…",
@@ -2891,7 +2898,9 @@
       "verificationCancelled": "Verification cancelled",
       "verificationFailed": "Verification failed",
       "theyMatch": "They match",
-      "theyDonTMatch": "They don't match"
+      "theyDonTMatch": "They don't match",
+      "profileSavedOnAccountShareHint": "Your profile is saved on your account and shows on all your devices. To show it to other people, Diddy needs a hidden room on your server. Not an admin? Ask the admin of your server to set it up; Diddy joins it automatically.",
+      "shareWithOthers": "Share With Others"
     },
     "securityUI": {
       "loadingYourProfile": "Loading your profile",

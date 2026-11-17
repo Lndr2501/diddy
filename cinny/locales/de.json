@@ -423,7 +423,9 @@
       "ownLayers_one": "{{name}} ({{count}} Ebene)",
       "ownLayers_other": "{{name}} ({{count}} Ebenen)",
       "yourEffect": "Dein Effekt",
-      "yourFrame": "Dein Rahmen"
+      "yourFrame": "Dein Rahmen",
+      "shareYourProfile": "Profil mit anderen teilen",
+      "profileSavedOnAccount": "Dein Profil ist in deinem Konto gespeichert und erscheint auf all deinen Geräten. Damit andere es sehen, braucht Diddy einen versteckten Raum auf deinem Server."
     },
     "legacyAvatarNotice": {
       "yourOldDiddyPicture": "Dein altes Diddy-Bild",
@@ -736,7 +738,9 @@
       "yourAccount": "Dein Konto",
       "thePictureAtThe": "Das Bild unten links und in den Einstellungen.",
       "participantsInVoiceChat": "Teilnehmende im Sprachchat und im Call-Status.",
-      "enterForNewlineDescription": "{{key}} + ENTER sendet die Nachricht, ENTER macht eine neue Zeile."
+      "enterForNewlineDescription": "{{key}} + ENTER sendet die Nachricht, ENTER macht eine neue Zeile.",
+      "syncSettingsBetweenDevices": "Einstellungen zwischen Geräten abgleichen",
+      "syncSettingsDescription": "Theme, Nachrichtenlayout, Editor, Timeline und Datum folgen deinem Konto auf jedes Diddy-Gerät. Zoom und Benachrichtigungen bleiben pro Gerät."
     },
     "sound": {
       "descriptionOwnSoundCustomname": "{{description}} Eigener Sound: {{customName}}",
@@ -2750,7 +2754,10 @@
       "yourComputerIsNoLongerInTheCallSoThisIphoneLeftToo": "Dein Computer ist nicht mehr im Anruf. Deshalb hat auch dieses iPhone ihn verlassen.",
       "youDoNotHavePermissionToJoinACallInThisRoomAnAdminHasToAllow": "Du darfst diesem Anruf nicht beitreten. Die Administration muss es erlauben.",
       "yourHomeserverDoesNotOfferAMatrixrtcVoiceServerMsc4143RtcFoc": "Dein Homeserver bietet keinen MatrixRTC-Sprachserver (MSC4143 rtc_foci / LiveKit). Sprachkanäle benötigen einen, wie in der Desktop-App.",
-      "thisMicrophoneIsNotAvailableAnyMore": "Dieses Mikrofon ist nicht mehr verfügbar."
+      "thisMicrophoneIsNotAvailableAnyMore": "Dieses Mikrofon ist nicht mehr verfügbar.",
+      "diddyProfileStillLoading": "Dein Diddy-Profil lädt noch. Versuch es gleich noch einmal.",
+      "encryptedProfileNotReadable": "Dein aktuelles Profil ließ sich aus deinem verschlüsselten Diddy-Options-Raum noch nicht lesen.",
+      "couldNotSaveProfile": "Dein Profil konnte nicht gespeichert werden. {{error}}"
     },
     "extensions": {
       "opening": "Diddy wird geöffnet …",
@@ -2891,7 +2898,9 @@
       "verificationCancelled": "Verifizierung abgebrochen",
       "verificationFailed": "Verifizierung fehlgeschlagen",
       "theyMatch": "Sie stimmen überein",
-      "theyDonTMatch": "Sie stimmen nicht überein"
+      "theyDonTMatch": "Sie stimmen nicht überein",
+      "profileSavedOnAccountShareHint": "Dein Profil ist in deinem Konto gespeichert und erscheint auf all deinen Geräten. Damit andere es sehen, braucht Diddy einen versteckten Raum auf deinem Server. Kein Admin? Bitte die Admins deines Servers, ihn einzurichten; Diddy tritt dann von selbst bei.",
+      "shareWithOthers": "Mit anderen teilen"
     },
     "securityUI": {
       "loadingYourProfile": "Dein Profil wird geladen",

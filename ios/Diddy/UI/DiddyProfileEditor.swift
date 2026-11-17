@@ -106,6 +106,10 @@ struct DiddyProfileEditor: View {
                 case .layout: layoutTab
                 }
                 saveSection
+                // Saved on your account (all your devices); others see it once there is a room.
+                if account.diddyPrimaryRoom == nil {
+                    DiddyOptionsSetupView(account: account, title: L("ios.remainingUI.shareWithOthers")) { Task { await reload() } }
+                }
             }
             if loaded {
                 // Always reachable, also when a room was found automatically: desktop may read
