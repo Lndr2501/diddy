@@ -3,6 +3,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const http = require('node:http');
+const net = require('node:net');
 const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
@@ -238,11 +239,23 @@ test('static files: real types, client routes, no escaping the folder', () => {
   }
 });
 
+// A port the system hands out as free. A random guess can hit a range Windows reserves (Hyper-V,
+// WinNAT), where listening fails with EACCES even though nothing uses the port.
+const freePort = () =>
+  new Promise((resolve, reject) => {
+    const probe = net.createServer();
+    probe.once('error', reject);
+    probe.listen(0, '127.0.0.1', () => {
+      const { port } = probe.address();
+      probe.close(() => resolve(port));
+    });
+  });
+
 test('static server answers only for its own host name and only GET/HEAD', async () => {
   const root = tempDir();
   fs.writeFileSync(path.join(root, 'index.html'), 'app');
   fs.writeFileSync(path.join(root, 'crypto.wasm'), 'wasm');
-  const port = 40000 + Math.floor(Math.random() * 20000);
+  const port = await freePort();
   const server = await startStaticServer(root, port);
   const request = (method, file, host) =>
     new Promise((resolve, reject) => {

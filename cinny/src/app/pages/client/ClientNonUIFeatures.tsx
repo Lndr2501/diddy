@@ -42,7 +42,8 @@ import { CallUserMenu } from '../../components/CallUserMenu';
 import { UpdateNotice } from '../../components/update-notice/UpdateNotice';
 import { ToastHost } from '../../components/toast/ToastHost';
 import { useScheduledMessagesRunner } from '../../features/room/send-later/useSendLater';
-import { pushToastAtom } from '../../state/toasts';
+import { dismissToastAtom, pushToastAtom } from '../../state/toasts';
+import { hasReceiptOf, NotifiedEvents } from '../../plugins/readElsewhere';
 import { messagePreview, messageToastBody } from '../../plugins/toastLogic';
 import { useTranslation } from 'react-i18next';
 import { useSoundboardSync } from '../../hooks/useSoundboardSync';
@@ -175,6 +176,8 @@ function InviteNotifications() {
 
   const navigate = useNavigate();
   const pushToast = useSetAtom(pushToastAtom);
+  const dismissToast = useSetAtom(dismissToastAtom);
+  const notifRef = useRef<Notification>();
   const [showNotifications] = useSetting(settingsAtom, 'showNotifications');
   const [notificationSound] = useSetting(settingsAtom, 'isNotificationSounds');
 
@@ -191,10 +194,22 @@ function InviteNotifications() {
         window.focus();
         if (!window.closed) navigate(getInboxInvitesPath());
         noti.close();
+        if (notifRef.current === noti) notifRef.current = undefined;
       };
+
+      notifRef.current?.close();
+      notifRef.current = noti;
     },
     [navigate, t]
   );
+
+  // An invite was accepted or declined (here or on another device): the "new invites" notice is stale.
+  useEffect(() => {
+    if (invites.length >= perviousInviteLen) return;
+    notifRef.current?.close();
+    notifRef.current = undefined;
+    dismissToast('invites');
+  }, [invites.length, perviousInviteLen, dismissToast]);
 
   const playSound = useCallback(() => {
     const audioElement = audioRef.current;
@@ -243,7 +258,9 @@ function InviteNotifications() {
 function MessageNotifications() {
   const { t } = useTranslation();
   const audioRef = useRef<HTMLAudioElement>(null);
-  const notifRef = useRef<Notification>();
+  const notifRef = useRef<{ roomId: string; notification: Notification }>();
+  /** What was notified per room, so it can be taken back once read anywhere (#256). */
+  const notifiedRef = useRef(new NotifiedEvents());
   const unreadCacheRef = useRef<Map<string, UnreadInfo>>(new Map());
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
@@ -252,6 +269,7 @@ function MessageNotifications() {
 
   const navigate = useNavigate();
   const pushToast = useSetAtom(pushToastAtom);
+  const dismissToast = useSetAtom(dismissToastAtom);
   const notificationSelected = useInboxNotificationsSelected();
   const selectedRoomId = useSelectedRoom();
 
@@ -260,12 +278,12 @@ function MessageNotifications() {
       roomName,
       roomAvatar,
       username,
+      roomId,
     }: {
       roomName: string;
       roomAvatar?: string;
       username: string;
       roomId: string;
-      eventId: string;
     }) => {
       const noti = new window.Notification(roomName, {
         icon: roomAvatar,
@@ -278,11 +296,12 @@ function MessageNotifications() {
         window.focus();
         if (!window.closed) navigate(getInboxNotificationsPath());
         noti.close();
-        notifRef.current = undefined;
+        if (notifRef.current?.notification === noti) notifRef.current = undefined;
+        notifiedRef.current.forget(roomId);
       };
 
-      notifRef.current?.close();
-      notifRef.current = noti;
+      notifRef.current?.notification.close();
+      notifRef.current = { roomId, notification: noti };
     },
     [navigate, t]
   );
@@ -331,6 +350,7 @@ function MessageNotifications() {
 
       const highlight = mx.getPushActionsForEvent(mEvent)?.tweaks?.highlight;
       if (showNotifications) {
+        notifiedRef.current.note(room.roomId, eventId);
         const avatarMxc =
           room.getAvatarFallbackMember()?.getMxcAvatarUrl() ?? room.getMxcAvatarUrl();
         const roomName = room.name ?? t('nav.nonUIFeatures.unknown');
@@ -343,6 +363,8 @@ function MessageNotifications() {
           mx.decryptEventIfNeeded(mEvent)
             .catch(() => undefined)
             .then(() => {
+              // read elsewhere while it was decrypting: nothing to show any more
+              if (!notifiedRef.current.isNoted(room.roomId, eventId)) return;
               const preview = mEvent.isDecryptionFailure()
                 ? ''
                 : messagePreview(mEvent.getType(), mEvent.getContent());
@@ -362,7 +384,6 @@ function MessageNotifications() {
             roomAvatar,
             username,
             roomId: room.roomId,
-            eventId,
           });
         }
       }
@@ -387,6 +408,32 @@ function MessageNotifications() {
     selectedRoomId,
     useAuthentication,
   ]);
+
+  // Read here or on another device of the account (the receipt arrives by sync): the system
+  // notification and the toast for that message go away.
+  useEffect(() => {
+    const handleReceipt: RoomEventHandlerMap[RoomEvent.Receipt] = (mEvent, room) => {
+      const myUserId = mx.getUserId();
+      if (!myUserId || !hasReceiptOf(mEvent.getContent(), myUserId)) return;
+      // the room was read: the next message in it is news again
+      unreadCacheRef.current.delete(room.roomId);
+      // the server's count covers what the receipt alone cannot tell (e.g. a thread not loaded here)
+      const read = notifiedRef.current.takeRead(
+        room.roomId,
+        (eventId) => room.hasUserReadEvent(myUserId, eventId) || getUnreadInfo(room).total === 0
+      );
+      if (!read) return;
+      if (notifRef.current?.roomId === room.roomId) {
+        notifRef.current.notification.close();
+        notifRef.current = undefined;
+      }
+      dismissToast(room.roomId);
+    };
+    mx.on(RoomEvent.Receipt, handleReceipt);
+    return () => {
+      mx.removeListener(RoomEvent.Receipt, handleReceipt);
+    };
+  }, [mx, dismissToast]);
 
   return (
     // eslint-disable-next-line jsx-a11y/media-has-caption
