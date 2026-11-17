@@ -237,7 +237,7 @@ object WatchProtocol {
     fun isRoomId(value: String): Boolean {
         if (!value.startsWith("!")) return false
         val rest = value.drop(1)
-        return rest.length in 1..254 && rest.none { it.isWhitespace() || it == '﻿' }
+        return rest.length in 1..254 && rest.none { it.isWhitespace() || it == '\uFEFF' }
     }
 
     fun parse(content: Any?): WatchMessage? {

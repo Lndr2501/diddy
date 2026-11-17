@@ -21,7 +21,6 @@ import app.diddy.util.str
 import com.twilio.audioswitch.AudioDevice
 import io.livekit.android.LiveKit
 import io.livekit.android.RoomOptions
-import io.livekit.android.e2ee.BaseKeyProvider
 import io.livekit.android.e2ee.E2EEOptions
 import io.livekit.android.events.RoomEvent
 import io.livekit.android.events.collect
@@ -42,7 +41,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import livekit.org.webrtc.FrameCryptorKeyDerivationAlgorithm
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.matrix.rustcomponents.sdk.CallDeclineListener
 import org.matrix.rustcomponents.sdk.RtcTransport
 import org.matrix.rustcomponents.sdk.TaskHandle
@@ -107,18 +107,23 @@ class CallSession(private val context: Context, val account: MatrixAccount, priv
     var onDropped: (() -> Unit)? = null
     var onDeclined: ((String) -> Unit)? = null
 
-    private val keyProvider = BaseKeyProvider(
-        ratchetWindowSize = 10,
-        enableSharedKey = false,
-        keyRingSize = 256,
-        keyDerivationAlgorithm = FrameCryptorKeyDerivationAlgorithm.HKDF,
-    )
+    private val keyProvider = BinaryKeyProvider()
     val liveKitRoom: Room = LiveKit.create(context.applicationContext)
     private var encrypted = false
     private var closed = false
     private var leaving = false
     private var ownKey = ByteArray(0)
     private val ownKeyIndex = 0
+    private var ownKeyGeneration = 0L
+    private val keyMutex = Mutex()
+    private var authorized = emptySet<String>()
+    private var membershipIds = emptyMap<String, String>()
+    private val pendingKeys = mutableMapOf<String, Pair<CallLogic.ReceivedKey, Long>>()
+    private var distributed = emptySet<String>()
+    private val disconnectedDevices = mutableSetOf<String>()
+    private var keysJob: Job? = null
+    var encryptionStatus by mutableStateOf("Checking encryption…")
+        private set
     private var toDeviceHandle: TaskHandle? = null
     private var declineHandle: TaskHandle? = null
     private var transport: CallLogic.Transport? = null
@@ -153,7 +158,9 @@ class CallSession(private val context: Context, val account: MatrixAccount, priv
     }
 
     suspend fun connect() {
-        encrypted = runCatching { matrixRoom.isEncrypted() }.getOrDefault(false)
+        // An unavailable encryption state is an error, never permission to send plaintext.
+        encrypted = matrixRoom.isEncrypted()
+        encryptionStatus = if (encrypted) "End-to-end encrypted · checking members" else "Not end-to-end encrypted"
         val chosen = chooseTransport()
         ensureOpen()
         transport = chosen
@@ -191,12 +198,10 @@ class CallSession(private val context: Context, val account: MatrixAccount, priv
         ensureOpen()
         if (encrypted) {
             val identity = liveKitRoom.localParticipant.identity?.value ?: ownIdentity
-            keyProvider.rtcKeyProvider.setKey(identity, ownKeyIndex, ownKey)
+            keyProvider.install(identity, ownKeyIndex, ownKey)
         }
         applySpeaker()
         refreshMembers()
-        val present = liveKitRoom.remoteParticipants.values.toList()
-        if (encrypted) distributeKey(present)
         ensureOpen()
         try {
             sendMembership()
@@ -208,6 +213,7 @@ class CallSession(private val context: Context, val account: MatrixAccount, priv
             runCatching { matrixRoom.sendStateEventRaw(CallLogic.MEMBER_EVENT_TYPE, stateKey, "{}") }
             ensureOpen()
         }
+        if (encrypted) refreshKeys()
         // Read now, not at join time: the permission may have been granted meanwhile. As the
         // computer's camera only, the microphone stays off.
         if (companion?.media?.microphone == false) microphoneOn = false
@@ -218,6 +224,12 @@ class CallSession(private val context: Context, val account: MatrixAccount, priv
         // As the computer's silent camera, the phone shows no shared video either.
         if (companion == null) watchTogether.start()
         scheduleMembershipRefresh()
+        if (encrypted) keysJob = scope.launch {
+            while (!closed) {
+                delay(5_000)
+                refreshKeys()
+            }
+        }
         refreshMembers()
     }
 
@@ -234,6 +246,8 @@ class CallSession(private val context: Context, val account: MatrixAccount, priv
         screenSharing = false
         state = "Disconnected"
         refreshJob?.cancel()
+        keysJob?.cancel()
+        ownKey.fill(0)
         companionJob?.cancel()
         if (companion != null) runCatching { sendCompanionState(joined = false) }
         watchTogether.stop()
@@ -554,22 +568,77 @@ class CallSession(private val context: Context, val account: MatrixAccount, priv
 
     // MARK: Media keys
 
-    private suspend fun distributeKey(participants: List<RemoteParticipant>) {
-        if (!encrypted || ownKey.isEmpty()) return
-        val recipients = CallLogic.recipients(participants.mapNotNull { it.identity?.value })
-        if (recipients.isEmpty()) return
+    private suspend fun distributeKey(identities: Set<String>) {
+        if (!encrypted || ownKey.isEmpty() || identities.isEmpty()) return
+        val recipients = CallLogic.recipients(identities.toList())
         val content = CallLogic.keysContent(roomId, ownUserId, ownDeviceId, ownKey, ownKeyIndex, System.currentTimeMillis())
+        account.client.sendEncryptedToDeviceMessage(CallLogic.KEYS_EVENT_TYPE, recipients, Json.encode(content))
+    }
+
+    private suspend fun refreshKeys() = keyMutex.withLock {
+        if (closed || !encrypted) return@withLock
         try {
-            account.client.sendEncryptedToDeviceMessage(CallLogic.KEYS_EVENT_TYPE, recipients, Json.encode(content))
-        } catch (e: Exception) {
-            lastError = "Could not share the call key: ${e.friendlyMessage}"
+            val events = account.clientRequestArray("/_matrix/client/v3/rooms/${MatrixAccount.pathComponent(roomId)}/state")
+            if (closed) return@withLock
+            membershipIds = CallLogic.authorizedMemberships(events, System.currentTimeMillis()) - ownIdentity
+            val current = membershipIds.keys
+            val live = liveKitRoom.remoteParticipants.values.mapNotNull { it.identity?.value }.toSet() - disconnectedDevices
+            val plan = CallLogic.keyPlan(authorized, distributed, current, live)
+            val recipients = plan.recipients
+            // A device that left Matrix OR the media server must lose access to future frames.
+            authorized = current
+            if (plan.rotate) {
+                try { rotateOwnKey() } catch (e: Exception) { onDropped?.invoke(); throw e }
+                distributed = emptySet()
+            }
+            val sendingGeneration = ownKeyGeneration
+            distributeKey(recipients - distributed)
+            if (closed || ownKeyGeneration != sendingGeneration) return@withLock
+            distributed = recipients
+            applyPendingKeys()
+            encryptionStatus = "End-to-end encrypted"
+        } catch (e: kotlinx.coroutines.CancellationException) { throw e
+        } catch (_: Exception) {
+            authorized = emptySet()
+            membershipIds = emptyMap()
+            encryptionStatus = "End-to-end encrypted · member/key check failed"
+            lastError = "Could not verify call members or share encryption keys. Retrying…"
         }
     }
 
-    private fun receiveKeys(message: ToDeviceMessage) {
+    private fun rotateOwnKey() {
+        ownKey.fill(0)
+        ownKey = ByteArray(16).also { SecureRandom().nextBytes(it) }
+        ownKeyGeneration++
+        // Keep the sender's existing cryptor and slot. LiveKit 2.30 has no public setter for an
+        // active sender's index; removing/recreating it briefly detaches frame encryption.
+        // Replacing this slot's random key keeps every frame encrypted throughout the switch.
+        keyProvider.install(ownIdentity, ownKeyIndex, ownKey)
+    }
+
+    private suspend fun receiveKeys(message: ToDeviceMessage) {
         if (closed || message.eventType != CallLogic.KEYS_EVENT_TYPE) return
         val received = CallLogic.parseKeys(message.content, message.senderId, roomId) ?: return
-        keyProvider.rtcKeyProvider.setKey(received.participantId, received.index, received.key)
+        val encryption = message.encryptionInfo ?: return
+        val device = CallLogic.split(received.participantId)?.second ?: return
+        if (encryption.senderId != message.senderId || encryption.senderDeviceId != device) return
+        if (pendingKeys.size >= 64) pendingKeys.remove(pendingKeys.keys.first())
+        pendingKeys[received.participantId] = received to System.currentTimeMillis()
+        refreshKeys()
+    }
+
+    private fun applyPendingKeys() {
+        val now = System.currentTimeMillis()
+        val iterator = pendingKeys.iterator()
+        while (iterator.hasNext()) {
+            val (_, value) = iterator.next()
+            val (key, arrived) = value
+            if (now - arrived > 30_000) { iterator.remove(); continue }
+            val memberId = membershipIds[key.participantId] ?: continue
+            if (key.memberId != null && key.memberId != memberId && key.memberId != key.participantId) { iterator.remove(); continue }
+            keyProvider.install(key.participantId, key.index, key.key)
+            iterator.remove()
+        }
     }
 
     // MARK: Events and members
@@ -578,11 +647,26 @@ class CallSession(private val context: Context, val account: MatrixAccount, priv
         if (closed) return
         when (event) {
             is RoomEvent.ParticipantConnected -> {
-                scope.launch { distributeKey(listOf(event.participant)) }
+                event.participant.identity?.value?.let { disconnectedDevices.remove(it) }
+                if (encrypted && connected) scope.launch { refreshKeys() }
                 if (connected && !deafened) Sounds.play(Sound.USER_JOINED)
                 applyVolumes()
             }
-            is RoomEvent.ParticipantDisconnected -> if (connected && !deafened && !leaving) Sounds.play(Sound.USER_LEFT)
+            is RoomEvent.ParticipantDisconnected -> {
+                if (encrypted && connected) {
+                    event.participant.identity?.value?.let { disconnectedDevices.add(it) }
+                    try {
+                        // Switch before any network wait: the departed device knows the old key.
+                        rotateOwnKey()
+                        distributed = emptySet()
+                        scope.launch { refreshKeys() }
+                    } catch (_: Exception) {
+                        lastError = "Call ended because its encryption key could not be changed."
+                        onDropped?.invoke()
+                    }
+                }
+                if (connected && !deafened && !leaving) Sounds.play(Sound.USER_LEFT)
+            }
             is RoomEvent.TrackSubscribed -> applyVolumes()
             is RoomEvent.Disconnected -> if (!leaving) {
                 DiagLog.write("call: disconnected (${event.reason})")

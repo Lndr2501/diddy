@@ -717,6 +717,7 @@ private fun DeviceRow(device: AccountDevice, isCurrent: Boolean, onClick: () -> 
 
 @Composable
 fun EncryptionPage(account: MatrixAccount, navigator: Navigator) {
+    app.diddy.ui.ProtectSecrets()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var backup by remember { mutableStateOf<KeyBackupInfo?>(null) }
@@ -802,6 +803,7 @@ fun EncryptionPage(account: MatrixAccount, navigator: Navigator) {
         )
     }
     newKey?.let { key ->
+        // DialogProperties defaults to inheriting the parent window's secure flag.
         AlertDialog(
             onDismissRequest = {},
             title = { Text("Your recovery key") },

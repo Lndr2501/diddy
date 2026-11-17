@@ -92,7 +92,7 @@ object CallLogic {
         "sent_ts" to now,
     )
 
-    data class ReceivedKey(val participantId: String, val key: ByteArray, val index: Int)
+    data class ReceivedKey(val participantId: String, val key: ByteArray, val index: Int, val memberId: String?)
 
     /** A key someone sent us for this room, mapped to their LiveKit identity like Element Call does. */
     fun parseKeys(json: String, senderId: String, roomId: String): ReceivedKey? {
@@ -100,9 +100,38 @@ object CallLogic {
         if (content["room_id"].str() != roomId) return null
         val keys = content["keys"].obj() ?: return null
         val key = decodeBase64(keys["key"].str() ?: return null) ?: return null
-        val index = keys["index"].long()?.toInt() ?: return null
+        if (key.size != 16 && key.size != 32) return null
+        val index = keys["index"].long()?.takeIf { it in 0..255 }?.toInt() ?: return null
         val device = content["member"].obj()?.get("claimed_device_id").str() ?: return null
-        return ReceivedKey("$senderId:$device", key, index)
+        if (device.isBlank()) return null
+        val claimedId = content["member"].obj()?.get("id").str()
+        val session = content["session"].obj() ?: return null
+        if (session["application"].str() != "m.call" || session["scope"].str() != "m.room" || session["call_id"].str() != "") return null
+        return ReceivedKey("$senderId:$device", key, index, claimedId)
+    }
+
+    /** Only current Matrix memberships authorize media keys. SFU identities alone never do. */
+    fun authorizedDevices(events: List<Map<String, Any?>>, now: Long) = authorizedMemberships(events, now).keys
+
+    fun authorizedMemberships(events: List<Map<String, Any?>>, now: Long): Map<String, String> {
+        val joined = events.filter { it["type"] == "m.room.member" && it["content"].obj()?.get("membership") == "join" }
+            .mapNotNull { it["state_key"].str() }.toSet()
+        return events.filter { it["type"] == MEMBER_EVENT_TYPE }.mapNotNull { event ->
+            val sender = event["sender"].str()?.takeIf { it in joined } ?: return@mapNotNull null
+            val content = event["content"].obj() ?: return@mapNotNull null
+            if (content["application"] != "m.call" || content["scope"] != "m.room" || content["call_id"] != "") return@mapNotNull null
+            val device = content["device_id"].str()?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            val created = content["created_ts"].long() ?: event["origin_server_ts"].long() ?: return@mapNotNull null
+            val expires = content["expires"].long()?.takeIf { it > 0 } ?: return@mapNotNull null
+            if (created > now + 60_000 || now - created >= expires) return@mapNotNull null
+            identity(sender, device) to (content["membershipID"].str() ?: identity(sender, device))
+        }.toMap()
+    }
+
+    data class KeyPlan(val recipients: Set<String>, val rotate: Boolean)
+    fun keyPlan(previousMembers: Set<String>, previousRecipients: Set<String>, members: Set<String>, live: Set<String>): KeyPlan {
+        val recipients = members.intersect(live)
+        return KeyPlan(recipients, (previousMembers - members).isNotEmpty() || (previousRecipients - recipients).isNotEmpty())
     }
 
     /** Standard or URL-safe base64, with or without padding. */

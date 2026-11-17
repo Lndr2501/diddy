@@ -113,11 +113,13 @@ fun MyInstantsSheet(onClose: () -> Unit) {
         onAction = {
             importing = true
             scope.launch {
+                val importingAccount = app.diddy.app.AppModel.activeAccountId
                 var added = 0; var existing = 0; var failed = 0
                 for (item in results.filter { it.path in selected }) {
                     try {
                         val (bytes, ext) = data(item)
-                        val fresh = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { Soundboard.add(bytes, item.name, ext) }
+                        if (app.diddy.app.AppModel.activeAccountId != importingAccount) break
+                        val fresh = Soundboard.add(bytes, item.name, ext, item.path)
                         if (fresh) added++ else existing++
                     } catch (e: kotlinx.coroutines.CancellationException) {
                         throw e

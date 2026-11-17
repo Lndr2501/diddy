@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-var-requires, no-restricted-syntax */
 // #248: MyInstants sounds of the soundboard synced through the account data.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -18,6 +19,15 @@ const DAY = 24 * 60 * 60 * 1000;
 const NOW = 100 * DAY;
 const a = '/media/sounds/bruh.mp3';
 const b = '/media/sounds/vine-boom.mp3';
+
+const androidFixture = path.join(__dirname, '../../android/app/src/test/resources/soundboard-sync.json');
+test('Android and desktop share the account-data wire format', { skip: !fs.existsSync(androidFixture) }, () => {
+  const fixtures = JSON.parse(fs.readFileSync(androidFixture, 'utf8'));
+  fixtures.forEach((fixture) => {
+    const state = fixture.inputs.reduce((merged, input) => s.mergeSoundboardSync(merged, input, fixture.now), {});
+    assert.deepEqual(j(s.toSoundboardSyncContent(state)), fixture.expected, fixture.name);
+  });
+});
 
 test('only MyInstants sound paths are accepted', () => {
   assert.equal(s.isMyInstantsPath(a), true);

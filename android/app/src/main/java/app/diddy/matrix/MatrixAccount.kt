@@ -308,9 +308,17 @@ class MatrixAccount(val record: AccountRecord, val client: Client) {
         }
     }
 
-    suspend fun logout() {
+    suspend fun logout(beforeRemove: suspend () -> Unit = {}) {
+        performLogout(
+            remote = { client.logout() },
+            alreadyRevoked = { it is org.matrix.rustcomponents.sdk.ClientException.MatrixApi && it.code == "M_UNKNOWN_TOKEN" },
+            removeLocal = { beforeRemove(); removeFromDevice() },
+        )
+    }
+
+    /** Explicit fallback after a failed logout. The server session may still exist. */
+    suspend fun removeFromDevice() {
         stop()
-        try { client.logout() } catch (_: Exception) {}
         SessionStore.delete(record.id)
         record.removeDirectories(SessionStore.context)
     }

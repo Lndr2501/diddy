@@ -69,6 +69,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         AppModel.resumeAll()
+        app.diddy.call.SoundboardSync.refresh()
         if (waitingForOAuth) {
             // Back from the browser without the redirect: the user closed the login page.
             lifecycleScope.launch {
