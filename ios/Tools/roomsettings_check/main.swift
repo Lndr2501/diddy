@@ -1,7 +1,7 @@
 // Checks for Diddy/Matrix/RoomSettingsLogic.swift: the room/space settings rules taken from
 // desktop (usePowerLevels.ts, usePowerLevelTags.ts, useRoomAliases.ts, useMemberFilter.ts, ...).
 // Foundation only, runs on macOS and Linux. Run from the ios folder:
-//   swiftc -swift-version 5 Diddy/Matrix/RoomSettingsLogic.swift Tools/roomsettings_check/main.swift -o /tmp/roomsettings_check && /tmp/roomsettings_check
+//   swiftc -swift-version 5 Diddy/Matrix/RoomSettingsLogic.swift Diddy/Matrix/RoomRetention.swift Tools/roomsettings_check/main.swift -o /tmp/roomsettings_check && /tmp/roomsettings_check
 import Foundation
 
 var failures = 0

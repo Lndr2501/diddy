@@ -247,7 +247,7 @@ jobs:
 
       - name: Check room settings rules
         run: |
-          swiftc -swift-version 5 Diddy/Matrix/RoomSettingsLogic.swift Tools/roomsettings_check/main.swift -o "$RUNNER_TEMP/diddy-roomsettings-check"
+          swiftc -swift-version 5 Diddy/Matrix/RoomSettingsLogic.swift Diddy/Matrix/RoomRetention.swift Tools/roomsettings_check/main.swift -o "$RUNNER_TEMP/diddy-roomsettings-check"
           "$RUNNER_TEMP/diddy-roomsettings-check"
 
       - name: Check security and device rules
