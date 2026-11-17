@@ -134,6 +134,16 @@ final class TimelineController: ObservableObject {
     private var isTyping = false
     /// Whether the room is encrypted: link previews follow a separate setting there.
     private var roomEncrypted = false
+    /// Automatic message deletion (#245): messages older than this (ms) are hidden right away;
+    /// the server purges them a little later. Set by the chat, which reads it from the server.
+    @Published private(set) var retentionLifetime: Int64?
+
+    /// Sets the room's message lifetime and drops messages that expired since the last call.
+    func updateRetention(_ lifetime: Int64?) {
+        if lifetime == nil, retentionLifetime == nil { return }
+        retentionLifetime = lifetime
+        rebuild()
+    }
 
     init(room: Room, ownUserId: String, isDirect: Bool = false, focus: TimelineFocus? = nil) {
         self.room = room
@@ -462,6 +472,7 @@ final class TimelineController: ObservableObject {
             builtItems = [:]
         }
         builtWith = (previews, roomEncrypted, membership)
+        let now = Int64(Date().timeIntervalSince1970 * 1000)
         var revisions: [String: (item: TimelineItem, revision: Int)] = [:]
         var built_: [ObjectIdentifier: (item: TimelineItem, built: BuiltItem)] = [:]
         built_.reserveCapacity(items.count)
@@ -484,6 +495,9 @@ final class TimelineController: ObservableObject {
                 if firstEventDate == nil { firstEventDate = date }
                 if createdAt == nil, isCreate { createdAt = date }
                 guard var row = cachedRow else { continue }
+                if row.layoutKind == .message,
+                   RoomRetention.isExpired(ts: Int64(row.date.timeIntervalSince1970 * 1000),
+                                           lifetime: retentionLifetime, now: now) { continue }
                 if let known = rowRevisions[row.id], known.item === item {
                     row.revision = known.revision
                 } else {

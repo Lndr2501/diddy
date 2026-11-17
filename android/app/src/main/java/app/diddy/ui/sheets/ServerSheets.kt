@@ -368,6 +368,7 @@ fun RoomSettingsSheet(account: MatrixAccount, roomId: String, navigator: Navigat
     var savedTopic by remember { mutableStateOf("") }
     var joinRule by remember { mutableStateOf("invite") }
     var history by remember { mutableStateOf("shared") }
+    var retention by remember { mutableStateOf<Long?>(null) }
     var encrypted by remember { mutableStateOf(false) }
     var version by remember { mutableStateOf("1") }
     var published by remember { mutableStateOf<Boolean?>(null) }
@@ -392,6 +393,7 @@ fun RoomSettingsSheet(account: MatrixAccount, roomId: String, navigator: Navigat
             savedTopic = topic
             joinRule = content("m.room.join_rules")?.get("join_rule").str() ?: "invite"
             history = content("m.room.history_visibility")?.get("history_visibility").str() ?: "shared"
+            retention = app.diddy.matrix.RoomRetention.lifetime(content(app.diddy.matrix.RoomRetention.EVENT_TYPE))
             encrypted = content("m.room.encryption") != null
             version = content("m.room.create")?.get("room_version").str() ?: "1"
             canonical = content("m.room.canonical_alias")?.get("alias").str()
@@ -488,6 +490,24 @@ fun RoomSettingsSheet(account: MatrixAccount, roomId: String, navigator: Navigat
                     if (index > 0) FormDivider()
                     FormChoice(label, history == key) {
                         if (key != history && can("m.room.history_visibility") && !busy) perform { sendState("m.room.history_visibility", mapOf("history_visibility" to key)) }
+                    }
+                }
+            }
+            FormSection(
+                "Delete Messages Automatically",
+                "Messages older than this are deleted from the server and hidden in Diddy right away. Other servers in the room and other apps may keep copies.",
+            ) {
+                val type = app.diddy.matrix.RoomRetention.EVENT_TYPE
+                // A value set in another app stays visible as its own entry.
+                val choices = listOf<Long?>(null) + app.diddy.matrix.RoomRetention.choices +
+                    listOfNotNull(retention?.takeIf { it !in app.diddy.matrix.RoomRetention.choices })
+                choices.forEachIndexed { index, value ->
+                    if (index > 0) FormDivider()
+                    FormChoice(value?.let { app.diddy.matrix.RoomRetention.duration(it) } ?: "Off", retention == value) {
+                        if (value != retention && can(type) && !busy) perform {
+                            sendState(type, app.diddy.matrix.RoomRetention.content(value))
+                            if (value == null) account.retentionLifetimes.remove(roomId) else account.retentionLifetimes[roomId] = value
+                        }
                     }
                 }
             }

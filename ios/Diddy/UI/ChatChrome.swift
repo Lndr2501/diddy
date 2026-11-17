@@ -175,11 +175,14 @@ struct ChatHeader<MenuContent: View>: View {
     /// Whether the iPad's member column is shown; nil hides the button (iPhone opens a sheet from the menu).
     let membersOpen: Bool?
     let onToggleMembers: () -> Void
+    /// Automatic message deletion of the room (#245), shown beside the name.
+    let retention: Int64?
     let menu: () -> MenuContent
 
     init(account: MatrixAccount, summary: RoomSummary?, title: String, onBack: (() -> Void)?,
          onInfo: @escaping () -> Void, onCall: @escaping () -> Void,
          membersOpen: Bool? = nil, onToggleMembers: @escaping () -> Void = {},
+         retention: Int64? = nil,
          @ViewBuilder menu: @escaping () -> MenuContent) {
         self.account = account
         self.summary = summary
@@ -189,6 +192,7 @@ struct ChatHeader<MenuContent: View>: View {
         self.onCall = onCall
         self.membersOpen = membersOpen
         self.onToggleMembers = onToggleMembers
+        self.retention = retention
         self.menu = menu
     }
 
@@ -209,7 +213,18 @@ struct ChatHeader<MenuContent: View>: View {
                 HStack(spacing: 10) {
                     picture
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(title).font(.headline).foregroundStyle(Theme.text).lineLimit(1)
+                        HStack(spacing: 6) {
+                            Text(title).font(.headline).foregroundStyle(Theme.text).lineLimit(1)
+                            if let retention {
+                                Label(RoomRetentionText.duration(retention), systemImage: "timer")
+                                    .labelStyle(.titleAndIcon)
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(Theme.muted)
+                                    .lineLimit(1)
+                                    .fixedSize()
+                                    .accessibilityLabel(RoomRetentionText.header(retention))
+                            }
+                        }
                         subtitle
                     }
                     Spacer(minLength: 0)

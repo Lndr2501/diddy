@@ -537,7 +537,7 @@ fun ChatListRow(
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                val text = room.lastMessage ?: if (room.hasCall) "Call in progress" else ""
+                val text = account.shownLastMessage(room) ?: if (room.hasCall) "Call in progress" else ""
                 val preview = if (context == null) text else if (text.isEmpty()) context else "$context · $text"
                 Text(
                     app.diddy.matrix.MentionText.readable(preview) { account.name(it) },

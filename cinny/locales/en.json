@@ -1049,6 +1049,18 @@
       "pinnedMessages": "Pinned Messages",
       "noPinnedMessages": "No Pinned Messages",
       "usersWithSufficientPower": "Users with sufficient power level can pin a messages from its context menu."
+    },
+    "retention": {
+      "title": "Delete Messages Automatically",
+      "description": "Messages older than this are deleted from the server and hidden in Diddy right away. Other servers in the room and other apps may keep copies.",
+      "off": "Off",
+      "minutes_one": "{{count}} minute",
+      "minutes_other": "{{count}} minutes",
+      "hours_one": "{{count}} hour",
+      "hours_other": "{{count}} hours",
+      "days_one": "{{count}} day",
+      "days_other": "{{count}} days",
+      "header": "Auto-delete: {{duration}}"
     }
   },
   "native": {

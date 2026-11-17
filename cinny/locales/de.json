@@ -1049,6 +1049,18 @@
       "pinnedMessages": "Angeheftete Nachrichten",
       "noPinnedMessages": "Keine angehefteten Nachrichten",
       "usersWithSufficientPower": "Wer genug Rechte hat, kann Nachrichten über ihr Kontextmenü anheften."
+    },
+    "retention": {
+      "title": "Nachrichten automatisch löschen",
+      "description": "Ältere Nachrichten werden vom Server gelöscht und in Diddy sofort ausgeblendet. Andere Server im Raum und andere Apps können Kopien behalten.",
+      "off": "Aus",
+      "minutes_one": "{{count}} Minute",
+      "minutes_other": "{{count}} Minuten",
+      "hours_one": "{{count}} Stunde",
+      "hours_other": "{{count}} Stunden",
+      "days_one": "{{count}} Tag",
+      "days_other": "{{count}} Tage",
+      "header": "Automatisch löschen: {{duration}}"
     }
   },
   "native": {

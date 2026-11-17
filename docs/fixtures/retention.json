@@ -1,0 +1,29 @@
+{
+  "_comment": "m.room.retention (MSC1763, issue #245). Desktop, iOS and Android read these cases.",
+  "lifetime": [
+    { "content": { "max_lifetime": 3600000 }, "lifetime": 3600000 },
+    { "content": { "max_lifetime": 2592000000, "min_lifetime": 60000 }, "lifetime": 2592000000 },
+    { "content": {}, "lifetime": null },
+    { "content": null, "lifetime": null },
+    { "content": { "max_lifetime": 0 }, "lifetime": null },
+    { "content": { "max_lifetime": -5 }, "lifetime": null },
+    { "content": { "max_lifetime": "3600000" }, "lifetime": null },
+    { "content": { "max_lifetime": 5400000.9 }, "lifetime": 5400000 }
+  ],
+  "expired": [
+    { "ts": 1000, "lifetime": 3600000, "now": 3601000, "expired": true },
+    { "ts": 1000, "lifetime": 3600000, "now": 3600999, "expired": false },
+    { "ts": 1000, "lifetime": null, "now": 999999999999, "expired": false },
+    { "ts": 0, "lifetime": 3600000, "now": 999999999999, "expired": false }
+  ],
+  "label": [
+    { "lifetime": 3600000, "unit": "hours", "count": 1 },
+    { "lifetime": 7200000, "unit": "hours", "count": 2 },
+    { "lifetime": 86400000, "unit": "days", "count": 1 },
+    { "lifetime": 604800000, "unit": "days", "count": 7 },
+    { "lifetime": 2592000000, "unit": "days", "count": 30 },
+    { "lifetime": 5400000, "unit": "minutes", "count": 90 },
+    { "lifetime": 90000, "unit": "minutes", "count": 2 }
+  ],
+  "choices": [3600000, 86400000, 604800000, 2592000000]
+}

@@ -79,6 +79,7 @@ import { usePresenceState } from '../../hooks/usePresenceState';
 import { AvatarPresence, PresenceBadge } from '../../components/presence';
 import { PRESENCE_STATE_LABEL } from '../../utils/presenceState';
 import { HeaderSearchField } from '../../components/top-actions';
+import { useRetentionText, useRoomRetention } from '../../hooks/useRoomRetention';
 import { useTranslation } from 'react-i18next';
 
 type RoomMenuProps = {
@@ -472,6 +473,8 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
   const dmPresence = usePresenceState(dmUserId);
   const name = useRoomName(room);
   const topic = useRoomTopic(room);
+  const retentionLifetime = useRoomRetention(room);
+  const retentionText = useRetentionText();
   const avatarUrl = avatarMxc
     ? mxcUrlToHttp(mx, avatarMxc, useAuthentication, 96, 96, 'crop') ?? undefined
     : undefined;
@@ -587,6 +590,13 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
               {countLabel && (
                 <Text as="span" className={css.HeaderCount} size="T300" priority="300">
                   {`· ${countLabel}`}
+                </Text>
+              )}
+              {retentionLifetime !== undefined && (
+                <Text as="span" className={css.HeaderCount} size="T300" priority="300">
+                  {`· ${t('room.retention.header', {
+                    duration: retentionText(retentionLifetime),
+                  })}`}
                 </Text>
               )}
             </Box>

@@ -221,6 +221,14 @@ private struct ChatContent: View {
         }
         .animation(.easeOut(duration: 0.18), value: actionRow?.id)
         .task { await account.refreshNotifyLevel(roomId: roomId) }
+        .task {
+            // Automatic message deletion (#245): read the room's lifetime and drop messages as
+            // they expire, while the chat is on screen.
+            while !Task.isCancelled {
+                if let lifetime = await account.roomRetention(roomId) { controller.updateRetention(lifetime) }
+                try? await Task.sleep(nanoseconds: 60 * 1_000_000_000)
+            }
+        }
         .alert(L("nav.inbox.notifications"), isPresented: Binding(get: { notifyError != nil }, set: { if !$0 { notifyError = nil } })) {
             Button(L("ios.common.ok"), role: .cancel) {}
         } message: { Text(notifyError ?? "") }
@@ -711,7 +719,8 @@ private struct ChatContent: View {
             onCall: { Task { await calls.requestJoin(account: account, roomId: roomId, roomName: title, showCallScreen: true) } },
             // iPad: the member list is a column beside the chat (ChatView), shown and hidden here.
             membersOpen: horizontalSizeClass == .regular ? memberPanelOpen : nil,
-            onToggleMembers: { memberPanelOpen.toggle() }
+            onToggleMembers: { memberPanelOpen.toggle() },
+            retention: controller.retentionLifetime
         ) {
             headerMenu
         }
