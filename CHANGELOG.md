@@ -1,6 +1,6 @@
 # Changelog
 
-## Unveröffentlicht
+## 1.12.2 (2026-11-17)
 
 - **iOS: Chats öffnen ohne Ruckeln:** Seit der iOS-Übersetzung in 1.12.1 hat jeder übersetzte Text die komplette Sprachdatei und die englische Datei neu aufbereitet (je 2.878 Texte), bei jedem Aufruf. Ein Chat mit vielen Nachrichten tut das hunderte Male pro Bildaufbau, und das Öffnen von Chats und Listen ruckelte stark. Die aufbereiteten Texte werden jetzt einmal gebaut und erst beim Sprachwechsel (in Diddy oder in den iOS-Einstellungen) neu. Nur iOS; Desktop und Android nutzen diesen Code nicht. Gebaut in der CI, auf dem Gerät noch nicht geprüft.
 
