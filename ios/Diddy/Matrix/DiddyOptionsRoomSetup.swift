@@ -104,13 +104,21 @@ extension MatrixAccount {
     /// The rooms of one space, up to three pages, without sub-spaces. Errors of a space are ignored
     /// (no permission, federation problems, ...).
     private func hierarchyRooms(of spaceId: String) async -> [(room: DiddyOptionsRoomLogic.HierarchyRoom, via: [String])] {
+        await hierarchyRooms(of: spaceId, complete: false) ?? []
+    }
+
+    /// With `complete`, nil when a page could not be read or there are more than three pages.
+    private func hierarchyRooms(of spaceId: String, complete: Bool) async -> [(room: DiddyOptionsRoomLogic.HierarchyRoom, via: [String])]? {
         var out: [(room: DiddyOptionsRoomLogic.HierarchyRoom, via: [String])] = []
         var childVia: [String: [String]] = [:]
         var token: String?
         for _ in 0..<3 {
             var path = "/_matrix/client/v1/rooms/\(Self.setupPath(spaceId))/hierarchy?limit=100&max_depth=1"
             if let token, let encoded = token.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) { path += "&from=\(encoded)" }
-            guard let json = try? await clientRequest(path) else { break }
+            guard let json = try? await clientRequest(path) else {
+                if complete { return nil }
+                break
+            }
             for entry in json["rooms"] as? [[String: Any]] ?? [] {
                 guard let roomId = entry["room_id"] as? String else { continue }
                 if roomId == spaceId {
@@ -129,6 +137,7 @@ extension MatrixAccount {
             token = json["next_batch"] as? String
             if token == nil { break }
         }
+        if complete && token != nil { return nil }
         return out.map { (room: $0.room, via: DiddyOptionsRoomLogic.viaServers(roomId: $0.room.roomId, childVia: childVia[$0.room.roomId])) }
     }
 
@@ -251,14 +260,61 @@ extension MatrixAccount {
         let toCheck = due ? spaces : spaces.filter { !diddyAutoJoinChecked.contains($0.roomId) }
         guard !toCheck.isEmpty else { return }
         if due { UserDefaults.standard.set(now, forKey: key) }
+        let mayCreate = Date() >= diddyAutoCreateFrom
         for space in toCheck {
             diddyAutoJoinChecked.insert(space.roomId)
-            guard let choice = await findDiddyRoom(ofServer: space.roomId) else { continue }
+            guard let choice = await findDiddyRoom(ofServer: space.roomId) else {
+                if mayCreate { await createDiddyOptionsRoomIfMissing(spaceId: space.roomId) }
+                continue
+            }
             do {
                 try await connectDiddyRoom(roomId: choice.id, via: choice.via, adopt: false)
             } catch {
                 DiagLog.shared.write("diddy: joining the options room of a server failed: \(error.friendlyMessage)")
             }
+        }
+    }
+
+    /// Creates the options room of a space you created yourself when it has none (DiddyAutoCreate),
+    /// so the other members' Diddy joins it by itself.
+    private func createDiddyOptionsRoomIfMissing(spaceId: String) async {
+        func readClaims() async -> [String: DiddyAutoCreate.Entry]? {
+            // nil only when the server could not be asked; no event yet is an empty list
+            let text: String?
+            do { text = try await client.accountData(eventType: DiddyAutoCreate.eventType) } catch { return nil }
+            let json = text.flatMap { $0.data(using: .utf8) }
+                .flatMap { (try? JSONSerialization.jsonObject(with: $0)) as? [String: Any] }
+            return DiddyAutoCreate.parse(json)
+        }
+        guard let claims = await readClaims(), claims[spaceId] == nil else { return }
+        guard let state = try? await clientRequestArray("/_matrix/client/v3/rooms/\(Self.setupPath(spaceId))/state") else { return }
+        let facts = DiddyAutoCreate.facts(state: state, me: userId)
+        guard DiddyAutoCreate.shouldCreate(isCreator: facts.isCreator, canAddRooms: facts.canAddRooms,
+                                           joinedMembers: facts.joinedMembers, claimed: false, hasDiddyRoom: false) else { return }
+        let rooms = await hierarchyRooms(of: spaceId, complete: true)
+        let hasDiddyRoom = rooms.map { list in
+            list.contains { DiddyOptionsRoomLogic.looksLikeDiddyRoom(name: $0.room.name, topic: $0.room.topic) }
+        }
+        // read again: another device may have claimed the space meanwhile
+        guard let latest = await readClaims(),
+              DiddyAutoCreate.shouldCreate(isCreator: facts.isCreator, canAddRooms: facts.canAddRooms, joinedMembers: facts.joinedMembers,
+                                           claimed: latest[spaceId] != nil, hasDiddyRoom: hasDiddyRoom) else { return }
+        let at = Int64(Date().timeIntervalSince1970 * 1000)
+        func save(_ claims: [String: DiddyAutoCreate.Entry], roomId: String?) async throws {
+            let content = DiddyAutoCreate.content(claims, spaceId: spaceId, entry: DiddyAutoCreate.Entry(at: at, roomId: roomId))
+            let data = try JSONSerialization.data(withJSONObject: content)
+            try await client.setAccountData(eventType: DiddyAutoCreate.eventType, content: String(decoding: data, as: UTF8.self))
+        }
+        do {
+            // Claimed before the room exists: a second device or a later run never makes another one.
+            try await save(latest, roomId: nil)
+            let before = Set(diddyOptionsRooms)
+            try await createDiddyOptionsRoom(name: DiddyOptionsRoomLogic.roomName, spaceId: spaceId)
+            let roomId = diddyOptionsRooms.subtracting(before).first
+            DiagLog.shared.write("diddy: options room created automatically space=\(spaceId) room=\(roomId ?? "?")")
+            if let roomId { try? await save(await readClaims() ?? latest, roomId: roomId) }
+        } catch {
+            DiagLog.shared.write("diddy: could not create the options room of a space: \(error.friendlyMessage)")
         }
     }
 

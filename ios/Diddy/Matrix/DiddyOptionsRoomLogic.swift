@@ -201,3 +201,69 @@ enum DiddyOptionsRoomLogic {
         return []
     }
 }
+
+/// Creating the options room of a space by itself (desktop `autoCreate.ts`): only in spaces you
+/// created yourself and may add rooms to, with at least one other member and no Diddy room yet.
+/// Each space gets at most one automatic room, ever: it is claimed in the account data first, so a
+/// second device does not make another one and a room you deleted or left does not come back.
+enum DiddyAutoCreate {
+    static let eventType = "app.diddy.auto_options_rooms"
+    static let maxSpaces = 200
+
+    struct Entry: Equatable { let at: Int64; let roomId: String? }
+
+    static func parse(_ json: [String: Any]?) -> [String: Entry] {
+        guard let spaces = json?["spaces"] as? [String: Any] else { return [:] }
+        var out: [String: Entry] = [:]
+        for (spaceId, raw) in spaces where spaceId.hasPrefix("!") && spaceId.count <= 255 {
+            guard let entry = raw as? [String: Any], let number = entry["at"] as? NSNumber,
+                  CFGetTypeID(number) != CFBooleanGetTypeID(), number.doubleValue.isFinite else { continue }
+            let roomId = (entry["roomId"] as? String).flatMap { $0.hasPrefix("!") ? $0 : nil }
+            out[spaceId] = Entry(at: number.int64Value, roomId: roomId)
+        }
+        return out
+    }
+
+    static func content(_ current: [String: Entry], spaceId: String, entry: Entry) -> [String: Any] {
+        var all = current
+        all[spaceId] = entry
+        let kept = all.sorted { $0.value.at > $1.value.at }.prefix(maxSpaces)
+        var spaces: [String: Any] = [:]
+        for (id, value) in kept {
+            var item: [String: Any] = ["at": value.at]
+            if let roomId = value.roomId { item["roomId"] = roomId }
+            spaces[id] = item
+        }
+        return ["v": 1, "spaces": spaces]
+    }
+
+    /// `hasDiddyRoom` is nil when the space's rooms could not be read completely: then never.
+    static func shouldCreate(isCreator: Bool, canAddRooms: Bool, joinedMembers: Int, claimed: Bool, hasDiddyRoom: Bool?) -> Bool {
+        isCreator && canAddRooms && joinedMembers >= 2 && !claimed && hasDiddyRoom == false
+    }
+
+    /// Who made the space, how many joined and whether you may add rooms, from its full state.
+    /// Room version 12 creators are not listed in the power levels and may do everything.
+    static func facts(state: [[String: Any]], me: String) -> (isCreator: Bool, canAddRooms: Bool, joinedMembers: Int) {
+        var creator: String?
+        var joined = 0
+        var levels: [String: Any] = [:]
+        for event in state {
+            guard let type = event["type"] as? String else { continue }
+            let content = event["content"] as? [String: Any] ?? [:]
+            switch type {
+            case "m.room.create": creator = event["sender"] as? String
+            case "m.room.member": if content["membership"] as? String == "join" { joined += 1 }
+            case "m.room.power_levels": levels = content
+            default: break
+            }
+        }
+        let isCreator = creator == me
+        let users = levels["users"] as? [String: Any] ?? [:]
+        func number(_ value: Any?) -> Int? { (value as? NSNumber)?.intValue }
+        let mine = number(users[me]) ?? number(levels["users_default"]) ?? 0
+        let needed = number((levels["events"] as? [String: Any])?["m.space.child"]) ?? number(levels["state_default"]) ?? 50
+        let canAdd = mine >= needed || (isCreator && users[me] == nil)
+        return (isCreator, canAdd, joined)
+    }
+}

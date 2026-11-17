@@ -32,6 +32,7 @@ import {
   ROOM_LISTS_EVENT,
   sameRoomLists,
 } from './roomListSync';
+import { AUTO_CREATED_EVENT, autoCreatedContent, parseAutoCreated, shouldAutoCreate } from './autoCreate';
 
 /** Synchronous read of the "Developer Tools" setting (it lives in localStorage). */
 export const isDeveloperToolsOn = (): boolean => {
@@ -480,4 +481,64 @@ export const connectMarkedRooms = (mx: MatrixClient): number => {
     connected += 1;
   });
   return connected;
+};
+
+/**
+ * Whether a space already has a Diddy room among its rooms (named like the options room or tagged
+ * in the topic, joined or not). Undefined when its rooms could not be read completely.
+ */
+const spaceHasDiddyRoom = async (mx: MatrixClient, spaceId: string): Promise<boolean | undefined> => {
+  const MAX_PAGES = 5;
+  let fromToken: string | undefined;
+  for (let page = 0; page < MAX_PAGES; page += 1) {
+    let hierarchy: Awaited<ReturnType<typeof getHierarchyPage>>;
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      hierarchy = await getHierarchyPage(mx, spaceId, fromToken);
+    } catch {
+      return undefined;
+    }
+    const found = hierarchy.rooms.some(
+      (r) =>
+        r.room_id !== spaceId &&
+        (r.name?.trim().toLowerCase() === OPTIONS_ROOM_NAME.toLowerCase() || (r.topic ?? '').includes(TOPIC_TAG))
+    );
+    if (found) return true;
+    if (!hierarchy.next_batch) return false;
+    fromToken = hierarchy.next_batch;
+  }
+  return undefined;
+};
+
+/**
+ * Creates the options room of a space you created yourself when it has none (autoCreate.ts), so
+ * the other members' Diddy joins it by itself. True when a room was made.
+ */
+export const createOptionsRoomIfMissing = async (mx: MatrixClient, spaceId: string): Promise<boolean> => {
+  const space = mx.getRoom(spaceId);
+  if (!space || !space.isSpaceRoom() || space.getMyMembership() !== 'join') return false;
+  const me = mx.getSafeUserId();
+  const createEvent = space.currentState.getStateEvents(EventType.RoomCreate, '');
+  const facts = {
+    isCreator: !!createEvent && createEvent.getSender() === me,
+    canAddRooms: space.currentState.maySendStateEvent(EventType.SpaceChild, me),
+    joinedMembers: space.getJoinedMemberCount(),
+    claimed: spaceId in parseAutoCreated(mx.getAccountData(AUTO_CREATED_EVENT as never)?.getContent()),
+  };
+  // cheap checks first: the hierarchy is only asked for spaces that may get a room
+  if (!shouldAutoCreate({ ...facts, hasDiddyRoom: false })) return false;
+  const hasDiddyRoom = await spaceHasDiddyRoom(mx, spaceId);
+  // read again: another device may have claimed the space meanwhile
+  const claimed = parseAutoCreated(mx.getAccountData(AUTO_CREATED_EVENT as never)?.getContent());
+  if (!shouldAutoCreate({ ...facts, claimed: spaceId in claimed, hasDiddyRoom })) return false;
+  const at = Date.now();
+  // claimed before the room exists: a second device or a later run never makes another one
+  await mx.setAccountData(AUTO_CREATED_EVENT as never, autoCreatedContent(claimed, spaceId, { at }) as never);
+  const roomId = await createOptionsRoom(mx, spaceId);
+  diag(`diddy: options room created automatically space=${spaceId} room=${roomId}`);
+  const latest = parseAutoCreated(mx.getAccountData(AUTO_CREATED_EVENT as never)?.getContent());
+  await mx
+    .setAccountData(AUTO_CREATED_EVENT as never, autoCreatedContent(latest, spaceId, { at, roomId }) as never)
+    .catch(() => {});
+  return true;
 };

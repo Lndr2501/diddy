@@ -184,3 +184,40 @@ test('iOS uses the same account data event for your own profile', (t) => {
   assert.ok(src.includes(`static let eventType = "${backup.OWN_PROFILE_EVENT}"`));
   assert.match(src, /\["v": 1, "ts": ts, "profile": profile\]/);
 });
+
+// --- options room of your own spaces ------------------------------------------------------------
+const autoCreate = load('autoCreate');
+
+test('a room is only made in your own space with others, no Diddy room and no earlier claim', () => {
+  const ok = { isCreator: true, canAddRooms: true, joinedMembers: 2, claimed: false, hasDiddyRoom: false };
+  assert.equal(autoCreate.shouldAutoCreate(ok), true);
+  assert.equal(autoCreate.shouldAutoCreate({ ...ok, isCreator: false }), false);
+  assert.equal(autoCreate.shouldAutoCreate({ ...ok, canAddRooms: false }), false);
+  assert.equal(autoCreate.shouldAutoCreate({ ...ok, joinedMembers: 1 }), false);
+  assert.equal(autoCreate.shouldAutoCreate({ ...ok, claimed: true }), false);
+  assert.equal(autoCreate.shouldAutoCreate({ ...ok, hasDiddyRoom: true }), false);
+  // the space's rooms could not be read completely: never guess
+  assert.equal(autoCreate.shouldAutoCreate({ ...ok, hasDiddyRoom: undefined }), false);
+});
+
+test('claimed spaces survive a round trip, broken entries are dropped', () => {
+  const content = autoCreate.autoCreatedContent({ '!a:x': { at: 1 } }, '!b:x', { at: 2, roomId: '!r:x' });
+  assert.deepEqual(plain(autoCreate.parseAutoCreated(content)), {
+    '!b:x': { at: 2, roomId: '!r:x' },
+    '!a:x': { at: 1 },
+  });
+  assert.deepEqual(
+    plain(autoCreate.parseAutoCreated({ spaces: { 'x': { at: 1 }, '!c:x': { at: 'no' }, '!d:x': { at: 3, roomId: 5 } } })),
+    { '!d:x': { at: 3 } }
+  );
+  assert.deepEqual(plain(autoCreate.parseAutoCreated(null)), {});
+});
+
+test('iOS uses the same account data event for automatically made rooms', (t) => {
+  const swift = path.join(__dirname, '../../ios/Diddy/Matrix/DiddyOptionsRoomLogic.swift');
+  if (!fs.existsSync(swift)) {
+    t.skip('ios/ is not part of this tree');
+    return;
+  }
+  assert.ok(fs.readFileSync(swift, 'utf8').includes(`"${autoCreate.AUTO_CREATED_EVENT}"`));
+});
