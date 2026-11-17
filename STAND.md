@@ -29,7 +29,7 @@ liegt in [docs/archiv/STAND-2026-11-06.md](docs/archiv/STAND-2026-11-06.md).
 
 - **Unveröffentlicht:** Call-Menü über den Namensschildern der anderen Kacheln (#260), steht im CHANGELOG unter „Unveröffentlicht“.
 - Geräteabnahme: Android (Push, Bluetooth, Langzeit, Interop), iOS-Änderungen seit 1.12.1, Windows im Alltag.
-- iOS: Medienschlüssel-Wechsel in verschlüsselten Calls, wenn jemand geht ([ios/SECURITY-TODO.md](ios/SECURITY-TODO.md)).
+- iOS: Passphrase für den lokalen Krypto-Store, braucht eine Migration der installierten Beta-Instanzen ([ios/SECURITY-TODO.md](ios/SECURITY-TODO.md)). Schlüsselwechsel in Calls beim Gehen ist seit 1.12.0 drin.
 - Android: Sprachauswahl und gespeicherte Nachrichten fehlen noch; macOS ist nicht notarisiert, Windows-Installer nicht signiert.
 
 ## Tests (Stand heute)

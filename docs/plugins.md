@@ -8,6 +8,8 @@ und spricht mit ihr nur über ein paar kleine, festgelegte Nachrichten.
 
 - Verwalten: **Einstellungen → Plugins** (hinzufügen, ein/aus, entfernen, mit Live-Vorschau)
 - Anzeigen: Tab **Plugins** in der Seitenleiste (erscheint, sobald mindestens ein Plugin aktiv ist)
+- Plattformen: macOS, Linux und Windows (dieser Text), iOS (Puzzle-Knopf neben dem Zahnrad, ohne Seitenleisten-Dock) und
+  Android (angeheftet unter *You*) mit demselben Vertrag und denselben mitgelieferten Plugins
 - Gespeichert wird die Liste nur lokal auf diesem Gerät (localStorage), höchstens 12 Plugins.
   Der HTML-Inhalt lokaler Plugins liegt in IndexedDB.
 

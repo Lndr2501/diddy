@@ -199,7 +199,7 @@ No Linux machine? You can try Linux and NixOS on a Mac with UTM: [VM guide](docs
 
 A native app in a Discord-like style (SwiftUI, matrix-rust-sdk, LiveKit), not a web view. The *Build iOS* workflow produces the IPA. Without a paid Apple account, install it with AltStore, SideStore or Sideloadly. Details, server requirements and build steps: [ios/README.md](ios/README.md).
 
-The iOS app is in beta. Voice channels in encrypted rooms are end-to-end encrypted like Element Call, but without key rotation when someone leaves yet; devices get the media key from the LiveKit participant list. Hardening is planned ([ios/SECURITY-TODO.md](ios/SECURITY-TODO.md)).
+The iOS app is in beta. Voice channels in encrypted rooms are end-to-end encrypted like Element Call: only devices with a valid call membership get the media key, and a new key goes out when someone leaves. The remaining hardening item (a passphrase for the local crypto store) is in [ios/SECURITY-TODO.md](ios/SECURITY-TODO.md).
 
 </details>
 

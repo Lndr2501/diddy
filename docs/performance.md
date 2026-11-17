@@ -5,7 +5,7 @@ Start/Sync/Netzwerk). Nichts davon ist gemessen: Vor und nach jeder Änderung me
 Inspector bzw. Instruments mit Signposts; Zeitmarken in `app.log`). Jeder Punkt gilt für alle
 Plattformen, auf denen das Problem besteht (siehe Spalte).
 
-Abkürzungen: D = Desktop (macOS + Linux, `cinny/`), M = nur macOS (Tauri), L = nur Linux (Electron), I = iOS.
+Abkürzungen: D = Desktop (macOS, Linux und Windows, `cinny/`), M = nur macOS (Tauri), L = Linux und Windows (Electron), I = iOS.
 
 ## Stand (2026-11-14)
 

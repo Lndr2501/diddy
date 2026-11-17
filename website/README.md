@@ -43,4 +43,4 @@ Dann <http://localhost:8080> öffnen.
 - Kein volles Impressum: private, nicht kommerzielle Projektseite (Schweiz, Art. 3 Abs. 1 lit. s UWG greift nicht).
   Ein kurzer Datenschutzhinweis bleibt nötig, weil der Hoster technisch IP-Adressen verarbeitet; dazu gehören Name und E-Mail.
   Kommen Spenden, Verkauf, Werbung oder eine Firma dazu, ein volles Impressum mit Postadresse ergänzen.
-- Markenhinweise (Apple, Linux, Matrix) stehen im Footer und in `rechtliches.html`. Keine fremden Logos verwenden.
+- Markenhinweise (Apple, Microsoft, Google, Linux, Matrix) stehen im Footer und in `rechtliches.html`. Keine fremden Logos verwenden.
