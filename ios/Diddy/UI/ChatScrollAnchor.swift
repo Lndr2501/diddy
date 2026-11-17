@@ -13,6 +13,13 @@ final class ChatScrollAnchor {
     private weak var scrollView: UIScrollView?
     private var observation: NSKeyValueObservation?
     private var holds = 0
+    /// Set while the anchor itself moves the offset: the content size changes this causes are the
+    /// move's own and are not answered again.
+    private var moving = false
+    /// Moves in this turn of the main run loop (ChatScrollAnchorRules.maxMovesPerTurn).
+    private var movesThisTurn = 0
+    /// The anchor found itself in a loop and rests until the load is over.
+    private var resting = false
 
     deinit { observation?.invalidate() }
 
@@ -21,13 +28,30 @@ final class ChatScrollAnchor {
         observation?.invalidate()
         self.scrollView = scrollView
         observation = scrollView.observe(\.contentSize, options: [.old, .new]) { [weak self] view, change in
-            guard let self, self.holds > 0, let old = change.oldValue, let new = change.newValue else { return }
-            let delta = new.height - old.height
-            guard abs(delta) > 0.5, old.height > 0 else { return }
-            // Never past the end: the offset stays within what can be scrolled.
-            let maxY = max(new.height - view.bounds.height + view.adjustedContentInset.bottom, -view.adjustedContentInset.top)
-            view.contentOffset.y = min(max(view.contentOffset.y + delta, -view.adjustedContentInset.top), maxY)
+            guard let old = change.oldValue, let new = change.newValue else { return }
+            self?.contentSizeChanged(view, old: old, new: new)
         }
+    }
+
+    private func contentSizeChanged(_ view: UIScrollView, old: CGSize, new: CGSize) {
+        guard holds > 0, !moving, !resting,
+              let target = ChatScrollAnchorRules.adjustedOffset(
+                  oldHeight: Double(old.height), newHeight: Double(new.height),
+                  offset: Double(view.contentOffset.y), viewHeight: Double(view.bounds.height),
+                  insetTop: Double(view.adjustedContentInset.top), insetBottom: Double(view.adjustedContentInset.bottom)
+              ) else { return }
+        if movesThisTurn == 0 {
+            DispatchQueue.main.async { [weak self] in self?.movesThisTurn = 0 }
+        }
+        movesThisTurn += 1
+        guard movesThisTurn <= ChatScrollAnchorRules.maxMovesPerTurn else {
+            resting = true
+            DiagLog.shared.write("chat scroll anchor: feedback loop, resting until the load ends")
+            return
+        }
+        moving = true
+        defer { moving = false }
+        view.contentOffset.y = CGFloat(target)
     }
 
     /// Runs `load` (which adds older rows above) and keeps the visible rows still meanwhile and
@@ -38,6 +62,7 @@ final class ChatScrollAnchor {
         await load()
         try? await Task.sleep(nanoseconds: 250_000_000)
         holds -= 1
+        if holds == 0 { resting = false }
     }
 }
 
