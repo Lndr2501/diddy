@@ -3,7 +3,7 @@
   'use strict';
 
   // Update on every release (see website/README.md).
-  const VERSION = '1.7.1';
+  const VERSION = '1.12.2';
   const REPO = 'https://github.com/Lndr2501/diddy';
   const assetUrl = (suffix) =>
     `${REPO}/releases/download/v${VERSION}/Diddy_${VERSION}_${suffix}`;
@@ -21,11 +21,13 @@
   // ---------- Platform detection (local only, nothing is sent anywhere) ----------
   const ua = navigator.userAgent;
   const isIOS = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
-  const platform = isIOS ? 'ios' : /Mac/.test(ua) ? 'mac' : /Linux|X11/.test(ua) && !/Android/.test(ua) ? 'linux' : null;
+  const platform = isIOS ? 'ios' : /Android/.test(ua) ? 'android' : /Windows/.test(ua) ? 'windows' : /Mac/.test(ua) ? 'mac' : /Linux|X11/.test(ua) ? 'linux' : null;
   const labels = {
     mac: ['Download for macOS', 'Apple Silicon · free · AGPL-3.0'],
     linux: ['Download for Linux', '.deb · .rpm · AppImage · free · AGPL-3.0'],
     ios: ['Get the iOS beta', 'Sideload with AltStore or SideStore · free'],
+    windows: ['Download for Windows', 'Windows 10 / 11 · free · AGPL-3.0'],
+    android: ['Get the Android beta', 'APK · Android 8+ · free · AGPL-3.0'],
   };
   if (platform) {
     const [label, note] = labels[platform];

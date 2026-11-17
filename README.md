@@ -31,7 +31,7 @@ Diddy is built on [Cinny](https://github.com/cinnyapp/cinny) and adds what every
 <td width="33%" valign="top">
 
 ### Voice calls
-Join a voice room in one click. Calls work on macOS, where Cinny's web client hangs, and on Linux, including encrypted rooms. Noise suppression is built in, and the headphone button mutes microphone and sound together.
+Join a voice room in one click. Calls work on macOS, where Cinny's web client hangs, and on Linux, Windows, iPhone and Android, including encrypted rooms. Noise suppression is built in, and the headphone button mutes microphone and sound together.
 
 </td>
 <td width="33%" valign="top">
@@ -77,6 +77,9 @@ More details:
 - **Calm interface:** an own icon set, neutral highlights with the accent kept for mentions and sending, room updates folded into one line ("4 joined · 4 invited"), a one-line composer and voice messages with a scrubbable waveform.
 - **Settings by topic:** *Appearance*, *Chat*, *Notifications* and *Calls & Audio*, with a search that finds every single setting.
 - **Desktop and iOS languages:** follow the system or choose a language, share one JSON file per language and load your own translations without rebuilding. See [how to translate Diddy](docs/translating.md).
+- **Delete messages automatically:** per room, after 1 hour, 1 day, 7 days or 30 days (moderators). Diddy sets the standard Matrix event `m.room.retention`, every Diddy app hides expired messages at once, and the homeserver purges them if retention is switched on there. Other servers and apps may keep copies, and uploaded files are not deleted.
+- **Your setup follows your account:** theme, layout and other settings (desktop), your profile and badges, the hidden "Diddy Options" rooms and your MyInstants sounds stay in sync between your devices through Matrix account data. A notification disappears everywhere once you have read the message on one device.
+- **Share into Diddy:** send text, links, photos and music from other apps to a chat (iOS share extension, Android share sheet, `matrix.to` and `matrix:` links). Music links show up as iMessage-style cards.
 - **Music stays loud:** with *Voice processing* off, Diddy records the microphone directly through Core Audio, so macOS no longer ducks other apps when you join a call.
 - **Call alerts:** on iOS, optional push alerts through [ntfy](https://ntfy.sh) ("Name is calling you") when someone calls and the app is closed.
 - **Connection profiles:** if a homeserver is down, open another one in its own window with a separate login and data store. Your existing account and keys stay untouched.
@@ -125,7 +128,8 @@ All images show example data and are generated from the real app, see [docs/scre
 ✅ works and is tested · 🧪 built, but not yet tested in daily use · ❌ not supported (yet)
 
 **Android 🧪:** the native Kotlin/Compose app is available as a signed APK from 1.11.1, with chats,
-encrypted calls, screen sharing, soundboard, Watch Together, phone companion and UnifiedPush.
+encrypted calls, screen sharing (with app sound on Android 10+), soundboard, Watch Together, phone companion,
+incoming calls like the phone app, a tablet and foldable layout and UnifiedPush. It is prepared for F-Droid (reproducible build, checked in CI).
 Built, unit-tested, linted and started on emulators in CI (also with 16 KB pages), not yet checked
 on a real phone. See the [Android guide](android/README.md) and the
 [feature matrix](docs/plattformen.md) for all five platforms.

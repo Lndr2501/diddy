@@ -9,7 +9,7 @@ Im Text steht `$MAC` für `lndr@<IP des Macs>`; SSH-Optionen: `-o StrictHostKeyC
 cd cinny
 npm install
 npx tsc --noEmit      # muss leer sein
-npm test              # alle Tests grün (197 Stand 2026-11-08)
+npm test              # alle Tests grün (873 Stand 2026-11-17)
 ```
 
 ## 2. Stand auf den Mac bringen
