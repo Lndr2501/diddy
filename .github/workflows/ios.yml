@@ -130,6 +130,11 @@ jobs:
           swiftc -swift-version 5 Diddy/UI/SwipeReplyMath.swift Tools/swipereply_check/main.swift -o "$RUNNER_TEMP/diddy-swipereply-check"
           "$RUNNER_TEMP/diddy-swipereply-check"
 
+      - name: Check chat scroll anchor rules
+        run: |
+          swiftc -swift-version 5 Diddy/UI/ChatScrollAnchorRules.swift Tools/scrollanchor_check/main.swift -o "$RUNNER_TEMP/diddy-scrollanchor-check"
+          "$RUNNER_TEMP/diddy-scrollanchor-check"
+
       - name: Check timeline layout rules
         run: |
           swiftc -swift-version 5 Diddy/Matrix/TimelineLayout.swift Tools/timeline_check/main.swift -o "$RUNNER_TEMP/diddy-timeline-check"

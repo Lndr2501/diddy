@@ -114,8 +114,10 @@ private struct ChatContent: View {
     @EnvironmentObject private var navigator: AppNavigator
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.chatBesideList) private var besideList
-    /// How far the edge swipe back has moved the chat (EdgeSwipeBack).
+    /// How far the edge swipe back has moved the chat (EdgeSwipeBack): the phone layout's offset
+    /// of the whole stack, or this chat's own where nothing outside moves it.
     @State private var edgeOffset: CGFloat = 0
+    @Environment(\.chatEdgeOffset) private var stackEdgeOffset
     @State private var profile: ProfileTarget?
     @State private var viewedImage: ViewedImage?
     @State private var openedFile: URL?
@@ -190,14 +192,13 @@ private struct ChatContent: View {
         // and the composer's plus.
         .overlay(alignment: .leading) {
             if let backAction {
-                EdgeSwipeBack(offset: $edgeOffset, onBack: backAction)
+                EdgeSwipeBack(offset: stackEdgeOffset ?? $edgeOffset, onBack: backAction)
                     .padding(.top, 60)
                     .padding(.bottom, 72)
             }
         }
         .shadow(color: .black.opacity(edgeOffset > 0 ? 0.35 : 0), radius: 14)
         .offset(x: edgeOffset)
-        .preference(key: ChatEdgeOffsetKey.self, value: edgeOffset)
         .navigationTitle(title)
         // Our own flat header (ChatHeader) instead of the system bar and its glass buttons; the
         // swipe back from the edge still works (ChatChrome.swift).
@@ -413,7 +414,10 @@ private struct ChatContent: View {
                             if userScrolled || UIAccessibility.isVoiceOverRunning {
                                 atBottom = false
                             } else {
-                                proxy.scrollTo("bottom", anchor: .bottom)
+                                // On the next turn, not inside the layout pass that hid the marker:
+                                // a jump from there lays the list out again in the same pass, which
+                                // can hide the marker again, and so on without end.
+                                DispatchQueue.main.async { proxy.scrollTo("bottom", anchor: .bottom) }
                             }
                         }
                 }

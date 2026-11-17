@@ -157,13 +157,27 @@ extension MainView {
                 }
                 .accessibilityHidden(open)
             if let destination = navigator.destination {
+                // The edge swipe moves the whole stack: its background is opaque, so moving only
+                // the chat inside it showed black where the list should come back.
                 NavigationStack { detail(destination) }
+                    .environment(\.chatEdgeOffset, $chatEdgeOffset)
+                    // A soft edge while it moves; a shadow on the whole stack would draw the
+                    // chat off screen all the time.
+                    .overlay(alignment: .leading) {
+                        if chatEdgeOffset > 0 {
+                            LinearGradient(colors: [.clear, .black.opacity(0.3)], startPoint: .leading, endPoint: .trailing)
+                                .frame(width: 14)
+                                .offset(x: -14)
+                                .ignoresSafeArea()
+                                .allowsHitTesting(false)
+                        }
+                    }
+                    .offset(x: chatEdgeOffset)
                     .transition(.move(edge: .trailing))
                     .zIndex(1)
             }
         }
         .animation(.easeOut(duration: 0.25), value: navigator.destination)
-        .onPreferenceChange(ChatEdgeOffsetKey.self) { chatEdgeOffset = $0 }
     }
 
     @ViewBuilder

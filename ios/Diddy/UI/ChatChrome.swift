@@ -346,8 +346,10 @@ struct EdgeSwipeBack: View {
                             // The chat is already gone; the pop itself must not slide it again.
                             var transaction = Transaction()
                             transaction.disablesAnimations = true
-                            withTransaction(transaction) { onBack() }
-                            offset = 0
+                            withTransaction(transaction) {
+                                onBack()
+                                offset = 0
+                            }
                         }
                     }
             )
@@ -355,11 +357,11 @@ struct EdgeSwipeBack: View {
     }
 }
 
-/// How far the chat is pulled aside by EdgeSwipeBack, for the list underneath (MainView moves it
-/// back in as the chat moves out).
-struct ChatEdgeOffsetKey: PreferenceKey {
-    static let defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+/// The phone layout's offset of the whole chat stack (MainView), for EdgeSwipeBack. The chat moves
+/// its NavigationStack and not only itself: moving the chat inside the stack left the stack's own
+/// opaque background behind it, and the swipe uncovered black instead of the chat list.
+private struct ChatEdgeOffsetKey: EnvironmentKey {
+    static let defaultValue: Binding<CGFloat>? = nil
 }
 
 /// True where the chat stands beside the chat list (iPhone in landscape, MainView): no back button
@@ -372,6 +374,11 @@ extension EnvironmentValues {
     var chatBesideList: Bool {
         get { self[ChatBesideListKey.self] }
         set { self[ChatBesideListKey.self] = newValue }
+    }
+
+    var chatEdgeOffset: Binding<CGFloat>? {
+        get { self[ChatEdgeOffsetKey.self] }
+        set { self[ChatEdgeOffsetKey.self] = newValue }
     }
 }
 
