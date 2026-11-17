@@ -1,0 +1,1 @@
+Wartungsupdate. Diese Version korrigiert den Ton von Bildschirmfreigaben für Zuschauer am Desktop. Der Android-Call-Client bleibt unverändert.

@@ -1,6 +1,8 @@
 # Changelog
 
-## Unveröffentlicht
+## 1.12.3 (2026-11-17)
+
+- **Systemton beim Ansehen eines geteilten Bildschirms (macOS, Linux, Windows):** Beim Klick auf „Ansehen“ wurde das Bild sichtbar, die Tonspur blieb aber deaktiviert. Diddy ordnet jetzt die Kachel auch dann der richtigen LiveKit-Tonspur zu, wenn Element Call einen zusätzlichen Kachelindex verwendet. Das Update ist auf der Empfängerseite nötig. iOS und Android nutzen einen eigenen Call-Code und sind von diesem Fehler nicht betroffen.
 
 - **Call: Lautstärke-Menü liegt über den Namen anderer Kacheln (#260, macOS, Linux, Windows):** Öffnete man im Call „Mute for me“ und die Lautstärke einer Person, lag das Namensschild der Kachel daneben über dem Regler. Das Menü gehört zu Element Call und liegt in dessen Fenster, das Diddys eigene Call-Bühne überdeckt; dieses Fenster hatte keinen z-index, und jedes Element der Bühne mit einem (Namensschilder, Werkzeugleiste, Klickflächen, Profil-Effekte) malte darüber, in allen Browsern. Solange Element Call ein Menü oder einen Dialog zeigt, liegt sein Fenster jetzt auf der Popover-Ebene über der Bühne (unter Dialogen, Hinweisen und Toasts). In WebKit und Chromium nachgestellt und geprüft. iOS und Android zeichnen den Call selbst und sind nicht betroffen.
 

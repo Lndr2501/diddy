@@ -134,6 +134,41 @@ test('unwatched shares are paused in Element Call and their sound is switched of
   assert.deepEqual([...alexAudio.calls], [false, true]);
 });
 
+test('Element Call 0.20.1 includes a tile index that is not part of the LiveKit identity', () => {
+  const indexed = '@alex:example.org:PHONE:0:screen-share';
+  const tile0 = tile(indexed);
+  const audio = audioPub();
+  const rooms = [room([participant('@alex:example.org:PHONE', audio)])];
+  const doc = fakeDoc([tile0]);
+  mod.applyShareWatch(doc, rooms, () => false);
+  mod.applyShareWatch(doc, rooms, (id) => id === indexed);
+  assert.equal(tile0.hasAttribute(mod.SHARE_OFF_ATTR), false);
+  assert.deepEqual(audio.calls, [false, true]);
+  assert.equal(
+    mod.isOwnShare('@me:example.org:MAC:0:screen-share', mod.localIdentities(rooms), '@me:example.org'),
+    true
+  );
+});
+
+test('the share video publication maps indexed tiles to a hashed LiveKit identity', () => {
+  const indexed = '@alex:example.org:PHONE:0:screen-share';
+  const tile0 = tile(indexed);
+  const identity = 'hashed-alex-phone';
+  tile0.__reactFiber$fixture = {
+    return: {
+      memoizedProps: {
+        vm: { id: indexed, type: 'screen share', video$: { value: { participant: { identity } } } },
+      },
+    },
+  };
+  const audio = audioPub();
+  const rooms = [room([participant(identity, audio)])];
+  const doc = fakeDoc([tile0]);
+  mod.applyShareWatch(doc, rooms, () => false);
+  mod.applyShareWatch(doc, rooms, (id) => id === indexed);
+  assert.deepEqual(audio.calls, [false, true]);
+});
+
 test('the stage going away shows every share again', () => {
   const alex = tile(ALEX);
   const audio = audioPub(false);

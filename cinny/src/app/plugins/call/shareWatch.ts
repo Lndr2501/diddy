@@ -11,7 +11,8 @@
  * lasts while that share runs: a share that ends and starts again begins as a card again.
  *
  * Stable hooks (Element Call 0.20.1, see callStage.ts and callMute.ts):
- *   - tile `[data-testid="videoTile"][data-id="<participant identity>:screen-share"]`
+ *   - tile `[data-testid="videoTile"][data-id="<matrix user>:<device>:<index>:screen-share"]`
+ *   - the tile's media view model exposes `video$.value.participant.identity`
  *   - LiveKit `room.remoteParticipants`, `participant.identity`,
  *     `participant.getTrackPublication("screen_share_audio")`, `publication.setEnabled()`
  */
@@ -30,11 +31,16 @@ html body [data-testid="videoTile"][${SHARE_OFF_ATTR}] video {
 }
 `;
 
-/** LiveKit identity of the participant behind a share tile id, or undefined for other ids. */
+/** The tile key without the screen-share suffix; it may still contain a UI-only index. */
 export const shareIdentity = (shareId: string): string | undefined =>
   shareId.endsWith(SCREEN_SHARE_SUFFIX) && shareId.length > SCREEN_SHARE_SUFFIX.length
     ? shareId.slice(0, -SCREEN_SHARE_SUFFIX.length)
     : undefined;
+
+/** Compare to an actual identity, rather than stripping a suffix from a possibly numeric device ID. */
+const matchesIdentity = (tileKey: string, identity: string): boolean =>
+  tileKey === identity ||
+  (tileKey.startsWith(`${identity}:`) && /^\d+$/.test(tileKey.slice(identity.length + 1)));
 
 /** Your own LiveKit identities (one per SFU connection). */
 export const localIdentities = (rooms: readonly { localParticipant?: unknown }[]): Set<string> => {
@@ -57,7 +63,7 @@ export const isOwnShare = (
 ): boolean => {
   const identity = shareIdentity(shareId);
   if (!identity) return false;
-  if (local.size > 0) return local.has(identity);
+  if (local.size > 0) return Array.from(local).some((id) => matchesIdentity(identity, id));
   return !!userId && identity.startsWith(`${userId}:`);
 };
 
@@ -140,6 +146,32 @@ type ShareDoc = {
   querySelectorAll: (selector: string) => ArrayLike<TileLike>;
 };
 
+type TileFiber = {
+  memoizedProps?: {
+    vm?: {
+      id?: unknown;
+      type?: unknown;
+      video$?: { value?: { participant?: { identity?: unknown } } };
+    };
+  };
+  return?: TileFiber | null;
+};
+
+/** Prefer the actual publication owner, including for hashed backend identities. */
+const tileParticipantIdentity = (tile: TileLike, id: string): string | undefined => {
+  const key = Object.keys(tile).find((name) => name.startsWith('__reactFiber$'));
+  let fiber = key ? (tile as unknown as Record<string, TileFiber>)[key] : undefined;
+  for (let depth = 0; fiber && depth < 30; depth += 1) {
+    const vm = fiber.memoizedProps?.vm;
+    if (vm?.id === id && vm.type === 'screen share') {
+      const identity = vm.video$?.value?.participant?.identity;
+      if (typeof identity === 'string' && identity) return identity;
+    }
+    fiber = fiber.return ?? undefined;
+  }
+  return undefined;
+};
+
 type PublicationLike = {
   isEnabled?: unknown;
   setEnabled?: (enabled: boolean) => void;
@@ -166,13 +198,17 @@ export const applyShareWatch = (
   wanted: (shareId: string) => boolean
 ): void => {
   if (!doc) return;
-  Array.from(doc.querySelectorAll(`[data-testid="videoTile"][data-id$="${SCREEN_SHARE_SUFFIX}"]`))
-    .filter((tile) => shareIdentity(tile.getAttribute('data-id') ?? ''))
-    .forEach((tile) => {
-      const off = !wanted(tile.getAttribute('data-id') ?? '');
-      if (off && !tile.hasAttribute(SHARE_OFF_ATTR)) tile.setAttribute(SHARE_OFF_ATTR, 'true');
-      if (!off && tile.hasAttribute(SHARE_OFF_ATTR)) tile.removeAttribute(SHARE_OFF_ATTR);
-    });
+  const tiles = Array.from(
+    doc.querySelectorAll(`[data-testid="videoTile"][data-id$="${SCREEN_SHARE_SUFFIX}"]`)
+  ).flatMap((tile) => {
+    const id = tile.getAttribute('data-id') ?? '';
+    const key = shareIdentity(id);
+    if (!key) return [];
+    const show = wanted(id);
+    if (!show && !tile.hasAttribute(SHARE_OFF_ATTR)) tile.setAttribute(SHARE_OFF_ATTR, 'true');
+    if (show && tile.hasAttribute(SHARE_OFF_ATTR)) tile.removeAttribute(SHARE_OFF_ATTR);
+    return [{ key, show, participant: tileParticipantIdentity(tile, id) }];
+  });
   (rooms as ShareRoomLike[]).forEach((room) => {
     if (room.state === 'disconnected' || typeof room.remoteParticipants?.values !== 'function') {
       return;
@@ -182,7 +218,12 @@ export const applyShareWatch = (
       if (!identity) return;
       const pub = participant.getTrackPublication?.(SHARE_AUDIO_SOURCE);
       if (!pub || typeof pub.setEnabled !== 'function') return;
-      const enable = wanted(`${identity}${SCREEN_SHARE_SUFFIX}`);
+      const matching = tiles.filter((tile) =>
+        tile.participant ? tile.participant === identity : matchesIdentity(tile.key, identity)
+      );
+      const enable = matching.length
+        ? matching.some((tile) => tile.show)
+        : wanted(`${identity}${SCREEN_SHARE_SUFFIX}`);
       if (pub.isEnabled === enable) return;
       try {
         pub.setEnabled(enable);

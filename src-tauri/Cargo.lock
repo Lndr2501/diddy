@@ -858,7 +858,7 @@ dependencies = [
 
 [[package]]
 name = "diddy"
-version = "1.12.2"
+version = "1.12.3"
 dependencies = [
  "block2",
  "objc2",
