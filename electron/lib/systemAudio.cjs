@@ -88,6 +88,18 @@ function createSystemAudio({ helper, send, spawnProcess = spawn, rootPid = proce
   };
 }
 
+/** A hash/history route change keeps the renderer and capture alive; document replacement does not. */
+function bindSystemAudioLifecycle(contents, audio, onDestroyed) {
+  contents.on('did-start-navigation', (details, _url, isInPlace, isMainFrame) => {
+    // Electron's current event object, with legacy positional arguments for older shells.
+    const mainFrame = details.isMainFrame ?? isMainFrame;
+    const sameDocument = details.isSameDocument ?? isInPlace;
+    if (mainFrame && !sameDocument) audio.close();
+  });
+  contents.on('render-process-gone', () => audio.close());
+  contents.once('destroyed', () => { audio.close(); onDestroyed(); });
+}
+
 /** First Windows build with the process loopback client (Windows 10 version 2004). */
 const WINDOWS_MIN_BUILD = 19041;
 const helperName = (platform = process.platform) => (platform === 'win32' ? 'diddy-system-audio.exe' : 'diddy-system-audio');
@@ -109,4 +121,4 @@ function systemAudioSupport({ platform = process.platform, release = '', helperE
   if (!helperExists()) return { available: false, reason: 'The system sound helper is missing from this installation. Reinstall Diddy.' };
   return { available: true };
 }
-module.exports = { createSystemAudio, systemAudioSupport, helperName, WINDOWS_MIN_BUILD, BLOCK_BYTES, MESSAGE_BYTES, MAX_IN_FLIGHT };
+module.exports = { createSystemAudio, bindSystemAudioLifecycle, systemAudioSupport, helperName, WINDOWS_MIN_BUILD, BLOCK_BYTES, MESSAGE_BYTES, MAX_IN_FLIGHT };

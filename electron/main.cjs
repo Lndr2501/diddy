@@ -37,7 +37,7 @@ const { createStartupGate } = require('./lib/startupGate.cjs');
 const { shouldReloadAfter, createRateLimiter, describeError } = require('./lib/crashGuard.cjs');
 const { startStaticServer } = require('./lib/staticServer.cjs');
 const { isSsoStart, openSsoWindow } = require('./lib/ssoWindow.cjs');
-const { createSystemAudio, systemAudioSupport, helperName } = require('./lib/systemAudio.cjs');
+const { createSystemAudio, bindSystemAudioLifecycle, systemAudioSupport, helperName } = require('./lib/systemAudio.cjs');
 const { createScreenPicker, screenSourceOptions } = require('./lib/screenPicker.cjs');
 const { parseAgentVoiceLaunch, createAgentVoiceTrigger } = require('./lib/agentVoice.cjs');
 const { createAgentVoiceHotkey } = require('./lib/agentVoiceHotkey.cjs');
@@ -466,9 +466,7 @@ const audioFor = (contents) => {
     const helper = audioHelper();
     const audio = createSystemAudio({ helper, log: (line) => diag.writeLine(line), send: (message) => { if (!contents.isDestroyed()) contents.send('diddy:audio-data', message); } });
     audioCaptures.set(contents.id, audio);
-    contents.on('did-start-navigation', (_event, _url, _inPlace, isMainFrame) => { if (isMainFrame) audio.close(); });
-    contents.on('render-process-gone', () => audio.close());
-    contents.once('destroyed', () => { audio.close(); audioCaptures.delete(contents.id); });
+    bindSystemAudioLifecycle(contents, audio, () => audioCaptures.delete(contents.id));
   }
   return audioCaptures.get(contents.id);
 };
