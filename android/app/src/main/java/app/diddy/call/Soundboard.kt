@@ -29,7 +29,11 @@ import java.util.UUID
  */
 @SuppressLint("StaticFieldLeak") // the application context
 object Soundboard {
-    data class Clip(val id: String, val name: String, val file: String)
+    data class Clip(val id: String, val name: String, val file: String, val myinstants: String? = null, val owner: String? = null)
+    data class Change(val path: String, val name: String? = null)
+    var onUserChange: ((Change) -> Unit)? = null
+    private var owner: String? = null
+    private var allClips = emptyList<Clip>()
 
     const val MAX_SECONDS = 20.0
     private const val CLIPS_KEY = "soundboardClips"
@@ -52,10 +56,23 @@ object Soundboard {
         ClipMixer.gain = volume.toFloat()
         val stored = Json.arr(Prefs.string(CLIPS_KEY))?.mapNotNull { raw ->
             val o = raw as? Map<*, *> ?: return@mapNotNull null
-            Clip(o["id"].str() ?: return@mapNotNull null, o["name"].str() ?: return@mapNotNull null, o["file"].str() ?: return@mapNotNull null)
+            Clip(o["id"].str() ?: return@mapNotNull null, o["name"].str() ?: return@mapNotNull null, o["file"].str() ?: return@mapNotNull null,
+                o["myinstants"].str()?.takeIf(MyInstantsParser::isSoundPath), o["owner"].str())
         } ?: emptyList()
-        clips = stored.filter { File(folder, it.file).exists() }
+        allClips = stored.filter { File(folder, it.file).exists() }
+        refreshClips()
     }
+
+    /** Synced sounds belong to one account; never publish another account's list after switching. */
+    fun accountChanged(accountId: String?) {
+        if (owner == accountId) return
+        stopAll()
+        stopPreview()
+        owner = accountId
+        refreshClips()
+    }
+
+    private fun refreshClips() { clips = allClips.filter { it.owner == null || it.owner == owner } }
 
     fun changeVolume(value: Double) {
         volume = value.coerceIn(0.0, 1.0)
@@ -64,7 +81,16 @@ object Soundboard {
         localPlayers.forEach { runCatching { it.setVolume(volume.toFloat(), volume.toFloat()) } }
     }
 
-    private fun save() = Prefs.setString(CLIPS_KEY, Json.encode(clips.map { mapOf("id" to it.id, "name" to it.name, "file" to it.file) }))
+    private fun save() {
+        Prefs.setString(CLIPS_KEY, Json.encode(allClips.map { mapOf("id" to it.id, "name" to it.name, "file" to it.file, "myinstants" to it.myinstants, "owner" to it.owner) }))
+        refreshClips()
+    }
+
+    fun setSource(id: String, path: String) {
+        if (!MyInstantsParser.isSoundPath(path) || owner == null) return
+        allClips = allClips.map { if (it.id == id && it in clips) it.copy(myinstants = path, owner = owner) else it }
+        save()
+    }
 
     /** Copies an audio file in; throws a message for the user if it is not audio or too long. */
     fun add(uri: Uri) {
@@ -84,13 +110,24 @@ object Soundboard {
     }
 
     /** Adds downloaded audio (MyInstants); false when a clip with that name exists already. */
-    fun add(data: ByteArray, name: String, ext: String): Boolean {
+    fun add(data: ByteArray, name: String, ext: String, myinstants: String? = null, fromSync: Boolean = false): Boolean {
         val title = MyInstantsParser.clipTitle(name)
-        if (hasClip(title)) return false
+        val path = myinstants?.takeIf(MyInstantsParser::isSoundPath)
+        if (path != null && owner == null) throw DiddyError("Sign in before importing a synced sound.")
+        val existing = clips.firstOrNull { if (path != null && it.myinstants != null) it.myinstants == path else it.name.equals(title, ignoreCase = true) }
+        if (existing != null) {
+            if (path != null && existing.myinstants == null) {
+                setSource(existing.id, path)
+                if (!fromSync) onUserChange?.invoke(Change(path, title))
+            }
+            return false
+        }
+        if (!ext.matches(Regex("[a-zA-Z0-9]{1,5}"))) throw DiddyError("Invalid audio file type.")
         val id = UUID.randomUUID().toString()
         val target = File(folder, "$id.$ext")
         target.writeBytes(data)
-        register(target, id, title)
+        register(target, id, title, path)
+        if (path != null && !fromSync) onUserChange?.invoke(Change(path, title))
         return true
     }
 
@@ -124,7 +161,7 @@ object Soundboard {
         previewing = null
     }
 
-    private fun register(target: File, id: String, rawName: String) {
+    private fun register(target: File, id: String, rawName: String, path: String? = null) {
         val seconds = durationSeconds(target)
         if (seconds == null) {
             target.delete()
@@ -134,15 +171,17 @@ object Soundboard {
             target.delete()
             throw DiddyError("Clips can be at most ${MAX_SECONDS.toInt()} seconds long.")
         }
-        clips = clips + Clip(id, MyInstantsParser.clipTitle(rawName), target.name)
+        allClips = allClips + Clip(id, MyInstantsParser.clipTitle(rawName), target.name, path, if (path != null) owner else null)
         save()
     }
 
-    fun remove(clip: Clip) {
+    fun remove(clip: Clip, fromSync: Boolean = false) {
+        if (clip !in clips) return
         File(folder, clip.file).delete()
-        clips = clips.filter { it.id != clip.id }
+        allClips = allClips.filter { it.id != clip.id }
         ClipMixer.forget(clip.id)
         save()
+        if (clip.myinstants != null && !fromSync) onUserChange?.invoke(Change(clip.myinstants))
     }
 
     /** Plays a clip into the call (when the microphone is on) and for you. */

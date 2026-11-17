@@ -174,4 +174,7 @@ dependencies {
     testImplementation(libs.coroutines.test)
     // Android's own org.json is a stub in unit tests; the real one runs the logic tests.
     testImplementation(libs.org.json)
+    androidTestImplementation(libs.android.test.runner)
+    androidTestImplementation(libs.android.test.rules)
+    androidTestImplementation(libs.android.test.junit)
 }

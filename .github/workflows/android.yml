@@ -60,7 +60,31 @@ jobs:
 
       - name: Unit tests
         working-directory: android
-        run: ./gradlew --no-daemon testDebugUnitTest
+        run: ./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug assembleDebugAndroidTest
+
+      - name: Check native APK alignment
+        run: |
+          python3 .github/scripts/check-android-apk.py android/app/build/outputs/apk/debug/app-debug.apk
+          zipalign=$(find "$ANDROID_HOME/build-tools" -name zipalign -type f | sort -V | tail -n 1)
+          "$zipalign" -c -P 16 4 android/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Upload emulator test APKs
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: android-emulator-apks
+          path: |
+            android/app/build/outputs/apk/debug/app-debug.apk
+            android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+          if-no-files-found: error
+
+      - name: Upload unit and lint reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: android-checks
+          path: |
+            android/app/build/test-results/testDebugUnitTest/*.xml
+            android/app/build/reports/lint-results-debug.*
 
       - name: Keystore
         if: env.HAS_KEYSTORE == 'true'
@@ -103,3 +127,46 @@ jobs:
           name: diddy-android
           path: dist/*.apk
           if-no-files-found: error
+
+  emulator:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - api: 26
+            target: google_apis
+          - api: 35
+            target: google_apis_ps16k
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Download test APKs
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: android-emulator-apks
+          path: emulator-apks
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Native libraries, encrypted storage and startup
+        uses: reactivecircus/android-emulator-runner@1dcd0090116d15e7c562f8db72807de5e036a4ed # v2.34.0
+        with:
+          api-level: ${{ matrix.api }}
+          target: ${{ matrix.target }}
+          arch: x86_64
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
+          script: .github/scripts/android-emulator-smoke.sh
+      - name: Upload emulator report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: android-emulator-${{ matrix.api }}-${{ matrix.target }}
+          path: emulator-report/

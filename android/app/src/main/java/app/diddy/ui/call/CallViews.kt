@@ -311,6 +311,7 @@ private fun ConnectedCall(session: CallSession, title: String, navigator: Naviga
             title, status + if (session.deafened) " · Deafened" else "", minimizeIcon, onMinimize,
             onWatch = if (watchOffered) ({ watchLink = true }) else null,
         ) { navigator.show(Sheet.Members(session.roomId)) }
+        Text(session.encryptionStatus, color = Theme.muted, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
         session.companion?.let { role ->
             Column(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 4.dp).clip(RoundedCornerShape(10.dp)).background(Theme.accent.copy(alpha = 0.15f)).padding(10.dp)) {
                 Text("This phone is your computer's ${listOfNotNull("camera".takeIf { role.media.camera }, "microphone".takeIf { role.media.microphone }, "screen".takeIf { role.media.screen }).joinToString(" and ")}. The call plays on your computer.", color = Theme.text, fontSize = 13.sp)
