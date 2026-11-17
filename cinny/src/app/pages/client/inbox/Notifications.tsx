@@ -99,6 +99,7 @@ import {
 import { useRoomCreatorsTag } from '../../../hooks/useRoomCreatorsTag';
 import { useRoomCreators } from '../../../hooks/useRoomCreators';
 import { RoomProvider } from '../../../hooks/useRoom';
+import { useTranslation } from 'react-i18next';
 
 type RoomNotificationsGroup = {
   roomId: string;
@@ -224,6 +225,7 @@ function RoomNotificationsGroupComp({
   hour24Clock,
   dateFormatString,
 }: RoomNotificationsGroupProps) {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
   const unread = useRoomUnread(room.roomId, roomToUnreadAtom);
@@ -292,7 +294,7 @@ function RoomNotificationsGroupComp({
             <Box grow="Yes" direction="Column">
               <Text size="T400" priority="300">
                 <code className={customHtmlCss.Code}>{evt.type}</code>
-                {' event'}
+                {t('nav.notifications.event')}
               </Text>
             </Box>
           );
@@ -381,7 +383,7 @@ function RoomNotificationsGroupComp({
         return (
           <Box grow="Yes" direction="Column">
             <Text size="T400" priority="300">
-              Room Tombstone. {content.body}
+              {t('nav.notifications.roomTombstoneBody', { body: content.body })}
             </Text>
           </Box>
         );
@@ -396,7 +398,7 @@ function RoomNotificationsGroupComp({
         <Box grow="Yes" direction="Column">
           <Text size="T400" priority="300">
             <code className={customHtmlCss.Code}>{event.type}</code>
-            {' event'}
+            {t('nav.notifications.event')}
           </Text>
         </Box>
       );
@@ -443,7 +445,7 @@ function RoomNotificationsGroupComp({
               onClick={handleMarkAsRead}
               before={<Icon size="100" src={Icons.CheckTwice} />}
             >
-              <Text size="T200">Mark as Read</Text>
+              <Text size="T200">{t('nav.notifications.markAsRead')}</Text>
             </Chip>
           )}
         </Box>
@@ -485,7 +487,8 @@ function RoomNotificationsGroupComp({
                 before={
                   <AvatarBase>
                     <Avatar size="300" radii="Pill">
-                      <UserAvatar surface="chat"
+                      <UserAvatar
+                        surface="chat"
                         userId={event.sender}
                         src={
                           senderAvatarMxc
@@ -529,7 +532,7 @@ function RoomNotificationsGroupComp({
                       variant="Secondary"
                       radii="400"
                     >
-                      <Text size="T200">Open</Text>
+                      <Text size="T200">{t('nav.notifications.open')}</Text>
                     </Chip>
                   </Box>
                 </Box>
@@ -567,6 +570,7 @@ const useNotificationsSearchParams = (
 const DEFAULT_REFRESH_MS = 7000;
 
 export function Notifications() {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const [hideActivity] = useSetting(settingsAtom, 'hideActivity');
   const [mediaAutoLoad] = useSetting(settingsAtom, 'mediaAutoLoad');
@@ -656,7 +660,7 @@ export function Notifications() {
           <Box alignItems="Center" gap="200">
             {screenSize !== ScreenSize.Mobile && <Icon size="400" src={Icons.Message} />}
             <Text size="H3" truncate>
-              Notification Messages
+              {t('nav.notifications.notificationMessages')}
             </Text>
           </Box>
           <Box grow="Yes" basis="No" />
@@ -670,7 +674,7 @@ export function Notifications() {
               <Box direction="Column" gap="200">
                 <Box ref={scrollTopAnchorRef} direction="Column" gap="100">
                   <span data-spacing-node />
-                  <Text size="L400">Filter</Text>
+                  <Text size="L400">{t('nav.notifications.filter')}</Text>
                   <Box gap="200">
                     <Chip
                       onClick={() => setOnlyHighlighted(false)}
@@ -679,7 +683,7 @@ export function Notifications() {
                       before={!onlyHighlight && <Icon size="100" src={Icons.Check} />}
                       outlined
                     >
-                      <Text size="T200">All Notifications</Text>
+                      <Text size="T200">{t('nav.notifications.allNotifications')}</Text>
                     </Chip>
                     <Chip
                       onClick={() => setOnlyHighlighted(true)}
@@ -688,7 +692,7 @@ export function Notifications() {
                       before={onlyHighlight && <Icon size="100" src={Icons.Check} />}
                       outlined
                     >
-                      <Text size="T200">Highlighted</Text>
+                      <Text size="T200">{t('nav.notifications.highlighted')}</Text>
                     </Chip>
                   </Box>
                 </Box>
@@ -703,7 +707,7 @@ export function Notifications() {
                     radii="Pill"
                     outlined
                     size="300"
-                    aria-label="Scroll to Top"
+                    aria-label={t('nav.notifications.scrollToTop')}
                   >
                     <Icon src={Icons.ChevronTop} size="300" />
                   </IconButton>
@@ -758,10 +762,8 @@ export function Notifications() {
                       direction="Column"
                       gap="200"
                     >
-                      <Text>No Notifications</Text>
-                      <Text size="T200">
-                        You don&apos;t have any new notifications to display yet.
-                      </Text>
+                      <Text>{t('nav.notifications.noNotifications')}</Text>
+                      <Text size="T200">{t('nav.notifications.youDonTHave')}</Text>
                     </Box>
                   )}
 

@@ -234,7 +234,8 @@ export const attachRoomListSync = (mx: MatrixClient): void => {
 };
 
 export const isOptionsRoom = (room: Room | null | undefined): boolean =>
-  !!room && (!!room.currentState.getStateEvents(OPTIONS_MARKER_EVENT, '') || isLightOptionsRoom(room));
+  !!room &&
+  (!!room.currentState.getStateEvents(OPTIONS_MARKER_EVENT, '') || isLightOptionsRoom(room));
 
 /** Options rooms are hidden from every room list unless Developer Tools are on. */
 export const isHiddenOptionsRoom = (room: Room): boolean =>
@@ -247,8 +248,7 @@ export const getOptionsRooms = (mx: MatrixClient): Room[] =>
     .sort((a, b) => a.roomId.localeCompare(b.roomId));
 
 /** The room new data is written to (stable choice when there are several). */
-export const getPrimaryOptionsRoom = (mx: MatrixClient): Room | undefined =>
-  getOptionsRooms(mx)[0];
+export const getPrimaryOptionsRoom = (mx: MatrixClient): Room | undefined => getOptionsRooms(mx)[0];
 
 /**
  * True when the user may ban members of the options room (power level of at least the room's
@@ -336,7 +336,10 @@ export const createOptionsRoom = async (
       {
         type: EventType.RoomJoinRules,
         state_key: '',
-        content: { join_rule: 'restricted', allow: [{ type: 'm.room_membership', room_id: spaceId }] },
+        content: {
+          join_rule: 'restricted',
+          allow: [{ type: 'm.room_membership', room_id: spaceId }],
+        },
       }
     );
   }
@@ -378,7 +381,7 @@ export const adoptRoomAsOptionsRoom = async (
   if (!room) throw new Error('Room not found.');
   const powerLevelsEvent = room.currentState.getStateEvents(EventType.RoomPowerLevels, '');
   if (!powerLevelsEvent) {
-    throw new Error('Could not read this room\'s permissions yet. Try again in a moment.');
+    throw new Error("Could not read this room's permissions yet. Try again in a moment.");
   }
   const powerLevels = powerLevelsEvent.getContent() ?? {};
   const events = {
@@ -388,7 +391,12 @@ export const adoptRoomAsOptionsRoom = async (
     [BADGE_AWARD_EVENT]: BADGE_STATE_LEVEL,
   };
   try {
-    await mx.sendStateEvent(roomId, EventType.RoomPowerLevels as never, { ...powerLevels, events } as never, '');
+    await mx.sendStateEvent(
+      roomId,
+      EventType.RoomPowerLevels as never,
+      { ...powerLevels, events } as never,
+      ''
+    );
     await mx.sendStateEvent(roomId, OPTIONS_MARKER_EVENT as never, { v: 1 } as never, '');
   } catch (e) {
     throw new Error(
@@ -398,7 +406,8 @@ export const adoptRoomAsOptionsRoom = async (
     );
   }
   if (tagTopic) {
-    const topic = room.currentState.getStateEvents(EventType.RoomTopic, '')?.getContent()?.topic ?? '';
+    const topic =
+      room.currentState.getStateEvents(EventType.RoomTopic, '')?.getContent()?.topic ?? '';
     if (!topic.includes(TOPIC_TAG)) {
       await mx
         .sendStateEvent(
@@ -430,7 +439,9 @@ export const joinOptionsRoomOfSpace = async (mx: MatrixClient, spaceId: string):
       return true;
     });
     if (candidate) {
-      const via = space?.children_state.find((c) => (c as { state_key?: string }).state_key === candidate.room_id)?.content?.via;
+      const via = space?.children_state.find(
+        (c) => (c as { state_key?: string }).state_key === candidate.room_id
+      )?.content?.via;
       const serverPart = candidate.room_id.split(':').slice(1).join(':');
       const viaServers = via && via.length > 0 ? via : serverPart ? [serverPart] : undefined;
       // eslint-disable-next-line no-await-in-loop

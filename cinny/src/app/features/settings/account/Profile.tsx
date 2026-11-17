@@ -41,12 +41,14 @@ import {
 } from '../../../plugins/diddy/avatar';
 import { serverUploadLimit } from '../../../plugins/diddy/media';
 import { useCapabilities } from '../../../hooks/useCapabilities';
+import { useTranslation } from 'react-i18next';
 
 type ProfileProps = {
   profile: UserProfile;
   userId: string;
 };
 function ProfileAvatar({ profile, userId }: ProfileProps) {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
   const capabilities = useCapabilities();
@@ -95,7 +97,7 @@ function ProfileAvatar({ profile, userId }: ProfileProps) {
           />
         </Avatar>
       }
-      title="Profile Picture"
+      title={t('settings.profile.profilePicture')}
       description={defaultDisplayName}
       after={
         !uploading && (
@@ -109,7 +111,7 @@ function ProfileAvatar({ profile, userId }: ProfileProps) {
                 disabled={disableSetAvatar}
                 onClick={() => setAlertRemove(true)}
               >
-                <Text size="B300">Remove</Text>
+                <Text size="B300">{t('settings.profile.remove')}</Text>
               </Button>
             )}
             <Button
@@ -120,7 +122,7 @@ function ProfileAvatar({ profile, userId }: ProfileProps) {
               radii="300"
               disabled={disableSetAvatar}
             >
-              <Text size="B300">Upload…</Text>
+              <Text size="B300">{t('settings.profile.upload')}</Text>
             </Button>
           </>
         )
@@ -129,7 +131,7 @@ function ProfileAvatar({ profile, userId }: ProfileProps) {
       {uploading && (
         <Box gap="200" alignItems="Center">
           <Spinner size="100" variant="Secondary" />
-          <Text size="T200">Uploading picture...</Text>
+          <Text size="T200">{t('settings.profile.uploadingPicture')}</Text>
         </Box>
       )}
       {uploadError && (
@@ -139,7 +141,7 @@ function ProfileAvatar({ profile, userId }: ProfileProps) {
       )}
       {!uploading && !uploadError && (
         <Text size="T200" priority="300">
-          PNG, JPG, GIF, WebP or APNG. Animated pictures keep moving.
+          {t('settings.profile.pngJpgGifWebp')}
         </Text>
       )}
 
@@ -163,7 +165,7 @@ function ProfileAvatar({ profile, userId }: ProfileProps) {
                 size="500"
               >
                 <Box grow="Yes">
-                  <Text size="H4">Remove Avatar</Text>
+                  <Text size="H4">{t('settings.profile.removeAvatar')}</Text>
                 </Box>
                 <IconButton size="300" onClick={() => setAlertRemove(false)} radii="300">
                   <Icon src={Icons.Cross} />
@@ -171,10 +173,10 @@ function ProfileAvatar({ profile, userId }: ProfileProps) {
               </Header>
               <Box style={{ padding: config.space.S400 }} direction="Column" gap="400">
                 <Box direction="Column" gap="200">
-                  <Text priority="400">Are you sure you want to remove profile avatar?</Text>
+                  <Text priority="400">{t('settings.profile.areYouSureYou')}</Text>
                 </Box>
                 <Button variant="Critical" onClick={handleRemoveAvatar}>
-                  <Text size="B400">Remove</Text>
+                  <Text size="B400">{t('settings.profile.remove')}</Text>
                 </Button>
               </Box>
             </Dialog>
@@ -186,6 +188,7 @@ function ProfileAvatar({ profile, userId }: ProfileProps) {
 }
 
 function ProfileDisplayName({ profile, userId }: ProfileProps) {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const capabilities = useCapabilities();
   const disableSetDisplayname = capabilities['m.set_displayname']?.enabled === false;
@@ -225,7 +228,10 @@ function ProfileDisplayName({ profile, userId }: ProfileProps) {
 
   const hasChanges = displayName !== defaultDisplayName;
   return (
-    <InsetRow title="Display Name" description="Shown to others instead of your user ID.">
+    <InsetRow
+      title={t('settings.profile.displayName')}
+      description={t('settings.profile.shownToOthersInstead')}
+    >
       <Box direction="Column" grow="Yes" gap="100">
         <Box
           as="form"
@@ -269,7 +275,7 @@ function ProfileDisplayName({ profile, userId }: ProfileProps) {
             type="submit"
           >
             {changingDisplayName && <Spinner variant="Success" fill="Solid" size="300" />}
-            <Text size="B400">Save</Text>
+            <Text size="B400">{t('settings.profile.save')}</Text>
           </Button>
         </Box>
       </Box>
@@ -278,12 +284,13 @@ function ProfileDisplayName({ profile, userId }: ProfileProps) {
 }
 
 export function Profile() {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const userId = mx.getUserId()!;
   const profile = useUserProfile(userId);
 
   return (
-    <InsetSection title="Profile">
+    <InsetSection title={t('settings.profile.profile')}>
       <InsetGroup>
         <ProfileAvatar userId={userId} profile={profile} />
         <ProfileDisplayName userId={userId} profile={profile} />

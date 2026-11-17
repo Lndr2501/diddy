@@ -10,7 +10,7 @@ private struct DiscardChangesDialog: ViewModifier {
     let onLeave: () -> Void
 
     func body(content: Content) -> some View {
-        content.confirmationDialog("Discard Changes?", isPresented: $isPresented, titleVisibility: .visible) {
+        content.confirmationDialog(L("ios.finalControls.discardChanges"), isPresented: $isPresented, titleVisibility: .visible) {
             if let saveTitle, let onSave {
                 Button(saveTitle) {
                     Task { @MainActor in
@@ -18,13 +18,13 @@ private struct DiscardChangesDialog: ViewModifier {
                     }
                 }
             }
-            Button("Discard Changes", role: .destructive) {
+            Button(L("ios.remainingUI.discardChanges"), role: .destructive) {
                 onDiscard()
                 onLeave()
             }
-            Button("Cancel", role: .cancel) {}
+            Button(L("settings.deviceTile.cancel"), role: .cancel) {}
         } message: {
-            Text("Your changes haven't been saved.")
+            Text(L("ios.remainingUI.yourChangesHavenTBeenSaved"))
         }
     }
 }
@@ -46,10 +46,10 @@ private struct DiscardChangesBackButton: ViewModifier {
                         } label: {
                             HStack(spacing: 4) {
                                 Image(systemName: "chevron.backward").font(.body.weight(.semibold))
-                                Text("Back")
+                                Text(L("settings.insetList.back"))
                             }
                         }
-                        .accessibilityLabel("Back")
+                        .accessibilityLabel(L("settings.insetList.back"))
                     }
                 }
             }

@@ -295,7 +295,7 @@ private struct RateButton: View {
                 .padding(.vertical, -11)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Playback speed")
+        .accessibilityLabel(L("ios.chatMore.playbackSpeed"))
         .accessibilityValue(VoiceRate.label(rate))
     }
 }
@@ -320,7 +320,7 @@ private struct ActiveWaveform: View {
                 .gesture(SpatialTapGesture().onEnded { onSeek(Double($0.location.x / max(geo.size.width, 1))) })
         }
         .frame(height: 28)
-        .accessibilityLabel("Playback position")
+        .accessibilityLabel(L("ios.chatMore.playbackPosition"))
         .accessibilityValue("\(Int(progress.fraction * 100)) percent")
     }
 }
@@ -374,9 +374,9 @@ struct VoiceMicButton: View {
                 .frame(width: width, height: height)
                 .contentShape(Rectangle())
         }
-        .accessibilityLabel("Record voice message")
-        .alert("Voice message", isPresented: Binding(get: { recorder.error != nil }, set: { if !$0 { recorder.error = nil } })) {
-            Button("OK", role: .cancel) {}
+        .accessibilityLabel(L("room.voiceRecorderButton.recordVoiceMessage"))
+        .alert(L("ios.chatMore.voiceMessage"), isPresented: Binding(get: { recorder.error != nil }, set: { if !$0 { recorder.error = nil } })) {
+            Button(L("settings.localPlugins.ok"), role: .cancel) {}
         } message: { Text(recorder.error ?? "") }
     }
 }
@@ -396,7 +396,7 @@ struct VoiceRecordingBar: View {
                     .frame(width: 36, height: 36)
             }
             .disabled(sending)
-            .accessibilityLabel("Discard recording")
+            .accessibilityLabel(L("room.voiceRecorderButton.discardRecording"))
             RecordingLevel(meter: recorder.meter, pendingDuration: recorder.pending?.duration)
                 .padding(.horizontal, 14)
                 .frame(maxWidth: .infinity, minHeight: 36, alignment: .leading)
@@ -420,7 +420,7 @@ struct VoiceRecordingBar: View {
                 .background(Circle().fill(Theme.accent))
             }
             .disabled(sending)
-            .accessibilityLabel("Send voice message")
+            .accessibilityLabel(L("room.voiceRecorderButton.sendVoiceMessage"))
         }
         .background(Theme.chat)
         // Leaving the chat while recording throws the recording away.
@@ -446,7 +446,7 @@ private struct RecordingLevel: View {
                 .frame(height: 22)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Recording, \(VoiceFormat.time(time))")
+        .accessibilityLabel(L("ios.dynamicUI.recording", ["duration": VoiceFormat.time(time)]))
     }
 }
 

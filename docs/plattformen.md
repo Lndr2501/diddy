@@ -1,57 +1,46 @@
 # Features pro Plattform
 
-Stand 2026-11-16, aus dem Code abgeleitet (`src-tauri/`, `electron/`, `ios/`, `android/`, `cinny/src/app`), README und CHANGELOG. Nicht auf Geräten geprüft, wo nicht anders vermerkt.
+Stand 2026-11-17, aus Code und CI abgeleitet (`src-tauri/`, `electron/`, `ios/`, `android/`, `cinny/src/app`). Vorhandene Implementierung ist keine Geräteabnahme. Android-Geräteabnahme offen: [Prüfliste](../android/ACCEPTANCE.md).
 
 - **macOS:** Tauri mit der Cinny-Oberfläche.
 - **Linux:** Electron mit derselben Oberfläche.
-- **Windows:** dieselbe Electron-App wie Linux (NSIS-Installer, `windows.yml`). Unterschiede nur im nativen Teil.
 - **iOS:** eigene SwiftUI-App (matrix-rust-sdk), ohne Cinny.
-- **Android:** eigene Kotlin/Compose-App (matrix-rust-sdk, LiveKit), ohne Cinny. Gebaut, mit Unit-Tests, Lint und Emulator-Start in der CI; auf einem echten Gerät noch nicht abgenommen ([Testprotokoll](android-testprotokoll.md)).
+- **Windows:** Electron, gemeinsamer Cinny-Client; NSIS-Installer im Release.
+- **Android:** eigene Kotlin-/Compose-App mit Matrix-Rust-SDK und LiveKit; signierte APK im Release.
 
 ✅ vorhanden · 🧪 gebaut, noch nicht im Alltag geprüft · ❌ fehlt · – trifft nicht zu
 
-| Feature | macOS | Linux | Windows | iOS | Android |
-|---|:---:|:---:|:---:|:---:|:---:|
-| Chat, Räume, Spaces, E2E-Verschlüsselung | ✅ | ✅ | 🧪 | ✅ | 🧪 |
-| Antworten, Reaktionen, Bearbeiten, Löschen, @Erwähnungen, Tippanzeige | ✅ | ✅ | 🧪 | ✅ | 🧪 |
-| Geräteverifizierung, Wiederherstellungsschlüssel, Schlüssel-Backup | ✅ | ✅ | 🧪 | ✅ | 🧪 (Schlüssel-Ansichten mit `FLAG_SECURE`) |
-| Sprachchat über MatrixRTC, auch verschlüsselt | ✅ | ✅ | 🧪 | ✅ | 🧪 |
-| Call-Schlüssel nur für `call.member`-Mitglieder, Rotation beim Verlassen, E2EE-Anzeige | ✅ (Element Call) | ✅ (Element Call) | ✅ (Element Call) | 🧪 (seit 1.12.0) | 🧪 |
-| Bildschirmübertragung | ✅ | ✅ | 🧪 | ✅ (ganzer Bildschirm erst ab iOS 27) | 🧪 (MediaProjection) |
-| System-Ton bei Bildschirmübertragung | ✅ (14.2+) | ✅ | 🧪 (seit 1.12.0, ohne Diddy-Ton) | ✅ (nur Diddy-Ton) | 🧪 (Android 10+, nur Apps, die Aufnahme erlauben; ohne Diddy-Ton) |
-| Rauschunterdrückung | ✅ (RNNoise) | ✅ (RNNoise) | 🧪 (RNNoise) | ✅ (RNNoise) | 🧪 (WebRTC, kein RNNoise) |
-| Mikrofon ohne Apples Voice-Processing | ✅ | – | – | – | – (eigener Schalter „Voice Processing“) |
-| Klingeln in Direktnachrichten | ✅ | ✅ ¹ | 🧪 ¹ | ✅ (nur bei geöffneter App) | 🧪 (Anrufstil mit Annehmen/Ablehnen, auch per Push) |
-| Call-Töne und Soundpack | ✅ | ✅ | 🧪 | ✅ | 🧪 |
-| Calls wie bei Discord (Kacheln, großer Stream) | ✅ | ✅ | 🧪 | 🧪 | 🧪 |
-| Soundboard, MyInstants-Import | ✅ | ✅ | 🧪 | 🧪 | 🧪 |
-| Push-to-Talk | 🧪 | 🧪 | 🧪 | 🧪 | ❌ (später) |
-| Umfragen (MSC3381) | 🧪 | 🧪 | 🧪 | 🧪 | ❌ (später) |
-| Gespeicherte Nachrichten | 🧪 | 🧪 | 🧪 | 🧪 | ❌ (später) |
-| Nachricht später senden | 🧪 | 🧪 | 🧪 | 🧪 | ❌ (später) |
-| Watch Together | ✅ | ✅ | 🧪 | 🧪 | 🧪 |
-| Handy als Kamera und Mikrofon für den Computer | ✅ | ✅ | 🧪 | 🧪 | 🧪 |
-| Sprachnachrichten | ✅ | 🧪 (Chromium-Aufnahmepfad automatisch geprüft) | 🧪 | 🧪 (spielt auch Ogg/WebM-Opus vom Linux-Desktop) | 🧪 |
-| Bot-Karten (`dev.diddy.card`) und Befehlsvorschläge | ✅ | ✅ | 🧪 | 🧪 | 🧪 (gemeinsame Testfälle mit dem Desktop) |
-| Diddy-Profile, Badges, Namensschilder | ✅ | ✅ | 🧪 | 🧪 (anzeigen, bearbeiten, Badges erstellen, Datenraum wählen) | 🧪 |
-| Themes | 9 | 9 | 🧪 9 | 🧪 9 | 🧪 |
-| Plugins und Plugin-Galerie | ✅ | ✅ | 🧪 | 🧪 (ohne Seitenleisten-Dock) | 🧪 (unter „You“ angeheftet) |
-| Redet mit Agent (Agent Voice) | ✅ | ✅ | 🧪 | 🧪 (Button und Kurzbefehl) | ❌ (später) |
-| Globaler Hotkey für Agent Voice | ✅ | 🧪 (XDG-Portal, X11-Rückfall nur Umschalten) | 🧪 (Electron `globalShortcut`) | – | – |
-| Mehrere Verbindungsprofile / Konten | ✅ (ab macOS 14) | 🧪 | 🧪 | ✅ | 🧪 |
-| App-Icon wechseln | ✅ | 🧪 | 🧪 (Fenstersymbol) | ✅ | ❌ (später) |
-| Logdatei und Diagnose | ✅ | ✅ | 🧪 | 🧪 (Export über das Teilen-Menü) | 🧪 (Export ohne Nachrichten, Tokens, Schlüssel) |
-| Hintergrund-Benachrichtigungen | ✅ | ✅ ¹ | 🧪 ¹ | 🧪 | 🧪 |
-| Push bei geschlossener App | – | – | – | ❌ (braucht ein bezahltes Apple-Konto für APNs) | 🧪 (UnifiedPush, z. B. ntfy; kein FCM) |
-| App-Store-Vertrieb | – | – | – | ❌ (kein bezahltes Apple-Konto) | 🧪 (F-Droid vorbereitet: reproduzierbarer Build, Rezept, CI-Prüfung; Aufnahme ab der Version nach 1.12.0) |
-| Teilen aus anderen Apps (Teilen-Menü), Musik-Karten | – | – (Karten werden angezeigt) | – (Karten werden angezeigt) | 🧪 | 🧪 |
-| matrix.to- und `matrix:`-Links öffnen | ✅ | ✅ | 🧪 | 🧪 | 🧪 |
-| Tablet-/Foldable-Layout (Liste und Chat nebeneinander) | – | – | – | ✅ (iPad) | 🧪 (ab 720 dp Breite) |
-| Animierte Profilbilder | ✅ | ✅ | 🧪 | 🧪 | 🧪 |
-| Online-Status (Presence) | ✅ | ✅ | 🧪 | 🧪 (eigener Abruf, da Sliding Sync ihn nicht liefert) | 🧪 |
+| Feature | macOS | Linux/Windows | iOS | Android |
+|---|:---:|:---:|:---:|:---:|
+| Chat, Räume, Spaces, Verschlüsselung | ✅ | ✅ | ✅ | 🧪 |
+| Antworten, Reaktionen, Bearbeiten, Löschen, Erwähnungen, Tippanzeige | ✅ | ✅ | ✅ | 🧪 |
+| Verifizierung, Recovery, Schlüssel-Backup | ✅ | ✅ | ✅ | 🧪 |
+| MatrixRTC-Calls, Kamera und fremde Bildschirmfreigabe | ✅ | ✅ | ✅ | 🧪 |
+| Eigene Bildschirmfreigabe | ✅ | ✅ | ✅ (Broadcast-Erweiterung) | 🧪 (MediaProjection) |
+| Systemton teilen | ✅ (14.2+) | ✅ (Windows ab Build 19041) | nur Diddy-Ton | 🧪 (Android 10+, nur Apps, die Aufnahme erlauben; ohne Diddy-Ton) |
+| Rauschunterdrückung | RNNoise | RNNoise | RNNoise | WebRTC |
+| Klingeln in Direktnachrichten | ✅ | ✅ | 🧪 | 🧪 |
+| Call-Töne, eigene Sounds und Themes | ✅ | ✅ | 🧪 | 🧪 |
+| Soundboard und MyInstants-Import | ✅ | ✅ | 🧪 | 🧪 |
+| MyInstants-Liste über das Konto synchronisieren | ✅ | ✅ | 🧪 | 🧪 (Änderung für #233) |
+| Watch Together und Handy als Kamera/Mikrofon | ✅ | ✅ | 🧪 | 🧪 |
+| Sprachnachrichten | ✅ | 🧪 | 🧪 | 🧪 (Codec-/Geräteabnahme offen) |
+| Bot-Karten und Befehlsvorschläge | ✅ | ✅ | 🧪 | 🧪 |
+| Diddy-Profile, Badges, Namensschilder | ✅ | ✅ | 🧪 | 🧪 |
+| Plugins und Galerie | ✅ | ✅ | 🧪 | 🧪 (Sandbox-Code/Logiktests; Geräteabnahme offen) |
+| Mehrere Konten | ✅ | ✅ | ✅ | 🧪 |
+| Globale Desktop-Hotkeys | ✅ | ✅ (Wayland eingeschränkt) | – | – |
+| Sprachauswahl/eigene Übersetzungen | ✅ | ✅ | 🧪 (teilweise) | ❌ |
+| Gespeicherte Nachrichten | ✅ | ✅ | 🧪 | ❌ |
+| Diagnoseexport | ✅ | ✅ | 🧪 | 🧪 |
+| Push bei geschlossenem Fenster/Prozess | – | – | eingeschränkt (ntfy-Anrufpfad, kein APNs) | 🧪 (UnifiedPush; Geräte-/Gateway-Nachweis offen) |
+| App-Store-Vertrieb | – | – | ❌ (kein bezahltes Apple-Konto) | 🧪 (F-Droid vorbereitet: reproduzierbarer Build, Rezept, CI-Prüfung; Aufnahme ab der Version nach 1.12.0) |
+| Teilen aus anderen Apps und Deep Links | ✅ | ✅ | 🧪 | 🧪 |
+| Tablet-/Foldable-Layout (Liste und Chat nebeneinander) | – | – | ✅ (iPad) | 🧪 (ab 720 dp Breite) |
+| Android: Fehlerbehandlung beim Abmelden/Call-Schlüsselwechsel | – | – | – | 🧪 (Logiktests; Interop offen) |
 
 Anmerkungen:
-- ¹ Linux: gilt nur, solange ein Diddy-Fenster offen ist (auch im Hintergrund oder minimiert). Schließt du das letzte Fenster, beendet sich die App (`window-all-closed` in `electron/main.cjs`), und es kommen keine Benachrichtigungen und kein Klingeln mehr.
+- Desktop-Benachrichtigungen benötigen einen laufenden Client. Android hat UnifiedPush und optional eine dauerhafte Hintergrundverbindung; diese ist kein Ersatz für einen getesteten Push-Pfad.
 - Die Linux-Pakete (AppImage, DEB, RPM) gibt es nur für x86_64; die CI baut keine arm64-Pakete.
 - macOS und Linux teilen die Oberfläche. Unterschiede liegen im nativen Teil (Mikrofon, System-Ton, Hotkey).
 - Der globale Agent-Voice-Hotkey läuft unter Linux über das XDG-Portal `GlobalShortcuts` (Halten geht), ohne Portal unter X11 als Umschalter; sonst bleibt `diddy --agent-voice start|stop|toggle`. Einschalten unter Einstellungen > „Also in the background“. Prüfliste: [linux-checkliste.md](linux-checkliste.md).

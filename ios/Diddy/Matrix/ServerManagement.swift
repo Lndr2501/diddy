@@ -157,7 +157,7 @@ extension MatrixAccount {
             request.parentVia = via.isEmpty ? [ownServerName] : via
         }
         let json = try await clientRequest("/_matrix/client/v3/createRoom", body: request.body())
-        guard let id = json["room_id"] as? String else { throw DiddyError("The server could not create the room.") }
+        guard let id = json["room_id"] as? String else { throw DiddyError(L("ios.errorsExtra.theServerCouldNotCreateTheRoom")) }
         if request.isVoice { markVoiceRoom(id) }
         if let parentId = request.parentId {
             try await putSpaceChild(parent: parentId, child: id, content: NewRoomRequest.childContent(via: request.parentVia))

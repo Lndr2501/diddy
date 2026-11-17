@@ -24,7 +24,7 @@ struct SendLaterMenu: View {
                     } icon: { Image(systemName: "clock") }
                 }
             }
-            Button(action: onCustom) { Label("Pick Date & Time…", systemImage: "calendar") }
+            Button(action: onCustom) { Label(L("ios.chatMore.pickDateTime"), systemImage: "calendar") }
         }
     }
 }
@@ -50,7 +50,7 @@ struct SendLaterSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    DatePicker("Send at", selection: $sendAt,
+                    DatePicker(L("ios.chatMore.sendAt"), selection: $sendAt,
                                in: Date().addingTimeInterval(SendLaterLogic.minLead)...Date().addingTimeInterval(SendLaterLogic.maxAhead))
                         .datePickerStyle(.graphical)
                 }
@@ -63,18 +63,18 @@ struct SendLaterSheet: View {
                         }
                     } icon: { Image(systemName: choice.route == .server ? "server.rack" : "iphone") }
                     if serverPossible || preferLocal {
-                        Toggle("Send from this iPhone instead", isOn: $preferLocal)
+                        Toggle(L("ios.chatMore.sendFromThisIphoneInstead"), isOn: $preferLocal)
                     }
                 } footer: {
-                    Text("Text messages only: attachments cannot be scheduled.")
+                    Text(L("ios.chatMore.textMessagesOnlyAttachmentsCannotBeScheduled"))
                 }
             }
-            .navigationTitle("Send Later")
+            .navigationTitle(L("ios.chatMore.sendLater"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button(L("settings.deviceTile.cancel")) { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Schedule") {
+                    Button(L("ios.chatMore.schedule")) {
                         onSchedule(sendAt, preferLocal)
                         dismiss()
                     }
@@ -122,7 +122,7 @@ struct ScheduledMessagesBar: View {
                     Spacer(minLength: 0)
                     Button { store.lateNotices[roomId] = nil } label: { Image(systemName: "xmark.circle.fill").frame(width: 30, height: 30) }
                         .foregroundStyle(Theme.muted)
-                        .accessibilityLabel("Dismiss")
+                        .accessibilityLabel(L("settings.legacyAvatarNotice.dismiss"))
                 }
                 .font(.footnote)
                 .padding(.leading, 14)
@@ -136,7 +136,7 @@ struct ScheduledMessagesBar: View {
                     HStack(spacing: 8) {
                         Image(systemName: "clock").foregroundStyle(Theme.accent).accessibilityHidden(true)
                         Text(SendLaterLogic.countLabel(list.count)).bold().foregroundColor(Theme.text)
-                        Text("Next: " + SendLaterLogic.formatSendAt(next.sendAt, now: Date(), clock: ChatSettings.time))
+                        Text(L("ios.dynamicUI.sendLaterNext", ["date": SendLaterLogic.formatSendAt(next.sendAt, now: Date(), clock: ChatSettings.time)]))
                             .foregroundStyle(Theme.muted)
                             .lineLimit(1)
                         Spacer(minLength: 0)
@@ -190,14 +190,14 @@ struct ScheduledMessagesSheet: View {
                         HStack(spacing: 16) {
                             if let local = row.local {
                                 Button { run(row) { try await store.cancel(local); onEdit(local) } } label: {
-                                    Label("Edit", systemImage: "pencil")
+                                    Label(L("settings.deviceTile.edit"), systemImage: "pencil")
                                 }
                             }
                             Button { run(row) { try await sendNow(row) } } label: {
-                                Label("Send Now", systemImage: "paperplane")
+                                Label(L("ios.chatMore.sendNow"), systemImage: "paperplane")
                             }
                             Button(role: .destructive) { run(row) { try await cancel(row) } } label: {
-                                Label("Cancel", systemImage: "xmark")
+                                Label(L("settings.deviceTile.cancel"), systemImage: "xmark")
                             }
                             if busy == row.id { ProgressView() }
                         }
@@ -211,9 +211,9 @@ struct ScheduledMessagesSheet: View {
                     Text(error).font(.footnote).foregroundStyle(Theme.danger)
                 }
             }
-            .navigationTitle("Scheduled")
+            .navigationTitle(L("ios.chatMore.scheduled"))
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button(L("call.companionDialog.done")) { dismiss() } } }
             .onChange(of: rows.count) { count in if count == 0 && error == nil { dismiss() } }
         }
         .presentationDetents([.medium, .large])

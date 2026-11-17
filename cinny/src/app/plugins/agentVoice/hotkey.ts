@@ -264,7 +264,8 @@ const GLOBAL_REASONS: Record<string, string> = {
   'unknown-key': 'This key cannot be used as a global shortcut.',
   'no-helper': 'The shortcut helper is missing in this installation.',
   'no-bus': 'No desktop session bus was found.',
-  'no-portal': 'Your desktop offers no global shortcut portal (GNOME before 48, or no portal installed).',
+  'no-portal':
+    'Your desktop offers no global shortcut portal (GNOME before 48, or no portal installed).',
   denied: 'The desktop refused the shortcut.',
   timeout: 'The desktop did not answer in time.',
   closed: 'The desktop ended the shortcut.',

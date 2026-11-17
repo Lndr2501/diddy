@@ -14,6 +14,7 @@ import {
 } from 'folds';
 import FocusTrap from 'focus-trap-react';
 import * as sheetCss from './sheet/Sheet.css';
+import { useTranslation } from 'react-i18next';
 
 export type UIAFlowOverlayProps = {
   currentStep: number;
@@ -27,6 +28,7 @@ export function UIAFlowOverlay({
   children,
   onCancel,
 }: UIAFlowOverlayProps) {
+  const { t } = useTranslation();
   return (
     <Overlay open backdrop={<OverlayBackdrop className={sheetCss.Backdrop} />}>
       <FocusTrap focusTrapOptions={{ initialFocus: false, escapeDeactivates: false }}>
@@ -42,12 +44,14 @@ export function UIAFlowOverlay({
             gap="200"
           >
             <Chip as="div" radii="Pill" outlined>
-              <Text as="span" size="T300">{`Step ${currentStep}/${stepCount}`}</Text>
+              <Text as="span" size="T300">
+                {t('common.uIAFlowOverlay.stepCurrentstepStepcount', { currentStep, stepCount })}
+              </Text>
             </Chip>
             <TooltipProvider
               tooltip={
                 <Tooltip variant="Critical">
-                  <Text>Exit</Text>
+                  <Text>{t('common.uIAFlowOverlay.exit')}</Text>
                 </Tooltip>
               }
               position="Top"

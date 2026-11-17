@@ -6,6 +6,16 @@ Its version is checked against the tag and stamped in the build checkout like th
 The release includes `Diddy_X.Y.Z_Android.apk` and its SHA-256 checksum. Non-tag Android builds can
 fall back to debug; release tags fail if signing secrets are missing. See `android/README.md`.
 
+Android also builds instrumentation APKs, runs lint and checks ELF LOAD alignment for both shipped
+ABIs. The lint engine is pinned independently to 9.6.0-alpha04: the AGP 9.5.1 bundled engine crashed
+with `No fir element was found for KtParameter` rather than producing diagnostics. No lint checks
+are suppressed by that override. Two emulator jobs install the debug and test APKs (API 26 and
+API 35 `google_apis_ps16k`) and require all three instrumentation tests to pass: actual Matrix/WebRTC
+native loading and binary key installation, Keystore-backed session save/reload/delete, and cold
+startup/activity recreation with the login UI visible. Reports include emulator build/page size
+and sanitized crash output, never production accounts. Hardware push/route/long-call acceptance is
+tracked separately in `android/ACCEPTANCE.md`; emulator success does not imply those checks passed.
+
 The Test workflow installs Cinny once, runs type checking and both JavaScript test suites,
 builds the production frontend once and smoke-tests that exact bundle with Playwright.
 Playwright also checks the voice-recorder hook using synthetic audio and Chromium’s real

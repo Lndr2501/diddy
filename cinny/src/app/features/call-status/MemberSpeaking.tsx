@@ -3,12 +3,14 @@ import React from 'react';
 import { Box, Icon, Icons, Text } from 'folds';
 import { getMemberDisplayName } from '../../utils/room';
 import { getMxIdLocalPart } from '../../utils/matrix';
+import { useTranslation } from 'react-i18next';
 
 type MemberSpeakingProps = {
   room: Room;
   speakers: Set<string>;
 };
 export function MemberSpeaking({ room, speakers }: MemberSpeakingProps) {
+  const { t } = useTranslation();
   const speakingNames = Array.from(speakers).map(
     (userId) => getMemberDisplayName(room, userId) ?? getMxIdLocalPart(userId) ?? userId
   );
@@ -20,7 +22,7 @@ export function MemberSpeaking({ room, speakers }: MemberSpeakingProps) {
           <>
             <b>{speakingNames[0]}</b>
             <Text as="span" size="Inherit" priority="300">
-              {' is speaking...'}
+              {t('call.memberSpeaking.isSpeaking')}
             </Text>
           </>
         )}
@@ -28,11 +30,11 @@ export function MemberSpeaking({ room, speakers }: MemberSpeakingProps) {
           <>
             <b>{speakingNames[0]}</b>
             <Text as="span" size="Inherit" priority="300">
-              {' and '}
+              {t('call.memberSpeaking.and')}
             </Text>
             <b>{speakingNames[1]}</b>
             <Text as="span" size="Inherit" priority="300">
-              {' are speaking...'}
+              {t('call.memberSpeaking.areSpeaking')}
             </Text>
           </>
         )}
@@ -44,11 +46,11 @@ export function MemberSpeaking({ room, speakers }: MemberSpeakingProps) {
             </Text>
             <b>{speakingNames[1]}</b>
             <Text as="span" size="Inherit" priority="300">
-              {' and '}
+              {t('call.memberSpeaking.and')}
             </Text>
             <b>{speakingNames[2]}</b>
             <Text as="span" size="Inherit" priority="300">
-              {' are speaking...'}
+              {t('call.memberSpeaking.areSpeaking')}
             </Text>
           </>
         )}
@@ -64,11 +66,13 @@ export function MemberSpeaking({ room, speakers }: MemberSpeakingProps) {
             </Text>
             <b>{speakingNames[2]}</b>
             <Text as="span" size="Inherit" priority="300">
-              {' and '}
+              {t('call.memberSpeaking.and')}
             </Text>
-            <b>{speakingNames.length - 3} others</b>
+            <b>
+              {speakingNames.length - 3} {t('call.memberSpeaking.others')}
+            </b>
             <Text as="span" size="Inherit" priority="300">
-              {' are speaking...'}
+              {t('call.memberSpeaking.areSpeaking')}
             </Text>
           </>
         )}

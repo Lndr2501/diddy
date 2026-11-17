@@ -18,14 +18,14 @@ struct ShellJoinRoomView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Room") { Text(account.summary(for: link.address)?.name ?? link.address).textSelection(.enabled) }
-                if let event = link.eventId { Section("Message") { Text(event).font(.caption).textSelection(.enabled) } }
+                Section(L("settings.diddyProfile.room")) { Text(account.summary(for: link.address)?.name ?? link.address).textSelection(.enabled) }
+                if let event = link.eventId { Section(L("call.userMenu.message")) { Text(event).font(.caption).textSelection(.enabled) } }
                 Button(account.summary(for: link.address)?.isJoined == true ? "Open Room" : "Join Room") { open() }.disabled(busy)
                 if busy { ProgressView() }
                 if let error { Text(error).foregroundStyle(Theme.danger) }
             }
-            .navigationTitle("Open Matrix room")
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+            .navigationTitle(L("ios.remainingUI.openMatrixRoom"))
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button(L("settings.deviceTile.cancel")) { dismiss() } } }
         }
     }
     private func open() {

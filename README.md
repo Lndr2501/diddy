@@ -57,7 +57,7 @@ From Light and Silver to Dark, Daaark, Butter, Diddy, Red, Green, Purple and Amb
 <td valign="top">
 
 ### Plugins and sounds
-A sandboxed plugin system with a built-in gallery (to-do, timer, calendar and more), a soundboard with MyInstants import and per-device call keyboard shortcuts (optional background shortcuts on supported desktop systems; iPad hardware keyboard in the call), and a full set of app sounds you can switch off or replace.
+A sandboxed plugin system with a built-in gallery (to-do, timer, calendar and more), a soundboard with MyInstants import (imported sounds sync to all your devices) and per-device call keyboard shortcuts (optional background shortcuts on supported desktop systems; iPad hardware keyboard in the call), and a full set of app sounds you can switch off or replace.
 
 </td>
 <td valign="top">
@@ -76,6 +76,7 @@ More details:
 - **Notifications in the window:** while Diddy is in front, new messages and invitations slide in as cards at the top (click opens the room, swipe up dismisses), and incoming calls arrive as a banner with answer and decline. In the background the system notification is used.
 - **Calm interface:** an own icon set, neutral highlights with the accent kept for mentions and sending, room updates folded into one line ("4 joined · 4 invited"), a one-line composer and voice messages with a scrubbable waveform.
 - **Settings by topic:** *Appearance*, *Chat*, *Notifications* and *Calls & Audio*, with a search that finds every single setting.
+- **Desktop and iOS languages:** follow the system or choose a language, share one JSON file per language and load your own translations without rebuilding. See [how to translate Diddy](docs/translating.md).
 - **Music stays loud:** with *Voice processing* off, Diddy records the microphone directly through Core Audio, so macOS no longer ducks other apps when you join a call.
 - **Call alerts:** on iOS, optional push alerts through [ntfy](https://ntfy.sh) ("Name is calling you") when someone calls and the app is closed.
 - **Connection profiles:** if a homeserver is down, open another one in its own window with a separate login and data store. Your existing account and keys stay untouched.

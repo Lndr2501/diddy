@@ -4,7 +4,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import app.diddy.util.friendlyMessage
 import app.diddy.util.ClientApiError
 import app.diddy.util.DiddyError
 import app.diddy.util.Http
@@ -309,22 +308,19 @@ class MatrixAccount(val record: AccountRecord, val client: Client) {
         }
     }
 
-    /**
-     * Signs out at the server and removes everything of this login from the phone. The local
-     * part always happens (that is what was asked for); when the server could not be told, the
-     * answer says so, because the device then stays in the account's device list.
-     */
-    suspend fun logout(): String? {
+    suspend fun logout(beforeRemove: suspend () -> Unit = {}) {
+        performLogout(
+            remote = { client.logout() },
+            alreadyRevoked = { it is org.matrix.rustcomponents.sdk.ClientException.MatrixApi && it.code == "M_UNKNOWN_TOKEN" },
+            removeLocal = { beforeRemove(); removeFromDevice() },
+        )
+    }
+
+    /** Explicit fallback after a failed logout. The server session may still exist. */
+    suspend fun removeFromDevice() {
         stop()
-        val failure = try {
-            client.logout()
-            null
-        } catch (e: Exception) {
-            e.friendlyMessage
-        }
         SessionStore.delete(record.id)
         record.removeDirectories(SessionStore.context)
-        return failure
     }
 
     suspend fun refreshProfile() {

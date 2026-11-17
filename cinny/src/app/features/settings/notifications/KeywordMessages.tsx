@@ -13,12 +13,14 @@ import {
 } from '../../../hooks/useNotificationMode';
 import { NotificationModeSwitcher } from './NotificationModeSwitcher';
 import { AsyncStatus, useAsyncCallback, ignoreRejection } from '../../../hooks/useAsyncCallback';
+import { useTranslation } from 'react-i18next';
 
 const NOTIFY_MODE_OPS: NotificationModeOptions = {
   highlight: true,
 };
 
 function KeywordInput() {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const [keyword, setKeyword] = useState<string>('');
 
@@ -95,7 +97,7 @@ function KeywordInput() {
         disabled={addingKeyword}
       >
         {addingKeyword && <Spinner variant="Secondary" size="300" />}
-        <Text size="B400">Save</Text>
+        <Text size="B400">{t('settings.keywordMessages.save')}</Text>
       </Button>
     </Box>
   );
@@ -150,6 +152,7 @@ function KeywordModeSwitcher({ pushRule }: PushRulesProps) {
 }
 
 export function KeywordMessagesNotifications() {
+  const { t } = useTranslation();
   const pushRulesEvt = useAccountData(AccountDataEvent.PushRules);
   const pushRules = useMemo(
     () => pushRulesEvt?.getContent<IPushRules>() ?? { global: {} },
@@ -165,11 +168,11 @@ export function KeywordMessagesNotifications() {
 
   return (
     <InsetSection
-      title="Keywords"
+      title={t('settings.keywordMessages.keywords')}
       after={
         <Box gap="100" alignItems="Center">
           <Text size="T200" priority="300">
-            Badge
+            {t('settings.keywordMessages.badge')}
           </Text>
           <Badge radii="300" variant="Primary" fill="Solid">
             <Text size="L400">1</Text>
@@ -179,8 +182,8 @@ export function KeywordMessagesNotifications() {
     >
       <InsetGroup>
         <InsetRow
-          title="Add Keyword"
-          description="Set a notification preference for messages containing the given keyword."
+          title={t('settings.keywordMessages.addKeyword')}
+          description={t('settings.keywordMessages.setANotificationPreference')}
         >
           <KeywordInput />
         </InsetRow>

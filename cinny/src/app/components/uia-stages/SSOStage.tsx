@@ -2,6 +2,7 @@ import { Box, Button, color, config, Dialog, Header, Icon, IconButton, Icons, Te
 import React, { useCallback, useEffect, useState } from 'react';
 import { StageComponentProps } from './types';
 import * as sheetCss from '../sheet/Sheet.css';
+import { useTranslation } from 'react-i18next';
 
 export function SSOStage({
   ssoRedirectURL,
@@ -11,6 +12,7 @@ export function SSOStage({
 }: StageComponentProps & {
   ssoRedirectURL: string;
 }) {
+  const { t } = useTranslation();
   const { errorCode, error, session } = stageData;
   const [ssoWindow, setSSOWindow] = useState<Window>();
 
@@ -57,7 +59,7 @@ export function SSOStage({
       >
         <Box grow="Yes">
           <Text className={sheetCss.SheetTitle} size="H4">
-            SSO Login
+            {t('auth.sSO.ssoLogin')}
           </Text>
         </Box>
         <IconButton size="300" onClick={onCancel} radii="300">
@@ -69,9 +71,7 @@ export function SSOStage({
         direction="Column"
         gap="400"
       >
-        <Text size="T200">
-          To perform this action you need to authenticate yourself by SSO login.
-        </Text>
+        <Text size="T200">{t('auth.sSO.toPerformThisAction')}</Text>
         {errorCode && (
           <Box alignItems="Center" gap="100" style={{ color: color.Critical.Main }}>
             <Icon size="50" src={Icons.Warning} filled />
@@ -84,13 +84,13 @@ export function SSOStage({
         {ssoWindow ? (
           <Button className={sheetCss.Pill} variant="Primary" onClick={handleSubmit}>
             <Text as="span" size="B400">
-              Continue
+              {t('auth.sSO.continue')}
             </Text>
           </Button>
         ) : (
           <Button className={sheetCss.Pill} variant="Primary" onClick={handleContinue}>
             <Text as="span" size="B400">
-              Continue with SSO
+              {t('auth.sSO.continueWithSso')}
             </Text>
           </Button>
         )}

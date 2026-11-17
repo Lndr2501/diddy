@@ -13,8 +13,10 @@ import { allInvitesAtom } from '../../../state/room-list/inviteList';
 import { useNavToActivePathMapper } from '../../../hooks/useNavToActivePathMapper';
 import { PageNav, PageNavContent, PageNavHeader } from '../../../components/page';
 import * as pageCss from '../../../components/page/style.css';
+import { useTranslation } from 'react-i18next';
 
 function InvitesNavItem() {
+  const { t } = useTranslation();
   const invitesSelected = useInboxInvitesSelected();
   const allInvites = useAtomValue(allInvitesAtom);
   const inviteCount = allInvites.length;
@@ -34,7 +36,7 @@ function InvitesNavItem() {
             </Avatar>
             <Box as="span" grow="Yes">
               <Text as="span" size="Inherit" truncate>
-                Invites
+                {t('nav.inbox.invites')}
               </Text>
             </Box>
             {inviteCount > 0 && <UnreadBadge highlight count={inviteCount} />}
@@ -46,6 +48,7 @@ function InvitesNavItem() {
 }
 
 export function Inbox() {
+  const { t } = useTranslation();
   useNavToActivePathMapper('inbox');
   const notificationsSelected = useInboxNotificationsSelected();
   const savedSelected = useInboxSavedSelected();
@@ -56,7 +59,7 @@ export function Inbox() {
         <Box grow="Yes" gap="300">
           <Box grow="Yes">
             <Text size="H4" className={pageCss.PageNavHeaderTitle} truncate>
-              Inbox
+              {t('nav.inbox.inbox')}
             </Text>
           </Box>
         </Box>
@@ -74,7 +77,7 @@ export function Inbox() {
                     </Avatar>
                     <Box as="span" grow="Yes">
                       <Text as="span" size="Inherit" truncate>
-                        Notifications
+                        {t('nav.inbox.notifications')}
                       </Text>
                     </Box>
                   </Box>

@@ -14,6 +14,7 @@ import { usePathWithOrigin } from '../../../hooks/usePathWithOrigin';
 import { serverLabel } from '../../../utils/uiaFallback';
 import { LoginPathSearchParams } from '../../paths';
 import { useClientConfig } from '../../../hooks/useClientConfig';
+import { useTranslation } from 'react-i18next';
 
 const getLoginTokenSearchParam = () => {
   // when using hasRouter query params in existing route
@@ -36,6 +37,7 @@ const useLoginSearchParams = (searchParams: URLSearchParams): LoginPathSearchPar
   );
 
 export function Login() {
+  const { t } = useTranslation();
   const server = useAuthServer();
   const { hashRouter } = useClientConfig();
   const { loginFlows } = useAuthFlows();
@@ -58,7 +60,7 @@ export function Login() {
   return (
     <Box direction="Column" gap="500">
       <Text size="H2" priority="400">
-        Login
+        {t('auth.login.login')}
       </Text>
       {parsedFlows.token && loginSearchParams.loginToken && (
         <TokenLogin token={loginSearchParams.loginToken} />
@@ -87,14 +89,14 @@ export function Login() {
       {!parsedFlows.password && !parsedFlows.sso && (
         <>
           <Text style={{ color: color.Critical.Main }}>
-            {`This client does not support login on "${server}" homeserver. Password and SSO based login method not found.`}
+            {t('auth.login.thisClientDoesNot', { server })}
           </Text>
           <span data-spacing-node />
         </>
       )}
       <Box direction="Column" gap="200">
         <Text align="Center" size="T300" priority="300">
-          New here?
+          {t('auth.login.newHere')}
         </Text>
         <Button
           as={Link}
@@ -106,7 +108,7 @@ export function Login() {
           size="500"
         >
           <Text as="span" size="B500">
-            {`Create an account on ${serverLabel(server)}`}
+            {t('auth.login.createAnAccountOn', { serverLabel: serverLabel(server) })}
           </Text>
         </Button>
       </Box>

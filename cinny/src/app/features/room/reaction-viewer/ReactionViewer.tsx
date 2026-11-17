@@ -29,6 +29,7 @@ import { useMediaAuthentication } from '../../../hooks/useMediaAuthentication';
 import { useOpenUserRoomProfile } from '../../../state/hooks/userRoomProfile';
 import { useSpaceOptionally } from '../../../hooks/useSpace';
 import { getMouseEventCords } from '../../../utils/dom';
+import { useTranslation } from 'react-i18next';
 
 export type ReactionViewerProps = {
   room: Room;
@@ -38,6 +39,7 @@ export type ReactionViewerProps = {
 };
 export const ReactionViewer = as<'div', ReactionViewerProps>(
   ({ className, room, initialKey, relations, requestClose, ...props }, ref) => {
+    const { t } = useTranslation();
     const mx = useMatrixClient();
     const useAuthentication = useMediaAuthentication();
     useEmojiData(); // shortcodes load after start
@@ -100,7 +102,9 @@ export const ReactionViewer = as<'div', ReactionViewerProps>(
         <Box grow="Yes" direction="Column">
           <Header className={css.Header} variant="Surface" size="600">
             <Box grow="Yes">
-              <Text size="H3" truncate>{`Reacted with :${selectedShortcode}:`}</Text>
+              <Text size="H3" truncate>
+                {t('room.reactionViewer.reactedWithSelectedshortcode', { selectedShortcode })}
+              </Text>
             </Box>
             <IconButton size="300" onClick={requestClose}>
               <Icon src={Icons.Cross} />
@@ -145,7 +149,8 @@ export const ReactionViewer = as<'div', ReactionViewerProps>(
                       }}
                       before={
                         <Avatar size="200" radii="Pill">
-                          <UserAvatar surface="members"
+                          <UserAvatar
+                            surface="members"
                             userId={senderId}
                             src={avatarUrl ?? undefined}
                             alt={name}

@@ -23,57 +23,57 @@ enum Sound: String, CaseIterable, Identifiable {
     /// Names and descriptions of the desktop's Settings > Sounds (`plugins/sounds.ts`).
     var title: String {
         switch self {
-        case .ringtone: return "Incoming call"
-        case .ringback: return "Outgoing call"
-        case .callJoined: return "You join"
-        case .callLeft: return "You leave"
-        case .userJoined: return "Someone joins"
-        case .userLeft: return "Someone leaves"
-        case .mute: return "Microphone off"
-        case .unmute: return "Microphone on"
-        case .deafen: return "Headphones off"
-        case .undeafen: return "Headphones on"
-        case .screenShareStarted: return "Stream starts"
-        case .screenShareStopped: return "Stream ends"
-        case .cameraOn: return "Camera on"
-        case .cameraOff: return "Camera off"
-        case .message: return "New message"
-        case .mention: return "Mention"
-        case .invite: return "Invitation"
-        case .callDeclined: return "Call declined"
-        case .noAnswer: return "No answer"
-        case .connectionLost: return "Connection lost"
-        case .micChange: return "Microphone changed"
-        case .pttOn: return "Push to talk opens"
-        case .pttOff: return "Push to talk closes"
+        case .ringtone: return L("ios.soundLabels.incomingCall")
+        case .ringback: return L("ios.soundLabels.outgoingCall")
+        case .callJoined: return L("ios.soundLabels.youJoin")
+        case .callLeft: return L("ios.soundLabels.youLeave")
+        case .userJoined: return L("ios.soundLabels.someoneJoins")
+        case .userLeft: return L("ios.soundLabels.someoneLeaves")
+        case .mute: return L("ios.soundLabels.microphoneOff")
+        case .unmute: return L("ios.soundLabels.microphoneOn")
+        case .deafen: return L("ios.soundLabels.headphonesOff")
+        case .undeafen: return L("ios.soundLabels.headphonesOn")
+        case .screenShareStarted: return L("ios.soundLabels.streamStarts")
+        case .screenShareStopped: return L("ios.soundLabels.streamEnds")
+        case .cameraOn: return L("ios.soundLabels.cameraOn")
+        case .cameraOff: return L("ios.soundLabels.cameraOff")
+        case .message: return L("ios.soundLabels.newMessage")
+        case .mention: return L("ios.soundLabels.mention")
+        case .invite: return L("ios.soundLabels.invitation")
+        case .callDeclined: return L("ios.soundLabels.callDeclined")
+        case .noAnswer: return L("ios.soundLabels.noAnswer")
+        case .connectionLost: return L("ios.soundLabels.connectionLost")
+        case .micChange: return L("ios.soundLabels.microphoneChanged")
+        case .pttOn: return L("ios.soundLabels.pushToTalkOpens")
+        case .pttOff: return L("ios.soundLabels.pushToTalkCloses")
         }
     }
 
     var detail: String {
         switch self {
-        case .ringtone: return "Rings while someone calls you."
-        case .ringback: return "Rings while you call someone, until they answer or decline."
-        case .callJoined: return "You enter a call."
-        case .callLeft: return "You leave the call."
-        case .userJoined: return "Another person joins your call."
-        case .userLeft: return "Another person leaves your call."
-        case .mute: return "You mute yourself."
-        case .unmute: return "You unmute yourself."
-        case .deafen: return "You deafen yourself."
-        case .undeafen: return "You undeafen yourself."
-        case .screenShareStarted: return "You start sharing your screen."
-        case .screenShareStopped: return "You stop sharing your screen."
-        case .cameraOn: return "You turn the camera on."
-        case .cameraOff: return "You turn the camera off."
-        case .message: return "A message that notifies you."
-        case .mention: return "A message that mentions you."
-        case .invite: return "You are invited to a room."
-        case .callDeclined: return "The person you call declines."
-        case .noAnswer: return "The person you call does not answer."
-        case .connectionLost: return "Your call loses its connection."
-        case .micChange: return "You pick another microphone."
-        case .pttOn: return "A soft click when holding Talk opens your microphone."
-        case .pttOff: return "A soft click when letting go closes your microphone again."
+        case .ringtone: return L("ios.soundLabels.ringsWhileSomeoneCallsYou")
+        case .ringback: return L("ios.soundLabels.ringsWhileYouCallSomeoneUntilTheyAnswerOrDecline")
+        case .callJoined: return L("ios.soundLabels.youEnterACall")
+        case .callLeft: return L("ios.soundLabels.youLeaveTheCall")
+        case .userJoined: return L("ios.soundLabels.anotherPersonJoinsYourCall")
+        case .userLeft: return L("ios.soundLabels.anotherPersonLeavesYourCall")
+        case .mute: return L("ios.soundLabels.youMuteYourself")
+        case .unmute: return L("ios.soundLabels.youUnmuteYourself")
+        case .deafen: return L("ios.soundLabels.youDeafenYourself")
+        case .undeafen: return L("ios.soundLabels.youUndeafenYourself")
+        case .screenShareStarted: return L("ios.soundLabels.youStartSharingYourScreen")
+        case .screenShareStopped: return L("ios.soundLabels.youStopSharingYourScreen")
+        case .cameraOn: return L("ios.soundLabels.youTurnTheCameraOn")
+        case .cameraOff: return L("ios.soundLabels.youTurnTheCameraOff")
+        case .message: return L("ios.soundLabels.aMessageThatNotifiesYou")
+        case .mention: return L("ios.soundLabels.aMessageThatMentionsYou")
+        case .invite: return L("ios.soundLabels.youAreInvitedToARoom")
+        case .callDeclined: return L("ios.soundLabels.thePersonYouCallDeclines")
+        case .noAnswer: return L("ios.soundLabels.thePersonYouCallDoesNotAnswer")
+        case .connectionLost: return L("ios.soundLabels.yourCallLosesItsConnection")
+        case .micChange: return L("ios.soundLabels.youPickAnotherMicrophone")
+        case .pttOn: return L("ios.soundLabels.aSoftClickWhenHoldingTalkOpensYourMicrophone")
+        case .pttOff: return L("ios.soundLabels.aSoftClickWhenLettingGoClosesYourMicrophoneAgain")
         }
     }
 
@@ -176,9 +176,9 @@ enum SoundSetting: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .ringing: return "Ring for incoming calls"
-        case .calls: return "Call sounds"
-        case .messages: return "Message sounds"
+        case .ringing: return L("ios.soundLabels.ringForIncomingCalls")
+        case .calls: return L("ios.soundLabels.callSounds")
+        case .messages: return L("ios.soundLabels.messageSounds")
         }
     }
 

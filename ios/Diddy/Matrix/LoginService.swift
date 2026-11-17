@@ -61,7 +61,7 @@ final class LoginService: ObservableObject {
         busy = true
         defer { busy = false }
         let input = homeserver.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !input.isEmpty else { error = "Enter a homeserver."; return }
+        guard !input.isEmpty else { error = L("ios.registrationMore.enterAHomeserver"); return }
         if let problem = Self.insecureServerProblem(input) { error = problem; return }
         discard(record)
         record = nil
@@ -89,7 +89,7 @@ final class LoginService: ObservableObject {
             } else if details.supportsPasswordLogin() {
                 method = .password
             } else {
-                error = "This server only offers login types Diddy does not support yet (SSO without OAuth)."
+                error = L("ios.registrationMore.thisServerOnlyOffersLoginTypesDiddyDoesNotSupportYetSsoWitho")
             }
         } catch {
             discard(fresh)
@@ -101,7 +101,7 @@ final class LoginService: ObservableObject {
     func loginWithPassword() async -> (AccountRecord, Client)? {
         guard let client, var record else { return nil }
         guard !username.trimmingCharacters(in: .whitespaces).isEmpty, !password.isEmpty else {
-            error = "Enter your username and password."
+            error = L("ios.registrationMore.enterYourUsernameAndPassword")
             return nil
         }
         error = nil
@@ -137,7 +137,7 @@ final class LoginService: ObservableObject {
                 deviceId: nil,
                 additionalScopes: nil
             )
-            guard let url = URL(string: data.loginUrl()) else { throw DiddyError("The server sent an invalid login URL.") }
+            guard let url = URL(string: data.loginUrl()) else { throw DiddyError(L("ios.registrationMore.theServerSentAnInvalidLoginUrl")) }
             let callback: URL
             do {
                 callback = try await authenticate(url: url, scheme: "io.github.lndr2501")
@@ -183,14 +183,14 @@ final class LoginService: ObservableObject {
                 if let callback {
                     continuation.resume(returning: callback)
                 } else {
-                    continuation.resume(throwing: error ?? DiddyError("Login was cancelled."))
+                    continuation.resume(throwing: error ?? DiddyError(L("ios.registrationMore.loginWasCancelled")))
                 }
             }
             session.presentationContextProvider = anchor
             session.prefersEphemeralWebBrowserSession = false
             webSession = session
             if !session.start() {
-                continuation.resume(throwing: DiddyError("The login page could not be opened."))
+                continuation.resume(throwing: DiddyError(L("ios.registrationMore.theLoginPageCouldNotBeOpened")))
             }
         }
     }
@@ -218,9 +218,9 @@ final class LoginService: ObservableObject {
         }
         #endif
         if lowered.hasPrefix("http://") {
-            return "Diddy only connects over HTTPS. Enter the server name (like matrix.org) or an https:// address."
+            return L("ios.registrationMore.diddyOnlyConnectsOverHttpsEnterTheServerNameLikeMatrixOrgOrA")
         }
-        return "Enter the server name (like matrix.org) or an https:// address."
+        return L("ios.registrationMore.enterTheServerNameLikeMatrixOrgOrAnHttpsAddress")
     }
 
     private static func describe(_ error: Error, server: String) -> String {

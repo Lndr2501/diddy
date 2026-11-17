@@ -4,9 +4,11 @@ import { SidebarAvatar, SidebarItem, SidebarItemTooltip } from '../../../compone
 import { SettingsSheet } from '../../../components/SettingsSheet';
 import { PluginsPanel } from '../../../features/plugins/PluginsPanel';
 import { useUserPlugins } from '../../../state/userPlugins';
+import { useTranslation } from 'react-i18next';
 
 /** Opens the user's plugins (#54). Only shown while at least one plugin is turned on. */
 export function PluginsTab() {
+  const { t } = useTranslation();
   const plugins = useUserPlugins();
   const [opened, setOpened] = useState(false);
   const hasActive = plugins.some((plugin) => plugin.enabled);
@@ -17,7 +19,7 @@ export function PluginsTab() {
 
   return (
     <SidebarItem active={opened}>
-      <SidebarItemTooltip tooltip="Plugins">
+      <SidebarItemTooltip tooltip={t('nav.plugins.plugins')}>
         {(triggerRef) => (
           <SidebarAvatar as="button" ref={triggerRef} outlined onClick={() => setOpened(true)}>
             <Icon src={Icons.Category} filled={opened} />
@@ -25,7 +27,7 @@ export function PluginsTab() {
         )}
       </SidebarItemTooltip>
       {opened && (
-        <SettingsSheet requestClose={close} label="Plugins">
+        <SettingsSheet requestClose={close} label={t('nav.plugins.plugins')}>
           <PluginsPanel requestClose={close} />
         </SettingsSheet>
       )}

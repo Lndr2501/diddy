@@ -11,6 +11,7 @@ object Wiring {
     fun install(context: Context) {
         Notifications.init(context)
         app.diddy.push.UnifiedPushing.init(context)
+        AppModel.Hooks.activeAccountChanged = { app.diddy.call.SoundboardSync.activate(it) }
         val added = AppModel.Hooks.accountAdded
         AppModel.Hooks.accountAdded = { account ->
             added(account)

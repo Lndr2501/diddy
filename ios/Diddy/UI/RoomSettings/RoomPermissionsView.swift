@@ -38,7 +38,7 @@ struct RoomPermissionsView: View {
                     HStack(spacing: 10) {
                         Spacer()
                         ProgressView()
-                        Text("Loading permissions").foregroundStyle(Theme.muted)
+                        Text(L("ios.securityUI.loadingPermissions")).foregroundStyle(Theme.muted)
                         Spacer()
                     }
                 }
@@ -46,12 +46,12 @@ struct RoomPermissionsView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Theme.sidebar.ignoresSafeArea())
-        .navigationTitle("Roles & Permissions")
+        .navigationTitle(L("ios.securityUI.rolesPermissions"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 if !changes.isEmpty {
-                    Button("Apply") {
+                    Button(L("ios.securityUI.apply")) {
                         if let levels = state?.powerLevels { Task { await apply(levels: levels) } }
                     }
                     .disabled(model.busy)
@@ -86,9 +86,9 @@ struct RoomPermissionsView: View {
                 Text(RoomPowerTags.creators.name).bold()
             }
         } header: {
-            Text("Founders")
+            Text(L("common.createRoom.founders"))
         } footer: {
-            Text("Founders have all permissions and can only be changed during an upgrade.")
+            Text(L("ios.securityUI.foundersHaveAllPermissionsAndCanOnlyBeChangedDuringAnUpgrade"))
         }
     }
 
@@ -112,16 +112,16 @@ struct RoomPermissionsView: View {
                 NavigationLink {
                     RoomPowersEditor(model: model)
                 } label: {
-                    Label("Edit Power Levels", systemImage: "slider.horizontal.3")
+                    Label(L("ios.securityUI.editPowerLevels"), systemImage: "slider.horizontal.3")
                 }
             }
         } header: {
-            Text("Power Levels")
+            Text(L("ios.securityUI.powerLevels"))
         } footer: {
             if canEditPowers {
-                Text("Tap a power level to see what it may do.")
+                Text(L("ios.securityUI.tapAPowerLevelToSeeWhatItMayDo"))
             } else {
-                Text("Tap a power level to see what it may do. Your role can't edit the power levels.")
+                Text(L("ios.securityUI.tapAPowerLevelToSeeWhatItMayDoYourRoleCanTEditThePowerLevels"))
             }
         }
     }
@@ -132,12 +132,12 @@ struct RoomPermissionsView: View {
         Section {
             permissionRow("Default Power", detail: "Default power level for all users.", location: .user(nil), tags: tags, levels: levels)
         } header: {
-            Text("Users")
+            Text(L("ios.securityUI.users"))
         } footer: {
             if canEditPermissions {
-                Text("Changes below are collected; tap Apply to save them.")
+                Text(L("ios.securityUI.changesBelowAreCollectedTapApplyToSaveThem"))
             } else {
-                Text("Your role can't change the permissions.")
+                Text(L("ios.securityUI.yourRoleCanTChangeThePermissions"))
             }
         }
     }
@@ -195,12 +195,12 @@ struct RoomPermissionsView: View {
     private func applySection(levels: RoomPowerLevelsModel) -> some View {
         Section {
             if applyFailed || model.actionError != nil {
-                Label("Couldn't apply the changes. Please try again.", systemImage: "exclamationmark.triangle.fill")
+                Label(L("ios.securityUI.couldnTApplyTheChangesPleaseTryAgain"), systemImage: "exclamationmark.triangle.fill")
                     .font(.footnote.bold()).foregroundStyle(Theme.danger)
             } else {
                 Text(changes.count == 1 ? "1 unsaved change." : "\(changes.count) unsaved changes.").font(.footnote.bold())
             }
-            Button("Discard Changes", role: .destructive) {
+            Button(L("ios.remainingUI.discardChanges"), role: .destructive) {
                 changes = [:]
                 applyFailed = false
             }
@@ -210,7 +210,7 @@ struct RoomPermissionsView: View {
             } label: {
                 HStack {
                     if model.busy { ProgressView() }
-                    Text("Apply Changes").bold()
+                    Text(L("settings.globalPacks.applyChanges")).bold()
                 }
             }
             .disabled(model.busy)
@@ -261,7 +261,7 @@ struct PeekPermissionsView: View {
             .background(Theme.sidebar.ignoresSafeArea())
             .navigationTitle(RoomPowerTags.tag(for: power, in: model.state?.powerTags ?? [:]).name)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button(L("call.companionDialog.done")) { dismiss() } } }
         }
         .presentationDetents([.medium, .large])
     }
@@ -292,12 +292,12 @@ struct RoomPowersEditor: View {
     var body: some View {
         Form {
             Section {
-                Button { creating = true } label: { Label("New Power Level", systemImage: "plus") }
+                Button { creating = true } label: { Label(L("ios.securityUI.newPowerLevel"), systemImage: "plus") }
                     .disabled(model.busy)
             } footer: {
-                Text("Changes are collected; tap Apply to save them.")
+                Text(L("ios.securityUI.changesAreCollectedTapApplyToSaveThem"))
             }
-            Section("Power Levels") {
+            Section(L("ios.securityUI.powerLevels")) {
                 ForEach(RoomPowerTags.powers(shown), id: \.self) { power in
                     row(power)
                 }
@@ -305,12 +305,12 @@ struct RoomPowersEditor: View {
             if changed {
                 Section {
                     if applyFailed || model.actionError != nil {
-                        Label("Couldn't apply the changes. Please try again.", systemImage: "exclamationmark.triangle.fill")
+                        Label(L("ios.securityUI.couldnTApplyTheChangesPleaseTryAgain"), systemImage: "exclamationmark.triangle.fill")
                             .font(.footnote.bold()).foregroundStyle(Theme.danger)
                     } else {
-                        Text("You have unsaved changes.").font(.footnote.bold())
+                        Text(L("settings.diddyProfile.youHaveUnsavedChanges")).font(.footnote.bold())
                     }
-                    Button("Discard Changes", role: .destructive) {
+                    Button(L("ios.remainingUI.discardChanges"), role: .destructive) {
                         edited = nil
                         deleted = []
                         applyFailed = false
@@ -321,7 +321,7 @@ struct RoomPowersEditor: View {
                     } label: {
                         HStack {
                             if model.busy { ProgressView() }
-                            Text("Apply Changes").bold()
+                            Text(L("settings.globalPacks.applyChanges")).bold()
                         }
                     }
                     .disabled(model.busy)
@@ -330,12 +330,12 @@ struct RoomPowersEditor: View {
         }
         .scrollContentBackground(.hidden)
         .background(Theme.sidebar.ignoresSafeArea())
-        .navigationTitle("Power Levels")
+        .navigationTitle(L("ios.securityUI.powerLevels"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 if changed {
-                    Button("Apply") { Task { await apply() } }
+                    Button(L("ios.securityUI.apply")) { Task { await apply() } }
                         .disabled(model.busy)
                 }
             }
@@ -384,13 +384,13 @@ struct RoomPowersEditor: View {
                     Text("(\(power))").font(.caption).foregroundStyle(Theme.muted)
                 }
                 if used && !isDeleted {
-                    Text("Used power level. You have to remove its use before you can delete it.")
+                    Text(L("ios.securityUI.usedPowerLevelYouHaveToRemoveItsUseBeforeYouCanDeleteIt"))
                         .font(.caption2).foregroundStyle(Theme.faint)
                 }
             }
             Spacer()
             if isDeleted {
-                Button("Undo", role: .destructive) { deleted.remove(power) }
+                Button(L("settings.deviceTile.undo"), role: .destructive) { deleted.remove(power) }
                     .buttonStyle(.borderless).disabled(model.busy)
             } else {
                 if !used {
@@ -400,9 +400,9 @@ struct RoomPowersEditor: View {
                         Image(systemName: "trash")
                     }
                     .buttonStyle(.borderless).disabled(model.busy)
-                    .accessibilityLabel("Delete")
+                    .accessibilityLabel(L("common.connectionRecovery.delete"))
                 }
-                Button("Edit") { editing = EditedTag(power: power) }
+                Button(L("settings.deviceTile.edit")) { editing = EditedTag(power: power) }
                     .buttonStyle(.borderless).disabled(model.busy)
             }
         }
@@ -448,28 +448,28 @@ struct RoleTagForm: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Name") {
-                    TextField("Bot", text: $name)
+                Section(L("settings.badgeEditor.name")) {
+                    TextField(L("room.membersDrawer.bot"), text: $name)
                 }
                 if power == nil {
                     Section {
                         TextField("75", text: $powerText).keyboardType(.numbersAndPunctuation)
                     } header: {
-                        Text("Power")
+                        Text(L("ios.securityUI.power"))
                     } footer: {
-                        if powerTaken { Text("This power level already exists.").foregroundStyle(Theme.danger) }
+                        if powerTaken { Text(L("ios.securityUI.thisPowerLevelAlreadyExists")).foregroundStyle(Theme.danger) }
                     }
                 }
-                Section("Color") {
-                    Toggle("Use a color", isOn: $hasColor)
-                    if hasColor { ColorPicker("Color", selection: $color, supportsOpacity: false) }
+                Section(L("settings.badgeEditor.color")) {
+                    Toggle(L("ios.securityUI.useAColor"), isOn: $hasColor)
+                    if hasColor { ColorPicker(L("settings.badgeEditor.color"), selection: $color, supportsOpacity: false) }
                 }
-                Section("Icon") {
+                Section(L("ios.securityUI.icon")) {
                     if keepsPictureIcon {
-                        Text("This power level has a picture as its icon. It stays as it is until you type an emoji instead.")
+                        Text(L("ios.securityUI.thisPowerLevelHasAPictureAsItsIconItStaysAsItIsUntilYouTypeA"))
                             .font(.caption).foregroundStyle(Theme.muted)
                     }
-                    TextField("Emoji", text: $icon)
+                    TextField(L("settings.badgeEditor.emoji"), text: $icon)
                 }
             }
             .scrollContentBackground(.hidden)
@@ -478,8 +478,8 @@ struct RoleTagForm: View {
             .navigationBarTitleDisplayMode(.inline)
             .tint(Theme.accent)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) { Button("Save") { save() }.disabled(!valid) }
+                ToolbarItem(placement: .cancellationAction) { Button(L("settings.deviceTile.cancel")) { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) { Button(L("settings.profile.save")) { save() }.disabled(!valid) }
             }
             .onAppear {
                 guard !loaded else { return }

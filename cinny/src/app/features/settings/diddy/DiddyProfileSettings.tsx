@@ -130,6 +130,8 @@ import { EditorLayout, stickyEditorLayout } from './editorLayout';
 import { STATUS_OPTIONS } from '../../../components/user-panel/UserPanelFace';
 import { StatusIcon } from '../../../components/presence/StatusIcon';
 import { stateOfChosen } from '../../../utils/presenceState';
+import { useTranslation } from 'react-i18next';
+import { translate } from '../../../i18n';
 
 type Draft = ProfileDraft;
 
@@ -137,10 +139,18 @@ const EFFECTS: NameEffect[] = ['none', 'glow', 'shadow', 'outline'];
 const MAX_BIO = 160;
 
 const EFFECT_LABEL: Record<NameEffect, string> = {
-  none: 'None',
-  glow: 'Glow',
-  shadow: 'Shadow',
-  outline: 'Outline',
+  get none() {
+    return translate('settings.diddyProfile.none');
+  },
+  get glow() {
+    return translate('settings.diddyProfile.glow');
+  },
+  get shadow() {
+    return translate('settings.diddyProfile.shadow');
+  },
+  get outline() {
+    return translate('settings.diddyProfile.outline');
+  },
 };
 
 // --- image position editor ---------------------------------------------------------------------
@@ -157,6 +167,7 @@ type PositionEditorProps = {
   onChange: (pos: ImagePos | undefined) => void;
 };
 function PositionEditor({ mxc, pos, width, ratio, onChange }: PositionEditorProps) {
+  const { t } = useTranslation();
   const url = useMxcUrl(mxc);
   const frameRef = useRef<HTMLDivElement>(null);
   const natural = useRef<{ w: number; h: number }>();
@@ -205,7 +216,10 @@ function PositionEditor({ mxc, pos, width, ratio, onChange }: PositionEditorProp
 
   if (!url) return null;
   return (
-    <StackField label="Visible part" hint="Drag the picture to choose the visible part.">
+    <StackField
+      label={t('settings.diddyProfile.visiblePart')}
+      hint={t('settings.diddyProfile.dragThePictureTo')}
+    >
       <div
         ref={frameRef}
         className={css.CropFrame}
@@ -213,7 +227,7 @@ function PositionEditor({ mxc, pos, width, ratio, onChange }: PositionEditorProp
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
-        title="Drag to choose the visible part"
+        title={t('settings.diddyProfile.dragToChooseThe')}
         style={{ width: toRem(width), aspectRatio: String(ratio) }}
       >
         <PositionedImg
@@ -233,7 +247,7 @@ function PositionEditor({ mxc, pos, width, ratio, onChange }: PositionEditorProp
           min={1}
           max={3}
           step={0.05}
-          label="Zoom"
+          label={t('settings.diddyProfile.zoom')}
           format={(z) => `${z.toFixed(1)}x`}
           onChange={(zoom) =>
             onChange({ ...cur, zoom: clampNum(Math.round(zoom * 100) / 100, 1, 3) })
@@ -247,7 +261,7 @@ function PositionEditor({ mxc, pos, width, ratio, onChange }: PositionEditorProp
           disabled={!pos}
           onClick={() => onChange(undefined)}
         >
-          <Text size="B300">Reset</Text>
+          <Text size="B300">{t('settings.diddyProfile.reset')}</Text>
         </Button>
       </div>
     </StackField>
@@ -259,6 +273,7 @@ function PositionEditor({ mxc, pos, width, ratio, onChange }: PositionEditorProp
 type DebugInfo = Awaited<ReturnType<typeof getDiddyDebugInfo>>;
 
 function DebugPanel({ mx }: { mx: Parameters<typeof getDiddyDebugInfo>[0] }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [tick, setTick] = useState(0);
   const [info, setInfo] = useState<DebugInfo>();
@@ -283,7 +298,7 @@ function DebugPanel({ mx }: { mx: Parameters<typeof getDiddyDebugInfo>[0] }) {
     >
       <summary>
         <Text as="span" size="T300">
-          Debug info
+          {t('settings.diddyProfile.debugInfo')}
         </Text>
       </summary>
       <Box>
@@ -294,21 +309,21 @@ function DebugPanel({ mx }: { mx: Parameters<typeof getDiddyDebugInfo>[0] }) {
           radii="300"
           onClick={() => setTick((t) => t + 1)}
         >
-          <Text size="B300">Refresh</Text>
+          <Text size="B300">{t('settings.diddyProfile.refresh')}</Text>
         </Button>
       </Box>
       <div className={css.DebugScroll}>
         <table className={css.DebugTable}>
           <thead>
             <tr>
-              <th>Room</th>
-              <th>Mode</th>
-              <th>Enc</th>
-              <th>Members</th>
-              <th>State ev.</th>
-              <th>Msg ev.</th>
-              <th>Accepted</th>
-              <th>Dropped</th>
+              <th>{t('settings.diddyProfile.room')}</th>
+              <th>{t('settings.diddyProfile.mode')}</th>
+              <th>{t('settings.diddyProfile.enc')}</th>
+              <th>{t('settings.diddyProfile.members')}</th>
+              <th>{t('settings.diddyProfile.stateEv')}</th>
+              <th>{t('settings.diddyProfile.msgEv')}</th>
+              <th>{t('settings.diddyProfile.accepted')}</th>
+              <th>{t('settings.diddyProfile.dropped')}</th>
             </tr>
           </thead>
           <tbody>
@@ -316,7 +331,9 @@ function DebugPanel({ mx }: { mx: Parameters<typeof getDiddyDebugInfo>[0] }) {
               <tr key={r.roomId} title={r.roomId}>
                 <td>{r.name}</td>
                 <td>{r.mode}</td>
-                <td>{r.encrypted ? 'yes' : 'no'}</td>
+                <td>
+                  {r.encrypted ? t('settings.diddyProfile.yes') : t('settings.diddyProfile.no')}
+                </td>
                 <td>{r.joinedMembers}</td>
                 <td>{r.stateEvents}</td>
                 <td>{r.messageEvents}</td>
@@ -330,7 +347,7 @@ function DebugPanel({ mx }: { mx: Parameters<typeof getDiddyDebugInfo>[0] }) {
             ))}
             {info && info.rooms.length === 0 && (
               <tr>
-                <td colSpan={8}>No data rooms.</td>
+                <td colSpan={8}>{t('settings.diddyProfile.noDataRooms')}</td>
               </tr>
             )}
           </tbody>
@@ -377,6 +394,7 @@ type DiddyProfileSettingsProps = {
   requestClose: () => void;
 };
 export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps) {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
   const myId = mx.getSafeUserId();
@@ -553,7 +571,7 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
       }
       setCreated(true);
     } catch (e) {
-      setSetupError(e instanceof Error ? e.message : 'Could not create the room.');
+      setSetupError(e instanceof Error ? e.message : t('settings.diddyProfile.couldNotCreateThe'));
     } finally {
       setCreating(false);
     }
@@ -568,7 +586,7 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
     try {
       apply(await uploadDiddyMedia(mx, file));
     } catch (e) {
-      setUploadError(e instanceof Error ? e.message : 'Upload failed.');
+      setUploadError(e instanceof Error ? e.message : t('settings.diddyProfile.uploadFailed'));
     } finally {
       setBusyKey(undefined);
     }
@@ -593,7 +611,7 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
         ...(plateColor ? { color: plateColor } : {}),
       });
     } catch (e) {
-      setUploadError(e instanceof Error ? e.message : 'Upload failed.');
+      setUploadError(e instanceof Error ? e.message : t('settings.diddyProfile.uploadFailed'));
     } finally {
       setBusyKey(undefined);
     }
@@ -611,7 +629,7 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
       const effect = await uploadProfileEffect(mx, imported);
       setDraft((d) => ({ ...d, effect }));
     } catch (e) {
-      setUploadError(e instanceof Error ? e.message : 'Upload failed.');
+      setUploadError(e instanceof Error ? e.message : t('settings.diddyProfile.uploadFailed'));
     } finally {
       setBusyKey(undefined);
     }
@@ -629,7 +647,7 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
       const frame = await uploadProfileFrame(mx, imported);
       setDraft((d) => ({ ...d, frame }));
     } catch (e) {
-      setUploadError(e instanceof Error ? e.message : 'Upload failed.');
+      setUploadError(e instanceof Error ? e.message : t('settings.diddyProfile.uploadFailed'));
     } finally {
       setBusyKey(undefined);
     }
@@ -647,7 +665,7 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
       await setMyProfile(mx, mergeDraft(stored, clean));
       setLocalBase(clean);
     } catch (e) {
-      setSaveError(e instanceof Error ? e.message : 'Could not save.');
+      setSaveError(e instanceof Error ? e.message : t('settings.diddyProfile.couldNotSave'));
     } finally {
       setSaving(false);
     }
@@ -670,26 +688,32 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
       if (!canSaveWithDialog()) {
         // browser and Linux shell: the browser's own download
         FileSaver.saveAs(new Blob([text], { type: 'application/json' }), PROFILE_FILE_NAME);
-        setTransfer({ tone: 'success', text: `Saved ${PROFILE_FILE_NAME}.` });
+        setTransfer({
+          tone: 'success',
+          text: t('settings.diddyProfile.savedProfilefilename', {
+            profileFileName: PROFILE_FILE_NAME,
+          }),
+        });
         return;
       }
       // desktop app: the user picks the folder and the name
       const path = await saveTextFileAs(PROFILE_FILE_NAME, text, {
-        name: 'Diddy profile',
+        name: t('settings.diddyProfile.diddyProfile'),
         extensions: ['json'],
       });
-      if (path) setTransfer({ tone: 'success', text: `Saved to ${path}` });
+      if (path)
+        setTransfer({ tone: 'success', text: t('settings.diddyProfile.savedToPath', { path }) });
     } catch (e) {
       setTransfer({
         tone: 'error',
-        text: e instanceof Error ? e.message : 'The file could not be saved.',
+        text: e instanceof Error ? e.message : t('settings.diddyProfile.theFileCouldNot'),
       });
     }
   };
   const handleImportFile = async (file: File | undefined) => {
     if (!file) return;
     if (file.size > MAX_PROFILE_FILE_BYTES) {
-      setTransfer({ tone: 'error', text: 'This file is too big to be a Diddy profile.' });
+      setTransfer({ tone: 'error', text: t('settings.diddyProfile.thisFileIsToo') });
       return;
     }
     const result = importProfile(await file.text());
@@ -702,34 +726,30 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
     setSaveError(undefined);
     setTransfer({
       tone: 'success',
-      text: 'Imported. Check the preview, then press Save changes to keep it.',
+      text: t('settings.diddyProfile.importedCheckThePreview'),
     });
   };
-  let setupLabel = 'Create Diddy Options room';
-  if (setupMode === 'existing') setupLabel = selectedUnjoined ? 'Join and use' : 'Use this room';
+  let setupLabel = t('settings.diddyProfile.createDiddyOptionsRoom');
+  if (setupMode === 'existing')
+    setupLabel = selectedUnjoined
+      ? t('settings.diddyProfile.joinAndUse')
+      : t('settings.diddyProfile.useThisRoom');
 
   const setupCard = (
     <SettingsCard
       icon={Icons.Server}
-      title="Set up the data room"
-      description="Diddy needs a hidden room to share profiles, badges and name styles. Without it your customization cannot be saved or seen by others."
-      footer={
-        <Hint>
-          Not an admin? Ask the admin of your server to set it up; Diddy joins it automatically.
-        </Hint>
-      }
+      title={t('settings.diddyProfile.setUpTheData')}
+      description={t('settings.diddyProfile.diddyNeedsAHidden')}
+      footer={<Hint>{t('settings.diddyProfile.notAnAdminAsk')}</Hint>}
     >
-      <Hint>
-        On a private server where everyone uses Diddy, an admin creates a hidden room that Diddy
-        uses to share profiles, badges and name styles between everyone.
-      </Hint>
-      <Field label="Mode">
+      <Hint>{t('settings.diddyProfile.onAPrivateServer')}</Hint>
+      <Field label={t('settings.diddyProfile.mode')}>
         <Segmented
-          label="Mode"
+          label={t('settings.diddyProfile.mode')}
           value={setupMode}
           options={[
-            { id: 'new', label: 'Create a new hidden room' },
-            { id: 'existing', label: 'Use an existing room' },
+            { id: 'new', label: t('settings.diddyProfile.createANewHidden') },
+            { id: 'existing', label: t('settings.diddyProfile.useAnExistingRoom') },
           ]}
           onChange={(m) => {
             if (!creating) setSetupMode(m);
@@ -738,25 +758,25 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
       </Field>
       {setupMode === 'new' && (
         <>
-          <Field label="Room name">
+          <Field label={t('settings.diddyProfile.roomName')}>
             <input
               className={css.Input}
               value={roomName}
               onChange={(e) => setRoomName(e.target.value)}
               placeholder={OPTIONS_ROOM_NAME}
-              aria-label="Room name"
+              aria-label={t('settings.diddyProfile.roomName')}
               disabled={creating}
             />
           </Field>
-          <Field label="Create it in">
+          <Field label={t('settings.diddyProfile.createItIn')}>
             <select
               className={css.Input}
               value={spaceId}
               onChange={(e) => setSpaceId(e.target.value)}
-              aria-label="Create it in"
+              aria-label={t('settings.diddyProfile.createItIn')}
               disabled={creating}
             >
-              <option value="">No space (private room)</option>
+              <option value="">{t('settings.diddyProfile.noSpacePrivateRoom')}</option>
               {spaces.map((space) => (
                 <option key={space.roomId} value={space.roomId}>
                   {space.name}
@@ -768,39 +788,45 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
       )}
       {setupMode === 'existing' && (
         <>
-          <Field label="Room">
+          <Field label={t('settings.diddyProfile.room')}>
             <select
               className={css.Input}
               value={existingRoomId}
               onChange={(e) => setExistingRoomId(e.target.value)}
-              aria-label="Room"
+              aria-label={t('settings.diddyProfile.room')}
               disabled={creating}
             >
-              <option value="">Choose a room...</option>
-              <optgroup label="Your rooms">
+              <option value="">{t('settings.diddyProfile.chooseARoom')}</option>
+              <optgroup label={t('settings.diddyProfile.yourRooms')}>
                 {existingRooms.map((room) => (
                   <option key={room.roomId} value={room.roomId}>
                     {room.name}
-                    {isDiddyJoined(room.roomId, room.name) ? ' - Diddy room' : ''}
+                    {isDiddyJoined(room.roomId, room.name)
+                      ? t('settings.diddyProfile.diddyRoom')
+                      : ''}
                   </option>
                 ))}
               </optgroup>
-              <optgroup label="Rooms in your spaces (not joined)">
+              <optgroup label={t('settings.diddyProfile.roomsInYourSpaces')}>
                 {unjoinedRooms.map((d) => (
                   <option key={d.roomId} value={d.roomId}>
                     {d.name} ({d.spaceName})
-                    {looksLikeDiddyRoom(d.name, d.topic) ? ' - Diddy room' : ''}
+                    {looksLikeDiddyRoom(d.name, d.topic)
+                      ? t('settings.diddyProfile.diddyRoom')
+                      : ''}
                   </option>
                 ))}
               </optgroup>
             </select>
-            {selectedIsDiddy && <span className={css.Badge}>Diddy room</span>}
+            {selectedIsDiddy && (
+              <span className={css.Badge}>{t('settings.diddyProfile.diddyRoom2')}</span>
+            )}
           </Field>
           <Field
-            label="Spaces"
+            label={t('settings.diddyProfile.spaces')}
             hint={
-              (discovering && 'Looking in your spaces...') ||
-              (unjoinedRooms.length === 0 && 'No unjoined rooms found in your spaces.') ||
+              (discovering && t('settings.diddyProfile.lookingInYourSpaces')) ||
+              (unjoinedRooms.length === 0 && t('settings.diddyProfile.noUnjoinedRoomsFound')) ||
               undefined
             }
           >
@@ -812,21 +838,16 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
               disabled={discovering || creating}
               onClick={loadDiscovered}
             >
-              <Text size="B300">Refresh</Text>
+              <Text size="B300">{t('settings.diddyProfile.refresh')}</Text>
             </Button>
           </Field>
           <Field
-            label="Let others find it"
-            hint="Adds [diddy-options] to the topic, so Diddy clients in the same space join it automatically."
+            label={t('settings.diddyProfile.letOthersFindIt')}
+            hint={t('settings.diddyProfile.addsDiddyOptionsTo')}
           >
             <Switch variant="Primary" value={tagTopic} onChange={setTagTopic} />
           </Field>
-          <Hint>
-            The room is then hidden from the room lists in Diddy. You need permission to change its
-            settings. No admin rights in that room? You can still use it without them: everyone who
-            uses Diddy has to choose this same room themselves; your profile is then stored as
-            hidden messages in it.
-          </Hint>
+          <Hint>{t('settings.diddyProfile.theRoomIsThen')}</Hint>
         </>
       )}
       <div className={css.Controls}>
@@ -837,14 +858,10 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
           disabled={creating || created}
           onClick={handleCreate}
         >
-          <Text size="B400">{creating ? 'Working...' : setupLabel}</Text>
+          <Text size="B400">{creating ? t('settings.diddyProfile.working') : setupLabel}</Text>
         </Button>
-        {created && <Hint tone="success">Room created. You can customize your profile now.</Hint>}
-        {lightUsed && (
-          <Hint tone="success">
-            Room is used in message mode. You can customize your profile now.
-          </Hint>
-        )}
+        {created && <Hint tone="success">{t('settings.diddyProfile.roomCreatedYouCan')}</Hint>}
+        {lightUsed && <Hint tone="success">{t('settings.diddyProfile.roomIsUsedIn')}</Hint>}
       </div>
       {setupError && <Hint tone="error">{setupError}</Hint>}
       {setupError &&
@@ -861,9 +878,9 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
               disabled={creating}
               onClick={handleUseLight}
             >
-              <Text size="B300">Use without admin rights</Text>
+              <Text size="B300">{t('settings.diddyProfile.useWithoutAdminRights')}</Text>
             </Button>
-            <Hint>Everyone has to choose this same room themselves.</Hint>
+            <Hint>{t('settings.diddyProfile.everyoneHasToChoose')}</Hint>
           </div>
         )}
     </SettingsCard>
@@ -873,14 +890,14 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
     <>
       <SettingsCard
         icon={Icons.Eye}
-        title="Display name"
-        description="How your name looks to others, in light and in dark mode."
+        title={t('settings.diddyProfile.displayName')}
+        description={t('settings.diddyProfile.howYourNameLooks')}
       >
         <ProfilePreviewProvider value={nameOverride}>
           <div className={css.NameStage}>
             {[
-              { id: 'light', label: 'Light', theme: LightTheme },
-              { id: 'dark', label: 'Dark', theme: DarkTheme },
+              { id: 'light', label: t('settings.diddyProfile.light'), theme: LightTheme },
+              { id: 'dark', label: t('settings.diddyProfile.dark'), theme: DarkTheme },
             ].map((half) => (
               <div
                 key={half.id}
@@ -900,14 +917,14 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
       </SettingsCard>
       <SettingsCard
         icon={Icons.Alphabet}
-        title="Name style"
-        description="Font, effect and weight of your display name."
+        title={t('settings.diddyProfile.nameStyle')}
+        description={t('settings.diddyProfile.fontEffectAndWeight')}
       >
-        <Field label="Font">
+        <Field label={t('settings.diddyProfile.font')}>
           <select
             className={css.Input}
             value={ns.font ?? 'default'}
-            aria-label="Font"
+            aria-label={t('settings.diddyProfile.font')}
             onChange={(e) => patchNameStyle({ font: e.target.value })}
           >
             {NAME_FONTS.map((f) => (
@@ -917,22 +934,22 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
             ))}
           </select>
         </Field>
-        <Field label="Effect">
+        <Field label={t('settings.diddyProfile.effect')}>
           <Segmented
-            label="Effect"
+            label={t('settings.diddyProfile.effect')}
             value={ns.effect ?? 'none'}
             options={EFFECTS.map((eff) => ({ id: eff, label: EFFECT_LABEL[eff] }))}
             onChange={(effect) => patchNameStyle({ effect })}
           />
         </Field>
-        <Field label="Bold">
+        <Field label={t('settings.diddyProfile.bold')}>
           <Switch
             variant="Primary"
             value={!!ns.bold}
             onChange={(on) => patchNameStyle({ bold: on })}
           />
         </Field>
-        <Field label="Italic">
+        <Field label={t('settings.diddyProfile.italic')}>
           <Switch
             variant="Primary"
             value={!!ns.italic}
@@ -942,16 +959,16 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
       </SettingsCard>
       <SettingsCard
         icon={Icons.Bulb}
-        title="Name color"
-        description="A solid color or a two-color gradient."
+        title={t('settings.diddyProfile.nameColor')}
+        description={t('settings.diddyProfile.aSolidColorOr')}
       >
-        <Field label="Fill">
+        <Field label={t('settings.diddyProfile.fill')}>
           <Segmented
-            label="Fill"
+            label={t('settings.diddyProfile.fill')}
             value={gradient ? 'gradient' : 'solid'}
             options={[
-              { id: 'solid', label: 'Solid' },
-              { id: 'gradient', label: 'Gradient' },
+              { id: 'solid', label: t('settings.diddyProfile.solid') },
+              { id: 'gradient', label: t('settings.diddyProfile.gradient') },
             ]}
             onChange={(mode) =>
               patchNameStyle({
@@ -964,9 +981,9 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
           />
         </Field>
         {!gradient && (
-          <Field label="Color">
+          <Field label={t('settings.diddyProfile.color')}>
             <ColorField
-              label="Name color"
+              label={t('settings.diddyProfile.nameColor')}
               value={ns.color}
               fallback="#ffffff"
               onChange={(c) => patchNameStyle({ color: c })}
@@ -976,21 +993,21 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
         )}
         {gradient && (
           <>
-            <Field label="Colors">
+            <Field label={t('settings.diddyProfile.colors')}>
               <ColorField
-                label="Gradient start"
+                label={t('settings.diddyProfile.gradientStart')}
                 value={gradient.from}
                 fallback="#7aa2f7"
                 onChange={(c) => patchNameStyle({ gradient: { ...gradient, from: c } })}
               />
               <ColorField
-                label="Gradient end"
+                label={t('settings.diddyProfile.gradientEnd')}
                 value={gradient.to}
                 fallback="#c084fc"
                 onChange={(c) => patchNameStyle({ gradient: { ...gradient, to: c } })}
               />
             </Field>
-            <Field label="Angle">
+            <Field label={t('settings.diddyProfile.angle')}>
               <AngleField
                 value={gradient.angle ?? 90}
                 onChange={(angle) => patchNameStyle({ gradient: { ...gradient, angle } })}
@@ -1006,37 +1023,37 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
     <>
       <SettingsCard
         icon={Icons.Flag}
-        title="Header & accent"
-        description="Header colors are used when there is no banner. The accent colors buttons and outline."
+        title={t('settings.diddyProfile.headerAccent')}
+        description={t('settings.diddyProfile.headerColorsAreUsed')}
         action={
           (draft.card?.from || draft.card?.to || draft.card?.angle !== undefined) && (
             <ClearButton
-              label="Clear header"
+              label={t('settings.diddyProfile.clearHeader')}
               onClick={() => patchCard({ from: undefined, to: undefined, angle: undefined })}
             />
           )
         }
       >
-        <Field label="Header colors">
+        <Field label={t('settings.diddyProfile.headerColors')}>
           <ColorField
-            label="Header start"
+            label={t('settings.diddyProfile.headerStart')}
             value={draft.card?.from}
             fallback="#3a3f5c"
             onChange={(c) => patchCard({ from: c })}
           />
           <ColorField
-            label="Header end"
+            label={t('settings.diddyProfile.headerEnd')}
             value={draft.card?.to}
             fallback="#3a3f5c"
             onChange={(c) => patchCard({ to: c })}
           />
         </Field>
-        <Field label="Direction">
+        <Field label={t('settings.diddyProfile.direction')}>
           <AngleField value={draft.card?.angle ?? 135} onChange={(angle) => patchCard({ angle })} />
         </Field>
-        <Field label="Accent color">
+        <Field label={t('settings.diddyProfile.accentColor')}>
           <ColorField
-            label="Accent color"
+            label={t('settings.diddyProfile.accentColor')}
             value={draft.card?.accent}
             fallback="#7aa2f7"
             onChange={(c) => patchCard({ accent: c })}
@@ -1046,12 +1063,16 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
       </SettingsCard>
       <SettingsCard
         icon={Icons.Photo}
-        title="Banner"
-        description="An image or GIF at the top of your card. Drop a file or upload one."
+        title={t('settings.diddyProfile.banner')}
+        description={t('settings.diddyProfile.anImageOrGif')}
       >
         <UploadField
-          title={draft.card?.bannerMxc ? 'Banner image' : 'No banner yet'}
-          hint="GIF, WebP or PNG"
+          title={
+            draft.card?.bannerMxc
+              ? t('settings.diddyProfile.bannerImage')
+              : t('settings.diddyProfile.noBannerYet')
+          }
+          hint={t('settings.diddyProfile.gifWebpOrPng')}
           accept="image/*"
           wide
           mxc={draft.card?.bannerMxc}
@@ -1073,8 +1094,8 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
       </SettingsCard>
       <SettingsCard
         icon={Icons.Pencil}
-        title="Bio"
-        description="A short text under your name."
+        title={t('settings.diddyProfile.bio')}
+        description={t('settings.diddyProfile.aShortTextUnder')}
         action={<Counter value={(draft.bio ?? '').length} max={MAX_BIO} />}
       >
         <textarea
@@ -1082,8 +1103,8 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
           rows={4}
           maxLength={MAX_BIO}
           value={draft.bio ?? ''}
-          placeholder="Tell people a bit about you"
-          aria-label="Bio"
+          placeholder={t('settings.diddyProfile.tellPeopleABit')}
+          aria-label={t('settings.diddyProfile.bio')}
           onChange={(e) => setDraft((d) => ({ ...d, bio: e.target.value.slice(0, MAX_BIO) }))}
         />
       </SettingsCard>
@@ -1101,8 +1122,8 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
     <>
       <SettingsCard
         icon={Icons.User}
-        title="Profile picture"
-        description="Your profile picture is your Matrix picture, also as a GIF, WebP or APNG."
+        title={t('settings.diddyProfile.profilePicture')}
+        description={t('settings.diddyProfile.yourProfilePictureIs')}
       >
         <div className={css.Controls}>
           <Avatar size="400" radii="Pill">
@@ -1114,34 +1135,38 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
               renderFallback={() => <Text size="H4">{nameInitials(displayName)}</Text>}
             />
           </Avatar>
-          <Hint>Change it in Settings &gt; Account. It shows in every preview here.</Hint>
+          <Hint>{t('settings.diddyProfile.changeItInSettings')}</Hint>
         </div>
       </SettingsCard>
       <SettingsCard
         icon={Icons.Bookmark}
-        title="Nameplate"
-        description="The background other Diddy users see behind your row in the member and DM lists."
+        title={t('settings.diddyProfile.nameplate')}
+        description={t('settings.diddyProfile.theBackgroundOtherDiddy')}
       >
-        <Field label="Style">
+        <Field label={t('settings.diddyProfile.style')}>
           <Segmented
-            label="Nameplate style"
+            label={t('settings.diddyProfile.nameplateStyle')}
             value={draft.nameplate?.fit ?? 'fade'}
             options={[
-              { id: 'fade', label: 'Fade in' },
-              { id: 'full', label: 'Whole row' },
+              { id: 'fade', label: t('settings.diddyProfile.fadeIn') },
+              { id: 'full', label: t('settings.diddyProfile.wholeRow') },
             ]}
             onChange={(fit) => patchPlate({ fit: fit === 'full' ? 'full' : undefined })}
           />
         </Field>
-        <StackField label="Gradient">
-          <div className={css.PresetGrid} role="group" aria-label="Gradient presets">
+        <StackField label={t('settings.diddyProfile.gradient')}>
+          <div
+            className={css.PresetGrid}
+            role="group"
+            aria-label={t('settings.diddyProfile.gradientPresets')}
+          >
             <button
               type="button"
               className={classNames(css.PresetSwatch, css.PresetNone)}
               aria-pressed={!draft.nameplate?.preset}
               onClick={() => patchPlate({ preset: undefined, flow: undefined })}
             >
-              None
+              {t('settings.diddyProfile.none')}
             </button>
             {NAMEPLATE_PRESETS.map((preset) => (
               <button
@@ -1158,7 +1183,7 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
           </div>
         </StackField>
         {draft.nameplate?.preset ? (
-          <Field label="Flowing">
+          <Field label={t('settings.diddyProfile.flowing')}>
             <Switch
               variant="Primary"
               value={!!draft.nameplate.flow}
@@ -1166,9 +1191,9 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
             />
           </Field>
         ) : (
-          <Field label="Color">
+          <Field label={t('settings.diddyProfile.color')}>
             <ColorField
-              label="Nameplate color"
+              label={t('settings.diddyProfile.nameplateColor')}
               value={draft.nameplate?.color}
               fallback="#7aa2f7"
               onChange={(c) => patchPlate({ color: c })}
@@ -1180,11 +1205,13 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
         )}
         <UploadField
           title={
-            (draft.nameplate?.videoMxc && 'Nameplate video') ||
-            (draft.nameplate?.imageMxc && 'Nameplate image') ||
-            'Picture or video (optional)'
+            (draft.nameplate?.videoMxc && t('settings.diddyProfile.nameplateVideo')) ||
+            (draft.nameplate?.imageMxc && t('settings.diddyProfile.nameplateImage')) ||
+            t('settings.diddyProfile.pictureOrVideoOptional')
           }
-          hint={`PNG, JPG, GIF, WebP, a short WebM / MP4 loop (max ${MAX_NAMEPLATE_VIDEO_SECONDS} s, muted) or a ZIP with one`}
+          hint={t('settings.diddyProfile.pngJpgGifWebp', {
+            maxNameplateVideoSeconds: MAX_NAMEPLATE_VIDEO_SECONDS,
+          })}
           accept={NAMEPLATE_ACCEPT}
           acceptsFile={(file) => /^(image|video)\//.test(file.type) || isNameplateZip(file)}
           wide
@@ -1207,18 +1234,22 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
       </SettingsCard>
       <SettingsCard
         icon={Icons.Star}
-        title="Profile effect"
-        description="An animated overlay other Diddy users see over your profile card."
+        title={t('settings.diddyProfile.profileEffect')}
+        description={t('settings.diddyProfile.anAnimatedOverlayOther')}
       >
-        <StackField label="Built-in">
-          <div className={css.PresetGrid} role="group" aria-label="Profile effect presets">
+        <StackField label={t('settings.diddyProfile.builtIn')}>
+          <div
+            className={css.PresetGrid}
+            role="group"
+            aria-label={t('settings.diddyProfile.profileEffectPresets')}
+          >
             <button
               type="button"
               className={classNames(css.PresetSwatch, css.PresetNone)}
               aria-pressed={!draft.effect}
               onClick={() => setDraft((d) => ({ ...d, effect: undefined }))}
             >
-              None
+              {t('settings.diddyProfile.none')}
             </button>
             {PROFILE_EFFECT_PRESETS.map((preset) => (
               <button
@@ -1237,12 +1268,15 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
         <UploadField
           title={
             draft.effect?.layers
-              ? `${draft.effect.name ?? 'Your effect'} (${draft.effect.layers.length} ${
-                  draft.effect.layers.length === 1 ? 'layer' : 'layers'
-                })`
-              : 'Your own effect (optional)'
+              ? t('settings.diddyProfile.ownLayers', {
+                  name: draft.effect.name ?? t('settings.diddyProfile.yourEffect'),
+                  count: draft.effect.layers.length,
+                })
+              : t('settings.diddyProfile.yourOwnEffectOptional')
           }
-          hint={`A ZIP with konfiguration.json and its layers (Phasen/ or Ebenen/), or one animated PNG, WebP or GIF with a transparent background. Up to ${MAX_EFFECT_LAYERS} layers, 3 MB each, 8 MB in total.`}
+          hint={t('settings.diddyProfile.aZipWithKonfiguration', {
+            maxEffectLayers: MAX_EFFECT_LAYERS,
+          })}
           accept=".zip,application/zip,image/png,image/webp,image/gif"
           acceptsFile={(file) =>
             ['image/png', 'image/webp', 'image/gif'].includes(file.type) || isNameplateZip(file)
@@ -1256,18 +1290,22 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
       </SettingsCard>
       <SettingsCard
         icon={Icons.Photo}
-        title="Profile frame"
-        description="A decorative frame other Diddy users see around your profile card."
+        title={t('settings.diddyProfile.profileFrame')}
+        description={t('settings.diddyProfile.aDecorativeFrameOther')}
       >
-        <StackField label="Built-in">
-          <div className={css.PresetGrid} role="group" aria-label="Profile frame presets">
+        <StackField label={t('settings.diddyProfile.builtIn')}>
+          <div
+            className={css.PresetGrid}
+            role="group"
+            aria-label={t('settings.diddyProfile.profileFramePresets')}
+          >
             <button
               type="button"
               className={classNames(css.PresetSwatch, css.PresetNone)}
               aria-pressed={!draft.frame}
               onClick={() => setDraft((d) => ({ ...d, frame: undefined }))}
             >
-              None
+              {t('settings.diddyProfile.none')}
             </button>
             {PROFILE_FRAME_PRESETS.map((preset) => (
               <button
@@ -1292,10 +1330,11 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
         <UploadField
           title={
             draft.frame?.layers
-              ? `${draft.frame.name ?? 'Your frame'} (${draft.frame.layers.length} ${
-                  draft.frame.layers.length === 1 ? 'layer' : 'layers'
-                })`
-              : 'Your own frame (optional)'
+              ? t('settings.diddyProfile.ownLayers', {
+                  name: draft.frame.name ?? t('settings.diddyProfile.yourFrame'),
+                  count: draft.frame.layers.length,
+                })
+              : t('settings.diddyProfile.yourOwnFrameOptional')
           }
           hint={`A ZIP with konfiguration.json and its layers (Ebenen/), a ZIP with a *top* and a *bottom* picture, or one PNG / WebP laid over the whole card. Up to ${MAX_FRAME_LAYERS} layers, ${
             MAX_FRAME_LAYER_BYTES / (1024 * 1024)
@@ -1318,10 +1357,10 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
     <>
       <SettingsCard
         icon={Icons.Smile}
-        title="Status"
-        description="Shown next to your picture everywhere: profile card, member and DM lists, user panel."
+        title={t('settings.diddyProfile.status')}
+        description={t('settings.diddyProfile.shownNextToYour')}
       >
-        <div className={css.ChipRow} role="group" aria-label="Status">
+        <div className={css.ChipRow} role="group" aria-label={t('settings.diddyProfile.status')}>
           {STATUS_OPTIONS.map((s) => (
             <button
               key={s.status}
@@ -1347,12 +1386,10 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
     <>
       <SettingsCard
         icon={Icons.Server}
-        title="Data room"
-        description="The hidden room Diddy uses to share profiles, badges and name styles."
+        title={t('settings.diddyProfile.dataRoom')}
+        description={t('settings.diddyProfile.theHiddenRoomDiddy')}
         footer={
-          lightRooms.length > 0 && (
-            <Hint>Message mode (no admin rights): your profile is stored as hidden messages.</Hint>
-          )
+          lightRooms.length > 0 && <Hint>{t('settings.diddyProfile.messageModeNoAdmin')}</Hint>
         }
       >
         <div className={css.Group}>
@@ -1365,7 +1402,9 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
                     {room.name}
                   </Text>
                   <Text size="T200" priority="300">
-                    {light ? 'Message mode' : 'State mode'}
+                    {light
+                      ? t('settings.diddyProfile.messageMode')
+                      : t('settings.diddyProfile.stateMode')}
                   </Text>
                 </Box>
                 {light && (
@@ -1379,7 +1418,7 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
                       setLightUsed(false);
                     }}
                   >
-                    <Text size="B300">Stop using this room</Text>
+                    <Text size="B300">{t('settings.diddyProfile.stopUsingThisRoom')}</Text>
                   </Button>
                 )}
               </div>
@@ -1389,25 +1428,21 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
       </SettingsCard>
       <SettingsCard
         icon={Icons.ShieldLock}
-        title="What others see"
-        description="Everything on this page is optional."
+        title={t('settings.diddyProfile.whatOthersSee')}
+        description={t('settings.diddyProfile.everythingOnThisPage')}
       >
-        <Hint>
-          Your profile card, badges and name style are shared with everyone in the data room who
-          uses Diddy. Fields you leave empty are not shared. Links must be https addresses and are
-          checked for each platform.
-        </Hint>
+        <Hint>{t('settings.diddyProfile.yourProfileCardBadges')}</Hint>
         <Field
-          label="Show my Diddy version"
-          hint={`${APP_VERSION}, small on your profile card. Switched off, it is removed from your profile.`}
+          label={t('settings.diddyProfile.showMyDiddyVersion')}
+          hint={t('settings.diddyProfile.appversionSmallOnYour', { appVersion: APP_VERSION })}
         >
           <Switch variant="Primary" value={shareVersion} onChange={setShareVersion} />
         </Field>
       </SettingsCard>
       <SettingsCard
         icon={Icons.Terminal}
-        title="Diagnostics"
-        description="Technical details about the data rooms, for troubleshooting."
+        title={t('settings.diddyProfile.diagnostics')}
+        description={t('settings.diddyProfile.technicalDetailsAboutThe')}
       >
         <DebugPanel mx={mx} />
       </SettingsCard>
@@ -1438,7 +1473,7 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
           // the same file can be picked again
           evt.target.value = '';
           handleImportFile(file).catch(() =>
-            setTransfer({ tone: 'error', text: 'The file could not be read.' })
+            setTransfer({ tone: 'error', text: t('settings.diddyProfile.theFileCouldNot2') })
           );
         }}
       />
@@ -1453,7 +1488,7 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
           handleExport();
         }}
       >
-        <Text size="B300">Export</Text>
+        <Text size="B300">{t('settings.diddyProfile.export')}</Text>
       </Button>
       <Button
         size="300"
@@ -1464,7 +1499,7 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
         disabled={saving}
         onClick={() => importInput.current?.click()}
       >
-        <Text size="B300">Import</Text>
+        <Text size="B300">{t('settings.diddyProfile.import')}</Text>
       </Button>
       <Button
         size="300"
@@ -1478,7 +1513,7 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
           setSaveError(undefined);
         }}
       >
-        <Text size="B300">Reset to default</Text>
+        <Text size="B300">{t('settings.diddyProfile.resetToDefault')}</Text>
       </Button>
     </>
   ) : undefined;
@@ -1486,7 +1521,11 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
   return (
     <Page>
       {/* the same slim header as every other settings page; save / cancel live in the save bar */}
-      <SettingsPageHeader title="Profile" requestClose={requestClose} actions={headerActions} />
+      <SettingsPageHeader
+        title={t('settings.diddyProfile.profile')}
+        requestClose={requestClose}
+        actions={headerActions}
+      />
       <Box grow="Yes">
         <Scroll hideTrack visibility="Hover">
           <div
@@ -1525,11 +1564,14 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
                 </div>
               </div>
 
-              <aside className={css.PreviewColumn} aria-label="Live preview">
+              <aside
+                className={css.PreviewColumn}
+                aria-label={t('settings.diddyProfile.livePreview')}
+              >
                 <SettingsCard
                   icon={Icons.Eye}
-                  title="Preview"
-                  description="Your unsaved changes, drawn by the same parts of Diddy others see them in."
+                  title={t('settings.diddyProfile.preview')}
+                  description={t('settings.diddyProfile.yourUnsavedChangesDrawn')}
                   action={
                     oneColumn && (
                       <Button
@@ -1540,7 +1582,11 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
                         aria-expanded={previewOpen}
                         onClick={() => setPreviewOpen((o) => !o)}
                       >
-                        <Text size="B300">{previewOpen ? 'Hide' : 'Show'}</Text>
+                        <Text size="B300">
+                          {previewOpen
+                            ? t('settings.diddyProfile.hide')
+                            : t('settings.diddyProfile.show')}
+                        </Text>
                       </Button>
                     )
                   }
@@ -1567,7 +1613,7 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
                   {saveError ? (
                     <span className={css.ErrorText}>{saveError}</span>
                   ) : (
-                    'You have unsaved changes.'
+                    t('settings.diddyProfile.youHaveUnsavedChanges')
                   )}
                 </Text>
                 <Box gap="200" shrink="No">
@@ -1579,7 +1625,7 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
                     disabled={saving}
                     onClick={resetDraft}
                   >
-                    <Text size="B300">Cancel</Text>
+                    <Text size="B300">{t('settings.diddyProfile.cancel')}</Text>
                   </Button>
                   <Button
                     size="300"
@@ -1588,7 +1634,11 @@ export function DiddyProfileSettings({ requestClose }: DiddyProfileSettingsProps
                     disabled={saveDisabled}
                     onClick={handleSave}
                   >
-                    <Text size="B300">{saving ? 'Saving...' : 'Save changes'}</Text>
+                    <Text size="B300">
+                      {saving
+                        ? t('settings.diddyProfile.saving')
+                        : t('settings.diddyProfile.saveChanges')}
+                    </Text>
                   </Button>
                 </Box>
               </div>

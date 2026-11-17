@@ -22,6 +22,7 @@ import {
 import { ThemeKind, useTheme } from '../../hooks/useTheme';
 import { BreakWord } from '../../styles/Text.css';
 import * as css from './PluginFrame.css';
+import { useTranslation } from 'react-i18next';
 
 /** How long a page may take to say 'diddy:ready' before we tell the user it does not answer. */
 const READY_TIMEOUT = 10000;
@@ -86,6 +87,7 @@ type PluginFrameProps = {
  * message is checked to come from exactly this frame and to have one of the known shapes.
  */
 export function PluginFrame({ plugin, compact, look, previewHtml }: PluginFrameProps) {
+  const { t } = useTranslation();
   const isPreview = previewHtml !== undefined;
   const isPreviewRef = useRef(isPreview);
   isPreviewRef.current = isPreview;
@@ -178,7 +180,9 @@ export function PluginFrame({ plugin, compact, look, previewHtml }: PluginFrameP
   const localId = isPreview ? undefined : localPluginId(plugin.url);
   const localRecord = useLocalPluginRecord(localId);
   // built-in pages load on first use; empty until then
-  const [builtinHtml, setBuiltinHtml] = useState(() => (slug ? builtinHtmlIfLoaded(slug) : undefined));
+  const [builtinHtml, setBuiltinHtml] = useState(() =>
+    slug ? builtinHtmlIfLoaded(slug) : undefined
+  );
   useEffect(() => {
     if (!slug || builtinHtmlIfLoaded(slug) !== undefined) return undefined;
     let cancelled = false;
@@ -218,11 +222,9 @@ export function PluginFrame({ plugin, compact, look, previewHtml }: PluginFrameP
 
   let status: string | undefined = manifest?.description;
   if (missingLocal) {
-    status = 'Content missing on this device. Remove the plugin and add it again.';
+    status = t('plugins.frame.contentMissingOnThis');
   } else if (!ready) {
-    status = silent
-      ? 'This page does not talk to Diddy. It is shown as a plain page.'
-      : 'Loading plugin…';
+    status = silent ? t('plugins.frame.thisPageDoesNot') : t('plugins.frame.loadingPlugin');
   }
 
   return (
@@ -264,8 +266,8 @@ export function PluginFrame({ plugin, compact, look, previewHtml }: PluginFrameP
             size="300"
             radii="300"
             variant="Surface"
-            aria-label={`Reload ${plugin.name}`}
-            title="Reload"
+            aria-label={t('plugins.frame.reloadName', { name: plugin.name })}
+            title={t('plugins.frame.reload')}
             onClick={() => setLoadKey((key) => key + 1)}
           >
             <Icon src={Icons.Reload} size="100" />

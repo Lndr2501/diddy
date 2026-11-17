@@ -48,6 +48,7 @@ object AppModel {
     private fun setActive(id: String?) {
         activeAccountId = id
         AccountList.activeAccountId = id
+        Hooks.activeAccountChanged(activeAccount)
     }
 
     fun restore() {
@@ -158,15 +159,12 @@ object AppModel {
         account.start()
     }
 
-    /** Something to tell once, over everything (a logout the server did not get). */
-    var notice by mutableStateOf<String?>(null)
-
-    suspend fun logout(account: MatrixAccount) {
-        Hooks.beforeLogout(account)
-        account.logout()?.let { reason ->
-            notice = "${account.userId} is signed out on this phone, but the server could not be told ($reason). " +
-                "This device stays in your device list until you remove it in Settings > Security on another device."
-        }
+    suspend fun logout(account: MatrixAccount, localOnly: Boolean = false) {
+        // Failed server logout keeps both the account and its running notifications/call.
+        if (localOnly) {
+            Hooks.beforeLogout(account)
+            account.removeFromDevice()
+        } else account.logout { Hooks.beforeLogout(account) }
         accounts = accounts.filter { it.id != account.id }
         saveAccountList()
         if (activeAccountId == account.id) setActive(accounts.firstOrNull()?.id)
@@ -191,5 +189,6 @@ object AppModel {
         var isDeafened: () -> Boolean = { false }
         var silencesSound: (MatrixAccount, Sound) -> Boolean = { _, _ -> false }
         var beforeLogout: suspend (MatrixAccount) -> Unit = {}
+        var activeAccountChanged: (MatrixAccount?) -> Unit = {}
     }
 }

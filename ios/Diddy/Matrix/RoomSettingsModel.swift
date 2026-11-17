@@ -143,7 +143,7 @@ final class RoomSettingsModel: ObservableObject {
             // Desktop: HTTP 409 reads "Address is already in use!".
             let message = error.friendlyMessage
             if message.localizedCaseInsensitiveContains("already exist") || message.localizedCaseInsensitiveContains("in use") {
-                throw DiddyError("Address is already in use!")
+                throw DiddyError(L("ios.errorsExtra.addressIsAlreadyInUse"))
             }
             throw error
         }

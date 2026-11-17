@@ -3,8 +3,10 @@ import { Box, Button, Icon, Icons, Text, config, toRem } from 'folds';
 import { Page, PageHero, PageHeroSection } from '../../components/page';
 import { AppLogo } from '../../components/app-logo/AppLogo';
 import { APP_NAME, APP_VERSION, APP_REPO_URL, UPSTREAM_NAME, UPSTREAM_URL } from '../../appInfo';
+import { useTranslation } from 'react-i18next';
 
 export function WelcomePage() {
+  const { t } = useTranslation();
   return (
     <Page>
       <Box
@@ -16,10 +18,10 @@ export function WelcomePage() {
         <PageHeroSection>
           <PageHero
             icon={<AppLogo size={70} />}
-            title={`Welcome to ${APP_NAME}`}
+            title={t('nav.welcomePage.welcomeToAppname', { appName: APP_NAME })}
             subTitle={
               <span>
-                A Matrix chat client based on{' '}
+                {t('nav.welcomePage.aMatrixChatClient')}{' '}
                 <a href={UPSTREAM_URL} target="_blank" rel="noreferrer noopener">
                   {UPSTREAM_NAME}
                 </a>
@@ -40,7 +42,7 @@ export function WelcomePage() {
                   before={<Icon size="200" src={Icons.Code} />}
                 >
                   <Text as="span" size="B400" truncate>
-                    Source Code
+                    {t('nav.welcomePage.sourceCode')}
                   </Text>
                 </Button>
                 <Button
@@ -52,7 +54,7 @@ export function WelcomePage() {
                   before={<Icon size="200" src={Icons.Heart} />}
                 >
                   <Text as="span" size="B400" truncate>
-                    {UPSTREAM_NAME} (upstream)
+                    {t('nav.welcomePage.upstreamnameUpstream', { upstreamName: UPSTREAM_NAME })}
                   </Text>
                 </Button>
               </Box>

@@ -34,9 +34,11 @@ import { getDirectCreatePath, withSearchParam } from '../pages/pathUtils';
 import { RangeInput } from './diddy/RangeInput';
 import { ShareVolume, useShareVolume } from '../features/call/useShareVolume';
 import * as sheetCss from './sheet/Sheet.css';
+import { useTranslation } from 'react-i18next';
 
 /** The volume of somebody's screen share, for you only: mute button and slider. */
 export function StreamVolume({ volume }: { volume: ShareVolume }) {
+  const { t } = useTranslation();
   const percent = Math.round(volume.volume * 100);
   const muted = volume.volume === 0;
   if (!volume.hasAudio) {
@@ -46,7 +48,7 @@ export function StreamVolume({ volume }: { volume: ShareVolume }) {
         priority="300"
         style={{ padding: `${config.space.S100} ${config.space.S200}` }}
       >
-        This stream has no sound
+        {t('call.userMenu.thisStreamHasNo')}
       </Text>
     );
   }
@@ -57,9 +59,9 @@ export function StreamVolume({ volume }: { volume: ShareVolume }) {
       style={{ padding: `${config.space.S100} ${config.space.S200} ${config.space.S200}` }}
     >
       <Box alignItems="Center" justifyContent="SpaceBetween" gap="200">
-        <Text size="T300">Stream Volume</Text>
+        <Text size="T300">{t('call.userMenu.streamVolume')}</Text>
         <Text size="T200" priority="300" aria-hidden>
-          {muted ? 'Muted' : `${percent}%`}
+          {muted ? t('call.userMenu.muted') : `${percent}%`}
         </Text>
       </Box>
       <Box alignItems="Center" gap="200">
@@ -69,15 +71,17 @@ export function StreamVolume({ volume }: { volume: ShareVolume }) {
           variant={muted ? 'Critical' : 'SurfaceVariant'}
           fill={muted ? 'Soft' : 'None'}
           aria-pressed={muted}
-          aria-label={muted ? 'Unmute stream for me' : 'Mute stream for me'}
-          title={muted ? 'Unmute stream for me' : 'Mute stream for me'}
+          aria-label={
+            muted ? t('call.userMenu.unmuteStreamForMe') : t('call.userMenu.muteStreamForMe')
+          }
+          title={muted ? t('call.userMenu.unmuteStreamForMe') : t('call.userMenu.muteStreamForMe')}
           onClick={volume.toggleMuted}
         >
           <Icon size="100" src={muted ? Icons.VolumeMute : Icons.VolumeHigh} />
         </IconButton>
         <RangeInput
-          aria-label="Stream volume"
-          aria-valuetext={muted ? 'Muted' : `${percent}%`}
+          aria-label={t('call.userMenu.streamVolume2')}
+          aria-valuetext={muted ? t('call.userMenu.muted') : `${percent}%`}
           min={0}
           max={100}
           step={1}
@@ -98,6 +102,7 @@ export function StreamVolume({ volume }: { volume: ShareVolume }) {
  * (see `installCallFrameMenu`) and from the avatars of the call status bar.
  */
 export function CallUserMenu() {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const navigate = useNavigate();
   const callEmbed = useAtomValue(callEmbedAtom);
@@ -195,7 +200,7 @@ export function CallUserMenu() {
                   radii="300"
                   onClick={handleProfile}
                 >
-                  <Text size="T300">Profile</Text>
+                  <Text size="T300">{t('call.userMenu.profile')}</Text>
                 </MenuItem>
               )}
               {!isMe && (
@@ -205,7 +210,7 @@ export function CallUserMenu() {
                   radii="300"
                   onClick={handleMessage}
                 >
-                  <Text size="T300">Message</Text>
+                  <Text size="T300">{t('call.userMenu.message')}</Text>
                 </MenuItem>
               )}
               {tileVisible && (
@@ -216,7 +221,9 @@ export function CallUserMenu() {
                   onClick={handleVolume}
                 >
                   <Text size="T300">
-                    {streamVolume ? 'Voice Volume & Mute for me…' : 'Volume & Mute for me…'}
+                    {streamVolume
+                      ? t('call.userMenu.voiceVolumeMuteFor')
+                      : t('call.userMenu.volumeMuteForMe')}
                   </Text>
                 </MenuItem>
               )}
@@ -227,7 +234,7 @@ export function CallUserMenu() {
                 radii="300"
                 onClick={() => handleCopy(name)}
               >
-                <Text size="T300">Copy Name</Text>
+                <Text size="T300">{t('call.userMenu.copyName')}</Text>
               </MenuItem>
               <MenuItem
                 className={sheetCss.MenuRow}
@@ -235,7 +242,7 @@ export function CallUserMenu() {
                 radii="300"
                 onClick={() => handleCopy(userId)}
               >
-                <Text size="T300">Copy User ID</Text>
+                <Text size="T300">{t('call.userMenu.copyUserId')}</Text>
               </MenuItem>
             </Box>
           </Menu>

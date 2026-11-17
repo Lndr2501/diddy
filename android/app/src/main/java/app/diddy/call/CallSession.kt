@@ -45,9 +45,9 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.matrix.rustcomponents.sdk.CallDeclineListener
-import org.matrix.rustcomponents.sdk.RoomStateEvent
-import org.matrix.rustcomponents.sdk.RoomStateEventsListener
 import org.matrix.rustcomponents.sdk.RtcTransport
 import org.matrix.rustcomponents.sdk.TaskHandle
 import org.matrix.rustcomponents.sdk.ToDeviceMessage
@@ -111,26 +111,22 @@ class CallSession(private val context: Context, val account: MatrixAccount, priv
     var onDropped: (() -> Unit)? = null
     var onDeclined: ((String) -> Unit)? = null
 
-    private val keyProvider = MediaKeyProvider()
+    private val keyProvider = BinaryKeyProvider()
     val liveKitRoom: Room = LiveKit.create(context.applicationContext)
     private var encrypted = false
     private var closed = false
     private var leaving = false
     private var ownKey = ByteArray(0)
-    private var ownKeyIndex = 0
-    /** Devices that have our current key. */
-    private val keySentTo = mutableSetOf<String>()
-    /** Keys from devices whose membership has not arrived yet (LiveKit is often faster). */
-    private val pendingKeys = mutableMapOf<String, CallLogic.ReceivedKey>()
-    /** Devices whose key we have, by LiveKit identity. */
-    private val keyed = mutableSetOf<String>()
-    private val memberEvents = mutableMapOf<String, CallLogic.MemberEvent>()
-    /** Devices with a live MatrixRTC membership in this room. */
-    private var rtcMembers: Set<CallLogic.MemberDevice> = emptySet()
-    private var membersHandle: TaskHandle? = null
-    private var rotateJob: Job? = null
-    /** Encrypted call: whether everyone sent their key (the badge in the call screen). */
-    var protection by mutableStateOf<CallLogic.Protection>(CallLogic.Protection.NotEncrypted)
+    private val ownKeyIndex = 0
+    private var ownKeyGeneration = 0L
+    private val keyMutex = Mutex()
+    private var authorized = emptySet<String>()
+    private var membershipIds = emptyMap<String, String>()
+    private val pendingKeys = mutableMapOf<String, Pair<CallLogic.ReceivedKey, Long>>()
+    private var distributed = emptySet<String>()
+    private val disconnectedDevices = mutableSetOf<String>()
+    private var keysJob: Job? = null
+    var encryptionStatus by mutableStateOf("Checking encryption…")
         private set
     private var toDeviceHandle: TaskHandle? = null
     private var declineHandle: TaskHandle? = null
@@ -166,9 +162,10 @@ class CallSession(private val context: Context, val account: MatrixAccount, priv
     }
 
     suspend fun connect() {
-        encrypted = runCatching { matrixRoom.isEncrypted() }.getOrDefault(false)
+        // An unavailable encryption state is an error, never permission to send plaintext.
+        encrypted = matrixRoom.isEncrypted()
+        encryptionStatus = if (encrypted) "End-to-end encrypted · checking members" else "Not end-to-end encrypted"
         val chosen = chooseTransport()
-        watchMemberships()
         ensureOpen()
         transport = chosen
         state = "Getting voice server access…"
@@ -205,12 +202,10 @@ class CallSession(private val context: Context, val account: MatrixAccount, priv
         ensureOpen()
         if (encrypted) {
             val identity = liveKitRoom.localParticipant.identity?.value ?: ownIdentity
-            keyProvider.setRawKey(identity, ownKeyIndex, ownKey)
+            keyProvider.install(identity, ownKeyIndex, ownKey)
         }
         applySpeaker()
         refreshMembers()
-        val present = liveKitRoom.remoteParticipants.values.toList()
-        if (encrypted) distributeKey(present)
         ensureOpen()
         try {
             sendMembership()
@@ -222,6 +217,7 @@ class CallSession(private val context: Context, val account: MatrixAccount, priv
             runCatching { matrixRoom.sendStateEventRaw(CallLogic.MEMBER_EVENT_TYPE, stateKey, "{}") }
             ensureOpen()
         }
+        if (encrypted) refreshKeys()
         // Read now, not at join time: the permission may have been granted meanwhile. As the
         // computer's camera only, the microphone stays off.
         if (companion?.media?.microphone == false) microphoneOn = false
@@ -232,6 +228,12 @@ class CallSession(private val context: Context, val account: MatrixAccount, priv
         // As the computer's silent camera, the phone shows no shared video either.
         if (companion == null) watchTogether.start()
         scheduleMembershipRefresh()
+        if (encrypted) keysJob = scope.launch {
+            while (!closed) {
+                delay(5_000)
+                refreshKeys()
+            }
+        }
         refreshMembers()
     }
 
@@ -248,14 +250,13 @@ class CallSession(private val context: Context, val account: MatrixAccount, priv
         screenSharing = false
         state = "Disconnected"
         refreshJob?.cancel()
+        keysJob?.cancel()
+        ownKey.fill(0)
         companionJob?.cancel()
         if (companion != null) runCatching { sendCompanionState(joined = false) }
         watchTogether.stop()
         toDeviceHandle?.cancel()
         toDeviceHandle = null
-        membersHandle?.cancel()
-        membersHandle = null
-        rotateJob?.cancel()
         if (wasConnected || membershipCreatedTs != null) {
             // An empty content ends our membership for everyone else.
             runCatching { matrixRoom.sendStateEventRaw(CallLogic.MEMBER_EVENT_TYPE, stateKey, "{}") }
@@ -446,11 +447,10 @@ class CallSession(private val context: Context, val account: MatrixAccount, priv
                 .mapNotNull { event ->
                     val key = event["state_key"].str() ?: return@mapNotNull null
                     val content = event["content"].obj() ?: return@mapNotNull null
-                    CallLogic.MemberEvent(key, content, event["origin_server_ts"].long(), event["sender"].str())
+                    CallLogic.MemberEvent(key, content, event["origin_server_ts"].long())
                 }
         }.getOrNull() ?: runCatching { matrixRoom.stateEvents(uniffi.ruma_events.StateEventType.CallMember) }.getOrDefault(emptyList())
-            .mapNotNull { event -> Json.obj(event.contentJson)?.let { CallLogic.MemberEvent(event.stateKey, it, event.timestamp?.toLong(), event.sender) } }
-        updateMemberships(parsed)
+            .mapNotNull { event -> Json.obj(event.contentJson)?.let { CallLogic.MemberEvent(event.stateKey, it) } }
         CallLogic.oldestTransport(parsed, stateKey, roomId, System.currentTimeMillis())?.let { return it }
         val transports = runCatching { account.client.discoverRtcTransports() }.getOrNull() ?: emptyList()
         for (transport in transports) {
@@ -622,131 +622,77 @@ class CallSession(private val context: Context, val account: MatrixAccount, priv
 
     // MARK: Media keys
 
-    /**
-     * Sends our current key to those of `participants` that are in the call according to Matrix
-     * and do not have it yet. Devices without a membership get it once theirs arrives.
-     */
-    private suspend fun distributeKey(participants: List<RemoteParticipant>, again: Boolean = false) {
-        if (!encrypted || ownKey.isEmpty()) return
-        val identities = participants.mapNotNull { it.identity?.value }.filter { again || it !in keySentTo }
-        val recipients = CallLogic.keyRecipients(identities, rtcMembers, ownIdentity)
-        if (recipients.isEmpty()) return
-        val key = ownKey
-        val index = ownKeyIndex
-        val content = CallLogic.keysContent(roomId, ownUserId, ownDeviceId, key, index, System.currentTimeMillis())
-        val sent = recipients.flatMap { (user, devices) -> devices.map { CallLogic.identity(user, it) } }
-        keySentTo += sent
+    private suspend fun distributeKey(identities: Set<String>) {
+        if (!encrypted || ownKey.isEmpty() || identities.isEmpty()) return
+        val recipients = CallLogic.recipients(identities.toList())
+        val content = CallLogic.keysContent(roomId, ownUserId, ownDeviceId, ownKey, ownKeyIndex, System.currentTimeMillis())
+        account.client.sendEncryptedToDeviceMessage(CallLogic.KEYS_EVENT_TYPE, recipients, Json.encode(content))
+    }
+
+    private suspend fun refreshKeys() = keyMutex.withLock {
+        if (closed || !encrypted) return@withLock
         try {
-            account.client.sendEncryptedToDeviceMessage(CallLogic.KEYS_EVENT_TYPE, recipients, Json.encode(content))
-        } catch (e: Exception) {
-            // Only when the key is still the same: a rotation meanwhile sends the new one anyway.
-            if (key === ownKey) keySentTo -= sent.toSet()
-            lastError = "Could not share the call key: ${e.friendlyMessage}"
+            val events = account.clientRequestArray("/_matrix/client/v3/rooms/${MatrixAccount.pathComponent(roomId)}/state")
+            if (closed) return@withLock
+            membershipIds = CallLogic.authorizedMemberships(events, System.currentTimeMillis()) - ownIdentity
+            val current = membershipIds.keys
+            val live = liveKitRoom.remoteParticipants.values.mapNotNull { it.identity?.value }.toSet() - disconnectedDevices
+            val plan = CallLogic.keyPlan(authorized, distributed, current, live)
+            val recipients = plan.recipients
+            // A device that left Matrix OR the media server must lose access to future frames.
+            authorized = current
+            if (plan.rotate) {
+                try { rotateOwnKey() } catch (e: Exception) { onDropped?.invoke(); throw e }
+                distributed = emptySet()
+            }
+            val sendingGeneration = ownKeyGeneration
+            distributeKey(recipients - distributed)
+            if (closed || ownKeyGeneration != sendingGeneration) return@withLock
+            distributed = recipients
+            applyPendingKeys()
+            encryptionStatus = "End-to-end encrypted"
+        } catch (e: kotlinx.coroutines.CancellationException) { throw e
+        } catch (_: Exception) {
+            authorized = emptySet()
+            membershipIds = emptyMap()
+            encryptionStatus = "End-to-end encrypted · member/key check failed"
+            lastError = "Could not verify call members or share encryption keys. Retrying…"
         }
     }
 
-    private fun receiveKeys(message: ToDeviceMessage) {
+    private fun rotateOwnKey() {
+        ownKey.fill(0)
+        ownKey = ByteArray(16).also { SecureRandom().nextBytes(it) }
+        ownKeyGeneration++
+        // Keep the sender's existing cryptor and slot. LiveKit 2.30 has no public setter for an
+        // active sender's index; removing/recreating it briefly detaches frame encryption.
+        // Replacing this slot's random key keeps every frame encrypted throughout the switch.
+        keyProvider.install(ownIdentity, ownKeyIndex, ownKey)
+    }
+
+    private suspend fun receiveKeys(message: ToDeviceMessage) {
         if (closed || message.eventType != CallLogic.KEYS_EVENT_TYPE) return
-        // Media keys only ever travel Olm-encrypted; a plain to-device message could come from anyone.
-        val info = message.encryptionInfo ?: return
         val received = CallLogic.parseKeys(message.content, message.senderId, roomId) ?: return
-        val device = CallLogic.split(received.participantId)?.second
-        if (info.senderDeviceId != null && info.senderDeviceId != device) {
-            DiagLog.write("call: dropped a key claimed for another device")
-            return
+        val encryption = message.encryptionInfo ?: return
+        val device = CallLogic.split(received.participantId)?.second ?: return
+        if (encryption.senderId != message.senderId || encryption.senderDeviceId != device) return
+        if (pendingKeys.size >= 64) pendingKeys.remove(pendingKeys.keys.first())
+        pendingKeys[received.participantId] = received to System.currentTimeMillis()
+        refreshKeys()
+    }
+
+    private fun applyPendingKeys() {
+        val now = System.currentTimeMillis()
+        val iterator = pendingKeys.iterator()
+        while (iterator.hasNext()) {
+            val (_, value) = iterator.next()
+            val (key, arrived) = value
+            if (now - arrived > 30_000) { iterator.remove(); continue }
+            val memberId = membershipIds[key.participantId] ?: continue
+            if (key.memberId != null && key.memberId != memberId && key.memberId != key.participantId) { iterator.remove(); continue }
+            keyProvider.install(key.participantId, key.index, key.key)
+            iterator.remove()
         }
-        if (!CallLogic.keyIsFromMember(received, info.senderDeviceId, rtcMembers)) {
-            pendingKeys[received.participantId] = received
-            return
-        }
-        useKey(received)
-    }
-
-    private fun useKey(received: CallLogic.ReceivedKey) {
-        keyProvider.setRawKey(received.participantId, received.index, received.key)
-        keyed += received.participantId
-        updateProtection()
-    }
-
-    /** MatrixRTC memberships of this room, live: who may get and send keys. */
-    private fun watchMemberships() {
-        if (membersHandle != null) return
-        membersHandle = runCatching {
-            matrixRoom.subscribeToStateEvents(uniffi.ruma_events.StateEventType.CallMember, object : RoomStateEventsListener {
-                override fun onUpdate(events: List<RoomStateEvent>) {
-                    val parsed = events.mapNotNull { event ->
-                        Json.obj(event.contentJson)?.let { CallLogic.MemberEvent(event.stateKey, it, event.timestamp?.toLong(), event.sender) }
-                            ?: CallLogic.MemberEvent(event.stateKey, emptyMap(), event.timestamp?.toLong(), event.sender)
-                    }
-                    scope.launch { updateMemberships(parsed) }
-                }
-            })
-        }.getOrNull()
-    }
-
-    private fun updateMemberships(events: List<CallLogic.MemberEvent>) {
-        if (closed) return
-        for (event in events) memberEvents[event.stateKey] = event
-        val before = rtcMembers
-        rtcMembers = CallLogic.liveMembers(memberEvents.values, System.currentTimeMillis())
-        if (rtcMembers == before || !encrypted) return
-        // Keys that waited for a membership.
-        for (identity in pendingKeys.keys.toList()) {
-            val key = pendingKeys[identity] ?: continue
-            if (CallLogic.keyIsFromMember(key, null, rtcMembers)) {
-                pendingKeys -= identity
-                useKey(key)
-            }
-        }
-        val left = before - rtcMembers
-        if (left.isNotEmpty()) {
-            for (device in left) {
-                keyed -= device.identity
-                pendingKeys -= device.identity
-            }
-            if (connected) scheduleRotation()
-        }
-        if (connected) scope.launch { distributeKey(liveKitRoom.remoteParticipants.values.toList()) }
-        updateProtection()
-    }
-
-    /**
-     * Someone left: a new key for everyone still here, so the one who left cannot listen in on
-     * what follows. The new key goes out first and is used a few seconds later (Element Call).
-     */
-    private fun scheduleRotation() {
-        if (!encrypted || ownKey.isEmpty()) return
-        rotateJob?.cancel()
-        rotateJob = scope.launch {
-            delay(CallLogic.ROTATE_DEBOUNCE_MS)
-            val identity = liveKitRoom.localParticipant.identity?.value ?: ownIdentity
-            val index = CallLogic.nextKeyIndex(ownKeyIndex)
-            val key = ByteArray(16).also { SecureRandom().nextBytes(it) }
-            ownKey = key
-            ownKeyIndex = index
-            keySentTo.clear()
-            // Known to LiveKit now, so remote copies of our own frames decrypt, but not used yet.
-            keyProvider.setRawKey(identity, index, key, current = false)
-            distributeKey(liveKitRoom.remoteParticipants.values.toList(), again = true)
-            delay(CallLogic.USE_NEW_KEY_DELAY_MS)
-            if (closed || ownKeyIndex != index) return@launch
-            keyProvider.setRawKey(identity, index, key)
-            if (!keyProvider.useIndexForPublishedTracks(liveKitRoom, identity, index)) republishOwnTracks()
-            DiagLog.write("call: rotated the media key")
-        }
-    }
-
-    /** Fallback of the rotation: published again, the tracks pick up the new key index. */
-    private suspend fun republishOwnTracks() {
-        val local = liveKitRoom.localParticipant
-        if (microphoneOn) runCatching { local.setMicrophoneEnabled(false); local.setMicrophoneEnabled(true); attachSoundboard() }
-        if (cameraOn) runCatching { local.setCameraEnabled(false); local.setCameraEnabled(true) }
-    }
-
-    private fun updateProtection() {
-        val remote = liveKitRoom.remoteParticipants.values.mapNotNull { it.identity?.value }
-        val next = CallLogic.protection(encrypted, remote, keyed)
-        if (next != protection) protection = next
     }
 
     // MARK: Events and members
@@ -755,20 +701,25 @@ class CallSession(private val context: Context, val account: MatrixAccount, priv
         if (closed) return
         when (event) {
             is RoomEvent.ParticipantConnected -> {
-                scope.launch { distributeKey(listOf(event.participant)) }
+                event.participant.identity?.value?.let { disconnectedDevices.remove(it) }
+                if (encrypted && connected) scope.launch { refreshKeys() }
                 if (connected && !deafened) Sounds.play(Sound.USER_JOINED)
                 applyVolumes()
             }
             is RoomEvent.ParticipantDisconnected -> {
-                if (connected && !deafened && !leaving) Sounds.play(Sound.USER_LEFT)
-                // Gone from the media server: a new key even before the membership ends.
-                event.participant.identity?.value?.let { identity ->
-                    keyed -= identity
-                    if (identity in keySentTo) {
-                        keySentTo -= identity
-                        if (connected && !leaving) scheduleRotation()
+                if (encrypted && connected) {
+                    event.participant.identity?.value?.let { disconnectedDevices.add(it) }
+                    try {
+                        // Switch before any network wait: the departed device knows the old key.
+                        rotateOwnKey()
+                        distributed = emptySet()
+                        scope.launch { refreshKeys() }
+                    } catch (_: Exception) {
+                        lastError = "Call ended because its encryption key could not be changed."
+                        onDropped?.invoke()
                     }
                 }
+                if (connected && !deafened && !leaving) Sounds.play(Sound.USER_LEFT)
             }
             is RoomEvent.TrackSubscribed -> applyVolumes()
             is RoomEvent.Disconnected -> if (!leaving) {
@@ -796,7 +747,6 @@ class CallSession(private val context: Context, val account: MatrixAccount, priv
                 result += CallMember("matrix:$userId", userId, account.name(userId), account.profiles[userId]?.avatarUrl, false, false, true, isConnecting = true)
             }
         }
-        updateProtection()
         val merged = onePerPerson(result)
         account.resolveProfiles(merged.map { it.userId }, roomId)
         if (merged != members) members = merged

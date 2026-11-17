@@ -8,22 +8,22 @@ enum MemberGroup: Int, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .owner: return "Owner"
-        case .admin: return "Admins"
-        case .moderator: return "Moderators"
-        case .member: return "Members"
-        case .invited: return "Invited"
+        case .owner: return L("ios.uiResults.owner")
+        case .admin: return L("ios.uiResults.admins")
+        case .moderator: return L("ios.uiResults.moderators")
+        case .member: return L("room.viewHeader.members")
+        case .invited: return L("ios.finalUI.invited")
         }
     }
 
     /// The label on someone's profile card.
     var singular: String {
         switch self {
-        case .owner: return "Owner"
-        case .admin: return "Admin"
-        case .moderator: return "Moderator"
-        case .member: return "Member"
-        case .invited: return "Invited"
+        case .owner: return L("ios.uiResults.owner")
+        case .admin: return L("room.membersDrawer.admin")
+        case .moderator: return L("ios.uiResults.moderator")
+        case .member: return L("ios.uiResults.member")
+        case .invited: return L("ios.finalUI.invited")
         }
     }
 }
@@ -68,7 +68,7 @@ final class MemberStore: ObservableObject {
 
     func load(account: MatrixAccount, roomId: String) async {
         guard let room = account.room(roomId) else {
-            error = "This room is not available yet."
+            error = L("ios.errorsExtra.thisRoomIsNotAvailableYet")
             return
         }
         loading = true
@@ -171,15 +171,15 @@ struct MembersView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     if let onClose {
                         Button { onClose() } label: { Image(systemName: "sidebar.right") }
-                            .accessibilityLabel("Hide member list")
+                            .accessibilityLabel(L("ios.finalUI.hideMemberList"))
                     } else {
-                        Button("Done") { dismiss() }
+                        Button(L("ios.settings.done")) { dismiss() }
                     }
                 }
                 if canInvite {
                     ToolbarItem(placement: .navigationBarLeading) {
                         Button { inviting = true } label: { Image(systemName: "person.badge.plus") }
-                            .accessibilityLabel("Invite people")
+                            .accessibilityLabel(L("ios.finalUI.invitePeople"))
                     }
                 }
             }
@@ -210,20 +210,20 @@ struct MembersView: View {
             VStack(spacing: 10) {
                 Image(systemName: "exclamationmark.triangle").font(.title2).foregroundStyle(Theme.faint)
                 Text(error).font(.subheadline).foregroundStyle(Theme.muted).multilineTextAlignment(.center)
-                Button("Try Again") { Task { await store.load(account: account, roomId: roomId) } }
+                Button(L("ios.settings.tryAgain")) { Task { await store.load(account: account, roomId: roomId) } }
                     .buttonStyle(.bordered)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 24)
         } else if search.isEmpty {
-            Text("Nobody here yet.")
+            Text(L("ios.finalUI.nobodyHereYet"))
                 .foregroundStyle(Theme.muted)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 24)
         } else {
             VStack(spacing: 6) {
                 Image(systemName: "magnifyingglass").font(.title2).foregroundStyle(Theme.faint)
-                Text("No one matches “\(search)”.").foregroundStyle(Theme.muted)
+                Text(L("ios.dynamicUI.noMatchingMembers", ["query": search])).foregroundStyle(Theme.muted)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 24)
@@ -357,10 +357,10 @@ struct UserProfileSheet: View {
                                 }
                                 .disabled(busy != nil)
                             }
-                            .confirmationDialog("Block \(name)?", isPresented: $confirmBlock, titleVisibility: .visible) {
-                                Button("Block", role: .destructive) { Task { await toggleIgnore() } }
+                            .confirmationDialog(L("ios.dynamicUI.blockMember", ["name": name]), isPresented: $confirmBlock, titleVisibility: .visible) {
+                                Button(L("settings.ignoredUserList.block"), role: .destructive) { Task { await toggleIgnore() } }
                             } message: {
-                                Text("You will no longer see their messages or invites. You can unblock them later.")
+                                Text(L("ios.finalUI.youWillNoLongerSeeTheirMessagesOrInvitesYouCanUnblockThem"))
                             }
                         }
                     }
@@ -370,7 +370,7 @@ struct UserProfileSheet: View {
             }
             .navigationBarTitleDisplayMode(.inline)
             .verificationSheet(account: account)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button(L("ios.settings.done")) { dismiss() } } }
             .task {
                 await load()
                 await account.loadDiddyProfiles()
@@ -394,11 +394,11 @@ struct UserProfileSheet: View {
             primaryActions
             if let diddy, diddy.hasCardContent { DiddyCardModules(profile: diddy) }
             if let version = diddy?.clientVersion {
-                Text("Diddy \(version)")
+                Text(L("ios.lastDynamic.diddyVersion", ["version": version]))
                     .font(.caption)
                     .foregroundStyle(Theme.faint)
                     .frame(maxWidth: .infinity, alignment: .trailing)
-                    .accessibilityLabel("Uses Diddy \(version)")
+                    .accessibilityLabel(L("ios.dynamicUI.usesDiddy", ["version": version]))
             }
         }
         .padding(decorated ? 10 : 0)
@@ -454,7 +454,7 @@ struct UserProfileSheet: View {
     private var primaryActions: some View {
         if isSelf {
             NavigationLink { DiddyProfileEditor(account: account) } label: {
-                Label("Edit Diddy Profile", systemImage: "paintbrush.fill").bold()
+                Label(L("ios.finalUI.editDiddyProfile"), systemImage: "paintbrush.fill").bold()
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
                     .background(RoundedRectangle(cornerRadius: 10).fill(Theme.elevated))

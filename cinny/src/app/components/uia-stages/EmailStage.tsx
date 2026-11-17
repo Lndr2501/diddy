@@ -5,6 +5,7 @@ import { StageComponentProps } from './types';
 import { AsyncState, AsyncStatus } from '../../hooks/useAsyncCallback';
 import { RequestEmailTokenCallback, RequestEmailTokenResponse } from '../../hooks/types';
 import * as sheetCss from '../sheet/Sheet.css';
+import { useTranslation } from 'react-i18next';
 
 function EmailErrorDialog({
   title,
@@ -19,6 +20,7 @@ function EmailErrorDialog({
   onRetry: (email: string) => void;
   onCancel: () => void;
 }) {
+  const { t } = useTranslation();
   const handleFormSubmit: FormEventHandler<HTMLFormElement> = (evt) => {
     evt.preventDefault();
     const { retryEmailInput } = evt.target as HTMLFormElement & {
@@ -43,7 +45,7 @@ function EmailErrorDialog({
           </Text>
           <Text>{message}</Text>
           <Text as="label" size="L400" style={{ paddingTop: config.space.S400 }}>
-            Email
+            {t('auth.email.email')}
           </Text>
           <Input
             name="retryEmailInput"
@@ -56,7 +58,7 @@ function EmailErrorDialog({
         </Box>
         <Button className={sheetCss.Pill} variant="Primary" type="submit">
           <Text as="span" size="B400">
-            Send Verification Email
+            {t('auth.email.sendVerificationEmail')}
           </Text>
         </Button>
         <Button
@@ -68,7 +70,7 @@ function EmailErrorDialog({
           onClick={onCancel}
         >
           <Text as="span" size="B400">
-            Cancel
+            {t('auth.email.cancel')}
           </Text>
         </Button>
       </Box>
@@ -90,6 +92,7 @@ export function EmailStageDialog({
   emailTokenState: AsyncState<RequestEmailTokenResponse, MatrixError>;
   requestEmailToken: RequestEmailTokenCallback;
 }) {
+  const { t } = useTranslation();
   const { errorCode, error, session } = stageData;
 
   const handleSubmit = useCallback(
@@ -125,7 +128,9 @@ export function EmailStageDialog({
     return (
       <Box direction="Column" alignItems="Center" gap="400">
         <Spinner variant="Secondary" size="600" />
-        <Text style={{ color: color.Secondary.Main }}>Sending verification email...</Text>
+        <Text style={{ color: color.Secondary.Main }}>
+          {t('auth.email.sendingVerificationEmail')}
+        </Text>
       </Box>
     );
   }
@@ -133,11 +138,11 @@ export function EmailStageDialog({
   if (emailTokenState.status === AsyncStatus.Error) {
     return (
       <EmailErrorDialog
-        title={emailTokenState.error.errcode ?? 'Verify Email'}
+        title={emailTokenState.error.errcode ?? t('auth.email.verifyEmail')}
         message={
           emailTokenState.error?.data?.error ??
           emailTokenState.error.message ??
-          'Failed to send verification Email request.'
+          t('auth.email.failedToSendVerification')
         }
         onRetry={handleEmailSubmit}
         onCancel={onCancel}
@@ -151,9 +156,11 @@ export function EmailStageDialog({
         <Box style={{ padding: config.space.S400 }} direction="Column" gap="400">
           <Box direction="Column" gap="100">
             <Text className={sheetCss.SheetTitle} size="H4">
-              Verification Request Sent
+              {t('auth.email.verificationRequestSent')}
             </Text>
-            <Text>{`Please check your email "${emailTokenState.data.email}" and validate before continuing further.`}</Text>
+            <Text>
+              {t('auth.email.pleaseCheckYourEmail', { email: emailTokenState.data.email })}
+            </Text>
 
             {errorCode && (
               <Text style={{ color: color.Critical.Main }}>{`${errorCode}: ${error}`}</Text>
@@ -165,7 +172,7 @@ export function EmailStageDialog({
             onClick={() => handleSubmit(emailTokenState.data.result.sid)}
           >
             <Text as="span" size="B400">
-              Continue
+              {t('auth.email.continue')}
             </Text>
           </Button>
         </Box>
@@ -176,8 +183,8 @@ export function EmailStageDialog({
   if (!email) {
     return (
       <EmailErrorDialog
-        title="Provide Email"
-        message="Please provide email to send verification request."
+        title={t('auth.email.provideEmail')}
+        message={t('auth.email.pleaseProvideEmailTo')}
         onRetry={handleEmailSubmit}
         onCancel={onCancel}
       />

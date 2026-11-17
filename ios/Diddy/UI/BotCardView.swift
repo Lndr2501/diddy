@@ -184,7 +184,7 @@ struct BotCardView: View {
                 .foregroundStyle(Theme.muted)
             }
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Playback")
+            .accessibilityLabel(L("ios.remainingUI.playback"))
             .accessibilityValue("\(BotCardParser.formatTime(position)) of \(BotCardParser.formatTime(duration))")
             .accessibilityAdjustableAction { direction in
                 guard seekable, let seek = track.seek else { return }
@@ -198,12 +198,12 @@ struct BotCardView: View {
     private func playerHeader(_ track: BotCardTrack) -> String {
         let base: String = {
             switch track.state {
-            case .searching: return "Searching"
-            case .downloading: return "Loading"
-            case .playing: return "Now playing"
-            case .paused: return "Paused"
-            case .stopped: return "Stopped"
-            case .error: return "Error"
+            case .searching: return L("ios.uiResults.searching")
+            case .downloading: return L("ios.uiResults.loading")
+            case .playing: return L("ios.uiResults.nowPlaying")
+            case .paused: return L("ios.uiResults.paused")
+            case .stopped: return L("ios.uiResults.stopped")
+            case .error: return L("ios.uiResults.error")
             }
         }()
         guard let room = track.room, track.state == .playing || track.state == .paused else { return base }
@@ -268,7 +268,7 @@ struct BotCardView: View {
                                  primary: true, label: playing ? "Pause" : "Play") { run(toggle) }
                 }
                 if let skip = controls.skip {
-                    playerButton("Skip", icon: "forward.end.fill", label: "Skip") { run(skip) }
+                    playerButton(L("ios.remainingUI.skip"), icon: "forward.end.fill", label: L("ios.remainingUI.skip")) { run(skip) }
                 }
                 if controls.volume != nil {
                     playerButton(track.volume.map { "\(Int($0.rounded()))%" }, icon: "speaker.wave.2.fill",
@@ -277,7 +277,7 @@ struct BotCardView: View {
                     }
                 }
                 if let dashboard = controls.dashboard {
-                    playerButton("Dashboard", icon: "square.grid.2x2.fill", label: "Dashboard") { run(dashboard) }
+                    playerButton(L("ios.finalControls.dashboard"), icon: "square.grid.2x2.fill", label: L("ios.finalControls.dashboard")) { run(dashboard) }
                 }
                 if !track.more.isEmpty {
                     playerButton(nil, icon: "ellipsis", selected: panel == .more, label: "More") {
@@ -296,7 +296,7 @@ struct BotCardView: View {
                     })
                     .tint(Theme.accent)
                     .disabled(busy)
-                    .accessibilityLabel("Volume")
+                    .accessibilityLabel(L("settings.customTheme.volume"))
                     Text("\(Int(volumeValue.rounded()))%")
                         .font(.footnote.weight(.semibold).monospacedDigit())
                         .foregroundStyle(Theme.text)
@@ -569,6 +569,7 @@ struct BotCommandSuggestions: View {
 
     var body: some View {
         let matches = enabled ? store.suggestions(for: draft) : []
+        let argument = enabled && matches.isEmpty ? store.argumentMatch(for: draft) : nil
         VStack(spacing: 0) {
             if !matches.isEmpty {
                 ScrollView {
@@ -593,6 +594,8 @@ struct BotCommandSuggestions: View {
                 }
                 .frame(maxHeight: min(220, CGFloat(matches.count) * 54))
                 .background(Theme.elevated)
+            } else if let argument {
+                argumentRows(argument)
             }
         }
         // Reading the room's state costs a request, so it waits until something command-like is typed.
@@ -601,5 +604,42 @@ struct BotCommandSuggestions: View {
             Task { await store.refreshFromServer(room: room, account: account) }
         }
         .task { await store.loadLocal(room: room) }
+    }
+
+    /// The fixed answers of the argument being typed (a tap completes it), or what the argument is.
+    @ViewBuilder
+    private func argumentRows(_ match: BotArgumentMatch) -> some View {
+        let hint = (match.option.required ? "" : "optional · ") + match.option.name
+            + (match.option.desc.map { " — " + $0 } ?? "")
+        ScrollView {
+            VStack(spacing: 0) {
+                if match.choices.isEmpty {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(match.command.usage).font(.subheadline.weight(.semibold)).foregroundStyle(Theme.text)
+                        Text(hint).font(.caption).foregroundStyle(Theme.muted).lineLimit(2)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 7)
+                } else {
+                    ForEach(match.choices, id: \.self) { choice in
+                        Button { draft = String(draft.dropLast(match.partial.count)) + choice + " " } label: {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(choice).font(.subheadline.weight(.semibold)).foregroundStyle(Theme.text)
+                                Text(hint).font(.caption).foregroundStyle(Theme.muted).lineLimit(2)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 7)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("\(choice), \(hint)")
+                    }
+                }
+            }
+        }
+        .frame(maxHeight: min(220, CGFloat(max(match.choices.count, 1)) * 54))
+        .background(Theme.elevated)
     }
 }

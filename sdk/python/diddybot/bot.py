@@ -9,6 +9,7 @@ import inspect
 import logging
 import os
 import re
+import signal
 import time
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Iterable, Optional, Union
@@ -379,7 +380,7 @@ class Bot:
         banner: Optional[tuple] = None,
         accent: str = "",
         encryption: bool = True,
-        auto_join: bool = True,
+        auto_join: Union[bool, Callable[[str, str], bool]] = True,
         help_command: bool = True,
         help_note: str = "",
         announce: bool = True,
@@ -425,6 +426,8 @@ class Bot:
         self._views: dict[str, View] = {}
         self._loops: list[Loop] = []
         self._later: list[Awaitable[Any]] = []
+        self._raw_event_callbacks: list[tuple[Any, Any]] = []
+        self._raw_to_device_callbacks: list[tuple[Any, Any]] = []
         self._store: Optional[Store] = None
         self._running = False
         self._tasks: set[asyncio.Task] = set()
@@ -507,8 +510,15 @@ class Bot:
     def command(self, name: str = "", *, desc: str = "", usage: str = "",
                 aliases: Iterable[str] = (), group: str = "Commands", power: int = 0,
                 hidden: bool = False, dm_only: bool = False,
-                checks: Iterable[Callable[..., Any]] = ()) -> Callable[[Handler], Command]:
+                checks: Iterable[Callable[..., Any]] = (),
+                describe: Optional[dict[str, str]] = None,
+                options: Optional[list[dict]] = None) -> Callable[[Handler], Command]:
         """Register a command. ``name`` defaults to the function name.
+
+        ``describe={"seconds": "how long"}``: short texts Diddy shows for the arguments while
+        the user types (fixed answers like ``Literal["on", "off"]`` are suggested by themselves).
+        ``options=[...]`` replaces what is derived from the signature with your own list for Diddy
+        (``options=[]``: none), for handlers that take the raw text of the line themselves.
 
         ``power``: lowest power level allowed to run it (50 = moderators). ``hidden``: not in help
         or Diddy's suggestions. ``group``: section in the help card. ``usage`` is generated from
@@ -518,7 +528,8 @@ class Bot:
             return self.registry.add(
                 name or func.__name__, func, desc=desc or _doc_line(func), usage=usage,
                 aliases=tuple(aliases), group=group, power=power, hidden=hidden,
-                dm_only=dm_only, checks=list(checks))
+                dm_only=dm_only, checks=list(checks), describe=dict(describe or {}),
+                options=None if options is None else [dict(o) for o in options])
         return deco
 
     def group(self, name: str = "", *, invoke_without_command: bool = False,
@@ -563,6 +574,21 @@ class Bot:
         longer answers errors by itself. A command's own ``@cmd.error`` goes first."""
         self._error_handlers.append(_need_async(func))
         return func
+
+    # ------------------------------------------------------------------ raw nio access
+    def add_event_callback(self, callback: Callable[..., Any], types: Any) -> None:
+        """Escape hatch to matrix-nio: ``callback(room, event)`` for nio events of ``types`` (e.g.
+        ``nio.CallInviteEvent`` or ``nio.Event`` for everything). Works before and after login;
+        the library's own handling keeps running. For special protocols such as calls."""
+        self._raw_event_callbacks.append((callback, types))
+        if getattr(self._t, "client", None) is not None:
+            self._t.client.add_event_callback(callback, types)
+
+    def add_to_device_callback(self, callback: Callable[..., Any], types: Any) -> None:
+        """Like :meth:`add_event_callback` for to-device messages: ``callback(event)``."""
+        self._raw_to_device_callbacks.append((callback, types))
+        if getattr(self._t, "client", None) is not None:
+            self._t.client.add_to_device_callback(callback, types)
 
     # ------------------------------------------------------------------ events
     def listen(self, event: Any = "") -> Callable[[Handler], Handler]:
@@ -772,15 +798,31 @@ class Bot:
         if not logging.getLogger().handlers:
             logging.basicConfig(level=logging.INFO,
                                 format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+        async def main() -> None:
+            loop = asyncio.get_running_loop()
+            for sig in (signal.SIGINT, signal.SIGTERM):  # Ctrl+C and ``docker stop`` end cleanly
+                try:
+                    loop.add_signal_handler(sig, self.stop)
+                except (NotImplementedError, RuntimeError):  # e.g. Windows
+                    pass
+            await self.start()
+
         try:
-            asyncio.run(self.start())
+            asyncio.run(main())
         except KeyboardInterrupt:
             pass
 
-    async def start(self) -> None:
-        """Log in, sync and handle events until :meth:`stop`."""
-        self._started_ms = int(time.time() * 1000)
+    async def login(self) -> None:
+        """Log in (saved token first, else password). :meth:`start` does this itself; call it
+        earlier only when you need the connection before the sync loop starts."""
         await self._t.login()
+
+    async def start(self, *, login: bool = True) -> None:
+        """Log in, sync and handle events until :meth:`stop`. ``login=False`` after an earlier
+        :meth:`login`."""
+        self._started_ms = int(time.time() * 1000)
+        if login:
+            await self._t.login()
         try:
             await self._t.run(self._ready)
         finally:

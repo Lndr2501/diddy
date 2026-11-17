@@ -1,5 +1,6 @@
 import React from 'react';
 import { DEV_BUILD_LABEL } from '../appInfo';
+import { useTranslation } from 'react-i18next';
 
 /** Escapes text for use inside the SVG tile below. */
 const esc = (text: string) =>
@@ -19,6 +20,7 @@ export const devWatermarkTile = (label: string): string => {
  * mistaken for the stable app. Never takes clicks, sits above everything incl. the call view.
  */
 export function DevWatermark({ label = DEV_BUILD_LABEL }: { label?: string }) {
+  const { t } = useTranslation();
   if (!label) return null;
   return (
     <div
@@ -46,7 +48,7 @@ export function DevWatermark({ label = DEV_BUILD_LABEL }: { label?: string }) {
           letterSpacing: 0.3,
         }}
       >
-        DEV · {label}
+        {t('common.devWatermark.devLabel', { label })}
       </div>
     </div>
   );

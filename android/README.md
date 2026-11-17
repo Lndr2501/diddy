@@ -39,14 +39,8 @@ cd android
 echo "sdk.dir=$HOME/android-sdk" > local.properties   # once, path to your Android SDK
 ./gradlew testDebugUnitTest      # logic tests (no device needed)
 ./gradlew assembleDebug          # app/build/outputs/apk/debug/app-debug.apk
-./gradlew lintDebug              # Android lint, also in CI
-./gradlew connectedDebugAndroidTest   # smoke test on a connected device or emulator
+./gradlew lintDebug assembleDebugAndroidTest
 ```
-
-CI (`.github/workflows/android.yml`) runs the unit tests, lint and the build, and starts the app
-on two emulators: Android 8 (API 26) and Android 15 with 16 KB memory pages. The smoke test
-(`app/src/androidTest`) checks that the native libraries load, the login shows and the Keystore
-works. No server or account is involved.
 
 JDK 17, Android SDK platform 37. The build copies the desktop's sound pack and built-in plugins
 (`cinny/public/sound/diddy`, `cinny/src/app/plugins/builtin`) and the emoji table of the iPhone app
@@ -68,8 +62,8 @@ into the APK, so all apps sound and work the same.
   Android's call notifications (answer, decline, hang up), soundboard with MyInstants search,
   Watch Together (YouTube with SponsorBlock), the phone as camera and microphone for the computer
 - Call encryption: the media key goes only to devices with a MatrixRTC membership, keys are only
-  taken from members' own devices, a new key when someone leaves, and the call screen says
-  whether it is end-to-end encrypted and whose key is missing
+  taken from members' own devices, a new key when someone leaves, and the call screen shows the
+  encryption status
 - Notifications: UnifiedPush (ntfy and others) or a background connection, with message,
   mention, invite and call notifications; ntfy call alerts
 - Emoji verification, recovery key, key backup, devices
@@ -91,8 +85,40 @@ into the APK, so all apps sound and work the same.
 - Not on Android yet: Agent Voice, changing the app icon, and what 1.12.0 added elsewhere
   (push to talk, polls, saved messages, send later).
 
+## Implementation and verification (#233)
+
+The implementation is in `main`; hardware acceptance is a separate requirement, not implied by a
+successful build. See [the platform matrix](../docs/plattformen.md), [device checklist](ACCEPTANCE.md) and open
+hardware acceptance [#253](https://github.com/Lndr2501/diddy/issues/253).
+
+- MyInstants imports and removals use `app.diddy.soundboard`, the same format as desktop/iOS.
+  Pending changes survive offline and are retried on foreground/reconnect. Downloads are limited
+  to MyInstants; own audio files stay local. Synced clips and queued changes are separated by account.
+  While foregrounded the list refreshes every 30 seconds and immediately after local changes.
+- Failed server logout preserves the session and sync. You can retry, cancel, or explicitly remove
+  the account from this device while leaving the server session active. Revoked sessions can be removed.
+- Encrypted calls share media keys only with current MatrixRTC member devices that are also on the
+  media server. Incoming keys require encrypted to-device provenance matching the claimed device.
+  Keys rotate when a member leaves Matrix or disconnects from media. The random key replaces the
+  existing sender slot without detaching the frame cryptor; the UI shows encryption and
+  member-check failures. No plaintext fallback when the room's encryption state cannot be read.
+  Matrix membership changes are checked every five seconds during a call; media disconnects rotate
+  immediately. Mixed-client rejoin/rotation still needs the hardware interoperability checks below.
+- Recovery screens use Android's secure-window flag to keep keys out of screenshots and projection.
+- CI runs unit tests, Android lint, debug/instrumentation APK builds and native ELF alignment checks
+  for arm64/x86_64. Emulator jobs cover API 26 and the API 35 `google_apis_ps16k` image: real native
+  library loading, binary media-key installation, Keystore session storage, cold start and recreation.
+  The page size reported by the emulator is included in the report; an x86 image is not proof of
+  ARM hardware behavior. Emulator reports contain only synthetic data.
+
+Still outside this implementation: the F-Droid listing itself (prepared, see
+[fdroid/README.md](fdroid/README.md)), a Play Store build, and full parity with every newly added
+desktop/iOS feature (for example Saved Messages and language import).
+UnifiedPush is implemented; FCM is not provided. An attached distributor and actual homeserver/gateway
+must be tested end to end. A permanent background connection is an optional fallback, not a push guarantee.
+
 ## More
 
 - [Architecture and security decisions](../docs/android-architektur.md)
-- [Test protocol: what is checked on devices](../docs/android-testprotokoll.md)
+- [Device checklist](ACCEPTANCE.md)
 - [Features per platform](../docs/plattformen.md)

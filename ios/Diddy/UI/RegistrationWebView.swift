@@ -17,7 +17,7 @@ struct RegistrationWebSheet: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("Done") { dismiss() }
+                        Button(L("call.companionDialog.done")) { dismiss() }
                     }
                 }
         }

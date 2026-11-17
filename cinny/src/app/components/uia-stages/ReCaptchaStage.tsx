@@ -4,6 +4,7 @@ import { AuthType } from 'matrix-js-sdk';
 import ReCAPTCHA from 'react-google-recaptcha';
 import { StageComponentProps } from './types';
 import * as sheetCss from '../sheet/Sheet.css';
+import { useTranslation } from 'react-i18next';
 
 function ReCaptchaErrorDialog({
   title,
@@ -14,6 +15,7 @@ function ReCaptchaErrorDialog({
   message: string;
   onCancel: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <Dialog className={sheetCss.Sheet}>
       <Box style={{ padding: config.space.S400 }} direction="Column" gap="400">
@@ -31,7 +33,7 @@ function ReCaptchaErrorDialog({
           onClick={onCancel}
         >
           <Text as="span" size="B400">
-            Cancel
+            {t('auth.reCaptcha.cancel')}
           </Text>
         </Button>
       </Box>
@@ -40,6 +42,7 @@ function ReCaptchaErrorDialog({
 }
 
 export function ReCaptchaStageDialog({ stageData, submitAuthDict, onCancel }: StageComponentProps) {
+  const { t } = useTranslation();
   const { info, session } = stageData;
 
   const publicKey = info?.public_key;
@@ -55,8 +58,8 @@ export function ReCaptchaStageDialog({ stageData, submitAuthDict, onCancel }: St
   if (typeof publicKey !== 'string' || !session) {
     return (
       <ReCaptchaErrorDialog
-        title="Invalid Data"
-        message="No valid data found to proceed with ReCAPTCHA."
+        title={t('auth.reCaptcha.invalidData')}
+        message={t('auth.reCaptcha.noValidDataFound')}
         onCancel={onCancel}
       />
     );
@@ -65,7 +68,7 @@ export function ReCaptchaStageDialog({ stageData, submitAuthDict, onCancel }: St
   return (
     <Dialog className={sheetCss.Sheet}>
       <Box style={{ padding: config.space.S400 }} direction="Column" gap="400">
-        <Text>Please check the box below to proceed.</Text>
+        <Text>{t('auth.reCaptcha.pleaseCheckTheBox')}</Text>
         <ReCAPTCHA sitekey={publicKey} onChange={handleChange} />
       </Box>
     </Dialog>

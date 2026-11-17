@@ -99,3 +99,25 @@ def test_check_cli(tmp_path, capsys):
     f.write_text('{"kind": "note", "text": "hi", "url": "ftp://x"}')
     assert main(["check", str(f)]) == 1
     assert "url: dropped by Diddy" in capsys.readouterr().out
+
+
+async def test_reminders():
+    from diddybot.store import Store
+    mod = load("reminders")
+    mod.bot._store = Store()
+    chat = TestClient(mod.bot)
+    [ok] = await chat.say("!remind 10m Tea")
+    assert ok.card["tone"] == "success"
+    [bad] = await chat.say("!remind 1s too fast")
+    assert bad.card["tone"] == "warning"
+    [lst] = await chat.say("!reminders")
+    assert lst.card["items"][0]["title"] == "Tea"
+    [other] = await chat.say("!reminders", user="@bob:test")
+    assert other.card["items"] == []
+    assert any(c["name"] == "remind" and c["options"][0]["name"] == "wait"
+               for c in (await _commands(chat)))
+
+
+async def _commands(chat):
+    await chat.start()
+    return chat.commands()["commands"]

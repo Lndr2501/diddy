@@ -6,7 +6,7 @@ struct AgentTalkingBadge: View {
     var compact = false
 
     var body: some View {
-        Label("Redet mit Agent", systemImage: "waveform")
+        Label(L("ios.finalUI.redetMitAgent"), systemImage: "waveform")
             .labelStyle(.titleAndIcon)
             .font((compact ? Font.caption2 : Font.caption).weight(.semibold))
             .foregroundStyle(.white)
@@ -14,7 +14,7 @@ struct AgentTalkingBadge: View {
             .padding(.vertical, 4)
             .background(Capsule().fill(Theme.accent))
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Talking to agent")
+            .accessibilityLabel(L("common.userPanel.talkingToAgent"))
     }
 }
 

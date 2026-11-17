@@ -34,8 +34,8 @@ extension Date {
     var chatTimestamp: String {
         let calendar = Calendar.current
         let time = ChatSettings.time(self)
-        if calendar.isDateInToday(self) { return "Today at \(time)" }
-        if calendar.isDateInYesterday(self) { return "Yesterday at \(time)" }
+        if calendar.isDateInToday(self) { return L("ios.finalComputed.todayAt", ["time": time]) }
+        if calendar.isDateInYesterday(self) { return L("ios.finalComputed.yesterdayAt", ["time": time]) }
         return "\(ChatSettings.date(self)) \(time)"
     }
 }

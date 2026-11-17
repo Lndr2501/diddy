@@ -34,6 +34,7 @@ import {
 import { callEmbedAtom } from '../../state/callEmbed';
 import { RangeInput } from '../../components/diddy/RangeInput';
 import * as css from './styles.css';
+import { useTranslation } from 'react-i18next';
 
 type DeviceListProps = {
   devices: AudioDevice[];
@@ -42,9 +43,13 @@ type DeviceListProps = {
   onSelect: (deviceId: string) => void;
 };
 function DeviceList({ devices, selected, disabled, onSelect }: DeviceListProps) {
+  const { t } = useTranslation();
   // A stored device that is not plugged in any more behaves like the system default.
   const effective = devices.some((d) => d.deviceId === selected) ? selected : '';
-  const items: AudioDevice[] = [{ deviceId: '', label: 'System default' }, ...devices];
+  const items: AudioDevice[] = [
+    { deviceId: '', label: t('call.devicePicker.systemDefault') },
+    ...devices,
+  ];
 
   return (
     <Box direction="Column" gap="100">
@@ -104,6 +109,7 @@ const SECTION_STYLE = { padding: config.space.S300 };
 const LIST_STYLE = { maxHeight: toRem(220), overflowY: 'auto' as const };
 
 export function InputDeviceMenu() {
+  const { t } = useTranslation();
   const { inputs, permitted, refresh } = useAudioDevices();
   const { input, inputVolume } = useAudioPrefs();
   const callEmbed = useAtomValue(callEmbedAtom);
@@ -130,7 +136,7 @@ export function InputDeviceMenu() {
     <Menu className={css.PopoverMenu} style={MENU_STYLE}>
       <Box direction="Column" gap="200" style={SECTION_STYLE}>
         <Text size="T300" className={css.PopoverTitle}>
-          Input device
+          {t('call.devicePicker.inputDevice')}
         </Text>
         <div style={LIST_STYLE}>
           <DeviceList devices={inputs} selected={input} onSelect={handleSelect} />
@@ -138,17 +144,21 @@ export function InputDeviceMenu() {
         {!permitted && (
           <MenuItem size="300" variant="Surface" radii="400" onClick={handleReveal}>
             <Text size="T200" priority="300" truncate>
-              Allow microphone access to list devices
+              {t('call.devicePicker.allowMicrophoneAccessTo')}
             </Text>
           </MenuItem>
         )}
       </Box>
       <div className={css.PopoverSeparator} />
       <Box direction="Column" gap="200" style={SECTION_STYLE}>
-        <VolumeSlider label="Input volume" value={inputVolume} onChange={setInputVolume} />
+        <VolumeSlider
+          label={t('call.devicePicker.inputVolume')}
+          value={inputVolume}
+          onChange={setInputVolume}
+        />
         {callEmbed && !inCall && (
           <Text size="T200" priority="300">
-            Device and volume changes may need a rejoin of the call.
+            {t('call.devicePicker.deviceAndVolumeChanges')}
           </Text>
         )}
       </Box>
@@ -157,6 +167,7 @@ export function InputDeviceMenu() {
 }
 
 export function OutputDeviceMenu() {
+  const { t } = useTranslation();
   const { outputs } = useAudioDevices();
   const { output, outputVolume } = useAudioPrefs();
   const supported = isOutputSelectionSupported();
@@ -165,7 +176,7 @@ export function OutputDeviceMenu() {
     <Menu className={css.PopoverMenu} style={MENU_STYLE}>
       <Box direction="Column" gap="200" style={SECTION_STYLE}>
         <Text size="T300" className={css.PopoverTitle}>
-          Output device
+          {t('call.devicePicker.outputDevice')}
         </Text>
         <div style={LIST_STYLE}>
           <DeviceList
@@ -177,13 +188,17 @@ export function OutputDeviceMenu() {
         </div>
         {!supported && (
           <Text size="T200" priority="300">
-            Not supported on this system
+            {t('call.devicePicker.notSupportedOnThis')}
           </Text>
         )}
       </Box>
       <div className={css.PopoverSeparator} />
       <Box direction="Column" gap="200" style={SECTION_STYLE}>
-        <VolumeSlider label="Output volume" value={outputVolume} onChange={setOutputVolume} />
+        <VolumeSlider
+          label={t('call.devicePicker.outputVolume')}
+          value={outputVolume}
+          onChange={setOutputVolume}
+        />
       </Box>
     </Menu>
   );
@@ -194,6 +209,7 @@ export function OutputDeviceMenu() {
  * call (Element Call follows its device list, see plugins/call/cameraDevices.ts).
  */
 export function CameraDeviceList() {
+  const { t } = useTranslation();
   const { cameras, refresh } = useCameras();
   const selected = useCameraPref();
   const named = cameras.some((c) => !/^Camera \d+$/.test(c.label));
@@ -211,7 +227,7 @@ export function CameraDeviceList() {
       {cameras.length > 0 && !named && (
         <MenuItem size="300" variant="Surface" radii="400" onClick={handleReveal}>
           <Text size="T200" priority="300" truncate>
-            Allow camera access to show names
+            {t('call.devicePicker.allowCameraAccessTo')}
           </Text>
         </MenuItem>
       )}
@@ -220,11 +236,12 @@ export function CameraDeviceList() {
 }
 
 export function CameraDeviceMenu() {
+  const { t } = useTranslation();
   return (
     <Menu className={css.PopoverMenu} style={MENU_STYLE}>
       <Box direction="Column" gap="200" style={SECTION_STYLE}>
         <Text size="T300" className={css.PopoverTitle}>
-          Camera
+          {t('call.devicePicker.camera')}
         </Text>
         <CameraDeviceList />
       </Box>
@@ -241,6 +258,7 @@ type DeviceChevronProps = {
 };
 /** Chevron button that opens the input, output or camera menu above itself. */
 export function DeviceChevron({ kind, size = 'panel', className }: DeviceChevronProps) {
+  const { t } = useTranslation();
   const [cords, setCords] = useState<RectCords>();
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -274,9 +292,9 @@ export function DeviceChevron({ kind, size = 'panel', className }: DeviceChevron
   }, [open]);
 
   const label = {
-    input: 'Input device and volume',
-    output: 'Output device and volume',
-    camera: 'Camera',
+    input: t('call.devicePicker.inputDeviceAndVolume'),
+    output: t('call.devicePicker.outputDeviceAndVolume'),
+    camera: t('call.devicePicker.camera'),
   }[kind];
   const menus = {
     input: <InputDeviceMenu />,
@@ -290,9 +308,7 @@ export function DeviceChevron({ kind, size = 'panel', className }: DeviceChevron
       anchor={cords}
       position="Top"
       align={bar ? 'Center' : 'Start'}
-      content={
-        <div ref={menuRef}>{menus[kind]}</div>
-      }
+      content={<div ref={menuRef}>{menus[kind]}</div>}
     >
       <IconButton
         ref={buttonRef}
@@ -306,7 +322,11 @@ export function DeviceChevron({ kind, size = 'panel', className }: DeviceChevron
         aria-label={label}
         title={label}
         // in the call bar the chevron is sized by the bar's split-button styles
-        style={bar ? undefined : { width: toRem(16), height: toRem(28), minWidth: 0, marginLeft: toRem(-4) }}
+        style={
+          bar
+            ? undefined
+            : { width: toRem(16), height: toRem(28), minWidth: 0, marginLeft: toRem(-4) }
+        }
       >
         <Icon size="50" src={Icons.ChevronBottom} />
       </IconButton>

@@ -7,9 +7,11 @@ import {
   SPONSOR_CATEGORIES,
   SponsorCategory,
 } from '../../../plugins/watchTogether/sponsorBlock';
+import { useTranslation } from 'react-i18next';
 
 /** Watch together (#83): on / off, SponsorBlock categories and what leaves your device. */
 export function WatchTogetherSettings() {
+  const { t } = useTranslation();
   const prefs = useWatchPrefs();
 
   const toggleCategory = (category: SponsorCategory, on: boolean) => {
@@ -19,13 +21,13 @@ export function WatchTogetherSettings() {
 
   return (
     <InsetSection
-      title="Watch together"
-      footer="Videos load from YouTube (youtube-nocookie.com) in YouTube's own player, so YouTube sees your IP address and what you watch; ads YouTube shows are not blocked. The others in the call get the video link and play / pause / position as end-to-end encrypted messages (plain to-device messages when encryption is unavailable). For SponsorBlock only the first 4 characters of a hash of the video id go to sponsor.ajay.app, not the video itself."
+      title={t('settings.watchTogether.watchTogether')}
+      footer={t('settings.watchTogether.videosLoadFromYoutube')}
     >
       <InsetGroup>
         <InsetRow
-          title="Watch together"
-          description="Watch a YouTube video with everyone in the call. Play, pause and seeking are shared; your volume and quality stay yours."
+          title={t('settings.watchTogether.watchTogether')}
+          description={t('settings.watchTogether.watchAYoutubeVideo')}
           after={
             <Switch
               variant="Primary"
@@ -38,8 +40,8 @@ export function WatchTogetherSettings() {
       {prefs.enabled && (
         <InsetGroup>
           <InsetRow
-            title="Skip segments with SponsorBlock"
-            description="Community data from SponsorBlock (sponsor.ajay.app, by Ajay Ramachandran and contributors, CC BY-NC-SA 4.0). When you skip, the video jumps for everybody in the call."
+            title={t('settings.watchTogether.skipSegmentsWithSponsorblock')}
+            description={t('settings.watchTogether.communityDataFromSponsorblock')}
           />
           {SPONSOR_CATEGORIES.map((category) => (
             <InsetRow

@@ -17,7 +17,7 @@ struct EmojiReactionPicker: View {
                 }
                 .frame(height: 52)
                 .background(RoundedRectangle(cornerRadius: 10).fill(Theme.input))
-                Text("Tap any emoji on the keyboard to react. Hold an emoji for other skin tones. If letters show up, switch with the globe or emoji key. If Emoji is missing, add it in iOS Settings > General > Keyboard > Keyboards.")
+                Text(L("ios.remainingUI.tapAnyEmojiOnTheKeyboardToReactHoldAnEmojiForOtherSkinTone"))
                     .font(.footnote)
                     .foregroundStyle(Theme.muted)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -25,10 +25,10 @@ struct EmojiReactionPicker: View {
             }
             .padding(16)
             .background(Theme.sidebar.ignoresSafeArea())
-            .navigationTitle("Add Reaction")
+            .navigationTitle(L("message.main.addReaction"))
             .navigationBarTitleDisplayMode(.inline)
             .tint(Theme.accent)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button(L("settings.deviceTile.cancel")) { dismiss() } } }
         }
         .presentationDetents([.medium, .large])
     }

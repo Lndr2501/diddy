@@ -48,6 +48,7 @@ import {
   shareWatch,
 } from '../../plugins/call/shareWatch';
 import * as css from './styles.css';
+import { useTranslation } from 'react-i18next';
 
 /** Who is on the call, read from Element Call and kept up to date (cheap: only on change). */
 function useCallStage(callEmbed: CallEmbed): StageModel {
@@ -223,6 +224,7 @@ export function PersonTileView({
   agent?: boolean;
   onContextMenu?: (evt: MouseEvent) => void;
 }) {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
   const avatarUrl = avatarMxc
@@ -242,12 +244,12 @@ export function PersonTileView({
       data-small={small || undefined}
       onClick={onSelect}
       onContextMenu={handleContextMenu}
-      aria-label={agent ? `${person.name}, redet mit Agent` : person.name}
+      aria-label={agent ? t('call.stage.nameTalksToAgent', { name: person.name }) : person.name}
     >
       {agent && (
         <span className={css.StageAgentBadge} role="status">
           <TagIcon d={ICON_MIC} />
-          Redet mit Agent
+          {t('call.stage.talksToAgent')}
         </span>
       )}
       {person.video ? (
@@ -334,6 +336,7 @@ export function ShareTile({
   onWatch,
   onStopWatching,
 }: ShareTileProps) {
+  const { t } = useTranslation();
   const tileRef = useRef<HTMLDivElement>(null);
   const { fullscreen, toggleFullscreen } = useElementFullscreen(tileRef);
   const large = !!focused || fullscreen;
@@ -379,9 +382,11 @@ export function ShareTile({
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [fullscreen, zoomIn, zoomOut, resetZoom, toggleFullscreen]);
 
-  let hitLabel = watching ? `Show ${label} large` : `Watch ${label}`;
+  let hitLabel = watching
+    ? t('call.stage.showLabelLarge', { label })
+    : t('call.stage.watchLabel', { label });
   if (fullscreen) hitLabel = label;
-  else if (focused) hitLabel = `Stop watching ${label} large`;
+  else if (focused) hitLabel = t('call.stage.stopWatchingLabelLarge', { label });
 
   return (
     <div
@@ -409,8 +414,10 @@ export function ShareTile({
           <svg viewBox="0 0 24 24" className={css.StageShareCardIcon}>
             <path d={ICON_SCREEN} />
           </svg>
-          <span className={css.StageShareCardText}>{share.name} is sharing their screen</span>
-          <span className={css.StageWatchPill}>Watch</span>
+          <span className={css.StageShareCardText}>
+            {t('call.stage.nameIsSharingTheir', { name: share.name })}
+          </span>
+          <span className={css.StageWatchPill}>{t('call.stage.watch')}</span>
         </span>
       )}
       {watching && share.video && (
@@ -418,19 +425,19 @@ export function ShareTile({
       )}
       {watching && !share.video && (
         <Text size="T300" priority="300" className={css.StageWaiting}>
-          Waiting for the stream…
+          {t('call.stage.waitingForTheStream')}
         </Text>
       )}
-      <span className={css.StageLive}>LIVE</span>
+      <span className={css.StageLive}>{t('call.stage.live')}</span>
       {watching && !large && onStopWatching && (
         <button
           type="button"
           className={css.StageStopWatch}
           onClick={onStopWatching}
-          aria-label={`Stop watching ${label}`}
-          title="Stop watching"
+          aria-label={t('call.stage.stopWatchingLabel', { label })}
+          title={t('call.stage.stopWatching')}
         >
-          Stop watching
+          {t('call.stage.stopWatching')}
         </button>
       )}
       {watching && large && (
@@ -438,15 +445,15 @@ export function ShareTile({
           className={css.StageToolbar}
           {...{ [STREAM_CONTROLS_ATTR]: true }}
           role="toolbar"
-          aria-label="Stream view"
+          aria-label={t('call.stage.streamView')}
         >
           <button
             type="button"
             className={css.StageToolButton}
             onClick={zoomOut}
             disabled={!zoomed}
-            aria-label="Zoom out"
-            title="Zoom out"
+            aria-label={t('call.stage.zoomOut')}
+            title={t('call.stage.zoomOut')}
           >
             <ToolIcon d={ICON_ZOOM_OUT} />
           </button>
@@ -455,8 +462,12 @@ export function ShareTile({
             className={css.StageToolZoom}
             onClick={resetZoom}
             disabled={!zoomed}
-            aria-label={zoomed ? `Zoom ${zoomPercent(zoom)} %, reset` : 'Not zoomed'}
-            title={zoomed ? 'Reset zoom' : 'Scroll or pinch to zoom'}
+            aria-label={
+              zoomed
+                ? t('call.stage.zoomZoompercentReset', { zoomPercent: zoomPercent(zoom) })
+                : t('call.stage.notZoomed')
+            }
+            title={zoomed ? t('call.stage.resetZoom') : t('call.stage.scrollOrPinchTo')}
           >
             {zoomPercent(zoom)}%
           </button>
@@ -465,8 +476,8 @@ export function ShareTile({
             className={css.StageToolButton}
             onClick={zoomIn}
             disabled={zoom.scale >= ZOOM_MAX}
-            aria-label="Zoom in"
-            title="Zoom in"
+            aria-label={t('call.stage.zoomIn')}
+            title={t('call.stage.zoomIn')}
           >
             <ToolIcon d={ICON_ZOOM_IN} />
           </button>
@@ -474,8 +485,8 @@ export function ShareTile({
             type="button"
             className={css.StageToolButton}
             onClick={toggleFullscreen}
-            aria-label={fullscreen ? 'Exit full screen' : 'Full screen'}
-            title={fullscreen ? 'Exit full screen (Esc)' : 'Full screen'}
+            aria-label={fullscreen ? t('call.stage.exitFullScreen') : t('call.stage.fullScreen')}
+            title={fullscreen ? t('call.stage.exitFullScreenEsc') : t('call.stage.fullScreen')}
           >
             <ToolIcon d={fullscreen ? ICON_FULLSCREEN_EXIT : ICON_FULLSCREEN} />
           </button>
@@ -484,8 +495,8 @@ export function ShareTile({
               type="button"
               className={css.StageToolButton}
               onClick={onStopWatching}
-              aria-label={`Stop watching ${label}`}
-              title="Stop watching"
+              aria-label={t('call.stage.stopWatchingLabel', { label })}
+              title={t('call.stage.stopWatching')}
             >
               <ToolIcon d={ICON_STOP_WATCH} />
             </button>
@@ -498,8 +509,8 @@ export function ShareTile({
         {mutedForMe && (
           <span
             role="img"
-            aria-label="Muted for you"
-            title="Muted for you"
+            aria-label={t('call.stage.mutedForYou')}
+            title={t('call.stage.mutedForYou')}
             style={{ display: 'flex' }}
           >
             <TagIcon d={ICON_SPEAKER} muted />

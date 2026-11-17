@@ -37,7 +37,7 @@ const { createStartupGate } = require('./lib/startupGate.cjs');
 const { shouldReloadAfter, createRateLimiter, describeError } = require('./lib/crashGuard.cjs');
 const { startStaticServer } = require('./lib/staticServer.cjs');
 const { isSsoStart, openSsoWindow } = require('./lib/ssoWindow.cjs');
-const { createSystemAudio, systemAudioSupport, helperName } = require('./lib/systemAudio.cjs');
+const { createSystemAudio, bindSystemAudioLifecycle, systemAudioSupport, helperName } = require('./lib/systemAudio.cjs');
 const { createScreenPicker, screenSourceOptions } = require('./lib/screenPicker.cjs');
 const { parseAgentVoiceLaunch, createAgentVoiceTrigger } = require('./lib/agentVoice.cjs');
 const { createAgentVoiceHotkey } = require('./lib/agentVoiceHotkey.cjs');
@@ -46,6 +46,7 @@ const { createHotkeySlots } = require('./lib/hotkeySlots.cjs');
 const { sanitizeHotkey } = require('./lib/globalHotkey.cjs');
 const { startPortalShortcut } = require('./lib/portalShortcut.cjs');
 const { installShellInput } = require('./lib/shellInput.cjs');
+const { setUiLanguage } = require('./lib/uiStrings.cjs');
 
 const APP_PORT = 44548;
 const VERSION = (() => {
@@ -440,6 +441,8 @@ const commands = {
   hotkey_wait: (args) => hotkeySlots.wait(args?.slot, args?.lastKey, args?.timeoutMs),
   // The update check belongs to the macOS shell; Linux has no native updater (the UI still sends this).
   updater_set_config: () => null,
+  // texts of the right-click menu and the screen picker in the UI language (lib/uiStrings.cjs)
+  set_ui_language: (args) => setUiLanguage(args),
 };
 
 const audioCaptures = new Map();
@@ -463,11 +466,7 @@ const audioFor = (contents) => {
     const helper = audioHelper();
     const audio = createSystemAudio({ helper, log: (line) => diag.writeLine(line), send: (message) => { if (!contents.isDestroyed()) contents.send('diddy:audio-data', message); } });
     audioCaptures.set(contents.id, audio);
-    // Only a new document ends the capture. The page routes by hash, so every room switch is a
-    // same-document navigation; closing then cut the system sound of a running share.
-    contents.on('did-start-navigation', (details) => { if (details.isMainFrame && !details.isSameDocument) audio.close(); });
-    contents.on('render-process-gone', () => audio.close());
-    contents.once('destroyed', () => { audio.close(); audioCaptures.delete(contents.id); });
+    bindSystemAudioLifecycle(contents, audio, () => audioCaptures.delete(contents.id));
   }
   return audioCaptures.get(contents.id);
 };

@@ -13,11 +13,13 @@ import { stopPropagation } from '../../utils/keyboard';
 import { SheetHeader } from '../../components/sheet';
 import * as sheetCss from '../../components/sheet/Sheet.css';
 import { CreateRoomType } from '../../components/create-room/types';
+import { useTranslation } from 'react-i18next';
 
 type CreateRoomModalProps = {
   state: CreateRoomModalState;
 };
 function CreateRoomModal({ state }: CreateRoomModalProps) {
+  const { t } = useTranslation();
   const { spaceId, type } = state;
   const closeDialog = useCloseCreateRoomModal();
 
@@ -40,7 +42,11 @@ function CreateRoomModal({ state }: CreateRoomModalProps) {
             <Modal className={sheetCss.Sheet} size="300" flexHeight>
               <Box direction="Column">
                 <SheetHeader
-                  title={type === CreateRoomType.VoiceRoom ? 'New Voice Room' : 'New Chat Room'}
+                  title={
+                    type === CreateRoomType.VoiceRoom
+                      ? t('createRoom.createRoomModal.newVoiceRoom')
+                      : t('createRoom.createRoomModal.newChatRoom')
+                  }
                   onClose={closeDialog}
                 />
                 <Scroll size="300" hideTrack>

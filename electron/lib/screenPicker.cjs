@@ -1,4 +1,15 @@
 const path = require('node:path');
+const { uiText, uiLanguage } = require('./uiStrings.cjs');
+
+// texts of picker.html, read by pickerPreload.cjs from the query
+const pickerQuery = () => ({
+  lang: uiLanguage(),
+  title: uiText('pickerTitle'),
+  heading: uiText('pickerHeading'),
+  hint: uiText('pickerHint'),
+  sources: uiText('pickerSources'),
+  cancel: uiText('pickerCancel'),
+});
 
 /**
  * Options for `desktopCapturer.getSources`. Only X11 shows our picker with thumbnails. On Wayland the
@@ -23,7 +34,7 @@ function createScreenPicker({ BrowserWindow, ipcMain }) {
   return (sources, owner) => new Promise((resolve) => {
     const picker = new BrowserWindow({
       parent: owner, modal: !!owner,
-      title: 'Bildschirm oder Fenster teilen', width: 760, height: 580,
+      title: uiText('pickerTitle'), width: 760, height: 580,
       autoHideMenuBar: true,
       webPreferences: { preload: path.join(__dirname, '..', 'pickerPreload.cjs'), sandbox: true, contextIsolation: true, nodeIntegration: false },
     });
@@ -40,7 +51,7 @@ function createScreenPicker({ BrowserWindow, ipcMain }) {
     picker.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     picker.webContents.on('will-navigate', (event) => event.preventDefault());
     picker.once('closed', () => finish(undefined));
-    picker.loadFile(path.join(__dirname, '..', 'picker.html')).catch(() => finish(undefined));
+    picker.loadFile(path.join(__dirname, '..', 'picker.html'), { query: pickerQuery() }).catch(() => finish(undefined));
   });
 }
-module.exports = { createScreenPicker, screenSourceOptions };
+module.exports = { createScreenPicker, screenSourceOptions, pickerQuery };

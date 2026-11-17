@@ -239,17 +239,11 @@ fun FullSheet(
     actionEnabled: Boolean = true,
     onAction: () -> Unit = {},
     background: Color = Theme.sidebar,
-    /** Keeps the sheet out of screenshots, screen sharing and the app switcher (recovery keys). */
-    secure: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     androidx.compose.ui.window.Dialog(
         onDismissRequest = onClose,
-        properties = androidx.compose.ui.window.DialogProperties(
-            usePlatformDefaultWidth = false,
-            decorFitsSystemWindows = false,
-            securePolicy = if (secure) androidx.compose.ui.window.SecureFlagPolicy.SecureOn else androidx.compose.ui.window.SecureFlagPolicy.Inherit,
-        ),
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
     ) {
         Column(
             Modifier.fillMaxSize().background(background).androidxStatusBars().androidxImePadding(),

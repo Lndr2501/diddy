@@ -20,7 +20,7 @@ struct RoomMembersAdminView: View {
         let shown = visible(all)
         List {
             Section {
-                Picker("Membership", selection: $filter) {
+                Picker(L("ios.finalUI.membership"), selection: $filter) {
                     ForEach(RoomMembershipFilter.allCases) { kind in
                         Text("\(kind.title) (\(counts[kind] ?? 0))").tag(kind)
                     }
@@ -52,7 +52,7 @@ struct RoomMembersAdminView: View {
         .scrollContentBackground(.hidden)
         .background(Theme.sidebar.ignoresSafeArea())
         .searchable(text: $search, prompt: "Search")
-        .navigationTitle("Members")
+        .navigationTitle(L("settings.diddyProfile.members"))
         .navigationBarTitleDisplayMode(.inline)
         .refreshable { await model.load() }
         .sheet(item: $selected, onDismiss: { Task { await model.load() } }) { member in
@@ -63,11 +63,11 @@ struct RoomMembersAdminView: View {
             isPresented: Binding(get: { pendingCancel != nil }, set: { if !$0 { pendingCancel = nil } }),
             titleVisibility: .visible
         ) {
-            Button("Cancel Invite", role: .destructive) {
+            Button(L("profile.moderation.cancelInvite"), role: .destructive) {
                 if let member = pendingCancel { run(.kick, member) }
                 pendingCancel = nil
             }
-            Button("Keep Invite", role: .cancel) { pendingCancel = nil }
+            Button(L("ios.finalUI.keepInvite"), role: .cancel) { pendingCancel = nil }
         } message: {
             Text(pendingCancel.map { "\($0.displayName ?? $0.userId) can no longer join with this invite." } ?? "")
         }
@@ -126,10 +126,10 @@ struct RoomMembersAdminView: View {
                 permissions: permissions, me: model.me, target: member.userId, membership: member.membership
             )
             if options.canUnban {
-                Button("Unban") { run(.unban, member) }.tint(Theme.accent)
+                Button(L("profile.moderation.unban")) { run(.unban, member) }.tint(Theme.accent)
             }
             if options.canCancelInvite {
-                Button("Cancel Invite", role: .destructive) { pendingCancel = member }
+                Button(L("profile.moderation.cancelInvite"), role: .destructive) { pendingCancel = member }
             }
         }
     }

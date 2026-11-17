@@ -162,6 +162,24 @@ private val purple = Color(0xFFAF52DE)
 private fun SettingsMain(account: MatrixAccount, navigator: Navigator, open: (SettingsPage) -> Unit, onClose: () -> Unit) {
     val scope = rememberCoroutineScope()
     var confirmLogout by remember { mutableStateOf<MatrixAccount?>(null) }
+    var logoutFailure by remember { mutableStateOf<Pair<MatrixAccount, String>?>(null) }
+    var loggingOut by remember { mutableStateOf(false) }
+    fun logout(target: MatrixAccount, localOnly: Boolean = false) {
+        loggingOut = true
+        scope.launch {
+            try {
+                AppModel.logout(target, localOnly)
+                confirmLogout = null
+                logoutFailure = null
+                if (target.id == account.id) onClose()
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                confirmLogout = null
+                logoutFailure = target to e.friendlyMessage
+            } finally { loggingOut = false }
+        }
+    }
     val verified = account.verificationState == VerificationState.VERIFIED
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(vertical = 8.dp)) {
         ProfileSection(account, navigator)
@@ -239,19 +257,27 @@ private fun SettingsMain(account: MatrixAccount, navigator: Navigator, open: (Se
     }
     confirmLogout?.let { target ->
         AlertDialog(
-            onDismissRequest = { confirmLogout = null },
+            onDismissRequest = { if (!loggingOut) confirmLogout = null },
             title = { Text("Log out of ${target.title}?") },
             text = { Text("Encrypted messages can only be read again with your recovery key or another verified device.") },
             confirmButton = {
-                TextButton(onClick = {
-                    confirmLogout = null
-                    scope.launch {
-                        AppModel.logout(target)
-                        if (target.id == account.id) onClose()
-                    }
-                }) { Text("Log Out", color = Theme.danger) }
+                TextButton(enabled = !loggingOut, onClick = { logout(target) }) { Text(if (loggingOut) "Logging Out…" else "Log Out", color = Theme.danger) }
             },
-            dismissButton = { TextButton(onClick = { confirmLogout = null }) { Text("Cancel") } },
+            dismissButton = { TextButton(enabled = !loggingOut, onClick = { confirmLogout = null }) { Text("Cancel") } },
+        )
+    }
+    logoutFailure?.let { (target, message) ->
+        AlertDialog(
+            onDismissRequest = { if (!loggingOut) logoutFailure = null },
+            title = { Text("Could not log out") },
+            text = { Text("$message\n\nYour account is still on this device. Removing it locally leaves the server session active; you can revoke it from another device.") },
+            confirmButton = { TextButton(enabled = !loggingOut, onClick = { logout(target) }) { Text("Try Again") } },
+            dismissButton = {
+                Column {
+                    TextButton(enabled = !loggingOut, onClick = { logout(target, localOnly = true) }) { Text("Remove from This Device Anyway", color = Theme.danger) }
+                    TextButton(enabled = !loggingOut, onClick = { logoutFailure = null }) { Text("Cancel") }
+                }
+            },
         )
     }
 }
@@ -321,7 +347,8 @@ fun RecoverySheet(account: MatrixAccount, onClose: () -> Unit) {
     var reveal by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
-    FullSheet("Verify this device", onClose, closeLabel = "Cancel", secure = true) {
+    FullSheet("Verify this device", onClose, closeLabel = "Cancel") {
+        app.diddy.ui.ProtectSecrets()
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(vertical = 8.dp)) {
             FormSection(
                 "Recovery key or passphrase",

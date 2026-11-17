@@ -6,8 +6,10 @@ import { AsyncStatus, useAsyncCallback } from '../../../hooks/useAsyncCallback';
 import { isUserId } from '../../../utils/matrix';
 import { useIgnoredUsers } from '../../../hooks/useIgnoredUsers';
 import { useAlive } from '../../../hooks/useAlive';
+import { useTranslation } from 'react-i18next';
 
 function IgnoreUserInput({ userList }: { userList: string[] }) {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const [userId, setUserId] = useState<string>('');
   const alive = useAlive();
@@ -55,7 +57,7 @@ function IgnoreUserInput({ userList }: { userList: string[] }) {
         <Input
           required
           name="userIdInput"
-          placeholder="@user:server"
+          placeholder={t('settings.ignoredUserList.userServer')}
           value={userId}
           onChange={handleChange}
           variant="Secondary"
@@ -88,13 +90,14 @@ function IgnoreUserInput({ userList }: { userList: string[] }) {
         disabled={ignoring}
       >
         {ignoring && <Spinner variant="Secondary" size="300" />}
-        <Text size="B400">Block</Text>
+        <Text size="B400">{t('settings.ignoredUserList.block')}</Text>
       </Button>
     </Box>
   );
 }
 
 function IgnoredUserRow({ userId, userList }: { userId: string; userList: string[] }) {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const [unignoreState, unignore] = useAsyncCallback(
     useCallback(
@@ -119,7 +122,7 @@ function IgnoredUserRow({ userId, userList }: { userId: string; userList: string
           disabled={unIgnoring}
           before={unIgnoring && <Spinner variant="Secondary" size="100" />}
         >
-          <Text size="B300">Unblock</Text>
+          <Text size="B300">{t('settings.ignoredUserList.unblock')}</Text>
         </Button>
       }
     />
@@ -127,14 +130,15 @@ function IgnoredUserRow({ userId, userList }: { userId: string; userList: string
 }
 
 export function IgnoredUserList() {
+  const { t } = useTranslation();
   const ignoredUsers = useIgnoredUsers();
 
   return (
-    <InsetSection title="Blocked Users">
+    <InsetSection title={t('settings.ignoredUserList.blockedUsers')}>
       <InsetGroup>
         <InsetRow
-          title="Block User"
-          description="Prevent receiving messages or invites from a user by adding their user ID."
+          title={t('settings.ignoredUserList.blockUser')}
+          description={t('settings.ignoredUserList.preventReceivingMessagesOr')}
         >
           <IgnoreUserInput userList={ignoredUsers} />
         </InsetRow>

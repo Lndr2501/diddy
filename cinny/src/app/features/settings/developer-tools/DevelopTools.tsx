@@ -11,11 +11,13 @@ import { copyToClipboard } from '../../../utils/dom';
 import { AccountData } from './AccountData';
 import { InsetGroup, InsetRow, InsetSection, SettingsPage } from '../inset-list';
 import * as sheetCss from '../../../components/sheet/Sheet.css';
+import { useTranslation } from 'react-i18next';
 
 type DeveloperToolsProps = {
   requestClose: () => void;
 };
 export function DeveloperTools({ requestClose }: DeveloperToolsProps) {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const [developerTools, setDeveloperTools] = useSetting(settingsAtom, 'developerTools');
   const [expand, setExpend] = useState(false);
@@ -42,17 +44,17 @@ export function DeveloperTools({ requestClose }: DeveloperToolsProps) {
   }
 
   return (
-    <SettingsPage title="Developer Tools" requestClose={requestClose}>
-      <InsetSection title="Options">
+    <SettingsPage title={t('settings.developTools.developerTools')} requestClose={requestClose}>
+      <InsetSection title={t('settings.developTools.options')}>
         <InsetGroup>
           <InsetRow
-            title="Enable Developer Tools"
+            title={t('settings.developTools.enableDeveloperTools')}
             after={<Switch variant="Primary" value={developerTools} onChange={setDeveloperTools} />}
           />
           {developerTools && (
             <InsetRow
-              title="Access Token"
-              description="Copy access token to clipboard."
+              title={t('settings.developTools.accessToken')}
+              description={t('settings.developTools.copyAccessTokenTo')}
               after={
                 <Button
                   className={sheetCss.Pill}
@@ -62,7 +64,7 @@ export function DeveloperTools({ requestClose }: DeveloperToolsProps) {
                   size="300"
                   radii="Pill"
                 >
-                  <Text size="B300">Copy</Text>
+                  <Text size="B300">{t('settings.developTools.copy')}</Text>
                 </Button>
               }
             />

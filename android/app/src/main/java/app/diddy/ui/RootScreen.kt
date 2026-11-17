@@ -53,13 +53,6 @@ fun RootScreen() {
         AppModel.unreachable.isNotEmpty() -> OfflineScreen()
         else -> LoginScreen(isAddingAccount = false)
     }
-    AppModel.notice?.let { message ->
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = { AppModel.notice = null },
-            text = { Text(message) },
-            confirmButton = { TextButton(onClick = { AppModel.notice = null }) { Text("OK") } },
-        )
-    }
     if (AppModel.addingAccount) {
         Dialog(onDismissRequest = { AppModel.addingAccount = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
             LoginScreen(isAddingAccount = true, onClose = { AppModel.addingAccount = false })

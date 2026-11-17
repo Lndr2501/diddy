@@ -28,6 +28,8 @@ import { useLocalPluginRecord } from '../../../state/localPlugins';
 import { setPluginPinned } from '../../../state/pluginDock';
 import { SegmentedControl } from '../inset-list';
 import { PluginFrame } from '../../plugins/PluginFrame';
+import { useTranslation } from 'react-i18next';
+import { translate } from '../../../i18n';
 
 type Mode = 'file' | 'paste' | 'github';
 
@@ -66,7 +68,7 @@ const readPluginFile = async (file: File): Promise<Result<string>> => {
   try {
     return validateLocalHtml(await file.text());
   } catch {
-    return { ok: false, error: 'Could not read the file.' };
+    return { ok: false, error: translate('settings.localPlugins.couldNotReadThe') };
   }
 };
 
@@ -93,7 +95,9 @@ const useDebounced = <T,>(value: T, ms: number): T => {
 
 const PREVIEW_PLUGIN: UserPlugin = {
   id: 'preview',
-  name: 'Preview',
+  get name() {
+    return translate('settings.localPlugins.preview');
+  },
   url: localPluginUrl('preview'),
   enabled: true,
   addedAt: 0,
@@ -163,10 +167,11 @@ function NameField({
   disabled?: boolean;
   placeholder: string;
 }) {
+  const { t } = useTranslation();
   return (
     <Box direction="Column" gap="100" grow="Yes" style={{ minWidth: 160, flexBasis: 160 }}>
       <Text as="label" htmlFor="diddy-local-plugin-name" size="L400">
-        Name (optional)
+        {t('settings.localPlugins.nameOptional')}
       </Text>
       <Input
         id="diddy-local-plugin-name"
@@ -189,6 +194,7 @@ const pinNew = (plugins: UserPlugin[]) => {
 };
 
 export function AddLocalPluginForm({ full }: { full: boolean }) {
+  const { t } = useTranslation();
   const [mode, setMode] = useState<Mode>('file');
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
@@ -217,7 +223,11 @@ export function AddLocalPluginForm({ full }: { full: boolean }) {
       return;
     }
     const record = await makeRecord(html.value, 'file', { fileName: file.name.slice(0, 200) });
-    const pluginName = defaultPluginName(name, html.value, nameFromFileName(file.name) || 'Plugin');
+    const pluginName = defaultPluginName(
+      name,
+      html.value,
+      nameFromFileName(file.name) || t('settings.localPlugins.plugin')
+    );
     const result = await addLocalUserPlugin(pluginName, record);
     setBusy(false);
     if (!result.ok) {
@@ -225,7 +235,9 @@ export function AddLocalPluginForm({ full }: { full: boolean }) {
       return;
     }
     pinNew(result.value);
-    reset(`Added “${result.value[result.value.length - 1].name}”.`);
+    reset(
+      t('settings.localPlugins.addedName', { name: result.value[result.value.length - 1].name })
+    );
   };
 
   const addCode = async () => {
@@ -237,7 +249,7 @@ export function AddLocalPluginForm({ full }: { full: boolean }) {
     setBusy(true);
     const record = await makeRecord(html.value, 'paste');
     const result = await addLocalUserPlugin(
-      defaultPluginName(name, html.value, 'My plugin'),
+      defaultPluginName(name, html.value, t('settings.localPlugins.myPlugin')),
       record
     );
     setBusy(false);
@@ -247,7 +259,9 @@ export function AddLocalPluginForm({ full }: { full: boolean }) {
     }
     pinNew(result.value);
     setCode('');
-    reset(`Added “${result.value[result.value.length - 1].name}”.`);
+    reset(
+      t('settings.localPlugins.addedName', { name: result.value[result.value.length - 1].name })
+    );
   };
 
   const addSource = async () => {
@@ -265,7 +279,8 @@ export function AddLocalPluginForm({ full }: { full: boolean }) {
       rawUrl,
       fetchedAt: Date.now(),
     });
-    const fallback = nameFromFileName(label.split('/').pop() ?? '') || 'Plugin';
+    const fallback =
+      nameFromFileName(label.split('/').pop() ?? '') || t('settings.localPlugins.plugin');
     const result = await addLocalUserPlugin(defaultPluginName(name, html, fallback), record);
     setBusy(false);
     if (!result.ok) {
@@ -275,7 +290,10 @@ export function AddLocalPluginForm({ full }: { full: boolean }) {
     pinNew(result.value);
     setSource('');
     reset(
-      `Imported “${result.value[result.value.length - 1].name}” (${shortHash(record.sha256)}).`
+      t('settings.localPlugins.importedNameShorthash', {
+        name: result.value[result.value.length - 1].name,
+        shortHash: shortHash(record.sha256),
+      })
     );
   };
 
@@ -288,13 +306,13 @@ export function AddLocalPluginForm({ full }: { full: boolean }) {
 
   const hint =
     mode === 'github'
-      ? 'Loaded once and stored on this device. Public github.com, raw.githubusercontent.com and Gist links.'
-      : `Stored on this device, up to ${formatSize(MAX_LOCAL_PLUGIN_BYTES)}. No server needed.`;
+      ? t('settings.localPlugins.loadedOnceAndStored')
+      : t('settings.localPlugins.storedOnThisDevice', { size: formatSize(MAX_LOCAL_PLUGIN_BYTES) });
 
   return (
     <Box direction="Column" gap="300">
       <SegmentedControl<Mode>
-        aria-label="How to add the plugin"
+        aria-label={t('settings.localPlugins.howToAddThe')}
         value={mode}
         onChange={(value) => {
           setMode(value);
@@ -302,9 +320,9 @@ export function AddLocalPluginForm({ full }: { full: boolean }) {
           setNotice(undefined);
         }}
         options={[
-          { value: 'file', label: 'From file' },
-          { value: 'paste', label: 'Paste code' },
-          { value: 'github', label: 'GitHub / Gist' },
+          { value: 'file', label: t('settings.localPlugins.fromFile') },
+          { value: 'paste', label: t('settings.localPlugins.pasteCode') },
+          { value: 'github', label: t('settings.localPlugins.githubGist') },
         ]}
       />
       <Box gap="200" wrap="Wrap">
@@ -315,7 +333,11 @@ export function AddLocalPluginForm({ full }: { full: boolean }) {
             setError(undefined);
           }}
           disabled={full}
-          placeholder={mode === 'file' ? 'Page title or file name' : 'Page title'}
+          placeholder={
+            mode === 'file'
+              ? t('settings.localPlugins.pageTitleOrFile')
+              : t('settings.localPlugins.pageTitle')
+          }
         />
       </Box>
 
@@ -338,22 +360,26 @@ export function AddLocalPluginForm({ full }: { full: boolean }) {
             textAlign: 'center',
           }}
         >
-          <Text size="T300">Drop an .html file here</Text>
-          <FilePickerButton disabled={full || busy} label="Choose file" onFile={addFile} />
+          <Text size="T300">{t('settings.localPlugins.dropAnHtmlFile')}</Text>
+          <FilePickerButton
+            disabled={full || busy}
+            label={t('settings.localPlugins.chooseFile')}
+            onFile={addFile}
+          />
         </div>
       )}
 
       {mode === 'paste' && (
         <Box direction="Column" gap="200">
           <Text as="label" size="L400" htmlFor="diddy-local-plugin-code">
-            HTML
+            {t('settings.localPlugins.html')}
           </Text>
           <textarea
             id="diddy-local-plugin-code"
             value={code}
             rows={10}
             spellCheck={false}
-            placeholder={'<!doctype html>\n<html>\n  <body>Hello from my plugin</body>\n</html>'}
+            placeholder={t('settings.localPlugins.doctypeHtmlHtmlBody')}
             onChange={(evt) => {
               setCode(evt.target.value);
               setError(undefined);
@@ -364,7 +390,7 @@ export function AddLocalPluginForm({ full }: { full: boolean }) {
           />
           {previewOk && (
             <>
-              <Text size="L400">Live preview</Text>
+              <Text size="L400">{t('settings.localPlugins.livePreview')}</Text>
               <PluginFrame plugin={PREVIEW_PLUGIN} previewHtml={preview} />
             </>
           )}
@@ -374,7 +400,7 @@ export function AddLocalPluginForm({ full }: { full: boolean }) {
       {mode === 'github' && (
         <Box direction="Column" gap="100">
           <Text as="label" htmlFor="diddy-local-plugin-source" size="L400">
-            GitHub file or Gist
+            {t('settings.localPlugins.githubFileOrGist')}
           </Text>
           <Input
             id="diddy-local-plugin-source"
@@ -384,7 +410,7 @@ export function AddLocalPluginForm({ full }: { full: boolean }) {
               setError(undefined);
               setNotice(undefined);
             }}
-            placeholder="https://github.com/user/repo/blob/main/plugin.html"
+            placeholder={t('settings.localPlugins.httpsGithubComUser')}
             inputMode="url"
             autoComplete="off"
             autoCapitalize="off"
@@ -398,7 +424,10 @@ export function AddLocalPluginForm({ full }: { full: boolean }) {
 
       <Box alignItems="Center" justifyContent="SpaceBetween" gap="300" wrap="Wrap">
         <Message error={error}>
-          {notice ?? (full ? `You have reached the limit of ${MAX_PLUGINS} plugins.` : hint)}
+          {notice ??
+            (full
+              ? t('settings.localPlugins.youHaveReachedThe', { maxPlugins: MAX_PLUGINS })
+              : hint)}
         </Message>
         {busy && <Spinner variant="Secondary" size="200" />}
         {mode === 'paste' && (
@@ -412,7 +441,7 @@ export function AddLocalPluginForm({ full }: { full: boolean }) {
             onClick={addCode}
             before={<Icon src={Icons.Plus} size="100" />}
           >
-            <Text size="B300">Add Plugin</Text>
+            <Text size="B300">{t('settings.localPlugins.addPlugin')}</Text>
           </Button>
         )}
         {mode === 'github' && (
@@ -426,7 +455,7 @@ export function AddLocalPluginForm({ full }: { full: boolean }) {
             onClick={addSource}
             before={<Icon src={Icons.Download} size="100" />}
           >
-            <Text size="B300">Import</Text>
+            <Text size="B300">{t('settings.localPlugins.import')}</Text>
           </Button>
         )}
       </Box>
@@ -445,16 +474,21 @@ const formatTime = (time: number | undefined): string => {
 
 /** One line under a local plugin's name: where it came from, size and short hash. */
 export function LocalPluginDescription({ plugin }: { plugin: UserPlugin }) {
+  const { t } = useTranslation();
   const record = useLocalPluginRecord(plugin.id);
-  if (record === undefined) return <>Local plugin</>;
+  if (record === undefined) return <>{t('settings.localPlugins.localPlugin')}</>;
   if (record === null) {
     return (
       <span style={{ color: color.Critical.Main }}>
-        Content missing on this device. Remove it and add it again.
+        {t('settings.localPlugins.contentMissingOnThis')}
       </span>
     );
   }
-  const hash = <code title={`SHA-256 ${record.sha256}`}>{shortHash(record.sha256)}</code>;
+  const hash = (
+    <code title={t('settings.localPlugins.sha256Sha256', { sha256: record.sha256 })}>
+      {shortHash(record.sha256)}
+    </code>
+  );
   const source = record.rawUrl ? toRawSourceUrl(record.rawUrl) : undefined;
   if ((record.origin === 'github' || record.origin === 'gist') && source?.ok) {
     // link only to an address that passes the same checks as at import time
@@ -466,18 +500,26 @@ export function LocalPluginDescription({ plugin }: { plugin: UserPlugin }) {
         : source.value.rawUrl;
     return (
       <>
-        From {record.origin === 'gist' ? 'Gist' : 'GitHub'}{' '}
+        {t('settings.localPlugins.from')}{' '}
+        {record.origin === 'gist' ? t('settings.localPlugins.gist') : 'GitHub'}{' '}
         <a href={href} target="_blank" rel="noreferrer noopener">
           {source.value.label}
         </a>{' '}
-        · loaded {formatTime(record.fetchedAt)} · {formatSize(record.size)} · {hash}
+        {t('settings.localPlugins.loadedTimeSize', {
+          time: formatTime(record.fetchedAt),
+          size: formatSize(record.size),
+        })}{' '}
+        {hash}
       </>
     );
   }
-  const what = record.origin === 'file' ? `File ${record.fileName ?? ''}`.trim() : 'Pasted code';
+  const what =
+    record.origin === 'file'
+      ? t('settings.localPlugins.fileName', { name: record.fileName ?? '' }).trim()
+      : t('settings.localPlugins.pastedCode');
   return (
     <>
-      Local · {what} · {formatSize(record.size)} · {hash}
+      {t('settings.localPlugins.local')} {what} · {formatSize(record.size)} · {hash}
     </>
   );
 }
@@ -486,6 +528,7 @@ type Pending = { record: LocalPluginRecord; changed: boolean };
 
 /** Replace the stored HTML of a local plugin: from a file, edited code, or its GitHub source. */
 export function LocalPluginTools({ plugin }: { plugin: UserPlugin }) {
+  const { t } = useTranslation();
   const record = useLocalPluginRecord(plugin.id);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
@@ -516,8 +559,8 @@ export function LocalPluginTools({ plugin }: { plugin: UserPlugin }) {
     setBusy(false);
     done(
       next.sha256 === record.sha256
-        ? 'Reloaded, the content is unchanged.'
-        : `Replaced (${shortHash(next.sha256)}).`
+        ? t('settings.localPlugins.reloadedTheContentIs')
+        : t('settings.localPlugins.replacedShorthash', { shortHash: shortHash(next.sha256) })
     );
   };
 
@@ -532,7 +575,7 @@ export function LocalPluginTools({ plugin }: { plugin: UserPlugin }) {
     await replaceLocalUserPlugin(plugin.id, next);
     setBusy(false);
     setEditing(false);
-    done(`Saved (${shortHash(next.sha256)}).`);
+    done(t('settings.localPlugins.savedShorthash', { shortHash: shortHash(next.sha256) }));
   };
 
   const checkSource = async () => {
@@ -559,7 +602,9 @@ export function LocalPluginTools({ plugin }: { plugin: UserPlugin }) {
     if (!pending) return;
     await replaceLocalUserPlugin(plugin.id, pending.record);
     setPending(undefined);
-    done(`Updated (${shortHash(pending.record.sha256)}).`);
+    done(
+      t('settings.localPlugins.updatedShorthash', { shortHash: shortHash(pending.record.sha256) })
+    );
   };
 
   const pill = {
@@ -573,9 +618,13 @@ export function LocalPluginTools({ plugin }: { plugin: UserPlugin }) {
 
   return (
     <Box direction="Column" gap="200">
-      <Text size="L400">Content</Text>
+      <Text size="L400">{t('settings.localPlugins.content')}</Text>
       <Box gap="200" wrap="Wrap" alignItems="Center">
-        <FilePickerButton disabled={busy} label="Replace from file" onFile={replaceFile} />
+        <FilePickerButton
+          disabled={busy}
+          label={t('settings.localPlugins.replaceFromFile')}
+          onFile={replaceFile}
+        />
         <Button
           {...pill}
           disabled={busy}
@@ -586,11 +635,13 @@ export function LocalPluginTools({ plugin }: { plugin: UserPlugin }) {
             setError(undefined);
           }}
         >
-          <Text size="B300">{editing ? 'Close code' : 'Edit code'}</Text>
+          <Text size="B300">
+            {editing ? t('settings.localPlugins.closeCode') : t('settings.localPlugins.editCode')}
+          </Text>
         </Button>
         {fromSource && (
           <Button {...pill} disabled={busy} onClick={checkSource}>
-            <Text size="B300">Update from source</Text>
+            <Text size="B300">{t('settings.localPlugins.updateFromSource')}</Text>
           </Button>
         )}
         {busy && <Spinner variant="Secondary" size="200" />}
@@ -599,17 +650,24 @@ export function LocalPluginTools({ plugin }: { plugin: UserPlugin }) {
         <Box alignItems="Center" gap="200" wrap="Wrap">
           <Message>
             {pending.changed
-              ? `The source changed: ${shortHash(record.sha256)} → ${shortHash(
-                  pending.record.sha256
-                )}. Replace the stored version?`
-              : `The source is unchanged (${shortHash(record.sha256)}).`}
+              ? t('settings.localPlugins.theSourceChangedShorthash', {
+                  shortHash: shortHash(record.sha256),
+                  shortHash2: shortHash(pending.record.sha256),
+                })
+              : t('settings.localPlugins.theSourceIsUnchanged', {
+                  shortHash: shortHash(record.sha256),
+                })}
           </Message>
           <Button {...pill} onClick={() => setPending(undefined)}>
-            <Text size="B300">{pending.changed ? 'Keep current' : 'OK'}</Text>
+            <Text size="B300">
+              {pending.changed
+                ? t('settings.localPlugins.keepCurrent')
+                : t('settings.localPlugins.ok')}
+            </Text>
           </Button>
           {pending.changed && (
             <Button {...pill} variant="Primary" fill="Solid" onClick={applyPending}>
-              <Text size="B300">Replace</Text>
+              <Text size="B300">{t('settings.localPlugins.replace')}</Text>
             </Button>
           )}
         </Box>
@@ -617,7 +675,7 @@ export function LocalPluginTools({ plugin }: { plugin: UserPlugin }) {
       {editing && (
         <Box direction="Column" gap="200">
           <textarea
-            aria-label={`HTML of ${plugin.name}`}
+            aria-label={t('settings.localPlugins.htmlOfName', { name: plugin.name })}
             value={code}
             rows={12}
             spellCheck={false}
@@ -635,7 +693,7 @@ export function LocalPluginTools({ plugin }: { plugin: UserPlugin }) {
               disabled={busy || code === record.html}
               onClick={saveCode}
             >
-              <Text size="B300">Save code</Text>
+              <Text size="B300">{t('settings.localPlugins.saveCode')}</Text>
             </Button>
           </Box>
         </Box>

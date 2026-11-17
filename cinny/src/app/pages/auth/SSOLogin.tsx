@@ -2,6 +2,7 @@ import { Avatar, AvatarImage, Box, Button, Text } from 'folds';
 import { IIdentityProvider, SSOAction, createClient } from 'matrix-js-sdk';
 import React, { useMemo } from 'react';
 import { useAutoDiscoveryInfo } from '../../hooks/useAutoDiscoveryInfo';
+import { useTranslation } from 'react-i18next';
 
 type SSOLoginProps = {
   providers?: IIdentityProvider[];
@@ -18,6 +19,7 @@ export function SSOLogin({
   saveScreenSpace,
   server,
 }: SSOLoginProps) {
+  const { t } = useTranslation();
   const discovery = useAutoDiscoveryInfo();
   const baseUrl = discovery['m.homeserver'].base_url;
   const mx = useMemo(() => createClient({ baseUrl }), [baseUrl]);
@@ -40,7 +42,7 @@ export function SSOLogin({
           const { id, name, icon } = provider;
           const iconUrl = icon && mx.mxcUrlToHttp(icon, 96, 96, 'crop', false);
 
-          const buttonTitle = `Continue with ${name}`;
+          const buttonTitle = t('auth.sSOLogin.continueWithName', { name });
 
           if (renderAsIcons) {
             return (
@@ -94,8 +96,8 @@ export function SSOLogin({
         >
           <Text align="Center" size="B500" truncate>
             {action === SSOAction.REGISTER && server
-              ? `Create an account on ${server}`
-              : 'Continue with SSO'}
+              ? t('auth.sSOLogin.createAnAccountOn', { server })
+              : t('auth.sSOLogin.continueWithSso')}
           </Text>
         </Button>
       )}

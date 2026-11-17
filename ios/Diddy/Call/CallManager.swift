@@ -116,7 +116,7 @@ final class CallManager: ObservableObject {
         if incoming?.roomId == roomId { endRinging() }
         await leave(silently: true)
         guard let room = account.room(roomId) else {
-            error = "Join the channel first."
+            error = L("ios.errorsExtra.joinTheChannelFirst")
             return
         }
         let session = CallSession(account: account, room: room, roomName: roomName)
@@ -124,13 +124,13 @@ final class CallManager: ObservableObject {
         session.onDropped = { [weak self, weak session] in
             guard let self, let session, self.current === session else { return }
             DiagLog.shared.write("call: connection to the voice server lost")
-            self.error = "The connection to the voice server was lost."
+            self.error = L("ios.errorsExtra.theConnectionToTheVoiceServerWasLost")
             Sounds.shared.play(.connectionLost)
             Task { await self.leave(silently: true) }
         }
         session.onCompanionComputerGone = { [weak self, weak session] in
             guard let self, let session, self.current === session else { return }
-            self.error = "Your computer is no longer in the call, so this iPhone left too."
+            self.error = L("ios.errorsExtra.yourComputerIsNoLongerInTheCallSoThisIphoneLeftToo")
             Task { await self.leave() }
         }
         session.onDeclined = { [weak self, weak session] userId in
@@ -514,7 +514,7 @@ final class CallSession: NSObject, ObservableObject {
         do {
             try await sendMembership()
         } catch {
-            throw DiddyError("You do not have permission to join a call in this room. An admin has to allow it.")
+            throw DiddyError(L("ios.errorsExtra.youDoNotHavePermissionToJoinACallInThisRoomAnAdminHasToAllow"))
         }
         await keys.value
         if encrypted { watchCallDevices() }
@@ -1112,7 +1112,7 @@ final class CallSession: NSObject, ObservableObject {
         for transport in transports {
             if case .liveKit(let serviceUrl) = transport { return (serviceUrl, roomId) }
         }
-        throw DiddyError("Your homeserver does not offer a MatrixRTC voice server (MSC4143 rtc_foci / LiveKit). Voice channels need one, like on the desktop app.")
+        throw DiddyError(L("ios.errorsExtra.yourHomeserverDoesNotOfferAMatrixrtcVoiceServerMsc4143RtcFoc"))
     }
 
     /// Without microphone access you still join and listen, as on Discord.

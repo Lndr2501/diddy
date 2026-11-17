@@ -4,6 +4,7 @@ import { as, Box, Icon, IconButton, Icons, Scroll, Spinner, Text } from 'folds';
 import { Page, PageContent, PageHeader } from '../../../components/page';
 import { BreakWord } from '../../../styles/Text.css';
 import * as css from './style.css';
+import { useTranslation } from 'react-i18next';
 
 /*
  * Building blocks for the settings pages: a slim header with a breadcrumb, a centered page
@@ -28,6 +29,7 @@ type SettingsPageHeaderProps = {
 };
 /** The slim header every settings page shares: "Settings / Title", actions, close. */
 export function SettingsPageHeader({ title, requestClose, actions }: SettingsPageHeaderProps) {
+  const { t } = useTranslation();
   const crumb = useContext(SettingsBreadcrumb);
   const compact = useContext(SettingsCompact);
   return (
@@ -39,8 +41,8 @@ export function SettingsPageHeader({ title, requestClose, actions }: SettingsPag
           fill="None"
           size="400"
           radii="Pill"
-          aria-label="Back to settings"
-          title="Back"
+          aria-label={t('settings.insetList.backToSettings')}
+          title={t('settings.insetList.back')}
         >
           <Icon size="200" src={Icons.ArrowLeft} />
         </IconButton>
@@ -69,8 +71,8 @@ export function SettingsPageHeader({ title, requestClose, actions }: SettingsPag
             fill="Soft"
             size="400"
             radii="Pill"
-            aria-label="Close settings"
-            title="Close (Esc)"
+            aria-label={t('settings.insetList.closeSettings')}
+            title={t('settings.insetList.closeEsc')}
           >
             <Icon size="200" src={Icons.Cross} />
           </IconButton>

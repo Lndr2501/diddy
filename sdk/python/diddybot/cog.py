@@ -42,7 +42,7 @@ __all__ = ["Cog", "command", "group", "listener"]
 
 def command(name: str = "", *, desc: str = "", usage: str = "", aliases: Any = (),
             group: str = "Commands", power: int = 0, hidden: bool = False, dm_only: bool = False,
-            checks: Any = ()) -> Callable[[Any], Command]:
+            checks: Any = (), describe: Any = None) -> Callable[[Any], Command]:
     """Make a :class:`Command` of a function; ``bot.add_command`` or a cog registers it."""
     def deco(func: Any) -> Command:
         n = name or func.__name__
@@ -50,7 +50,7 @@ def command(name: str = "", *, desc: str = "", usage: str = "", aliases: Any = (
         cmd = Command(name=n, func=func, **_opts(func, {
             "desc": desc or _doc_line(func), "usage": usage, "aliases": tuple(aliases),
             "group": group, "power": power, "hidden": hidden, "dm_only": dm_only,
-            "checks": list(checks)}))
+            "checks": list(checks), "describe": dict(describe or {})}))
         return cmd
     return deco
 

@@ -11,12 +11,14 @@ import {
   useDeviceVerificationStatus,
   VerificationStatus,
 } from '../hooks/useDeviceVerificationStatus';
+import { useTranslation } from 'react-i18next';
 
 type LogoutDialogProps = {
   handleClose: () => void;
 };
 export const LogoutDialog = forwardRef<HTMLDivElement, LogoutDialogProps>(
   ({ handleClose }, ref) => {
+    const { t } = useTranslation();
     const mx = useMatrixClient();
     const hasEncryptedRoom = !!mx.getRooms().find((room) => room.hasEncryptionStateEvent());
     const crossSigningActive = useCrossSigningActive();
@@ -44,10 +46,10 @@ export const LogoutDialog = forwardRef<HTMLDivElement, LogoutDialogProps>(
         <div className={sheetCss.AlertBody}>
           <AppLogo className={sheetCss.AlertIcon} size={64} />
           <Text as="h2" className={sheetCss.AlertTitle}>
-            Logout
+            {t('common.logoutDialog.logout')}
           </Text>
           <Text as="p" className={sheetCss.AlertText}>
-            You’re about to log out. Are you sure?
+            {t('common.logoutDialog.youReAboutTo')}
           </Text>
           {hasEncryptedRoom &&
             (crossSigningActive ? (
@@ -55,8 +57,8 @@ export const LogoutDialog = forwardRef<HTMLDivElement, LogoutDialogProps>(
                 <div data-alert-content>
                   <InfoCard
                     variant="Critical"
-                    title="Unverified Device"
-                    description="Verify your device before logging out to save your encrypted messages."
+                    title={t('common.logoutDialog.unverifiedDevice')}
+                    description={t('common.logoutDialog.verifyYourDeviceBefore')}
                   />
                 </div>
               )
@@ -64,8 +66,8 @@ export const LogoutDialog = forwardRef<HTMLDivElement, LogoutDialogProps>(
               <div data-alert-content>
                 <InfoCard
                   variant="Critical"
-                  title="Alert"
-                  description="Enable device verification or export your encrypted data from settings to avoid losing access to your messages."
+                  title={t('common.logoutDialog.alert')}
+                  description={t('common.logoutDialog.enableDeviceVerificationOr')}
                 />
               </div>
             ))}
@@ -104,7 +106,7 @@ export const LogoutDialog = forwardRef<HTMLDivElement, LogoutDialogProps>(
               onClick={handleClose}
               disabled={ongoingLogout}
             >
-              <Text size="B400">Cancel</Text>
+              <Text size="B400">{t('common.logoutDialog.cancel')}</Text>
             </Button>
           </div>
         </div>

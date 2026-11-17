@@ -1,13 +1,5 @@
 import React, { useState } from 'react';
-import {
-  Box,
-  Modal,
-  Overlay,
-  OverlayBackdrop,
-  OverlayCenter,
-  Text,
-  as,
-} from 'folds';
+import { Box, Modal, Overlay, OverlayBackdrop, OverlayCenter, Text, as } from 'folds';
 import { Room } from 'matrix-js-sdk';
 import classNames from 'classnames';
 import FocusTrap from 'focus-trap-react';
@@ -22,6 +14,7 @@ import { useRoomLatestRenderedEvent } from '../../hooks/useRoomLatestRenderedEve
 import { useRoomEventReaders } from '../../hooks/useRoomEventReaders';
 import { EventReaders } from '../../components/event-readers';
 import { stopPropagation } from '../../utils/keyboard';
+import { useTranslation } from 'react-i18next';
 
 const MAX_FACES = 4;
 
@@ -34,6 +27,7 @@ export type RoomViewFollowingProps = {
 };
 export const RoomViewFollowing = as<'div', RoomViewFollowingProps>(
   ({ className, room, ...props }, ref) => {
+    const { t } = useTranslation();
     const mx = useMatrixClient();
     const [open, setOpen] = useState(false);
     const latestEvent = useRoomLatestRenderedEvent(room);
@@ -83,7 +77,11 @@ export const RoomViewFollowing = as<'div', RoomViewFollowingProps>(
           justifyContent="End"
           gap="200"
           title={names.length > 0 ? names.join(', ') : undefined}
-          aria-label={names.length > 0 ? `Seen by ${names.join(', ')}` : undefined}
+          aria-label={
+            names.length > 0
+              ? t('room.viewFollowing.seenByJoin', { join: names.join(', ') })
+              : undefined
+          }
           {...props}
           ref={ref}
         >
@@ -97,7 +95,12 @@ export const RoomViewFollowing = as<'div', RoomViewFollowingProps>(
                     style={{ backgroundColor: colorMXID(reader.userId) }}
                   >
                     {reader.avatarUrl ? (
-                      <img className={css.FaceImg} src={reader.avatarUrl} alt="" draggable={false} />
+                      <img
+                        className={css.FaceImg}
+                        src={reader.avatarUrl}
+                        alt=""
+                        draggable={false}
+                      />
                     ) : (
                       reader.name.trim().charAt(0).toUpperCase()
                     )}
@@ -105,7 +108,9 @@ export const RoomViewFollowing = as<'div', RoomViewFollowingProps>(
                 ))}
               </span>
               <Text size="T200" priority="300" truncate>
-                {`Seen by ${readers.length === 1 ? readers[0].name : readers.length}`}
+                {readers.length === 1
+                  ? t('room.viewFollowing.seenByName', { name: readers[0].name })
+                  : t('room.viewFollowing.seenByCount', { count: readers.length })}
               </Text>
             </>
           )}

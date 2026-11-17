@@ -113,6 +113,12 @@ final class BotCommandStore: ObservableObject {
         return BotCommandParser.match(lists, typed: draft)
     }
 
+    /// The argument being typed after a command ("!mode o"): fixed answers to suggest or a hint.
+    func argumentMatch(for draft: String) -> BotArgumentMatch? {
+        guard !lists.isEmpty, !draft.isEmpty, BotCommandStore.mayBeCommand(String(draft.prefix(while: { !$0.isWhitespace }))) else { return nil }
+        return BotCommandParser.matchArguments(lists, typed: draft)
+    }
+
     /// True when the draft starts like the prefix of a bot command (`!`, `%`, `.` ...).
     static func mayBeCommand(_ draft: String) -> Bool {
         guard let first = draft.first, !draft.contains(where: { $0.isWhitespace }) else { return false }

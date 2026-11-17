@@ -5,9 +5,11 @@ import { stopPropagation } from '../utils/keyboard';
 import { copyToClipboard } from '../utils/dom';
 import { CALL_FRAME_MENU_EVENT, CallFrameMenuDetail } from '../plugins/callFrameMenu';
 import * as sheetCss from './sheet/Sheet.css';
+import { useTranslation } from 'react-i18next';
 
 /** The Copy menu for a right-click inside the call view, shown in the main window. */
 export function CallFrameMenu() {
+  const { t } = useTranslation();
   const [menu, setMenu] = useState<{ anchor: RectCords; text: string }>();
 
   useEffect(() => {
@@ -47,7 +49,7 @@ export function CallFrameMenu() {
                   close();
                 }}
               >
-                <Text size="T300">Copy</Text>
+                <Text size="T300">{t('call.frameMenu.copy')}</Text>
               </MenuItem>
             </Box>
           </Menu>

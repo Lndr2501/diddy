@@ -13,6 +13,7 @@ import { getMouseEventCords } from '../../utils/dom';
 import * as css from './styles.css';
 import { useAgentTalking } from '../../state/agentVoice';
 import { openCallUserMenu } from '../../plugins/callFrameMenu';
+import { useTranslation } from 'react-i18next';
 
 type GlanceAvatarProps = {
   room: Room;
@@ -20,6 +21,7 @@ type GlanceAvatarProps = {
   speaking: boolean;
 };
 function GlanceAvatar({ room, userId, speaking }: GlanceAvatarProps) {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
   const openUserProfile = useOpenUserRoomProfile();
@@ -37,7 +39,7 @@ function GlanceAvatar({ room, userId, speaking }: GlanceAvatarProps) {
   return (
     <StackedAvatar
       className={outline}
-      title={agent ? `${name} (talking to agent)` : name}
+      title={agent ? t('call.memberGlance.nameTalkingToAgent', { name }) : name}
       as="button"
       variant="Background"
       size="200"

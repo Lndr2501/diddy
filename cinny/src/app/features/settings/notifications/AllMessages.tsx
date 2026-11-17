@@ -12,6 +12,7 @@ import {
   useNotificationModeActions,
 } from '../../../hooks/useNotificationMode';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
+import { useTranslation } from 'react-i18next';
 
 const getAllMessageDefaultRule = (
   ruleId: RuleId,
@@ -71,6 +72,7 @@ function AllMessagesModeSwitcher({
 }
 
 export function AllMessagesNotifications() {
+  const { t } = useTranslation();
   const pushRulesEvt = useAccountData(AccountDataEvent.PushRules);
   const pushRules = useMemo(
     () => pushRulesEvt?.getContent<IPushRules>() ?? { global: {} },
@@ -79,11 +81,11 @@ export function AllMessagesNotifications() {
 
   return (
     <InsetSection
-      title="All Messages"
+      title={t('settings.allMessages.allMessages')}
       after={
         <Box gap="100" alignItems="Center">
           <Text size="T200" priority="300">
-            Badge
+            {t('settings.allMessages.badge')}
           </Text>
           <Badge radii="300" variant="Secondary" fill="Soft">
             <Text size="L400">1</Text>
@@ -93,11 +95,11 @@ export function AllMessagesNotifications() {
     >
       <InsetGroup>
         <InsetRow
-          title="1-to-1 Chats"
+          title={t('settings.allMessages.n1To1Chats')}
           after={<AllMessagesModeSwitcher pushRules={pushRules} ruleId={RuleId.DM} oneToOne />}
         />
         <InsetRow
-          title="1-to-1 Chats (Encrypted)"
+          title={t('settings.allMessages.n1To1Chats2')}
           after={
             <AllMessagesModeSwitcher
               pushRules={pushRules}
@@ -108,11 +110,11 @@ export function AllMessagesNotifications() {
           }
         />
         <InsetRow
-          title="Rooms"
+          title={t('settings.allMessages.rooms')}
           after={<AllMessagesModeSwitcher pushRules={pushRules} ruleId={RuleId.Message} />}
         />
         <InsetRow
-          title="Rooms (Encrypted)"
+          title={t('settings.allMessages.roomsEncrypted')}
           after={
             <AllMessagesModeSwitcher
               pushRules={pushRules}

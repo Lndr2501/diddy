@@ -20,6 +20,7 @@ import * as css from './DiddyProfileSettings.css';
 import { ColorField, Counter, Field, Hint, SettingsCard } from './ProfileSettingsUI';
 import { SPACE } from './editorSpace';
 import { RADIUS_ROW } from '../../../components/sidebar/diddyTokens';
+import { useTranslation } from 'react-i18next';
 
 const DEFAULT_BADGE_COLOR = '#7AA2F7';
 const MAX_EMOJI_CODEPOINTS = 6;
@@ -30,6 +31,7 @@ const errorMessage = (e: unknown, fallback: string): string =>
 const normalizeColor = (c?: string): string => (c ?? '').trim().toLowerCase();
 
 function BadgeLibrary() {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const myUserId = mx.getSafeUserId();
   const defs = useBadgeDefs(mx);
@@ -49,7 +51,7 @@ function BadgeLibrary() {
     try {
       await deleteBadgeDef(mx, badge);
     } catch (e) {
-      setError(errorMessage(e, 'Failed to delete badge.'));
+      setError(errorMessage(e, t('settings.badgeEditor.failedToDeleteBadge')));
     } finally {
       setBusyId(undefined);
     }
@@ -60,7 +62,7 @@ function BadgeLibrary() {
   const visible = query ? defs.filter((b) => b.name.toLowerCase().includes(query)) : defs;
 
   const authorLabel = (badge: BadgeDef): string => {
-    if (badge.global) return 'Built-in';
+    if (badge.global) return t('settings.badgeEditor.builtIn');
     if (!badge.createdBy) return 'by unknown';
     const displayName = mx.getUser(badge.createdBy)?.displayName;
     const localpart = badge.createdBy.replace(/^@/, '').split(':')[0];
@@ -74,7 +76,7 @@ function BadgeLibrary() {
       if (ownedIds.has(badge.id)) await revokeBadge(mx, badge.id, myUserId);
       else await awardBadge(mx, badge.id, myUserId);
     } catch (e) {
-      setError(errorMessage(e, 'Failed to update badge.'));
+      setError(errorMessage(e, t('settings.badgeEditor.failedToUpdateBadge')));
     } finally {
       setBusyId(undefined);
     }
@@ -83,19 +85,22 @@ function BadgeLibrary() {
   return (
     <SettingsCard
       icon={Icons.Category}
-      title="Badge library"
-      description={`Built-in and community badges. You own ${owned.length} of ${defs.length}.`}
+      title={t('settings.badgeEditor.badgeLibrary')}
+      description={t('settings.badgeEditor.builtInAndCommunity', {
+        count: owned.length,
+        count2: defs.length,
+      })}
       footer={error && <Hint tone="error">{error}</Hint>}
     >
       <input
         className={classNames(css.Input, css.InputFull)}
         value={filter}
         onChange={(evt) => setFilter(evt.target.value)}
-        placeholder="Search badges"
-        aria-label="Search badges"
+        placeholder={t('settings.badgeEditor.searchBadges')}
+        aria-label={t('settings.badgeEditor.searchBadges')}
       />
       {visible.length === 0 ? (
-        <Hint>No badges match your search.</Hint>
+        <Hint>{t('settings.badgeEditor.noBadgesMatchYour')}</Hint>
       ) : (
         <div
           style={{
@@ -145,7 +150,9 @@ function BadgeLibrary() {
                   }
                   onClick={() => handleToggle(badge)}
                 >
-                  <Text size="B300">{isOwned ? 'Remove' : 'Add to me'}</Text>
+                  <Text size="B300">
+                    {isOwned ? t('settings.badgeEditor.remove') : t('settings.badgeEditor.addToMe')}
+                  </Text>
                 </Button>
                 {canDelete(badge) && (
                   <Button
@@ -161,8 +168,8 @@ function BadgeLibrary() {
                   >
                     <Text size="B300">
                       {confirmId === badge.id
-                        ? 'Really delete for everyone?'
-                        : 'Delete from library'}
+                        ? t('settings.badgeEditor.reallyDeleteForEveryone')
+                        : t('settings.badgeEditor.deleteFromLibrary')}
                     </Text>
                   </Button>
                 )}
@@ -176,6 +183,7 @@ function BadgeLibrary() {
 }
 
 function YourBadges() {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const myUserId = mx.getSafeUserId();
   const owned = useUserBadges(mx, myUserId);
@@ -194,7 +202,7 @@ function YourBadges() {
     try {
       await patchMyProfile(mx, { shownBadges: next });
     } catch (e) {
-      setError(errorMessage(e, 'Failed to save shown badges.'));
+      setError(errorMessage(e, t('settings.badgeEditor.failedToSaveShown')));
     } finally {
       setSaving(false);
     }
@@ -203,15 +211,15 @@ function YourBadges() {
   return (
     <SettingsCard
       icon={Icons.Star}
-      title="Equipped badges"
-      description={`Pick up to ${MAX_SHOWN_BADGES} badges to show next to your name. Saved right away.`}
+      title={t('settings.badgeEditor.equippedBadges')}
+      description={t('settings.badgeEditor.pickUpToMaxshownbadges', {
+        maxShownBadges: MAX_SHOWN_BADGES,
+      })}
       action={<Counter value={shownIds.length} max={MAX_SHOWN_BADGES} />}
       footer={error && <Hint tone="error">{error}</Hint>}
     >
       {owned.length === 0 ? (
-        <Hint>
-          You do not have any badges yet. Create one below or ask someone to give you one.
-        </Hint>
+        <Hint>{t('settings.badgeEditor.youDoNotHave')}</Hint>
       ) : (
         <Box gap="200" wrap="Wrap">
           {owned.map((badge) => {
@@ -241,6 +249,7 @@ function YourBadges() {
 }
 
 function CreateBadge() {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const defs = useBadgeDefs(mx);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -263,7 +272,7 @@ function CreateBadge() {
 
   const preview: BadgeDef = {
     id: 'preview',
-    name: trimmedName || 'Preview',
+    name: trimmedName || t('settings.badgeEditor.preview'),
     emoji: imageMxc ? undefined : trimmedEmoji || '❔',
     imageMxc,
     color: badgeColor,
@@ -275,7 +284,7 @@ function CreateBadge() {
     evt.target.value = '';
     if (!file) return;
     if (!file.type.startsWith('image/')) {
-      setError('Please choose an image file.');
+      setError(t('settings.badgeEditor.pleaseChooseAnImage'));
       return;
     }
     setUploading(true);
@@ -283,7 +292,7 @@ function CreateBadge() {
     try {
       setImageMxc(await uploadDiddyMedia(mx, file));
     } catch (e) {
-      setError(errorMessage(e, 'Failed to upload image.'));
+      setError(errorMessage(e, t('settings.badgeEditor.failedToUploadImage')));
     } finally {
       setUploading(false);
     }
@@ -309,7 +318,7 @@ function CreateBadge() {
       setEmoji('');
       setImageMxc(undefined);
     } catch (e) {
-      setError(errorMessage(e, 'Failed to add badge.'));
+      setError(errorMessage(e, t('settings.badgeEditor.failedToAddBadge')));
     } finally {
       setCreating(false);
     }
@@ -330,7 +339,7 @@ function CreateBadge() {
       setEmoji('');
       setImageMxc(undefined);
     } catch (e) {
-      setError(errorMessage(e, 'Failed to create badge.'));
+      setError(errorMessage(e, t('settings.badgeEditor.failedToCreateBadge')));
     } finally {
       setCreating(false);
     }
@@ -339,24 +348,28 @@ function CreateBadge() {
   return (
     <SettingsCard
       icon={Icons.Plus}
-      title="Create custom badge"
-      description="A new badge for the shared library. It is given to you right away."
+      title={t('settings.badgeEditor.createCustomBadge')}
+      description={t('settings.badgeEditor.aNewBadgeFor')}
       action={<BadgeChip badge={preview} size={32} />}
     >
-      <Field label="Name">
+      <Field label={t('settings.badgeEditor.name')}>
         <input
           className={css.Input}
           value={name}
           onChange={(evt) => setName(evt.target.value)}
           maxLength={32}
-          placeholder="Badge name"
-          aria-label="Badge name"
+          placeholder={t('settings.badgeEditor.badgeName')}
+          aria-label={t('settings.badgeEditor.badgeName')}
         />
       </Field>
       <Field
-        label="Emoji or image"
+        label={t('settings.badgeEditor.emojiOrImage')}
         top
-        hint={imageMxc ? 'Using an uploaded image.' : 'Type an emoji, or upload an image instead.'}
+        hint={
+          imageMxc
+            ? t('settings.badgeEditor.usingAnUploadedImage')
+            : t('settings.badgeEditor.typeAnEmojiOr')
+        }
       >
         <Box direction="Column" gap="200" style={{ minWidth: 0 }}>
           <Box gap="200" alignItems="Center" wrap="Wrap">
@@ -366,7 +379,7 @@ function CreateBadge() {
               onChange={(evt) => setEmoji(evt.target.value)}
               disabled={!!imageMxc}
               placeholder="😀"
-              aria-label="Emoji"
+              aria-label={t('settings.badgeEditor.emoji')}
               style={{ width: 80, textAlign: 'center' }}
             />
             <Button
@@ -378,7 +391,7 @@ function CreateBadge() {
               before={uploading ? <Spinner size="100" variant="Secondary" /> : undefined}
               onClick={() => fileRef.current?.click()}
             >
-              <Text size="B300">Upload image</Text>
+              <Text size="B300">{t('settings.badgeEditor.uploadImage')}</Text>
             </Button>
             {imageMxc && (
               <Button
@@ -388,7 +401,7 @@ function CreateBadge() {
                 fill="None"
                 onClick={() => setImageMxc(undefined)}
               >
-                <Text size="B300">Remove image</Text>
+                <Text size="B300">{t('settings.badgeEditor.removeImage')}</Text>
               </Button>
             )}
             <input
@@ -399,12 +412,12 @@ function CreateBadge() {
               style={{ display: 'none' }}
             />
           </Box>
-          {emojiTooLong && <Hint tone="error">Use a single emoji.</Hint>}
+          {emojiTooLong && <Hint tone="error">{t('settings.badgeEditor.useASingleEmoji')}</Hint>}
         </Box>
       </Field>
-      <Field label="Color">
+      <Field label={t('settings.badgeEditor.color')}>
         <ColorField
-          label="Badge color"
+          label={t('settings.badgeEditor.badgeColor')}
           value={badgeColor}
           fallback={DEFAULT_BADGE_COLOR}
           onChange={setBadgeColor}
@@ -413,7 +426,7 @@ function CreateBadge() {
       {duplicate && (
         <Box direction="Column" gap="200" alignItems="Start">
           <Text size="T200" style={{ color: color.Warning.Main }}>
-            This badge already exists in the library
+            {t('settings.badgeEditor.thisBadgeAlreadyExists')}
           </Text>
           <Box gap="200" alignItems="Center" wrap="Wrap">
             <BadgeChip badge={duplicate} size={24} />
@@ -429,7 +442,7 @@ function CreateBadge() {
               before={creating ? <Spinner size="100" variant="Secondary" /> : undefined}
               onClick={handleUseExisting}
             >
-              <Text size="B300">Use the existing badge</Text>
+              <Text size="B300">{t('settings.badgeEditor.useTheExistingBadge')}</Text>
             </Button>
           </Box>
         </Box>
@@ -444,7 +457,7 @@ function CreateBadge() {
           before={creating ? <Spinner size="100" variant="Primary" fill="Solid" /> : undefined}
           onClick={handleCreate}
         >
-          <Text size="B300">Create badge</Text>
+          <Text size="B300">{t('settings.badgeEditor.createBadge')}</Text>
         </Button>
       </Box>
     </SettingsCard>
@@ -453,6 +466,7 @@ function CreateBadge() {
 
 /** Badge cards for the "Status & badges" tab; renders straight into the tab grid. */
 export function BadgeEditor() {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const optionsRooms = useOptionsRooms(mx);
 
@@ -460,8 +474,8 @@ export function BadgeEditor() {
     return (
       <SettingsCard
         icon={Icons.Star}
-        title="Badges"
-        description="Set up the Diddy Options room first."
+        title={t('settings.badgeEditor.badges')}
+        description={t('settings.badgeEditor.setUpTheDiddy')}
       />
     );
   }

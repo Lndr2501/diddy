@@ -38,7 +38,7 @@ extension MatrixAccount {
     func securityRequest(_ path: String, body: [String: Any]? = nil, method: String? = nil) async throws -> (status: Int, json: [String: Any]) {
         let session = try client.session()
         let base = session.homeserverUrl.hasSuffix("/") ? String(session.homeserverUrl.dropLast()) : session.homeserverUrl
-        guard let url = URL(string: base + path) else { throw DiddyError("Invalid homeserver URL.") }
+        guard let url = URL(string: base + path) else { throw DiddyError(L("ios.errorsExtra.invalidHomeserverUrl")) }
         var request = URLRequest(url: url)
         request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
         if let method { request.httpMethod = method }

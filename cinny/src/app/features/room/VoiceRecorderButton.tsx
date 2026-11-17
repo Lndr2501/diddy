@@ -5,6 +5,7 @@ import { millisecondsToMinutesAndSeconds } from '../../utils/common';
 import { ArrowUpGlyph, TrashGlyph } from '../../components/message/content/VoiceIcons';
 import * as css from '../../components/message/content/VoiceContent.css';
 import { ComposerIconButton } from './RoomInput.css';
+import { useTranslation } from 'react-i18next';
 
 type VoiceRecorderButtonProps = {
   /** sends the finished recording; may reject, the recording is then kept by the caller */
@@ -17,6 +18,7 @@ type VoiceRecorderButtonProps = {
  * pulsing red dot, time, send) and the send button sends the message right away.
  */
 export function VoiceRecorderButton({ onRecorded, disabled }: VoiceRecorderButtonProps) {
+  const { t } = useTranslation();
   const { state, elapsedMs, error, start, stop, cancel } = useVoiceRecorder();
   const [sending, setSending] = useState(false);
 
@@ -30,8 +32,8 @@ export function VoiceRecorderButton({ onRecorded, disabled }: VoiceRecorderButto
         radii="Pill"
         disabled={disabled || state === 'starting'}
         onClick={() => start()}
-        aria-label="Record voice message"
-        title={error ?? 'Record voice message'}
+        aria-label={t('room.voiceRecorderButton.recordVoiceMessage')}
+        title={error ?? t('room.voiceRecorderButton.recordVoiceMessage')}
       >
         <Icon src={Icons.Mic} />
       </IconButton>
@@ -50,14 +52,18 @@ export function VoiceRecorderButton({ onRecorded, disabled }: VoiceRecorderButto
   };
 
   return (
-    <div className={css.Recorder} role="group" aria-label="Recording voice message">
+    <div
+      className={css.Recorder}
+      role="group"
+      aria-label={t('room.voiceRecorderButton.recordingVoiceMessage')}
+    >
       <button
         type="button"
         className={css.RoundButton}
         onClick={cancel}
         disabled={sending}
-        aria-label="Discard recording"
-        title="Discard"
+        aria-label={t('room.voiceRecorderButton.discardRecording')}
+        title={t('room.voiceRecorderButton.discard')}
       >
         <TrashGlyph />
       </button>
@@ -70,8 +76,8 @@ export function VoiceRecorderButton({ onRecorded, disabled }: VoiceRecorderButto
         className={css.SendButton}
         onClick={() => handleSend()}
         disabled={sending}
-        aria-label="Send voice message"
-        title="Send"
+        aria-label={t('room.voiceRecorderButton.sendVoiceMessage')}
+        title={t('room.voiceRecorderButton.send')}
       >
         {sending ? <span className={css.Spinner} aria-hidden /> : <ArrowUpGlyph />}
       </button>

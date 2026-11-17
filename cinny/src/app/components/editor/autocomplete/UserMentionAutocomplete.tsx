@@ -20,6 +20,7 @@ import { getMemberDisplayName, getMemberSearchStr } from '../../../utils/room';
 import { UserAvatar } from '../../user-avatar';
 import { useMediaAuthentication } from '../../../hooks/useMediaAuthentication';
 import { Membership } from '../../../../types/matrix/room';
+import { useTranslation } from 'react-i18next';
 
 type MentionAutoCompleteHandler = (userId: string, name: string) => void;
 
@@ -47,7 +48,8 @@ function UnknownMentionItem({
       onClick={() => handleAutocomplete(userId, name)}
       before={
         <Avatar size="200" radii="Pill">
-          <UserAvatar surface="members"
+          <UserAvatar
+            surface="members"
             userId={userId}
             renderFallback={() => <Icon size="50" src={Icons.User} filled />}
           />
@@ -90,6 +92,7 @@ export function UserMentionAutocomplete({
   query,
   requestClose,
 }: UserMentionAutocompleteProps) {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
   const roomId: string = room.roomId!;
@@ -137,7 +140,10 @@ export function UserMentionAutocomplete({
     getMemberDisplayName(room, member.userId) ?? getMxIdLocalPart(member.userId) ?? member.userId;
 
   return (
-    <AutocompleteMenu headerContent={<Text size="L400">Mentions</Text>} requestClose={requestClose}>
+    <AutocompleteMenu
+      headerContent={<Text size="L400">{t('composer.userMentionAutocomplete.mentions')}</Text>}
+      requestClose={requestClose}
+    >
       {query.text === 'room' && (
         <UnknownMentionItem
           userId={roomAliasOrId}
@@ -173,7 +179,8 @@ export function UserMentionAutocomplete({
               }
               before={
                 <Avatar size="200" radii="Pill">
-                  <UserAvatar surface="members"
+                  <UserAvatar
+                    surface="members"
                     userId={roomMember.userId}
                     src={avatarUrl ?? undefined}
                     alt={getName(roomMember)}

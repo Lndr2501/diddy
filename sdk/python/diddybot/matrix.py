@@ -65,6 +65,10 @@ class NioTransport:
         client = nio.AsyncClient(self.homeserver, user, device_id=device_id or None,
                                  store_path=self.store_path, config=config)
         client.add_event_callback(self._on_event, nio.Event)
+        for cb, types in self.bot._raw_event_callbacks:
+            client.add_event_callback(cb, types)
+        for cb, types in self.bot._raw_to_device_callbacks:
+            client.add_to_device_callback(cb, types)
         return client
 
     def _creds_path(self) -> str:
@@ -188,10 +192,32 @@ class NioTransport:
     async def _accept_invites(self) -> None:
         if not self.bot.auto_join or self.client is None:
             return
-        for room_id in list(self.client.invited_rooms):
-            if room_id not in self._joining:
-                self._joining.add(room_id)
-                self.bot._spawn(self._join(room_id))
+        for room_id, room in list(self.client.invited_rooms.items()):
+            if room_id in self._joining:
+                continue
+            allow = self.bot.auto_join
+            if callable(allow):  # Bot(auto_join=lambda inviter, room_id: ...)
+                inviter = getattr(room, "inviter", None) or ""
+                try:
+                    ok = bool(allow(inviter, room_id))
+                except Exception:  # noqa: BLE001 - a broken filter must not stop the sync
+                    log.exception("auto_join filter failed")
+                    ok = False
+                if not ok:
+                    log.warning("invite from %s to %s declined", inviter or "?", room_id)
+                    self._joining.add(room_id)
+                    self.bot._spawn(self._decline(room_id))
+                    continue
+            self._joining.add(room_id)
+            self.bot._spawn(self._join(room_id))
+
+    async def _decline(self, room_id: str) -> None:
+        try:
+            await self.client.room_leave(room_id)
+        except Exception:  # noqa: BLE001
+            log.exception("declining %s failed", room_id)
+        finally:
+            self._joining.discard(room_id)
 
     async def _join(self, room_id: str) -> None:
         try:

@@ -44,6 +44,7 @@ import { useSwitchCall } from '../call-switch/useSwitchCall';
 import { useLivekitSupport } from '../../hooks/useLivekitSupport';
 import { webRTCSupported } from '../../utils/rtc';
 import { AccountDataEvent } from '../../../types/matrix/accountData';
+import { useTranslation } from 'react-i18next';
 
 type UserRoomProfileProps = {
   userId: string;
@@ -51,6 +52,7 @@ type UserRoomProfileProps = {
   large?: boolean;
 };
 export function UserRoomProfile({ userId, large }: UserRoomProfileProps) {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
   const navigate = useNavigate();
@@ -174,7 +176,7 @@ export function UserRoomProfile({ userId, large }: UserRoomProfileProps) {
         closeUserRoomProfile();
         navigate(getDirectRoomPath(directRoom.roomId));
       },
-      onError: (error) => setCallError(error?.message || 'Could not start the call.'),
+      onError: (error) => setCallError(error?.message || t('profile.roomProfile.couldNotStartThe')),
     }).then((started) => {
       if (!started) setCalling(false);
     });
@@ -186,7 +188,11 @@ export function UserRoomProfile({ userId, large }: UserRoomProfileProps) {
       accent={accent}
       canCall={canCall && !bot}
       calling={calling}
-      callTitle={callEmbed ? 'Leaves your current call' : 'Call privately'}
+      callTitle={
+        callEmbed
+          ? t('profile.roomProfile.leavesYourCurrentCall')
+          : t('profile.roomProfile.callPrivately')
+      }
       onCall={handleCall}
       onMessage={handleMessage}
     />

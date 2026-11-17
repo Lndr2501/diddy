@@ -89,12 +89,14 @@ import { SpaceJoinMenuItems } from '../../../components/space-join/SpaceJoinMenu
 import * as css from './Space.css';
 import { useDirectRooms } from '../direct/useDirectRooms';
 import { factoryRoomIdByActivity } from '../../../utils/sort';
+import { useTranslation } from 'react-i18next';
 
 type SpaceMenuProps = {
   room: Room;
   requestClose: () => void;
 };
 const SpaceMenu = forwardRef<HTMLDivElement, SpaceMenuProps>(({ room, requestClose }, ref) => {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const [hideActivity] = useSetting(settingsAtom, 'hideActivity');
   const [developerTools] = useSetting(settingsAtom, 'developerTools');
@@ -162,7 +164,7 @@ const SpaceMenu = forwardRef<HTMLDivElement, SpaceMenuProps>(({ room, requestClo
           disabled={!unread}
         >
           <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
-            Mark as Read
+            {t('nav.space.markAsRead')}
           </Text>
         </MenuItem>
         <SpaceJoinMenuItems space={room} />
@@ -180,7 +182,7 @@ const SpaceMenu = forwardRef<HTMLDivElement, SpaceMenuProps>(({ room, requestClo
           disabled={!canInvite}
         >
           <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
-            Invite
+            {t('nav.space.invite')}
           </Text>
         </MenuItem>
         <MenuItem
@@ -190,7 +192,7 @@ const SpaceMenu = forwardRef<HTMLDivElement, SpaceMenuProps>(({ room, requestClo
           radii="300"
         >
           <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
-            Copy Link
+            {t('nav.space.copyLink')}
           </Text>
         </MenuItem>
         <MenuItem
@@ -200,7 +202,7 @@ const SpaceMenu = forwardRef<HTMLDivElement, SpaceMenuProps>(({ room, requestClo
           radii="300"
         >
           <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
-            Space Settings
+            {t('nav.space.spaceSettings')}
           </Text>
         </MenuItem>
         {developerTools && (
@@ -211,7 +213,7 @@ const SpaceMenu = forwardRef<HTMLDivElement, SpaceMenuProps>(({ room, requestClo
             radii="300"
           >
             <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
-              Event Timeline
+              {t('nav.space.eventTimeline')}
             </Text>
           </MenuItem>
         )}
@@ -231,7 +233,7 @@ const SpaceMenu = forwardRef<HTMLDivElement, SpaceMenuProps>(({ room, requestClo
                 aria-pressed={promptLeave}
               >
                 <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
-                  Leave Space
+                  {t('nav.space.leaveSpace')}
                 </Text>
               </MenuItem>
               {promptLeave && (
@@ -250,10 +252,10 @@ const SpaceMenu = forwardRef<HTMLDivElement, SpaceMenuProps>(({ room, requestClo
 });
 
 function SpaceHeader() {
+  const { t } = useTranslation();
   const space = useSpace();
   const spaceName = useRoomName(space);
   const [menuAnchor, setMenuAnchor] = useState<RectCords>();
-
 
   const handleOpenMenu: MouseEventHandler<HTMLButtonElement> = (evt) => {
     const cords = evt.currentTarget.getBoundingClientRect();
@@ -277,7 +279,7 @@ function SpaceHeader() {
             <IconButton
               className={pageCss.PageNavHeaderButton}
               aria-pressed={!!menuAnchor}
-              aria-label="More Options"
+              aria-label={t('nav.space.moreOptions')}
               variant="Background"
               radii="300"
               onClick={handleOpenMenu}
@@ -316,6 +318,7 @@ function SpaceHeader() {
 
 type SpaceTombstoneProps = { roomId: string; replacementRoomId: string };
 export function SpaceTombstone({ roomId, replacementRoomId }: SpaceTombstoneProps) {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const { navigateSpace } = useRoomNavigate();
 
@@ -347,11 +350,11 @@ export function SpaceTombstone({ roomId, replacementRoomId }: SpaceTombstoneProp
       gap="300"
     >
       <Box direction="Column" grow="Yes" gap="100">
-        <Text size="L400">Space Upgraded</Text>
-        <Text size="T200">This space has been replaced and is no longer active.</Text>
+        <Text size="L400">{t('nav.space.spaceUpgraded')}</Text>
+        <Text size="T200">{t('nav.space.thisSpaceHasBeen')}</Text>
         {joinState.status === AsyncStatus.Error && (
           <Text className={BreakWord} style={{ color: color.Critical.Main }} size="T200">
-            {(joinState.error as any)?.message ?? 'Failed to join replacement space!'}
+            {(joinState.error as any)?.message ?? t('nav.space.failedToJoinReplacement')}
           </Text>
         )}
       </Box>
@@ -359,7 +362,7 @@ export function SpaceTombstone({ roomId, replacementRoomId }: SpaceTombstoneProp
         {replacementRoom?.getMyMembership() === Membership.Join ||
         joinState.status === AsyncStatus.Success ? (
           <Button onClick={handleOpen} size="300" variant="Success" fill="Solid" radii="300">
-            <Text size="B300">Open New Space</Text>
+            <Text size="B300">{t('nav.space.openNewSpace')}</Text>
           </Button>
         ) : (
           <Button
@@ -375,7 +378,7 @@ export function SpaceTombstone({ roomId, replacementRoomId }: SpaceTombstoneProp
             }
             disabled={joinState.status === AsyncStatus.Loading}
           >
-            <Text size="B300">Join New Space</Text>
+            <Text size="B300">{t('nav.space.joinNewSpace')}</Text>
           </Button>
         )}
       </Box>
@@ -399,6 +402,7 @@ function SpaceDirects({
   /** rooms the space list already shows */
   hiddenRoomIds: ReadonlySet<string>;
 }) {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const directs = useDirectRooms();
   const unreadIds = useUnreadRoomIds(roomToUnreadAtom);
@@ -417,9 +421,7 @@ function SpaceDirects({
       .filter((rId) => !hiddenRoomIds.has(rId))
       .sort(factoryRoomIdByActivity(mx));
     // closed: like every category, unread and open chats stay visible
-    return closed
-      ? sorted.filter((rId) => unreadIds.has(rId) || rId === selectedRoomId)
-      : sorted;
+    return closed ? sorted.filter((rId) => unreadIds.has(rId) || rId === selectedRoomId) : sorted;
     // activityTick: says when to read the activity order from the rooms again
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mx, directs, hiddenRoomIds, closed, unreadIds, selectedRoomId, activityTick]);
@@ -434,7 +436,7 @@ function SpaceDirects({
             onClick={handleCategoryClick}
             closed={closed}
           >
-            Direct Messages
+            {t('nav.space.directMessages')}
           </RoomNavCategoryButton>
         </NavCategoryHeader>
       </div>
@@ -458,6 +460,7 @@ function SpaceDirects({
 }
 
 export function Space() {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const space = useSpace();
   useNavToActivePathMapper(space.roomId);
@@ -555,7 +558,7 @@ export function Space() {
                   <Box as="span" grow="Yes" alignItems="Center" justifyContent="Center" gap="200">
                     <Icon src={Icons.Flag} size="100" filled={lobbySelected} />
                     <Text as="span" size="T300" truncate>
-                      Lobby
+                      {t('nav.space.lobby')}
                     </Text>
                   </Box>
                 </NavItemContent>
@@ -572,7 +575,7 @@ export function Space() {
                   <Box as="span" grow="Yes" alignItems="Center" justifyContent="Center" gap="200">
                     <Icon src={Icons.Search} size="100" filled={searchSelected} />
                     <Text as="span" size="T300" truncate>
-                      Search
+                      {t('nav.space.search')}
                     </Text>
                   </Box>
                 </NavItemContent>
@@ -606,7 +609,7 @@ export function Space() {
                           onClick={handleCategoryClick}
                           closed={closedCategories.has(categoryId)}
                         >
-                          {roomId === space.roomId ? 'Rooms' : room?.name}
+                          {roomId === space.roomId ? t('nav.space.rooms') : room?.name}
                         </RoomNavCategoryButton>
                       </NavCategoryHeader>
                     </div>

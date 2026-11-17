@@ -26,9 +26,9 @@ struct SaveImageButton: View {
             Image(systemName: "square.and.arrow.down").font(.headline).frame(width: 44, height: 44)
         }
         .disabled(saving)
-        .accessibilityLabel("Save to Photos")
-        .alert("Save image", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) {
-            Button("OK", role: .cancel) {}
+        .accessibilityLabel(L("ios.remainingUI.saveToPhotos"))
+        .alert(L("ios.remainingUI.saveImage"), isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) {
+            Button(L("settings.localPlugins.ok"), role: .cancel) {}
         } message: { Text(message ?? "") }
     }
 }

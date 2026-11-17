@@ -60,43 +60,43 @@ struct PollComposer: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Question") {
-                    TextField("Your question", text: $question).textInputAutocapitalization(.sentences)
+                Section(L("ios.chatMore.question")) {
+                    TextField(L("ios.remainingUI.yourQuestion"), text: $question).textInputAutocapitalization(.sentences)
                         .onChange(of: question) { value in if value.count > 340 { question = String(value.prefix(340)) } }
                 }
-                Section("Answers (2–20)") {
+                Section(L("ios.chatMore.answers220")) {
                     ForEach(answers.indices, id: \.self) { index in
                         HStack {
-                            TextField("Answer \(index + 1)", text: $answers[index])
+                            TextField(L("ios.dynamicUI.answerNumber", ["number": String(index + 1)]), text: $answers[index])
                                 .onChange(of: answers[index]) { value in
                                     if value.count > 340 { answers[index] = String(value.prefix(340)) }
                                 }
                             if answers.count > 2 {
                                 Button { answers.remove(at: index) } label: { Image(systemName: "minus.circle") }
-                                    .accessibilityLabel("Remove answer \(index + 1)")
+                                    .accessibilityLabel(L("ios.dynamicUI.removeAnswer", ["number": String(index + 1)]))
                             }
                         }
                     }
                     if answers.count < 20 {
-                        Button { answers.append("") } label: { Label("Add answer", systemImage: "plus.circle") }
+                        Button { answers.append("") } label: { Label(L("ios.chatMore.addAnswer"), systemImage: "plus.circle") }
                     }
                 }
-                Section("Settings") {
-                    Toggle("Show results while open", isOn: $disclosed)
+                Section(L("settings.page.settings")) {
+                    Toggle(L("ios.chatMore.showResultsWhileOpen"), isOn: $disclosed)
                     Stepper("Maximum selections: \(maxSelections)", value: $maxSelections,
                             in: 1...max(1, answers.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }.count))
                 }
                 if let error { Text(error).foregroundStyle(Theme.danger) }
             }
-            .navigationTitle("Poll")
+            .navigationTitle(L("ios.chatMore.poll"))
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button(L("settings.deviceTile.cancel")) { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Create") {
+                    Button(L("createChat.main.create")) {
                         let q = question.trimmingCharacters(in: .whitespacesAndNewlines)
                         let valid = answers.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
                         guard !q.isEmpty, valid.count >= 2, Set(valid.map { $0.lowercased() }).count == valid.count else {
-                            error = "Enter a question and at least two different answers."
+                            error = L("ios.errorsExtra.enterAQuestionAndAtLeastTwoDifferentAnswers")
                             return
                         }
                         sending = true
@@ -104,7 +104,7 @@ struct PollComposer: View {
                             if await onCreate(q, valid, min(maxSelections, valid.count), disclosed) {
                                 dismiss()
                             } else {
-                                error = "Could not send the poll. Please try again."
+                                error = L("ios.errorsExtra.couldNotSendThePollPleaseTryAgain")
                                 sending = false
                             }
                         }

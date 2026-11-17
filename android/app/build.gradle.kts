@@ -188,12 +188,7 @@ dependencies {
     testImplementation(libs.coroutines.test)
     // Android's own org.json is a stub in unit tests; the real one runs the logic tests.
     testImplementation(libs.org.json)
-
-    // The emulator smoke test (CI job "Emulator smoke").
-    androidTestImplementation(libs.androidx.test.ext)
-    androidTestImplementation(libs.androidx.test.runner)
-    androidTestImplementation(libs.androidx.test.rules)
-    androidTestImplementation(platform(libs.compose.bom))
-    androidTestImplementation(libs.compose.ui.test.junit4)
-    debugImplementation(libs.compose.ui.test.manifest)
+    androidTestImplementation(libs.android.test.runner)
+    androidTestImplementation(libs.android.test.rules)
+    androidTestImplementation(libs.android.test.junit)
 }

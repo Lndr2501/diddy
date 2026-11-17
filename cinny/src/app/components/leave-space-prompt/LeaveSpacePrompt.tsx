@@ -17,6 +17,7 @@ import { stopPropagation } from '../../utils/keyboard';
 import { leaveRoom as leaveRoomAndSync } from '../../utils/leaveRoom';
 import { AppLogo } from '../app-logo/AppLogo';
 import * as sheetCss from '../sheet/Sheet.css';
+import { useTranslation } from 'react-i18next';
 
 type LeaveSpacePromptProps = {
   roomId: string;
@@ -25,6 +26,7 @@ type LeaveSpacePromptProps = {
 };
 
 export function LeaveSpacePrompt({ roomId, onDone, onCancel }: LeaveSpacePromptProps) {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
 
   const [leaveState, leaveRoom] = useAsyncCallback<undefined, MatrixError, []>(
@@ -58,14 +60,16 @@ export function LeaveSpacePrompt({ roomId, onDone, onCancel }: LeaveSpacePromptP
             <div className={sheetCss.AlertBody}>
               <AppLogo className={sheetCss.AlertIcon} size={64} />
               <Text as="h2" className={sheetCss.AlertTitle}>
-                Leave Space
+                {t('common.leaveSpacePrompt.leaveSpace')}
               </Text>
               <Text as="p" className={sheetCss.AlertText}>
-                Are you sure you want to leave this space?
+                {t('common.leaveSpacePrompt.areYouSureYou')}
               </Text>
               {leaveState.status === AsyncStatus.Error && (
                 <Text style={{ color: color.Critical.Main }} size="T300">
-                  Failed to leave space! {leaveState.error.message}
+                  {t('common.leaveSpacePrompt.failedToLeaveSpace', {
+                    message: leaveState.error.message,
+                  })}
                 </Text>
               )}
               <div className={sheetCss.AlertActions}>
@@ -85,7 +89,9 @@ export function LeaveSpacePrompt({ roomId, onDone, onCancel }: LeaveSpacePromptP
                   }
                 >
                   <Text size="B400">
-                    {leaveState.status === AsyncStatus.Loading ? 'Leaving...' : 'Leave'}
+                    {leaveState.status === AsyncStatus.Loading
+                      ? t('common.leaveSpacePrompt.leaving')
+                      : t('common.leaveSpacePrompt.leave')}
                   </Text>
                 </Button>
                 <Button
@@ -94,7 +100,7 @@ export function LeaveSpacePrompt({ roomId, onDone, onCancel }: LeaveSpacePromptP
                   fill="Soft"
                   onClick={onCancel}
                 >
-                  <Text size="B400">Cancel</Text>
+                  <Text size="B400">{t('common.leaveSpacePrompt.cancel')}</Text>
                 </Button>
               </div>
             </div>

@@ -37,7 +37,7 @@ Keine WebView-Hülle um die Desktop-Oberfläche, kein Tauri-Android, kein Kotlin
 - **Zugangsdaten:** Sessions und der Schlüssel der SDK-Datenbanken sind mit einem AES-GCM-Schlüssel im Android Keystore versiegelt (`SessionStore.kt`). Kein Token im Klartext in den Einstellungen.
 - **Store-Verschlüsselung:** Jedes Konto hat eigene SDK-Datenbanken mit eigenem, zufälligem Schlüssel und eigene Ordner. Daten verwaister Logins (App mitten im Login beendet) räumt der Start auf.
 - **Backup:** Logins, Stores und Schlüssel sind von Cloud-Backup und Gerätewechsel ausgeschlossen (`data_extraction_rules.xml`, `allowBackup=false`). Wiederherstellung läuft über Matrix (Wiederherstellungsschlüssel).
-- **Call-Schlüssel:** Der eigene Medienschlüssel geht nur an Geräte mit gültiger `call.member`-Mitgliedschaft; fremde Schlüssel gelten nur, wenn sie Olm-verschlüsselt vom genannten Gerät eines Mitglieds kommen. Verlässt jemand den Call, gibt es einen neuen Schlüssel (nach 5 s benutzt, wie Element Call). Der Call zeigt, ob er Ende-zu-Ende-verschlüsselt ist und wessen Schlüssel fehlt. Das sind dieselben Regeln, die iOS seit 1.12.0 hat (vorher offen in [`ios/SECURITY-TODO.md`](../ios/SECURITY-TODO.md)).
+- **Call-Schlüssel:** Der eigene Medienschlüssel geht nur an Geräte mit aktueller MatrixRTC-Mitgliedschaft, die auch am Medienserver sind; eingehende Schlüssel gelten nur, wenn sie Olm-verschlüsselt vom genannten Gerät kommen. Verlässt jemand Matrix oder den Medienserver, wechselt der Schlüssel sofort (die Mitgliedschaften werden alle fünf Sekunden geprüft). Der Call zeigt den Verschlüsselungsstatus und fehlgeschlagene Prüfungen; ohne lesbaren Raumstatus gibt es keinen unverschlüsselten Rückfall. Details: [`android/README.md`](../android/README.md).
 - **Sensible Ansichten:** Wiederherstellungsschlüssel und Passphrase erscheinen nicht in Screenshots, beim Bildschirmteilen oder im App-Umschalter (`FLAG_SECURE`).
 - **Login:** OAuth/MAS im System-Browser (Custom Tabs) mit PKCE über das SDK.
 - **Plugins:** laufen in einer abgeschotteten WebView ohne JS-Bridge zu Nachrichten oder Tokens, gleicher Vertrag wie Desktop und iOS (`docs/plugins.md`).
@@ -80,5 +80,5 @@ Diese Fragen waren für den Betreiber offen; er hat sie an die Entwicklung abgeg
 
 ## Offen
 
-- Geräteabnahme nach dem [Testprotokoll](android-testprotokoll.md) auf den Geräten oben.
+- Geräteabnahme nach der [Prüfliste](../android/ACCEPTANCE.md) auf den Geräten oben ([#253](https://github.com/Lndr2501/diddy/issues/253)).
 - F-Droid: einmalig den Merge Request bei fdroiddata öffnen, mit der ersten Version nach 1.12.0 ([Schritte](../android/fdroid/README.md)). Dafür braucht es ein GitLab-Konto.
