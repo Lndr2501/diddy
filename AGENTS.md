@@ -62,4 +62,6 @@ ESLint hat viele Altlasten; neue Dateien trotzdem sauber halten (`npx eslint <da
 - UI-Tests brauchen `config.json` aus dem Repo (hashRouter an). Sonst scheitern 8 Tests mit "hashRouter disabled".
 - Bot-Protokoll (`plugins/botCard.ts`, `botCommands.ts`, `botProfile.ts`) geändert: `sdk/python/diddybot/protocol.py`
   (Python-Bot-Library) im selben Zug mitziehen. `sdk/python/tests/test_parity.py` vergleicht beide, CI-Job `Bot SDK`.
+- Neuer iOS-Regelcheck (`ios/Tools/<name>_check/main.swift`): in `ios/Tools/run-checks.sh` eintragen, nicht als eigenen
+  Schritt in `ios.yml`. Das Skript bricht ab, wenn ein Check-Ordner in der Liste fehlt.
 - Playwright-WebKit läuft nicht im Linux-Container (fehlende Systembibliotheken): UI-Tests laufen auf dem Mac.

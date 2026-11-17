@@ -188,7 +188,6 @@ do {
     _ = markdown(String(repeating: "```x\n", count: 2000))
     _ = markdown(String(repeating: "> ", count: 200) + "deep")
     _ = markdown(String(repeating: "  - x\n", count: 3000))
-    check(true, "hostile markdown finished")
     check(RichText.accepts("short"), "short text is formatted")
     check(!RichText.accepts(String(repeating: "a", count: 60_000)), "very long text keeps the plain rendering")
 }

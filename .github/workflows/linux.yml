@@ -54,10 +54,15 @@ jobs:
       - name: Build frontend and Linux packages
         env:
           NODE_OPTIONS: --max_old_space_size=4096
+          # xz (electron-builder's default) took about three of the four packaging minutes for deb
+          # and rpm. Builds that are not published use gzip; release tags keep the defaults.
+          FAST_COMPRESSION: ${{ !startsWith(github.ref, 'refs/tags/') }}
         run: |
           cp config.json cinny/config.json
           (cd cinny && npm run build)
-          (cd electron && npm run dist:linux)
+          args=()
+          if [ "$FAST_COMPRESSION" = true ]; then args=(-c.deb.compression=gz -c.rpm.compression=gzip); fi
+          (cd electron && npm run dist:linux -- "${args[@]}")
           ls -l electron/dist
       - name: Embed AppImage update information and write the .zsync file
         # AppImageUpdate and other updaters read the update information from the AppImage and fetch
