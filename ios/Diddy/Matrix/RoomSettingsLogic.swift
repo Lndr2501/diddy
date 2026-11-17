@@ -362,6 +362,7 @@ enum RoomPermissionGroups {
             PermissionItemModel(location: .state(RoomPowerTags.eventType), name: "Edit Power Levels"),
             PermissionItemModel(location: .state("m.room.encryption"), name: "Enable Encryption"),
             PermissionItemModel(location: .state("m.room.history_visibility"), name: "History Visibility"),
+            PermissionItemModel(location: .state(RoomRetention.eventType), name: "Delete Messages Automatically"),
             PermissionItemModel(location: .state("m.room.tombstone"), name: "Upgrade Room"),
             PermissionItemModel(location: .state(nil), name: "Other Settings"),
         ]),
@@ -749,6 +750,8 @@ struct RoomStateSnapshot {
     var historyVisibility: RoomHistoryVisibilityKind {
         RoomHistoryVisibilityKind.parse(content("m.room.history_visibility")?["history_visibility"] as? String)
     }
+    /// Automatic message deletion (#245): the room's message lifetime in ms, nil when off.
+    var retentionLifetime: Int64? { RoomRetention.lifetime(content(RoomRetention.eventType)) }
 
     /// Desktop `RoomEncryption`: only Megolm counts as on.
     var isEncrypted: Bool { content("m.room.encryption")?["algorithm"] as? String == RoomEncryptionRule.algorithm }

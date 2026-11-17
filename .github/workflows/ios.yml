@@ -215,6 +215,11 @@ jobs:
           swiftc -swift-version 5 Diddy/Call/SoundboardSyncLogic.swift Tools/soundboardsync_check/main.swift -o "$RUNNER_TEMP/diddy-soundboardsync-check"
           "$RUNNER_TEMP/diddy-soundboardsync-check"
 
+      - name: Check automatic message deletion rules
+        run: |
+          swiftc -swift-version 5 Diddy/Matrix/RoomRetention.swift Tools/retention_check/main.swift -o "$RUNNER_TEMP/diddy-retention-check"
+          "$RUNNER_TEMP/diddy-retention-check" ../docs/fixtures/retention.json
+
       - name: Check message search rules
         run: |
           swiftc -swift-version 5 Diddy/Matrix/MessageSearchLogic.swift Tools/messagesearch_check/main.swift -o "$RUNNER_TEMP/diddy-messagesearch-check"
@@ -242,7 +247,7 @@ jobs:
 
       - name: Check room settings rules
         run: |
-          swiftc -swift-version 5 Diddy/Matrix/RoomSettingsLogic.swift Tools/roomsettings_check/main.swift -o "$RUNNER_TEMP/diddy-roomsettings-check"
+          swiftc -swift-version 5 Diddy/Matrix/RoomSettingsLogic.swift Diddy/Matrix/RoomRetention.swift Tools/roomsettings_check/main.swift -o "$RUNNER_TEMP/diddy-roomsettings-check"
           "$RUNNER_TEMP/diddy-roomsettings-check"
 
       - name: Check security and device rules

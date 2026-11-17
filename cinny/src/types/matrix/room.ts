@@ -29,6 +29,7 @@ export enum StateEvent {
   RoomPinnedEvents = 'm.room.pinned_events',
   RoomEncryption = 'm.room.encryption',
   RoomHistoryVisibility = 'm.room.history_visibility',
+  RoomRetention = 'm.room.retention',
   RoomGuestAccess = 'm.room.guest_access',
   RoomServerAcl = 'm.room.server_acl',
   RoomTombstone = 'm.room.tombstone',

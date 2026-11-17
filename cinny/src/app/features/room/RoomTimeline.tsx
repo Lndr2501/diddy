@@ -139,6 +139,8 @@ import { useTheme } from '../../hooks/useTheme';
 import { useRoomCreatorsTag } from '../../hooks/useRoomCreatorsTag';
 import { usePowerLevelTags } from '../../hooks/usePowerLevelTags';
 
+import { useNow, useRoomRetention } from '../../hooks/useRoomRetention';
+import { isExpired } from '../../utils/retention';
 import './RoomTimelineVanilla.css';
 
 const TimelineFloat = as<'div', css.TimelineFloatVariants>(
@@ -482,6 +484,11 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
   const showUrlPreview = room.hasEncryptionStateEvent() ? encUrlPreview : urlPreview;
   const [showHiddenEvents] = useSetting(settingsAtom, 'showHiddenEvents');
   const [showDeveloperTools] = useSetting(settingsAtom, 'developerTools');
+  // #245: messages past the room's lifetime vanish now; the server purges them a little later
+  const retentionLifetime = useRoomRetention(room);
+  const retentionNow = useNow(retentionLifetime !== undefined);
+  const expiredMessage = (ev: MatrixEvent) =>
+    !ev.isState() && isExpired(ev.getTs(), retentionLifetime, retentionNow);
 
   const [hour24Clock] = useSetting(settingsAtom, 'hour24Clock');
   const [dateFormatString] = useSetting(settingsAtom, 'dateFormatString');
@@ -1997,6 +2004,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
       !ev ||
       (sender && ignoredUsersSet.has(sender)) ||
       (ev.isRedacted() && !showHiddenEvents) ||
+      expiredMessage(ev) ||
       reactionOrEditEvent(ev) ||
       isCardActionMessage(ev.getContent())
     ) {
@@ -2070,6 +2078,9 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
       return null;
     }
     if (mEvent.isRedacted() && !showHiddenEvents) {
+      return null;
+    }
+    if (expiredMessage(mEvent)) {
       return null;
     }
 

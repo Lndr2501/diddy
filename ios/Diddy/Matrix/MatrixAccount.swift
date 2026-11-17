@@ -127,6 +127,9 @@ final class MatrixAccount: ObservableObject, Identifiable {
     /// the rail asks for every server's badges on every redraw.
     private var channelIdsCache: [String: Set<String>] = [:]
     private var serverRoomIdsCache: Set<String>?
+    /// Message lifetimes of rooms with automatic deletion (#245), read from the server; rooms
+    /// without one are left out. Used to hide expired previews in the chat list.
+    var retentionLifetimes: [String: Int64] = [:]
     /// Rooms with their own notification setting (RoomPrefs.swift); the others follow the default.
     @Published var roomNotifyLevels: [String: RoomNotifyLevel] = [:] {
         didSet { details.changed() }
@@ -437,7 +440,9 @@ final class MatrixAccount: ObservableObject, Identifiable {
             let joined = Set(result.filter(\.isJoined).map(\.id))
             if joined != self.knownJoinedRooms {
                 let first = self.knownJoinedRooms.isEmpty
+                let added = joined.subtracting(self.knownJoinedRooms)
                 self.knownJoinedRooms = joined
+                Task { await self.loadRetentions(added) }
                 if !first { await self.loadAllChannels() }
             }
         }

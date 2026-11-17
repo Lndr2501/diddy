@@ -28,6 +28,9 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import kotlinx.coroutines.isActive
+import app.diddy.matrix.RoomRetention
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.material.icons.filled.AccountCircle
@@ -169,6 +172,14 @@ fun ChatScreen(account: MatrixAccount, roomId: String, navigator: Navigator, onB
 @Composable
 private fun ChatContent(account: MatrixAccount, controller: TimelineController, navigator: Navigator, onBack: () -> Unit) {
     val roomId = controller.roomId
+    // Automatic message deletion (#245): read the room's lifetime and drop messages as they
+    // expire, while the chat is on screen.
+    LaunchedEffect(roomId) {
+        while (isActive) {
+            account.roomRetention(roomId).onSuccess { controller.updateRetention(it) }
+            delay(60_000)
+        }
+    }
     val summary = account.summary(roomId)
     val title = summary?.name ?: "Channel"
     val scope = rememberCoroutineScope()
@@ -270,7 +281,7 @@ private fun ChatContent(account: MatrixAccount, controller: TimelineController, 
     }
 
     Column(Modifier.fillMaxSize().imePadding()) {
-        ChatHeader(account, roomId, title, onBack, onInfo = { navigator.show(Sheet.ChannelInfo(roomId)) },
+        ChatHeader(account, roomId, title, controller.retentionLifetime, onBack, onInfo = { navigator.show(Sheet.ChannelInfo(roomId)) },
             onCall = { scope.launch { startCall(account, roomId, title, navigator) } },
             onSearch = { navSheet = NavSheet.Search }, onMembers = { navigator.show(Sheet.Members(roomId)) },
             onPinned = { navSheet = NavSheet.Pinned }, onJump = { navSheet = NavSheet.JumpToDate }, onError = { notifyError = it })
@@ -378,6 +389,8 @@ private fun ChatHeader(
     account: MatrixAccount,
     roomId: String,
     title: String,
+    /** Automatic message deletion of the room (#245), shown beside the name. */
+    retention: Long?,
     onBack: () -> Unit,
     onInfo: () -> Unit,
     onCall: () -> Unit,
@@ -406,7 +419,15 @@ private fun ChatHeader(
                 }
                 Spacer(Modifier.width(10.dp))
                 Column {
-                    Text(title, color = Theme.text, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(title, color = Theme.text, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false))
+                        if (retention != null) {
+                            Spacer(Modifier.width(6.dp))
+                            Icon(Icons.Filled.Timer, "Auto-delete: ${RoomRetention.duration(retention)}", tint = Theme.muted, modifier = Modifier.size(13.dp))
+                            Text(" " + RoomRetention.duration(retention), color = Theme.muted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                        }
+                    }
                     val dm = summary?.dmUserId
                     if (summary?.isDirect == true && dm != null) {
                         PresenceStore.of(account).state(dm)?.let { Text(it.title, color = Theme.muted, fontSize = 12.sp) }

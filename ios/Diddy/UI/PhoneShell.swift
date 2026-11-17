@@ -244,7 +244,7 @@ struct ChatListRow: View {
     }
 
     private var previewText: String {
-        let text = room.lastMessage ?? (room.hasCall ? "Call in progress" : "")
+        let text = account.shownLastMessage(room) ?? (room.hasCall ? "Call in progress" : "")
         guard let context else { return text }
         return text.isEmpty ? context : context + " · " + text
     }

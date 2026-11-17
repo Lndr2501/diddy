@@ -174,6 +174,13 @@ export const usePermissionGroups = (): PermissionGroup[] => {
         {
           location: {
             state: true,
+            key: StateEvent.RoomRetention,
+          },
+          name: 'Delete Messages Automatically',
+        },
+        {
+          location: {
+            state: true,
             key: StateEvent.RoomTombstone,
           },
           name: 'Upgrade Room',

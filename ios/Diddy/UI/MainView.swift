@@ -976,7 +976,7 @@ struct RoomRow: View {
                             .lineLimit(1)
                     }
                 }
-                if let last = room.lastMessage {
+                if let last = account.shownLastMessage(room) {
                     Text(last).font(.caption).foregroundStyle(Theme.faint).lineLimit(1)
                 }
             }

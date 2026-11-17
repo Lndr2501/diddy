@@ -242,6 +242,9 @@ class TimelineController(
     var sendError by mutableStateOf<String?>(null)
     var uploadingAttachment by mutableStateOf(false)
         private set
+    /** Automatic message deletion (#245): messages older than this (ms) are hidden right away; the server purges them later. */
+    var retentionLifetime by mutableStateOf<Long?>(null)
+        private set
     val typing = TypingStore()
     val roomId: String = room.id()
     val nav = TimelineNavModel()
@@ -611,6 +614,13 @@ class TimelineController(
         rebuild()
     }
 
+    /** Sets the room's message lifetime and drops messages that expired since the last call. */
+    fun updateRetention(lifetime: Long?) {
+        if (lifetime == null && retentionLifetime == null) return
+        retentionLifetime = lifetime
+        rebuild()
+    }
+
     private fun rebuild() {
         val built = mutableListOf<MessageRow>()
         var pendingDay: Date? = null
@@ -621,6 +631,7 @@ class TimelineController(
         val settings = Triple(previews, roomEncrypted, membership)
         if (builtWith != settings) builtItems = IdentityHashMap()
         builtWith = settings
+        val now = System.currentTimeMillis()
         val revisions = HashMap<String, Pair<TimelineItem, Int>>()
         val nextBuilt = IdentityHashMap<TimelineItem, BuiltItem>(itemList.size)
         for (item in itemList) {
@@ -633,6 +644,7 @@ class TimelineController(
                     if (firstEventDate == null) firstEventDate = entry.date
                     if (createdAt == null && entry.isCreate) createdAt = entry.date
                     val cached = entry.row ?: continue
+                    if (cached.layoutKind == TimelineLayout.Kind.MESSAGE && RoomRetention.isExpired(cached.date.time, retentionLifetime, now)) continue
                     val known = rowRevisions[cached.id]
                     val revision = if (known != null && known.first === item) known.second else (known?.second ?: 0) + 1
                     revisions[cached.id] = item to revision

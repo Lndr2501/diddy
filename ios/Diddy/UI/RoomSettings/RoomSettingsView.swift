@@ -254,10 +254,12 @@ struct RoomSettingsView: View {
     private func optionsSection(_ state: RoomStateSnapshot) -> some View {
         let locked = !model.canSendState("m.room.join_rules")
             || !model.canSendState("m.room.history_visibility")
+            || !model.canSendState(RoomRetention.eventType)
             || (!state.isEncrypted && !model.canSendState("m.room.encryption"))
         Section {
             joinRuleRow(state)
             historyRow(state)
+            retentionRow(state)
             encryptionRow(state)
             publishRow(state)
         } header: {
@@ -319,6 +321,34 @@ struct RoomSettingsView: View {
             .disabled(!model.canSendState("m.room.history_visibility") || model.busy)
             Text(L("ios.securityUI.changesToHistoryVisibilityWillOnlyApplyToFutureMessagesTheVi"))
                 .font(.caption).foregroundStyle(Theme.muted)
+        }
+    }
+
+    /// Automatic message deletion (#245): sets m.room.retention, the server purges expired messages.
+    private func retentionRow(_ state: RoomStateSnapshot) -> some View {
+        let current = state.retentionLifetime
+        var choices: [Int64?] = [nil] + RoomRetention.choices.map { Optional($0) }
+        // A value set in another app stays visible as its own entry.
+        if let current, !RoomRetention.choices.contains(current) { choices.append(current) }
+        let binding = Binding<Int64?>(
+            get: { current },
+            set: { value in
+                guard value != current else { return }
+                Task {
+                    await model.perform {
+                        try await model.sendState(RoomRetention.eventType, content: RoomRetention.content(value))
+                    }
+                }
+            }
+        )
+        return VStack(alignment: .leading, spacing: 4) {
+            Picker(L("room.retention.title"), selection: binding) {
+                ForEach(choices, id: \.self) { value in
+                    Text(value.map(RoomRetentionText.duration) ?? L("room.retention.off")).tag(value)
+                }
+            }
+            .disabled(!model.canSendState(RoomRetention.eventType) || model.busy)
+            Text(L("room.retention.description")).font(.caption).foregroundStyle(Theme.muted)
         }
     }
 

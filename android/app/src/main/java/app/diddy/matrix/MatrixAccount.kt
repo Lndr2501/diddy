@@ -426,7 +426,10 @@ class MatrixAccount(val record: AccountRecord, val client: Client) {
             val joined = result.filter { it.isJoined }.map { it.id }.toSet()
             if (joined != knownJoinedRooms) {
                 val first = knownJoinedRooms.isEmpty()
+                val added = joined - knownJoinedRooms
                 knownJoinedRooms = joined
+                // Lifetimes of rooms with automatic deletion, one after another (#245).
+                scope.launch { for (id in added.sorted()) { if (!isActive) break; roomRetention(id) } }
                 if (!first) loadAllChannels()
             }
         }
@@ -817,6 +820,36 @@ class MatrixAccount(val record: AccountRecord, val client: Client) {
 
     suspend fun joinedMembers(roomId: String): List<String> =
         clientRequest("/_matrix/client/v3/rooms/${pathComponent(roomId)}/joined_members")["joined"].obj()?.keys?.toList() ?: emptyList()
+
+    /** Message lifetimes of rooms with automatic deletion (#245); rooms without one are left out. */
+    val retentionLifetimes = androidx.compose.runtime.mutableStateMapOf<String, Long>()
+
+    /**
+     * The room's message lifetime read from the server: `Result.success(null)` when the room keeps
+     * its history, a failure when the server could not be asked (keep what was known).
+     */
+    suspend fun roomRetention(roomId: String): Result<Long?> = try {
+        val lifetime = RoomRetention.lifetime(stateContent(roomId, RoomRetention.EVENT_TYPE, ""))
+        if (lifetime == null) retentionLifetimes.remove(roomId) else retentionLifetimes[roomId] = lifetime
+        Result.success(lifetime)
+    } catch (e: ClientApiError) {
+        if (e.errcode == "M_NOT_FOUND") {
+            retentionLifetimes.remove(roomId)
+            Result.success(null)
+        } else Result.failure(e)
+    } catch (e: kotlinx.coroutines.CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
+
+    /** The chat list preview, or null once the newest message expired in a room with automatic deletion. */
+    fun shownLastMessage(room: RoomSummary): String? {
+        val text = room.lastMessage ?: return null
+        val lifetime = retentionLifetimes[room.id] ?: return text
+        val date = room.lastActivity ?: return text
+        return if (RoomRetention.isExpired(date.time, lifetime, System.currentTimeMillis())) null else text
+    }
 
     /** The content of one state event, read from the server. Throws when the room has none. */
     suspend fun stateContent(roomId: String, type: String, stateKey: String): Map<String, Any?> =

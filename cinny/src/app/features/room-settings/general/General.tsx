@@ -8,6 +8,7 @@ import {
   RoomEncryption,
   RoomHistoryVisibility,
   RoomJoinRules,
+  RoomMessageRetention,
   RoomLocalAddresses,
   RoomPublishedAddresses,
   RoomPublish,
@@ -50,6 +51,7 @@ export function General({ requestClose }: GeneralProps) {
                 <Text size="L400">Options</Text>
                 <RoomJoinRules permissions={permissions} />
                 <RoomHistoryVisibility permissions={permissions} />
+                <RoomMessageRetention permissions={permissions} />
                 <RoomEncryption permissions={permissions} />
                 <RoomPublish permissions={permissions} />
               </Box>

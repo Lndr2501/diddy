@@ -32,6 +32,7 @@ Stand 2026-11-17, aus Code und CI abgeleitet (`src-tauri/`, `electron/`, `ios/`,
 | Globale Desktop-Hotkeys | ✅ | ✅ (Wayland eingeschränkt) | – | – |
 | Sprachauswahl/eigene Übersetzungen | ✅ | ✅ | 🧪 (teilweise) | ❌ |
 | Gespeicherte Nachrichten | ✅ | ✅ | 🧪 | ❌ |
+| Nachrichten automatisch löschen (`m.room.retention`, #245) | 🧪 | 🧪 | 🧪 | 🧪 |
 | Diagnoseexport | ✅ | ✅ | 🧪 | 🧪 |
 | Push bei geschlossenem Fenster/Prozess | – | – | eingeschränkt (ntfy-Anrufpfad, kein APNs) | 🧪 (UnifiedPush; Geräte-/Gateway-Nachweis offen) |
 | App-Store-Vertrieb | – | – | ❌ (kein bezahltes Apple-Konto) | 🧪 (F-Droid vorbereitet: reproduzierbarer Build, Rezept, CI-Prüfung; Aufnahme ab der Version nach 1.12.0) |
@@ -49,5 +50,6 @@ Anmerkungen:
   - KDE Plasma: Systemeinstellungen > Tastenkürzel > Eigene Kürzel > Neu > Globales Kürzel > Befehl/URL, Befehl `diddy --agent-voice toggle`.
   - Sway: `bindsym $mod+v exec diddy --agent-voice toggle`. Hyprland: `bind = SUPER, V, exec, diddy --agent-voice toggle`.
 - iOS und Android brauchen einen Server mit Simplified Sliding Sync (MSC4186).
+- Automatisches Löschen: Die Apps setzen `m.room.retention` und blenden abgelaufene Nachrichten sofort aus. Wirklich gelöscht werden sie nur, wenn der Homeserver Retention aktiviert hat (auf matrix.tllx.eu seit 17.11.2026, 1 Stunde bis 365 Tage). Andere Server im Raum, andere Apps und hochgeladene Medien sind davon nicht erfasst.
 - Windows: System-Ton beim Teilen läuft seit 1.12.0 über einen mitinstallierten Helfer, der alles außer Diddy aufnimmt.
 - Android: Push läuft über UnifiedPush (eine Verteiler-App wie ntfy, deren Server auch das Matrix-Push-Gateway stellt). Ohne Verteiler hält eine Hintergrundverbindung die Benachrichtigungen. Nach „Beenden erzwingen“ in den Android-Einstellungen kommt nichts mehr an, bis Diddy wieder geöffnet wird; Energiesparmodi mancher Hersteller können verzögern. Details: [android/README.md](../android/README.md).
