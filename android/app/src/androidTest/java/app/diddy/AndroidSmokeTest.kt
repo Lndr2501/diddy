@@ -1,6 +1,7 @@
 package app.diddy
 
 import android.content.Context
+import android.view.accessibility.AccessibilityNodeInfo
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -64,9 +65,21 @@ class AndroidSmokeTest {
         val deadline = android.os.SystemClock.uptimeMillis() + 15_000
         while (android.os.SystemClock.uptimeMillis() < deadline) {
             val root = automation.rootInActiveWindow
-            if (root != null && root.findAccessibilityNodeInfosByText("Continue").isNotEmpty()) return
+            if (root != null && containsText(root, "Continue")) return
             android.os.SystemClock.sleep(100)
         }
         fail("Login screen was not visible after startup/recreation")
+    }
+
+    /**
+     * Walks the tree instead of findAccessibilityNodeInfosByText: before Android 10 that search does
+     * not reach Compose's virtual nodes, so API 26 never found the login button.
+     */
+    private fun containsText(node: AccessibilityNodeInfo, text: String, depth: Int = 0): Boolean {
+        if (node.text?.toString() == text || node.contentDescription?.toString() == text) return true
+        if (depth > 60) return false
+        return (0 until node.childCount).any { index ->
+            node.getChild(index)?.let { containsText(it, text, depth + 1) } ?: false
+        }
     }
 }
