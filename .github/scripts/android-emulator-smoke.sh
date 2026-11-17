@@ -14,8 +14,15 @@ tests=$(find emulator-apks -name app-debug-androidTest.apk -print -quit)
 test -n "$app" && test -n "$tests"
 adb install -r "$app"
 adb install -r "$tests"
-adb logcat -c
-trap 'adb logcat -d -s AndroidRuntime:E DEBUG:E > emulator-report/crashes.txt' EXIT
+# API 26 images refuse to clear the main log; the dump below then simply holds a bit more boot noise.
+adb logcat -c 2>/dev/null || true
+report() {
+  adb logcat -d -b all -v threadtime > emulator-report/logcat.txt 2>&1 || true
+  grep -E 'FATAL EXCEPTION|AndroidRuntime|DEBUG +:|libc +:|F DEBUG|ActivityManager.*(app\.diddy|crash|ANR|Killing)|lowmemorykiller' \
+    emulator-report/logcat.txt > emulator-report/crashes.txt || true
+  adb shell run-as app.diddy.android.debug cat files/logs/app.log > emulator-report/app-log.txt 2>&1 || true
+}
+trap report EXIT
 adb shell am instrument -w -r app.diddy.android.debug.test/androidx.test.runner.AndroidJUnitRunner | tee emulator-report/instrumentation.txt
 grep -q 'OK (3 tests)' emulator-report/instrumentation.txt
 ! grep -qE 'FAILURES|INSTRUMENTATION_FAILED|Process crashed' emulator-report/instrumentation.txt

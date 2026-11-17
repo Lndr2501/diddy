@@ -14,7 +14,8 @@ case "$*" in
     echo 16384 ;;
   'shell cat /proc/self/smaps') printf 'Header\\nKernelPageSize:        4 kB\\nOther mapping\\nKernelPageSize:        4 kB\\n' ;;
   'shell getprop ro.build.fingerprint') echo synthetic-emulator ;;
-  'install -r '*|'logcat -c'|'logcat -d '*) ;;
+  'install -r '*|'logcat -d '*|'shell run-as '*) ;;
+  'logcat -c') if [ "$LEGACY_PAGE_SIZE" = 1 ]; then echo "failed to clear the 'main' log" >&2; exit 1; fi ;;
   'shell am instrument '*)
     if [ "$FAIL_INSTRUMENTATION" = 1 ]; then echo 'FAILURES!!!'; else echo 'OK (3 tests)'; fi ;;
   *) echo 'Unexpected adb call' >&2; exit 2 ;;
@@ -37,7 +38,7 @@ function run(legacy, fail) {
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 }
 
-test('API 26 without getconf still reaches all instrumentation tests', { skip: !fs.existsSync(script) }, () => {
+test('API 26 without getconf or logcat clearing still reaches all instrumentation tests', { skip: !fs.existsSync(script) }, () => {
   const result = run(1, 0);
   assert.equal(result.status, 0, result.stderr);
   assert.equal(result.pageSize, '4096');

@@ -17,10 +17,12 @@ on:
       - "cinny/src/app/plugins/builtin/**"
       - "ios/Diddy/Matrix/EmojiData.swift"
       - ".github/workflows/android.yml"
+      - ".github/scripts/android-emulator-smoke.sh"
   pull_request:
     paths:
       - "android/**"
       - ".github/workflows/android.yml"
+      - ".github/scripts/android-emulator-smoke.sh"
 
 concurrency:
   group: android-${{ github.event.pull_request.number || github.ref }}
