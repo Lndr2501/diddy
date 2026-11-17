@@ -1,6 +1,6 @@
 # Changelog
 
-## Unveröffentlicht
+## 1.12.1 (2026-11-17)
 
 - **Benachrichtigungen verschwinden, sobald anderswo gelesen (#256, macOS, Linux, Windows, Android):** Liest du eine Nachricht auf einem anderen Gerät mit deinem Konto (oder hier), schließt Diddy am Desktop die zugehörige Systembenachrichtigung und den Hinweis im Fenster sofort, sobald die Lesebestätigung per Sync ankommt. Die Einladungsmeldung geht weg, wenn eine Einladung angenommen oder abgelehnt wurde. Außerdem meldet sich ein Raum nach dem Lesen bei der nächsten Nachricht wieder (vorher blieb sie still, wenn der Zähler gleich war). Android mit UnifiedPush entfernt die Mitteilungen, wenn der Server meldet, dass alles gelesen ist (für einzelne Räume reicht die Push-Meldung nicht, das übernimmt der laufende Sync). iOS und Android im Hintergrund-Sync taten das schon. Die Ungelesen-Punkte in der Raumliste reagierten bereits auf Lesebestätigungen. Eingehende Anrufe sind nicht betroffen.
 
