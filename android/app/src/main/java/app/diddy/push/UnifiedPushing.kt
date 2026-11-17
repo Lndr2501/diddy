@@ -13,6 +13,7 @@ import app.diddy.matrix.MatrixAccount
 import app.diddy.util.Http
 import app.diddy.util.Json
 import app.diddy.util.friendlyMessage
+import app.diddy.util.long
 import app.diddy.util.obj
 import app.diddy.util.str
 import kotlinx.coroutines.delay
@@ -65,6 +66,17 @@ object UnifiedPushLogic {
         val room = notification["room_id"].str() ?: return null
         val event = notification["event_id"].str() ?: return null
         return room to event
+    }
+
+    /**
+     * The unread count of a push without an event. The homeserver sends one when only the count
+     * changed, e.g. after another device of the account read something; 0 means all is read.
+     * Null for a push about an event.
+     */
+    fun unreadOnly(content: ByteArray): Long? {
+        val notification = Json.obj(String(content))?.get("notification").obj() ?: return null
+        if (!notification["event_id"].str().isNullOrEmpty()) return null
+        return notification["counts"].obj()?.get("unread").long()
     }
 }
 
@@ -183,6 +195,11 @@ object UnifiedPushing {
 
     /** A push arrived: read the event with the notification client and show it. */
     internal fun message(content: ByteArray, accountId: String) {
+        // Read everywhere, e.g. on another device: the notifications have done their job (#256).
+        if (UnifiedPushLogic.unreadOnly(content) == 0L) {
+            Notifications.clearMessages(accountId)
+            return
+        }
         val (roomId, eventId) = UnifiedPushLogic.parse(content) ?: return
         // Keeps the phone awake while the event is fetched and decrypted (at most 30 seconds).
         val wake = (context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager)

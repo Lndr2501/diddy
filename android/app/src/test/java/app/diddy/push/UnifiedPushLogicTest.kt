@@ -18,4 +18,13 @@ class UnifiedPushLogicTest {
         @Suppress("UNCHECKED_CAST") val data = UnifiedPushLogic.pusherBody("https://e", "https://g", "Pixel")["data"] as Map<String, Any?>
         assertEquals("event_id_only", data["format"])
     }
+
+    @Test fun countOnlyPush() {
+        // what Synapse sends after a read receipt from another device
+        assertEquals(0L, UnifiedPushLogic.unreadOnly("""{"notification":{"id":"","type":null,"sender":"","counts":{"unread":0},"devices":[]}}""".toByteArray()))
+        assertEquals(2L, UnifiedPushLogic.unreadOnly("""{"notification":{"counts":{"unread":2}}}""".toByteArray()))
+        assertNull(UnifiedPushLogic.unreadOnly("""{"notification":{"room_id":"!r:x","event_id":"${'$'}e","counts":{"unread":0}}}""".toByteArray()))
+        assertNull(UnifiedPushLogic.unreadOnly("""{"notification":{"id":""}}""".toByteArray()))
+        assertNull(UnifiedPushLogic.unreadOnly("not json".toByteArray()))
+    }
 }

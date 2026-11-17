@@ -223,6 +223,15 @@ object Notifications {
         NotificationManagerCompat.from(context).cancel(tag(account, roomId), 0)
     }
 
+    /** Everything of the account is read (count-only push): its message and invite notifications go, calls stay. */
+    fun clearMessages(accountId: String) {
+        if (!::context.isInitialized) return
+        val manager = NotificationManagerCompat.from(context)
+        manager.activeNotifications
+            .filter { it.id == 0 && it.tag?.startsWith("$accountId|") == true }
+            .forEach { manager.cancel(it.tag, it.id) }
+    }
+
     fun clearAll() {
         if (!::context.isInitialized) return
         val manager = NotificationManagerCompat.from(context)
