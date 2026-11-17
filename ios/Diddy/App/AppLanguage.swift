@@ -9,6 +9,17 @@ final class AppLanguage: ObservableObject {
     private(set) var bundled: [String: [String: Any]] = [:]
     private(set) var custom: [String: [String: Any]] = [:]
     private let customDirectory: URL
+    /// The flattened texts of the active language and of English. `L()` runs for every label of
+    /// every row on screen; flattening both files (thousands of keys) on each call made opening
+    /// a chat lag. Built once, again after a language change. Any thread may call `L()`.
+    private struct Table {
+        let code: String
+        let locale: Locale
+        let selected: [String: String]
+        let english: [String: String]
+    }
+    private var table: Table?
+    private let tableLock = NSLock()
 
     private init() {
         customDirectory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -27,6 +38,31 @@ final class AppLanguage: ObservableObject {
                 }
             }
         }
+        // Checking the custom files above built the table before they were loaded.
+        invalidate()
+        // "Automatic" follows the system language, which can change while the app runs.
+        _ = NotificationCenter.default.addObserver(forName: NSLocale.currentLocaleDidChangeNotification, object: nil, queue: nil) { [weak self] _ in
+            self?.invalidate()
+        }
+    }
+
+    private func currentTable() -> Table {
+        tableLock.lock()
+        defer { tableLock.unlock() }
+        if let table { return table }
+        let code = activeCode
+        let english = LocaleRules.flatten(bundled["en"] ?? [:])
+        let file = custom[code] ?? bundled[code]
+        let selected = file.map { LocaleRules.flatten($0) } ?? [:]
+        let built = Table(code: code, locale: Locale(identifier: code), selected: selected, english: english)
+        table = built
+        return built
+    }
+
+    private func invalidate() {
+        tableLock.lock()
+        table = nil
+        tableLock.unlock()
     }
 
     private static func read(_ url: URL) -> [String: Any]? {
@@ -34,7 +70,7 @@ final class AppLanguage: ObservableObject {
         return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
     }
 
-    var english: [String: String] { LocaleRules.flatten(bundled["en"] ?? [:]) }
+    var english: [String: String] { currentTable().english }
     var codes: [String] { Array(Set(bundled.keys).union(custom.keys)).sorted() }
     var activeCode: String {
         if preference != "system", codes.contains(preference) { return preference }
@@ -56,14 +92,14 @@ final class AppLanguage: ObservableObject {
     }
 
     func text(_ key: String, _ values: [String: String] = [:]) -> String {
-        let code = activeCode
-        let file = custom[code] ?? bundled[code] ?? [:]
-        return LocaleRules.resolve(key, selected: LocaleRules.flatten(file), english: english,
-                                   values: values, locale: Locale(identifier: code))
+        let table = currentTable()
+        return LocaleRules.resolve(key, selected: table.selected, english: table.english,
+                                   values: values, locale: table.locale)
     }
 
     func select(_ code: String) {
         preference = code
+        invalidate()
         if code == "system" { UserDefaults.standard.removeObject(forKey: "diddy-language") }
         else { UserDefaults.standard.set(code, forKey: "diddy-language") }
         revision += 1

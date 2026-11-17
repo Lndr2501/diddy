@@ -1,5 +1,9 @@
 # Changelog
 
+## Unveröffentlicht
+
+- **iOS: Chats öffnen ohne Ruckeln:** Seit der iOS-Übersetzung in 1.12.1 hat jeder übersetzte Text die komplette Sprachdatei und die englische Datei neu aufbereitet (je 2.878 Texte), bei jedem Aufruf. Ein Chat mit vielen Nachrichten tut das hunderte Male pro Bildaufbau, und das Öffnen von Chats und Listen ruckelte stark. Die aufbereiteten Texte werden jetzt einmal gebaut und erst beim Sprachwechsel (in Diddy oder in den iOS-Einstellungen) neu. Nur iOS; Desktop und Android nutzen diesen Code nicht. Gebaut in der CI, auf dem Gerät noch nicht geprüft.
+
 ## 1.12.1 (2026-11-17)
 
 - **Benachrichtigungen verschwinden, sobald anderswo gelesen (#256, macOS, Linux, Windows, Android):** Liest du eine Nachricht auf einem anderen Gerät mit deinem Konto (oder hier), schließt Diddy am Desktop die zugehörige Systembenachrichtigung und den Hinweis im Fenster sofort, sobald die Lesebestätigung per Sync ankommt. Die Einladungsmeldung geht weg, wenn eine Einladung angenommen oder abgelehnt wurde. Außerdem meldet sich ein Raum nach dem Lesen bei der nächsten Nachricht wieder (vorher blieb sie still, wenn der Zähler gleich war). Android mit UnifiedPush entfernt die Mitteilungen, wenn der Server meldet, dass alles gelesen ist (für einzelne Räume reicht die Push-Meldung nicht, das übernimmt der laufende Sync). iOS und Android im Hintergrund-Sync taten das schon. Die Ungelesen-Punkte in der Raumliste reagierten bereits auf Lesebestätigungen. Eingehende Anrufe sind nicht betroffen.
