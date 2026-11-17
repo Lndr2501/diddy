@@ -16,3 +16,12 @@ if [ "$current" != "$version" ]; then
   rm -f "$file.bak"
 fi
 grep -n "APP_VERSION =" "$file"
+
+file=android/app/build.gradle.kts
+current=$(sed -n 's/^val diddyVersion = "\(.*\)"/\1/p' "$file")
+if [ "$current" != "$version" ]; then
+  echo "::warning file=$file::Android version is '$current'; building with '$version' from the tag."
+  sed -i.bak "s/^val diddyVersion = \".*\"/val diddyVersion = \"$version\"/" "$file"
+  rm -f "$file.bak"
+fi
+grep -n 'diddyVersion =' "$file"

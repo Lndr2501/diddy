@@ -26,41 +26,42 @@ struct CompanionRequestSheet: View {
             List {
                 Section {
                     VStack(alignment: .leading, spacing: 10) {
-                        Label("Your computer wants this iPhone", systemImage: "iphone.gen3.radiowaves.left.and.right")
+                        Label(L("ios.calls.computerWantsPhone"), systemImage: "iphone.gen3.radiowaves.left.and.right")
                             .font(.headline)
                         Text(pending.request.roomName.isEmpty
-                             ? "Join its call as its camera and microphone."
-                             : "Join “\(pending.request.roomName)” as its camera and microphone.")
+                             ? L("ios.calls.moreJoinItsCallAsItsCameraAndMicrophone")
+                             : L("ios.callDynamic.roomCompanion", ["room": pending.request.roomName]))
                             .font(.subheadline)
                             .foregroundStyle(Theme.muted)
                         VStack(alignment: .leading, spacing: 6) {
-                            CompanionFact(icon: "speaker.slash", text: "This iPhone stays silent; the call plays on your computer.")
-                            CompanionFact(icon: "desktopcomputer", text: "Your computer's microphone and camera go off meanwhile.")
-                            CompanionFact(icon: "hand.tap", text: "Your computer's buttons control this iPhone too.")
+                            CompanionFact(icon: "speaker.slash", text: L("ios.calls.moreThisIphoneStaysSilentTheCallPlaysOnYourComputer"))
+                            CompanionFact(icon: "desktopcomputer", text: L("ios.calls.moreYourComputerSMicrophoneAndCameraGoOffMeanwhile"))
+                            CompanionFact(icon: "hand.tap", text: L("ios.calls.moreYourComputerSButtonsControlThisIphoneToo"))
                         }
                     }
                     .padding(.vertical, 4)
                 }
                 Section {
-                    Toggle(isOn: $camera) { Label("Camera", systemImage: "video.fill") }
-                    Toggle(isOn: $microphone) { Label("Microphone", systemImage: "mic.fill") }
-                    Toggle(isOn: $screen) { Label("Screen", systemImage: "rectangle.on.rectangle") }
+                    Toggle(isOn: $camera) { Label(L("settings.general.camera"), systemImage: "video.fill") }
+                    Toggle(isOn: $microphone) { Label(L("call.controls.microphone"), systemImage: "mic.fill") }
+                    Toggle(isOn: $screen) { Label(L("call.companionDialog.screen"), systemImage: "rectangle.on.rectangle") }
                 } header: {
-                    Text("This iPhone sends")
+                    Text(L("ios.calls.phoneSends"))
                 } footer: {
-                    Text("The call sound keeps playing on your computer; this iPhone stays silent. You can turn the camera around in the call.")
+                    Text(L("ios.calls.companionSoundHelp")
+                         + (screen && CallSession.sharesWholeScreen ? "\n\n" + ScreenShareNotice.message : ""))
                 }
             }
             .scrollContentBackground(.hidden)
             .background(Theme.sidebar)
-            .navigationTitle("Camera & Mic")
+            .navigationTitle(L("ios.calls.cameraAndMic"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Not Now", action: onDecline)
+                    Button(L("ios.calls.notNow"), action: onDecline)
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Join") { onJoin(CompanionProtocol.Media(camera: camera, microphone: microphone, screen: screen)) }
+                    Button(L("call.prescreenControls.join")) { onJoin(CompanionProtocol.Media(camera: camera, microphone: microphone, screen: screen)) }
                         .bold()
                         .disabled(!anything)
                 }
@@ -90,6 +91,7 @@ struct CompanionCallView: View {
     @ObservedObject var session: CallSession
     let title: String
     @EnvironmentObject private var calls: CallManager
+    @State private var confirmWholeScreen = false
 
     private var camera: LiveKit.VideoTrack? {
         session.cameraOn ? session.liveKitRoom.localParticipant.firstCameraPublication?.track as? LiveKit.VideoTrack : nil
@@ -102,8 +104,8 @@ struct CompanionCallView: View {
             controls
             // what happens when you leave: said before it happens
             Label(session.cameraOn
-                  ? "Keep Diddy open: iOS pauses the camera in other apps. The microphone keeps going."
-                  : "You can use other apps meanwhile; the microphone keeps going.",
+                  ? L("ios.calls.moreKeepDiddyOpenIosPausesTheCameraInOtherAppsTheMicrophoneKeeps")
+                  : L("ios.calls.moreYouCanUseOtherAppsMeanwhileTheMicrophoneKeepsGoing"),
                   systemImage: "info.circle")
                 .font(.footnote)
                 .foregroundStyle(Theme.muted)
@@ -111,7 +113,7 @@ struct CompanionCallView: View {
             Button(role: .destructive) {
                 Task { await calls.leave() }
             } label: {
-                Label("Disconnect from Computer", systemImage: "xmark.circle.fill")
+                Label(L("ios.calls.disconnectComputer"), systemImage: "xmark.circle.fill")
                     .font(.headline)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
@@ -120,7 +122,7 @@ struct CompanionCallView: View {
             }
             .buttonStyle(.plain)
             if session.awaitingBroadcast {
-                Label("Choose Diddy and tap Start Broadcast.", systemImage: "info.circle")
+                Label(L("ios.calls.chooseBroadcast"), systemImage: "info.circle")
                     .font(.footnote).foregroundStyle(Theme.muted)
             }
             if let error = session.lastError {
@@ -136,11 +138,11 @@ struct CompanionCallView: View {
         VStack(spacing: 4) {
             HStack(spacing: 8) {
                 Circle().fill(session.connected ? Theme.online : Theme.muted).frame(width: 8, height: 8)
-                Text(session.connected ? "Connected for your computer" : "Connecting…")
+                Text(session.connected ? L("ios.calls.moreConnectedForYourComputer") : L("ios.calls.moreConnecting"))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Theme.text)
             }
-            Text("\(title) · the call plays on your computer")
+            Text(L("ios.callDynamic.companionTitle", ["name": title]))
                 .font(.footnote)
                 .foregroundStyle(Theme.muted)
                 .lineLimit(1)
@@ -158,7 +160,7 @@ struct CompanionCallView: View {
             } else {
                 VStack(spacing: 10) {
                     Image(systemName: "video.slash.fill").font(.system(size: 40)).foregroundStyle(Theme.muted)
-                    Text("Camera off").font(.subheadline).foregroundStyle(Theme.muted)
+                    Text(L("ios.calls.cameraOff")).font(.subheadline).foregroundStyle(Theme.muted)
                 }
             }
         }
@@ -166,9 +168,9 @@ struct CompanionCallView: View {
         .overlay(alignment: .topLeading) {
             HStack(spacing: 6) {
                 CompanionChip(icon: session.microphoneOn ? "mic.fill" : "mic.slash.fill",
-                              text: session.microphoneOn ? "Mic on" : "Mic off", on: session.microphoneOn)
+                              text: session.microphoneOn ? L("ios.calls.moreMicOn") : L("ios.calls.moreMicOff"), on: session.microphoneOn)
                 if session.screenSharing {
-                    CompanionChip(icon: "rectangle.on.rectangle", text: "Screen shared", on: true)
+                    CompanionChip(icon: "rectangle.on.rectangle", text: L("ios.calls.moreScreenShared"), on: true)
                 }
             }
             .padding(10)
@@ -183,24 +185,31 @@ struct CompanionCallView: View {
                         .background(Circle().fill(.black.opacity(0.55)))
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Flip camera")
+                .accessibilityLabel(L("ios.calls.flipCamera"))
                 .padding(12)
             }
         }
     }
 
     private var controls: some View {
+        controlRow
+            .wholeScreenShareAlert(isPresented: $confirmWholeScreen) { Task { await session.toggleScreenShare() } }
+    }
+
+    private var controlRow: some View {
         HStack(spacing: 12) {
-            CompanionToggle(icon: session.cameraOn ? "video.fill" : "video.slash.fill", label: "Camera", on: session.cameraOn) {
+            CompanionToggle(icon: session.cameraOn ? "video.fill" : "video.slash.fill", label: L("ios.calls.moreCamera"), on: session.cameraOn) {
                 Task { await session.toggleCamera() }
             }
-            CompanionToggle(icon: session.microphoneOn ? "mic.fill" : "mic.slash.fill", label: "Microphone", on: session.microphoneOn) {
+            CompanionToggle(icon: session.microphoneOn ? "mic.fill" : "mic.slash.fill", label: L("ios.calls.moreMicrophone"), on: session.microphoneOn) {
                 Task { await session.toggleMicrophone() }
             }
-            CompanionToggle(icon: "rectangle.on.rectangle", label: session.screenSharing ? "Stop Screen" : "Screen", on: session.screenSharing) {
+            CompanionToggle(icon: "rectangle.on.rectangle", label: session.screenSharing ? L("ios.calls.moreStopScreen") : L("ios.calls.moreScreen"), on: session.screenSharing) {
                 if session.screenSharing {
                     Task { await session.stopScreenShare() }
-                } else if CallSession.sharesWholeScreen || !BroadcastPicker.isAvailable {
+                } else if CallSession.sharesWholeScreen {
+                    confirmWholeScreen = true
+                } else if !BroadcastPicker.isAvailable {
                     Task { await session.toggleScreenShare() }
                 } else {
                     session.startWholeScreenShare()
@@ -245,6 +254,6 @@ private struct CompanionToggle: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)
-        .accessibilityValue(on ? "On" : "Off")
+        .accessibilityValue(on ? L("ios.calls.moreOn") : L("settings.agentVoice.off"))
     }
 }

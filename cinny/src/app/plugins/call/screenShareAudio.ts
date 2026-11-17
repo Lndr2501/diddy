@@ -1,8 +1,9 @@
 /**
  * Screen-share audio for the desktop app.
  *
- * The shells capture system audio natively: macOS over a loopback WebSocket, Linux over
- * bounded Electron IPC from the application-audio helper. This module turns that
+ * The shells capture system audio natively: macOS over a loopback WebSocket, Linux and Windows
+ * over bounded Electron IPC from the application-audio helper (Windows: process loopback, which
+ * leaves out Diddy's own process tree). This module turns that
  * stream into a MediaStreamTrack and adds it to the stream Element Call receives from
  * getDisplayMedia(), so LiveKit publishes it as the screen-share audio track.
  *
@@ -84,6 +85,17 @@ const getBridge = (): Bridge | undefined =>
   (window as unknown as { __CINNY_SYS_AUDIO__?: Bridge }).__CINNY_SYS_AUDIO__ ??
   (window as unknown as { __DIDDY_SYS_AUDIO__?: NativeBridge }).__DIDDY_SYS_AUDIO__;
 
+/**
+ * Set by the desktop shell instead of a bridge where sharing system sound is impossible without an
+ * echo (Windows before 10 version 2004). The page shows the option greyed out with this text.
+ */
+const getUnavailableReason = (): string | undefined => {
+  if (getBridge()) return undefined;
+  const reason = (window as unknown as { __DIDDY_SYS_AUDIO_UNAVAILABLE__?: unknown })
+    .__DIDDY_SYS_AUDIO_UNAVAILABLE__;
+  return typeof reason === 'string' && reason ? reason : undefined;
+};
+
 type Session = {
   ctx: AudioContext;
   ws?: WebSocket;
@@ -97,6 +109,8 @@ type Session = {
 
 export type ScreenShareAudioSnapshot = {
   available: boolean;
+  /** Not available, but the desktop shell explains why (show the option disabled). */
+  unavailableReason?: string;
   enabled: boolean;
   active: boolean;
   error?: string;
@@ -121,6 +135,7 @@ class ScreenShareAudio {
   private buildSnapshot(): ScreenShareAudioSnapshot {
     return {
       available: getBridge() !== undefined,
+      unavailableReason: getUnavailableReason(),
       enabled: this.enabledSetting,
       active: this.session?.track !== undefined,
       error: this.lastError,
@@ -180,15 +195,20 @@ class ScreenShareAudio {
   private async connect(session: Session): Promise<MediaStreamTrack> {
     const { ctx } = session;
     const ensureCurrent = () => {
-      if (this.session !== session) throw new DOMException('Screen-share audio canceled', 'AbortError');
+      if (this.session !== session)
+        throw new DOMException('Screen-share audio canceled', 'AbortError');
     };
     ensureCurrent();
     let interrupt!: (error: Error) => void;
-    const interrupted = new Promise<never>((_, reject) => { interrupt = reject; });
+    const interrupted = new Promise<never>((_, reject) => {
+      interrupt = reject;
+    });
     // Also observe cancellation if a synchronous setup error occurs before the first race.
     interrupted.catch(() => {});
-    const waitFor = <T>(operation: Promise<T>): Promise<T> => Promise.race([operation, interrupted]);
-    session.cancelConnect = () => interrupt(new DOMException('Screen-share audio canceled', 'AbortError'));
+    const waitFor = <T>(operation: Promise<T>): Promise<T> =>
+      Promise.race([operation, interrupted]);
+    session.cancelConnect = () =>
+      interrupt(new DOMException('Screen-share audio canceled', 'AbortError'));
     // Bound the entire audio setup, including worklet loading, not just the socket handshake.
     const timer = window.setTimeout(
       () => interrupt(new Error('timed out preparing system audio')),
@@ -261,20 +281,22 @@ class ScreenShareAudio {
       ws.binaryType = 'arraybuffer';
       session.ws = ws;
 
-      await waitFor(new Promise<void>((resolve, reject) => {
-        ws.onerror = () => reject(new Error('could not connect to system audio bridge'));
-        ws.onclose = () => reject(new Error('system audio bridge closed'));
-        ws.onmessage = (evt) => {
-          if (typeof evt.data !== 'string') return;
-          try {
-            const msg = JSON.parse(evt.data) as { type: string; message?: string };
-            if (msg.type === 'format') resolve();
-            else reject(new Error(msg.message ?? 'system audio failed'));
-          } catch {
-            reject(new Error('invalid system audio bridge response'));
-          }
-        };
-      }));
+      await waitFor(
+        new Promise<void>((resolve, reject) => {
+          ws.onerror = () => reject(new Error('could not connect to system audio bridge'));
+          ws.onclose = () => reject(new Error('system audio bridge closed'));
+          ws.onmessage = (evt) => {
+            if (typeof evt.data !== 'string') return;
+            try {
+              const msg = JSON.parse(evt.data) as { type: string; message?: string };
+              if (msg.type === 'format') resolve();
+              else reject(new Error(msg.message ?? 'system audio failed'));
+            } catch {
+              reject(new Error('invalid system audio bridge response'));
+            }
+          };
+        })
+      );
       ensureCurrent();
 
       ws.onerror = null;
@@ -353,9 +375,13 @@ const preferRequestedResolution = (
   for (const dimension of ['width', 'height'] as const) {
     const range = video[dimension];
     if (
-      typeof range === 'object' && range !== null &&
-      range.ideal === undefined && range.exact === undefined &&
-      typeof range.max === 'number' && Number.isFinite(range.max) && range.max > 0
+      typeof range === 'object' &&
+      range !== null &&
+      range.ideal === undefined &&
+      range.exact === undefined &&
+      typeof range.max === 'number' &&
+      Number.isFinite(range.max) &&
+      range.max > 0
     ) {
       video[dimension] = { ...range, ideal: range.max };
     }
@@ -434,7 +460,11 @@ export const installScreenShareAudio = (win: Window | null | undefined) => {
       };
       const nativeStop = video.stop.bind(video);
       video.stop = () => {
-        try { nativeStop(); } finally { cleanup?.(); }
+        try {
+          nativeStop();
+        } finally {
+          cleanup?.();
+        }
       };
       video.addEventListener('ended', cleanup, { once: true });
       const videoOptions = requested?.video;
@@ -450,14 +480,23 @@ export const installScreenShareAudio = (win: Window | null | undefined) => {
             video.applyConstraints({
               ...(videoOptions.width !== undefined ? { width: videoOptions.width } : {}),
               ...(videoOptions.height !== undefined ? { height: videoOptions.height } : {}),
-              ...(videoOptions.frameRate !== undefined ? { frameRate: videoOptions.frameRate } : {}),
+              ...(videoOptions.frameRate !== undefined
+                ? { frameRate: videoOptions.frameRate }
+                : {}),
             }),
             new Promise<never>((_, reject) => {
-              timer = window.setTimeout(() => reject(new Error('capture quality adjustment timed out')), 2000);
+              timer = window.setTimeout(
+                () => reject(new Error('capture quality adjustment timed out')),
+                2000
+              );
             }),
           ]);
         } catch (e) {
-          diag(`getDisplayMedia #${request} quality adjustment failed: ${e instanceof Error ? e.name : 'unknown'}`);
+          diag(
+            `getDisplayMedia #${request} quality adjustment failed: ${
+              e instanceof Error ? e.name : 'unknown'
+            }`
+          );
         } finally {
           window.clearTimeout(timer);
         }
@@ -520,4 +559,17 @@ export const useScreenShareAudio = (): ScreenShareAudioSnapshot & {
 } => {
   const snapshot = useSyncExternalStore(screenShareAudio.subscribe, screenShareAudio.getSnapshot);
   return { ...snapshot, toggle: () => screenShareAudio.toggle() };
+};
+
+/** The "Share system sound" entry of the share menu: a toggle, greyed out with a reason, or none. */
+export type ShareAudioOption =
+  | { enabled: boolean; onToggle: () => void }
+  | { unavailable: string }
+  | null;
+export const shareAudioOption = (
+  audio: ScreenShareAudioSnapshot & { toggle: () => void }
+): ShareAudioOption => {
+  if (audio.available) return { enabled: audio.enabled, onToggle: audio.toggle };
+  if (audio.unavailableReason) return { unavailable: audio.unavailableReason };
+  return null;
 };

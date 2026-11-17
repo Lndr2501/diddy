@@ -27,7 +27,7 @@ struct WatchLinkSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("https://youtu.be/…", text: $input)
+                    TextField(L("call.watchTogether.httpsYoutuBe"), text: $input)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .keyboardType(.URL)
@@ -39,16 +39,16 @@ struct WatchLinkSheet: View {
                     if let error {
                         Text(error).foregroundStyle(Theme.danger)
                     } else {
-                        Text("Paste a YouTube link. Everybody in the call gets the video; play, pause and seeking are shared, volume and quality stay yours.")
+                        Text(L("call.watchTogether.pasteAYoutubeLink"))
                     }
                 }
             }
-            .navigationTitle("Watch together")
+            .navigationTitle(L("settings.watchTogether.watchTogether"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button(L("settings.deviceTile.cancel")) { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Start for everyone", action: submit)
+                    Button(L("call.watchTogether.startForEveryone"), action: submit)
                         .disabled(input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
@@ -58,7 +58,7 @@ struct WatchLinkSheet: View {
 
     private func submit() {
         guard let ref = WatchYouTube.parseURL(input) else {
-            error = "That is not a YouTube video link (youtube.com/watch, youtu.be or shorts)."
+            error = L("ios.finalComputed.youtubeError")
             return
         }
         watch.startWatching(videoId: ref.videoId, start: ref.start)
@@ -217,7 +217,7 @@ private struct WatchPlayerCard: View {
     private var header: some View {
         HStack(spacing: 6) {
             Image(systemName: "play.fill").font(.footnote).foregroundStyle(Theme.accent)
-            Text("Watch Together").font(.subheadline.weight(.semibold)).foregroundStyle(Theme.text)
+            Text(L("ios.settings.watchTogether")).font(.subheadline.weight(.semibold)).foregroundStyle(Theme.text)
                 .lineLimit(1)
             Spacer(minLength: 4)
             if let url = WatchYouTube.watchURL(shared.videoId) {
@@ -226,14 +226,14 @@ private struct WatchPlayerCard: View {
                         .font(.body.weight(.semibold))
                         .frame(width: 44, height: 36)
                 }
-                .accessibilityLabel("Open on YouTube")
+                .accessibilityLabel(L("call.watchTogether.openOnYoutube"))
             }
             Menu {
                 Button { watch.closeForMe() } label: {
-                    Label("Close for Me", systemImage: "eye.slash")
+                    Label(L("ios.calls.closeForMe"), systemImage: "eye.slash")
                 }
                 Button(role: .destructive) { watch.stopForEveryone() } label: {
-                    Label("Stop for Everyone", systemImage: "stop.fill")
+                    Label(L("ios.calls.stopForEveryone"), systemImage: "stop.fill")
                 }
             } label: {
                 Image(systemName: "xmark.circle.fill")
@@ -241,8 +241,8 @@ private struct WatchPlayerCard: View {
                     .foregroundStyle(Theme.muted)
                     .frame(width: 44, height: 36)
             }
-            .accessibilityLabel("Close the video")
-            .accessibilityHint("Close it for you or stop it for everyone")
+            .accessibilityLabel(L("ios.calls.closeVideo"))
+            .accessibilityHint(L("ios.calls.moreCloseItForYouOrStopItForEveryone"))
         }
     }
 
@@ -283,9 +283,9 @@ private struct WatchPlayerCard: View {
                 ),
                 in: 0...100
             )
-            .accessibilityLabel("Your video volume")
+            .accessibilityLabel(L("call.watchTogether.yourVideoVolume"))
             Menu {
-                Picker("Quality", selection: Binding(
+                Picker(L("call.watchTogether.quality"), selection: Binding(
                     get: { prefs.quality },
                     set: { choice in WatchTogetherPrefsStore.shared.update { $0.quality = choice } }
                 )) {
@@ -303,7 +303,7 @@ private struct WatchPlayerCard: View {
                 }
                 .foregroundStyle(Theme.text)
             }
-            .accessibilityLabel("Your video quality")
+            .accessibilityLabel(L("call.watchTogether.yourVideoQuality"))
         }
     }
 }
@@ -322,13 +322,13 @@ struct WatchTogetherSettingsView: View {
                     set: { on in prefsStore.update { $0.enabled = on } }
                 )) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Watch together")
-                        Text("Watch a YouTube video with everyone in the call. Play, pause and seeking are shared; your volume and quality stay yours.")
+                        Text(L("settings.watchTogether.watchTogether"))
+                        Text(L("settings.watchTogether.watchAYoutubeVideo"))
                             .font(.footnote).foregroundStyle(Theme.muted)
                     }
                 }
             } footer: {
-                Text("Videos load from YouTube (youtube-nocookie.com) in YouTube's own player, so YouTube sees your IP address and what you watch; ads YouTube shows are not blocked. The others in the call get the video link and play / pause / position as end-to-end encrypted messages (plain to-device messages when encryption is unavailable). For SponsorBlock only the first 4 characters of a hash of the video id go to sponsor.ajay.app, not the video itself.")
+                Text(L("settings.watchTogether.videosLoadFromYoutube"))
             }
             if prefsStore.prefs.enabled {
                 Section {
@@ -339,15 +339,15 @@ struct WatchTogetherSettingsView: View {
                         ))
                     }
                 } header: {
-                    Text("Skip segments with SponsorBlock")
+                    Text(L("settings.watchTogether.skipSegmentsWithSponsorblock"))
                 } footer: {
-                    Text("Community data from SponsorBlock (sponsor.ajay.app, by Ajay Ramachandran and contributors, CC BY-NC-SA 4.0). When you skip, the video jumps for everybody in the call.")
+                    Text(L("settings.watchTogether.communityDataFromSponsorblock"))
                 }
             }
         }
         .scrollContentBackground(.hidden)
         .background(Theme.sidebar)
-        .navigationTitle("Watch Together")
+        .navigationTitle(L("ios.settings.watchTogether"))
         .navigationBarTitleDisplayMode(.inline)
     }
 }

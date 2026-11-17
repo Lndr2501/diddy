@@ -77,13 +77,13 @@ struct NewMessagesDivider: View {
     var body: some View {
         HStack(spacing: 8) {
             Rectangle().fill(Theme.accent.opacity(0.45)).frame(height: 1)
-            Text("NEW").font(.caption2.weight(.bold)).tracking(0.4).foregroundStyle(Theme.accent)
+            Text(L("ios.chatMore.new")).font(.caption2.weight(.bold)).tracking(0.4).foregroundStyle(Theme.accent)
         }
         .padding(.horizontal, ChatStyle.edgePadding)
         .padding(.top, 10)
         .padding(.bottom, 2)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("New messages")
+        .accessibilityLabel(L("ios.chatMore.newMessages"))
     }
 }
 
@@ -113,14 +113,14 @@ struct ThreadSummaryButton: View {
         .padding(.leading, ChatStyle.textLeading)
         .padding(.trailing, ChatStyle.edgePadding)
         .padding(.top, 2)
-        .accessibilityLabel("Thread, \(info.replies) replies. Open thread")
+        .accessibilityLabel(L("ios.lastDynamic.threadReplies", ["count": String(info.replies)]))
     }
 }
 
 /// A small note under a pinned message.
 struct PinnedMarker: View {
     var body: some View {
-        Label("Pinned", systemImage: "pin.fill")
+        Label(L("ios.chatMore.pinned"), systemImage: "pin.fill")
             .font(.caption2.weight(.semibold))
             .foregroundStyle(Theme.faint)
             .padding(.leading, ChatStyle.textLeading)
@@ -184,10 +184,10 @@ struct PeopleSheet: View {
             }
             .listStyle(.plain)
             .background(Theme.chat)
-            .overlay { if userIds.isEmpty { Text("Nobody yet.").foregroundStyle(Theme.muted) } }
+            .overlay { if userIds.isEmpty { Text(L("ios.chatMore.nobodyYet")).foregroundStyle(Theme.muted) } }
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button(L("room.callChatView.close")) { dismiss() } } }
             .task { account.resolveProfiles(userIds, in: roomId) }
             .sheet(item: $profile) { UserProfileSheet(account: account, userId: $0.userId, roomId: roomId) }
         }
@@ -211,24 +211,24 @@ struct ReportMessageSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    Text("Report this message to server, which may then notify the appropriate people to take action.")
+                    Text(L("message.main.reportThisMessageTo"))
                         .foregroundStyle(Theme.muted)
                 }
-                Section("Reason") {
-                    TextField("Reason", text: $reason, axis: .vertical).lineLimit(1...4)
+                Section(L("message.main.reason")) {
+                    TextField(L("message.main.reason"), text: $reason, axis: .vertical).lineLimit(1...4)
                 }
                 if failed {
-                    Text("Failed to report message! Please try again.").foregroundStyle(Theme.danger)
+                    Text(L("message.main.failedToReportMessage")).foregroundStyle(Theme.danger)
                 }
                 if done {
-                    Text("Message has been reported to server.").foregroundStyle(Theme.online)
+                    Text(L("message.main.messageHasBeenReported")).foregroundStyle(Theme.online)
                 }
                 Section {
                     Button(sending ? "Reporting…" : "Report", role: .destructive) { submit() }
                         .disabled(trimmed.isEmpty || sending || done)
                 }
             }
-            .navigationTitle("Report Message")
+            .navigationTitle(L("message.main.reportMessage"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button(done ? "Close" : "Cancel") { dismiss() } } }
         }
@@ -263,11 +263,11 @@ struct DeleteMessageSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    Text("This action is irreversible! Are you sure that you want to delete this message?")
+                    Text(L("message.main.thisActionIsIrreversible"))
                         .foregroundStyle(Theme.muted)
                 }
-                Section("Reason (optional)") {
-                    TextField("Reason", text: $reason, axis: .vertical).lineLimit(1...4)
+                Section(L("profile.moderation.reasonOptional")) {
+                    TextField(L("message.main.reason"), text: $reason, axis: .vertical).lineLimit(1...4)
                 }
                 Section {
                     Button(deleting ? "Deleting…" : "Delete", role: .destructive) {
@@ -281,9 +281,9 @@ struct DeleteMessageSheet: View {
                     .disabled(deleting)
                 }
             }
-            .navigationTitle("Delete Message")
+            .navigationTitle(L("message.main.deleteMessage"))
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button(L("ios.settings.cancel")) { dismiss() } } }
         }
     }
 }
@@ -304,13 +304,13 @@ struct MessageSourceSheet: View {
                     .padding(14)
             }
             .background(Theme.chat)
-            .navigationTitle("Message Source")
+            .navigationTitle(L("ios.chatMore.messageSource"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button(L("room.callChatView.close")) { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button { UIPasteboard.general.string = text } label: { Image(systemName: "doc.on.doc") }
-                        .accessibilityLabel("Copy")
+                        .accessibilityLabel(L("settings.matrixId.copy"))
                 }
             }
         }
@@ -340,11 +340,11 @@ struct EditHistorySheet: View {
             .background(Theme.chat)
             .overlay {
                 if loading { ProgressView() }
-                else if versions.isEmpty { Text("No earlier versions found.").foregroundStyle(Theme.muted) }
+                else if versions.isEmpty { Text(L("ios.chatMore.noEarlierVersionsFound")).foregroundStyle(Theme.muted) }
             }
-            .navigationTitle("Edit History")
+            .navigationTitle(L("ios.chatMore.editHistory"))
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button(L("room.callChatView.close")) { dismiss() } } }
             .task {
                 versions = await controller.editHistory(of: row) ?? []
                 loading = false
@@ -372,9 +372,9 @@ struct PinnedMessagesSheet: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Theme.chat)
-            .navigationTitle("Pinned Messages")
+            .navigationTitle(L("room.viewHeader.pinnedMessages"))
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button(L("room.callChatView.close")) { dismiss() } } }
             .task {
                 guard holder.controller == nil else { return }
                 let controller = TimelineController(room: parent.room, ownUserId: parent.ownUserId,
@@ -395,7 +395,7 @@ private struct PinnedList: View {
     var body: some View {
         let ids = parent.nav.pinned
         if ids.isEmpty {
-            Text("No pinned messages.").foregroundStyle(Theme.muted)
+            Text(L("ios.chatMore.noPinnedMessages")).foregroundStyle(Theme.muted)
         } else if controller.rows.isEmpty {
             ProgressView()
         } else {
@@ -414,7 +414,7 @@ private struct PinnedList: View {
                             if parent.nav.canPin, let eventId = row.remoteEventId {
                                 Button(role: .destructive) {
                                     Task { await parent.setPinned(eventId: eventId, pinned: false) }
-                                } label: { Label("Unpin Message", systemImage: "pin.slash") }
+                                } label: { Label(L("message.main.unpinMessage"), systemImage: "pin.slash") }
                             }
                         }
                         Divider().background(Theme.elevated)
@@ -444,9 +444,9 @@ struct ThreadSheet: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Theme.chat)
-            .navigationTitle("Thread")
+            .navigationTitle(L("room.threadDrawer.thread"))
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button(L("room.callChatView.close")) { dismiss() } } }
             .task {
                 guard holder.controller == nil else { return }
                 let controller = TimelineController(room: room, ownUserId: account.userId,
@@ -494,7 +494,7 @@ private struct ThreadBody: View {
             }
             Divider().background(Theme.elevated)
             HStack(alignment: .bottom, spacing: 8) {
-                TextField("Reply in thread", text: $draft, axis: .vertical)
+                TextField(L("room.threadDrawer.replyInThread"), text: $draft, axis: .vertical)
                     .lineLimit(1...5)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
@@ -503,14 +503,14 @@ private struct ThreadBody: View {
                     Image(systemName: "arrow.up.circle.fill").font(.system(size: 30))
                 }
                 .disabled(trimmed.isEmpty || sending)
-                .accessibilityLabel("Send")
+                .accessibilityLabel(L("room.voiceRecorderButton.send"))
             }
             .padding(10)
             .background(Theme.chat)
         }
         .sheet(item: $profile) { UserProfileSheet(account: account, userId: $0.userId, roomId: controller.roomId) }
-        .alert("Message", isPresented: Binding(get: { controller.sendError != nil }, set: { if !$0 { controller.sendError = nil } })) {
-            Button("OK", role: .cancel) {}
+        .alert(L("ios.composer.message"), isPresented: Binding(get: { controller.sendError != nil }, set: { if !$0 { controller.sendError = nil } })) {
+            Button(L("settings.localPlugins.ok"), role: .cancel) {}
         } message: { Text(controller.sendError ?? "") }
     }
 
@@ -537,15 +537,15 @@ struct JumpToDateSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Preset") {
+                Section(L("room.jumpToTime.preset")) {
                     HStack(spacing: 8) {
-                        presetButton("Today") { date = TimelineNav.presets(now: Date(), calendar: Calendar.current).today }
-                        presetButton("Yesterday") { date = TimelineNav.presets(now: Date(), calendar: Calendar.current).yesterday }
-                        presetButton("Beginning") { date = Date(timeIntervalSince1970: 1) }
+                        presetButton(L("settings.deviceTile.today")) { date = TimelineNav.presets(now: Date(), calendar: Calendar.current).today }
+                        presetButton(L("settings.deviceTile.yesterday")) { date = TimelineNav.presets(now: Date(), calendar: Calendar.current).yesterday }
+                        presetButton(L("room.jumpToTime.beginning")) { date = Date(timeIntervalSince1970: 1) }
                     }
                 }
                 Section {
-                    DatePicker("Date and time", selection: $date, in: ...Date(), displayedComponents: [.date, .hourAndMinute])
+                    DatePicker(L("ios.chatMore.dateAndTime"), selection: $date, in: ...Date(), displayedComponents: [.date, .hourAndMinute])
                         .datePickerStyle(.graphical)
                 }
                 if let error {
@@ -556,9 +556,9 @@ struct JumpToDateSheet: View {
                         .disabled(working)
                 }
             }
-            .navigationTitle("Jump to Time")
+            .navigationTitle(L("room.viewHeader.jumpToTime"))
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button(L("ios.settings.cancel")) { dismiss() } } }
         }
     }
 
@@ -577,7 +577,7 @@ struct JumpToDateSheet: View {
                 if let eventId = json["event_id"] as? String {
                     onOpen(eventId)
                 } else {
-                    error = "The server did not find a message at that time."
+                    error = L("ios.errorsExtra.theServerDidNotFindAMessageAtThatTime")
                 }
             } catch {
                 self.error = error.friendlyMessage

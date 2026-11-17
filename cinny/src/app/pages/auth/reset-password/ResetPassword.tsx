@@ -5,6 +5,7 @@ import { getLoginPath } from '../../pathUtils';
 import { useAuthServer } from '../../../hooks/useAuthServer';
 import { PasswordResetForm } from './PasswordResetForm';
 import { ResetPasswordPathSearchParams } from '../../paths';
+import { useTranslation } from 'react-i18next';
 
 const useResetPasswordSearchParams = (
   searchParams: URLSearchParams
@@ -17,6 +18,7 @@ const useResetPasswordSearchParams = (
   );
 
 export function ResetPassword() {
+  const { t } = useTranslation();
   const server = useAuthServer();
   const [searchParams] = useSearchParams();
   const resetPasswordSearchParams = useResetPasswordSearchParams(searchParams);
@@ -24,13 +26,14 @@ export function ResetPassword() {
   return (
     <Box direction="Column" gap="500">
       <Text size="H2" priority="400">
-        Reset Password
+        {t('auth.resetPassword.resetPassword')}
       </Text>
       <PasswordResetForm defaultEmail={resetPasswordSearchParams.email} />
       <span data-spacing-node />
 
       <Text align="Center">
-        Remember your password? <Link to={getLoginPath(server)}>Login</Link>
+        {t('auth.resetPassword.rememberYourPassword')}{' '}
+        <Link to={getLoginPath(server)}>{t('auth.resetPassword.login')}</Link>
       </Text>
     </Box>
   );

@@ -10,12 +10,14 @@ import { getMxIdLocalPart } from '../../utils/matrix';
 import * as css from './RoomViewTyping.css';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { useRoomTypingMember } from '../../hooks/useRoomTypingMembers';
+import { useTranslation } from 'react-i18next';
 
 export type RoomViewTypingProps = {
   room: Room;
 };
 export const RoomViewTyping = as<'div', RoomViewTypingProps>(
   ({ className, room, ...props }, ref) => {
+    const { t } = useTranslation();
     const setTypingMembers = useSetAtom(roomIdToTypingMembersAtom);
     const mx = useMatrixClient();
     const typingMembers = useRoomTypingMember(room.roomId);
@@ -59,7 +61,7 @@ export const RoomViewTyping = as<'div', RoomViewTypingProps>(
                 <>
                   <b>{typingNames[0]}</b>
                   <Text as="span" size="Inherit" priority="300">
-                    {' is typing...'}
+                    {t('room.viewTyping.isTyping')}
                   </Text>
                 </>
               )}
@@ -67,11 +69,11 @@ export const RoomViewTyping = as<'div', RoomViewTypingProps>(
                 <>
                   <b>{typingNames[0]}</b>
                   <Text as="span" size="Inherit" priority="300">
-                    {' and '}
+                    {t('room.viewTyping.and')}
                   </Text>
                   <b>{typingNames[1]}</b>
                   <Text as="span" size="Inherit" priority="300">
-                    {' are typing...'}
+                    {t('room.viewTyping.areTyping')}
                   </Text>
                 </>
               )}
@@ -83,11 +85,11 @@ export const RoomViewTyping = as<'div', RoomViewTypingProps>(
                   </Text>
                   <b>{typingNames[1]}</b>
                   <Text as="span" size="Inherit" priority="300">
-                    {' and '}
+                    {t('room.viewTyping.and')}
                   </Text>
                   <b>{typingNames[2]}</b>
                   <Text as="span" size="Inherit" priority="300">
-                    {' are typing...'}
+                    {t('room.viewTyping.areTyping')}
                   </Text>
                 </>
               )}
@@ -103,18 +105,20 @@ export const RoomViewTyping = as<'div', RoomViewTypingProps>(
                   </Text>
                   <b>{typingNames[2]}</b>
                   <Text as="span" size="Inherit" priority="300">
-                    {' and '}
+                    {t('room.viewTyping.and')}
                   </Text>
-                  <b>{typingNames.length - 3} others</b>
+                  <b>
+                    {typingNames.length - 3} {t('room.viewTyping.others')}
+                  </b>
                   <Text as="span" size="Inherit" priority="300">
-                    {' are typing...'}
+                    {t('room.viewTyping.areTyping')}
                   </Text>
                 </>
               )}
             </Text>
             <IconButton
               className={css.TypingDismiss}
-              title="Drop Typing Status"
+              title={t('room.viewTyping.dropTypingStatus')}
               size="300"
               radii="Pill"
               onClick={handleDropAll}

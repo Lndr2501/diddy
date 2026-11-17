@@ -12,6 +12,7 @@ import {
   receiveCompanionMessage,
   useCompanion,
 } from '../plugins/call/companion';
+import { isPushToTalkMode } from '../state/pushToTalk';
 
 /**
  * Keeps "Use iPhone as Camera & Mic" in step with the call on this computer:
@@ -61,7 +62,13 @@ export function CompanionSync() {
     }
     // ended here, or the iPhone left or went silent: this computer's own back on
     if (companion.phase === 'idle' || companion.phase === 'ended') {
-      if (restore.current.microphone && !control.microphone && control.sound) {
+      // with push-to-talk the key decides (PushToTalkSync)
+      if (
+        restore.current.microphone &&
+        !control.microphone &&
+        control.sound &&
+        !isPushToTalkMode()
+      ) {
         control.toggleMicrophone(true);
       }
       if (restore.current.camera && !control.video) control.toggleVideo();
@@ -82,7 +89,8 @@ export function CompanionSync() {
         controlCompanion(mx, { microphone: false });
       } else if (control.sound && mutedForDeafen.current) {
         mutedForDeafen.current = false;
-        controlCompanion(mx, { microphone: true });
+        // with push-to-talk the key decides (PushToTalkSync), not the state before the full mute
+        if (!isPushToTalkMode()) controlCompanion(mx, { microphone: true });
       }
     };
     control.on(CallControlEvent.StateUpdate, onState);

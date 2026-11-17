@@ -4,6 +4,7 @@ import { SequenceCard } from '../sequence-card';
 import { SettingTile } from '../setting-tile';
 import { CreateRoomType } from './types';
 import { BetaNoticeBadge } from '../BetaNoticeBadge';
+import { useTranslation } from 'react-i18next';
 
 type CreateRoomTypeSelectorProps = {
   value?: CreateRoomType;
@@ -17,6 +18,7 @@ export function CreateRoomTypeSelector({
   disabled,
   getIcon,
 }: CreateRoomTypeSelectorProps) {
+  const { t } = useTranslation();
   return (
     <Box shrink="No" direction="Column" gap="100">
       <SequenceCard
@@ -36,10 +38,10 @@ export function CreateRoomTypeSelector({
         >
           <Box gap="200" alignItems="Baseline">
             <Text size="H6" style={{ flexShrink: 0 }}>
-              Chat Room
+              {t('common.createRoom.chatRoom')}
             </Text>
             <Text size="T300" priority="300" truncate>
-              - Messages, photos, and videos.
+              {t('common.createRoom.messagesPhotosAndVideos')}
             </Text>
           </Box>
         </SettingTile>
@@ -61,10 +63,10 @@ export function CreateRoomTypeSelector({
         >
           <Box gap="200" alignItems="Baseline">
             <Text size="H6" style={{ flexShrink: 0 }}>
-              Voice Room
+              {t('common.createRoom.voiceRoom')}
             </Text>
             <Text size="T300" priority="300" truncate>
-              - Live audio and video conversations.
+              {t('common.createRoom.liveAudioAndVideo')}
             </Text>
             <BetaNoticeBadge />
           </Box>

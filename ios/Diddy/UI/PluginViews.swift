@@ -40,7 +40,7 @@ struct PluginCardView: View {
                     Image(systemName: "arrow.clockwise").foregroundStyle(Theme.muted)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Reload")
+                .accessibilityLabel(L("plugins.frame.reload"))
             }
             GeometryReader { geometry in
                 PluginWebContainer(webView: host.webView)
@@ -63,7 +63,7 @@ struct PluginCardView: View {
     }
 
     private var status: String? {
-        if host.crashed { return "The plugin stopped. Tap reload to start it again." }
+        if host.crashed { return L("ios.uiResults.thePluginStoppedTapReloadToStartItAgain") }
         if !host.isReady { return host.isSilent ? "This page does not talk to Diddy. It is shown as a plain page." : "Loading plugin…" }
         return host.pluginDescription
     }
@@ -103,16 +103,16 @@ struct PluginsPanelView: View {
                         PluginDockControls(plugin: plugin)
                     }
                     if store.activePlugins.isEmpty {
-                        Text("No plugins are turned on. Add some in Settings > Plugins.")
+                        Text(L("ios.remainingUI.noPluginsAreTurnedOnAddSomeInSettingsPlugins"))
                             .font(.subheadline).foregroundStyle(Theme.muted).padding(.top, 40)
                     }
                 }
                 .padding(16)
             }
             .background(Theme.sidebar)
-            .navigationTitle("Plugins")
+            .navigationTitle(L("nav.plugins.plugins"))
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button(L("ios.settings.done")) { dismiss() } } }
         }
     }
 }
@@ -128,7 +128,7 @@ struct PluginsPanelButton: View {
                 Image(systemName: "puzzlepiece.extension.fill").foregroundStyle(Theme.muted)
                     .frame(width: 44, height: 44)
             }
-            .accessibilityLabel("Plugins")
+            .accessibilityLabel(L("settings.page.plugins"))
             .sheet(isPresented: $showing) { PluginsPanelView() }
         }
     }
@@ -156,17 +156,17 @@ struct PluginSettingsView: View {
                                 .labelsHidden()
                         }
                     }
-                    .swipeActions { Button("Remove", role: .destructive) { pendingRemoval = plugin } }
+                    .swipeActions { Button(L("settings.connectedAccounts.remove"), role: .destructive) { pendingRemoval = plugin } }
                 }
-                NavigationLink { AddPluginView() } label: { Label("Add Plugin", systemImage: "plus.circle.fill") }
+                NavigationLink { AddPluginView() } label: { Label(L("settings.localPlugins.addPlugin"), systemImage: "plus.circle.fill") }
                     .disabled(store.plugins.count >= PluginRules.maxPlugins)
             } header: {
-                Text("Your plugins")
+                Text(L("ios.remainingUI.yourPlugins"))
             } footer: {
-                Text("Turned-on plugins appear in the puzzle button next to Settings. A plugin is a small web page that runs in a locked-down frame: no access to your account, messages or files. Only add plugins you trust.")
+                Text(L("ios.remainingUI.turnedOnPluginsAppearInThePuzzleButtonNextToSettingsAPlugi"))
             }
 
-            Section("Built-in plugins") {
+            Section(L("ios.remainingUI.builtInPlugins")) {
                 ForEach(PluginStore.builtins) { item in
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
@@ -177,7 +177,7 @@ struct PluginSettingsView: View {
                         if store.isAdded(builtin: item.slug) {
                             Image(systemName: "checkmark").foregroundStyle(Theme.online)
                         } else {
-                            Button("Add") {
+                            Button(L("settings.connectedAccounts.add")) {
                                 do { try store.addBuiltin(item) } catch { self.error = error.friendlyMessage }
                             }
                             .buttonStyle(.bordered)
@@ -188,29 +188,29 @@ struct PluginSettingsView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Theme.sidebar)
-        .navigationTitle("Plugins")
+        .navigationTitle(L("nav.plugins.plugins"))
         .navigationBarTitleDisplayMode(.inline)
-        .alert("Plugins", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
-            Button("OK", role: .cancel) {}
+        .alert(L("nav.plugins.plugins"), isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
+            Button(L("ios.common.ok"), role: .cancel) {}
         } message: { Text(error ?? "") }
         .confirmationDialog(
             "Remove \(pendingRemoval?.name ?? "plugin")?",
             isPresented: Binding(get: { pendingRemoval != nil }, set: { if !$0 { pendingRemoval = nil } }),
             titleVisibility: .visible
         ) {
-            Button("Remove Plugin", role: .destructive) {
+            Button(L("ios.remainingUI.removePlugin"), role: .destructive) {
                 if let plugin = pendingRemoval { store.remove(plugin.id) }
                 pendingRemoval = nil
             }
-            Button("Cancel", role: .cancel) { pendingRemoval = nil }
+            Button(L("settings.deviceTile.cancel"), role: .cancel) { pendingRemoval = nil }
         } message: {
-            Text("The data this plugin saved on this device is deleted too.")
+            Text(L("ios.remainingUI.theDataThisPluginSavedOnThisDeviceIsDeletedToo"))
         }
     }
 
     private func sourceLabel(_ plugin: UserPlugin) -> String {
-        if PluginAddress.builtinSlug(plugin.url) != nil { return "Built-in" }
-        if PluginAddress.localId(plugin.url) != nil { return "On this device" }
+        if PluginAddress.builtinSlug(plugin.url) != nil { return L("settings.badgeEditor.builtIn") }
+        if PluginAddress.localId(plugin.url) != nil { return L("ios.uiResults.onThisDevice") }
         return URL(string: plugin.url)?.host ?? plugin.url
     }
 }
@@ -227,17 +227,17 @@ struct PluginDetailView: View {
         if let plugin = store.plugins.first(where: { $0.id == pluginId }) {
             List {
                 Section {
-                    Toggle("Turned on", isOn: Binding(get: { plugin.enabled }, set: { store.setEnabled(plugin.id, $0) }))
+                    Toggle(L("ios.remainingUI.turnedOn"), isOn: Binding(get: { plugin.enabled }, set: { store.setEnabled(plugin.id, $0) }))
                 }
-                Section("Preview") {
+                Section(L("settings.badgeEditor.preview")) {
                     PluginCardView(plugin: plugin, showsTitle: false)
                         .listRowInsets(EdgeInsets())
                         .listRowBackground(Color.clear)
                 }
                 if let id = PluginAddress.localId(plugin.url) {
-                    Section("Content") { localInfo(id) }
+                    Section(L("settings.localPlugins.content")) { localInfo(id) }
                 } else if PluginAddress.builtinSlug(plugin.url) == nil {
-                    Section("Address") { Text(plugin.url).font(.footnote).foregroundStyle(Theme.muted).textSelection(.enabled) }
+                    Section(L("settings.plugins.address")) { Text(plugin.url).font(.footnote).foregroundStyle(Theme.muted).textSelection(.enabled) }
                 }
                 Section {
                     TextEditor(text: $css)
@@ -247,17 +247,17 @@ struct PluginDetailView: View {
                         .textInputAutocapitalization(.never)
                         .onChange(of: css) { store.setCustomCss(plugin.id, $0) }
                 } header: {
-                    Text("Custom CSS")
+                    Text(L("settings.plugins.customCss"))
                 } footer: {
-                    Text("Sent to the plugin, which decides whether to apply it (up to \(PluginRules.maxCustomCSS) characters). Reload the preview to see it.")
+                    Text(L("ios.lastDynamic.pluginCSS", ["max": String(PluginRules.maxCustomCSS)]))
                 }
                 Section {
-                    Button("Remove Plugin", role: .destructive) {
+                    Button(L("ios.remainingUI.removePlugin"), role: .destructive) {
                         store.remove(plugin.id)
                         dismiss()
                     }
                 } footer: {
-                    Text("Removing also deletes what the plugin saved on this device.")
+                    Text(L("ios.remainingUI.removingAlsoDeletesWhatThePluginSavedOnThisDevice"))
                 }
             }
             .scrollContentBackground(.hidden)
@@ -268,7 +268,7 @@ struct PluginDetailView: View {
                 if !loadedCss { css = plugin.customCss ?? ""; loadedCss = true }
             }
         } else {
-            Text("This plugin was removed.").foregroundStyle(Theme.muted)
+            Text(L("ios.remainingUI.thisPluginWasRemoved")).foregroundStyle(Theme.muted)
         }
     }
 
@@ -279,14 +279,14 @@ struct PluginDetailView: View {
             LabeledContent("Size", value: "\(max(1, Int((Double(record.size) / 1024).rounded()))) KB")
             LabeledContent("SHA-256", value: String(record.sha256.prefix(12)))
         } else {
-            Text("Content missing on this device. Remove the plugin and add it again.").foregroundStyle(Theme.danger)
+            Text(L("plugins.frame.contentMissingOnThis")).foregroundStyle(Theme.danger)
         }
     }
 
     private func sourceText(_ record: PluginStore.LocalRecord) -> String {
         switch record.origin {
         case .file: return record.fileName.map { "File \($0)" } ?? "File"
-        case .paste: return "Pasted code"
+        case .paste: return L("settings.localPlugins.pastedCode")
         case .github, .gist: return record.rawUrl.flatMap { URL(string: $0)?.lastPathComponent } ?? "GitHub"
         }
     }
@@ -317,7 +317,7 @@ struct AddPluginView: View {
     var body: some View {
         Form {
             Section {
-                Picker("Source", selection: $kind) {
+                Picker(L("ios.remainingUI.source"), selection: $kind) {
                     ForEach(Kind.allCases) { Text($0.rawValue).tag($0) }
                 }
                 .pickerStyle(.segmented)
@@ -330,10 +330,10 @@ struct AddPluginView: View {
             switch kind {
             case .address:
                 Section {
-                    TextField("https://example.com/plugin.html", text: $address)
+                    TextField(L("settings.plugins.httpsExampleComPlugin"), text: $address)
                         .keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
                 } footer: {
-                    Text("A web page that follows the plugin contract (docs/plugins.md). Only https addresses work on iOS.")
+                    Text(L("ios.remainingUI.aWebPageThatFollowsThePluginContractDocsPluginsMdOnlyHttps"))
                 }
             case .code:
                 Section {
@@ -341,16 +341,16 @@ struct AddPluginView: View {
                         .font(.system(.footnote, design: .monospaced))
                         .frame(minHeight: 160)
                         .autocorrectionDisabled().textInputAutocapitalization(.never)
-                    Button("Preview") { previewing = true }.disabled(code.isEmpty)
-                } header: { Text("HTML code") } footer: {
-                    Text("One self-contained HTML file, at most \(PluginRules.maxLocalBytes / 1024) KB. It is saved on this device.")
+                    Button(L("settings.badgeEditor.preview")) { previewing = true }.disabled(code.isEmpty)
+                } header: { Text(L("ios.remainingUI.htmlCode")) } footer: {
+                    Text(L("ios.lastDynamic.pluginHTML", ["max": String(PluginRules.maxLocalBytes / 1024)]))
                 }
             case .file:
                 Section {
                     Button { importing = true } label: { Label(fileName ?? "Choose an .html file", systemImage: "doc") }
-                    if !code.isEmpty { Button("Preview") { previewing = true } }
+                    if !code.isEmpty { Button(L("settings.badgeEditor.preview")) { previewing = true } }
                 } footer: {
-                    Text("The file is saved on this device.")
+                    Text(L("ios.remainingUI.theFileIsSavedOnThisDevice"))
                 }
             case .github:
                 Section {
@@ -360,18 +360,18 @@ struct AddPluginView: View {
                         if busy { ProgressView() } else { Text(fetched == nil ? "Import" : "Import again") }
                     }
                     .disabled(busy || githubLink.isEmpty)
-                    if fetched != nil { Button("Preview") { previewing = true } }
+                    if fetched != nil { Button(L("settings.badgeEditor.preview")) { previewing = true } }
                 } footer: {
-                    Text("Link to a single .html file in a public repository, or to a public Gist. It is loaded once and saved on this device.")
+                    Text(L("ios.remainingUI.linkToASingleHtmlFileInAPublicRepositoryOrToAPublicGistItI"))
                 }
             }
             Section {
-                Button("Add Plugin") { add() }.disabled(!canAdd || busy)
+                Button(L("settings.localPlugins.addPlugin")) { add() }.disabled(!canAdd || busy)
             }
         }
         .scrollContentBackground(.hidden)
         .background(Theme.sidebar)
-        .navigationTitle("Add Plugin")
+        .navigationTitle(L("settings.localPlugins.addPlugin"))
         .navigationBarTitleDisplayMode(.inline)
         .fileImporter(isPresented: $importing, allowedContentTypes: [.html], allowsMultipleSelection: false) { result in
             readFile(result)
@@ -380,13 +380,13 @@ struct AddPluginView: View {
             NavigationStack {
                 ScrollView { PluginCardView(plugin: nil, previewHtml: previewHtml).padding(16) }
                     .background(Theme.sidebar)
-                    .navigationTitle("Preview")
+                    .navigationTitle(L("settings.badgeEditor.preview"))
                     .navigationBarTitleDisplayMode(.inline)
-                    .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { previewing = false } } }
+                    .toolbar { ToolbarItem(placement: .confirmationAction) { Button(L("ios.settings.done")) { previewing = false } } }
             }
         }
-        .alert("Plugins", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
-            Button("OK", role: .cancel) {}
+        .alert(L("nav.plugins.plugins"), isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
+            Button(L("ios.common.ok"), role: .cancel) {}
         } message: { Text(error ?? "") }
     }
 

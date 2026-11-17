@@ -12,11 +12,13 @@ import { CreateSpaceModalState } from '../../state/createSpaceModal';
 import { stopPropagation } from '../../utils/keyboard';
 import { SheetHeader } from '../../components/sheet';
 import * as sheetCss from '../../components/sheet/Sheet.css';
+import { useTranslation } from 'react-i18next';
 
 type CreateSpaceModalProps = {
   state: CreateSpaceModalState;
 };
 function CreateSpaceModal({ state }: CreateSpaceModalProps) {
+  const { t } = useTranslation();
   const { spaceId } = state;
   const closeDialog = useCloseCreateSpaceModal();
 
@@ -38,7 +40,10 @@ function CreateSpaceModal({ state }: CreateSpaceModalProps) {
           >
             <Modal className={sheetCss.Sheet} size="300" flexHeight>
               <Box direction="Column">
-                <SheetHeader title="New Space" onClose={closeDialog} />
+                <SheetHeader
+                  title={t('createSpace.createSpaceModal.newSpace')}
+                  onClose={closeDialog}
+                />
                 <Scroll size="300" hideTrack>
                   <Box
                     style={{

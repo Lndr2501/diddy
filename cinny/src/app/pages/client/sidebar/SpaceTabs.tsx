@@ -93,6 +93,7 @@ import { useOpenSpaceSettings } from '../../../state/hooks/spaceSettings';
 import { useRoomCreators } from '../../../hooks/useRoomCreators';
 import { useRoomPermissions } from '../../../hooks/useRoomPermissions';
 import { InviteUserPrompt } from '../../../components/invite-user-prompt';
+import { useTranslation } from 'react-i18next';
 
 type SpaceMenuProps = {
   room: Room;
@@ -101,6 +102,7 @@ type SpaceMenuProps = {
 };
 const SpaceMenu = forwardRef<HTMLDivElement, SpaceMenuProps>(
   ({ room, requestClose, onUnpin }, ref) => {
+    const { t } = useTranslation();
     const mx = useMatrixClient();
     const [hideActivity] = useSetting(settingsAtom, 'hideActivity');
     const roomToParents = useAtomValue(roomToParentsAtom);
@@ -166,7 +168,7 @@ const SpaceMenu = forwardRef<HTMLDivElement, SpaceMenuProps>(
             disabled={!unread}
           >
             <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
-              Mark as Read
+              {t('nav.spaceTabs.markAsRead')}
             </Text>
           </MenuItem>
           {onUnpin && (
@@ -177,7 +179,7 @@ const SpaceMenu = forwardRef<HTMLDivElement, SpaceMenuProps>(
               after={<Icon size="100" src={Icons.Pin} />}
             >
               <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
-                Unpin
+                {t('nav.spaceTabs.unpin')}
               </Text>
             </MenuItem>
           )}
@@ -195,7 +197,7 @@ const SpaceMenu = forwardRef<HTMLDivElement, SpaceMenuProps>(
             disabled={!canInvite}
           >
             <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
-              Invite
+              {t('nav.spaceTabs.invite')}
             </Text>
           </MenuItem>
           <MenuItem
@@ -205,7 +207,7 @@ const SpaceMenu = forwardRef<HTMLDivElement, SpaceMenuProps>(
             radii="300"
           >
             <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
-              Copy Link
+              {t('nav.spaceTabs.copyLink')}
             </Text>
           </MenuItem>
           <MenuItem
@@ -215,7 +217,7 @@ const SpaceMenu = forwardRef<HTMLDivElement, SpaceMenuProps>(
             radii="300"
           >
             <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
-              Space Settings
+              {t('nav.spaceTabs.spaceSettings')}
             </Text>
           </MenuItem>
         </Box>
@@ -546,6 +548,7 @@ function ClosedSpaceFolder({
   onDragging,
   disabled,
 }: ClosedSpaceFolderProps) {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
   const handlerRef = useRef<HTMLDivElement>(null);
@@ -556,7 +559,9 @@ function ClosedSpaceFolder({
   const dropType = dropState?.type;
 
   const tooltipName =
-    folder.name ?? folder.content.map((i) => mx.getRoom(i)?.name ?? '').join(', ') ?? 'Unnamed';
+    folder.name ??
+    folder.content.map((i) => mx.getRoom(i)?.name ?? '').join(', ') ??
+    t('nav.spaceTabs.unnamed');
 
   return (
     <RoomsUnreadProvider rooms={folder.content}>

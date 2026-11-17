@@ -1,10 +1,30 @@
 # CI and build performance
 
+Version tags build Android alongside macOS, Linux, Windows and iOS. The Android APK is required
+before publication, is signed with the persistent Diddy key, and is checked with `apksigner`.
+Its version is checked against the tag and stamped in the build checkout like the desktop version.
+The release includes `Diddy_X.Y.Z_Android.apk` and its SHA-256 checksum. Non-tag Android builds can
+fall back to debug; release tags fail if signing secrets are missing. See `android/README.md`.
+
+Android also builds instrumentation APKs, runs lint and checks ELF LOAD alignment for both shipped
+ABIs. The lint engine is pinned independently to 9.6.0-alpha04: the AGP 9.5.1 bundled engine crashed
+with `No fir element was found for KtParameter` rather than producing diagnostics. No lint checks
+are suppressed by that override. Two emulator jobs install the debug and test APKs (API 26 and
+API 35 `google_apis_ps16k`) and require all three instrumentation tests to pass: actual Matrix/WebRTC
+native loading and binary key installation, Keystore-backed session save/reload/delete, and cold
+startup/activity recreation with the login UI visible. Reports include emulator build/page size
+and sanitized crash output, never production accounts. Hardware push/route/long-call acceptance is
+tracked separately in `android/ACCEPTANCE.md`; emulator success does not imply those checks passed.
+
 The Test workflow installs Cinny once, runs type checking and both JavaScript test suites,
 builds the production frontend once and smoke-tests that exact bundle with Playwright.
 Playwright also checks the voice-recorder hook using synthetic audio and Chromium’s real
 WebM encoder, decoder, playback and seeking; this does not replace Linux device tests.
 Rust tests run in parallel on macOS. No checks were removed.
+
+The Bot SDK workflow (`bot-sdk.yml`) runs only when `sdk/python/` or Diddy's bot parsers change: Python unit
+tests, a parity test of `sdk/python/diddybot/protocol.py` against the TypeScript parsers, and an end-to-end run
+against a throwaway Synapse container in an encrypted room.
 
 ## Caches
 
@@ -119,8 +139,13 @@ setter, gain scaling, replacement elements, persistence, mute and rejoin.
 
 `windows.yml` builds the frontend on Linux (the same build as the Linux packages) and hands it to
 a Windows job. That job checks out with LF line endings (the Electron tests read sources line by
-line), runs `electron` tests, builds the NSIS installer (`npm run dist:win`), checks that the
-Linux capture helpers are not packaged, and starts the packaged `Diddy.exe` once with
-`electron/tests/start-smoke.cjs` (page loaded, desktop API present, log in `%LOCALAPPDATA%`). The
-same smoke test runs on the Linux package. `release.yml` publishes `Diddy_X.Y.Z_x64-setup.exe`;
+line), runs `electron` tests and the unit tests of the system-audio helper
+(`electron/native/windows-audio`, Rust, cached with `rust-cache`), builds the NSIS installer
+(`npm run dist:win`, which first builds the helper with a static C runtime into
+`native/bin/diddy-system-audio.exe`), checks that the Linux capture helpers are not packaged and the
+Windows one is, and runs the packaged helper with `--probe` (process loopback capture for 300 ms,
+`READY` and `probe ok` required; the step starts the Windows audio service first). Then it starts
+the packaged `Diddy.exe` once with `electron/tests/start-smoke.cjs` (page loaded, desktop API
+present, log in `%LOCALAPPDATA%`, system-audio bridge present, and on Windows one capture started
+and stopped through the bridge). The same smoke test runs on the Linux package. `release.yml` publishes `Diddy_X.Y.Z_x64-setup.exe`;
 it is not code-signed.

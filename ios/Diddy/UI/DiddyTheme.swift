@@ -293,8 +293,8 @@ struct ThemeSection: View {
         Section {
             Toggle(isOn: Binding(get: { store.useSystem }, set: { store.setUseSystem($0) })) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Match System Appearance")
-                    Text("Switch between a light and a dark theme together with your system.")
+                    Text(L("settings.general.matchSystemAppearance"))
+                    Text(L("settings.general.switchBetweenALight"))
                         .font(.caption).foregroundStyle(Theme.muted)
                 }
             }
@@ -310,11 +310,11 @@ struct ThemeSection: View {
             } else {
                 grid(allThemes, selected: store.selectedId, onSelect: { store.select($0) })
             }
-            NavigationLink(value: SettingsPage.customTheme) { Label("Custom Theme Colors", systemImage: "paintpalette.fill") }
+            NavigationLink(value: SettingsPage.customTheme) { Label(L("ios.finalUI.customThemeColors"), systemImage: "paintpalette.fill") }
         } header: {
-            Text("Theme")
+            Text(L("settings.general.theme"))
         } footer: {
-            Text("The same color themes as the desktop app. Light themes switch the whole app to light mode.")
+            Text(L("ios.finalUI.theSameColorThemesAsTheDesktopAppLightThemesSwitchTheWhol"))
         }
     }
 

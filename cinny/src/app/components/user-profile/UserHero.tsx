@@ -20,10 +20,7 @@ import colorMXID from '../../../util/colorMXID';
 import { getMxIdLocalPart } from '../../utils/matrix';
 import { BreakWord, LineClamp2, LineClamp3 } from '../../styles/Text.css';
 import type { ShownPresence } from '../../hooks/usePresenceState';
-import {
-  PRESENCE_STATE_LABEL,
-  PresenceState,
-} from '../../utils/presenceState';
+import { PRESENCE_STATE_LABEL, PresenceState } from '../../utils/presenceState';
 import { ImageViewer } from '../image-viewer';
 import { stopPropagation } from '../../utils/keyboard';
 import { copyToClipboard } from '../../utils/dom';
@@ -39,6 +36,8 @@ import { NameEffectRoomInline } from '../diddy/DiddyName.css';
 import { BadgeChip } from '../diddy/BadgeChip';
 import { PositionedImg } from '../diddy/PositionedImg';
 import { StatusIcon } from '../presence/StatusIcon';
+import { useTranslation } from 'react-i18next';
+import { translate } from '../../i18n';
 
 /** Kept for compatibility: the validation lives in plugins/diddy/sanitize. */
 export { safeColor };
@@ -114,6 +113,7 @@ export function UserHero({
   onAvatarClick,
   actions,
 }: UserHeroProps) {
+  const { t } = useTranslation();
   const [viewAvatar, setViewAvatar] = useState<string>();
   // the original file, not a fixed-ratio thumbnail: a cropped thumbnail was stretched to the
   // card's shape and looked blurry (#36)
@@ -156,7 +156,11 @@ export function UserHero({
           <Avatar
             as={avatarClick ? 'button' : 'div'}
             onClick={avatarClick}
-            aria-label={onAvatarClick ? 'Open full profile' : avatarClick && 'View avatar'}
+            aria-label={
+              onAvatarClick
+                ? t('profile.hero.openFullProfile')
+                : avatarClick && t('profile.hero.viewAvatar')
+            }
             className={css.UserHeroAvatar}
             radii="Pill"
             size="500"
@@ -203,13 +207,16 @@ export function UserHero({
 
 /** The matrix id; a click copies it and the icon turns into a check for a moment. */
 export function UserIdChip({ userId }: { userId: string }) {
+  const { t } = useTranslation();
   const [copied, setCopied] = useTimeoutToggle();
   return (
     <button
       type="button"
       className={classNames(css.IdChip, copied && css.IdChipCopied)}
-      title={copied ? 'Copied' : 'Copy user ID'}
-      aria-label={copied ? 'User ID copied' : `Copy user ID ${userId}`}
+      title={copied ? t('profile.hero.copied') : t('profile.hero.copyUserId')}
+      aria-label={
+        copied ? t('profile.hero.userIdCopied') : t('profile.hero.copyUserIdUserid', { userId })
+      }
       onClick={() => {
         copyToClipboard(userId);
         setCopied();
@@ -228,10 +235,14 @@ export function UserIdChip({ userId }: { userId: string }) {
 /** Shown first on the card of a user that announced itself as a bot (dev.diddy.bot). */
 const BOT_BADGE = {
   id: 'diddy.bot',
-  name: 'Bot',
+  get name() {
+    return translate('profile.hero.bot');
+  },
   emoji: '🤖',
   color: '#7A5CFF',
-  description: 'This account is a bot',
+  get description() {
+    return translate('profile.hero.thisAccountIsA');
+  },
 } as BadgeDef;
 
 function NameBadges({ userId, size, bot }: { userId: string; size: number; bot?: boolean }) {
@@ -266,6 +277,7 @@ export function UserHeroName({
   compact,
   bot,
 }: UserHeroNameProps) {
+  const { t } = useTranslation();
   const username = getMxIdLocalPart(userId);
   const name = displayName ?? username ?? userId;
   const bio = showBio ? safeText(profile?.bio, 160) : undefined;
@@ -290,7 +302,7 @@ export function UserHeroName({
       {bio && (
         <Box direction="Column" gap="100" style={{ marginTop: config.space.S200 }}>
           <Text size="L400" className={css.AboutLabel}>
-            About
+            {t('profile.hero.about')}
           </Text>
           <Text size="T300" className={classNames(BreakWord, LineClamp3, css.AboutText)}>
             {bio}
@@ -308,6 +320,7 @@ type ProfileStatusProps = {
 };
 /** Online state and the Matrix status message as small pills with icons. */
 export function ProfileStatus({ presence, bot }: ProfileStatusProps) {
+  const { t } = useTranslation();
   const state = presence?.state;
   const label = state ? PRESENCE_STATE_LABEL[state] : undefined;
   const message = presence?.message;
@@ -319,7 +332,7 @@ export function ProfileStatus({ presence, bot }: ProfileStatusProps) {
         <span className={css.Pill}>
           <span className={css.BotDot} aria-hidden="true" />
           <Text as="span" size="T200">
-            Bot
+            {t('profile.hero.bot')}
           </Text>
         </span>
       )}

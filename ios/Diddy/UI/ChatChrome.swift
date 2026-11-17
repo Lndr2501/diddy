@@ -31,8 +31,8 @@ enum ChatStyle {
     /// "Today", "Yesterday" or the date, like the desktop's day divider.
     static func dayTitle(_ day: Date) -> String {
         switch TimelineLayout.day(of: day) {
-        case .today: return "Today"
-        case .yesterday: return "Yesterday"
+        case .today: return L("room.timeline.today")
+        case .yesterday: return L("room.timeline.yesterday")
         case .earlier: return day.formatted(date: .long, time: .omitted)
         }
     }
@@ -82,7 +82,7 @@ struct CallBanner: View {
                         .foregroundStyle(Theme.text)
                         .lineLimit(1)
                 } trailing: {
-                    Text("Join").font(.footnote.weight(.semibold)).foregroundStyle(Theme.online)
+                    Text(L("call.prescreenControls.join")).font(.footnote.weight(.semibold)).foregroundStyle(Theme.online)
                 }
             }
             .buttonStyle(.plain)
@@ -119,7 +119,7 @@ private struct OngoingCallBanner: View {
                     .font(.footnote)
                     .lineLimit(1)
             } trailing: {
-                Text("Return").font(.footnote.weight(.semibold)).foregroundStyle(tint)
+                Text(L("ios.chatMore.return")).font(.footnote.weight(.semibold)).foregroundStyle(tint)
             }
         }
         .buttonStyle(.plain)
@@ -203,7 +203,7 @@ struct ChatHeader<MenuContent: View>: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Back")
+                .accessibilityLabel(L("settings.insetList.back"))
             }
             Button(action: onInfo) {
                 HStack(spacing: 10) {
@@ -229,9 +229,9 @@ struct ChatHeader<MenuContent: View>: View {
             }
             Button(action: onCall) { icon("phone") }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Start voice call")
+                .accessibilityLabel(L("ios.chatMore.startVoiceCall"))
             Menu { menu() } label: { icon("info.circle") }
-                .accessibilityLabel("More")
+                .accessibilityLabel(L("settings.plugins.more"))
         }
         .padding(.horizontal, 6)
         .frame(height: 54)
@@ -407,9 +407,9 @@ struct TypingPill: View {
 
     static func text(_ names: [String]) -> String {
         switch names.count {
-        case 1: return "\(names[0]) is typing…"
-        case 2: return "\(names[0]) and \(names[1]) are typing…"
-        default: return "Several people are typing…"
+        case 1: return L("ios.finalComputed.typingOne", ["name": names[0]])
+        case 2: return L("ios.finalComputed.typingTwo", ["first": names[0], "second": names[1]])
+        default: return L("ios.finalComputed.typingSeveral")
         }
     }
 }

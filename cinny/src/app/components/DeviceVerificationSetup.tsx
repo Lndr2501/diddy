@@ -14,6 +14,7 @@ import { useAlive } from '../hooks/useAlive';
 import { UseStateProvider } from './UseStateProvider';
 import { SheetHeader } from './sheet';
 import * as sheetCss from './sheet/Sheet.css';
+import { useTranslation } from 'react-i18next';
 
 type UIACallback<T> = (
   authDict: AuthDict | null
@@ -60,6 +61,7 @@ type SetupVerificationProps = {
   onComplete: (recoveryKey: string) => void;
 };
 function SetupVerification({ onComplete }: SetupVerificationProps) {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const alive = useAlive();
 
@@ -171,11 +173,12 @@ function SetupVerification({ onComplete }: SetupVerificationProps) {
   return (
     <Box as="form" onSubmit={handleSubmit} direction="Column" gap="400">
       <Text size="T300">
-        Generate a <b>Recovery Key</b> for verifying identity if you do not have access to other
-        devices. Additionally, setup a passphrase as a memorable alternative.
+        {t('common.deviceVerificationSetup.generateA')}{' '}
+        <b>{t('common.deviceVerificationSetup.recoveryKey')}</b>{' '}
+        {t('common.deviceVerificationSetup.forVerifyingIdentityIf')}
       </Text>
       <Box direction="Column" gap="100">
-        <Text size="L400">Passphrase (Optional)</Text>
+        <Text size="L400">{t('common.deviceVerificationSetup.passphraseOptional')}</Text>
         <PasswordInput name="passphraseInput" size="400" readOnly={loading} />
       </Box>
       <Button
@@ -184,11 +187,15 @@ function SetupVerification({ onComplete }: SetupVerificationProps) {
         disabled={loading}
         before={loading && <Spinner size="200" variant="Primary" fill="Solid" />}
       >
-        <Text size="B400">Continue</Text>
+        <Text size="B400">{t('common.deviceVerificationSetup.continue')}</Text>
       </Button>
       {setupState.status === AsyncStatus.Error && (
         <Text size="T200" style={{ color: color.Critical.Main }}>
-          <b>{setupState.error ? setupState.error.message : 'Unexpected Error!'}</b>
+          <b>
+            {setupState.error
+              ? setupState.error.message
+              : t('common.deviceVerificationSetup.unexpectedError')}
+          </b>
         </Text>
       )}
       {nextAuthData !== null && uiaAction && (
@@ -196,7 +203,7 @@ function SetupVerification({ onComplete }: SetupVerificationProps) {
           authData={nextAuthData ?? uiaAction.authData}
           unsupported={() => (
             <Text size="T200">
-              Authentication steps to perform this action are not supported by client.
+              {t('common.deviceVerificationSetup.authenticationStepsToPerform')}
             </Text>
           )}
         >
@@ -218,6 +225,7 @@ type RecoveryKeyDisplayProps = {
   recoveryKey: string;
 };
 function RecoveryKeyDisplay({ recoveryKey }: RecoveryKeyDisplayProps) {
+  const { t } = useTranslation();
   const [show, setShow] = useState(false);
 
   const handleCopy = () => {
@@ -235,12 +243,9 @@ function RecoveryKeyDisplay({ recoveryKey }: RecoveryKeyDisplayProps) {
 
   return (
     <Box direction="Column" gap="400">
-      <Text size="T300">
-        Store the Recovery Key in a safe place for future use, as you will need it to verify your
-        identity if you do not have access to other devices.
-      </Text>
+      <Text size="T300">{t('common.deviceVerificationSetup.storeTheRecoveryKey')}</Text>
       <Box direction="Column" gap="100">
-        <Text size="L400">Recovery Key</Text>
+        <Text size="L400">{t('common.deviceVerificationSetup.recoveryKey')}</Text>
         <Box
           className={ContainerColor({ variant: 'SurfaceVariant' })}
           style={{
@@ -255,16 +260,20 @@ function RecoveryKeyDisplay({ recoveryKey }: RecoveryKeyDisplayProps) {
             {safeToDisplayKey}
           </Text>
           <Chip onClick={() => setShow(!show)} variant="Secondary" radii="Pill">
-            <Text size="B300">{show ? 'Hide' : 'Show'}</Text>
+            <Text size="B300">
+              {show
+                ? t('common.deviceVerificationSetup.hide')
+                : t('common.deviceVerificationSetup.show')}
+            </Text>
           </Chip>
         </Box>
       </Box>
       <Box direction="Column" gap="200">
         <Button className={sheetCss.Pill} onClick={handleCopy}>
-          <Text size="B400">Copy</Text>
+          <Text size="B400">{t('common.deviceVerificationSetup.copy')}</Text>
         </Button>
         <Button className={sheetCss.Pill} onClick={handleDownload} fill="Soft">
-          <Text size="B400">Download</Text>
+          <Text size="B400">{t('common.deviceVerificationSetup.download')}</Text>
         </Button>
       </Box>
     </Box>
@@ -276,11 +285,15 @@ type DeviceVerificationSetupProps = {
 };
 export const DeviceVerificationSetup = forwardRef<HTMLDivElement, DeviceVerificationSetupProps>(
   ({ onCancel }, ref) => {
+    const { t } = useTranslation();
     const [recoveryKey, setRecoveryKey] = useState<string>();
 
     return (
       <Dialog ref={ref} className={sheetCss.Sheet}>
-        <SheetHeader title="Setup Device Verification" onClose={onCancel} />
+        <SheetHeader
+          title={t('common.deviceVerificationSetup.setupDeviceVerification')}
+          onClose={onCancel}
+        />
         <Box className={sheetCss.SheetBody} direction="Column">
           {recoveryKey ? (
             <RecoveryKeyDisplay recoveryKey={recoveryKey} />
@@ -297,11 +310,15 @@ type DeviceVerificationResetProps = {
 };
 export const DeviceVerificationReset = forwardRef<HTMLDivElement, DeviceVerificationResetProps>(
   ({ onCancel }, ref) => {
+    const { t } = useTranslation();
     const [reset, setReset] = useState(false);
 
     return (
       <Dialog ref={ref} className={sheetCss.Sheet}>
-        <SheetHeader title="Reset Device Verification" onClose={onCancel} />
+        <SheetHeader
+          title={t('common.deviceVerificationSetup.resetDeviceVerification')}
+          onClose={onCancel}
+        />
         {reset ? (
           <Box className={sheetCss.SheetBody} direction="Column">
             <UseStateProvider initial={undefined}>
@@ -318,16 +335,19 @@ export const DeviceVerificationReset = forwardRef<HTMLDivElement, DeviceVerifica
           <Box className={sheetCss.SheetBody} direction="Column">
             <Box direction="Column" gap="200">
               <Text size="H1">✋🧑‍🚒🤚</Text>
-              <Text size="T300">Resetting device verification is permanent.</Text>
               <Text size="T300">
-                Anyone you have verified with will see security alerts and your encryption backup
-                will be lost. You almost certainly do not want to do this, unless you have lost{' '}
-                <b>Recovery Key</b> or <b>Recovery Passphrase</b> and every device you can verify
-                from.
+                {t('common.deviceVerificationSetup.resettingDeviceVerificationIs')}
+              </Text>
+              <Text size="T300">
+                {t('common.deviceVerificationSetup.anyoneYouHaveVerified')}{' '}
+                <b>{t('common.deviceVerificationSetup.recoveryKey')}</b>{' '}
+                {t('common.deviceVerificationSetup.or')}{' '}
+                <b>{t('common.deviceVerificationSetup.recoveryPassphrase')}</b>{' '}
+                {t('common.deviceVerificationSetup.andEveryDeviceYou')}
               </Text>
             </Box>
             <Button className={sheetCss.Pill} variant="Critical" onClick={() => setReset(true)}>
-              <Text size="B400">Reset</Text>
+              <Text size="B400">{t('common.deviceVerificationSetup.reset')}</Text>
             </Button>
           </Box>
         )}

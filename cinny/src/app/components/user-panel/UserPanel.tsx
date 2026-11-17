@@ -38,19 +38,24 @@ import { DiddyStatus } from '../../plugins/diddy/types';
 import { getMxIdLocalPart } from '../../utils/matrix';
 import { nameInitials } from '../../utils/common';
 import { useOwnAgentTalking } from '../../state/agentVoice';
+import { usePushToTalkState } from '../../state/pushToTalk';
+import { pushToTalkHoldProps } from '../../features/call/pushToTalkHold';
 import { ConnectionsMenu } from '../connection-recovery/AccountSwitcher';
 import { ConnectionOverview } from '../connection-recovery/ConnectionRecovery';
 import { getConnectionProfile, recordAccount, visibleHomeserver } from '../../plugins/connections';
 import { openIntro } from '../../plugins/diddy/intro';
 import { nextMenuIndex } from '../../utils/menuKeys';
+import { useTranslation } from 'react-i18next';
 
 type ActiveCallButtonsProps = {
   callEmbed: CallEmbed;
 };
 // Wired to the running call. Only mounted while a call embed exists.
 function ActiveCallButtons({ callEmbed }: ActiveCallButtonsProps) {
+  const { t } = useTranslation();
   const { microphone, sound } = useCallControlState(callEmbed.control);
   const joined = useCallJoined(callEmbed);
+  const ptt = usePushToTalkState();
 
   const handleMicrophone = useCallback(() => {
     callEmbed.control.toggleMicrophone();
@@ -61,21 +66,38 @@ function ActiveCallButtons({ callEmbed }: ActiveCallButtonsProps) {
 
   return (
     <>
-      <IconButton
-        variant="SurfaceVariant"
-        fill="None"
-        size="300"
-        radii="300"
-        className={css.UserPanelButton}
-        data-muted={!microphone}
-        aria-label={microphone ? 'Mute microphone' : 'Unmute microphone'}
-        title={microphone ? 'Mute microphone' : 'Unmute microphone'}
-        aria-pressed={!microphone}
-        disabled={!joined}
-        onClick={handleMicrophone}
-      >
-        <Icon size="100" src={microphone ? Icons.Mic : Icons.MicMute} filled={!microphone} />
-      </IconButton>
+      {ptt.active ? (
+        <IconButton
+          variant={ptt.open ? 'Success' : 'SurfaceVariant'}
+          fill={ptt.open ? 'Soft' : 'None'}
+          size="300"
+          radii="300"
+          className={css.UserPanelButton}
+          aria-label="Push to talk: hold to talk"
+          title={ptt.heldWhileFullMuted ? 'Full mute is on' : 'Push to talk: hold to talk'}
+          aria-pressed={ptt.open}
+          disabled={!joined}
+          {...pushToTalkHoldProps}
+        >
+          <Icon size="100" src={ptt.open ? Icons.Mic : Icons.MicMute} filled={ptt.open} />
+        </IconButton>
+      ) : (
+        <IconButton
+          variant="SurfaceVariant"
+          fill="None"
+          size="300"
+          radii="300"
+          className={css.UserPanelButton}
+          data-muted={!microphone}
+          aria-label={microphone ? t('common.userPanel.muteMicrophone') : t('common.userPanel.unmuteMicrophone')}
+          title={microphone ? t('common.userPanel.muteMicrophone') : t('common.userPanel.unmuteMicrophone')}
+          aria-pressed={!microphone}
+          disabled={!joined}
+          onClick={handleMicrophone}
+        >
+          <Icon size="100" src={microphone ? Icons.Mic : Icons.MicMute} filled={!microphone} />
+        </IconButton>
+      )}
       <DeviceChevron kind="input" className={css.UserPanelChevron} />
       <IconButton
         variant="SurfaceVariant"
@@ -84,8 +106,8 @@ function ActiveCallButtons({ callEmbed }: ActiveCallButtonsProps) {
         radii="300"
         className={css.UserPanelButton}
         data-muted={!sound}
-        aria-label={sound ? 'Deafen' : 'Undeafen'}
-        title={sound ? 'Deafen' : 'Undeafen'}
+        aria-label={sound ? t('common.userPanel.deafen') : t('common.userPanel.undeafen')}
+        title={sound ? t('common.userPanel.deafen') : t('common.userPanel.undeafen')}
         aria-pressed={!sound}
         disabled={!joined}
         onClick={handleSound}
@@ -99,6 +121,7 @@ function ActiveCallButtons({ callEmbed }: ActiveCallButtonsProps) {
 
 // No call running: visual only, nothing happens on click.
 function IdleCallButtons() {
+  const { t } = useTranslation();
   return (
     <>
       <IconButton
@@ -108,8 +131,8 @@ function IdleCallButtons() {
         radii="300"
         className={css.UserPanelButton}
         data-inactive
-        aria-label="Microphone (join a call to use)"
-        title="Join a call to use the microphone"
+        aria-label={t('common.userPanel.microphoneJoinACall')}
+        title={t('common.userPanel.joinACallTo')}
         aria-disabled
         tabIndex={-1}
       >
@@ -123,8 +146,8 @@ function IdleCallButtons() {
         radii="300"
         className={css.UserPanelButton}
         data-inactive
-        aria-label="Headphones (join a call to use)"
-        title="Join a call to use the headphones"
+        aria-label={t('common.userPanel.headphonesJoinACall')}
+        title={t('common.userPanel.joinACallTo2')}
         aria-disabled
         tabIndex={-1}
       >
@@ -144,6 +167,7 @@ type StatusOptionsProps = {
  * Home / End move through it. Escape is handled by the account menu itself.
  */
 function StatusOptions({ status, onSelect }: StatusOptionsProps) {
+  const { t } = useTranslation();
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   useEffect(() => {
@@ -163,7 +187,13 @@ function StatusOptions({ status, onSelect }: StatusOptionsProps) {
   };
 
   return (
-    <Box direction="Column" gap="100" role="menu" aria-label="Status" onKeyDown={handleKeyDown}>
+    <Box
+      direction="Column"
+      gap="100"
+      role="menu"
+      aria-label={t('common.userPanel.status')}
+      onKeyDown={handleKeyDown}
+    >
       {STATUS_OPTIONS.map((option, index) => (
         <MenuItem
           key={option.status}
@@ -202,6 +232,7 @@ function StatusOptions({ status, onSelect }: StatusOptionsProps) {
 }
 
 export function UserPanel() {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
   const userId = mx.getUserId()!;
@@ -219,7 +250,9 @@ export function UserPanel() {
   useEffect(() => setPickedStatus(undefined), [storedStatus]);
   const status = pickedStatus ?? storedStatus;
   const agentTalking = useOwnAgentTalking();
-  const statusLabel = agentTalking ? 'Talking to agent' : statusInfo(status).label;
+  const statusLabel = agentTalking
+    ? t('common.userPanel.talkingToAgent')
+    : statusInfo(status).label;
 
   const statusMenuRef = useRef<HTMLDivElement>(null);
   const statusButtonRef = useRef<HTMLButtonElement>(null);
@@ -332,8 +365,8 @@ export function UserPanel() {
           onClick={handleOpenStatus}
           aria-haspopup="menu"
           aria-expanded={statusCords !== undefined}
-          aria-label={`Account and status (${statusLabel})`}
-          title="Account and status"
+          aria-label={t('common.userPanel.accountAndStatus', { status: statusLabel })}
+          title={t('common.userPanel.accountAndStatus')}
           data-agent={agentTalking || undefined}
         >
           <UserPanelFace
@@ -353,8 +386,8 @@ export function UserPanel() {
           size="300"
           radii="300"
           className={css.UserPanelButton}
-          aria-label="User settings"
-          title="User settings"
+          aria-label={t('common.userPanel.userSettings')}
+          title={t('common.userPanel.userSettings')}
           onClick={() => setSettings(true)}
         >
           <Icon size="100" src={Icons.Setting} />

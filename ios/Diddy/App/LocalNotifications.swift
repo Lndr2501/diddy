@@ -82,7 +82,7 @@ final class LocalNotifications: NSObject, UNUserNotificationCenterDelegate {
             content.body = room.isDirect ? preview.text : "\(preview.sender): \(preview.text)"
         } else {
             // Not decrypted (yet), or something without text.
-            content.body = mention ? "You were mentioned" : "New message"
+            content.body = mention ? L("ios.notificationsExtra.mentioned") : L("ios.notificationsExtra.newMessage")
         }
         let sound: Sound = mention ? .mention : .message
         if sound.setting.isOn { content.sound = Self.notificationSound(mention ? "mention.caf" : "notification_message.caf") }
@@ -92,7 +92,7 @@ final class LocalNotifications: NSObject, UNUserNotificationCenterDelegate {
     private func postInvite(account: MatrixAccount, room: RoomSummary) {
         let content = UNMutableNotificationContent()
         content.title = room.name
-        content.body = room.inviterName.map { "\($0) invited you" } ?? "You were invited"
+        content.body = room.inviterName.map { L("ios.notificationsExtra.invitedBy", ["name": $0]) } ?? L("ios.notificationsExtra.youWereInvited")
         if Sound.invite.setting.isOn { content.sound = Self.notificationSound("invite.caf") }
         post(content, id: Self.identifier(account, room.id), account: account, roomId: room.id)
     }
@@ -104,7 +104,7 @@ final class LocalNotifications: NSObject, UNUserNotificationCenterDelegate {
         guard canPost else { return false }
         let content = UNMutableNotificationContent()
         content.title = name
-        content.body = "Incoming call"
+        content.body = L("ios.notificationsExtra.incomingCall")
         // Do not disturb: the call stays visible, without the ring.
         let ringSilenced = DoNotDisturb.silencesSound(.incomingCall, status: PresenceStore.of(account).ownStatus)
         if Sound.ringtone.setting.isOn && !ringSilenced { content.sound = Self.notificationSound("notification_ringtone.caf") }
@@ -117,8 +117,8 @@ final class LocalNotifications: NSObject, UNUserNotificationCenterDelegate {
     func announceCompanion(account: MatrixAccount, roomId: String, roomName: String) {
         guard UIApplication.shared.applicationState != .active else { return }
         let content = UNMutableNotificationContent()
-        content.title = roomName.isEmpty ? "Your computer" : roomName
-        content.body = "Your computer wants to use this iPhone as camera and microphone. Open Diddy to join."
+        content.title = roomName.isEmpty ? L("ios.notificationsExtra.yourComputer") : roomName
+        content.body = L("ios.notificationsExtra.computerCameraHelp")
         content.sound = .default
         post(content, id: "companion|" + Self.identifier(account, roomId), account: account, roomId: roomId)
     }

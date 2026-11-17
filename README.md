@@ -5,12 +5,12 @@
 # Diddy
 
 **A Matrix chat client with voice calls that just work.**<br>
-Themes, profiles, plugins and a calm interface. Built for macOS, Windows, Linux and iPhone/iPad.
+Themes, profiles, plugins and a calm interface. Built for macOS, Windows, Linux, iPhone/iPad and Android.
 
 [![Release](https://img.shields.io/github/v/release/Lndr2501/diddy?label=release&color=e5517c&style=flat-square)](../../releases/latest)
 [![Tests](https://img.shields.io/github/actions/workflow/status/Lndr2501/diddy/test.yml?label=tests&style=flat-square)](../../actions/workflows/test.yml)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=flat-square)](LICENSE)
-![Platforms](https://img.shields.io/badge/macOS%20%C2%B7%20Windows%20%C2%B7%20Linux%20%C2%B7%20iOS-lightgrey?style=flat-square)
+![Platforms](https://img.shields.io/badge/macOS%20%C2%B7%20Windows%20%C2%B7%20Linux%20%C2%B7%20iOS%20%C2%B7%20Android-lightgrey?style=flat-square)
 
 [**Download**](../../releases/latest) · [Features](#features) · [Install](#install) · [Build from source](#build-from-source) · [Changelog](CHANGELOG.md)
 
@@ -37,7 +37,7 @@ Join a voice room in one click. Calls work on macOS, where Cinny's web client ha
 <td width="33%" valign="top">
 
 ### Screen sharing
-Streams stay sharp even when Diddy is in the background. Share with system audio on macOS 14.2+ and Linux, switch the sound on or off from the call bar, and pull any stream to the front with a click.
+Streams stay sharp even when Diddy is in the background. Share with system audio on macOS 14.2+, Linux and Windows 10 (version 2004)+, switch the sound on or off from the call bar, and pull any stream to the front with a click.
 
 </td>
 <td width="33%" valign="top">
@@ -57,7 +57,7 @@ From Light and Silver to Dark, Daaark, Butter, Diddy, Red, Green, Purple and Amb
 <td valign="top">
 
 ### Plugins and sounds
-A sandboxed plugin system with a built-in gallery (to-do, timer, calendar and more), a soundboard with MyInstants import, and a full set of app sounds you can switch off or replace.
+A sandboxed plugin system with a built-in gallery (to-do, timer, calendar and more), a soundboard with MyInstants import (imported sounds sync to all your devices) and per-device call keyboard shortcuts (optional background shortcuts on supported desktop systems; iPad hardware keyboard in the call), and a full set of app sounds you can switch off or replace.
 
 </td>
 <td valign="top">
@@ -71,10 +71,12 @@ Online, Idle, Do Not Disturb and Invisible. Do Not Disturb silences message soun
 
 More details:
 
-- **Chat:** voice messages that show up as voice messages in Element, a right-click menu with *Copy Text*, *Join All Rooms* for spaces, and a calm member list split by online and offline.
+- **Chat:** voice messages that show up as voice messages in Element, polls compatible with Element (open or hidden results, multiple choices, also in encrypted rooms), a right-click menu with *Copy Text*, *Join All Rooms* for spaces, and a calm member list split by online and offline.
+- **Saved messages:** bookmark a message from its context menu (long-press on iOS), then open *Inbox → Saved* on desktop or *You → Saved Messages* on iPhone (bookmark in the sidebar on iPad). Jump back to any accessible message or remove a bookmark. The list syncs through Matrix account data without storing message content there.
 - **Notifications in the window:** while Diddy is in front, new messages and invitations slide in as cards at the top (click opens the room, swipe up dismisses), and incoming calls arrive as a banner with answer and decline. In the background the system notification is used.
 - **Calm interface:** an own icon set, neutral highlights with the accent kept for mentions and sending, room updates folded into one line ("4 joined · 4 invited"), a one-line composer and voice messages with a scrubbable waveform.
 - **Settings by topic:** *Appearance*, *Chat*, *Notifications* and *Calls & Audio*, with a search that finds every single setting.
+- **Desktop and iOS languages:** follow the system or choose a language, share one JSON file per language and load your own translations without rebuilding. See [how to translate Diddy](docs/translating.md).
 - **Music stays loud:** with *Voice processing* off, Diddy records the microphone directly through Core Audio, so macOS no longer ducks other apps when you join a call.
 - **Call alerts:** on iOS, optional push alerts through [ntfy](https://ntfy.sh) ("Name is calling you") when someone calls and the app is closed.
 - **Connection profiles:** if a homeserver is down, open another one in its own window with a separate login and data store. Your existing account and keys stay untouched.
@@ -111,20 +113,37 @@ All images show example data and are generated from the real app, see [docs/scre
 | Chat, rooms, encryption | ✅ | ✅ Electron | 🧪 Electron, new | 🧪 native app, new |
 | Voice calls | ✅ | ✅ also encrypted | 🧪 | 🧪 |
 | Screen sharing | ✅ | 🧪 Wayland portal / X11 picker | 🧪 picker | 🧪 full screen on iOS 27+, otherwise Diddy only |
-| …with system sound | ✅ macOS 14.2+ | 🧪 other apps, not Diddy's own sound | ❌ not yet | 🧪 app sound |
+| …with system sound | ✅ macOS 14.2+ | 🧪 other apps, not Diddy's own sound | 🧪 Windows 10 2004+, not Diddy's own sound | 🧪 app sound |
 | Connection profiles | ✅ macOS 14+ | 🧪 untested | 🧪 | 🧪 multiple accounts |
-| Voice messages | ✅ | 🧪 | 🧪 | 🧪 m4a, no Ogg/Opus playback |
+| Voice messages | ✅ | 🧪 | 🧪 | 🧪 sends m4a, plays m4a and Ogg/Opus |
+| Send later (text) | 🧪 | 🧪 | 🧪 | 🧪 server only in unencrypted chats |
 | Change app icon | ✅ | 🧪 | 🧪 window icon | 🧪 |
 | Call tiles, soundboard, MyInstants | ✅ | ✅ | 🧪 | 🧪 |
+| Push to talk | 🧪 also in the background (Fn, modifier, F13-F20) | 🧪 also in the background (portal / X11) | 🧪 also in the background (presses) | 🧪 Talk button, iPad keyboard key |
 | Bot cards, profiles and badges, themes, plugins, agent voice | ✅ | ✅ | 🧪 | 🧪 |
 
 ✅ works and is tested · 🧪 built, but not yet tested in daily use · ❌ not supported (yet)
 
+**Android 🧪:** the native Kotlin/Compose app is available as a signed APK from 1.11.1, with chats,
+encrypted calls, screen sharing, soundboard, Watch Together, phone companion and UnifiedPush.
+Built and unit-tested, not yet checked on a real phone. See the [Android guide](android/README.md).
+
 ## Install
 
-Downloads are on the [Releases](../../releases/latest) page. Pushing a version tag (`vX.Y.Z`) builds everything automatically: the macOS DMG, the Windows installer, Linux AppImage, DEB and RPM, the iOS IPA and `SHA256SUMS`.
+Downloads are on the [Releases](../../releases/latest) page. Pushing a version tag (`vX.Y.Z`) builds everything automatically: the macOS DMG, the Windows installer, Linux AppImage, DEB and RPM, the iOS IPA, the signed Android APK and `SHA256SUMS`.
 
 No Matrix account yet? Choose *Create an account* on the login screen: Diddy checks the name while you type and signs you in when the account is ready. Servers with their own sign-in page, such as matrix.org, open it in create mode.
+
+<details>
+<summary><b>Android 8+ (arm64 / x86_64)</b></summary>
+
+1. Download `Diddy_*_Android.apk` from the release and open it on your phone.
+2. Allow installing apps from that source when Android asks.
+3. Later release APKs update the same app and keep its data. Debug builds are a separate app.
+
+See [android/README.md](android/README.md) for building, signing and notification setup.
+
+</details>
 
 <details open>
 <summary><b>macOS (Apple Silicon)</b></summary>
@@ -146,7 +165,7 @@ No Matrix account yet? Choose *Create an account* on the login screen: Diddy che
 3. Start Diddy and allow the microphone when asked.
 
 > [!NOTE]
-> Same Electron (Chromium) app as on Linux. Screen sharing works with the picker; sharing the system sound is not available on Windows yet, because Chromium's capture would include the call itself and the others would hear themselves. Settings live in `%APPDATA%\app.diddy.desktop`, the log in `%LOCALAPPDATA%\app.diddy.desktop\logs`.
+> Same Electron (Chromium) app as on Linux. Screen sharing works with the picker. Sharing the system sound needs Windows 10 version 2004 (build 19041) or later: a bundled helper records everything except Diddy itself, so the others never hear the call echoed back. On older Windows the option is greyed out (Chromium's own capture would include the call). Settings live in `%APPDATA%\app.diddy.desktop`, the log in `%LOCALAPPDATA%\app.diddy.desktop\logs`.
 
 </details>
 
@@ -200,6 +219,27 @@ Restart Diddy afterwards. The file is over 100 MB. On **NixOS** there is an opti
 fonts.packages = [ inputs.diddy.packages.${pkgs.system}.apple-color-emoji ];
 ```
 
+## Build a bot
+
+Bots can send cards, buttons and live progress that Diddy draws natively, while every other Matrix client still
+shows plain text. The Python library in [`sdk/python`](sdk/python/README.md) (German docs) does the protocol,
+E2EE, login and testing for you:
+
+```python
+from diddybot import Bot, cards
+
+bot = Bot.from_env(about="Says hello.")
+
+@bot.command("hello", desc="greets you")
+async def hello(ctx, name: str = ""):
+    await ctx.reply(cards.note(f"Hello {name or ctx.sender_name}!", icon="👋"))
+
+bot.run()
+```
+
+`pip install "git+https://github.com/Lndr2501/diddy.git#subdirectory=sdk/python"`, then `diddybot new mybot`.
+The protocol itself is in [docs/bot-cards.md](docs/bot-cards.md).
+
 ## Report a bug
 
 The most helpful thing is the log file. It lives at `~/Library/Logs/Diddy/app.log` on macOS, `~/.local/state/diddy/app.log` on Linux and `%LOCALAPPDATA%\app.diddy.desktop\logs\app.log` on Windows. In the app, *Settings → About → Diagnostics → Open Folder* opens the folder. The log contains technical events and errors, never message text.
@@ -227,7 +267,7 @@ On macOS, start the native tests with `DYLD_LIBRARY_PATH=/usr/lib/swift`.
 
 ## Contributing
 
-Diddy has three clients: macOS (Tauri), Linux (Electron, `electron/`) and iOS (Swift, `ios/`). The chat UI is a Cinny fork in `cinny/` (React, TypeScript).
+Diddy has four clients: macOS (Tauri), Linux/Windows (Electron, `electron/`), iOS (Swift, `ios/`) and Android (Kotlin/Compose, `android/`). The desktop chat UI is a Cinny fork in `cinny/` (React, TypeScript).
 
 - Open work is in the [issues](../../issues), labelled *iOS*, *Linux* and *macOS*.
 - Work on a branch (`fix/...`) and open a pull request. Do not push to `main`.

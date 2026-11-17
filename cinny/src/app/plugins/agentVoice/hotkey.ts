@@ -142,6 +142,17 @@ export const canReadNatively = (hotkey: AgentHotkey | undefined): boolean =>
   !hotkey.shift &&
   !hotkey.meta;
 
+/**
+ * Two hotkeys would fire together (push-to-talk and agent voice, #57): the same key with the same
+ * modifiers, or the same key where one of them is read from the system by the macOS app, which
+ * sees the key regardless of the modifiers.
+ */
+export const hotkeysClash = (a: AgentHotkey | undefined, b: AgentHotkey | undefined): boolean => {
+  if (!a || !b || a.code !== b.code) return false;
+  if (isModifierCode(a.code) || canReadNatively(a) || canReadNatively(b)) return true;
+  return a.ctrl === b.ctrl && a.alt === b.alt && a.shift === b.shift && a.meta === b.meta;
+};
+
 /** Validates a stored hotkey (localStorage is user editable). */
 export const parseHotkey = (value: unknown): AgentHotkey | undefined => {
   if (!value || typeof value !== 'object') return undefined;
@@ -253,7 +264,8 @@ const GLOBAL_REASONS: Record<string, string> = {
   'unknown-key': 'This key cannot be used as a global shortcut.',
   'no-helper': 'The shortcut helper is missing in this installation.',
   'no-bus': 'No desktop session bus was found.',
-  'no-portal': 'Your desktop offers no global shortcut portal (GNOME before 48, or no portal installed).',
+  'no-portal':
+    'Your desktop offers no global shortcut portal (GNOME before 48, or no portal installed).',
   denied: 'The desktop refused the shortcut.',
   timeout: 'The desktop did not answer in time.',
   closed: 'The desktop ended the shortcut.',

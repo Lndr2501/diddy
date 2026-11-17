@@ -81,6 +81,8 @@ import {
   useNameplateAnimation,
 } from '../../components/diddy/Nameplate';
 import { SIDE_TONE } from '../../components/sidebar/diddyTokens';
+import { useTranslation } from 'react-i18next';
+import { translate } from '../../i18n';
 
 const MEMBER_SEARCH_MIN = 20;
 
@@ -90,6 +92,7 @@ type MemberDrawerHeaderProps = {
   actions?: ReactNode;
 };
 function MemberDrawerHeader({ room, actions }: MemberDrawerHeaderProps) {
+  const { t } = useTranslation();
   const setPeopleDrawer = useSetSetting(settingsAtom, 'isPeopleDrawer');
 
   return (
@@ -98,11 +101,13 @@ function MemberDrawerHeader({ room, actions }: MemberDrawerHeaderProps) {
         <Box grow="Yes" alignItems="Center" gap="200">
           <Text
             className={css.MembersDrawerTitle}
-            title={`${room.getJoinedMemberCount()} Members`}
+            title={t('room.membersDrawer.joinedmembercountMembers', {
+              joinedMemberCount: room.getJoinedMemberCount(),
+            })}
             size="H5"
             truncate
           >
-            Members{' '}
+            {t('room.membersDrawer.members')}{' '}
             <span className={css.MembersDrawerCount}>{millify(room.getJoinedMemberCount())}</span>
           </Text>
         </Box>
@@ -114,7 +119,7 @@ function MemberDrawerHeader({ room, actions }: MemberDrawerHeaderProps) {
             offset={4}
             tooltip={
               <Tooltip>
-                <Text>Close</Text>
+                <Text>{t('room.membersDrawer.close')}</Text>
               </Tooltip>
             }
           >
@@ -172,6 +177,7 @@ export function MemberRowView({
   offline,
   bot,
 }: MemberRowViewProps) {
+  const { t } = useTranslation();
   const avatarUrl = avatarMxc
     ? mx.mxcUrlToHttp(avatarMxc, 100, 100, 'crop', undefined, false, useAuthentication)
     : undefined;
@@ -230,7 +236,7 @@ export function MemberRowView({
               size="100"
               src={Icons.ShieldUser}
               filled
-              aria-label="Admin"
+              aria-label={t('room.membersDrawer.admin')}
             />
           )}
         </>
@@ -248,7 +254,7 @@ export function MemberRowView({
         </Text>
         {bot && (
           <Text size="T200" priority="300" truncate>
-            Bot
+            {t('room.membersDrawer.bot')}
           </Text>
         )}
       </Box>
@@ -289,8 +295,16 @@ function MemberItem({
 
 const ADMIN_POWER_LEVEL = 100;
 
-const OFFLINE_TAG: MemberPowerTag = { name: 'Offline' };
-const BOTS_TAG: MemberPowerTag = { name: 'Bots' };
+const OFFLINE_TAG: MemberPowerTag = {
+  get name() {
+    return translate('room.membersDrawer.offline');
+  },
+};
+const BOTS_TAG: MemberPowerTag = {
+  get name() {
+    return translate('room.membersDrawer.bots');
+  },
+};
 
 type MemberGroupLabel = MemberPowerTag & { count: number };
 
@@ -304,7 +318,8 @@ const isPresent = (mx: MatrixClient, userId: string): boolean => {
             presence: user.presence,
             lastActiveTs: user.getLastActiveTs(),
             // invisible counts as offline for everyone, also for yourself while you sync
-            chosen: readProfileForView(mx, userId)?.status === 'invisible' ? 'invisible' : undefined,
+            chosen:
+              readProfileForView(mx, userId)?.status === 'invisible' ? 'invisible' : undefined,
           }
         : undefined
     )
@@ -349,9 +364,7 @@ const groupMembersByPresence = (
 ): { items: Array<MemberGroupLabel | RoomMember>; offline: ReadonlySet<string> } => {
   const myUserId = mx.getUserId();
   const botMembers = allMembers.filter((m) => bots.has(m.userId));
-  const members = botMembers.length
-    ? allMembers.filter((m) => !bots.has(m.userId))
-    : allMembers;
+  const members = botMembers.length ? allMembers.filter((m) => !bots.has(m.userId)) : allMembers;
   const hasPresence = members.some(
     (m) => m.userId !== myUserId && mx.getUser(m.userId)?.events.presence !== undefined
   );
@@ -402,6 +415,7 @@ type MembersDrawerProps = {
   members: RoomMember[];
 };
 export function MembersDrawer({ room, members }: MembersDrawerProps) {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -497,8 +511,8 @@ export function MembersDrawer({ room, members }: MembersDrawerProps) {
               variant="Surface"
               fill="None"
               radii="400"
-              aria-label={`Show: ${membershipFilter.name}`}
-              title={`Show: ${membershipFilter.name}`}
+              aria-label={t('room.membersDrawer.showName', { name: membershipFilter.name })}
+              title={t('room.membersDrawer.showName', { name: membershipFilter.name })}
               aria-pressed={!!anchor || membershipFilterIndex !== 0}
               onClick={
                 ((evt) =>
@@ -531,8 +545,8 @@ export function MembersDrawer({ room, members }: MembersDrawerProps) {
               variant="Surface"
               fill="None"
               radii="400"
-              aria-label={`Sort: ${memberSort.name}`}
-              title={`Sort: ${memberSort.name}`}
+              aria-label={t('room.membersDrawer.sortName', { name: memberSort.name })}
+              title={t('room.membersDrawer.sortName', { name: memberSort.name })}
               aria-pressed={!!anchor}
               onClick={
                 ((evt) =>
@@ -551,8 +565,8 @@ export function MembersDrawer({ room, members }: MembersDrawerProps) {
           variant="Surface"
           fill="None"
           radii="400"
-          aria-label="Invite"
-          title="Invite"
+          aria-label={t('room.membersDrawer.invite')}
+          title={t('room.membersDrawer.invite')}
           aria-pressed={invitePrompt}
           onClick={() => setInvitePrompt(true)}
         >
@@ -587,7 +601,7 @@ export function MembersDrawer({ room, members }: MembersDrawerProps) {
                     ref={searchInputRef}
                     onChange={handleSearchChange}
                     style={{ paddingRight: config.space.S200 }}
-                    placeholder="Type name..."
+                    placeholder={t('room.membersDrawer.typeName')}
                     variant="SurfaceVariant"
                     size="400"
                     radii="400"
@@ -608,9 +622,9 @@ export function MembersDrawer({ room, members }: MembersDrawerProps) {
                           }}
                           after={<Icon size="50" src={Icons.Cross} />}
                         >
-                          <Text size="B300">{`${result.items.length || 'No'} ${
-                            result.items.length === 1 ? 'Result' : 'Results'
-                          }`}</Text>
+                          <Text size="B300">
+                            {t('room.membersDrawer.resultCount', { count: result.items.length })}
+                          </Text>
                         </Chip>
                       )
                     }
@@ -626,7 +640,7 @@ export function MembersDrawer({ room, members }: MembersDrawerProps) {
                 radii="Pill"
                 outlined
                 size="300"
-                aria-label="Scroll to Top"
+                aria-label={t('room.membersDrawer.scrollToTop')}
               >
                 <Icon src={Icons.ChevronTop} size="300" />
               </IconButton>
@@ -634,7 +648,7 @@ export function MembersDrawer({ room, members }: MembersDrawerProps) {
 
             {!fetchingMembers && !result && processMembers.length === 0 && (
               <Text style={{ padding: config.space.S300 }} align="Center">
-                {`No "${membershipFilter.name}" Members`}
+                {t('room.membersDrawer.noNameMembers', { name: membershipFilter.name })}
               </Text>
             )}
 

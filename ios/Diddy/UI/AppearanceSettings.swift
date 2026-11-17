@@ -73,7 +73,7 @@ struct AppearanceSettingsView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Theme.sidebar)
-        .navigationTitle("Appearance")
+        .navigationTitle(L("settings.page.appearance"))
         .navigationBarTitleDisplayMode(.inline)
     }
 }
@@ -96,9 +96,9 @@ private struct AppIconSection: View {
             .padding(.vertical, 6)
             if let iconError { Text(iconError).font(.footnote).foregroundStyle(Theme.danger) }
         } header: {
-            Text("App Icon")
+            Text(L("settings.general.appIcon"))
         } footer: {
-            Text("Changes the icon on your home screen.")
+            Text(L("ios.extraSettings.appIconHelp"))
         }
     }
 
@@ -137,13 +137,13 @@ struct DisplaySection: View {
 
     var body: some View {
         Section {
-            Toggle("Monochrome Mode", isOn: $monochrome)
+            Toggle(L("settings.general.monochromeMode"), isOn: $monochrome)
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
-                    Text("Page Zoom")
+                    Text(L("settings.general.pageZoom"))
                     Spacer()
                     Text("\(AppearanceLogic.clampZoom(zoom))%").foregroundStyle(Theme.muted).monospacedDigit()
-                    Button("Reset") { zoom = AppearanceLogic.defaultZoom }
+                    Button(L("settings.verification.reset")) { zoom = AppearanceLogic.defaultZoom }
                         .buttonStyle(.borderless)
                         .disabled(zoom == AppearanceLogic.defaultZoom)
                 }
@@ -155,9 +155,9 @@ struct DisplaySection: View {
                     step: 5)
             }
         } header: {
-            Text("Display")
+            Text(L("settings.general.display"))
         } footer: {
-            Text("Page Zoom goes from 75% to 150% and works on top of the text size set in iOS Settings.")
+            Text(L("ios.extraSettings.pageZoomHelp"))
         }
     }
 }
@@ -179,24 +179,24 @@ struct CustomThemeView: View {
                 }
             }
             Section {
-                ColorPicker("Accent", selection: binding(\.accent), supportsOpacity: false)
-                ColorPicker("Background", selection: binding(\.background), supportsOpacity: false)
-                ColorPicker("Text", selection: binding(\.text), supportsOpacity: false)
+                ColorPicker(L("settings.customTheme.accent"), selection: binding(\.accent), supportsOpacity: false)
+                ColorPicker(L("settings.customTheme.background"), selection: binding(\.background), supportsOpacity: false)
+                ColorPicker(L("settings.profileCardEditor.text"), selection: binding(\.text), supportsOpacity: false)
             } footer: {
-                Text("Pick the \u{201C}Custom\u{201D} theme in the theme list to use these colors.")
+                Text(L("ios.extraSettings.customThemeHelp"))
             }
             Section {
-                Button("Save Colors") { store.setCustom(draft) }
+                Button(L("ios.extraSettings.saveColors")) { store.setCustom(draft) }
                     .disabled(draft == store.custom)
-                Button("Reset Colors") { draft = CustomThemeConfig.defaults }
+                Button(L("settings.customTheme.resetColors")) { draft = CustomThemeConfig.defaults }
                     .disabled(draft == CustomThemeConfig.defaults)
             } footer: {
-                Text("Saving rebuilds the app screens with the new colors.")
+                Text(L("ios.extraSettings.saveColorsHelp"))
             }
         }
         .scrollContentBackground(.hidden)
         .background(Theme.sidebar)
-        .navigationTitle("Custom Theme")
+        .navigationTitle(L("settings.customTheme.customTheme"))
         .navigationBarTitleDisplayMode(.inline)
     }
 

@@ -7,8 +7,10 @@ import { PageColumnDivider } from '../../components/page/style.css';
 import { callChatAtom } from '../../state/callEmbed';
 import { RoomView } from './RoomView';
 import { ScreenSize, useScreenSizeContext } from '../../hooks/useScreenSize';
+import { useTranslation } from 'react-i18next';
 
 export function CallChatView() {
+  const { t } = useTranslation();
   const { eventId } = useParams();
   const setChat = useSetAtom(callChatAtom);
   const screenSize = useScreenSizeContext();
@@ -28,7 +30,7 @@ export function CallChatView() {
         <Box grow="Yes" alignItems="Center" gap="200">
           <Box grow="Yes">
             <Text size="H5" truncate>
-              Chat
+              {t('room.callChatView.chat')}
             </Text>
           </Box>
           <Box shrink="No" alignItems="Center">
@@ -38,7 +40,7 @@ export function CallChatView() {
               offset={4}
               tooltip={
                 <Tooltip>
-                  <Text>Close</Text>
+                  <Text>{t('room.callChatView.close')}</Text>
                 </Tooltip>
               }
             >

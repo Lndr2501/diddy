@@ -34,11 +34,11 @@ enum CustomSounds {
         defer { if scoped { source.stopAccessingSecurityScopedResource() } }
         let data: Data
         do { data = try Data(contentsOf: source) } catch {
-            throw DiddyError("The file could not be read.")
+            throw DiddyError(L("settings.diddyProfile.theFileCouldNot2"))
         }
         if let problem = CustomSoundRules.problem(byteCount: data.count) { throw DiddyError(problem) }
         guard (try? AVAudioPlayer(data: data)) != nil else {
-            throw DiddyError("Please choose an audio file (MP3, WAV, M4A).")
+            throw DiddyError(L("ios.errorsExtra.pleaseChooseAnAudioFileMp3WavM4A"))
         }
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let rawExt = source.pathExtension.lowercased()
@@ -47,7 +47,7 @@ enum CustomSounds {
         do {
             try data.write(to: folder.appendingPathComponent(file), options: .atomic)
         } catch {
-            throw DiddyError("Not enough space to store this sound.")
+            throw DiddyError(L("ios.errorsExtra.notEnoughSpaceToStoreThisSound"))
         }
         removeFile(of: sound)
         UserDefaults.standard.set(file, forKey: fileKey(sound))

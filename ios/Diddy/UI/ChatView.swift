@@ -66,6 +66,7 @@ private struct ChatContent: View {
     private var summary: RoomSummary? { watch.summary }
     @EnvironmentObject private var calls: CallManager
     @StateObject private var memberStore = MemberStore()
+    @EnvironmentObject private var savedMessages: SavedMessagesStore
     @StateObject private var botCommands = BotCommandStore()
     /// Text and cursor of the composer, in an object only the composer observes: a key press
     /// redraws the composer, not the chat with every message (see ComposerObserver).
@@ -90,6 +91,7 @@ private struct ChatContent: View {
     @State private var photos: [PhotosPickerItem] = []
     @State private var showPhotos = false
     @State private var showFiles = false
+    @State private var showPoll = false
     @State private var showCamera = false
     @State private var showEmoji = false
     @State private var packs: [ImagePack] = []
@@ -146,6 +148,8 @@ private struct ChatContent: View {
     @FocusState private var composerFocused: Bool
     /// Raised by a reply, so the keyboard comes up even after a swipe (see ComposerEditor.focusToken).
     @State private var composerFocusToken = 0
+    /// Send later: the date sheet of the send button's long-press menu (SendLaterViews.swift).
+    @State private var showSendLater = false
 
     private var title: String { summary?.name ?? "Channel" }
     private var roomId: String { controller.roomId }
@@ -173,7 +177,7 @@ private struct ChatContent: View {
                             }
                     }
                 } else {
-                    Text("You do not have permission to send messages here.")
+                    Text(L("ios.chat.cannotSend"))
                         .font(.footnote).foregroundStyle(Theme.muted)
                         .frame(maxWidth: .infinity)
                         .padding(14)
@@ -217,8 +221,8 @@ private struct ChatContent: View {
         }
         .animation(.easeOut(duration: 0.18), value: actionRow?.id)
         .task { await account.refreshNotifyLevel(roomId: roomId) }
-        .alert("Notifications", isPresented: Binding(get: { notifyError != nil }, set: { if !$0 { notifyError = nil } })) {
-            Button("OK", role: .cancel) {}
+        .alert(L("nav.inbox.notifications"), isPresented: Binding(get: { notifyError != nil }, set: { if !$0 { notifyError = nil } })) {
+            Button(L("ios.common.ok"), role: .cancel) {}
         } message: { Text(notifyError ?? "") }
         .sheet(item: $navSheet) { sheet in
             TimelineNavSheetView(account: account, controller: controller, sheet: sheet) { eventId in
@@ -227,6 +231,11 @@ private struct ChatContent: View {
             }
         }
         .sheet(isPresented: $showSearch) { MessageSearchView(account: account, roomId: roomId) }
+        .sheet(isPresented: $showPoll) {
+            PollComposer { question, answers, max, disclosed in
+                await controller.createPoll(question: question, answers: answers, maxSelections: max, disclosed: disclosed)
+            }
+        }
         .sheet(item: $searchContext) { SearchContextView(account: account, target: $0) }
         .sheet(isPresented: $showMembers) { MembersView(account: account, roomId: roomId) }
         .sheet(isPresented: $showInfo) { ChannelInfoView(account: account, roomId: roomId) }
@@ -236,8 +245,8 @@ private struct ChatContent: View {
         }
         .fullScreenCover(item: $viewedImage) { ImageViewer(image: $0.image) }
         .quickLookPreview($openedFile)
-        .alert("Message", isPresented: Binding(get: { controller.sendError != nil }, set: { if !$0 { controller.sendError = nil } })) {
-            Button("OK", role: .cancel) {}
+        .alert(L("ios.composer.message"), isPresented: Binding(get: { controller.sendError != nil }, set: { if !$0 { controller.sendError = nil } })) {
+            Button(L("ios.common.ok"), role: .cancel) {}
         } message: { Text(controller.sendError ?? "") }
         .photosPicker(isPresented: $showPhotos, selection: $photos, maxSelectionCount: 20, matching: .any(of: [.images, .videos]))
         .fileImporter(isPresented: $showFiles, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
@@ -247,6 +256,12 @@ private struct ChatContent: View {
             }
         }
         .sheet(isPresented: $showCamera) { ComposerCamera { image in Task { await addFiles([], images: [image]) } } }
+        .sheet(isPresented: $showSendLater) {
+            SendLaterSheet(store: ScheduledMessageStore.of(account), roomId: roomId) { sendAt, preferLocal in
+                scheduleLater(at: sendAt, preferLocal: preferLocal)
+            }
+        }
+        .task { await ScheduledMessageStore.of(account).prepare(roomId: roomId) }
         // Files dragged in from other apps become attachments (#216, ChatDrop.swift).
         .onDrop(of: [.item], isTargeted: $dropTargeted) { providers in
             guard canSend, editing == nil, ChatDrop.accepts(providers) else { return false }
@@ -347,6 +362,7 @@ private struct ChatContent: View {
                             onProfile: { profile = ProfileTarget(userId: row.sender) },
                             onMention: { profile = ProfileTarget(userId: $0) },
                             onReact: { key in Task { await controller.toggleReaction(key, on: row) } },
+                            onPollVote: { ids in Task { await controller.votePoll(row, answers: ids) } },
                             onImage: { viewedImage = ViewedImage(image: $0) },
                             onFile: { openedFile = $0 },
                             onCardCommand: { command in Task { await controller.sendCardAction(command) } },
@@ -469,25 +485,25 @@ private struct ChatContent: View {
         }
         .padding(12)
         .transition(.scale(scale: 0.6).combined(with: .opacity))
-        .accessibilityLabel("Jump to latest messages")
+        .accessibilityLabel(L("ios.chatMore.jumpToLatestMessages"))
     }
 
     /// The header's "More" menu: search and people, finding things, then the room's notification level.
     @ViewBuilder
     private var headerMenu: some View {
-        Button { showInfo = true } label: { Label("Details", systemImage: "info.circle") }
-        Button { showSearch = true } label: { Label("Search Messages", systemImage: "magnifyingglass") }
+        Button { showInfo = true } label: { Label(L("settings.profileCardEditor.details"), systemImage: "info.circle") }
+        Button { showSearch = true } label: { Label(L("room.viewHeader.searchMessages"), systemImage: "magnifyingglass") }
         Button {
             if horizontalSizeClass == .regular { memberPanelOpen.toggle() } else { showMembers = true }
-        } label: { Label("Members", systemImage: "person.2") }
+        } label: { Label(L("room.viewHeader.members"), systemImage: "person.2") }
         Divider()
-        Button { navSheet = .pinned } label: { Label("Pinned Messages", systemImage: "pin") }
-        Button { navSheet = .jumpToDate } label: { Label("Jump to Time", systemImage: "calendar") }
+        Button { navSheet = .pinned } label: { Label(L("room.pinMenu.pinnedMessages"), systemImage: "pin") }
+        Button { navSheet = .jumpToDate } label: { Label(L("room.viewHeader.jumpToTime"), systemImage: "calendar") }
         Divider()
         Menu {
             RoomNotifyPicker(account: account, roomId: roomId) { notifyError = $0 }
         } label: {
-            Label("Notifications", systemImage: (watch.notifyLevel ?? .default).systemImage)
+            Label(L("nav.inbox.notifications"), systemImage: (watch.notifyLevel ?? .default).systemImage)
         }
     }
 
@@ -596,20 +612,26 @@ private struct ChatContent: View {
     @ViewBuilder
     private func actions(for row: MessageRow) -> some View {
         let eventId = actionableEventId(of: row)
-        Button { closeActions(); reply(to: row) } label: { Label("Reply", systemImage: "arrowshape.turn.up.left") }
+        Button { closeActions(); reply(to: row) } label: { Label(L("message.main.reply"), systemImage: "arrowshape.turn.up.left") }
         if let eventId {
             Button {
                 closeActions()
                 let root = controller.nav.snapshot.entries.first(where: { $0.eventId == eventId })?.threadRoot
                 navSheet = .thread(root: root ?? eventId)
-            } label: { Label("Reply in Thread", systemImage: "bubble.left.and.bubble.right") }
+            } label: { Label(L("message.main.replyInThread"), systemImage: "bubble.left.and.bubble.right") }
         }
-        if case .text(let text) = row.body {
+        if let poll = row.poll, !poll.ended, row.remoteEventId != nil,
+           row.isOwn || controller.nav.canRedactOther {
+            Button { closeActions(); Task { await controller.endPoll(row) } } label: {
+                Label(L("ios.chatMore.endPoll"), systemImage: "chart.bar.xaxis")
+            }
+        }
+        if case .text(let text) = row.body, row.poll == nil {
             Button { closeActions(); UIPasteboard.general.string = Self.readableMentions(in: text).text } label: {
-                Label("Copy Text", systemImage: "doc.on.doc")
+                Label(L("message.main.copyText"), systemImage: "doc.on.doc")
             }
             if row.isOwn {
-                Button { closeActions(); startEditing(row, text: text) } label: { Label("Edit Message", systemImage: "pencil") }
+                Button { closeActions(); startEditing(row, text: text) } label: { Label(L("message.main.editMessage"), systemImage: "pencil") }
             }
         }
         Divider()
@@ -632,31 +654,38 @@ private struct ChatContent: View {
             Button {
                 closeActions()
                 Task { if let link = await controller.permalink(of: eventId) { UIPasteboard.general.string = link } }
-            } label: { Label("Copy Link", systemImage: "link") }
+            } label: { Label(L("nav.space.copyLink"), systemImage: "link") }
+            Button {
+                closeActions()
+                savedMessages.toggle(account: account, roomId: roomId, eventId: eventId)
+            } label: {
+                Label(savedMessages.state.contains(roomId, eventId) ? "Remove from Saved" : "Save Message",
+                      systemImage: savedMessages.state.contains(roomId, eventId) ? "bookmark.slash" : "bookmark")
+            }
             if !controller.nav.readers(of: eventId).isEmpty {
-                Button { closeActions(); navSheet = .readers(eventId: eventId) } label: { Label("Read Receipts", systemImage: "checkmark.circle") }
+                Button { closeActions(); navSheet = .readers(eventId: eventId) } label: { Label(L("message.main.readReceipts"), systemImage: "checkmark.circle") }
             }
             if row.isEdited {
-                Button { closeActions(); navSheet = .history(row) } label: { Label("Edit History", systemImage: "clock.arrow.circlepath") }
+                Button { closeActions(); navSheet = .history(row) } label: { Label(L("ios.chatMore.editHistory"), systemImage: "clock.arrow.circlepath") }
             }
         }
-        Button { closeActions(); profile = ProfileTarget(userId: row.sender) } label: { Label("View Profile", systemImage: "person.crop.circle") }
+        Button { closeActions(); profile = ProfileTarget(userId: row.sender) } label: { Label(L("ios.chatMore.viewProfile"), systemImage: "person.crop.circle") }
     }
 
     /// The end of the long-press actions: View Source, Report and Delete, the last one in red.
     @ViewBuilder
     private func lastActions(for row: MessageRow, eventId: String?) -> some View {
         if let eventId {
-            Button { closeActions(); navSheet = .source(row) } label: { Label("View Source", systemImage: "curlybraces") }
+            Button { closeActions(); navSheet = .source(row) } label: { Label(L("message.main.viewSource"), systemImage: "curlybraces") }
             if !row.isOwn {
-                Button { closeActions(); navSheet = .report(eventId: eventId) } label: { Label("Report Message", systemImage: "exclamationmark.bubble") }
+                Button { closeActions(); navSheet = .report(eventId: eventId) } label: { Label(L("message.main.reportMessage"), systemImage: "exclamationmark.bubble") }
             }
         }
         if row.layoutKind == .message, row.eventId != nil,
            TimelineNav.canDelete(isOwn: row.isOwn, isRedacted: row.isRedactedMessage,
                                  canRedactOwn: controller.nav.canRedactOwn, canRedactOther: controller.nav.canRedactOther) {
             Button(role: .destructive) { closeActions(); navSheet = .delete(row) } label: {
-                Label("Delete Message", systemImage: "trash")
+                Label(L("message.main.deleteMessage"), systemImage: "trash")
             }
         }
     }
@@ -738,21 +767,23 @@ private struct ChatContent: View {
             if !pendingFiles.isEmpty { pendingAttachments }
             if showFormatToolbar { formatToolbar }
             if replyTo == nil, restoredReplyId != nil {
-                composerContext(Text("Replying to saved message").foregroundColor(Theme.muted), symbol: "arrowshape.turn.up.left") {
+                composerContext(Text(L("ios.chat.replySaved")).foregroundColor(Theme.muted), symbol: "arrowshape.turn.up.left") {
                     restoredReplyId = nil; saveDraft()
                 }
             }
             if let replyTo {
-                composerContext(Text("Replying to ").foregroundColor(Theme.muted) + Text(replyTo.senderName).bold().foregroundColor(Theme.text),
+                composerContext(Text(L("ios.chat.replyTo")).foregroundColor(Theme.muted) + Text(replyTo.senderName).bold().foregroundColor(Theme.text),
                                 symbol: "arrowshape.turn.up.left") {
                     self.replyTo = nil
                 }
             }
             if editing != nil {
-                composerContext(Text("Editing message").foregroundColor(Theme.muted), symbol: "pencil") {
+                composerContext(Text(L("ios.chat.editingMessage")).foregroundColor(Theme.muted), symbol: "pencil") {
                     editing = nil
                     draft = ""
                 }
+            } else {
+                ScheduledMessagesBar(store: ScheduledMessageStore.of(account), roomId: roomId, onEdit: editScheduled)
             }
             composerInputRow
         }
@@ -778,11 +809,12 @@ private struct ChatContent: View {
         HStack(alignment: .bottom, spacing: 0) {
             if editing == nil {
                 Menu {
-                    Button { showPhotos = true } label: { Label("Photos and Videos", systemImage: "photo.on.rectangle") }
+                    Button { showPhotos = true } label: { Label(L("ios.composer.photosAndVideos"), systemImage: "photo.on.rectangle") }
                     if UIImagePickerController.isSourceTypeAvailable(.camera) {
-                        Button { showCamera = true } label: { Label("Camera", systemImage: "camera") }
+                        Button { showCamera = true } label: { Label(L("ios.calls.moreCamera"), systemImage: "camera") }
                     }
-                    Button { showFiles = true } label: { Label("Files", systemImage: "doc") }
+                    Button { showFiles = true } label: { Label(L("common.uploadBoard.files"), systemImage: "doc") }
+                    Button { showPoll = true } label: { Label(L("ios.chatMore.poll"), systemImage: "chart.bar.xaxis") }
                 } label: {
                     Image(systemName: "plus")
                         .font(.system(size: 15, weight: .semibold))
@@ -792,7 +824,7 @@ private struct ChatContent: View {
                         .frame(width: 38, height: ComposerEditor.minHeight)
                         .contentShape(Rectangle())
                 }
-                .accessibilityLabel("Add attachment")
+                .accessibilityLabel(L("ios.composer.addAttachment"))
             }
             ComposerEditor(text: draftBinding, selection: selectionBinding, isFocused: composerFocused, focusToken: composerFocusToken, onFocus: { composerFocused = $0 }, onSend: send, onFiles: { urls, images in
                 Task { await addFiles(urls, images: images) }
@@ -800,7 +832,7 @@ private struct ChatContent: View {
                 .frame(minHeight: ComposerEditor.minHeight)
                 .overlay(alignment: .leading) {
                     if draft.isEmpty {
-                        Text(editing != nil ? "Edit message" : pendingMusic != nil ? "Add a message…" : pendingFiles.isEmpty ? "Message \(title)" : "Add a caption…")
+                        Text(editing != nil ? L("ios.composer.editMessage") : pendingMusic != nil ? L("ios.composer.addMessage") : pendingFiles.isEmpty ? L("ios.composer.messageRoom", ["name": title]) : L("ios.composer.addCaption"))
                             .font(ComposerEditor.font)
                             .foregroundStyle(Theme.faint)
                             .lineLimit(1)
@@ -818,7 +850,7 @@ private struct ChatContent: View {
                         .frame(width: 36, height: ComposerEditor.minHeight)
                         .contentShape(Rectangle())
                 }
-                .accessibilityLabel("Emoji and stickers")
+                .accessibilityLabel(L("ios.composer.emojiAndStickers"))
             }
             if !trimmedDraft.isEmpty || !pendingFiles.isEmpty || pendingMusic != nil {
                 Button(action: send) {
@@ -832,7 +864,16 @@ private struct ChatContent: View {
                 }
                 .disabled(sending)
                 .opacity(sending ? 0.6 : 1)
-                .accessibilityLabel(editing == nil ? "Send" : "Save edit")
+                .accessibilityLabel(editing == nil ? L("room.voiceRecorderButton.send") : L("ios.composer.saveEdit"))
+                .accessibilityHint(canScheduleLater ? L("ios.composer.holdSendLater") : "")
+                // Long press: Send later (text only, like the desktop's right-click menu).
+                .contextMenu {
+                    if canScheduleLater {
+                        SendLaterMenu(store: ScheduledMessageStore.of(account), roomId: roomId,
+                                      onPick: { scheduleLater(at: $0, preferLocal: false) },
+                                      onCustom: { showSendLater = true })
+                    }
+                }
             } else if editing == nil {
                 VoiceMicButton(recorder: recorder, width: 36, height: ComposerEditor.minHeight)
             }
@@ -864,7 +905,7 @@ private struct ChatContent: View {
                     .buttonStyle(.plain)
                     .disabled(sending)
                     .offset(x: 10, y: -10)
-                    .accessibilityLabel("Remove song")
+                    .accessibilityLabel(L("ios.composer.removeSong"))
                 }
             Spacer(minLength: 0)
         }
@@ -907,9 +948,9 @@ private struct ChatContent: View {
             if controller.uploadingAttachment {
                 HStack(spacing: 8) {
                     ProgressView()
-                    Text("Uploading…").font(.footnote).foregroundStyle(Theme.muted)
+                    Text(L("ios.chat.uploading")).font(.footnote).foregroundStyle(Theme.muted)
                     Spacer(minLength: 0)
-                    Button("Cancel") { controller.cancelAttachment() }.font(.footnote.weight(.semibold))
+                    Button(L("ios.settings.cancel")) { controller.cancelAttachment() }.font(.footnote.weight(.semibold))
                 }
             }
         }
@@ -931,7 +972,7 @@ private struct ChatContent: View {
                             .foregroundStyle(Theme.muted)
                             .frame(width: 38, height: 32)
                     }
-                    .accessibilityLabel(format.title)
+                    .accessibilityLabel(format.localizedTitle)
                 }
             }
             .padding(.horizontal, 8)
@@ -972,7 +1013,7 @@ private struct ChatContent: View {
             Spacer(minLength: 0)
             Button(action: cancel) { Image(systemName: "xmark.circle.fill").frame(width: 30, height: 30) }
                 .foregroundStyle(Theme.muted)
-                .accessibilityLabel("Cancel")
+                .accessibilityLabel(L("ios.settings.cancel"))
         }
         .font(.footnote)
         .padding(.leading, 14)
@@ -1031,6 +1072,53 @@ private struct ChatContent: View {
         }
     }
 
+    /// Text (also /me, /notice and the like) can be scheduled; attachments, songs and edits cannot.
+    private var canScheduleLater: Bool {
+        guard editing == nil, pendingFiles.isEmpty, pendingMusic == nil, !trimmedDraft.isEmpty else { return false }
+        return SlashCommand.command(in: draft).map(\.sendsMessage) ?? true
+    }
+
+    /// Schedules the composer's message (ScheduledMessages.swift) and empties the composer.
+    private func scheduleLater(at sendAt: Date, preferLocal: Bool) {
+        guard canScheduleLater, !sending else { return }
+        let original = draft
+        var allTokens = tokens
+        for (name, id) in mentions { allTokens["@" + name] = .user(id: id) }
+        let command = SlashCommand.command(in: draft)
+        var replyId = restoredReplyId
+        if case .eventId(let id)? = replyTo?.eventId { replyId = id }
+        guard let message = ComposerFormatter.message(from: draft, tokens: allTokens, markdown: ChatSettings.markdown,
+            command: command?.sendsMessage == true ? command : nil, isReply: replyId != nil,
+            replyUserId: replyTo?.sender, ownUserId: account.userId) else { return }
+        let msgtype: String
+        switch command {
+        case .me?: msgtype = "m.emote"
+        case .notice?: msgtype = "m.notice"
+        default: msgtype = "m.text"
+        }
+        let content = SendLaterLogic.messageContent(body: message.body, html: message.html, msgtype: msgtype,
+                                                    mentionedUserIds: message.mentionedUserIds, replyEventId: replyId)
+        draft = ""; mentions = [:]; tokens = [:]; replyTo = nil; restoredReplyId = nil
+        selection = NSRange(location: 0, length: 0)
+        saveDraft()
+        controller.setTyping(false)
+        let store = ScheduledMessageStore.of(account)
+        let targetRoom = roomId
+        Task {
+            await store.schedule(roomId: targetRoom, content: content, draftText: original, replyEventId: replyId,
+                                 sendAt: sendAt, preferLocal: preferLocal)
+        }
+    }
+
+    /// Edit a scheduled message: its text goes back into the composer (the schedule is already cancelled).
+    private func editScheduled(_ item: SendLaterLogic.Scheduled) {
+        if trimmedDraft.isEmpty { draft = item.draftText } else { draft += "\n" + item.draftText }
+        selection = NSRange(location: (draft as NSString).length, length: 0)
+        if replyTo == nil, restoredReplyId == nil { restoredReplyId = item.replyEventId }
+        saveDraft()
+        composerFocusToken += 1
+    }
+
     private func saveDraft() {
         guard draftLoaded, editing == nil else { return }
         var replyId = restoredReplyId
@@ -1053,7 +1141,7 @@ private struct ChatContent: View {
         VStack(spacing: 0) {
             if editing == nil {
                 ForEach(SlashCommand.suggestions(for: draft).prefix(6)) { command in
-                    ComposerSuggestionRow(symbol: "slash.circle", title: "/" + command.rawValue, subtitle: command.description) {
+                    ComposerSuggestionRow(symbol: "slash.circle", title: "/" + command.rawValue, subtitle: command.localizedDescription) {
                         draft = "/" + command.rawValue + " "
                         selection = NSRange(location: (draft as NSString).length, length: 0)
                     }
@@ -1095,7 +1183,7 @@ private struct ChatContent: View {
         do {
             let config = try await account.clientRequest("/_matrix/media/v3/config")
             guard !ComposerSize.exceeds(Int64(data.count), limit: ComposerSize.uploadLimit(from: config)) else {
-                throw DiddyError("File exceeds the server upload limit.")
+                throw DiddyError(L("ios.errorsExtra.fileExceedsTheServerUploadLimit"))
             }
             pendingFiles.append(ComposerPendingFile(name: name, mime: mime, data: data))
         } catch { controller.sendError = error.friendlyMessage }
@@ -1197,13 +1285,13 @@ struct ImageViewer: View {
                 Button { dismiss() } label: {
                     Image(systemName: "xmark").font(.headline).frame(width: 44, height: 44)
                 }
-                .accessibilityLabel("Close")
+                .accessibilityLabel(L("room.callChatView.close"))
                 Spacer()
                 SaveImageButton(image: image)
                 ShareLink(item: Image(uiImage: image), preview: SharePreview("Image", image: Image(uiImage: image))) {
                     Image(systemName: "square.and.arrow.up").font(.headline).frame(width: 44, height: 44)
                 }
-                .accessibilityLabel("Share or save")
+                .accessibilityLabel(L("ios.chatMore.shareOrSave"))
             }
             .foregroundStyle(.white)
             .padding(.horizontal, 8)
@@ -1223,7 +1311,7 @@ private struct ChannelIntro: View {
                 AvatarView(url: summary.avatarUrl, name: title, size: 80, account: account)
                     .padding(.bottom, 4)
                 Text(title).font(.title2.bold()).foregroundStyle(Theme.text)
-                Text("This is the beginning of your direct message history with \(title).")
+                Text(L("ios.chat.dmBeginning", ["name": title]))
                     .foregroundStyle(Theme.muted)
             } else {
                 Image(systemName: "number")
@@ -1231,8 +1319,8 @@ private struct ChannelIntro: View {
                     .foregroundStyle(Theme.text)
                     .frame(width: 68, height: 68)
                     .background(Circle().fill(Theme.elevated))
-                Text("Welcome to #\(title)!").font(.title2.bold()).foregroundStyle(Theme.text)
-                Text("This is the start of the #\(title) channel.")
+                Text(L("ios.chat.welcomeChannel", ["name": title])).font(.title2.bold()).foregroundStyle(Theme.text)
+                Text(L("ios.chat.channelBeginning", ["name": title]))
                     .foregroundStyle(Theme.muted)
             }
         }
@@ -1255,6 +1343,7 @@ struct MessageRowView: View, Equatable {
     var onProfile: () -> Void = {}
     var onMention: (String) -> Void = { _ in }
     var onReact: (String) -> Void = { _ in }
+    var onPollVote: ([String]) -> Void = { _ in }
     var onImage: (UIImage) -> Void = { _ in }
     var onFile: (URL) -> Void = { _ in }
     var onCardCommand: (String) -> Void = { _ in }
@@ -1270,6 +1359,7 @@ struct MessageRowView: View, Equatable {
         onProfile: @escaping () -> Void = {},
         onMention: @escaping (String) -> Void = { _ in },
         onReact: @escaping (String) -> Void = { _ in },
+        onPollVote: @escaping ([String]) -> Void = { _ in },
         onImage: @escaping (UIImage) -> Void = { _ in },
         onFile: @escaping (URL) -> Void = { _ in },
         onCardCommand: @escaping (String) -> Void = { _ in },
@@ -1283,6 +1373,7 @@ struct MessageRowView: View, Equatable {
         self.onProfile = onProfile
         self.onMention = onMention
         self.onReact = onReact
+        self.onPollVote = onPollVote
         self.onImage = onImage
         self.onFile = onFile
         self.onCardCommand = onCardCommand
@@ -1431,6 +1522,8 @@ struct MessageRowView: View, Equatable {
     @ViewBuilder
     private var content: some View {
         switch row.body {
+        case .text where row.poll != nil:
+            if let poll = row.poll { PollCard(poll: poll, onVote: onPollVote) }
         case .text where row.card != nil:
             if let card = row.card { BotCardView(card: card, account: account, onCommand: onCardCommand) }
         case .text where row.music != nil:
@@ -1460,10 +1553,10 @@ struct MessageRowView: View, Equatable {
                 captionView
             }
         case .undecryptable:
-            Label("Waiting for this message's key. Verify this device in Settings.", systemImage: "lock")
+            Label(L("ios.chatMore.waitingForThisMessageSKeyVerifyThisDeviceInSettings"), systemImage: "lock")
                 .font(.footnote).foregroundStyle(Theme.faint)
         case .redacted:
-            Text("Message deleted").font(.footnote).foregroundStyle(Theme.faint)
+            Text(L("ios.chat.messageDeleted")).font(.footnote).foregroundStyle(Theme.faint)
         case .notice(let text):
             Text(text).font(ChatStyle.bodyFont).foregroundStyle(Theme.muted)
         }
@@ -1528,7 +1621,7 @@ struct MessageRowView: View, Equatable {
                 }
                 .buttonStyle(.plain)
                 .contextMenu {
-                    Button { onReactionInfo(reaction.key) } label: { Label("Who Reacted", systemImage: "person.2") }
+                    Button { onReactionInfo(reaction.key) } label: { Label(L("ios.chatMore.whoReacted"), systemImage: "person.2") }
                 }
                 .accessibilityLabel("\(reaction.key.hasPrefix("mxc://") ? "Custom emoji" : reaction.key), \(reaction.count), \(reaction.mine ? "remove your reaction" : "add your reaction")")
             }
@@ -1631,7 +1724,7 @@ private struct ChatImage: View {
             } else if failed {
                 Image(systemName: "photo").foregroundStyle(Theme.faint)
             } else if !requested {
-                Label("Tap to load", systemImage: "photo").font(.footnote).foregroundStyle(Theme.muted)
+                Label(L("ios.chatMore.tapToLoad"), systemImage: "photo").font(.footnote).foregroundStyle(Theme.muted)
             } else {
                 ProgressView()
             }
@@ -1796,7 +1889,7 @@ private struct PendingFileChip: View {
                 .buttonStyle(.plain)
                 .disabled(disabled)
                 .offset(x: 10, y: -10)
-                .accessibilityLabel("Remove \(file.name)")
+                .accessibilityLabel(L("ios.dynamicUI.removeFile", ["name": file.name]))
             }
             .task(id: file.id) {
                 guard file.mime.hasPrefix("image/") else { return }

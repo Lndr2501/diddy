@@ -3,6 +3,7 @@ import { useSetAtom, useStore } from 'jotai';
 import { callEmbedAtom } from '../../state/callEmbed';
 import { CallSwitchAction, CallSwitchPrompt } from './CallSwitchPrompt';
 import { runCallSwitch } from './switchCall';
+import { useTranslation } from 'react-i18next';
 
 /** How long the widget gets to answer the hangup before we stop waiting for it. */
 const HANGUP_TIMEOUT_MS = 3000;
@@ -54,6 +55,7 @@ export function useSwitchCall(): {
   requestSwitch: (request: SwitchCallRequest) => Promise<boolean>;
   prompt: ReactNode;
 } {
+  const { t } = useTranslation();
   const store = useStore();
   const setCallEmbed = useSetAtom(callEmbedAtom);
   const [dialog, setDialog] = useState<DialogState>();
@@ -115,7 +117,7 @@ export function useSwitchCall(): {
             currentName: '',
             action: request.action,
             targetName: request.targetName,
-            error: error.message || 'Could not start the call.',
+            error: error.message || t('call.useSwitch.couldNotStartThe'),
           });
         }
         return false;
@@ -123,7 +125,7 @@ export function useSwitchCall(): {
         running.current = false;
       }
     },
-    [store, waitUntilLeft]
+    [store, waitUntilLeft, t]
   );
 
   const respond = (confirmed: boolean) => {

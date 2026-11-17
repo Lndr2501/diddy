@@ -34,7 +34,7 @@ struct DiddyDataRoomView: View {
         Form {
             Section {
                 if used.isEmpty {
-                    Text("No data room yet. Add one below.").foregroundStyle(Theme.muted)
+                    Text(L("ios.remainingUI.noDataRoomYetAddOneBelow")).foregroundStyle(Theme.muted)
                 }
                 ForEach(used) { room in
                     VStack(alignment: .leading, spacing: 3) {
@@ -45,7 +45,7 @@ struct DiddyDataRoomView: View {
                     .padding(.vertical, 2)
                     .swipeActions {
                         if room.messageMode {
-                            Button("Stop Using", role: .destructive) { Task { await stopUsing(room.id) } }
+                            Button(L("ios.remainingUI.stopUsing"), role: .destructive) { Task { await stopUsing(room.id) } }
                         }
                     }
                 }
@@ -53,13 +53,13 @@ struct DiddyDataRoomView: View {
                     Task { await refresh() }
                 } label: {
                     HStack {
-                        Label("Read Again", systemImage: "arrow.clockwise")
+                        Label(L("ios.remainingUI.readAgain"), systemImage: "arrow.clockwise")
                         if refreshing { Spacer(); ProgressView() }
                     }
                 }
                 .disabled(refreshing)
             } header: {
-                Text("In Use")
+                Text(L("ios.remainingUI.inUse"))
             } footer: {
                 Text("\(account.diddyProfiles.count) profiles loaded. Profiles come from all of these rooms; your own changes go to the first one. Desktop can use a room it only remembers on that computer: add the same room here so both read from the same place.")
             }
@@ -69,7 +69,7 @@ struct DiddyDataRoomView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Theme.sidebar)
-        .navigationTitle("Data Room")
+        .navigationTitle(L("ios.remainingUI.dataRoom"))
         .navigationBarTitleDisplayMode(.inline)
     }
 

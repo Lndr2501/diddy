@@ -44,7 +44,7 @@ enum DiddyDecorImporter {
             throw DiddyError(tooLarge)
         }
         let data: Data
-        do { data = try Data(contentsOf: url) } catch { throw DiddyError("The file could not be read.") }
+        do { data = try Data(contentsOf: url) } catch { throw DiddyError(L("settings.diddyProfile.theFileCouldNot2")) }
         if data.count > maxBytes { throw DiddyError(tooLarge) }
         return data
     }
@@ -76,7 +76,7 @@ enum DiddyDecorImporter {
         let limit = await account.diddyUploadLimit()
         let files = imported.layers.map { $0.file } + [imported.still, imported.preview].compactMap { $0 }
         if imported.totalBytes > DiddyProfileEffect.maxTotalBytes || files.contains(where: { $0.data.count > limit }) {
-            throw DiddyError("This effect is too large for this server.")
+            throw DiddyError(L("ios.errorsExtra.thisEffectIsTooLargeForThisServer"))
         }
         var layerMxcs: [String] = []
         for layer in imported.layers {
@@ -93,7 +93,7 @@ enum DiddyDecorImporter {
             previewMxc = try await account.uploadDiddyMedia(preview.data, mimeType: preview.type, filename: preview.name)
         }
         let value = DiddyEffectImport.profileValue(imported, layerMxcs: layerMxcs, stillMxc: stillMxc, previewMxc: previewMxc)
-        guard let choice = DiddyProfileRules.ownChoice(value) else { throw DiddyError("This effect could not be saved.") }
+        guard let choice = DiddyProfileRules.ownChoice(value) else { throw DiddyError(L("ios.errorsExtra.thisEffectCouldNotBeSaved")) }
         return choice
     }
 
@@ -134,14 +134,14 @@ enum DiddyDecorImporter {
         let limit = await account.diddyUploadLimit()
         let total = imported.layers.reduce(0) { $0 + $1.file.data.count }
         if total > DiddyProfileFrame.maxTotalBytes || imported.layers.contains(where: { $0.file.data.count > limit }) {
-            throw DiddyError("This frame is too large for this server.")
+            throw DiddyError(L("ios.errorsExtra.thisFrameIsTooLargeForThisServer"))
         }
         var layerMxcs: [String] = []
         for layer in imported.layers {
             layerMxcs.append(try await account.uploadDiddyMedia(layer.file.data, mimeType: layer.file.type, filename: layer.file.name))
         }
         guard let choice = DiddyProfileRules.ownChoice(DiddyFrameImport.profileValue(imported, layerMxcs: layerMxcs)) else {
-            throw DiddyError("This frame could not be saved.")
+            throw DiddyError(L("ios.errorsExtra.thisFrameCouldNotBeSaved"))
         }
         return choice
     }
@@ -175,7 +175,7 @@ enum DiddyDecorImporter {
             let video = try await account.uploadDiddyMedia(prepared.video.data, mimeType: prepared.video.mimeType, filename: "nameplate.mp4")
             return NameplateResult(imageMxc: poster, videoMxc: video, color: color)
         }
-        if ext == "webm" { throw DiddyError("This device cannot play WebM video. Choose an MP4 video or a picture.") }
+        if ext == "webm" { throw DiddyError(L("ios.errorsExtra.thisDeviceCannotPlayWebmVideoChooseAnMp4VideoOrAPicture")) }
         let file = try DiddyMediaPrep.picture(data, limit: limit)
         let image = try await account.uploadDiddyMedia(file.data, mimeType: file.mimeType, filename: "nameplate.\(file.ext)")
         return NameplateResult(imageMxc: image, videoMxc: nil, color: color)

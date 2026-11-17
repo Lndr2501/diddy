@@ -18,7 +18,7 @@ struct VoiceChannelView: View {
     @State private var profile: ProfileTarget?
 
     private var summary: RoomSummary? { account.summary(for: roomId) }
-    private var title: String { summary?.name ?? "Voice" }
+    private var title: String { summary?.name ?? L("ios.calls.moreVoice") }
 
     /// iPhone in landscape inside this call: the call draws its own slim header row instead of the
     /// navigation bar, so the stage gets nearly the whole height.
@@ -53,18 +53,18 @@ struct VoiceChannelView: View {
             if showsClose {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button { calls.showCallScreen = false } label: { Image(systemName: "chevron.down") }
-                        .accessibilityLabel("Minimize call")
+                        .accessibilityLabel(L("ios.calls.minimizeCall"))
                 }
             } else if horizontalSizeClass == .compact && !besideList {
                 // iPhone: the channel lies over the list (MainView), there is no system back button
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button { navigator.destination = nil } label: { Image(systemName: "chevron.left") }
-                        .accessibilityLabel("Back")
+                        .accessibilityLabel(L("settings.insetList.back"))
                 }
             }
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button { showMembers = true } label: { Image(systemName: "person.2.fill") }
-                    .accessibilityLabel("Members")
+                    .accessibilityLabel(L("settings.diddyProfile.members"))
             }
         }
         .sheet(isPresented: $showMembers) { MembersView(account: account, roomId: roomId) }
@@ -79,7 +79,7 @@ struct VoiceChannelView: View {
                 .foregroundStyle(summary?.hasCall == true ? Theme.online : Theme.accent)
             Text(title).font(.title2.bold()).foregroundStyle(Theme.text)
             if let participants = summary?.callParticipants, !participants.isEmpty {
-                Text(participants.count == 1 ? "1 person in voice" : "\(participants.count) people in voice")
+                Text(L("ios.callDynamic.peopleInVoice", ["count": String(participants.count)]))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Theme.online)
                 ScrollView {
@@ -95,7 +95,7 @@ struct VoiceChannelView: View {
                 }
                 .frame(maxHeight: 280)
             } else {
-                Text("No one is here yet.").foregroundStyle(Theme.muted)
+                Text(L("ios.calls.noOneHere")).foregroundStyle(Theme.muted)
             }
             Spacer()
             Button {
@@ -107,7 +107,7 @@ struct VoiceChannelView: View {
             } label: {
                 HStack {
                     if joining { ProgressView().tint(.white) }
-                    Text(joining ? "Connecting…" : (calls.current == nil ? "Join Voice" : "Switch to This Channel")).bold()
+                    Text(joining ? L("ios.calls.moreConnecting") : (calls.current == nil ? L("ios.calls.moreJoinVoice") : L("ios.calls.moreSwitchToThisChannel"))).bold()
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
@@ -173,6 +173,10 @@ private struct ConnectedVoiceView: View {
                     CallStageView(session: session, account: callAccount, showProfile: showProfile)
                 }
                 notices
+                // Push-to-talk (Settings > Calls): the big Talk button, and the keyboard key
+                if session.usesPushToTalk {
+                    PushToTalkButton(session: session, compact: landscape)
+                }
             }
             controls
         }
@@ -216,14 +220,14 @@ private struct ConnectedVoiceView: View {
     @ViewBuilder
     private var notices: some View {
         if session.awaitingBroadcast {
-            Label("Choose Diddy and tap Start Broadcast.", systemImage: "info.circle")
+            Label(L("ios.calls.chooseBroadcast"), systemImage: "info.circle")
                 .font(.footnote)
                 .foregroundStyle(Theme.muted)
                 .padding(.horizontal)
                 .padding(.bottom, 6)
         }
         if session.screenSharing && !CallSession.sharesWholeScreen && !session.sharingWholeScreen {
-            Label("Sharing Diddy only. Choose Whole Screen to share other apps too.", systemImage: "info.circle")
+            Label(L("ios.calls.sharingDiddyOnly"), systemImage: "info.circle")
                 .font(.footnote)
                 .foregroundStyle(Theme.muted)
                 .padding(.horizontal)
@@ -272,26 +276,26 @@ private struct ConnectedVoiceView: View {
             Button { session.toggleSpeaker() } label: {
                 CallBarIcon(icon: session.speakerOn ? "speaker.wave.2.fill" : "speaker.fill", highlight: session.speakerOn)
             }
-            .accessibilityLabel("Speaker")
-            .accessibilityValue(session.speakerOn ? "On" : "Off")
+            .accessibilityLabel(L("ios.calls.speaker"))
+            .accessibilityValue(session.speakerOn ? L("ios.calls.moreOn") : L("settings.agentVoice.off"))
         )
         slot(
             Button { Task { await session.toggleCamera() } } label: {
                 CallBarIcon(icon: session.cameraOn ? "video.fill" : "video.slash.fill", highlight: session.cameraOn)
             }
-            .accessibilityLabel("Camera")
-            .accessibilityValue(session.cameraOn ? "On" : "Off")
+            .accessibilityLabel(L("settings.general.camera"))
+            .accessibilityValue(session.cameraOn ? L("ios.calls.moreOn") : L("settings.agentVoice.off"))
             // Long press: pick the camera (#201), like the camera chevron on desktop.
             .contextMenu {
                 if session.cameras.count > 1 {
                     Button {
                         Task { await session.flipCamera() }
                     } label: {
-                        Label("Flip Camera", systemImage: "arrow.triangle.2.circlepath.camera")
+                        Label(L("ios.calls.flipCamera"), systemImage: "arrow.triangle.2.circlepath.camera")
                     }
                 }
                 if session.cameras.isEmpty {
-                    Text("No camera found")
+                    Text(L("ios.calls.noCamera"))
                 } else {
                     ForEach(session.cameras) { camera in
                         Button {
@@ -310,10 +314,15 @@ private struct ConnectedVoiceView: View {
         )
         slot(
             Button { Task { await session.toggleMicrophone() } } label: {
-                CallBarIcon(icon: session.microphoneOn ? "mic.fill" : "mic.slash.fill", warn: !session.microphoneOn)
+                // with push-to-talk a closed microphone is normal, not a warning; Talk opens it
+                CallBarIcon(
+                    icon: session.microphoneOn ? "mic.fill" : "mic.slash.fill",
+                    highlight: session.usesPushToTalk && session.microphoneOn,
+                    warn: !session.microphoneOn && !session.usesPushToTalk
+                )
             }
-            .accessibilityLabel("Microphone")
-            .accessibilityValue(session.microphoneOn ? "On" : "Muted")
+            .accessibilityLabel(session.usesPushToTalk ? L("ios.calls.moreMicrophonePushToTalk") : L("ios.calls.moreMicrophone"))
+            .accessibilityValue(session.microphoneOn ? L("ios.calls.moreOn") : L("call.userMenu.muted"))
         )
         slot(ShareControl(session: session, extras: extras))
         slot(CallMoreButton(session: session, extras: extras, watch: session.watchTogether))
@@ -321,7 +330,7 @@ private struct ConnectedVoiceView: View {
             Button { Task { await calls.leave() } } label: {
                 CallBarIcon(icon: "phone.down.fill", destructive: true)
             }
-            .accessibilityLabel("Leave call")
+            .accessibilityLabel(L("call.panel.leaveCall"))
         )
     }
 }
@@ -345,15 +354,15 @@ private struct CallStatusHeader: View {
 
     private var text: String {
         switch session.outgoing {
-        case .ringing: return "Ringing…"
-        case .noAnswer: return "No answer"
+        case .ringing: return L("ios.calls.moreRinging")
+        case .noAnswer: return L("ios.calls.moreNoAnswer")
         case .none: break
         }
-        if reconnecting { return "Reconnecting…" }
+        if reconnecting { return L("ios.calls.moreReconnecting") }
         guard session.connected else { return session.state }
         let count = session.members.count
-        let people = count == 1 ? "1 in voice" : "\(count) in voice"
-        return weakConnection ? "\(people) · Weak connection" : people
+        let people = L("ios.callDynamic.inVoice", ["count": String(count)])
+        return weakConnection ? L("ios.callDynamic.weakConnection", ["people": people]) : people
     }
 
     private var color: Color {
@@ -372,7 +381,7 @@ private struct CallStatusHeader: View {
             Spacer(minLength: 4)
             if session.deafened {
                 Button { Task { await session.toggleDeafen() } } label: {
-                    Label("Deafened", systemImage: "speaker.slash.fill")
+                    Label(L("ios.calls.deafened"), systemImage: "speaker.slash.fill")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 8)
@@ -382,14 +391,71 @@ private struct CallStatusHeader: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Deafened")
-                .accessibilityHint("Undeafens you")
+                .accessibilityLabel(L("ios.calls.deafened"))
+                .accessibilityHint(L("ios.calls.moreUndeafensYou"))
             }
-            if session.connected { PingBadge(extras: extras) }
+            if session.connected {
+                CallEncryptionBadge(session: session)
+                PingBadge(extras: extras)
+            }
         }
         .padding(.horizontal, horizontalPadding)
         .frame(minHeight: 36)
         .accessibilityElement(children: .contain)
+    }
+}
+
+/// The lock in the call header: whether the call is end-to-end encrypted (the room is) and
+/// whether everyone's media key has arrived. A tap tells what it means.
+private struct CallEncryptionBadge: View {
+    @ObservedObject var session: CallSession
+
+    var body: some View {
+        let encryption = session.encryption
+        Menu {
+            Text(Self.title(encryption))
+            Text(Self.detail(encryption))
+        } label: {
+            Image(systemName: Self.icon(encryption))
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Self.color(encryption))
+                .frame(minWidth: 28, minHeight: 36)
+                .contentShape(Rectangle())
+        }
+        .accessibilityLabel(Self.title(encryption))
+        .accessibilityHint(Self.detail(encryption))
+    }
+
+    private static func title(_ encryption: CallKeyLogic.Encryption) -> String {
+        switch encryption {
+        case .off: return L("ios.callEncryption.notEncrypted")
+        case .on: return L("ios.callEncryption.encrypted")
+        case .waiting: return L("ios.callEncryption.keysMissing")
+        }
+    }
+
+    private static func detail(_ encryption: CallKeyLogic.Encryption) -> String {
+        switch encryption {
+        case .off: return L("ios.callEncryption.roomUnencrypted")
+        case .on: return L("ios.callEncryption.allKeysArrived")
+        case .waiting(let count): return L("ios.callEncryption.waiting", ["count": String(count)])
+        }
+    }
+
+    private static func icon(_ encryption: CallKeyLogic.Encryption) -> String {
+        switch encryption {
+        case .off: return "lock.open.fill"
+        case .on: return "lock.fill"
+        case .waiting: return "exclamationmark.lock.fill"
+        }
+    }
+
+    private static func color(_ encryption: CallKeyLogic.Encryption) -> Color {
+        switch encryption {
+        case .off: return Theme.muted
+        case .on: return Theme.online
+        case .waiting: return Color.orange
+        }
     }
 }
 
@@ -417,7 +483,7 @@ struct VoiceStatusBar: View {
                         .font(.footnote.weight(.bold))
                         .foregroundStyle(session.statusColor)
                         .lineLimit(1)
-                    Text("\(session.roomName) · \(session.members.count) in voice")
+                    Text(L("ios.callDynamic.roomPeople", ["room": session.roomName, "people": L("ios.callDynamic.inVoice", ["count": String(session.members.count)])]))
                         .font(.caption).foregroundStyle(Theme.muted).lineLimit(1)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -425,16 +491,16 @@ struct VoiceStatusBar: View {
             }
             .buttonStyle(.plain)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("\(session.roomName), \(session.state), \(session.members.count) in voice")
-            .accessibilityHint("Opens the call")
+            .accessibilityLabel(L("ios.callDynamic.roomStatePeople", ["room": session.roomName, "state": session.state, "people": L("ios.callDynamic.inVoice", ["count": String(session.members.count)])]))
+            .accessibilityHint(L("ios.calls.moreOpensTheCall"))
             .accessibilityAddTraits(.isButton)
-            barButton(session.microphoneOn ? "mic.fill" : "mic.slash.fill", tint: session.microphoneOn ? Theme.muted : Theme.danger, label: session.microphoneOn ? "Mute" : "Unmute") {
+            barButton(session.microphoneOn ? "mic.fill" : "mic.slash.fill", tint: session.microphoneOn || session.usesPushToTalk ? Theme.muted : Theme.danger, label: session.usesPushToTalk ? L("ios.calls.moreMicrophonePushToTalk") : (session.microphoneOn ? L("ios.calls.moreMute") : L("ios.calls.moreUnmute"))) {
                 Task { await session.toggleMicrophone() }
             }
-            barButton(session.deafened ? "speaker.slash.fill" : "headphones", tint: session.deafened ? Theme.danger : Theme.muted, label: session.deafened ? "Undeafen" : "Deafen") {
+            barButton(session.deafened ? "speaker.slash.fill" : "headphones", tint: session.deafened ? Theme.danger : Theme.muted, label: session.deafened ? L("ios.calls.moreUndeafen") : L("ios.calls.moreDeafen")) {
                 Task { await session.toggleDeafen() }
             }
-            barButton("phone.down.fill", tint: Theme.danger, label: "Leave call") {
+            barButton("phone.down.fill", tint: Theme.danger, label: L("ios.calls.moreLeaveCall")) {
                 Task { await calls.leave() }
             }
         }

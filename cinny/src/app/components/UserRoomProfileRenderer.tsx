@@ -13,8 +13,10 @@ import * as sheetCss from './sheet/Sheet.css';
 import { useMatrixClient } from '../hooks/useMatrixClient';
 import { useDiddyProfile } from '../plugins/diddy/profiles';
 import { ProfileCardShell } from './user-profile/ProfileCardView';
+import { useTranslation } from 'react-i18next';
 
 function UserRoomProfileContextMenu({ state }: { state: UserRoomProfileState }) {
+  const { t } = useTranslation();
   const { roomId, spaceId, userId, cords, position } = state;
   const allJoinedRooms = useAllJoinedRoomsSet();
   const getRoom = useGetRoom(allJoinedRooms);
@@ -57,7 +59,10 @@ function UserRoomProfileContextMenu({ state }: { state: UserRoomProfileState }) 
             <ProfileCardShell
               frame={frame}
               large
-              menuProps={{ role: 'dialog', 'aria-label': 'Profile' }}
+              menuProps={{
+                role: 'dialog',
+                'aria-label': t('common.userRoomProfileRenderer.profile'),
+              }}
             >
               {profile}
             </ProfileCardShell>

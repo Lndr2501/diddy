@@ -1,4 +1,4 @@
-import React, { ReactNode, useState } from 'react';
+import React, { ReactNode, useEffect, useState } from 'react';
 import {
   Box,
   Button,
@@ -25,34 +25,67 @@ import {
   controlCompanion,
   dismissCompanion,
   endCompanion,
+  loadCompanionDevices,
   requestCompanion,
+  saveCompanionChoice,
+  savedCompanionChoice,
   useCompanion,
 } from '../../plugins/call/companion';
-import { CompanionMedia } from '../../plugins/call/companionProtocol';
+import {
+  ANY_COMPANION_DEVICE,
+  CompanionDevice,
+  CompanionMedia,
+  companionRecipients,
+} from '../../plugins/call/companionProtocol';
 import * as css from './styles.css';
+import { useTranslation } from 'react-i18next';
+import { translate } from '../../i18n';
 
 const MEDIA_ROWS: { key: keyof CompanionMedia; label: string; hint: string; icon: IconSrc }[] = [
   {
     key: 'camera',
-    label: 'Camera',
-    hint: 'You can turn it around on the iPhone.',
+    get label() {
+      return translate('call.companionDialog.camera');
+    },
+    get hint() {
+      return translate('call.companionDialog.youCanTurnIt');
+    },
     icon: Icons.VideoCamera,
   },
   {
     key: 'microphone',
-    label: 'Microphone',
-    hint: "Usually much better than a computer's microphone.",
+    get label() {
+      return translate('call.companionDialog.microphone');
+    },
+    get hint() {
+      return translate('call.companionDialog.usuallyMuchBetterThan');
+    },
     icon: Icons.Mic,
   },
   {
     key: 'screen',
-    label: 'Screen',
-    hint: 'The iPhone shares its whole screen, apps and games included.',
+    get label() {
+      return translate('call.companionDialog.screen');
+    },
+    get hint() {
+      return translate('call.companionDialog.thePhoneSharesIts');
+    },
     icon: Icons.ScreenShare,
   },
 ];
 
-const STEPS = ['Choose', 'Confirm on iPhone', 'Connected'];
+const STEPS = ['choose', 'confirm', 'connected'];
+
+/** "Seen 5 min ago" for the device list. */
+const seenText = (lastSeen?: number): string => {
+  if (!lastSeen) return translate('call.companionDialog.notSeenYet');
+  const minutes = Math.round((Date.now() - lastSeen) / 60000);
+  if (minutes < 2) return translate('call.companionDialog.activeNow');
+  if (minutes < 60) return translate('call.companionDialog.seenMinutesMinAgo', { minutes });
+  const hours = Math.round(minutes / 60);
+  if (hours < 48) return translate('call.companionDialog.seenHoursHAgo', { hours });
+  return translate('call.companionDialog.seenRoundDaysAgo', { round: Math.round(hours / 24) });
+};
 
 const stepState = (i: number, current: number): 'done' | 'now' | 'next' => {
   if (i < current) return 'done';
@@ -60,15 +93,25 @@ const stepState = (i: number, current: number): 'done' | 'now' | 'next' => {
 };
 
 function Steps({ current }: { current: number }) {
+  const { t } = useTranslation();
+  const labels = [
+    t('call.companionDialog.steps.choose'),
+    t('call.companionDialog.steps.confirm'),
+    t('call.companionDialog.steps.connected'),
+  ];
   return (
-    <Box alignItems="Center" gap="200" aria-label={`Step ${current + 1} of ${STEPS.length}`}>
+    <Box
+      alignItems="Center"
+      gap="200"
+      aria-label={t('call.companionDialog.stepOf', { step: current + 1, steps: STEPS.length })}
+    >
       {STEPS.map((step, i) => (
         <Box key={step} alignItems="Center" gap="100">
           <span className={css.CompanionStep} data-state={stepState(i, current)}>
             {i < current ? <Icon size="50" src={Icons.Check} /> : i + 1}
           </span>
           <Text size="T200" priority={i === current ? '500' : '300'}>
-            {step}
+            {labels[i]}
           </Text>
         </Box>
       ))}
@@ -88,7 +131,7 @@ function Fact({ icon, children }: { icon: IconSrc; children: ReactNode }) {
 }
 
 /**
- * "iPhone as camera & mic" in three steps: pick what the iPhone sends, confirm on the iPhone,
+ * "Phone as camera & mic" in three steps: pick the phone and what it sends, confirm on the phone,
  * connected (with its switches). The sync with the call: components/CompanionSync.tsx.
  */
 export function CompanionDialog({
@@ -98,6 +141,7 @@ export function CompanionDialog({
   callEmbed: CallEmbed;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const companion = useCompanion();
   const [media, setMedia] = useState<CompanionMedia>({
@@ -107,13 +151,44 @@ export function CompanionDialog({
   });
   const [error, setError] = useState<string>();
   const [sending, setSending] = useState(false);
+  const [devices, setDevices] = useState<CompanionDevice[]>();
+  const [choice, setChoice] = useState<string>(savedCompanionChoice);
   const anything = media.camera || media.microphone || media.screen;
+
+  useEffect(() => {
+    let alive = true;
+    loadCompanionDevices(mx)
+      .then((found) => {
+        if (!alive) return;
+        setDevices(found);
+        // the phone picked last time is gone: ask all again
+        setChoice((current) =>
+          found.some((d) => d.deviceId === current) ? current : ANY_COMPANION_DEVICE
+        );
+      })
+      .catch(() => alive && setDevices([]));
+    return () => {
+      alive = false;
+    };
+  }, [mx]);
+
+  const chosenName = devices?.find((d) => d.deviceId === choice)?.name;
+  const askLabel = chosenName
+    ? t('call.companionDialog.askChosenname', { chosenName })
+    : t('call.companionDialog.askMyPhone');
 
   const send = async () => {
     setError(undefined);
     setSending(true);
     try {
-      await requestCompanion(mx, callEmbed.roomId, callEmbed.room.name, media);
+      saveCompanionChoice(choice);
+      await requestCompanion(
+        mx,
+        callEmbed.roomId,
+        callEmbed.room.name,
+        media,
+        devices ? companionRecipients(devices, choice) : undefined
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -140,17 +215,18 @@ export function CompanionDialog({
           <Spinner className={css.CompanionHeroSpinner} size="600" variant="Secondary" />
         </span>
         <Text size="H4" align="Center">
-          Look at your iPhone
+          {chosenName
+            ? t('call.companionDialog.lookAtChosenname', { chosenName })
+            : t('call.companionDialog.lookAtYourPhone')}
         </Text>
         <Text size="T300" priority="300" align="Center">
-          Diddy on your iPhone asks to join this call. Tap Join there. If Diddy is closed on the
-          iPhone, open it: the request waits two minutes.
+          {t('call.companionDialog.diddyOnYourPhone')}
         </Text>
       </Box>
     );
     actions = (
       <Button variant="Secondary" fill="Soft" size="400" onClick={() => endCompanion(mx)}>
-        <Text size="B400">Cancel</Text>
+        <Text size="B400">{t('call.companionDialog.cancel')}</Text>
       </Button>
     );
   } else if (step === 2) {
@@ -159,7 +235,7 @@ export function CompanionDialog({
       <Box direction="Column" gap="300">
         <Box alignItems="Center" gap="200">
           <Icon size="200" src={Icons.Check} style={{ color: color.Success.Main }} />
-          <Text size="H4">Your iPhone is in the call</Text>
+          <Text size="H4">{t('call.companionDialog.yourPhoneIsIn')}</Text>
         </Box>
         <Box direction="Column" gap="200" className={css.CompanionLive}>
           {MEDIA_ROWS.filter((r) => r.key !== 'screen').map((row) => {
@@ -168,13 +244,17 @@ export function CompanionDialog({
               <Box key={key} alignItems="Center" gap="300">
                 <Icon size="100" src={row.icon} />
                 <Text size="T300" style={{ flexGrow: 1 }}>
-                  {`${row.label}: ${phone[key] ? 'on' : 'off'}`}
+                  {phone[key]
+                    ? t('call.companionDialog.rowOn', { label: row.label })
+                    : t('call.companionDialog.rowOff', { label: row.label })}
                 </Text>
                 <Switch
                   variant="Success"
                   value={phone[key]}
                   onChange={(on: boolean) => controlCompanion(mx, { [key]: on })}
-                  aria-label={`iPhone ${row.label.toLowerCase()}`}
+                  aria-label={t('call.companionDialog.phoneLowercase', {
+                    lowerCase: row.label.toLowerCase(),
+                  })}
                 />
               </Box>
             );
@@ -182,24 +262,20 @@ export function CompanionDialog({
           <Box alignItems="Center" gap="300">
             <Icon size="100" src={Icons.ScreenShare} />
             <Text size="T300" style={{ flexGrow: 1 }}>
-              {phone.screen ? 'Screen: shared' : 'Screen: not shared (start it on the iPhone)'}
+              {phone.screen
+                ? t('call.companionDialog.screenShared')
+                : t('call.companionDialog.screenNotSharedStart')}
             </Text>
           </Box>
         </Box>
-        <Fact icon={Icons.Info}>
-          The microphone and camera buttons in the call bar now work your iPhone; they show a small
-          phone. This computer&apos;s own microphone and camera are off until you disconnect.
-        </Fact>
-        <Fact icon={Icons.Headphone}>The call sound keeps playing on this computer.</Fact>
+        <Fact icon={Icons.Info}>{t('call.companionDialog.theMicrophoneAndCamera')}</Fact>
+        <Fact icon={Icons.Headphone}>{t('call.companionDialog.theCallSoundKeeps')}</Fact>
         <Fact icon={Icons.Warning}>
           {companion.phoneBackground && phone.camera
-            ? 'Diddy is in the background on your iPhone, so iOS paused its camera. Open Diddy there.'
-            : 'Keep Diddy open on the iPhone: iOS pauses the camera when you leave the app. The microphone keeps going.'}
+            ? t('call.companionDialog.diddyIsInThe')
+            : t('call.companionDialog.keepDiddyOpenOn')}
         </Fact>
-        <Fact icon={Icons.Phone}>
-          If the iPhone leaves the call or loses its connection, this computer takes its own
-          microphone and camera back by itself.
-        </Fact>
+        <Fact icon={Icons.Phone}>{t('call.companionDialog.ifThePhoneLeaves')}</Fact>
       </Box>
     );
     actions = (
@@ -213,10 +289,10 @@ export function CompanionDialog({
             onClose();
           }}
         >
-          <Text size="B400">Disconnect iPhone</Text>
+          <Text size="B400">{t('call.companionDialog.disconnectPhone')}</Text>
         </Button>
         <Button variant="Primary" size="400" onClick={onClose}>
-          <Text size="B400">Done</Text>
+          <Text size="B400">{t('call.companionDialog.done')}</Text>
         </Button>
       </>
     );
@@ -224,9 +300,67 @@ export function CompanionDialog({
     body = (
       <Box direction="Column" gap="300">
         <Text size="T300" priority="300">
-          Your iPhone joins this call as a second device of yours and sends what you pick here.
-          Needs the Diddy iPhone app, signed in to this account.
+          {t('call.companionDialog.yourPhoneJoinsThis')}
         </Text>
+        <Box direction="Column" gap="100">
+          <Text size="L400">{t('call.companionDialog.whichPhone')}</Text>
+          {devices === undefined && <Spinner size="200" variant="Secondary" />}
+          {devices?.length === 0 && (
+            <Text size="T200" priority="300">
+              {t('call.companionDialog.noOtherDeviceOf')}
+            </Text>
+          )}
+          {devices && devices.length > 0 && (
+            <>
+              <Box
+                as="label"
+                htmlFor="companion-any"
+                alignItems="Center"
+                gap="300"
+                className={css.CompanionRow}
+              >
+                <input
+                  id="companion-any"
+                  type="radio"
+                  name="companion-device"
+                  checked={choice === ANY_COMPANION_DEVICE}
+                  onChange={() => setChoice(ANY_COMPANION_DEVICE)}
+                />
+                <Box direction="Column">
+                  <Text size="T300">{t('call.companionDialog.allMyDevices')}</Text>
+                  <Text size="T200" priority="300">
+                    {t('call.companionDialog.everyDeviceOfYours')}
+                  </Text>
+                </Box>
+              </Box>
+              {devices.map((device) => (
+                <Box
+                  key={device.deviceId}
+                  as="label"
+                  htmlFor={`companion-device-${device.deviceId}`}
+                  alignItems="Center"
+                  gap="300"
+                  className={css.CompanionRow}
+                >
+                  <input
+                    id={`companion-device-${device.deviceId}`}
+                    type="radio"
+                    name="companion-device"
+                    checked={choice === device.deviceId}
+                    onChange={() => setChoice(device.deviceId)}
+                  />
+                  <Icon size="100" src={Icons.Phone} />
+                  <Box direction="Column">
+                    <Text size="T300">{device.name}</Text>
+                    <Text size="T200" priority="300">
+                      {`${seenText(device.lastSeen)} · ${device.deviceId}`}
+                    </Text>
+                  </Box>
+                </Box>
+              ))}
+            </>
+          )}
+        </Box>
         <Box direction="Column" gap="200">
           {MEDIA_ROWS.map((row) => (
             <Box
@@ -254,25 +388,23 @@ export function CompanionDialog({
             </Box>
           ))}
         </Box>
-        <Fact icon={Icons.Headphone}>The call sound keeps playing here, not on the iPhone.</Fact>
-        <Fact icon={Icons.MicMute}>
-          This computer&apos;s microphone and camera go off while the iPhone sends them.
-        </Fact>
+        <Fact icon={Icons.Headphone}>{t('call.companionDialog.theCallSoundKeeps2')}</Fact>
+        <Fact icon={Icons.MicMute}>{t('call.companionDialog.thisComputerSMicrophone')}</Fact>
         {companion.phase === 'declined' && (
           <Text size="T200" style={{ color: color.Critical.Main }}>
-            Your iPhone said Not Now.
+            {t('call.companionDialog.yourPhoneSaidNot')}
           </Text>
         )}
         {companion.phase === 'ended' && (
           <Text size="T200" style={{ color: color.Critical.Main }}>
             {companion.endReason === 'lost'
-              ? 'Lost your iPhone (closed or no network). This computer’s mic and camera are back.'
-              : 'Your iPhone left the call. This computer’s mic and camera are back.'}
+              ? t('call.companionDialog.lostYourPhoneClosed')
+              : t('call.companionDialog.yourPhoneLeftThe')}
           </Text>
         )}
         {companion.phase === 'timeout' && (
           <Text size="T200" style={{ color: color.Critical.Main }}>
-            Your iPhone did not answer. Open Diddy there and try again.
+            {t('call.companionDialog.yourPhoneDidNot')}
           </Text>
         )}
       </Box>
@@ -280,10 +412,15 @@ export function CompanionDialog({
     actions = (
       <>
         <Button variant="Secondary" fill="Soft" size="400" onClick={close}>
-          <Text size="B400">Cancel</Text>
+          <Text size="B400">{t('call.companionDialog.cancel')}</Text>
         </Button>
-        <Button variant="Primary" size="400" onClick={send} disabled={!anything || sending}>
-          <Text size="B400">{sending ? 'Asking…' : 'Ask My iPhone'}</Text>
+        <Button
+          variant="Primary"
+          size="400"
+          onClick={send}
+          disabled={!anything || sending || devices?.length === 0}
+        >
+          <Text size="B400">{sending ? t('call.companionDialog.asking') : askLabel}</Text>
         </Button>
       </>
     );
@@ -302,9 +439,14 @@ export function CompanionDialog({
             size="500"
           >
             <Box grow="Yes">
-              <Text size="H4">iPhone as camera & mic</Text>
+              <Text size="H4">{t('call.companionDialog.phoneAsCameraMic')}</Text>
             </Box>
-            <IconButton size="300" onClick={close} radii="300" aria-label="Close">
+            <IconButton
+              size="300"
+              onClick={close}
+              radii="300"
+              aria-label={t('call.companionDialog.close')}
+            >
               <Icon src={Icons.Cross} />
             </IconButton>
           </Header>

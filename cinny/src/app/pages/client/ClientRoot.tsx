@@ -18,13 +18,15 @@ import { SyncStatus } from './SyncStatus';
 import { AuthMetadataProvider } from '../../hooks/useAuthMetadata';
 import { getFallbackSession } from '../../state/sessions';
 import { AutoDiscovery } from './AutoDiscovery';
+import { useTranslation } from 'react-i18next';
 
 function ClientRootLoading() {
+  const { t } = useTranslation();
   return (
     <SplashScreen>
       <Box direction="Column" grow="Yes" alignItems="Center" justifyContent="Center" gap="400">
         <Spinner variant="Secondary" size="600" />
-        <Text>Anmeldung wird vorbereitet …</Text>
+        <Text>{t('nav.root.preparingLogin')}</Text>
         <ConnectionsButton />
       </Box>
     </SplashScreen>

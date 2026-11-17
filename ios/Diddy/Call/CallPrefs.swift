@@ -10,6 +10,24 @@ enum CallPrefs {
     static let shareResolutionKey = "diddy.call.shareResolution"
     static let shareFpsKey = "diddy.call.shareFps"
     static let shareQualityKey = "diddy.call.shareQuality"
+    static let pushToTalkKey = "diddy.call.pushToTalk"
+    static let pushToTalkDelayKey = "diddy.call.pushToTalkDelay"
+    static let pushToTalkKeyboardKey = "diddy.call.pushToTalkKeyboard"
+
+    /// Push-to-talk instead of voice activity (Settings > Calls), off by default like on the
+    /// desktop: the microphone is open only while the Talk button (or the keyboard key) is held.
+    static var pushToTalk: Bool { UserDefaults.standard.bool(forKey: pushToTalkKey) }
+
+    /// How long the microphone stays open after letting go, 0...500 ms.
+    static var pushToTalkDelayMs: Int {
+        let stored = UserDefaults.standard.object(forKey: pushToTalkDelayKey) as? Int
+        return PushToTalkPrefs.clampReleaseDelay(stored ?? PushToTalkPrefs.defaultReleaseDelayMs)
+    }
+
+    /// The hardware keyboard key (iPad) that works like the Talk button.
+    static var pushToTalkKeyboard: PushToTalkKey {
+        PushToTalkKey.stored(UserDefaults.standard.string(forKey: pushToTalkKeyboardKey))
+    }
 
     /// Echo cancellation, auto gain and the system's noise suppression of the microphone. The
     /// desktop starts with this off (it ducks music there). An iPhone is often used on its speaker

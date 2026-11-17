@@ -19,14 +19,14 @@ struct OwnStatusMenu: View {
                 }
             }
             Divider()
-            Button { showingMessage = true } label: { Label("Set Status Message", systemImage: "text.bubble") }
-            Button { showing = true } label: { Label("Edit Profile", systemImage: "person.crop.circle") }
+            Button { showingMessage = true } label: { Label(L("ios.remainingUI.setStatusMessage"), systemImage: "text.bubble") }
+            Button { showing = true } label: { Label(L("ios.remainingUI.editProfile"), systemImage: "person.crop.circle") }
         } label: {
             AvatarView(url: account.avatarUrl, name: account.title, size: size, account: account)
                 .overlay(alignment: .bottomTrailing) { PresenceDot(userId: account.userId, account: account, size: max(11, size / 3.2)) }
         }
         .disabled(busy)
-        .accessibilityLabel("Account and status (\(OwnStatusOptions.info(chosen).label))")
+        .accessibilityLabel(L("ios.dynamicUI.accountStatus", ["status": OwnStatusOptions.info(chosen).label]))
         // The editor brings its own title, Save and (in a sheet) Cancel, but no navigation bar.
         .sheet(isPresented: $showing) {
             NavigationStack {
@@ -34,8 +34,8 @@ struct OwnStatusMenu: View {
             }
         }
         .sheet(isPresented: $showingMessage) { OwnStatusMessageView(account: account) }
-        .alert("Could not save status", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
-            Button("OK", role: .cancel) {}
+        .alert(L("ios.remainingUI.couldNotSaveStatus"), isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
+            Button(L("settings.localPlugins.ok"), role: .cancel) {}
         } message: { Text(error ?? "") }
     }
 
@@ -70,7 +70,7 @@ struct ShellSyncBanner: View {
                     Label(kind.text, systemImage: "wifi.exclamationmark")
                         .lineLimit(2)
                     if kind == .error {
-                        Button("Retry") {
+                        Button(L("common.uploadCard.retry")) {
                             retrying = true
                             Task { await account.resume(); retrying = false }
                         }
@@ -107,7 +107,7 @@ struct WelcomeGuideView: View {
                         }
                     }
                     HStack {
-                        if index > 0 { Button("Back") { index -= 1 } }
+                        if index > 0 { Button(L("settings.insetList.back")) { index -= 1 } }
                         Spacer()
                         Text("\(index + 1) / \(IntroSteps.all.count)").font(.caption)
                         Button(index == IntroSteps.all.count - 1 ? "Done" : "Next") {
@@ -116,8 +116,8 @@ struct WelcomeGuideView: View {
                     }
                 }.padding()
             }
-            .navigationTitle("Matrix Guide").navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Skip") { finish() } } }
+            .navigationTitle(L("ios.remainingUI.matrixGuide")).navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button(L("ios.remainingUI.skip")) { finish() } } }
         }
     }
     private func finish() { onFinish?(); dismiss() }
@@ -125,7 +125,12 @@ struct WelcomeGuideView: View {
 
 struct ShellUpdateNotice: View {
     @AppStorage("diddy.ios.skippedUpdate") private var skipped = ""
+    @Environment(\.scenePhase) private var scenePhase
     @State private var release: UpdateRelease?
+    @State private var lastCheck: Date?
+    /// Checked once per launch, a notice kept naming an older release after a newer one came out
+    /// (#246). Now hourly while open and again when the app comes back after that.
+    private static let checkInterval: TimeInterval = 60 * 60
     var body: some View {
         Group {
             if let release, UpdateCheckLogic.isUpdateWanted(latest: release.version,
@@ -133,7 +138,7 @@ struct ShellUpdateNotice: View {
                 HStack(spacing: 8) {
                     if let url = URL(string: release.ipaUrl ?? release.pageUrl) {
                         Link(destination: url) {
-                            Label("Diddy \(release.version) is available", systemImage: "arrow.down.circle.fill")
+                            Label(L("ios.dynamicUI.updateAvailable", ["version": release.version]), systemImage: "arrow.down.circle.fill")
                         }
                     }
                     Spacer()
@@ -143,7 +148,7 @@ struct ShellUpdateNotice: View {
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("Dismiss update notice")
+                    .accessibilityLabel(L("ios.remainingUI.dismissUpdateNotice"))
                 }
                 .font(.footnote.weight(.semibold))
                 .padding(.leading, 12).padding(.trailing, 6).padding(.vertical, 4)
@@ -152,15 +157,29 @@ struct ShellUpdateNotice: View {
             }
         }
         .task {
-            guard let url = URL(string: UpdateCheckLogic.releasesApiUrl) else { return }
-            var request = URLRequest(url: url, timeoutInterval: 15)
-            request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
-            do {
-                let (data, response) = try await URLSession.shared.data(for: request)
-                guard (response as? HTTPURLResponse)?.statusCode == 200, !Task.isCancelled else { return }
-                release = UpdateCheckLogic.newest(in: try JSONSerialization.jsonObject(with: data))
-            } catch { /* An unavailable update service must not interrupt chat. */ }
+            while !Task.isCancelled {
+                await check()
+                try? await Task.sleep(nanoseconds: UInt64(Self.checkInterval * 1_000_000_000))
+            }
         }
+        .onChange(of: scenePhase) { phase in
+            guard phase == .active else { return }
+            if let lastCheck, Date().timeIntervalSince(lastCheck) < Self.checkInterval { return }
+            Task { await check() }
+        }
+    }
+
+    @MainActor private func check() async {
+        lastCheck = Date()
+        guard let url = URL(string: UpdateCheckLogic.releasesApiUrl) else { return }
+        var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 15)
+        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard (response as? HTTPURLResponse)?.statusCode == 200, !Task.isCancelled else { return }
+            // Always replace what is shown, so the notice follows the newest release (#246).
+            release = UpdateCheckLogic.newest(in: try JSONSerialization.jsonObject(with: data))
+        } catch { /* An unavailable update service must not interrupt chat. */ }
     }
 }
 
@@ -174,17 +193,17 @@ private struct OwnStatusMessageView: View {
     var body: some View {
         NavigationStack {
             Form {
-                TextField("Status message", text: $text, axis: .vertical)
+                TextField(L("ios.remainingUI.statusMessage"), text: $text, axis: .vertical)
                     .onChange(of: text) { text = String($0.prefix(DiddyProfileRules.maxBio)) }
-                Text("Shown as your profile bio to other Diddy users.").font(.footnote)
+                Text(L("ios.remainingUI.shownAsYourProfileBioToOtherDiddyUsers")).font(.footnote)
                 if let error { Text(error).foregroundStyle(Theme.danger) }
             }
-            .navigationTitle("Status Message")
+            .navigationTitle(L("ios.remainingUI.statusMessage"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button(L("settings.deviceTile.cancel")) { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
+                    Button(L("settings.profile.save")) {
                         saving = true
                         Task { @MainActor in
                             defer { saving = false }

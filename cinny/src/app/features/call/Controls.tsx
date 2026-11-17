@@ -22,7 +22,10 @@ import { stopPropagation } from '../../utils/keyboard';
 import * as sheetCss from '../../components/sheet/Sheet.css';
 import * as css from './styles.css';
 import { callChatAtom } from '../../state/callEmbed';
+import type { ShareAudioOption } from '../../plugins/call';
 import { AsyncStatus, useAsyncCallback, ignoreRejection } from '../../hooks/useAsyncCallback';
+import { useTranslation } from 'react-i18next';
+import { pushToTalkHoldProps } from './pushToTalkHold';
 
 export function ControlDivider() {
   return (
@@ -39,16 +42,70 @@ function PhoneBadge() {
   );
 }
 
+/** "PTT" on the microphone button while push-to-talk runs. */
+function PushToTalkBadge() {
+  return (
+    <span className={css.PushToTalkBadge} aria-hidden>
+      PTT
+    </span>
+  );
+}
+
+/** Push-to-talk on the microphone button: it shows whether the microphone is open, holding talks. */
+export type MicrophonePushToTalk = {
+  open: boolean;
+  /** the push-to-talk key, for the tooltip */
+  keyLabel?: string;
+  /** held, but full mute keeps the microphone closed */
+  fullMuted: boolean;
+};
+
 type MicrophoneButtonProps = {
   enabled: boolean;
   onToggle: () => Promise<unknown>;
   /** works your iPhone (camera & mic) instead of this computer */
   phone?: boolean;
+  ptt?: MicrophonePushToTalk;
 };
-export function MicrophoneButton({ enabled, onToggle, phone }: MicrophoneButtonProps) {
+export function MicrophoneButton({ enabled, onToggle, phone, ptt }: MicrophoneButtonProps) {
+  const { t } = useTranslation();
   const [micState, toggleMic] = useAsyncCallback(onToggle);
   const loading = micState.status === AsyncStatus.Loading;
-  const what = phone ? 'iPhone Microphone' : 'Microphone';
+  const what = phone ? t('call.controls.phoneMicrophone') : t('call.controls.microphone');
+
+  if (ptt) {
+    let tip = ptt.keyLabel ? `Hold to talk (${ptt.keyLabel})` : 'Hold to talk';
+    if (ptt.fullMuted) tip = 'Full mute is on: turn on sound to talk';
+    else if (ptt.open) tip = `Talking${phone ? ' on your iPhone' : ''}`;
+    return (
+      <TooltipProvider
+        position="Top"
+        delay={500}
+        tooltip={
+          <Tooltip>
+            <Text size="T200">{tip}</Text>
+          </Tooltip>
+        }
+      >
+        {(anchorRef) => (
+          <IconButton
+            ref={anchorRef}
+            variant={ptt.open ? 'Success' : 'SurfaceVariant'}
+            fill="Soft"
+            radii="400"
+            size="400"
+            className={css.ControlButton}
+            aria-label={`Push to talk: hold to talk${phone ? ' on your iPhone' : ''}`}
+            aria-pressed={ptt.open}
+            {...pushToTalkHoldProps}
+          >
+            <Icon size="400" src={ptt.open ? Icons.Mic : Icons.MicMute} filled={ptt.open} />
+            {phone ? <PhoneBadge /> : <PushToTalkBadge />}
+          </IconButton>
+        )}
+      </TooltipProvider>
+    );
+  }
 
   return (
     <TooltipProvider
@@ -56,7 +113,9 @@ export function MicrophoneButton({ enabled, onToggle, phone }: MicrophoneButtonP
       delay={500}
       tooltip={
         <Tooltip>
-          <Text size="T200">{enabled ? `Turn Off ${what}` : `Turn On ${what}`}</Text>
+          <Text size="T200">
+            {enabled ? t('call.controls.turnOff', { what }) : t('call.controls.turnOn', { what })}
+          </Text>
         </Tooltip>
       }
     >
@@ -70,7 +129,11 @@ export function MicrophoneButton({ enabled, onToggle, phone }: MicrophoneButtonP
           className={css.ControlButton}
           onClick={ignoreRejection(toggleMic)}
           disabled={loading}
-          aria-label={enabled ? `Turn off ${what.toLowerCase()}` : `Turn on ${what.toLowerCase()}`}
+          aria-label={
+            enabled
+              ? t('call.controls.turnOffLowercase', { lowerCase: what.toLowerCase() })
+              : t('call.controls.turnOnLowercase', { lowerCase: what.toLowerCase() })
+          }
         >
           <Icon size="400" src={enabled ? Icons.Mic : Icons.MicMute} filled={!enabled} />
           {phone && <PhoneBadge />}
@@ -85,13 +148,16 @@ type SoundButtonProps = {
   onToggle: () => void;
 };
 export function SoundButton({ enabled, onToggle }: SoundButtonProps) {
+  const { t } = useTranslation();
   return (
     <TooltipProvider
       position="Top"
       delay={500}
       tooltip={
         <Tooltip>
-          <Text size="T200">{enabled ? 'Turn Off Sound' : 'Turn On Sound'}</Text>
+          <Text size="T200">
+            {enabled ? t('call.controls.turnOffSound') : t('call.controls.turnOnSound')}
+          </Text>
         </Tooltip>
       }
     >
@@ -123,9 +189,10 @@ type VideoButtonProps = {
   phone?: boolean;
 };
 export function VideoButton({ enabled, onToggle, phone }: VideoButtonProps) {
+  const { t } = useTranslation();
   const [videoState, toggleVideo] = useAsyncCallback(onToggle);
   const loading = videoState.status === AsyncStatus.Loading;
-  const what = phone ? 'iPhone Camera' : 'Camera';
+  const what = phone ? t('call.controls.phoneCamera') : t('call.controls.camera');
 
   return (
     <TooltipProvider
@@ -133,7 +200,9 @@ export function VideoButton({ enabled, onToggle, phone }: VideoButtonProps) {
       delay={500}
       tooltip={
         <Tooltip>
-          <Text size="T200">{enabled ? `Stop ${what}` : `Start ${what}`}</Text>
+          <Text size="T200">
+            {enabled ? t('call.controls.stop', { what }) : t('call.controls.start', { what })}
+          </Text>
         </Tooltip>
       }
     >
@@ -165,13 +234,16 @@ type ScreenShareButtonProps = {
   onToggle: () => void;
 };
 export function ScreenShareButton({ enabled, onToggle }: ScreenShareButtonProps) {
+  const { t } = useTranslation();
   return (
     <TooltipProvider
       position="Top"
       delay={500}
       tooltip={
         <Tooltip>
-          <Text size="T200">{enabled ? 'Stop Screenshare' : 'Start Screenshare'}</Text>
+          <Text size="T200">
+            {enabled ? t('call.controls.stopScreenshare') : t('call.controls.startScreenshare')}
+          </Text>
         </Tooltip>
       }
     >
@@ -193,6 +265,7 @@ export function ScreenShareButton({ enabled, onToggle }: ScreenShareButtonProps)
 }
 
 export function ChatButton() {
+  const { t } = useTranslation();
   const [chat, setChat] = useAtom(callChatAtom);
 
   return (
@@ -201,7 +274,9 @@ export function ChatButton() {
       delay={500}
       tooltip={
         <Tooltip>
-          <Text size="T200">{chat ? 'Close Chat' : 'Open Chat'}</Text>
+          <Text size="T200">
+            {chat ? t('call.controls.closeChat') : t('call.controls.openChat')}
+          </Text>
         </Tooltip>
       }
     >
@@ -226,13 +301,14 @@ type SimpleControlButtonProps = {
   onClick: () => void;
 };
 export function ReactionsButton({ onClick }: SimpleControlButtonProps) {
+  const { t } = useTranslation();
   return (
     <TooltipProvider
       position="Top"
       delay={500}
       tooltip={
         <Tooltip>
-          <Text size="T200">Reactions</Text>
+          <Text size="T200">{t('call.controls.reactions')}</Text>
         </Tooltip>
       }
     >
@@ -245,7 +321,7 @@ export function ReactionsButton({ onClick }: SimpleControlButtonProps) {
           size="400"
           className={css.ControlButton}
           onClick={() => onClick()}
-          aria-label="Reactions"
+          aria-label={t('call.controls.reactions')}
         >
           <Icon size="400" src={Icons.Smile} />
         </IconButton>
@@ -266,12 +342,16 @@ function useBarMenu() {
 }
 
 type ShareOptionsButtonProps = {
-  /** null: the system sound cannot be shared on this device, no toggle */
-  audio: { enabled: boolean; onToggle: () => void } | null;
+  /**
+   * null: the system sound cannot be shared on this device, no toggle.
+   * { unavailable }: shown greyed out with the reason (older Windows).
+   */
+  audio: ShareAudioOption;
   onStop: () => void;
 };
 /** Chevron next to the share button while sharing: system sound on/off, stop sharing. */
 export function ShareOptionsButton({ audio, onStop }: ShareOptionsButtonProps) {
+  const { t } = useTranslation();
   const { cords, close, toggle } = useBarMenu();
   return (
     <PopOut
@@ -290,20 +370,40 @@ export function ShareOptionsButton({ audio, onStop }: ShareOptionsButtonProps) {
         >
           <Menu className={sheetCss.MenuMaterial} style={{ minWidth: toRem(240) }}>
             <Box direction="Column" gap="100" style={{ padding: config.space.S100 }}>
-              {audio && (
+              {audio && 'unavailable' in audio && (
+                <MenuItem
+                  className={sheetCss.MenuRow}
+                  size="300"
+                  radii="300"
+                  disabled
+                  aria-disabled
+                  title={audio.unavailable}
+                  before={<Icon size="100" src={Icons.VolumeMute} />}
+                >
+                  <Box direction="Column" gap="100">
+                    <Text size="T300">Share system sound</Text>
+                    <Text size="T200" priority="300" style={{ whiteSpace: 'normal' }}>
+                      {audio.unavailable}
+                    </Text>
+                  </Box>
+                </MenuItem>
+              )}
+              {audio && 'enabled' in audio && (
                 <MenuItem
                   className={sheetCss.MenuRow}
                   size="300"
                   radii="300"
                   aria-pressed={audio.enabled}
-                  before={<Icon size="100" src={audio.enabled ? Icons.VolumeHigh : Icons.VolumeMute} />}
+                  before={
+                    <Icon size="100" src={audio.enabled ? Icons.VolumeHigh : Icons.VolumeMute} />
+                  }
                   after={audio.enabled ? <Icon size="100" src={Icons.Check} /> : undefined}
                   onClick={() => {
                     audio.onToggle();
                     close();
                   }}
                 >
-                  <Text size="T300">Share system sound</Text>
+                  <Text size="T300">{t('call.controls.shareSystemSound')}</Text>
                 </MenuItem>
               )}
               <MenuItem
@@ -317,7 +417,7 @@ export function ShareOptionsButton({ audio, onStop }: ShareOptionsButtonProps) {
                   onStop();
                 }}
               >
-                <Text size="T300">Stop sharing</Text>
+                <Text size="T300">{t('call.controls.stopSharing')}</Text>
               </MenuItem>
             </Box>
           </Menu>
@@ -331,8 +431,8 @@ export function ShareOptionsButton({ audio, onStop }: ShareOptionsButtonProps) {
         className={css.ControlChevron}
         onClick={toggle}
         aria-pressed={!!cords}
-        aria-label="Sharing options"
-        title="Sharing options"
+        aria-label={t('call.controls.sharingOptions')}
+        title={t('call.controls.sharingOptions')}
       >
         <Icon size="50" src={Icons.ChevronTop} />
       </IconButton>
@@ -344,9 +444,10 @@ export type PhoneButtonState = 'idle' | 'waiting' | 'connected';
 
 /** "iPhone as camera & mic": opens the dialog; shows waiting and connected (CompanionDialog.tsx). */
 export function PhoneButton({ state, onClick }: { state: PhoneButtonState; onClick: () => void }) {
-  let label = 'Use iPhone as Camera & Mic';
-  if (state === 'waiting') label = 'Waiting for Your iPhone…';
-  if (state === 'connected') label = 'iPhone Connected';
+  const { t } = useTranslation();
+  let label = t('call.controls.usePhoneAsCamera');
+  if (state === 'waiting') label = t('call.controls.waitingForYourPhone');
+  if (state === 'connected') label = t('call.controls.phoneConnected');
   return (
     <TooltipProvider
       position="Top"
@@ -390,6 +491,7 @@ type MoreButtonProps = {
 };
 /** Things used now and then: the view of the call and the call settings. */
 export function MoreButton({ spotlight, onToggleSpotlight, onSettings, onPhone }: MoreButtonProps) {
+  const { t } = useTranslation();
   const { cords, close, toggle } = useBarMenu();
   return (
     <PopOut
@@ -420,7 +522,7 @@ export function MoreButton({ spotlight, onToggleSpotlight, onSettings, onPhone }
                   close();
                 }}
               >
-                <Text size="T300">Spotlight view</Text>
+                <Text size="T300">{t('call.controls.spotlightView')}</Text>
               </MenuItem>
               {onPhone && (
                 <MenuItem
@@ -433,7 +535,7 @@ export function MoreButton({ spotlight, onToggleSpotlight, onSettings, onPhone }
                     onPhone();
                   }}
                 >
-                  <Text size="T300">iPhone as camera & mic…</Text>
+                  <Text size="T300">{t('call.controls.phoneAsCameraMic')}</Text>
                 </MenuItem>
               )}
               <MenuItem
@@ -446,7 +548,7 @@ export function MoreButton({ spotlight, onToggleSpotlight, onSettings, onPhone }
                   onSettings();
                 }}
               >
-                <Text size="T300">Call settings</Text>
+                <Text size="T300">{t('call.controls.callSettings')}</Text>
               </MenuItem>
             </Box>
           </Menu>
@@ -460,8 +562,8 @@ export function MoreButton({ spotlight, onToggleSpotlight, onSettings, onPhone }
         className={css.ControlButton}
         onClick={toggle}
         aria-pressed={!!cords}
-        aria-label="More"
-        title="More"
+        aria-label={t('call.controls.more')}
+        title={t('call.controls.more')}
       >
         <Icon size="400" src={Icons.HorizontalDots} />
       </IconButton>

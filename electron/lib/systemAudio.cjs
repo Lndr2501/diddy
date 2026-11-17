@@ -28,7 +28,8 @@ function createSystemAudio({ helper, send, spawnProcess = spawn, rootPid = proce
   const start = () => {
     if (current) stop(current.id);
     const id = randomUUID();
-    const child = spawnProcess(helper, [String(rootPid)], { stdio: ['ignore', 'pipe', 'pipe'] });
+    // windowsHide: the Windows helper is a console program, no window may flash up.
+    const child = spawnProcess(helper, [String(rootPid)], { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
     const session = { id, child, pending: Buffer.alloc(0), inFlight: 0, ready: false };
     current = session;
     const ready = new Promise((resolve, reject) => {
@@ -73,10 +74,10 @@ function createSystemAudio({ helper, send, spawnProcess = spawn, rootPid = proce
       }
       session.pending = Buffer.from(bytes.subarray(offset));
     });
-    child.once('error', () => fail('Linux audio helper could not start'));
+    child.once('error', () => fail('System audio helper could not start'));
     child.once('exit', (code, signal) => {
       log(`system audio: helper exited code=${code} signal=${signal}`);
-      fail('Linux audio capture stopped');
+      fail('System audio capture stopped');
     });
     return ready;
   };
@@ -86,4 +87,38 @@ function createSystemAudio({ helper, send, spawnProcess = spawn, rootPid = proce
     close: () => { if (current) stop(current.id); },
   };
 }
-module.exports = { createSystemAudio, BLOCK_BYTES, MESSAGE_BYTES, MAX_IN_FLIGHT };
+
+/** A hash/history route change keeps the renderer and capture alive; document replacement does not. */
+function bindSystemAudioLifecycle(contents, audio, onDestroyed) {
+  contents.on('did-start-navigation', (details, _url, isInPlace, isMainFrame) => {
+    // Electron's current event object, with legacy positional arguments for older shells.
+    const mainFrame = details.isMainFrame ?? isMainFrame;
+    const sameDocument = details.isSameDocument ?? isInPlace;
+    if (mainFrame && !sameDocument) audio.close();
+  });
+  contents.on('render-process-gone', () => audio.close());
+  contents.once('destroyed', () => { audio.close(); onDestroyed(); });
+}
+
+/** First Windows build with the process loopback client (Windows 10 version 2004). */
+const WINDOWS_MIN_BUILD = 19041;
+const helperName = (platform = process.platform) => (platform === 'win32' ? 'diddy-system-audio.exe' : 'diddy-system-audio');
+
+/**
+ * Whether this shell offers system audio when sharing the screen.
+ * Linux: always (PulseAudio/PipeWire helper). Windows: the process loopback helper records everything
+ * except Diddy's process tree; older Windows has only Chromium's loopback, which would record the call
+ * itself (the others would hear an echo), so there the option is shown greyed out with `reason`.
+ * Elsewhere: { available: false } without a reason, the page shows no option.
+ */
+function systemAudioSupport({ platform = process.platform, release = '', helperExists = () => true } = {}) {
+  if (platform === 'linux') return { available: true };
+  if (platform !== 'win32') return { available: false };
+  const [major, , build] = String(release).split('.').map((part) => Number.parseInt(part, 10));
+  if (!(major >= 10) || !(build >= WINDOWS_MIN_BUILD)) {
+    return { available: false, reason: 'Needs Windows 10 version 2004 or later. Older Windows would also record the call, and the others would hear themselves.' };
+  }
+  if (!helperExists()) return { available: false, reason: 'The system sound helper is missing from this installation. Reinstall Diddy.' };
+  return { available: true };
+}
+module.exports = { createSystemAudio, bindSystemAudioLifecycle, systemAudioSupport, helperName, WINDOWS_MIN_BUILD, BLOCK_BYTES, MESSAGE_BYTES, MAX_IN_FLIGHT };

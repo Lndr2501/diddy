@@ -8,14 +8,18 @@ import { canInvoke, invoke } from '../../plugins/tauri';
 import {
   effectiveUpdateRepo,
   isUpdateWanted,
-  parseRelease,
-  releasesApiUrl,
+  newestRelease,
+  releasesListApiUrl,
 } from '../../utils/updateCheck';
 import { setVisibleInterval } from '../../utils/visibleInterval';
+import { useTranslation } from 'react-i18next';
 
 const DISMISSED_KEY = 'diddyUpdateDismissed';
 const CHECK_DELAY_MS = 10_000;
-const CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
+// Hourly (and right away when the window comes back after that): with a 6-hour gap a notice found
+// once kept naming an older release after a newer one came out (#246). 24 checks a day stay far
+// below GitHub's limit of 60 unauthenticated requests per hour.
+const CHECK_INTERVAL_MS = 60 * 60 * 1000;
 
 const readDismissed = (): string => {
   try {
@@ -29,6 +33,7 @@ type Release = { version: string; url: string };
 
 /** Tells the user when GitHub has a newer Diddy release than the running app (#39). */
 export function UpdateNotice() {
+  const { t } = useTranslation();
   const [release, setRelease] = useState<Release>();
   const { checkUpdatesAtStart, updateRepo } = useAtomValue(settingsAtom);
   const repo = effectiveUpdateRepo(updateRepo);
@@ -47,15 +52,19 @@ export function UpdateNotice() {
     let cancelled = false;
     const check = async () => {
       try {
-        const res = await fetch(releasesApiUrl(repo), {
+        const res = await fetch(releasesListApiUrl(repo), {
           headers: { Accept: 'application/vnd.github+json' },
+          cache: 'no-cache',
         });
         if (!res.ok) return;
-        const info = parseRelease(await res.json(), repo);
+        const info = newestRelease(await res.json(), repo);
         if (cancelled || !info) return;
-        if (isUpdateWanted(info.version, APP_VERSION, readDismissed())) {
-          setRelease({ version: info.version, url: info.pageUrl });
-        }
+        // Always replace what is shown, so the notice and its link follow the newest release (#246).
+        setRelease(
+          isUpdateWanted(info.version, APP_VERSION, readDismissed())
+            ? { version: info.version, url: info.pageUrl }
+            : undefined
+        );
       } catch {
         // offline or rate limited: try again at the next interval
       }
@@ -101,10 +110,10 @@ export function UpdateNotice() {
     >
       <Box grow="Yes" direction="Column">
         <Text size="T300">
-          <b>Diddy {release.version}</b> is available
+          <b>Diddy {release.version}</b> {t('common.updateNotice.isAvailable')}
         </Text>
         <Text size="T200" priority="300">
-          You have {APP_VERSION}.
+          {t('common.updateNotice.youHaveAppversion', { appVersion: APP_VERSION })}
         </Text>
       </Box>
       <Button
@@ -116,9 +125,15 @@ export function UpdateNotice() {
         radii="Pill"
         variant="Primary"
       >
-        <Text size="B300">Download</Text>
+        <Text size="B300">{t('common.updateNotice.download')}</Text>
       </Button>
-      <IconButton size="300" radii="Pill" fill="None" aria-label="Dismiss" onClick={dismiss}>
+      <IconButton
+        size="300"
+        radii="Pill"
+        fill="None"
+        aria-label={t('common.updateNotice.dismiss')}
+        onClick={dismiss}
+      >
         <Icon src={Icons.Cross} size="100" />
       </IconButton>
     </Box>

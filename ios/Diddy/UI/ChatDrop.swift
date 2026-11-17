@@ -52,7 +52,7 @@ struct ChatDropHighlight: View {
             .strokeBorder(Theme.accent, style: StrokeStyle(lineWidth: 2, dash: [8, 6]))
             .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.accent.opacity(0.08)))
             .overlay(
-                Label("Drop to attach", systemImage: "paperclip")
+                Label(L("ios.composer.dropToAttach"), systemImage: "paperclip")
                     .font(.headline)
                     .foregroundStyle(Theme.accent)
             )

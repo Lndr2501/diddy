@@ -6,6 +6,7 @@ import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { TUploadContent } from '../../utils/matrix';
 import { bytesToSize, getFileTypeIcon } from '../../utils/common';
 import { useMediaConfig } from '../../hooks/useMediaConfig';
+import { useTranslation } from 'react-i18next';
 
 type CompactUploadCardRendererProps = {
   isEncrypted?: boolean;
@@ -19,6 +20,7 @@ export function CompactUploadCardRenderer({
   onRemove,
   onComplete,
 }: CompactUploadCardRendererProps) {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const mediaConfig = useMediaConfig();
   const allowSize = mediaConfig['m.upload.size'] || Infinity;
@@ -54,17 +56,17 @@ export function CompactUploadCardRenderer({
             <Chip
               as="button"
               onClick={startUpload}
-              aria-label="Retry Upload"
+              aria-label={t('common.uploadCard.retryUpload')}
               variant="Critical"
               radii="Pill"
               outlined
             >
-              <Text size="B300">Retry</Text>
+              <Text size="B300">{t('common.uploadCard.retry')}</Text>
             </Chip>
           )}
           <IconButton
             onClick={removeUpload}
-            aria-label="Cancel Upload"
+            aria-label={t('common.uploadCard.cancelUpload')}
             variant="SurfaceVariant"
             radii="Pill"
             size="300"
@@ -97,9 +99,8 @@ export function CompactUploadCardRenderer({
           {upload.status === UploadStatus.Idle && fileSizeExceeded && (
             <UploadCardError>
               <Text size="T200">
-                The file size exceeds the limit. Maximum allowed size is{' '}
-                <b>{bytesToSize(allowSize)}</b>, but the uploaded file is{' '}
-                <b>{bytesToSize(file.size)}</b>.
+                {t('common.uploadCard.theFileSizeExceeds')} <b>{bytesToSize(allowSize)}</b>
+                {t('common.uploadCard.butTheUploadedFile')} <b>{bytesToSize(file.size)}</b>.
               </Text>
             </UploadCardError>
           )}

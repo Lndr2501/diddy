@@ -28,7 +28,7 @@ private struct SwipeToReply: ViewModifier {
     @ViewBuilder
     func body(content: Content) -> some View {
         let shaped = content
-            .accessibilityAction(named: Text("Reply"), onReply)
+            .accessibilityAction(named: Text(L("message.main.reply")), onReply)
         if #available(iOS 18.0, *) {
             shaped
                 // Full width and hit-testable, so a swipe can start on the empty part of a row.

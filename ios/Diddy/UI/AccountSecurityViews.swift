@@ -13,23 +13,23 @@ struct ContactInfoView: View {
             Section {
                 if let error {
                     Text(error).font(.footnote).foregroundStyle(Theme.danger)
-                    Button("Try Again") { Task { await load() } }
+                    Button(L("ios.settings.tryAgain")) { Task { await load() } }
                 } else if !loading && emails.isEmpty {
-                    Text("No email address").foregroundStyle(Theme.muted)
+                    Text(L("ios.remainingUI.noEmailAddress")).foregroundStyle(Theme.muted)
                 }
                 ForEach(emails, id: \.self) { email in
                     Text(email).foregroundStyle(Theme.text).textSelection(.enabled)
                 }
             } header: {
-                Text("Email Address")
+                Text(L("settings.contactInfo.emailAddress"))
             } footer: {
-                Text("Email address attached to your account. Change it on your server's account page.")
+                Text(L("ios.remainingUI.emailAddressAttachedToYourAccountChangeItOnYourServerSAcco"))
             }
         }
         .overlay { if loading && emails.isEmpty { ProgressView() } }
         .scrollContentBackground(.hidden)
         .background(Theme.sidebar)
-        .navigationTitle("Contact Information")
+        .navigationTitle(L("settings.contactInfo.contactInformation"))
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
         .refreshable { await load() }
@@ -58,9 +58,9 @@ struct DeveloperToolsView: View {
     var body: some View {
         List {
             Section {
-                Toggle("Enable Developer Tools", isOn: $enabled)
+                Toggle(L("settings.developTools.enableDeveloperTools"), isOn: $enabled)
             } footer: {
-                Text("For debugging: your access token and the raw account data of your account.")
+                Text(L("ios.remainingUI.forDebuggingYourAccessTokenAndTheRawAccountDataOfYourAccou"))
             }
             if enabled {
                 Section {
@@ -77,45 +77,45 @@ struct DeveloperToolsView: View {
                             )
                             copied = true
                         }
-                        Button("Hide") { self.token = nil; copied = false }
+                        Button(L("settings.diddyProfile.hide")) { self.token = nil; copied = false }
                     } else {
-                        Button("Reveal Access Token…") { askToken = true }
+                        Button(L("ios.remainingUI.revealAccessToken")) { askToken = true }
                     }
                 } header: {
-                    Text("Access Token")
+                    Text(L("settings.developTools.accessToken"))
                 } footer: {
-                    Text("Anyone with this token has full access to your account, including your messages. Never share it.")
+                    Text(L("ios.remainingUI.anyoneWithThisTokenHasFullAccessToYourAccountIncludingYour"))
                 }
                 Section {
                     ForEach(AccountInfo.knownAccountDataTypes, id: \.self) { type in
                         NavigationLink(type) { AccountDataView(account: account, type: type) }
                     }
                 } header: {
-                    Text("Account Data")
+                    Text(L("settings.accountData.accountData"))
                 } footer: {
-                    Text("Data stored in your global account data.")
+                    Text(L("settings.accountData.dataStoredInYour"))
                 }
                 Section {
-                    TextField("Event type", text: $typeName)
+                    TextField(L("ios.remainingUI.eventType"), text: $typeName)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
-                    NavigationLink("Look Up") { AccountDataView(account: account, type: typeName.trimmingCharacters(in: .whitespaces)) }
+                    NavigationLink(L("ios.remainingUI.lookUp")) { AccountDataView(account: account, type: typeName.trimmingCharacters(in: .whitespaces)) }
                         .disabled(typeName.trimmingCharacters(in: .whitespaces).isEmpty)
                 } header: {
-                    Text("Other Type")
+                    Text(L("ios.remainingUI.otherType"))
                 }
             }
         }
         .scrollContentBackground(.hidden)
         .background(Theme.sidebar)
-        .navigationTitle("Developer Tools")
+        .navigationTitle(L("settings.page.developerTools"))
         .navigationBarTitleDisplayMode(.inline)
         .onDisappear { token = nil; copied = false }
         .onChange(of: enabled) { isOn in if !isOn { token = nil } }
-        .confirmationDialog("Show your access token?", isPresented: $askToken, titleVisibility: .visible) {
-            Button("Show Token", role: .destructive) { token = account.accessTokenForDeveloper() }
+        .confirmationDialog(L("ios.remainingUI.showYourAccessToken"), isPresented: $askToken, titleVisibility: .visible) {
+            Button(L("ios.remainingUI.showToken"), role: .destructive) { token = account.accessTokenForDeveloper() }
         } message: {
-            Text("Anyone who sees it can use your account. Make sure nobody is looking at your screen.")
+            Text(L("ios.remainingUI.anyoneWhoSeesItCanUseYourAccountMakeSureNobodyIsLookingAtY"))
         }
     }
 }
@@ -139,7 +139,7 @@ struct AccountDataView: View {
                         .foregroundStyle(Theme.text)
                         .textSelection(.enabled)
                 } else if !loading {
-                    Text("No data of this type.").foregroundStyle(Theme.muted)
+                    Text(L("ios.remainingUI.noDataOfThisType")).foregroundStyle(Theme.muted)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)

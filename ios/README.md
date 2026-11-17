@@ -1,6 +1,6 @@
 # Diddy für iPhone und iPad
 
-Eigene, native App (SwiftUI), keine Web-Ansicht: [matrix-rust-sdk](https://github.com/matrix-org/matrix-rust-sdk) (Swift-Paket `MatrixRustSDK` 26.10.27) für Chat und Verschlüsselung, [LiveKit](https://github.com/livekit/client-sdk-swift) 2.18 für Sprachkanäle und Bildschirmübertragung. Aufbau wie die Discord-App, Farben aus den Desktop-Themes (Standard: Diddy).
+Eigene, native App (SwiftUI), keine Web-Ansicht: [matrix-rust-sdk](https://github.com/matrix-org/matrix-rust-sdk) (Swift-Paket `MatrixRustSDK` 26.10.27) für Chat und Verschlüsselung, [LiveKit](https://github.com/livekit/client-sdk-swift) 2.19 für Sprachkanäle und Bildschirmübertragung. Aufbau wie die Discord-App, Farben aus den Desktop-Themes (Standard: Diddy).
 
 Die App ist Beta: Alles in der Tabelle ist gebaut und läuft bei den ersten Testern, ist aber noch nicht im Alltag geprüft.
 
@@ -14,7 +14,7 @@ Die App ist Beta: Alles in der Tabelle ist gebaut und läuft bei den ersten Test
 | Antworten, Reaktionen (6 schnelle in der Leiste beim langen Drücken, ❤️ per Doppeltipp auf Text, jedes andere Emoji über „+“ und die Emoji-Tastatur), Bearbeiten, Löschen, @-Erwähnungen, Tippanzeige, Bilder senden und ansehen, Dateien öffnen; Nachricht nach links wischen zum Antworten | 🧪 Wischen erst ab iOS 18, davor langes Drücken |
 | Eigenen Namen und Profilbild ändern | 🧪 |
 | Diddy-Profile vom Desktop (Namensfarbe mit Verlauf, Schrift und Effekt, Banner mit Ausschnitt, Status, Badges, Über mich, Infos, Aktivität, Interessen, Links, Profileffekt und Profilrahmen, Diddy-Version) auf der Profilkarte, in Mitglieder- und DM-Liste und im Chat; Namensschilder (Farbe, Verläufe, Bild, GIF, Video) hinter Mitglieder- und DM-Zeilen; eigenes Profil bearbeiten wie am Desktop (alle Felder oben, Namensschild, gezeigte Badges, Kartenlayout, Effekt und Rahmen aus den Vorlagen) mit Vorschau | 🧪 State-Events und Nachrichtenmodus, auch in verschlüsselten Options-Räumen; eigene Effekt-/Rahmen-Dateien hochladen, Badges erstellen und Options-Raum einrichten nur am Desktop; Effekte und Rahmen nur auf der Profilkarte (wie am Desktop) |
-| Sprachnachrichten aufnehmen (Mikrofon im Eingabefeld, Dauer und Wellenform wie am Desktop) und abspielen, auch normale Audiodateien | 🧪 Aufnahme als AAC/m4a; Ogg/Opus vom Linux-Desktop spielt iOS nicht ab |
+| Sprachnachrichten aufnehmen (Mikrofon im Eingabefeld, Dauer und Wellenform wie am Desktop) und abspielen, auch normale Audiodateien | 🧪 Aufnahme als AAC/m4a; Ogg/Opus und WebM/Opus (Desktop, Element) wird beim ersten Abspielen in eine CAF-Datei dekodiert |
 | Bot-Karten (`dev.diddy.card`: Titel mit Fortschritt, Warteschlange, Listen, Hilfe, Statistik, Hinweise) mit Knöpfen und Zeitleiste, Befehlsvorschläge beim Tippen (`dev.diddy.commands`) | 🧪 |
 | Themes wie am Desktop (Diddy, Light, Silver, Dark, Butter, Red, Green, Purple, Amber, DAAARK) unter Einstellungen > Theme, sofort aktiv | 🧪 nur auf dem Gerät gespeichert, kein eigenes Theme |
 | Plugins wie am Desktop: 8 mitgelieferte, eigene per https-Adresse, Code, Datei oder GitHub-/Gist-Link; Einstellungen > Plugins, Anzeige über den Puzzle-Knopf neben dem Zahnrad | 🧪 abgeschottet wie am Desktop (iframe-Sandbox ohne Origin, eigener Speicher, nur https); kein Seitenleisten-Dock |
@@ -27,7 +27,7 @@ Die App ist Beta: Alles in der Tabelle ist gebaut und läuft bei den ersten Test
 | Stummschalten, Taubschalten, Kamera | 🧪 |
 | Call-Kacheln wie am Desktop: eine Kachel pro Person und pro Bildschirmübertragung (Avatar oder Kamera, Sprechring, Stumm-Symbol), Tippen holt eine Kachel groß nach vorn, der Rest als Vorschauleiste; Bildschirmübertragungen groß und im Vollbild zoombar (Pinch, Doppeltippen, gezoomt verschieben) | 🧪 |
 | „Redet mit Agent“ von Desktop-Nutzern als Hinweis auf Kachel und Profilkarte (`app.diddy.agent_voice`, nur empfangen; selbst mit einem Agenten reden gibt es auf dem iPhone nicht) | 🧪 |
-| Soundboard im Sprachkanal: eigene Clips (bis 20 s) aus Dateien oder per MyInstants-Suche (Vorhören, Mehrfachauswahl) importieren, alle im Call hören sie über dein Mikrofon | 🧪 ein Clip gleichzeitig; Clips bleiben auf dem Gerät; bei stummem Mikrofon hört ihn niemand (wie am Desktop) |
+| Soundboard im Sprachkanal: eigene Clips (bis 20 s) aus Dateien oder per MyInstants-Suche (Vorhören, Mehrfachauswahl) importieren, alle im Call hören sie über dein Mikrofon | 🧪 ein Clip gleichzeitig; MyInstants-Sounds synchronisieren sich mit deinen anderen Geräten, eigene Dateien bleiben auf dem Gerät; bei stummem Mikrofon hört ihn niemand (wie am Desktop) |
 | Klingeln in Direktnachrichten mit Annehmen und Ablehnen, kompatibel zu Desktop-Diddy und Element Call | 🧪 nur solange die App geöffnet ist |
 | Sounds aus Diddys Soundpack (wie am Desktop) für Anrufe, Bildschirmübertragung, Nachrichten, Erwähnungen und Einladungen, unter Einstellungen > Sounds abschaltbar und anhörbar | 🧪 |
 | Offline-Bildschirm: Sitzung bleibt erhalten, wenn der Server nicht erreichbar ist, und verbindet sich von selbst wieder | 🧪 |
@@ -84,14 +84,14 @@ Grenzen einer kostenlosen Apple-ID:
 
 Im Sprachkanal auf das Bildschirm-Symbol tippen.
 
-- **iOS 16 bis 26:** „Ganzer Bildschirm“ öffnet die iOS-Bildschirmübertragung mit „Diddy“ (Erweiterung `DiddyBroadcast`), dann „Übertragung starten“. Sie nimmt den ganzen Bildschirm auf und läuft weiter, wenn du in andere Apps wechselst. Die Erweiterung gibt Bilder und den Ton anderer Apps über eine lokale Verbindung auf dem Gerät (127.0.0.1) an die App, die sie im Call teilt. Auflösung (720p bis volle Bildschirmgröße), Bildrate (15/30/60 fps), Bildqualität und „Sound of Other Apps“ stehen unter Einstellungen → Calls → Screen Sharing; die App schickt sie der Erweiterung beim Start. Der Ton anderer Apps läuft wie bei LiveKits eigener Erweiterung über das Mikrofon-Signal: Ist dein Mikro stumm, bleibt nur dessen eigener Kanal still, und RNNoise pausiert, damit Musik nicht verfälscht wird. Beenden über Diddy oder den roten Balken bzw. das Kontrollzentrum. „Nur Diddy“ nimmt wie bisher nur die App selbst auf.
-- **ab iOS 27:** Der iOS-Dialog fragt, was geteilt wird. Das kann der ganze Bildschirm sein, auch andere Apps, und es läuft im Hintergrund weiter (ScreenCaptureKit).
+- **Ganzer Bildschirm (jedes iOS, auch iOS 27):** „Ganzer Bildschirm“ öffnet die iOS-Bildschirmübertragung mit „Diddy“ (Erweiterung `DiddyBroadcast`), dann „Übertragung starten“. Sie nimmt den ganzen Bildschirm auf und läuft weiter, wenn du in andere Apps wechselst. Die Erweiterung gibt Bilder und den Ton anderer Apps über eine lokale Verbindung auf dem Gerät (127.0.0.1) an die App, die sie im Call teilt. Auflösung (720p bis volle Bildschirmgröße), Bildrate (15/30/60 fps), Bildqualität und „Sound of Other Apps“ stehen unter Einstellungen → Calls → Screen Sharing; die App schickt sie der Erweiterung beim Start. Der Ton anderer Apps läuft wie bei LiveKits eigener Erweiterung über das Mikrofon-Signal: Ist dein Mikro stumm, bleibt nur dessen eigener Kanal still, und RNNoise pausiert, damit Musik nicht verfälscht wird. Beenden über Diddy oder den roten Balken bzw. das Kontrollzentrum. „Nur Diddy“ nimmt wie bisher nur die App selbst auf.
+- **iOS 27 ohne Erweiterung:** Fehlt `DiddyBroadcast` in der App (z. B. vom Sideloader entfernt) und ist die App mit dem iOS-27-SDK (Xcode 27) gebaut, fragt der iOS-Dialog selbst, was geteilt wird (ScreenCaptureKit). Mit älterem Xcode ist dieser Weg nicht eingebaut; dann gibt es ohne Erweiterung nur Diddy selbst.
 
-Für den iOS-27-Weg muss die App mit dem iOS-27-SDK (Xcode 27) gebaut sein. Mit älterem Xcode läuft die App auch auf iOS 27, überträgt dann aber nur Diddy selbst. Der Workflow nimmt das neueste Xcode des Runners und warnt, wenn es älter ist.
+Bis 1.11.0 bot Diddy auf iOS 27 „Ganzer Bildschirm“ nicht an und verließ sich auf ScreenCaptureKit, obwohl die IPA mit dem iOS-26-SDK gebaut war: Übertragen wurde dann nur Diddy, und der Stream fror außerhalb der App ein.
 
 ## Selbst bauen
 
-Auf einem Mac mit Xcode 16.3 oder neuer. Xcode 16.3 bis 26 reicht zum Bauen, die Bildschirmübertragung zeigt dann aber auf jedem iOS nur Diddy selbst. Für die ganze Bildschirmübertragung ab iOS 27 braucht es Xcode 27 (siehe oben).
+Auf einem Mac mit Xcode 16.3 oder neuer. Xcode 16.3 bis 26 reicht zum Bauen, auch für die ganze Bildschirmübertragung (über die Erweiterung `DiddyBroadcast`). Xcode 27 braucht es nur für ScreenCaptureKit in einer App ohne Erweiterung (siehe oben).
 
 ```sh
 brew install xcodegen

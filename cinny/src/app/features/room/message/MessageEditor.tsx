@@ -54,6 +54,7 @@ import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { getEditedEvent, getMentionContent, trimReplyFromFormattedBody } from '../../../utils/room';
 import { mobileOrTablet } from '../../../utils/user-agent';
 import { useComposingCheck } from '../../../hooks/useComposingCheck';
+import { useTranslation } from 'react-i18next';
 
 type MessageEditorProps = {
   roomId: string;
@@ -69,6 +70,7 @@ export const MessageEditor = as<'div', MessageEditorProps>(
     { room, roomId, mEvent, imagePackRooms, onCancel, canDeleteOwn, setDeletionOpen, ...props },
     ref
   ) => {
+    const { t } = useTranslation();
     const mx = useMatrixClient();
     const editor = useEditor();
     const [enterForNewline] = useSetting(settingsAtom, 'enterForNewline');
@@ -266,7 +268,7 @@ export const MessageEditor = as<'div', MessageEditorProps>(
         )}
         <CustomEditor
           editor={editor}
-          placeholder="Edit message..."
+          placeholder={t('message.editor.editMessage')}
           onKeyDown={handleKeyDown}
           onKeyUp={handleKeyUp}
           bottom={
@@ -290,10 +292,10 @@ export const MessageEditor = as<'div', MessageEditorProps>(
                       ) : undefined
                     }
                   >
-                    <Text size="B300">Save</Text>
+                    <Text size="B300">{t('message.editor.save')}</Text>
                   </Chip>
                   <Chip onClick={onCancel} variant="SurfaceVariant" radii="Pill">
-                    <Text size="B300">Cancel</Text>
+                    <Text size="B300">{t('message.editor.cancel')}</Text>
                   </Chip>
                 </Box>
                 <Box gap="Inherit">

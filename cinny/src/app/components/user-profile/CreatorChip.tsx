@@ -14,8 +14,10 @@ import { useOpenRoomSettings } from '../../state/hooks/roomSettings';
 import { useOpenSpaceSettings } from '../../state/hooks/spaceSettings';
 import { SpaceSettingsPage } from '../../state/spaceSettings';
 import { RoomSettingsPage } from '../../state/roomSettings';
+import { useTranslation } from 'react-i18next';
 
 export function CreatorChip() {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
   const room = useRoom();
@@ -70,7 +72,7 @@ export function CreatorChip() {
                   close();
                 }}
               >
-                <Text size="B300">Manage Powers</Text>
+                <Text size="B300">{t('profile.creatorChip.managePowers')}</Text>
               </MenuItem>
             </div>
           </Menu>

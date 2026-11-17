@@ -38,10 +38,12 @@ import {
   SETTINGS_SEARCH_INDEX,
   SettingsSearchEntry,
   entryMatches,
+  localizeEntry,
   matchingTitles,
 } from './settingsSearch';
 import { SettingsPages } from './settingsPages';
-
+import { useTranslation } from 'react-i18next';
+import { translate, translateEnglish } from '../../i18n';
 
 type SettingsMenuItem = {
   page: SettingsPages;
@@ -63,65 +65,87 @@ const SETTINGS_MENU: SettingsMenuGroup[] = [
     items: [
       {
         page: SettingsPages.AppearancePage,
-        name: 'Appearance',
+        get name() {
+          return translate('settings.page.appearance');
+        },
         icon: Icons.Sun,
         search: SETTINGS_SEARCH_INDEX.appearance,
       },
       {
         page: SettingsPages.ChatPage,
-        name: 'Chat',
+        get name() {
+          return translate('settings.page.chat');
+        },
         icon: Icons.Message,
         search: SETTINGS_SEARCH_INDEX.chat,
       },
       {
         page: SettingsPages.NotificationPage,
-        name: 'Notifications',
+        get name() {
+          return translate('settings.page.notifications');
+        },
         icon: Icons.Bell,
         search: SETTINGS_SEARCH_INDEX.notifications,
       },
       {
         page: SettingsPages.CallsPage,
-        name: 'Calls & Audio',
+        get name() {
+          return translate('settings.page.callsAudio');
+        },
         icon: Icons.Headphone,
         search: SETTINGS_SEARCH_INDEX.calls,
       },
     ],
   },
   {
-    label: 'Account',
+    get label() {
+      return translate('settings.page.account');
+    },
     items: [
       {
         page: SettingsPages.ProfilePage,
-        name: 'Profile',
+        get name() {
+          return translate('settings.page.profile');
+        },
         icon: Icons.User,
         search: SETTINGS_SEARCH_INDEX.profile,
       },
       {
         page: SettingsPages.AccountPage,
-        name: 'Account',
+        get name() {
+          return translate('settings.page.account');
+        },
         icon: Icons.ShieldUser,
         search: SETTINGS_SEARCH_INDEX.account,
       },
       {
         page: SettingsPages.DevicesPage,
-        name: 'Devices',
+        get name() {
+          return translate('settings.page.devices');
+        },
         icon: Icons.Monitor,
         search: SETTINGS_SEARCH_INDEX.devices,
       },
     ],
   },
   {
-    label: 'Extras',
+    get label() {
+      return translate('settings.page.extras');
+    },
     items: [
       {
         page: SettingsPages.EmojisStickersPage,
-        name: 'Emojis & Stickers',
+        get name() {
+          return translate('settings.page.emojisStickers');
+        },
         icon: Icons.Smile,
         search: SETTINGS_SEARCH_INDEX.emojisStickers,
       },
       {
         page: SettingsPages.PluginsPage,
-        name: 'Plugins',
+        get name() {
+          return translate('settings.page.plugins');
+        },
         icon: Icons.Category,
         search: SETTINGS_SEARCH_INDEX.plugins,
       },
@@ -131,13 +155,17 @@ const SETTINGS_MENU: SettingsMenuGroup[] = [
     items: [
       {
         page: SettingsPages.DeveloperToolsPage,
-        name: 'Developer Tools',
+        get name() {
+          return translate('settings.page.developerTools');
+        },
         icon: Icons.Terminal,
         search: SETTINGS_SEARCH_INDEX.developerTools,
       },
       {
         page: SettingsPages.AboutPage,
-        name: 'About',
+        get name() {
+          return translate('settings.page.about');
+        },
         icon: Icons.Info,
         search: SETTINGS_SEARCH_INDEX.about,
       },
@@ -145,10 +173,20 @@ const SETTINGS_MENU: SettingsMenuGroup[] = [
   },
 ];
 
+// the search entry in the UI language; extra words per page come from `settings.search.<page>`
+const localSearch = (item: SettingsMenuItem): SettingsSearchEntry => {
+  const page = Object.keys(SETTINGS_SEARCH_INDEX).find(
+    (name) => SETTINGS_SEARCH_INDEX[name] === item.search
+  );
+  const extra = page ? translate(`settings.search.${page}`, { defaultValue: '' }) : '';
+  return localizeEntry(item.search, translateEnglish, extra);
+};
+
 const matchesQuery = (item: SettingsMenuItem, query: string): boolean =>
-  entryMatches(item.search, query);
+  entryMatches(localSearch(item), query);
 
 function LogoutRow() {
+  const { t } = useTranslation();
   const [logout, setLogout] = useState(false);
 
   return (
@@ -160,7 +198,7 @@ function LogoutRow() {
       >
         <Icon className={css.NavIcon} size="100" src={Icons.Power} />
         <Text as="span" size="T300" truncate>
-          Logout
+          {t('settings.page.logout')}
         </Text>
       </button>
       {logout && (
@@ -189,6 +227,7 @@ type SettingsProps = {
 export { SettingsPages };
 
 export function Settings({ initialPage, requestClose }: SettingsProps) {
+  const { t } = useTranslation();
   const screenSize = useScreenSizeContext();
   const isMobile = screenSize === ScreenSize.Mobile;
   const [activePage, setActivePage] = useState<SettingsPages | undefined>(() => {
@@ -203,7 +242,8 @@ export function Settings({ initialPage, requestClose }: SettingsProps) {
         ...group,
         items: group.items.filter((item) => matchesQuery(item, query)),
       })).filter((group) => group.items.length > 0),
-    [query]
+    // t: the names and the search follow the UI language
+    [query, t]
   );
 
   // "/" jumps to the search field, like in T3 Code and many web apps
@@ -257,18 +297,22 @@ export function Settings({ initialPage, requestClose }: SettingsProps) {
   return (
     <div className={css.SettingsRoot}>
       {showSidebar && (
-        <nav className={css.Sidebar} data-compact={isMobile} aria-label="Settings">
+        <nav
+          className={css.Sidebar}
+          data-compact={isMobile}
+          aria-label={t('settings.page.settings')}
+        >
           <div className={css.SidebarTop}>
             {isMobile && (
               <div className={css.SidebarTopBar}>
                 <Text size="H3" truncate>
-                  Settings
+                  {t('settings.page.settings')}
                 </Text>
                 <IconButton
                   onClick={requestClose}
                   variant="Background"
                   radii="Pill"
-                  aria-label="Close settings"
+                  aria-label={t('settings.page.closeSettings')}
                 >
                   <Icon src={Icons.Cross} />
                 </IconButton>
@@ -282,8 +326,8 @@ export function Settings({ initialPage, requestClose }: SettingsProps) {
                 value={query}
                 onChange={handleSearchChange}
                 onKeyDown={handleSearchKeyDown}
-                placeholder="Search"
-                aria-label="Search settings"
+                placeholder={t('settings.page.search')}
+                aria-label={t('settings.page.searchSettings')}
                 aria-keyshortcuts="/"
               />
               {query ? (
@@ -292,7 +336,7 @@ export function Settings({ initialPage, requestClose }: SettingsProps) {
                   radii="300"
                   variant="Background"
                   fill="None"
-                  aria-label="Clear search"
+                  aria-label={t('settings.page.clearSearch')}
                   onClick={() => setQuery('')}
                 >
                   <Icon size="50" src={Icons.Cross} />
@@ -303,11 +347,17 @@ export function Settings({ initialPage, requestClose }: SettingsProps) {
             </div>
           </div>
           <div className={css.SidebarScroll}>
-            <Scroll variant="Background" direction="Vertical" size="300" hideTrack visibility="Hover">
+            <Scroll
+              variant="Background"
+              direction="Vertical"
+              size="300"
+              hideTrack
+              visibility="Hover"
+            >
               <div className={css.SidebarList}>
                 {groups.length === 0 && (
                   <Text className={css.SidebarEmpty} size="T300" priority="300">
-                    No results for “{query.trim()}”
+                    {t('settings.page.noResultsForTrim', { trim: query.trim() })}
                   </Text>
                 )}
                 {groups.map((group) => (
@@ -330,7 +380,7 @@ export function Settings({ initialPage, requestClose }: SettingsProps) {
                           <Text as="span" size="T300" truncate>
                             {item.name}
                           </Text>
-                          {matchingTitles(item.search, query).map((title) => (
+                          {matchingTitles(localSearch(item), query).map((title) => (
                             <Text
                               key={title}
                               as="span"
@@ -357,43 +407,43 @@ export function Settings({ initialPage, requestClose }: SettingsProps) {
       )}
       {showContent && (
         <SettingsCompact.Provider value={isMobile}>
-        <SettingsBreadcrumb.Provider value="Settings">
-        <div className={classNames(css.Content, isMobile && css.ContentCompact)}>
-          {activePage === SettingsPages.ChatPage && (
-            <ChatSettings requestClose={handlePageRequestClose} />
-          )}
-          {activePage === SettingsPages.CallsPage && (
-            <CallsSettings requestClose={handlePageRequestClose} />
-          )}
-          {activePage === SettingsPages.AppearancePage && (
-            <AppearanceSettings requestClose={handlePageRequestClose} />
-          )}
-          {activePage === SettingsPages.ProfilePage && (
-            <DiddyProfileSettings requestClose={handlePageRequestClose} />
-          )}
-          {activePage === SettingsPages.AccountPage && (
-            <Account requestClose={handlePageRequestClose} />
-          )}
-          {activePage === SettingsPages.NotificationPage && (
-            <Notifications requestClose={handlePageRequestClose} />
-          )}
-          {activePage === SettingsPages.DevicesPage && (
-            <Devices requestClose={handlePageRequestClose} />
-          )}
-          {activePage === SettingsPages.EmojisStickersPage && (
-            <EmojisStickers requestClose={handlePageRequestClose} />
-          )}
-          {activePage === SettingsPages.PluginsPage && (
-            <Plugins requestClose={handlePageRequestClose} />
-          )}
-          {activePage === SettingsPages.DeveloperToolsPage && (
-            <DeveloperTools requestClose={handlePageRequestClose} />
-          )}
-          {activePage === SettingsPages.AboutPage && (
-            <About requestClose={handlePageRequestClose} />
-          )}
-        </div>
-        </SettingsBreadcrumb.Provider>
+          <SettingsBreadcrumb.Provider value="Settings">
+            <div className={classNames(css.Content, isMobile && css.ContentCompact)}>
+              {activePage === SettingsPages.ChatPage && (
+                <ChatSettings requestClose={handlePageRequestClose} />
+              )}
+              {activePage === SettingsPages.CallsPage && (
+                <CallsSettings requestClose={handlePageRequestClose} />
+              )}
+              {activePage === SettingsPages.AppearancePage && (
+                <AppearanceSettings requestClose={handlePageRequestClose} />
+              )}
+              {activePage === SettingsPages.ProfilePage && (
+                <DiddyProfileSettings requestClose={handlePageRequestClose} />
+              )}
+              {activePage === SettingsPages.AccountPage && (
+                <Account requestClose={handlePageRequestClose} />
+              )}
+              {activePage === SettingsPages.NotificationPage && (
+                <Notifications requestClose={handlePageRequestClose} />
+              )}
+              {activePage === SettingsPages.DevicesPage && (
+                <Devices requestClose={handlePageRequestClose} />
+              )}
+              {activePage === SettingsPages.EmojisStickersPage && (
+                <EmojisStickers requestClose={handlePageRequestClose} />
+              )}
+              {activePage === SettingsPages.PluginsPage && (
+                <Plugins requestClose={handlePageRequestClose} />
+              )}
+              {activePage === SettingsPages.DeveloperToolsPage && (
+                <DeveloperTools requestClose={handlePageRequestClose} />
+              )}
+              {activePage === SettingsPages.AboutPage && (
+                <About requestClose={handlePageRequestClose} />
+              )}
+            </div>
+          </SettingsBreadcrumb.Provider>
         </SettingsCompact.Provider>
       )}
     </div>

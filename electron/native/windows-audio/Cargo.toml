@@ -1,0 +1,34 @@
+[package]
+name = "diddy-system-audio"
+version = "0.1.0"
+edition = "2021"
+publish = false
+license = "AGPL-3.0-only"
+description = "Windows application-audio capture for Diddy's screen sharing (process loopback, excludes Diddy itself)"
+
+# Standalone: not part of src-tauri's build.
+[workspace]
+
+[[bin]]
+name = "diddy-system-audio"
+path = "src/main.rs"
+
+[target.'cfg(windows)'.dependencies]
+windows-core = "0.62"
+windows = { version = "0.62.2", features = [
+  "Win32_Foundation",
+  "Win32_Security",
+  "Win32_Media_Audio",
+  "Win32_System_Com",
+  "Win32_System_Com_StructuredStorage",
+  "Win32_System_Threading",
+  "Win32_System_Variant",
+  "Win32_System_SystemInformation",
+  "Wdk_System_SystemServices",
+] }
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

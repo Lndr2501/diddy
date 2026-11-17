@@ -28,6 +28,7 @@ import { UserAvatar } from '../../components/user-avatar';
 import { useOpenUserRoomProfile } from '../../state/hooks/userRoomProfile';
 import { getMouseEventCords } from '../../utils/dom';
 import { openCallUserMenu } from '../../plugins/callFrameMenu';
+import { useTranslation } from 'react-i18next';
 
 type LiveChipProps = {
   room: Room;
@@ -35,6 +36,7 @@ type LiveChipProps = {
   count: number;
 };
 export function LiveChip({ count, room, members }: LiveChipProps) {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
   const openUserProfile = useOpenUserRoomProfile();
@@ -136,7 +138,7 @@ export function LiveChip({ count, room, members }: LiveChipProps) {
         onClick={handleOpenMenu}
       >
         <Text className={css.LiveChipText} as="span" size="L400" truncate>
-          {count} Live
+          {t('call.liveChip.countLive', { count })}
         </Text>
       </Chip>
     </PopOut>

@@ -105,7 +105,7 @@ final class MyInstantsModel: ObservableObject {
         error = nil
         status = nil
         guard let target = MyInstantsParser.parseInput(input) else {
-            error = "Enter a search term or a myinstants.com link."
+            error = L("ios.errorsExtra.enterASearchTermOrAMyinstantsComLink")
             return
         }
         stopPreview()
@@ -235,7 +235,7 @@ final class MyInstantsModel: ObservableObject {
                 do {
                     let bytes = try await data(for: item)
                     let ext = (item.path as NSString).pathExtension.lowercased()
-                    if try board.add(data: bytes, name: item.name, ext: ext.isEmpty ? "mp3" : ext) { added += 1 } else { existing += 1 }
+                    if try board.add(data: bytes, name: item.name, ext: ext.isEmpty ? "mp3" : ext, myinstants: item.path) { added += 1 } else { existing += 1 }
                 } catch {
                     failed += 1
                 }
@@ -277,7 +277,7 @@ struct MyInstantsSheet: View {
             .navigationTitle("MyInstants")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button(L("room.callChatView.close")) { dismiss() } }
                 if !model.results.isEmpty {
                     ToolbarItem(placement: .primaryAction) {
                         Button(model.selected.count == model.results.count ? "Select none" : "Select all") { model.toggleAll() }
@@ -291,7 +291,7 @@ struct MyInstantsSheet: View {
 
     private var searchField: some View {
         HStack(spacing: 8) {
-            TextField("Search sounds or paste a link", text: $model.input)
+            TextField(L("ios.finalControls.searchSoundsOrPasteALink"), text: $model.input)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .keyboardType(.webSearch)
@@ -302,7 +302,7 @@ struct MyInstantsSheet: View {
                 .background(RoundedRectangle(cornerRadius: 10).fill(Theme.input))
             Button { searchFocused = false; model.search() } label: { Image(systemName: "magnifyingglass") }
                 .disabled(model.searching || model.input.trimmingCharacters(in: .whitespaces).isEmpty)
-                .accessibilityLabel("Search")
+                .accessibilityLabel(L("nav.space.search"))
         }
         .padding([.horizontal, .top])
         .padding(.bottom, 8)
@@ -324,7 +324,7 @@ struct MyInstantsSheet: View {
                     Button { model.loadMore() } label: {
                         HStack {
                             Spacer()
-                            if model.loadingMore { ProgressView() } else { Text("Load more") }
+                            if model.loadingMore { ProgressView() } else { Text(L("call.myInstantsImport.loadMore")) }
                             Spacer()
                         }
                     }
@@ -347,7 +347,7 @@ struct MyInstantsSheet: View {
                         .foregroundStyle(isSelected ? Theme.accent : Theme.faint)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(item.name).foregroundStyle(Theme.text).lineLimit(2)
-                        if have { Text("Already in your soundboard").font(.caption).foregroundStyle(Theme.muted) }
+                        if have { Text(L("ios.finalControls.alreadyInYourSoundboard")).font(.caption).foregroundStyle(Theme.muted) }
                     }
                     Spacer(minLength: 0)
                 }
@@ -374,14 +374,14 @@ struct MyInstantsSheet: View {
             if let error = model.error { Text(error).font(.footnote).foregroundStyle(Theme.danger) }
             if let status = model.status, !model.results.isEmpty { Text(status).font(.footnote).foregroundStyle(Theme.muted) }
             if model.importing {
-                Button(role: .cancel) { model.cancelImport() } label: { Text("Stop").frame(maxWidth: .infinity) }
+                Button(role: .cancel) { model.cancelImport() } label: { Text(L("call.soundboard.stop")).frame(maxWidth: .infinity) }
                     .buttonStyle(.bordered)
             } else if !model.selected.isEmpty {
-                Button { model.importSelected() } label: { Text("Import \(model.selected.count) selected").frame(maxWidth: .infinity) }
+                Button { model.importSelected() } label: { Text(L("ios.lastDynamic.importSelected", ["count": String(model.selected.count)])).frame(maxWidth: .infinity) }
                     .buttonStyle(.borderedProminent)
                     .tint(Theme.accent)
             }
-            Text("Sounds are uploaded by MyInstants users. Only import what you may use. Clips are limited to \(Int(Soundboard.maxSeconds)) seconds.")
+            Text(L("ios.lastDynamic.myInstantsHelp", ["seconds": String(Int(Soundboard.maxSeconds))]))
                 .font(.caption2)
                 .foregroundStyle(Theme.faint)
                 .multilineTextAlignment(.center)

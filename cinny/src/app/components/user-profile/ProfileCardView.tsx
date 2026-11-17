@@ -13,6 +13,7 @@ import * as sheetCss from '../sheet/Sheet.css';
 import type { ShownPresence } from '../../hooks/usePresenceState';
 import { DarkTheme, LightTheme } from '../../hooks/useTheme';
 import { ProfileEffectOverlay, useProfileEffectAnimation } from '../diddy/ProfileEffect';
+import { useTranslation } from 'react-i18next';
 
 type ProfileCardViewProps = {
   userId: string;
@@ -57,6 +58,7 @@ export function ProfileCardView({
   sharedRooms,
   children,
 }: ProfileCardViewProps) {
+  const { t } = useTranslation();
   const accent = safeColor(profile?.card?.accent);
   const big = profile?.cardLayout?.big;
   const compact = layout === 'compact';
@@ -110,7 +112,7 @@ export function ProfileCardView({
             profile={profile}
             accent={accent}
             layout={layout}
-            bioTitle={bot ? 'About' : undefined}
+            bioTitle={bot ? t('profile.profileCardView.about') : undefined}
             sharedRooms={layout === 'tabs' ? sharedRooms : undefined}
           />
           <div className={css.MetaRow}>
@@ -121,7 +123,9 @@ export function ProfileCardView({
                 size="T200"
                 priority="300"
                 className={css.ClientVersion}
-                title={`Uses Diddy ${profile.clientVersion}`}
+                title={t('profile.profileCardView.usesDiddyClientversion', {
+                  clientVersion: profile.clientVersion,
+                })}
               >
                 Diddy {profile.clientVersion}
               </Text>
@@ -184,6 +188,7 @@ export function ProfileCardActions({
   onCall,
   onMessage,
 }: ProfileCardActionsProps) {
+  const { t } = useTranslation();
   const accentText = accent ? readableTextOn(accent) : undefined;
   return (
     <>
@@ -204,7 +209,7 @@ export function ProfileCardActions({
           }
           title={callTitle}
         >
-          <Text size="B300">Call</Text>
+          <Text size="B300">{t('profile.profileCardView.call')}</Text>
         </Button>
       )}
       <Button
@@ -218,7 +223,7 @@ export function ProfileCardActions({
           accent ? { backgroundColor: accent, color: accentText, borderColor: accent } : undefined
         }
       >
-        <Text size="B300">Message</Text>
+        <Text size="B300">{t('profile.profileCardView.message')}</Text>
       </Button>
     </>
   );

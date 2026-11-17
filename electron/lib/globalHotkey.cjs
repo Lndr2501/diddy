@@ -122,7 +122,7 @@ const planPaths = ({ session, global, helperAvailable, globalShortcutAvailable }
 };
 
 /** Id of the portal shortcut. The portal ignores a changed preferred trigger for a known id, so the trigger is part of it. */
-const shortcutId = (trigger) => `agent-voice-${trigger.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`;
+const shortcutId = (trigger, prefix = 'agent-voice') => `${prefix}-${trigger.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`;
 
 /** One line of the helper's stdout, or undefined for anything unknown. */
 const parseHelperLine = (line) => {

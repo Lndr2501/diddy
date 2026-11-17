@@ -16,19 +16,19 @@ struct EncryptionSettingsView: View {
 
     private var recoveryText: String {
         switch account.recoveryState {
-        case .enabled: return "On"
-        case .disabled: return "Off"
-        case .incomplete: return "Needs your recovery key"
-        case .unknown: return "Checking…"
+        case .enabled: return L("ios.calls.moreOn")
+        case .disabled: return L("settings.agentVoice.off")
+        case .incomplete: return L("ios.uiResults.needsYourRecoveryKey")
+        case .unknown: return L("ios.uiResults.checking")
         }
     }
 
     private var backupText: String {
         switch account.backupStateNow() {
-        case .enabled: return "On"
-        case .creating, .enabling, .resuming: return "Starting…"
-        case .downloading: return "Restoring…"
-        case .disabling: return "Turning off…"
+        case .enabled: return L("ios.calls.moreOn")
+        case .creating, .enabling, .resuming: return L("ios.uiResults.starting")
+        case .downloading: return L("ios.uiResults.restoring")
+        case .disabling: return L("ios.uiResults.turningOff")
         case .unknown: return backupInfo == nil && backupChecked ? "Off" : "Not unlocked on this device"
         }
     }
@@ -39,14 +39,14 @@ struct EncryptionSettingsView: View {
                 LabeledContent("This Session", value: account.verificationState == .verified ? "Verified" : "Not Verified")
                 if account.verificationState != .verified {
                     Button { Task { await VerificationCenter.of(account).requestDeviceVerification() } } label: {
-                        Label("Verify with Another Device", systemImage: "iphone.and.arrow.forward")
+                        Label(L("ios.securityUI.verifyWithAnotherDevice"), systemImage: "iphone.and.arrow.forward")
                     }
                     Button { showRecoveryEntry = true } label: {
-                        Label("Enter Recovery Key", systemImage: "key.fill")
+                        Label(L("ios.settings.enterRecoveryKey"), systemImage: "key.fill")
                     }
                 }
             } header: {
-                Text("Device Verification")
+                Text(L("settings.devices.deviceVerification"))
             } footer: {
                 Text(account.verificationState == .verified
                      ? "Other people can trust this session, and it can read your encrypted history."
@@ -57,54 +57,54 @@ struct EncryptionSettingsView: View {
                 LabeledContent("Recovery", value: recoveryText)
                 switch account.recoveryState {
                 case .disabled:
-                    Button { showSetup = true } label: { Label("Set Up Recovery", systemImage: "key.viewfinder") }
+                    Button { showSetup = true } label: { Label(L("ios.securityUI.setUpRecovery"), systemImage: "key.viewfinder") }
                 case .enabled, .incomplete:
-                    Button { showChange = true } label: { Label("Change Recovery Key", systemImage: "arrow.triangle.2.circlepath") }
+                    Button { showChange = true } label: { Label(L("ios.securityUI.changeRecoveryKey"), systemImage: "arrow.triangle.2.circlepath") }
                 case .unknown:
                     EmptyView()
                 }
             } header: {
-                Text("Recovery Key")
+                Text(L("common.deviceVerificationSetup.recoveryKey"))
             } footer: {
-                Text("A recovery key lets you verify a new session and read your history if you have no other device. Keep it somewhere safe.")
+                Text(L("ios.securityUI.aRecoveryKeyLetsYouVerifyANewSessionAndReadYourHistoryIfYouH"))
             }
 
             Section {
                 LabeledContent("Backup", value: backupText)
                 if let backupInfo {
-                    LabeledContent("Version", value: backupInfo.version)
+                    LabeledContent(L("common.createRoom.version"), value: backupInfo.version)
                     if let count = backupInfo.count { LabeledContent("Keys on Server", value: String(count)) }
                 }
                 if let backupError { Text(backupError).font(.footnote).foregroundStyle(Theme.danger) }
                 if backupInfo != nil && account.backupStateNow() != .enabled {
-                    Button { showRecoveryEntry = true } label: { Label("Restore Backup", systemImage: "arrow.down.circle") }
+                    Button { showRecoveryEntry = true } label: { Label(L("common.backupRestore.restoreBackup"), systemImage: "arrow.down.circle") }
                 }
                 if backupChecked && backupInfo == nil && account.backupStateNow() != .enabled {
                     Button { Task { await createBackup() } } label: {
                         HStack {
-                            Label("Create Backup", systemImage: "externaldrive.badge.icloud")
+                            Label(L("ios.securityUI.createBackup"), systemImage: "externaldrive.badge.icloud")
                             if backupBusy { Spacer(); ProgressView() }
                         }
                     }
                     .disabled(backupBusy)
                 }
             } header: {
-                Text("Encryption Backup")
+                Text(L("common.backupRestore.encryptionBackup"))
             } footer: {
-                Text("The backup keeps your message keys on the server, encrypted, so a new session can read old messages. Restoring needs your recovery key.")
+                Text(L("ios.securityUI.theBackupKeepsYourMessageKeysOnTheServerEncryptedSoANewSessi"))
             }
 
             Section {
                 Button(role: .destructive) { showReset = true } label: {
-                    Label("Reset Device Verification", systemImage: "exclamationmark.octagon.fill")
+                    Label(L("common.deviceVerificationSetup.resetDeviceVerification"), systemImage: "exclamationmark.octagon.fill")
                 }
             } footer: {
-                Text("Starts your encryption over. Only do this if you lost your recovery key and every other verified device.")
+                Text(L("ios.securityUI.startsYourEncryptionOverOnlyDoThisIfYouLostYourRecoveryKeyAn"))
             }
         }
         .scrollContentBackground(.hidden)
         .background(Theme.sidebar)
-        .navigationTitle("Encryption")
+        .navigationTitle(L("ios.settings.encryption"))
         .navigationBarTitleDisplayMode(.inline)
         .task { await loadBackup() }
         .refreshable { await loadBackup() }
@@ -140,12 +140,15 @@ struct EncryptionSettingsView: View {
 /// A recovery key, hidden behind stars until you show it, with copy and share.
 struct RecoveryKeyDisplay: View {
     let recoveryKey: String
+    @EnvironmentObject private var calls: CallManager
     @State private var shown = false
     @State private var copied = false
 
     var body: some View {
+        // While the screen goes out the key stays hidden and cannot be shown (ScreenShareNotice).
+        let visible = shown && !calls.sharingScreen
         VStack(alignment: .leading, spacing: 12) {
-            Text(shown ? recoveryKey : AccountInfo.masked(recoveryKey))
+            Text(visible ? recoveryKey : AccountInfo.masked(recoveryKey))
                 .font(.system(.body, design: .monospaced))
                 .foregroundStyle(Theme.text)
                 .textSelection(.enabled)
@@ -153,7 +156,8 @@ struct RecoveryKeyDisplay: View {
                 .padding(12)
                 .background(Theme.input, in: RoundedRectangle(cornerRadius: 10))
             HStack {
-                Button(shown ? "Hide" : "Show") { shown.toggle() }
+                Button(visible ? "Hide" : "Show") { shown.toggle() }
+                    .disabled(calls.sharingScreen)
                 Button(copied ? "Copied" : "Copy") {
                     // Only on this device, and gone from the clipboard after two minutes.
                     UIPasteboard.general.setItems(
@@ -162,10 +166,14 @@ struct RecoveryKeyDisplay: View {
                     )
                     copied = true
                 }
-                ShareLink(item: recoveryKey) { Text("Save") }
+                ShareLink(item: recoveryKey) { Text(L("settings.profile.save")) }
             }
             .buttonStyle(.bordered)
+            if calls.sharingScreen {
+                Text(ScreenShareNotice.recoveryLocked).font(.caption).foregroundStyle(Theme.muted)
+            }
         }
+        .onChange(of: calls.sharingScreen) { sharing in if sharing { shown = false } }
     }
 }
 
@@ -190,14 +198,14 @@ struct RecoveryKeySheet: View {
                     Section {
                         RecoveryKeyDisplay(recoveryKey: recoveryKey)
                     } header: {
-                        Text("Your recovery key")
+                        Text(L("ios.securityUI.yourRecoveryKey"))
                     } footer: {
-                        Text("Save it now, for example in a password manager. Diddy cannot show it again.")
+                        Text(L("ios.securityUI.saveItNowForExampleInAPasswordManagerDiddyCannotShowItAgain"))
                     }
                 } else {
                     Section {
                         if mode == .setup {
-                            SecureField("Passphrase (optional)", text: $passphrase)
+                            SecureField(L("ios.securityUI.passphraseOptional"), text: $passphrase)
                                 .textInputAutocapitalization(.never)
                                 .autocorrectionDisabled()
                         }
@@ -230,10 +238,10 @@ struct RecoveryKeySheet: View {
                     Button(recoveryKey == nil ? "Cancel" : "Done") { dismiss() }
                 }
             }
-            .confirmationDialog("Make a new recovery key?", isPresented: $confirmChange, titleVisibility: .visible) {
-                Button("Make New Key", role: .destructive) { Task { await run() } }
+            .confirmationDialog(L("ios.securityUI.makeANewRecoveryKey"), isPresented: $confirmChange, titleVisibility: .visible) {
+                Button(L("ios.securityUI.makeNewKey"), role: .destructive) { Task { await run() } }
             } message: {
-                Text("Your old recovery key stops working.")
+                Text(L("ios.securityUI.yourOldRecoveryKeyStopsWorking"))
             }
         }
         .interactiveDismissDisabled(busy)
@@ -288,53 +296,53 @@ struct ResetIdentitySheet: View {
                 switch step {
                 case .warn:
                     Section {
-                        Text("Resetting device verification is permanent.").fontWeight(.semibold)
-                        Text("Anyone you have verified with will see security alerts and your encryption backup will be lost. You almost certainly do not want to do this, unless you have lost your Recovery Key or Recovery Passphrase and every device you can verify from.")
+                        Text(L("common.deviceVerificationSetup.resettingDeviceVerificationIs")).fontWeight(.semibold)
+                        Text(L("ios.securityUI.anyoneYouHaveVerifiedWithWillSeeSecurityAlertsAndYourEncrypt"))
                             .foregroundStyle(Theme.muted)
                     }
                     if let error { Text(error).foregroundStyle(Theme.danger) }
                     Section {
-                        Button("Reset", role: .destructive) { Task { await begin() } }
+                        Button(L("settings.sound.reset"), role: .destructive) { Task { await begin() } }
                     }
                 case .busy:
-                    Section { HStack { ProgressView(); Text("Resetting…").foregroundStyle(Theme.muted) } }
+                    Section { HStack { ProgressView(); Text(L("ios.securityUI.resetting")).foregroundStyle(Theme.muted) } }
                 case .password(let session):
                     Section {
-                        SecureField("Password", text: $password)
+                        SecureField(L("settings.localBackup.password"), text: $password)
                             .textContentType(.password)
                     } header: {
-                        Text("Confirm It\u{2019}s You")
+                        Text(L("ios.finalUI.confirmItU2019SYou"))
                     } footer: {
-                        Text("Your server asks for your account password to reset the keys.")
+                        Text(L("ios.securityUI.yourServerAsksForYourAccountPasswordToResetTheKeys"))
                     }
                     if let error { Text(error).foregroundStyle(Theme.danger) }
                     Section {
-                        Button("Reset", role: .destructive) { Task { await submitPassword(session: session) } }
+                        Button(L("settings.sound.reset"), role: .destructive) { Task { await submitPassword(session: session) } }
                             .disabled(password.isEmpty)
                     }
                 case .approve(let url, let session):
                     Section {
                         if let url {
-                            Link(destination: url) { Label("Approve in Your Browser", systemImage: "safari") }
+                            Link(destination: url) { Label(L("ios.securityUI.approveInYourBrowser"), systemImage: "safari") }
                         }
-                        Text("Approve the reset on your account page, then come back and continue.")
+                        Text(L("ios.securityUI.approveTheResetOnYourAccountPageThenComeBackAndContinue"))
                             .foregroundStyle(Theme.muted)
                     }
                     if let error { Text(error).foregroundStyle(Theme.danger) }
                     Section {
-                        Button("I Approved It") { Task { await finishApproval(session: session) } }
+                        Button(L("ios.securityUI.iApprovedIt")) { Task { await finishApproval(session: session) } }
                     }
                 case .done:
                     Section {
-                        Label("Your device verification was reset.", systemImage: "checkmark.circle.fill")
+                        Label(L("ios.securityUI.yourDeviceVerificationWasReset"), systemImage: "checkmark.circle.fill")
                             .foregroundStyle(Theme.text)
-                        Text("Set up recovery again to get a new recovery key.").foregroundStyle(Theme.muted)
+                        Text(L("ios.securityUI.setUpRecoveryAgainToGetANewRecoveryKey")).foregroundStyle(Theme.muted)
                     }
                 }
             }
             .scrollContentBackground(.hidden)
             .background(Theme.sidebar)
-            .navigationTitle("Reset Device Verification")
+            .navigationTitle(L("common.deviceVerificationSetup.resetDeviceVerification"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

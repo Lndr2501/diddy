@@ -7,6 +7,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
+const { systemAudioSupport } = require('../lib/systemAudio.cjs');
 // The Windows job installs only playwright-core (NODE_PATH); elsewhere the frontend's copy is used.
 const { chromium } = (() => {
   try {
@@ -50,10 +51,27 @@ const { chromium } = (() => {
     const shell = await page.evaluate(() => ({
       invoke: typeof window.__TAURI_INTERNALS__?.invoke === 'function',
       systemAudio: !!window.__DIDDY_SYS_AUDIO__,
+      systemAudioUnavailable: window.__DIDDY_SYS_AUDIO_UNAVAILABLE__ ?? null,
     }));
     assert.ok(shell.invoke, 'the desktop API is missing');
-    // the system-audio bridge exists only where its helper is shipped (Linux)
-    assert.equal(shell.systemAudio, process.platform === 'linux');
+    // the system-audio bridge exists where its helper is shipped: Linux, and Windows 10 2004+ (process
+    // loopback). Older Windows gets only the reason, so the page shows the option greyed out.
+    const expectAudio = systemAudioSupport({ release: os.release() }).available;
+    assert.equal(shell.systemAudio, expectAudio, `system audio bridge on ${process.platform} ${os.release()}`);
+    if (process.platform === 'win32') assert.equal(shell.systemAudioUnavailable === null, expectAudio);
+    // Windows: the packaged helper really starts a process loopback capture for the app's own process
+    // tree (READY), then stops. Linux checks its helper against real sound servers (native-audio.py).
+    if (process.platform === 'win32' && expectAudio) {
+      const capture = await page.evaluate(async () => {
+        const bridge = window.__DIDDY_SYS_AUDIO__;
+        const id = await bridge.start();
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        await bridge.stop(id);
+        return id;
+      });
+      assert.equal(typeof capture, 'string');
+      console.log('start smoke: system audio capture started and stopped');
+    }
     const logFile = await page.evaluate(() => window.__TAURI_INTERNALS__.invoke('log_path'));
     const expected = process.platform === 'win32' ? env.LOCALAPPDATA : env.XDG_STATE_HOME;
     assert.ok(logFile.startsWith(expected), `log at ${logFile}, expected below ${expected}`);

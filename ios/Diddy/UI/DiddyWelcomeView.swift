@@ -18,19 +18,19 @@ struct DiddyWelcomeView: View {
         NavigationStack {
             List {
                 Section {
-                    Text("Welcome to Diddy").font(.title.bold())
+                    Text(L("ios.registrationMore.welcomeToDiddy")).font(.title.bold())
                     // The guide has its own navigation bar, so it opens as a sheet and not pushed.
                     Button { showGuide = true } label: {
-                        Label("Matrix Guide for Discord Users", systemImage: "book")
+                        Label(L("ios.finalUI.matrixGuideForDiscordUsers"), systemImage: "book")
                     }
                 }
-                Section("Join a Diddy Server") {
-                    Text("Join its Diddy room to see profiles, name styles and badges of other Diddy users.")
+                Section(L("ios.registrationMore.joinADiddyServer")) {
+                    Text(L("ios.registrationMore.joinItsDiddyRoomToSeeProfilesNameStylesAndBadgesOfOtherDiddy"))
                     if candidates.isEmpty {
-                        Text("On Diddy-ready servers an admin creates a hidden room called Diddy Options. Ask your admin if none is available.")
+                        Text(L("ios.registrationMore.onDiddyReadyServersAnAdminCreatesAHiddenRoomCalledDiddyOptio"))
                     }
                     ForEach(candidates, id: \.roomId) { room in
-                        Button("Join \(room.displayName)") {
+                        Button(L("ios.registrationMore.joinRoom", ["name": room.displayName])) {
                             busy = true
                             Task { @MainActor in
                                 defer { busy = false }
@@ -51,18 +51,18 @@ struct DiddyWelcomeView: View {
                 }
                 Section {
                     NavigationLink { DiddyProfileEditor(account: account) } label: {
-                        Label("Edit Profile", systemImage: "person.crop.circle")
+                        Label(L("ios.remainingUI.editProfile"), systemImage: "person.crop.circle")
                     }
                 } header: {
-                    Text("Make It Yours")
+                    Text(L("ios.registrationMore.makeItYours"))
                 } footer: {
-                    Text("Choose your name style, status and profile. Changes are shared with other members of your Diddy room.")
+                    Text(L("ios.registrationMore.chooseYourNameStyleStatusAndProfileChangesAreSharedWithOther"))
                 }
             }
-            .navigationTitle("Welcome")
+            .navigationTitle(L("ios.registrationMore.welcome"))
             .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showGuide) { WelcomeGuideView() }
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done", action: onFinish) } }
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button(L("call.companionDialog.done"), action: onFinish) } }
         }
         .task { await account.loadAllChannels() }
     }
@@ -93,7 +93,7 @@ struct DiddyServerNotice: View {
         if !pending.isEmpty {
             HStack(spacing: 8) {
                 Button { showing = true } label: {
-                    Label("This server uses Diddy", systemImage: "sparkles")
+                    Label(L("ios.finalUI.thisServerUsesDiddy"), systemImage: "sparkles")
                 }
                 Spacer()
                 Button(action: dismissNotice) {
@@ -102,7 +102,7 @@ struct DiddyServerNotice: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Dismiss welcome notice")
+                .accessibilityLabel(L("ios.registrationMore.dismissWelcomeNotice"))
             }
             .font(.footnote.weight(.semibold))
             .padding(.leading, 12).padding(.trailing, 6).padding(.vertical, 4)

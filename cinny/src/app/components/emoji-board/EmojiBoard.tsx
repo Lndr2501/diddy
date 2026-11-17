@@ -53,6 +53,7 @@ import {
 } from './components';
 import { EmojiBoardTab, EmojiType } from './types';
 import { VirtualTile } from '../virtualizer';
+import { useTranslation } from 'react-i18next';
 
 const RECENT_GROUP_ID = 'recent_group';
 const SEARCH_GROUP_ID = 'search_group';
@@ -72,6 +73,7 @@ const useGroups = (
   tab: EmojiBoardTab,
   imagePacks: ImagePack[]
 ): [EmojiGroupItem[], StickerGroupItem[]] => {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   // the emoji groups fill in once the emoji data has loaded
   const emojiData = useEmojiData();
@@ -85,17 +87,18 @@ const useGroups = (
 
     g.push({
       id: RECENT_GROUP_ID,
-      name: 'Recent',
+      name: t('common.emojiBoard.recent'),
       items: recentEmojis,
     });
 
     imagePacks.forEach((pack) => {
       let label = pack.meta.name;
-      if (!label) label = isUserId(pack.id) ? 'Personal Pack' : mx.getRoom(pack.id)?.name;
+      if (!label)
+        label = isUserId(pack.id) ? t('common.emojiBoard.personalPack') : mx.getRoom(pack.id)?.name;
 
       g.push({
         id: pack.id,
-        name: label ?? 'Unknown',
+        name: label ?? t('common.emojiBoard.unknown'),
         items: pack
           .getImages(ImageUsage.Emoticon)
           .sort((a, b) => a.shortcode.localeCompare(b.shortcode)),
@@ -112,7 +115,7 @@ const useGroups = (
 
     return g;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mx, recentEmojis, labels, imagePacks, tab, emojiData]);
+  }, [mx, recentEmojis, labels, imagePacks, tab, emojiData, t]);
 
   const stickerGroupItems = useMemo(() => {
     const g: StickerGroupItem[] = [];
@@ -120,11 +123,12 @@ const useGroups = (
 
     imagePacks.forEach((pack) => {
       let label = pack.meta.name;
-      if (!label) label = isUserId(pack.id) ? 'Personal Pack' : mx.getRoom(pack.id)?.name;
+      if (!label)
+        label = isUserId(pack.id) ? t('common.emojiBoard.personalPack') : mx.getRoom(pack.id)?.name;
 
       g.push({
         id: pack.id,
-        name: label ?? 'Unknown',
+        name: label ?? t('common.emojiBoard.unknown'),
         items: pack
           .getImages(ImageUsage.Sticker)
           .sort((a, b) => a.shortcode.localeCompare(b.shortcode)),
@@ -132,7 +136,7 @@ const useGroups = (
     });
 
     return g;
-  }, [mx, imagePacks, tab]);
+  }, [mx, imagePacks, tab, t]);
 
   return [emojiGroupItems, stickerGroupItems];
 };
@@ -174,6 +178,7 @@ type EmojiSidebarProps = {
   onScrollToGroup: (groupId: string) => void;
 };
 function EmojiSidebar({ activeGroupAtom, packs, onScrollToGroup }: EmojiSidebarProps) {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
 
@@ -193,7 +198,7 @@ function EmojiSidebar({ activeGroupAtom, packs, onScrollToGroup }: EmojiSidebarP
         <GroupIcon
           active={activeGroupId === RECENT_GROUP_ID}
           id={RECENT_GROUP_ID}
-          label="Recent"
+          label={t('common.emojiBoard.recent')}
           icon={Icons.RecentClock}
           onClick={handleScrollToGroup}
         />
@@ -203,7 +208,10 @@ function EmojiSidebar({ activeGroupAtom, packs, onScrollToGroup }: EmojiSidebarP
           <SidebarDivider />
           {packs.map((pack) => {
             let label = pack.meta.name;
-            if (!label) label = isUserId(pack.id) ? 'Personal Pack' : mx.getRoom(pack.id)?.name;
+            if (!label)
+              label = isUserId(pack.id)
+                ? t('common.emojiBoard.personalPack')
+                : mx.getRoom(pack.id)?.name;
 
             const url =
               mxcUrlToHttp(mx, pack.getAvatarUrl(usage) ?? '', useAuthentication) ?? undefined;
@@ -213,7 +221,7 @@ function EmojiSidebar({ activeGroupAtom, packs, onScrollToGroup }: EmojiSidebarP
                 key={pack.id}
                 active={activeGroupId === pack.id}
                 id={pack.id}
-                label={label ?? 'Unknown Pack'}
+                label={label ?? t('common.emojiBoard.unknownPack')}
                 url={url}
                 onClick={handleScrollToGroup}
               />
@@ -250,6 +258,7 @@ type StickerSidebarProps = {
   onScrollToGroup: (groupId: string) => void;
 };
 function StickerSidebar({ activeGroupAtom, packs, onScrollToGroup }: StickerSidebarProps) {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
 
@@ -266,7 +275,10 @@ function StickerSidebar({ activeGroupAtom, packs, onScrollToGroup }: StickerSide
       <SidebarStack>
         {packs.map((pack) => {
           let label = pack.meta.name;
-          if (!label) label = isUserId(pack.id) ? 'Personal Pack' : mx.getRoom(pack.id)?.name;
+          if (!label)
+            label = isUserId(pack.id)
+              ? t('common.emojiBoard.personalPack')
+              : mx.getRoom(pack.id)?.name;
 
           const url =
             mxcUrlToHttp(mx, pack.getAvatarUrl(usage) ?? '', useAuthentication) ?? undefined;
@@ -276,7 +288,7 @@ function StickerSidebar({ activeGroupAtom, packs, onScrollToGroup }: StickerSide
               key={pack.id}
               active={activeGroupId === pack.id}
               id={pack.id}
-              label={label ?? 'Unknown Pack'}
+              label={label ?? t('common.emojiBoard.unknownPack')}
               url={url}
               onClick={handleScrollToGroup}
             />
@@ -380,6 +392,7 @@ export function EmojiBoard({
   allowTextCustomEmoji,
   addToRecentEmoji = true,
 }: EmojiBoardProps) {
+  const { t } = useTranslation();
   const mx = useMatrixClient();
 
   const emojiTab = tab === EmojiBoardTab.Emoji;
@@ -547,7 +560,11 @@ export function EmojiBoard({
             {searchedItems && (
               <EmojiGroup
                 id={SEARCH_GROUP_ID}
-                label={searchedItems.length ? 'Search Results' : 'No Results found'}
+                label={
+                  searchedItems.length
+                    ? t('common.emojiBoard.searchResults')
+                    : t('common.emojiBoard.noResultsFound')
+                }
               >
                 {searchedItems.map(renderItem)}
               </EmojiGroup>

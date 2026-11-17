@@ -16,6 +16,7 @@ import {
   HOME_PATH,
   LOGIN_PATH,
   INBOX_PATH,
+  _SAVED_PATH,
   REGISTER_PATH,
   RESET_PASSWORD_PATH,
   SPACE_PATH,
@@ -43,7 +44,7 @@ import { ClientBindAtoms, ClientLayout, ClientRoot } from './client';
 import { Home, HomeRouteRoomProvider, HomeSearch } from './client/home';
 import { DirectCreate, DirectRouteRoomProvider } from './client/direct';
 import { RouteSpaceProvider, Space, SpaceRouteRoomProvider, SpaceSearch } from './client/space';
-import { Notifications, Inbox, Invites } from './client/inbox';
+import { Notifications, Inbox, Invites, Saved } from './client/inbox';
 import { setAfterLoginRedirectPath } from './afterLoginRedirectPath';
 import { Room } from '../features/room';
 import { WelcomePage } from './client/WelcomePage';
@@ -93,7 +94,11 @@ const CreateSpaceModalRenderer = lazyNamed(
   'CreateSpaceModalRenderer',
   null
 );
-const SearchModalRenderer = lazyNamed(() => import('../features/search'), 'SearchModalRenderer', null);
+const SearchModalRenderer = lazyNamed(
+  () => import('../features/search'),
+  'SearchModalRenderer',
+  null
+);
 
 export const createRouter = (clientConfig: ClientConfig, screenSize: ScreenSize) => {
   const { hashRouter } = clientConfig;
@@ -318,6 +323,7 @@ export const createRouter = (clientConfig: ClientConfig, screenSize: ScreenSize)
           )}
           <Route path={_NOTIFICATIONS_PATH} element={<Notifications />} />
           <Route path={_INVITES_PATH} element={<Invites />} />
+          <Route path={_SAVED_PATH} element={<Saved />} />
         </Route>
       </Route>
       <Route path="/*" element={<p>Page not found</p>} />

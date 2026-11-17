@@ -1,0 +1,4 @@
+"NSMicrophoneUsageDescription" = "Diddy benötigt das Mikrofon für Sprachkanäle und Sprachnachrichten.";
+"NSCameraUsageDescription" = "Diddy benötigt die Kamera für Videoanrufe.";
+"NSPhotoLibraryAddUsageDescription" = "Diddy speichert Bilder auf Wunsch in deiner Fotomediathek.";
+"NSLocalNetworkUsageDescription" = "Diddy verbindet sich mit Matrix- und Sprachservern in deinem Netzwerk.";

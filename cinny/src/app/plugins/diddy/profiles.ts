@@ -442,7 +442,11 @@ const backfillEncrypted = async (
 };
 
 /** Reads back what was stored at the last start (counted as older history until the delta is known). */
-const ingestStored = (mx: MatrixClient, roomId: string, history: RoomHistory | undefined): number => {
+const ingestStored = (
+  mx: MatrixClient,
+  roomId: string,
+  history: RoomHistory | undefined
+): number => {
   if (!history) return 0;
   const mapper = mx.getEventMapper();
   let ingested = 0;
@@ -488,7 +492,9 @@ const backfillRoom = (mx: MatrixClient, room: Room) => {
       recentOwn.markScanned(room.roomId);
       scannedRooms.add(room.roomId);
       diag(
-        `diddy: backfill done room=${room.roomId} encrypted=${encrypted} fetched=${fetched} ingested=${ingested} stored=${
+        `diddy: backfill done room=${
+          room.roomId
+        } encrypted=${encrypted} fetched=${fetched} ingested=${ingested} stored=${
           stored?.events.length ?? 0
         }`
       );
@@ -1096,7 +1102,9 @@ export const readProfile = (mx: MatrixClient, userId: string): DiddyProfile | un
  * when it mounts, and each read filtered and sorted all rooms (most of the time spent scrolling a
  * busy chat). Writes keep using readProfile, which always looks at the rooms as they are now.
  */
-let profileCache: { mx: MatrixClient; v: number; byUser: Map<string, DiddyProfile | undefined> } | undefined;
+let profileCache:
+  | { mx: MatrixClient; v: number; byUser: Map<string, DiddyProfile | undefined> }
+  | undefined;
 export const readProfileForView = (mx: MatrixClient, userId: string): DiddyProfile | undefined => {
   if (!profileCache || profileCache.mx !== mx || profileCache.v !== version) {
     profileCache = { mx, v: version, byUser: new Map() };
@@ -1117,7 +1125,10 @@ export const useDiddyProfile = (
   // the profile editor's previews show the unsaved draft here (#105)
   const override = usePreviewOverride(userId);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const stored = useMemo(() => (userId ? readProfileForView(mx, userId) : undefined), [mx, userId, v]);
+  const stored = useMemo(
+    () => (userId ? readProfileForView(mx, userId) : undefined),
+    [mx, userId, v]
+  );
   return override ? override.profile : stored;
 };
 

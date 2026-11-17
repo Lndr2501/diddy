@@ -59,8 +59,8 @@ struct PhoneHome: View {
             } else {
                 VStack(spacing: 10) {
                     Image(systemName: "square.grid.2x2").font(.system(size: 34)).foregroundStyle(Theme.faint)
-                    Text("No servers yet").font(.headline).foregroundStyle(Theme.text)
-                    Text("Join or create one with + above, or find one with Explore.")
+                    Text(L("ios.remainingUI.noServersYet")).font(.headline).foregroundStyle(Theme.text)
+                    Text(L("ios.remainingUI.joinOrCreateOneWithAboveOrFindOneWithExplore"))
                         .font(.subheadline).foregroundStyle(Theme.muted).multilineTextAlignment(.center)
                 }
                 .padding(32)
@@ -86,14 +86,14 @@ struct PhoneTabBar: View {
                     AvatarView(url: account.avatarUrl, name: account.title, size: 24, account: account)
                         .overlay(Circle().strokeBorder(tab == .you ? Theme.text : Color.clear, lineWidth: 1.5).padding(-2.5))
                         .frame(height: 26)
-                    Text("You").font(.system(size: 10, weight: .semibold))
+                    Text(L("ios.remainingUI.you")).font(.system(size: 10, weight: .semibold))
                 }
                 .foregroundStyle(tab == .you ? Theme.text : Theme.faint)
                 .frame(maxWidth: .infinity, minHeight: 48)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("You")
+            .accessibilityLabel(L("ios.remainingUI.you"))
             .accessibilityAddTraits(tab == .you ? .isSelected : [])
         }
         .padding(.top, 4)
@@ -207,17 +207,17 @@ struct ChatListRow: View {
                     Spacer(minLength: 4)
                     if room.hasCall {
                         Image(systemName: "speaker.wave.2.fill").font(.caption).foregroundStyle(Theme.online)
-                            .accessibilityLabel("Call in progress")
+                            .accessibilityLabel(L("ios.chatMore.callInProgress"))
                     }
                     if muted {
                         Image(systemName: "bell.slash.fill").font(.caption2).foregroundStyle(Theme.faint)
-                            .accessibilityLabel("Muted")
+                            .accessibilityLabel(L("call.userMenu.muted"))
                     }
                     if room.mentions > 0 {
                         TabBadge(count: Int(room.mentions))
                     } else if unread && !muted {
                         Circle().fill(Theme.text).frame(width: 9, height: 9)
-                            .accessibilityLabel("Unread")
+                            .accessibilityLabel(L("ios.remainingUI.unread"))
                     }
                 }
             }
@@ -377,7 +377,7 @@ struct ActivityList: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("Activity").font(.largeTitle.bold()).foregroundStyle(Theme.text)
+                Text(L("settings.profileCardEditor.activity")).font(.largeTitle.bold()).foregroundStyle(Theme.text)
                     .accessibilityAddTraits(.isHeader)
                 Spacer()
             }
@@ -388,8 +388,8 @@ struct ActivityList: View {
             if shown.isEmpty && account.invites.isEmpty {
                 VStack(spacing: 10) {
                     Image(systemName: "bell").font(.system(size: 34)).foregroundStyle(Theme.faint)
-                    Text("You're all caught up").font(.headline).foregroundStyle(Theme.text)
-                    Text("Mentions and new messages that notify you show up here.")
+                    Text(L("ios.remainingUI.youReAllCaughtUp")).font(.headline).foregroundStyle(Theme.text)
+                    Text(L("ios.remainingUI.mentionsAndNewMessagesThatNotifyYouShowUpHere"))
                         .font(.subheadline).foregroundStyle(Theme.muted).multilineTextAlignment(.center)
                 }
                 .padding(32)
@@ -403,7 +403,7 @@ struct ActivityList: View {
                                     .listRowBackground(Color.clear)
                             }
                         } header: {
-                            Text("INVITES").font(.caption.weight(.bold)).foregroundStyle(Theme.faint)
+                            Text(L("ios.remainingUI.invites")).font(.caption.weight(.bold)).foregroundStyle(Theme.faint)
                         }
                     }
                     ForEach(shown) { room in
@@ -434,6 +434,7 @@ struct YouView: View {
     @ObservedObject var account: MatrixAccount
     @Binding var showSettings: Bool
     @EnvironmentObject private var calls: CallManager
+    @State private var showSaved = false
 
     var body: some View {
         ScrollView {
@@ -445,7 +446,7 @@ struct YouView: View {
                     Text(account.userId).font(.subheadline).foregroundStyle(Theme.muted).lineLimit(1)
                     Text(OwnStatusOptions.info(account.diddyProfiles[account.userId]?.status?.rawValue).shownLabel)
                         .font(.footnote).foregroundStyle(Theme.faint)
-                    Text("Tap your picture to change your status or edit your profile.")
+                    Text(L("ios.remainingUI.tapYourPictureToChangeYourStatusOrEditYourProfile"))
                         .font(.caption).foregroundStyle(Theme.faint)
                 }
                 .padding(.top, 28)
@@ -456,6 +457,7 @@ struct YouView: View {
                 }
 
                 VStack(spacing: 0) {
+                    youRow("bookmark.fill", "Saved Messages") { showSaved = true }
                     youRow("gearshape.fill", "Settings") { showSettings = true }
                 }
                 .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.elevated))
@@ -472,6 +474,7 @@ struct YouView: View {
             .padding(.bottom, 24)
         }
         .background(Theme.sidebar)
+        .sheet(isPresented: $showSaved) { SavedMessagesView(account: account).diddySheetAppearance() }
     }
 
     private func youRow(_ symbol: String, _ title: String, action: @escaping () -> Void) -> some View {

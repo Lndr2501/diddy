@@ -68,6 +68,8 @@ extension Error {
 struct ClientAPIError: LocalizedError {
     let errcode: String?
     let message: String
+    /// Set when a delayed send was refused as too long (MSC4140, SendLaterLogic.maxDelayExceeded).
+    var maxDelay: SendLaterLogic.MaxDelay?
     var errorDescription: String? { message }
 }
 
@@ -264,6 +266,7 @@ final class MatrixAccount: ObservableObject, Identifiable {
         handles.removeAll()
         roomInfoHandles.values.forEach { $0.cancel() }
         roomInfoHandles.removeAll()
+        ScheduledMessageStore.of(self).stop()
         started = false
     }
 
@@ -278,10 +281,13 @@ final class MatrixAccount: ObservableObject, Identifiable {
         // now and then (joins and server changes reload them on their own).
         if channelsLoadedAt.map({ Date().timeIntervalSince($0) > 120 }) ?? true { await loadAllChannels() }
         await refreshRail()
+        ScheduledMessageStore.of(self).wake()
     }
 
     private func syncStateChanged(_ state: SyncServiceState) {
         syncState = state
+        // Send later: what came due while the app was closed goes out once sync runs.
+        if state == .running { ScheduledMessageStore.of(self).wake() }
         if state == .running, alertsFrom == nil {
             alertsFrom = Date().addingTimeInterval(5)
             // Give the room list a moment to fill before looking for the Diddy Options room.
@@ -299,9 +305,20 @@ final class MatrixAccount: ObservableObject, Identifiable {
         }
     }
 
-    func logout() async {
+    /// Ends the session on the server first, then removes it from this device. When the server
+    /// cannot be reached this throws and changes nothing: the account keeps running, so the
+    /// device does not stay signed in on the server unnoticed. `localOnly` ("Remove Anyway")
+    /// skips the server. A session the server already ended counts as logged out.
+    func logout(localOnly: Bool = false) async throws {
+        if !localOnly {
+            do {
+                _ = try await client.logout()
+            } catch {
+                let text = "\(error) \(error.localizedDescription)"
+                if !AccountCleanupLogic.sessionAlreadyEnded(errorText: text) { throw error }
+            }
+        }
         await stop()
-        try? await client.logout()
         SessionStore.delete(accountId: record.id)
         record.removeDirectories()
     }
@@ -747,7 +764,7 @@ final class MatrixAccount: ObservableObject, Identifiable {
             text = text.removingPercentEncoding ?? text
         }
         guard text.hasPrefix("#") || text.hasPrefix("!") else {
-            throw DiddyError("Enter an address like #community:matrix.org or a matrix.to link.")
+            throw DiddyError(L("ios.errorsExtra.enterAnAddressLikeCommunityMatrixOrgOrAMatrixToLink"))
         }
         let room = try await client.joinRoomByIdOrAlias(roomIdOrAlias: text, serverNames: via)
         await reloadSpaces()
@@ -779,7 +796,7 @@ final class MatrixAccount: ObservableObject, Identifiable {
     /// Creates a channel any server member can join. The SDK's request type cannot set a room type,
     /// which voice channels need, so this goes to the client API directly.
     func createChannel(in spaceId: String, name: String, topic: String, isVoice: Bool, encrypted: Bool) async throws -> String {
-        guard let space = room(spaceId) else { throw DiddyError("This server is not available yet.") }
+        guard let space = room(spaceId) else { throw DiddyError(L("ios.errorsExtra.thisServerIsNotAvailableYet")) }
         let via = [(try? client.userIdServerName()) ?? record.serverName]
         var state: [[String: Any]] = [
             [
@@ -819,7 +836,7 @@ final class MatrixAccount: ObservableObject, Identifiable {
 
     private func postCreateRoom(_ body: [String: Any]) async throws -> String {
         let json = try await clientRequest("/_matrix/client/v3/createRoom", body: body)
-        guard let id = json["room_id"] as? String else { throw DiddyError("The server could not create the channel.") }
+        guard let id = json["room_id"] as? String else { throw DiddyError(L("ios.errorsExtra.theServerCouldNotCreateTheChannel")) }
         return id
     }
 
@@ -839,7 +856,7 @@ final class MatrixAccount: ObservableObject, Identifiable {
     private func clientRequestData(_ path: String, body: [String: Any]?, method: String?) async throws -> Data {
         let session = try client.session()
         let base = session.homeserverUrl.hasSuffix("/") ? String(session.homeserverUrl.dropLast()) : session.homeserverUrl
-        guard let url = URL(string: base + path) else { throw DiddyError("Invalid homeserver URL.") }
+        guard let url = URL(string: base + path) else { throw DiddyError(L("ios.errorsExtra.invalidHomeserverUrl")) }
         var request = URLRequest(url: url)
         request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
         if let method { request.httpMethod = method }
@@ -853,7 +870,8 @@ final class MatrixAccount: ObservableObject, Identifiable {
             let json = (try? JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
             throw ClientAPIError(
                 errcode: json["errcode"] as? String,
-                message: json["error"] as? String ?? "The server refused the request."
+                message: json["error"] as? String ?? "The server refused the request.",
+                maxDelay: SendLaterLogic.maxDelayExceeded(json)
             )
         }
         return data
@@ -881,7 +899,7 @@ final class MatrixAccount: ObservableObject, Identifiable {
             if room(roomId) != nil { return }
             try await Task.sleep(nanoseconds: 250_000_000)
         }
-        throw DiddyError("The room did not arrive from the server in time.")
+        throw DiddyError(L("ios.errorsExtra.theRoomDidNotArriveFromTheServerInTime"))
     }
 
     /// Leaves a server, and its channels too as on Discord unless `withChannels` is off (desktop

@@ -1,0 +1,176 @@
+name: Build Android
+# Builds the native Android app (android/, Jetpack Compose + matrix-rust-sdk + LiveKit), runs its
+# unit tests and stores the APK as artifact `diddy-android`. Install it on the phone directly
+# (allow installing from unknown sources once).
+#
+# Without secrets the APK is the debug build (app id app.diddy.android.debug). A signed release
+# build needs the repository secrets DIDDY_ANDROID_KEYSTORE (base64), DIDDY_ANDROID_KEYSTORE_PASSWORD,
+# DIDDY_ANDROID_KEY_ALIAS and DIDDY_ANDROID_KEY_PASSWORD.
+on:
+  workflow_call:
+  workflow_dispatch:
+  push:
+    branches: [main, "android/**"]
+    paths:
+      - "android/**"
+      - "cinny/public/sound/diddy/**"
+      - "cinny/src/app/plugins/builtin/**"
+      - "ios/Diddy/Matrix/EmojiData.swift"
+      - ".github/workflows/android.yml"
+      - ".github/scripts/android-emulator-smoke.sh"
+  pull_request:
+    paths:
+      - "android/**"
+      - ".github/workflows/android.yml"
+      - ".github/scripts/android-emulator-smoke.sh"
+
+concurrency:
+  group: android-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      HAS_KEYSTORE: ${{ secrets.DIDDY_ANDROID_KEYSTORE != '' && secrets.DIDDY_ANDROID_KEYSTORE_PASSWORD != '' && secrets.DIDDY_ANDROID_KEY_ALIAS != '' && secrets.DIDDY_ANDROID_KEY_PASSWORD != '' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check release signing
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          if [ "$HAS_KEYSTORE" != 'true' ]; then
+            echo '::error::Android releases need all four DIDDY_ANDROID signing secrets'
+            exit 1
+          fi
+
+      - name: Show the tag version in the app
+        run: .github/scripts/stamp-version.sh
+
+      - name: Use Java 17
+        run: echo "JAVA_HOME=$JAVA_HOME_17_X64" >> "$GITHUB_ENV"
+
+      - name: Point Gradle at the Android SDK
+        run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
+
+      - name: Unit tests
+        working-directory: android
+        run: ./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug assembleDebugAndroidTest
+
+      - name: Check native APK alignment
+        run: |
+          python3 .github/scripts/check-android-apk.py android/app/build/outputs/apk/debug/app-debug.apk
+          zipalign=$(find "$ANDROID_HOME/build-tools" -name zipalign -type f | sort -V | tail -n 1)
+          "$zipalign" -c -P 16 4 android/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Upload emulator test APKs
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: android-emulator-apks
+          path: |
+            android/app/build/outputs/apk/debug/app-debug.apk
+            android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+          if-no-files-found: error
+
+      - name: Upload unit and lint reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: android-checks
+          path: |
+            android/app/build/test-results/testDebugUnitTest/*.xml
+            android/app/build/reports/lint-results-debug.*
+
+      - name: Keystore
+        if: env.HAS_KEYSTORE == 'true'
+        env:
+          KEYSTORE: ${{ secrets.DIDDY_ANDROID_KEYSTORE }}
+        run: |
+          echo "$KEYSTORE" | base64 -d > "$RUNNER_TEMP/diddy.jks"
+          echo "DIDDY_ANDROID_KEYSTORE_FILE=$RUNNER_TEMP/diddy.jks" >> "$GITHUB_ENV"
+
+      - name: Build APK
+        working-directory: android
+        env:
+          DIDDY_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.DIDDY_ANDROID_KEYSTORE_PASSWORD }}
+          DIDDY_ANDROID_KEY_ALIAS: ${{ secrets.DIDDY_ANDROID_KEY_ALIAS }}
+          DIDDY_ANDROID_KEY_PASSWORD: ${{ secrets.DIDDY_ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -n "$DIDDY_ANDROID_KEYSTORE_FILE" ]; then
+            ./gradlew --no-daemon assembleRelease
+            apk=app/build/outputs/apk/release/app-release.apk
+            suffix=Android
+          else
+            ./gradlew --no-daemon assembleDebug
+            apk=app/build/outputs/apk/debug/app-debug.apk
+            suffix=Android_debug
+          fi
+          version=$(sed -n 's/^val diddyVersion = "\(.*\)"/\1/p' app/build.gradle.kts)
+          apksigner=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)
+          "$apksigner" verify --verbose "$apk"
+          mkdir -p ../dist
+          cp "$apk" "../dist/Diddy_${version}_${suffix}.apk"
+          ls -la ../dist
+
+      - name: Remove signing key
+        if: always() && env.HAS_KEYSTORE == 'true'
+        run: rm -f "$RUNNER_TEMP/diddy.jks"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: diddy-android
+          path: dist/*.apk
+          if-no-files-found: error
+
+  emulator:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - api: 26
+            target: google_apis
+          - api: 35
+            target: google_apis_ps16k
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Download test APKs
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: android-emulator-apks
+          path: emulator-apks
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Native libraries, encrypted storage and startup
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: ${{ matrix.api }}
+          target: ${{ matrix.target }}
+          arch: x86_64
+          disable-animations: true
+          # The default AVD RAM let the low-memory killer end Diddy in the foreground on API 35.
+          ram-size: 4096M
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
+          script: .github/scripts/android-emulator-smoke.sh
+      - name: Upload emulator report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: android-emulator-${{ matrix.api }}-${{ matrix.target }}
+          path: emulator-report/

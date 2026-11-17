@@ -78,6 +78,8 @@ final class VoicePlayer: NSObject, ObservableObject, AVAudioPlayerDelegate {
     @Published private(set) var isLoading = false
     /// The message whose last attempt failed (download or a format iOS cannot play).
     @Published private(set) var failedId: String?
+    /// Why `failedId` failed, for the line under the button.
+    @Published private(set) var failureMessage = VoiceFailure.generic
     /// Speed for every voice message (#204); changing it also speeds up the one playing.
     @Published private(set) var rate: Float = VoiceRate.parse(UserDefaults.standard.object(forKey: VoiceRate.defaultsKey) as? Float)
     let progress = PlaybackProgress()
@@ -101,15 +103,22 @@ final class VoicePlayer: NSObject, ObservableObject, AVAudioPlayerDelegate {
         progress.duration = audio.duration ?? 0
         let client = account.client, accountId = account.id
         loading = Task { [weak self] in
-            let url = await MediaLoader.shared.audioFile(source: audio.source, mimeType: audio.mimeType, accountId: accountId, client: client)
+            let result = await MediaLoader.shared.audioFile(source: audio.source, mimeType: audio.mimeType, accountId: accountId, client: client)
             guard let self, !Task.isCancelled, self.currentId == id else { return }
             self.isLoading = false
-            guard let url, self.begin(url: url, mimeType: audio.mimeType) else {
-                self.currentId = nil
-                self.failedId = id
-                return
+            switch result {
+            case .file(let url):
+                if !self.begin(url: url, mimeType: audio.mimeType) { self.fail(id, VoiceFailure.generic) }
+            case .failed(let message), .undecodable(let message):
+                self.fail(id, message)
             }
         }
+    }
+
+    private func fail(_ id: String?, _ message: String) {
+        stop()
+        failureMessage = message
+        failedId = id
     }
 
     func cycleRate() {
@@ -175,9 +184,7 @@ final class VoicePlayer: NSObject, ObservableObject, AVAudioPlayerDelegate {
     private func resume() {
         guard let player else { return }
         guard player.play() else {
-            let failed = currentId
-            stop()
-            failedId = failed
+            fail(currentId, VoiceFailure.generic)
             return
         }
         isPlaying = true
@@ -199,18 +206,14 @@ final class VoicePlayer: NSObject, ObservableObject, AVAudioPlayerDelegate {
     nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         Task { @MainActor in
             guard self.player === player else { return }
-            let failed = self.currentId
-            self.stop()
-            if !flag { self.failedId = failed }
+            if flag { self.stop() } else { self.fail(self.currentId, VoiceFailure.generic) }
         }
     }
 
     nonisolated func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
         Task { @MainActor in
             guard self.player === player else { return }
-            let failed = self.currentId
-            self.stop()
-            self.failedId = failed
+            self.fail(self.currentId, VoiceFailure.generic)
         }
     }
 }
@@ -250,7 +253,8 @@ struct VoiceMessageView: View {
                     Text(audio.filename).font(.footnote).foregroundStyle(Theme.text).lineLimit(1)
                 }
                 if failed {
-                    Text("This audio cannot be played on iOS.").font(.caption).foregroundStyle(Theme.danger)
+                    Text(player.failureMessage).font(.caption).foregroundStyle(Theme.danger)
+                        .fixedSize(horizontal: false, vertical: true)
                 } else {
                     HStack(spacing: 8) {
                         if active {
@@ -291,7 +295,7 @@ private struct RateButton: View {
                 .padding(.vertical, -11)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Playback speed")
+        .accessibilityLabel(L("ios.chatMore.playbackSpeed"))
         .accessibilityValue(VoiceRate.label(rate))
     }
 }
@@ -316,7 +320,7 @@ private struct ActiveWaveform: View {
                 .gesture(SpatialTapGesture().onEnded { onSeek(Double($0.location.x / max(geo.size.width, 1))) })
         }
         .frame(height: 28)
-        .accessibilityLabel("Playback position")
+        .accessibilityLabel(L("ios.chatMore.playbackPosition"))
         .accessibilityValue("\(Int(progress.fraction * 100)) percent")
     }
 }
@@ -370,9 +374,9 @@ struct VoiceMicButton: View {
                 .frame(width: width, height: height)
                 .contentShape(Rectangle())
         }
-        .accessibilityLabel("Record voice message")
-        .alert("Voice message", isPresented: Binding(get: { recorder.error != nil }, set: { if !$0 { recorder.error = nil } })) {
-            Button("OK", role: .cancel) {}
+        .accessibilityLabel(L("room.voiceRecorderButton.recordVoiceMessage"))
+        .alert(L("ios.chatMore.voiceMessage"), isPresented: Binding(get: { recorder.error != nil }, set: { if !$0 { recorder.error = nil } })) {
+            Button(L("settings.localPlugins.ok"), role: .cancel) {}
         } message: { Text(recorder.error ?? "") }
     }
 }
@@ -392,7 +396,7 @@ struct VoiceRecordingBar: View {
                     .frame(width: 36, height: 36)
             }
             .disabled(sending)
-            .accessibilityLabel("Discard recording")
+            .accessibilityLabel(L("room.voiceRecorderButton.discardRecording"))
             RecordingLevel(meter: recorder.meter, pendingDuration: recorder.pending?.duration)
                 .padding(.horizontal, 14)
                 .frame(maxWidth: .infinity, minHeight: 36, alignment: .leading)
@@ -416,7 +420,7 @@ struct VoiceRecordingBar: View {
                 .background(Circle().fill(Theme.accent))
             }
             .disabled(sending)
-            .accessibilityLabel("Send voice message")
+            .accessibilityLabel(L("room.voiceRecorderButton.sendVoiceMessage"))
         }
         .background(Theme.chat)
         // Leaving the chat while recording throws the recording away.
@@ -442,7 +446,7 @@ private struct RecordingLevel: View {
                 .frame(height: 22)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Recording, \(VoiceFormat.time(time))")
+        .accessibilityLabel(L("ios.dynamicUI.recording", ["duration": VoiceFormat.time(time)]))
     }
 }
 

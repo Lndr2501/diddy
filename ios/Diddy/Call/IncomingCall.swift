@@ -126,7 +126,7 @@ struct IncomingCallView: View {
                     .foregroundStyle(Theme.text)
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
-                Text("Incoming voice call")
+                Text(L("ios.finalControls.incomingVoiceCall"))
                     .font(.headline)
                     .foregroundStyle(Theme.muted)
                 Spacer()

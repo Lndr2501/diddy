@@ -5,8 +5,10 @@ import { MessageSearch } from '../../../features/message-search';
 import { useHomeRooms } from './useHomeRooms';
 import { ScreenSize, useScreenSizeContext } from '../../../hooks/useScreenSize';
 import { BackRouteHandler } from '../../../components/BackRouteHandler';
+import { useTranslation } from 'react-i18next';
 
 export function HomeSearch() {
+  const { t } = useTranslation();
   const scrollRef = useRef<HTMLDivElement>(null);
   const rooms = useHomeRooms();
   const screenSize = useScreenSizeContext();
@@ -29,7 +31,7 @@ export function HomeSearch() {
           <Box justifyContent="Center" alignItems="Center" gap="200">
             {screenSize !== ScreenSize.Mobile && <Icon size="400" src={Icons.Search} />}
             <Text size="H3" truncate>
-              Message Search
+              {t('nav.search.messageSearch')}
             </Text>
           </Box>
           <Box grow="Yes" basis="No" />
@@ -40,7 +42,7 @@ export function HomeSearch() {
           <PageContent>
             <PageContentCenter>
               <MessageSearch
-                defaultRoomsFilterName="Home"
+                defaultRoomsFilterName={t('nav.search.home')}
                 allowGlobal
                 rooms={rooms}
                 scrollRef={scrollRef}

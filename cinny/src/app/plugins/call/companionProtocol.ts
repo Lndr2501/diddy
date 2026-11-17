@@ -62,6 +62,53 @@ export const makeCompanionRequest = (
   screen: media.screen,
 });
 
+/** One of your other devices that could be the phone. */
+export type CompanionDevice = { deviceId: string; name: string; lastSeen?: number };
+
+/** "Ask all my devices": the first phone that joins takes it. */
+export const ANY_COMPANION_DEVICE = '';
+
+/**
+ * Your other devices the computer can ask, newest first: from `GET /devices` (names and last
+ * seen), only those with encryption keys (`withKeys`), never this computer itself.
+ */
+export const companionCandidates = (
+  devices: { device_id?: unknown; display_name?: unknown; last_seen_ts?: unknown }[],
+  ownDeviceId: string,
+  withKeys: string[]
+): CompanionDevice[] => {
+  const keys = new Set(withKeys);
+  const result: CompanionDevice[] = [];
+  devices.forEach((device) => {
+    const deviceId = device.device_id;
+    if (
+      typeof deviceId !== 'string' ||
+      !deviceId ||
+      deviceId === ownDeviceId ||
+      !keys.has(deviceId)
+    )
+      return;
+    if (result.some((d) => d.deviceId === deviceId)) return;
+    const name =
+      typeof device.display_name === 'string' && device.display_name.trim()
+        ? device.display_name.trim()
+        : deviceId;
+    const lastSeen =
+      typeof device.last_seen_ts === 'number' && Number.isFinite(device.last_seen_ts)
+        ? device.last_seen_ts
+        : undefined;
+    result.push({ deviceId, name: name.slice(0, 80), lastSeen });
+  });
+  return result.sort((a, b) => (b.lastSeen ?? 0) - (a.lastSeen ?? 0));
+};
+
+/** The devices to ask: the chosen one, or all of them when none (or a gone one) is chosen. */
+export const companionRecipients = (candidates: CompanionDevice[], chosen: string): string[] => {
+  if (chosen !== ANY_COMPANION_DEVICE && candidates.some((d) => d.deviceId === chosen))
+    return [chosen];
+  return candidates.map((d) => d.deviceId);
+};
+
 export type CompanionControl = { microphone?: boolean; camera?: boolean; end?: boolean };
 
 export const makeCompanionControl = (

@@ -8,6 +8,9 @@ const ts = require('typescript');
 const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
 const folds = require('folds');
+const { i18nStub } = require('./i18nStub.cjs');
+
+const i18n = i18nStub('de');
 
 const filename = path.join(
   __dirname,
@@ -25,6 +28,8 @@ const output = ts.transpileModule(fs.readFileSync(filename, 'utf8'), {
 function load({ desktop = true, rows }) {
   const exported = {};
   const imports = {
+    'react-i18next': i18n['react-i18next'],
+    '../../i18n': i18n.i18n,
     react: React,
     folds,
     '../../plugins/tauri': { canInvoke: () => desktop },

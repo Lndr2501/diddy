@@ -16,7 +16,12 @@ import {
   SoundButton,
   VideoButton,
 } from './Controls';
-import { CallEmbed, useCallControlState, useScreenShareAudio } from '../../plugins/call';
+import {
+  CallEmbed,
+  shareAudioOption,
+  useCallControlState,
+  useScreenShareAudio,
+} from '../../plugins/call';
 import {
   controlCompanion,
   dismissCompanion,
@@ -27,11 +32,16 @@ import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { CompanionDialog } from './CompanionDialog';
 import { useResizeObserver } from '../../hooks/useResizeObserver';
 import { AsyncStatus, useAsyncCallback, ignoreRejection } from '../../hooks/useAsyncCallback';
+import { useTranslation } from 'react-i18next';
+import { usePushToTalkPrefs, usePushToTalkState } from '../../state/pushToTalk';
+import { formatHotkey } from '../../plugins/agentVoice/hotkey';
+import { isMacOS } from '../../utils/user-agent';
 
 type CallControlsProps = {
   callEmbed: CallEmbed;
 };
 export function CallControls({ callEmbed }: CallControlsProps) {
+  const { t } = useTranslation();
   const controlRef = useRef<HTMLDivElement>(null);
   const [compact, setCompact] = useState(document.body.clientWidth < 760);
 
@@ -59,6 +69,16 @@ export function CallControls({ callEmbed }: CallControlsProps) {
   let phoneState: 'idle' | 'waiting' | 'connected' = 'idle';
   if (phone) phoneState = 'connected';
   else if (companion.phase === 'waiting') phoneState = 'waiting';
+
+  const pttState = usePushToTalkState();
+  const pttPrefs = usePushToTalkPrefs();
+  const ptt = pttState.active
+    ? {
+        open: pttState.open,
+        keyLabel: pttPrefs.hotkey ? formatHotkey(pttPrefs.hotkey, isMacOS()) : undefined,
+        fullMuted: pttState.heldWhileFullMuted,
+      }
+    : undefined;
 
   const handleSpotlightToggle = useCallback(() => callEmbed.control.toggleSpotlight(), [callEmbed]);
   const handleReactionsClick = useCallback(() => callEmbed.control.toggleReactions(), [callEmbed]);
@@ -90,11 +110,14 @@ export function CallControls({ callEmbed }: CallControlsProps) {
   // one short line above the bar instead of loose text next to it
   let status: { kind: 'warning' | 'info'; text: string } | undefined;
   if (companion.phase === 'waiting') {
-    status = { kind: 'info', text: 'Waiting for your iPhone…' };
+    status = { kind: 'info', text: t('call.controls.waitingForYourIphone') };
   } else if (screenshare && streamAudio.error) {
-    status = { kind: 'warning', text: `Sharing without sound: ${streamAudio.error}` };
+    status = {
+      kind: 'warning',
+      text: t('call.controls.sharingWithoutSoundError', { error: streamAudio.error }),
+    };
   } else if (screenshare && streamAudio.active && streamAudio.enabled) {
-    status = { kind: 'info', text: 'Sharing your system sound (without Diddy itself)' };
+    status = { kind: 'info', text: t('call.controls.sharingYourSystemSound') };
   }
 
   return (
@@ -122,12 +145,12 @@ export function CallControls({ callEmbed }: CallControlsProps) {
           <Icon size="100" src={companion.endReason === 'lost' ? Icons.Warning : Icons.Phone} />
           <Text size="T200" truncate>
             {companion.endReason === 'lost'
-              ? 'Lost your iPhone. Using this computer’s mic and camera again.'
-              : 'Your iPhone left. Using this computer’s mic and camera again.'}
+              ? t('call.controls.lostYourIphoneUsing')
+              : t('call.controls.yourIphoneLeftUsing')}
           </Text>
           <button type="button" className={css.ToastAction} onClick={dismissCompanion}>
             <Text as="span" size="T200">
-              OK
+              {t('call.controls.ok')}
             </Text>
           </button>
         </div>
@@ -144,20 +167,21 @@ export function CallControls({ callEmbed }: CallControlsProps) {
           />
           <Text size="T200" truncate>
             {companion.phoneBackground && phone.camera
-              ? 'iPhone camera paused: open Diddy on your iPhone'
-              : `iPhone: ${
-                  [
-                    phone.camera && 'camera',
-                    phone.microphone && 'microphone',
-                    phone.screen && 'screen',
-                  ]
-                    .filter(Boolean)
-                    .join(', ') || 'connected'
-                }`}
+              ? t('call.controls.iphoneCameraPausedOpen')
+              : t('call.controls.iphoneUses', {
+                  parts:
+                    [
+                      phone.camera && t('call.controls.iphoneCamera'),
+                      phone.microphone && t('call.controls.iphoneMicrophone'),
+                      phone.screen && t('call.controls.iphoneScreen'),
+                    ]
+                      .filter(Boolean)
+                      .join(', ') || t('call.controls.iphoneConnected'),
+                })}
           </Text>
           <button type="button" className={css.ToastAction} onClick={() => endCompanion(mx)}>
             <Text as="span" size="T200">
-              Disconnect
+              {t('call.controls.disconnect')}
             </Text>
           </button>
         </div>
@@ -171,6 +195,7 @@ export function CallControls({ callEmbed }: CallControlsProps) {
             enabled={phoneMic ? !!phone?.microphone : microphone}
             onToggle={handleMicrophoneToggle}
             phone={phoneMic}
+            ptt={ptt}
           />
           <DeviceChevron kind="input" size="bar" className={css.ControlChevron} />
         </div>
@@ -190,11 +215,7 @@ export function CallControls({ callEmbed }: CallControlsProps) {
           <div className={css.ControlSplit} data-active>
             <ScreenShareButton enabled onToggle={toggleScreenshare} />
             <ShareOptionsButton
-              audio={
-                streamAudio.available
-                  ? { enabled: streamAudio.enabled, onToggle: streamAudio.toggle }
-                  : null
-              }
+              audio={shareAudioOption(streamAudio)}
               onStop={toggleScreenshare}
             />
           </div>
@@ -218,7 +239,7 @@ export function CallControls({ callEmbed }: CallControlsProps) {
           variant="Critical"
           fill="Solid"
           onClick={ignoreRejection(hangup)}
-          aria-label="Leave call"
+          aria-label={t('call.controls.leaveCall')}
           before={
             exiting ? (
               <Spinner variant="Critical" fill="Solid" size="200" />
@@ -228,7 +249,7 @@ export function CallControls({ callEmbed }: CallControlsProps) {
           }
           disabled={exiting}
         >
-          {!compact && <Text size="B400">Leave</Text>}
+          {!compact && <Text size="B400">{t('call.controls.leave')}</Text>}
         </Button>
       </div>
     </Box>
