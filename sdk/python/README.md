@@ -69,7 +69,86 @@ async def timer(ctx, sekunden: int, name: str = "Timer"):
 - `!help` (und `!hilfe`) kommt mit. Eigene Hilfe: einfach selbst `@bot.command("help")` definieren.
 
 `ctx` hat: `sender`, `sender_name`, `room_id`, `room_name`, `body`, `arg` (Text nach dem Befehl), `args` (Wörter),
-`power` (Stufe des Absenders), `is_dm`, `from_button` (kam von einem Diddy-Knopf), `event_id`, `content`.
+`power` (Stufe des Absenders), `is_dm`, `from_button` (kam von einem Diddy-Knopf), `event_id`, `content`,
+dazu `author` (ein `Member`: `.name`, `.mention`, `.power`, `.avatar_url`, `.dm(…)`), `room` (ein `Room`: `.name`,
+`.topic`, `.alias`, `.member_count`, `.encrypted`, `.members`, `.send(…)`), `prefix` und `invoked_with`.
+
+### Unterbefehle
+
+```python
+@bot.group("playlist", desc="Playlists verwalten")
+async def playlist(ctx): ...                 # ohne Unterbefehl: der Bot listet sie auf
+
+@playlist.command("add", desc="Lied hinzufügen")
+async def playlist_add(ctx, *, song: str): ...    # !playlist add Daft Punk
+```
+
+`invoke_without_command=True` führt stattdessen deine Funktion aus. Unterbefehle haben eigene Prüfungen,
+Cooldowns und Fehlerbehandlung; die Hilfe-Karte zeigt sie unter ihrem Befehl.
+
+### Umwandler
+
+Der Typ des Parameters entscheidet, was aus den Wörtern wird:
+
+| Typ | Beispiel | Ergebnis |
+|---|---|---|
+| `int`, `float`, `bool`, `str` | `!roll 20` | wie gehabt |
+| `Duration` | `!remind 5m30s Tee` | Sekunden als Zahl (`90`, `1:30`, `5m30s`, `1h 30m`) |
+| `Member` | `!poke alice` | Person im Raum: `alice`, `@alice:server`, Anzeigename oder Namensanfang |
+| `Room` | `!move #lobby:server` | ein Raum des Bots |
+| `Literal["an", "aus"]` | `!mode an` | nur diese Wörter; Diddy schlägt sie beim Tippen vor |
+| `Enum`-Klasse | `!color red` | Name des Eintrags, Groß-/Kleinschreibung egal |
+| `list[int]` | `!sum 1 2 3` | alle übrigen Wörter, jedes umgewandelt |
+| eigene Klasse mit `convert(ctx, text)` | | deine Logik (auch `async`); `raise BadArgument("…")` |
+
+Passt ein Wort nicht, bekommt der Nutzer die Gebrauchszeile plus den Grund („Name ist nicht eindeutig“ …).
+
+### Prüfungen und Cooldowns
+
+```python
+from diddybot import checks
+
+@bot.command("purge")
+@checks.power(50)                      # ab Moderator
+@checks.room_only()                    # nicht in der Direktnachricht (auch: dm_only, owner)
+@checks.cooldown(1, 30, by="room")     # einmal pro 30 s und Raum (by: `"user"`, `"room"`, `"member"` = Person im Raum, `"global"`)
+async def purge(ctx): ...
+
+@bot.check                             # Prüfung für alle Befehle
+async def not_banned(ctx): return ctx.sender not in BANNED
+```
+
+Eigene Prüfung: `@checks.check(funktion)` (die Funktion gibt `True` zum Durchlassen zurück). Besitzer des Bots:
+`Bot(owners=["@du:server"])` oder `DIDDY_BOT_OWNERS=@du:server,@er:server`.
+
+### Fehlerbehandlung
+
+Fehler sind Klassen: `UsageError` (`MissingArgument`, `BadArgument`), `CheckFailure` (`MissingPower`, `NotOwner`,
+`DMOnly`, `RoomOnly`, `OnCooldown` mit `.retry_after`) und `CommandInvokeError` (deine Funktion hat eine Ausnahme
+geworfen, `.original`). Ohne eigene Behandlung antwortet der Bot mit einem passenden Hinweis. Eigene Behandlung:
+
+```python
+@bot.on_command_error                  # für alle Befehle
+async def oops(ctx, error): ...
+
+@playlist_add.error                    # nur für diesen Befehl
+async def add_failed(ctx, error): ...
+```
+
+Außerdem: `@bot.before_invoke` und `@bot.after_invoke` laufen um jeden Befehl.
+
+### Argument-Vorschläge in Diddy
+
+Diddy zeigt beim Tippen nicht nur den Befehl, sondern auch das aktuelle Argument mit Beschreibung und
+Auswahlwerten. Die Namen kommen aus der Signatur, `Literal` und `Enum` liefern die Auswahl, Texte setzt du mit
+`describe`:
+
+```python
+@bot.command("remind", describe={"wait": "wie lange, z. B. 10m", "text": "woran erinnert werden soll"})
+async def remind(ctx, wait: Duration, *, text: str): ...
+```
+
+Mit `options=[...]` gibst du die Liste selbst vor (`options=[]`: keine), etwa wenn dein Befehl den Rest der Zeile selbst liest.
 
 ## Antworten
 
@@ -156,12 +235,131 @@ async def welcome(bot, room_id, user_id): ...
 
 @bot.on_start                   # eingeloggt und synchronisiert
 async def ready(bot): ...
+```
 
-@bot.every(3600)                # stündlich, solange der Bot läuft
-async def report(bot): ...
+Mehr Ereignisse und mehrere Handler pro Ereignis mit `@bot.listen("name")`:
+
+| Ereignis | Handler bekommt |
+|---|---|
+| `ready` | nichts |
+| `message`, `message_edit`, `message_delete` | `ctx` |
+| `reaction`, `reaction_remove` | `ctx` |
+| `member_join`, `member_leave` | `room_id, user_id` |
+| `join` | `room_id` |
+| `command`, `command_completion` | `ctx` |
+| `command_error` | `ctx, error` |
+
+Eigene Ereignisse: `bot.dispatch("mein_ereignis", daten)` und `@bot.listen("mein_ereignis")`.
+
+**Auf etwas warten** (wie `bot.wait_for` bei nextcord):
+
+```python
+antwort = await bot.wait_for("message", timeout=30, check=lambda c: c.sender == ctx.sender)
+name = await ctx.ask("Wie heißt du?")             # kurz: fragt und gibt den nächsten Text zurück (oder None)
 ```
 
 Alle Handler laufen als eigene Tasks: ein langsamer Befehl hält den Sync und andere Befehle nicht auf.
+
+## Wiederkehrende Aufgaben
+
+```python
+from diddybot import tasks
+import datetime
+
+@bot.loop(minutes=5)                          # startet mit dem Bot
+async def refresh(): ...
+
+@bot.loop(time=datetime.time(8, 0))           # täglich um 08:00 (Ortszeit)
+async def morning():
+    await bot.send(RAUM, cards.note("Guten Morgen!"))
+
+@tasks.loop(seconds=30, count=10)             # eigene Steuerung
+async def poll(): ...
+poll.start(); poll.stop(); poll.restart()
+```
+
+`@refresh.before_loop`, `@refresh.after_loop`, `@refresh.error` und `change_interval(...)` gibt es auch. Ein
+fehlgeschlagener Lauf kommt ins Log, die Schleife läuft weiter. `@bot.every(sekunden)` bleibt als Kurzform.
+
+## Knöpfe mit Python-Code (Views)
+
+```python
+from diddybot import View, button
+
+class Abstimmung(View):
+    def __init__(self):
+        super().__init__(timeout=120)
+        self.stimmen = {"ja": 0, "nein": 0}
+
+    @button("👍 Ja")
+    async def ja(self, ctx, btn):
+        self.stimmen["ja"] += 1
+        await self.update(zeige(self.stimmen))      # die Karte wird bearbeitet
+
+    @button("👎 Nein")
+    async def nein(self, ctx, btn): ...
+
+await ctx.reply(zeige(...), view=Abstimmung())
+```
+
+- Ein Klick schickt Diddy als versteckte Nachricht `!_v <id> <nr>`; der Bot ruft deine Methode. Es entsteht
+  **keine** neue Nachricht, die Karte ändert sich.
+- Knöpfe gibt es nur an den Karten `list`, `queue`, `track` und `stats` (Hinweis- und Hilfe-Karte haben keine);
+  höchstens 10 Knöpfe, Beschriftung höchstens 24 Zeichen.
+- `View(owner=user_id)` lässt nur eine Person klicken (oder überschreibe `interaction_check`). Nach `timeout`
+  Sekunden ohne Klick oder `view.stop()` verschwinden die Knöpfe; `on_timeout` und `on_error` kannst du ersetzen.
+- Views leben im Speicher. Nach einem Neustart tun alte Knöpfe nichts; der Bot sagt das einmal pro Raum.
+- Fertig: `await ctx.confirm("Wirklich löschen?")` gibt `True`, `False` oder `None` zurück (Knöpfe oder Antwort
+  „ja“/„nein“ tippen). `await ctx.paginate(seiten)` schickt Seiten mit ◀ ▶.
+
+## Dateien, Erwähnungen, Tippen
+
+```python
+from diddybot import File
+
+await ctx.reply(File("cover.png", caption="Cover"))     # Bild, Audio, Video oder Datei (auch aus bytes)
+await ctx.reply(f"Hallo {ctx.author.mention}!", mentions=[ctx.author])     # echte Erwähnung
+async with ctx.typing():                                  # „schreibt …“, solange der Block läuft
+    ergebnis = await lange_aufgabe()
+```
+
+In verschlüsselten Räumen wird die Datei verschlüsselt hochgeladen, Bildmaße werden gesetzt.
+
+## Speicher
+
+```python
+bot.store.set("zähler", 41)
+bot.store.incr("zähler")                     # 42
+bot.store.get("fehlt", default=0)
+raum = bot.store.room(ctx.room_id)           # eigener Bereich pro Raum
+nutzer = bot.store.scope(f"user:{ctx.sender}")
+```
+
+`bot.store` ist eine SQLite-Datei im Store-Ordner; Werte sind alles, was JSON kann. Ein Neustart behält sie.
+
+## Cogs und Erweiterungen
+
+```python
+from diddybot import Cog, command, group, tasks
+
+class Musik(Cog):
+    def __init__(self, bot): self.bot = bot
+
+    @command("play", desc="spielt ein Lied")
+    async def play(self, ctx, *, suche: str): ...
+
+    @Cog.listener("member_join")
+    async def willkommen(self, room_id, user_id): ...
+
+    @tasks.loop(minutes=10)
+    async def aufräumen(self): ...
+
+bot.add_cog(Musik(bot))                       # oder: bot.load_extension("cogs.musik")
+```
+
+Eine Erweiterung ist ein Modul mit `setup(bot)` (und optional `teardown(bot)`). Optional im Cog: `cog_load`,
+`cog_unload`, `cog_check(ctx)` für alle Befehle des Cogs und `cog_command_error(ctx, error)`. Doppelte Befehlsnamen
+lehnt `add_cog` ab.
 
 ## Testen
 
@@ -182,6 +380,8 @@ async def test_count():
   `seek(karte, 83)` die Zeitleiste, `react(karte, "👍")` reagiert.
 - `join(user, power=50)`, `set_power(...)`, `start()` (Bekanntmachung), dann `commands()` und `profile()`: was Diddy
   als Vorschläge und Profil zeigt.
+- Mehr: `edit(nachricht, text)`, `delete(nachricht)`, `leave(user)`, `arrive(user)` lösen die entsprechenden
+  Ereignisse aus. Views, `ctx.confirm()`, Dateien und Argument-Vorschläge (`commands()`) testest du genauso.
 - Der TestClient läuft **strikt**: eine Karte, die Diddy kürzen würde, ist ein Fehler. Grüne Tests heißen also:
   Diddy zeigt genau, was du geschickt hast.
 
@@ -201,10 +401,13 @@ async def test_count():
 | `DIDDY_BOT_PREFIX` / `prefix` | Standard `!` |
 | `display_name`, `avatar` (Bilddatei) | Profil des Kontos, wird beim Start gesetzt, wenn es sich geändert hat |
 | `about`, `banner=("#von", "#bis"[, winkel])`, `accent` | Bot-Profil in Diddy |
-| `encryption`, `auto_join`, `announce`, `help_command`, `help_note` | Standard alles an |
+| `DIDDY_BOT_OWNERS` / `owners` | Matrix-IDs der Besitzer (für `checks.owner()`), mit Komma getrennt |
+| `encryption`, `auto_join`, `announce`, `help_command`, `help_note` | Standard alles an. `auto_join` darf auch eine Funktion `(einlader, raum_id) -> bool` sein: nur gewünschte Einladungen werden angenommen, die anderen abgelehnt |
 | `strict`, `edit_interval`, `ignore_older_than`, `error_text` | siehe oben |
 
-Für alles andere: `bot.client` ist der `nio.AsyncClient` darunter ([matrix-nio](https://matrix-nio.readthedocs.io/)).
+Für alles andere: `bot.client` ist der `nio.AsyncClient` darunter ([matrix-nio](https://matrix-nio.readthedocs.io/)). Eigene nio-Ereignisse
+(z. B. Anruf-Signalisierung) greifst du mit `bot.add_event_callback(callback, nio.CallInviteEvent)` und
+`bot.add_to_device_callback(callback, typen)` ab; das geht schon vor dem Login.
 
 ## Betrieb
 
@@ -231,6 +434,7 @@ Für alles andere: `bot.client` ist der `nio.AsyncClient` darunter ([matrix-nio]
 | [`examples/poll.py`](examples/poll.py) | Umfrage mit Knöpfen, Balken aktualisieren sich bei jeder Stimme |
 | [`examples/timer.py`](examples/timer.py) | Countdown mit selbst laufendem Balken, Pause, Spulen auf der Zeitleiste |
 | [`examples/player.py`](examples/player.py) | der Diddy-Player mit allem: Steuerung, Regler, Menü, Up next, Warteschlange |
+| [`examples/reminders.py`](examples/reminders.py) | Cog mit `Duration`, `confirm`, Cooldown, Speicher und Loop |
 
 ## Entwicklung
 

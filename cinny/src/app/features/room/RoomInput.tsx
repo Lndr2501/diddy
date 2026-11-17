@@ -113,6 +113,11 @@ import { replyPreviewText } from '../../utils/replyPreview';
 import * as css from './RoomInput.css';
 import { CommandAutocomplete } from './CommandAutocomplete';
 import { BotCommandAutocomplete } from './BotCommandAutocomplete';
+import {
+  BotArgumentAutocomplete,
+  BotArgumentQuery,
+  getBotArgumentQuery,
+} from './BotArgumentAutocomplete';
 import { Command, SHRUG, TABLEFLIP, UNFLIP, useCommands } from '../../hooks/useCommands';
 import { mobileOrTablet } from '../../utils/user-agent';
 import { useElementSizeObserver } from '../../hooks/useElementSizeObserver';
@@ -225,6 +230,8 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
     const [toolbar, setToolbar] = useSetting(settingsAtom, 'editorToolbar');
     const [autocompleteQuery, setAutocompleteQuery] =
       useState<AutocompleteQuery<AutocompletePrefix>>();
+    // the argument of a bot command that is being typed ("!mode o")
+    const [botArgument, setBotArgument] = useState<BotArgumentQuery>();
 
     const sendTypingStatus = useTypingStatusUpdater(mx, roomId);
 
@@ -629,14 +636,15 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
         }
         if (isKeyHotkey('escape', evt)) {
           evt.preventDefault();
-          if (autocompleteQuery) {
+          if (autocompleteQuery || botArgument) {
             setAutocompleteQuery(undefined);
+            setBotArgument(undefined);
             return;
           }
           setReplyDraft(undefined);
         }
       },
-      [submit, setReplyDraft, enterForNewline, autocompleteQuery, isComposing]
+      [submit, setReplyDraft, enterForNewline, autocompleteQuery, botArgument, isComposing]
     );
 
     const handleKeyUp: KeyboardEventHandler = useCallback(
@@ -655,12 +663,14 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
           ? getAutocompleteQuery<AutocompletePrefix>(editor, prevWordRange, AUTOCOMPLETE_PREFIXES)
           : undefined;
         setAutocompleteQuery(query);
+        setBotArgument(query ? undefined : getBotArgumentQuery(editor));
       },
       [editor, sendTypingStatus, hideActivity]
     );
 
     const handleCloseAutocomplete = useCallback(() => {
       setAutocompleteQuery(undefined);
+      setBotArgument(undefined);
       ReactEditor.focus(editor);
     }, [editor]);
 
@@ -788,6 +798,14 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
             room={room}
             editor={editor}
             query={autocompleteQuery}
+            requestClose={handleCloseAutocomplete}
+          />
+        )}
+        {botArgument && (
+          <BotArgumentAutocomplete
+            room={room}
+            editor={editor}
+            query={botArgument}
             requestClose={handleCloseAutocomplete}
           />
         )}

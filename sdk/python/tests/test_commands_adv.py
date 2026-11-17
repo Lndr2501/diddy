@@ -281,3 +281,65 @@ async def test_member_converter_and_usage_in_help_use_choices():
     assert "fits several" in (await chat.say("!poke bo"))[0].card["text"]
     assert "nobody called" in (await chat.say("!poke zed"))[0].card["text"]
     assert (await chat.say("!poke bobby"))[0].body == "poked Bobby (@bobby:test)"
+
+
+async def test_options_for_diddy_suggestions():
+    bot = make_bot()
+
+    @bot.command("mode", describe={"setting": "turns it on or off"})
+    async def mode(ctx, setting: Literal["on", "off"], note: str = "", *, text: str = ""):
+        ...
+
+    @bot.command("sum")
+    async def total(ctx, numbers: list[int], *words: str):
+        ...
+
+    @bot.group("pl")
+    async def pl(ctx): ...
+
+    @pl.command("add")
+    async def pl_add(ctx, song: str): ...
+
+    @pl.command("secret", hidden=True)
+    async def pl_secret(ctx): ...
+
+    @bot.command("quiet", hidden=True)
+    async def quiet(ctx): ...
+
+    @bot.command("color")
+    async def color(ctx, c: Color, loud: bool = False): ...
+
+    commands = {c["name"]: c for c in protocol.parse_commands(bot.registry.commands_content())["commands"]}
+    assert commands["mode"]["options"] == [
+        {"name": "setting", "required": True, "desc": "turns it on or off", "choices": ["on", "off"]},
+        {"name": "note", "required": False}, {"name": "text", "required": False}]
+    assert commands["sum"]["options"] == [{"name": "numbers", "required": True},
+                                          {"name": "words", "required": False}]
+    assert commands["pl"]["options"] == [{"name": "subcommand", "required": True,
+                                          "choices": ["add"]}]
+    assert commands["color"]["options"][0]["choices"] == ["red", "blue"]
+    assert commands["color"]["options"][1]["choices"] == ["on", "off"]
+    assert "quiet" not in commands and "options" not in commands["help"]
+
+
+async def test_explicit_options_replace_the_derived_ones():
+    from diddybot import Bot
+    from diddybot.testing import FakeTransport, TestClient
+
+    bot = Bot(transport=FakeTransport("@b:t"))
+
+    @bot.command("raw", desc="takes the line itself", options=[])
+    async def raw(ctx, *, text: str = ""): ...
+
+    @bot.command("derived")
+    async def derived(ctx, n: int = 1): ...
+
+    @bot.command("own", options=[{"name": "speed", "choices": ["slow", "fast"]}])
+    async def own(ctx, *, text: str = ""): ...
+
+    chat = TestClient(bot)
+    await chat.start()
+    by = {c["name"]: c for c in chat.commands()["commands"]}
+    assert "options" not in by["raw"]
+    assert by["derived"]["options"][0]["name"] == "n"
+    assert by["own"]["options"] == [{"name": "speed", "required": True, "choices": ["slow", "fast"]}]
