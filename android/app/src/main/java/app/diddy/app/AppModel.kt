@@ -56,6 +56,8 @@ object AppModel {
         restored = true
         scope.launch {
             val records = AccountList.load()
+            // Logins that never finished (the app closed in the middle) leave data behind.
+            runCatching { SessionStore.removeOrphans(records.map { it.id }.toSet()) }
             val preferred = AccountList.activeAccountId
             // The account shown first is restored first; the splash only waits for it.
             val pending = records.toMutableList()

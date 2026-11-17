@@ -782,6 +782,7 @@ fun EncryptionPage(account: MatrixAccount, navigator: Navigator) {
         var phrase by remember { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = { askPassphrase = false },
+            properties = SecretDialog,
             title = { Text("Set up recovery") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -806,6 +807,7 @@ fun EncryptionPage(account: MatrixAccount, navigator: Navigator) {
         // DialogProperties defaults to inheriting the parent window's secure flag.
         AlertDialog(
             onDismissRequest = {},
+            properties = SecretDialog,
             title = { Text("Your recovery key") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -818,6 +820,9 @@ fun EncryptionPage(account: MatrixAccount, navigator: Navigator) {
         )
     }
 }
+
+/** Dialogs with a recovery key or passphrase stay out of screenshots and screen sharing. */
+private val SecretDialog = androidx.compose.ui.window.DialogProperties(securePolicy = androidx.compose.ui.window.SecureFlagPolicy.SecureOn)
 
 // MARK: - Account
 

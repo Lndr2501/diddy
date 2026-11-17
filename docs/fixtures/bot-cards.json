@@ -1,0 +1,342 @@
+{
+  "about": "Shared contract for dev.diddy.card (docs/bot-cards.md). Each case is a message content and what every Diddy client must read from it; null means: no card, show body. Checked by cinny/tests/botCardFixtures.test.cjs and android BotCardFixturesTest. Add a case here instead of in one client only.",
+  "cases": [
+    {
+      "name": "track card with all common fields",
+      "content": {
+        "msgtype": "m.notice",
+        "body": "x",
+        "dev.diddy.card": {
+          "v": 1,
+          "kind": "track",
+          "state": "playing",
+          "title": "Cheri Cheri Lady",
+          "artist": "Modern Talking",
+          "duration": 197,
+          "position": 10,
+          "startedAt": 1000,
+          "thumbnail": "mxc://x.de/abc",
+          "url": "https://youtu.be/x",
+          "actions": [
+            {
+              "label": "Pause",
+              "send": "!pause"
+            }
+          ]
+        }
+      },
+      "expect": {
+        "kind": "track",
+        "state": "playing",
+        "title": "Cheri Cheri Lady",
+        "actions": 1
+      }
+    },
+    {
+      "name": "plain message",
+      "content": {
+        "msgtype": "m.text",
+        "body": "hi"
+      },
+      "expect": null
+    },
+    {
+      "name": "unknown version",
+      "content": {
+        "msgtype": "m.notice",
+        "body": "x",
+        "dev.diddy.card": {
+          "v": 2,
+          "kind": "note",
+          "text": "a",
+          "tone": "info"
+        }
+      },
+      "expect": null
+    },
+    {
+      "name": "unknown kind",
+      "content": {
+        "msgtype": "m.notice",
+        "body": "x",
+        "dev.diddy.card": {
+          "v": 1,
+          "kind": "poll",
+          "text": "a"
+        }
+      },
+      "expect": null
+    },
+    {
+      "name": "buttons that do not send a command are dropped",
+      "content": {
+        "msgtype": "m.notice",
+        "body": "x",
+        "dev.diddy.card": {
+          "v": 1,
+          "kind": "track",
+          "state": "paused",
+          "title": "T",
+          "actions": [
+            {
+              "label": "Resume",
+              "send": "!resume"
+            },
+            {
+              "label": "Hi",
+              "send": "hello"
+            },
+            {
+              "label": "Slash",
+              "send": "/me waves"
+            }
+          ]
+        }
+      },
+      "expect": {
+        "kind": "track",
+        "state": "paused",
+        "title": "T",
+        "actions": 2
+      }
+    },
+    {
+      "name": "buttons may carry arguments",
+      "content": {
+        "msgtype": "m.notice",
+        "body": "x",
+        "dev.diddy.card": {
+          "v": 1,
+          "kind": "track",
+          "state": "playing",
+          "title": "T",
+          "actions": [
+            {
+              "label": "+10 s",
+              "send": "!seek +10"
+            },
+            {
+              "label": "Play",
+              "send": "!play Cheri Cheri Lady"
+            },
+            {
+              "label": "Space",
+              "send": "! pause"
+            }
+          ]
+        }
+      },
+      "expect": {
+        "kind": "track",
+        "state": "playing",
+        "title": "T",
+        "actions": 2
+      }
+    },
+    {
+      "name": "at most ten buttons",
+      "content": {
+        "msgtype": "m.notice",
+        "body": "x",
+        "dev.diddy.card": {
+          "v": 1,
+          "kind": "track",
+          "state": "playing",
+          "title": "T",
+          "actions": [
+            {
+              "label": "1",
+              "send": "!a"
+            },
+            {
+              "label": "2",
+              "send": "!a"
+            },
+            {
+              "label": "3",
+              "send": "!a"
+            },
+            {
+              "label": "4",
+              "send": "!a"
+            },
+            {
+              "label": "5",
+              "send": "!a"
+            },
+            {
+              "label": "6",
+              "send": "!a"
+            },
+            {
+              "label": "7",
+              "send": "!a"
+            },
+            {
+              "label": "8",
+              "send": "!a"
+            },
+            {
+              "label": "9",
+              "send": "!a"
+            },
+            {
+              "label": "10",
+              "send": "!a"
+            },
+            {
+              "label": "11",
+              "send": "!a"
+            },
+            {
+              "label": "12",
+              "send": "!a"
+            }
+          ]
+        }
+      },
+      "expect": {
+        "kind": "track",
+        "state": "playing",
+        "title": "T",
+        "actions": 10
+      }
+    },
+    {
+      "name": "note chip",
+      "content": {
+        "msgtype": "m.notice",
+        "body": "x",
+        "dev.diddy.card": {
+          "v": 1,
+          "kind": "note",
+          "text": "Queue is full",
+          "tone": "warning",
+          "icon": "⚠️"
+        }
+      },
+      "expect": {
+        "kind": "note",
+        "text": "Queue is full",
+        "tone": "warning"
+      }
+    },
+    {
+      "name": "queue",
+      "content": {
+        "msgtype": "m.notice",
+        "body": "x",
+        "dev.diddy.card": {
+          "v": 1,
+          "kind": "queue",
+          "now": {
+            "title": "Now"
+          },
+          "items": [
+            {
+              "title": "A",
+              "artist": "X",
+              "duration": 60
+            },
+            {
+              "title": "B"
+            }
+          ],
+          "total": 5
+        }
+      },
+      "expect": {
+        "kind": "queue",
+        "items": 2,
+        "total": 5
+      }
+    },
+    {
+      "name": "help groups",
+      "content": {
+        "msgtype": "m.notice",
+        "body": "x",
+        "dev.diddy.card": {
+          "v": 1,
+          "kind": "help",
+          "groups": [
+            {
+              "title": "Music",
+              "items": [
+                {
+                  "usage": "!play <song>",
+                  "desc": "Plays a song"
+                }
+              ]
+            },
+            {
+              "title": "Other",
+              "items": [
+                {
+                  "usage": "!help",
+                  "desc": "This"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expect": {
+        "kind": "help",
+        "groups": 2
+      }
+    },
+    {
+      "name": "stats chart",
+      "content": {
+        "msgtype": "m.notice",
+        "body": "x",
+        "dev.diddy.card": {
+          "v": 1,
+          "kind": "stats",
+          "title": "Top",
+          "charts": [
+            {
+              "title": "Songs",
+              "unit": "plays",
+              "items": [
+                {
+                  "label": "A",
+                  "value": 3
+                },
+                {
+                  "label": "B",
+                  "value": 1
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expect": {
+        "kind": "stats",
+        "title": "Top",
+        "charts": 1
+      }
+    },
+    {
+      "name": "empty list",
+      "content": {
+        "msgtype": "m.notice",
+        "body": "x",
+        "dev.diddy.card": {
+          "v": 1,
+          "kind": "list",
+          "title": "Favourites",
+          "items": [],
+          "empty": "No favourites yet"
+        }
+      },
+      "expect": {
+        "kind": "list",
+        "title": "Favourites",
+        "items": 0
+      }
+    }
+  ]
+}

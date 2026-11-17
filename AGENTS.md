@@ -1,7 +1,7 @@
 # AGENTS.md: Diddy für Agenten
 
 Diddy ist ein Matrix-Client: Tauri 2 (macOS) + Cinny-Fork in `cinny/` (React/TypeScript, vanilla-extract,
-folds, jotai). Dazu `electron/` (Linux), `ios/` (Swift) und `android/` (Kotlin, Compose; im Aufbau). Repo: Lndr2501/diddy. Anrede im Chat: duzen.
+folds, jotai). Dazu `electron/` (Linux), `ios/` (Swift) und `android/` (Kotlin, Compose). Repo: Lndr2501/diddy. Anrede im Chat: duzen.
 
 ## Erst lesen
 
@@ -36,7 +36,9 @@ ESLint hat viele Altlasten; neue Dateien trotzdem sauber halten (`npx eslint <da
   Die Web-Oberfläche in `cinny/` deckt macOS, Linux und Windows ab; iOS ist eigener Swift-Code und muss im selben Zug mitgebaut
   werden. Geht das nicht (z. B. kein Xcode erreichbar, API fehlt auf einer Plattform), im Commit und im Issue/PR
   ausdrücklich nennen, welche Plattform fehlt und warum. Plattform-Labels auf GitHub: iOS, Linux, macOS (Windows läuft über `electron/` mit Linux).
-- Android bauen: `cd android && ./gradlew testDebugUnitTest assembleDebug` (JDK 17, Android SDK), sonst CI `Build Android`; siehe `android/README.md`.
+- Android bauen: `cd android && ./gradlew testDebugUnitTest lintDebug assembleDebug` (JDK 17, Android SDK), sonst CI `Build Android`; siehe `android/README.md`.
+  Android gehört zu „alle Plattformen“: neue Funktionen und Fixes auch in `android/`, sonst im Commit/PR nennen. Bot-Karten-Regeln
+  ändern? Fall in `docs/fixtures/bot-cards.json` ergänzen (Desktop- und Android-Tests lesen ihn). Feature-Matrix: `docs/plattformen.md`.
 - iOS bauen: auf dem Mac (`xcodebuild`, siehe `ios/README.md`) oder in der CI (`Build iOS`, läuft bei Pull Requests).
   Ohne Mac-Zugang iOS-Änderungen über einen PR prüfen lassen, nicht ungebaut nach `main` pushen.
 - Build auf dem Mac immer mit `nice -n 19`, `CARGO_BUILD_JOBS=2`, `NODE_OPTIONS=--max_old_space_size=4096`.

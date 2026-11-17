@@ -21,7 +21,8 @@ file=android/app/build.gradle.kts
 current=$(sed -n 's/^val diddyVersion = "\(.*\)"/\1/p' "$file")
 if [ "$current" != "$version" ]; then
   echo "::warning file=$file::Android version is '$current'; building with '$version' from the tag."
-  sed -i.bak "s/^val diddyVersion = \".*\"/val diddyVersion = \"$version\"/" "$file"
+  code=$(echo "$version" | awk -F. '{ print $1 * 10000 + $2 * 100 + $3 }')
+  sed -i.bak -e "s/^val diddyVersion = \".*\"/val diddyVersion = \"$version\"/" -e "s/^val diddyVersionCode = .*/val diddyVersionCode = $code/" "$file"
   rm -f "$file.bak"
 fi
-grep -n 'diddyVersion =' "$file"
+grep -n -E 'diddyVersion(Code)? =' "$file"

@@ -131,6 +131,8 @@ object SecretBox {
     fun remove(context: Context, name: String) {
         prefs(context).edit().remove(name).commit()
     }
+
+    fun names(context: Context): Set<String> = prefs(context).all.keys
 }
 
 object SessionStore {
@@ -171,6 +173,26 @@ object SessionStore {
         SecretBox.remove(context, sessionName(accountId))
         SecretBox.remove(context, storeKeyName(accountId))
     }
+
+    /**
+     * Removes SDK data, caches and sealed secrets of accounts that are not on the list any more,
+     * for example after the app was closed in the middle of a login. Run before any login starts.
+     */
+    fun removeOrphans(known: Set<String>) {
+        val dataRoot = java.io.File(context.filesDir, "accounts")
+        val cacheRoot = java.io.File(context.cacheDir, "accounts")
+        for (root in listOf(dataRoot, cacheRoot)) {
+            for (id in orphanIds(root.list()?.toList() ?: emptyList(), known)) java.io.File(root, id).deleteRecursively()
+        }
+        for (id in orphanIds(SecretBox.names(context).mapNotNull(::accountOfSecret), known)) delete(id)
+    }
+
+    /** `session.<id>` and `storekey.<id>` to `<id>`. */
+    fun accountOfSecret(name: String): String? = listOf("session.", "storekey.").firstNotNullOfOrNull { prefix ->
+        name.takeIf { it.startsWith(prefix) }?.removePrefix(prefix)?.takeIf { it.isNotEmpty() }
+    }
+
+    fun orphanIds(present: List<String>, known: Set<String>): List<String> = present.distinct().filter { it !in known && it.isNotBlank() }
 
     /**
      * The key the account's SDK databases are encrypted with: 32 random bytes made once per

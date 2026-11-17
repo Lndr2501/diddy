@@ -22,6 +22,13 @@ and a device with manufacturer battery restrictions; test real ARM 16-KB hardwar
   process end, Doze and reboot; tap opens the correct account/room. Repeat endpoint changes, DND,
   read-elsewhere, delayed/cancelled calls, denied notification permission and gateway outage.
   Force-stop is a separate case: no guaranteed delivery until the user starts the app again.
+- [ ] Incoming DM call with the app closed: call-style notification with Decline and Answer
+  (also via push); Answer opens Diddy and joins. A call push that arrives after the ring expired
+  (airplane mode while ringing) does not ring. Hang up from the ongoing-call notification.
+- [ ] App sound with a shared screen (Android 10+): a YouTube app and a game are heard by the other
+  side; Diddy's own sound (call, soundboard, Watch Together) does not come back; the switch in
+  Settings > Calls turns it off.
+- [ ] Install from F-Droid over a GitHub install (and the reverse): it updates in place, session kept.
 - [ ] Thirty-minute encrypted call with locked screen, app switching and Wi-Fi/mobile handover.
   Check microphone, echo, speaker, Bluetooth/USB/wired route changes and interruption by phone call.
 - [ ] Android ↔ desktop ↔ iOS call: camera, remote screen, mute/deafen, volume, reconnect and leaving.

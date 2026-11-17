@@ -4,7 +4,13 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import androidx.compose.runtime.Composable
@@ -61,8 +67,25 @@ fun MainScreen(account: MatrixAccount) {
             account.scope.launch { store.enterBackground() }
         }
     }
-    Box(Modifier.fillMaxSize()) {
-        AnimatedContent(
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        if (app.diddy.app.Layout.isTwoPane(maxWidth.value)) {
+            // Tablets, foldables open and wide windows: the list stays, the chat sits next to it.
+            Row(Modifier.fillMaxSize()) {
+                Box(Modifier.width(app.diddy.app.Layout.LIST_PANE_WIDTH_DP.dp).fillMaxHeight()) { PhoneHome(account, navigator) }
+                Box(Modifier.width(1.dp).fillMaxHeight().background(app.diddy.ui.theme.Theme.rail))
+                Box(Modifier.weight(1f).fillMaxHeight()) {
+                    when (val destination = navigator.destination) {
+                        null -> EmptyDetailPane()
+                        is Destination.Text -> androidx.compose.runtime.key(destination.roomId) {
+                            ChatScreen(account, destination.roomId, navigator) { navigator.destination = null }
+                        }
+                        is Destination.Voice -> androidx.compose.runtime.key(destination.roomId) {
+                            app.diddy.ui.call.VoiceChannelScreen(account, destination.roomId, navigator) { navigator.destination = null }
+                        }
+                    }
+                }
+            }
+        } else AnimatedContent(
             targetState = navigator.destination,
             transitionSpec = {
                 if (targetState != null) slideInHorizontally { it } togetherWith slideOutHorizontally { -it / 4 }
@@ -82,3 +105,10 @@ fun MainScreen(account: MatrixAccount) {
     }
 }
 
+/** The right side on a wide screen before a chat is chosen. */
+@Composable
+private fun EmptyDetailPane() {
+    Box(Modifier.fillMaxSize().background(app.diddy.ui.theme.Theme.chat), contentAlignment = androidx.compose.ui.Alignment.Center) {
+        androidx.compose.material3.Text("Choose a chat or channel", color = app.diddy.ui.theme.Theme.muted)
+    }
+}

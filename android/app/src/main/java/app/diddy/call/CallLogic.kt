@@ -83,6 +83,16 @@ object CallLogic {
         "m.call.intent" to "audio",
     )
 
+    /**
+     * Whether a call notification should still ring: only `ring` (DMs), and only until it
+     * expires. Without an expiry the sender's time plus the lifetime counts.
+     */
+    fun ringIsLive(isRing: Boolean, expirationTs: Long, sentTs: Long, now: Long): Boolean {
+        if (!isRing) return false
+        val end = if (expirationTs > 0) expirationTs else sentTs + RING_LIFETIME_MS
+        return now < end
+    }
+
     /** The to-device message with our media key. */
     fun keysContent(roomId: String, userId: String, deviceId: String, key: ByteArray, index: Int, now: Long): Map<String, Any?> = mapOf(
         "keys" to mapOf("index" to index, "key" to Base64.getEncoder().encodeToString(key)),

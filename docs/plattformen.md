@@ -17,7 +17,7 @@ Stand 2026-11-17, aus Code und CI abgeleitet (`src-tauri/`, `electron/`, `ios/`,
 | Verifizierung, Recovery, Schlüssel-Backup | ✅ | ✅ | ✅ | 🧪 |
 | MatrixRTC-Calls, Kamera und fremde Bildschirmfreigabe | ✅ | ✅ | ✅ | 🧪 |
 | Eigene Bildschirmfreigabe | ✅ | ✅ | ✅ (Broadcast-Erweiterung) | 🧪 (MediaProjection) |
-| Systemton teilen | ✅ (14.2+) | ✅ (Windows ab Build 19041) | nur Diddy-Ton | ❌ |
+| Systemton teilen | ✅ (14.2+) | ✅ (Windows ab Build 19041) | nur Diddy-Ton | 🧪 (Android 10+, nur Apps, die Aufnahme erlauben; ohne Diddy-Ton) |
 | Rauschunterdrückung | RNNoise | RNNoise | RNNoise | WebRTC |
 | Klingeln in Direktnachrichten | ✅ | ✅ | 🧪 | 🧪 |
 | Call-Töne, eigene Sounds und Themes | ✅ | ✅ | 🧪 | 🧪 |
@@ -34,7 +34,9 @@ Stand 2026-11-17, aus Code und CI abgeleitet (`src-tauri/`, `electron/`, `ios/`,
 | Gespeicherte Nachrichten | ✅ | ✅ | 🧪 | ❌ |
 | Diagnoseexport | ✅ | ✅ | 🧪 | 🧪 |
 | Push bei geschlossenem Fenster/Prozess | – | – | eingeschränkt (ntfy-Anrufpfad, kein APNs) | 🧪 (UnifiedPush; Geräte-/Gateway-Nachweis offen) |
+| App-Store-Vertrieb | – | – | ❌ (kein bezahltes Apple-Konto) | 🧪 (F-Droid vorbereitet: reproduzierbarer Build, Rezept, CI-Prüfung; Aufnahme ab der Version nach 1.12.0) |
 | Teilen aus anderen Apps und Deep Links | ✅ | ✅ | 🧪 | 🧪 |
+| Tablet-/Foldable-Layout (Liste und Chat nebeneinander) | – | – | ✅ (iPad) | 🧪 (ab 720 dp Breite) |
 | Android: Fehlerbehandlung beim Abmelden/Call-Schlüsselwechsel | – | – | – | 🧪 (Logiktests; Interop offen) |
 
 Anmerkungen:
@@ -46,4 +48,6 @@ Anmerkungen:
   - GNOME: Einstellungen > Tastatur > Tastaturkürzel anzeigen und anpassen > Eigene Tastenkürzel, Befehl `diddy --agent-voice toggle`.
   - KDE Plasma: Systemeinstellungen > Tastenkürzel > Eigene Kürzel > Neu > Globales Kürzel > Befehl/URL, Befehl `diddy --agent-voice toggle`.
   - Sway: `bindsym $mod+v exec diddy --agent-voice toggle`. Hyprland: `bind = SUPER, V, exec, diddy --agent-voice toggle`.
-- iOS braucht einen Server mit Simplified Sliding Sync (MSC4186).
+- iOS und Android brauchen einen Server mit Simplified Sliding Sync (MSC4186).
+- Windows: System-Ton beim Teilen läuft seit 1.12.0 über einen mitinstallierten Helfer, der alles außer Diddy aufnimmt.
+- Android: Push läuft über UnifiedPush (eine Verteiler-App wie ntfy, deren Server auch das Matrix-Push-Gateway stellt). Ohne Verteiler hält eine Hintergrundverbindung die Benachrichtigungen. Nach „Beenden erzwingen“ in den Android-Einstellungen kommt nichts mehr an, bis Diddy wieder geöffnet wird; Energiesparmodi mancher Hersteller können verzögern. Details: [android/README.md](../android/README.md).

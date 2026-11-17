@@ -20,6 +20,11 @@ and open it on the phone (Android 8 or later, arm64 or x86_64). Allow installati
 when asked. Releases use `app.diddy.android` and a stable signing key, so later APKs update the same
 app and keep its data. Test builds with the `.debug` app id remain separate.
 
+From the first release after 1.12.0 on, Diddy is also meant for F-Droid. F-Droid rebuilds every tag
+from source and ships the same signed APK once its bytes match. F-Droid and GitHub installs are
+therefore the same app. See [fdroid/README.md](fdroid/README.md) for how the build stays
+reproducible, the recipe, the CI check and the one-time submission.
+
 `release.yml` runs the Android unit tests, builds and verifies the signed APK, and publishes it
 alongside the desktop/iOS packages and `SHA256SUMS`. Release tags require all four repository secrets:
 `DIDDY_ANDROID_KEYSTORE` (base64 JKS), `DIDDY_ANDROID_KEYSTORE_PASSWORD`, `DIDDY_ANDROID_KEY_ALIAS`
@@ -53,14 +58,19 @@ into the APK, so all apps sound and work the same.
 - Members with roles, kick, ban, invite; room and server settings; create rooms, channels and
   servers; explore public rooms
 - Calls and voice channels (MatrixRTC + LiveKit, Element Call media keys): camera, screen
-  sharing, speaker, deafen, per-person volume, ringing in DMs, incoming call screen, soundboard
-  with MyInstants search, Watch Together (YouTube with SponsorBlock), the phone as camera and
-  microphone for the computer
+  sharing with app sound (Android 10+), speaker, deafen, per-person volume, ringing in DMs,
+  Android's call notifications (answer, decline, hang up), soundboard with MyInstants search,
+  Watch Together (YouTube with SponsorBlock), the phone as camera and microphone for the computer
+- Call encryption: the media key goes only to devices with a MatrixRTC membership, keys are only
+  taken from members' own devices, a new key when someone leaves, and the call screen shows the
+  encryption status
 - Notifications: UnifiedPush (ntfy and others) or a background connection, with message,
   mention, invite and call notifications; ntfy call alerts
 - Emoji verification, recovery key, key backup, devices
 - Plugins (same contract as desktop and iOS), pinned under You
 - Share into a chat from other apps; matrix.to and `matrix:` links open in Diddy
+- Tablets and open foldables: chat list and chat side by side
+- Recovery key views are kept out of screenshots and screen sharing
 
 ## Notes
 
@@ -68,6 +78,12 @@ into the APK, so all apps sound and work the same.
   Push), or the background connection. Push needs no open connection and saves battery.
 - Watch Together, the soundboard with MyInstants search and the phone as camera and microphone
   for the computer (companion) work like on the iPhone.
+- After *Force stop* in Android's settings nothing arrives until Diddy is opened again; some
+  manufacturers' battery savers delay push. There is no FCM build (it needs a Firebase project).
+- App sound with a shared screen works only for apps that allow recording (not for protected
+  videos) and goes with the microphone, so it is silent while you are muted.
+- Not on Android yet: Agent Voice, changing the app icon, and what 1.12.0 added elsewhere
+  (push to talk, polls, saved messages, send later).
 
 ## Implementation and verification (#233)
 
@@ -95,7 +111,14 @@ hardware acceptance [#253](https://github.com/Lndr2501/diddy/issues/253).
   The page size reported by the emulator is included in the report; an x86 image is not proof of
   ARM hardware behavior. Emulator reports contain only synthetic data.
 
-Still outside this implementation: Android system-audio capture, Play/F-Droid publication, and full
-parity with every newly added desktop/iOS feature (for example Saved Messages and language import).
+Still outside this implementation: the F-Droid listing itself (prepared, see
+[fdroid/README.md](fdroid/README.md)), a Play Store build, and full parity with every newly added
+desktop/iOS feature (for example Saved Messages and language import).
 UnifiedPush is implemented; FCM is not provided. An attached distributor and actual homeserver/gateway
 must be tested end to end. A permanent background connection is an optional fallback, not a push guarantee.
+
+## More
+
+- [Architecture and security decisions](../docs/android-architektur.md)
+- [Device checklist](ACCEPTANCE.md)
+- [Features per platform](../docs/plattformen.md)

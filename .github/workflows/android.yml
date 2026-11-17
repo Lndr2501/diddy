@@ -16,11 +16,13 @@ on:
       - "cinny/public/sound/diddy/**"
       - "cinny/src/app/plugins/builtin/**"
       - "ios/Diddy/Matrix/EmojiData.swift"
+      - "fastlane/**"
       - ".github/workflows/android.yml"
       - ".github/scripts/android-emulator-smoke.sh"
   pull_request:
     paths:
       - "android/**"
+      - "fastlane/**"
       - ".github/workflows/android.yml"
       - ".github/scripts/android-emulator-smoke.sh"
 
@@ -174,3 +176,79 @@ jobs:
         with:
           name: android-emulator-${{ matrix.api }}-${{ matrix.target }}
           path: emulator-report/
+
+  # F-Droid rebuilds every release from source and ships Diddy's own signed APK only when its build
+  # gives the same bytes (android/fdroid/README.md). This job does F-Droid's check: one release
+  # build signed by Gradle (throwaway key, like release.yml with the real one), one unsigned build in
+  # another path with its own Gradle home and Gradle on Java 21, then apksigcopier copies the
+  # signature over and verifies. Plus F-Droid's scanner (non-free libraries, trackers). Not for
+  # release tags.
+  fdroid:
+    name: F-Droid (reproducible build, scanner)
+    if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          path: first
+
+      - name: Second copy in another path
+        run: |
+          cp -a first "$RUNNER_TEMP/second"
+          echo "sdk.dir=$ANDROID_HOME" > first/android/local.properties
+          echo "sdk.dir=$ANDROID_HOME" > "$RUNNER_TEMP/second/android/local.properties"
+
+      - name: F-Droid tools
+        run: |
+          python3 -m venv "$RUNNER_TEMP/fdroidserver"
+          "$RUNNER_TEMP/fdroidserver/bin/pip" install --quiet fdroidserver==2.4.5 apksigcopier==1.1.1
+          echo "$(find "$ANDROID_HOME/build-tools" -maxdepth 1 -mindepth 1 -type d | sort -V | tail -n 1)" >> "$GITHUB_PATH"
+
+      - name: Signed release build (throwaway key)
+        working-directory: first/android
+        run: |
+          export JAVA_HOME="$JAVA_HOME_17_X64"
+          "$JAVA_HOME/bin/keytool" -genkeypair -keystore "$RUNNER_TEMP/throwaway.jks" -storepass throwaway \
+            -keypass throwaway -alias throwaway -keyalg RSA -keysize 2048 -validity 1 -dname CN=throwaway
+          DIDDY_ANDROID_KEYSTORE_FILE="$RUNNER_TEMP/throwaway.jks" DIDDY_ANDROID_KEYSTORE_PASSWORD=throwaway \
+            DIDDY_ANDROID_KEY_ALIAS=throwaway DIDDY_ANDROID_KEY_PASSWORD=throwaway \
+            ./gradlew --no-daemon --no-build-cache assembleRelease
+
+      - name: Unsigned release build (other path, Gradle home and JVM)
+        working-directory: ${{ runner.temp }}/second/android
+        run: |
+          JAVA_HOME="$JAVA_HOME_21_X64" GRADLE_USER_HOME="$RUNNER_TEMP/gradle-second" \
+            ./gradlew --no-daemon --no-build-cache -Porg.gradle.java.installations.fromEnv=JAVA_HOME_17_X64 assembleRelease
+
+      - name: Compare like F-Droid
+        run: |
+          signed=first/android/app/build/outputs/apk/release/app-release.apk
+          unsigned="$RUNNER_TEMP/second/android/app/build/outputs/apk/release/app-release-unsigned.apk"
+          if ! "$RUNNER_TEMP/fdroidserver/bin/apksigcopier" compare "$signed" --unsigned "$unsigned"; then
+            python3 first/android/fdroid/compare-apks.py "$signed" "$unsigned" || true
+            exit 1
+          fi
+          echo "reproducible: the signature of the Gradle-signed APK fits the second build"
+
+      - name: F-Droid scanner
+        run: |
+          cp "$RUNNER_TEMP/second/android/app/build/outputs/apk/release/app-release-unsigned.apk" \
+            first/android/app/build/outputs/apk/release/
+          "$RUNNER_TEMP/fdroidserver/bin/python" first/android/fdroid/scan.py first
+
+      - name: Remove the throwaway key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/throwaway.jks"
+
+      - name: Upload both APKs
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: android-fdroid-apks
+          path: |
+            first/android/app/build/outputs/apk/release/app-release.apk
+            ${{ runner.temp }}/second/android/app/build/outputs/apk/release/app-release-unsigned.apk
+          if-no-files-found: ignore

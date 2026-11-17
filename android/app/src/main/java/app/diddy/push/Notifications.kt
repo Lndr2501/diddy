@@ -144,23 +144,60 @@ object Notifications {
         post(account, room.id, room.name, body, CHANNEL_MENTIONS, Sound.INVITE.isEnabled, tag(account, room.id))
     }
 
-    /** Someone calls you while Diddy is in the background; false when it is on screen. */
+    /**
+     * Someone calls you while Diddy is in the background; false when it is on screen. Shown in
+     * Android's call style with Decline and Answer; Answer opens Diddy and joins.
+     */
     fun announceCall(account: MatrixAccount, roomId: String, name: String): Boolean {
         if (!::context.isInitialized || inForeground) return false
         if (Build.VERSION.SDK_INT >= 33 && context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return false
-        val notification = NotificationCompat.Builder(context, CHANNEL_CALLS)
+        val answer = callActionIntent(account.id, roomId, answer = true)
+        val decline = callActionIntent(account.id, roomId, answer = false)
+        val caller = androidx.core.app.Person.Builder().setName(name).setImportant(true).build()
+        // Call style needs a full-screen intent here; Android 14+ may not allow one (then plain buttons).
+        val fullScreen = Build.VERSION.SDK_INT < 34 || context.getSystemService(NotificationManager::class.java).canUseFullScreenIntent()
+        val builder = NotificationCompat.Builder(context, CHANNEL_CALLS)
             .setSmallIcon(R.drawable.ic_launcher_monochrome)
             .setContentTitle(name)
             .setContentText("Incoming call")
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setPriority(NotificationCompat.PRIORITY_MAX)
-            .setAutoCancel(true)
+            .setOngoing(true)
             .setTimeoutAfter(60_000)
             .setContentIntent(openIntent(account.id, roomId))
-            .setFullScreenIntent(openIntent(account.id, roomId), true)
-            .build()
-        runCatching { NotificationManagerCompat.from(context).notify("call|" + tag(account, roomId), 0, notification) }
+        if (fullScreen) {
+            builder.setFullScreenIntent(openIntent(account.id, roomId), true)
+            builder.setStyle(NotificationCompat.CallStyle.forIncomingCall(caller, decline, answer))
+        } else {
+            builder.addAction(0, "Decline", decline).addAction(0, "Answer", answer)
+        }
+        runCatching { NotificationManagerCompat.from(context).notify("call|" + tag(account, roomId), 0, builder.build()) }
         return true
+    }
+
+    /** Answer opens Diddy (the microphone may only start in the foreground); Decline does not. */
+    private fun callActionIntent(accountId: String, roomId: String, answer: Boolean): PendingIntent {
+        val code = (accountId + roomId + answer).hashCode()
+        return if (answer) {
+            val intent = Intent(context, MainActivity::class.java)
+                .setAction("app.diddy.ANSWER.$accountId.$roomId")
+                .putExtra(IntentRouter.EXTRA_ACCOUNT, accountId)
+                .putExtra(IntentRouter.EXTRA_ROOM, roomId)
+                .putExtra(IntentRouter.EXTRA_ANSWER, true)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            PendingIntent.getActivity(context, code, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        } else {
+            val intent = Intent(context, app.diddy.call.CallActionReceiver::class.java)
+                .setAction(app.diddy.call.CallActionReceiver.ACTION_DECLINE)
+                .putExtra(IntentRouter.EXTRA_ACCOUNT, accountId)
+                .putExtra(IntentRouter.EXTRA_ROOM, roomId)
+            PendingIntent.getBroadcast(context, code, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        }
+    }
+
+    fun removeCall(accountId: String, roomId: String) {
+        if (!::context.isInitialized) return
+        NotificationManagerCompat.from(context).cancel("call|$accountId|$roomId", 0)
     }
 
     /** The computer asks this phone to be its camera and microphone, while Diddy is in the background. */
@@ -178,10 +215,7 @@ object Notifications {
         runCatching { NotificationManagerCompat.from(context).notify("companion|" + tag(account, roomId), 0, notification) }
     }
 
-    fun removeCall(account: MatrixAccount, roomId: String) {
-        if (!::context.isInitialized) return
-        NotificationManagerCompat.from(context).cancel("call|" + tag(account, roomId), 0)
-    }
+    fun removeCall(account: MatrixAccount, roomId: String) = removeCall(account.id, roomId)
 
     /** The chat is open now: its notification is read. */
     fun clearRoom(account: MatrixAccount, roomId: String) {

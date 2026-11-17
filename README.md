@@ -126,7 +126,9 @@ All images show example data and are generated from the real app, see [docs/scre
 
 **Android 🧪:** the native Kotlin/Compose app is available as a signed APK from 1.11.1, with chats,
 encrypted calls, screen sharing, soundboard, Watch Together, phone companion and UnifiedPush.
-Built and unit-tested, not yet checked on a real phone. See the [Android guide](android/README.md).
+Built, unit-tested, linted and started on emulators in CI (also with 16 KB pages), not yet checked
+on a real phone. See the [Android guide](android/README.md) and the
+[feature matrix](docs/plattformen.md) for all five platforms.
 
 ## Install
 
