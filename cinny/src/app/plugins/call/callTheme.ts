@@ -196,15 +196,6 @@ ${TILE} > div:nth-child(2) > button:first-of-type > svg {
    popper wrapper of every menu is lifted above all tiles. */
 html body [data-radix-popper-content-wrapper] {
   z-index: 2147483000 !important;
-  /* its own compositing layer, ordered with the name tags' layers by the z-index above */
-  will-change: transform;
-}
-/* WebKit (macOS) still drew a neighbouring tile's name tag over the open menu (#260): the
-   backdrop-filter layer of the tag ignored the z-index. While a menu is open the tags go without
-   the blur, so they have no layer of their own and stay below the menu everywhere. */
-html body:has([data-radix-popper-content-wrapper]) ${TILE} [class*="_nameTag_"] {
-  -webkit-backdrop-filter: none !important;
-  backdrop-filter: none !important;
 }
 html body [role="menu"][class*="_menu_"] {
   position: relative;

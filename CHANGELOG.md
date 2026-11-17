@@ -2,7 +2,7 @@
 
 ## Unveröffentlicht
 
-- **Call: Lautstärke-Menü liegt über den Namen anderer Kacheln (#260, macOS, Linux, Windows):** Öffnete man im Call „Mute for me“ und die Lautstärke einer Person, lag das Namensschild der Kachel daneben über dem Regler. Der Versuch aus #118 (höherer z-index) griff nicht: In WebKit (macOS) bekommt jedes Namensschild durch seinen Unschärfe-Effekt eine eigene Ebene, die den z-index übergeht. Solange ein Menü offen ist, sind die Namensschilder jetzt ohne Unschärfe, und das Menü hat eine eigene Ebene darüber. Linux und Windows (Chromium) bekommen dieselbe Regel. iOS und Android zeichnen den Call selbst und sind nicht betroffen. Nicht auf einem Mac geprüft.
+- **Call: Lautstärke-Menü liegt über den Namen anderer Kacheln (#260, macOS, Linux, Windows):** Öffnete man im Call „Mute for me“ und die Lautstärke einer Person, lag das Namensschild der Kachel daneben über dem Regler. Das Menü gehört zu Element Call und liegt in dessen Fenster, das Diddys eigene Call-Bühne überdeckt; dieses Fenster hatte keinen z-index, und jedes Element der Bühne mit einem (Namensschilder, Werkzeugleiste, Klickflächen, Profil-Effekte) malte darüber, in allen Browsern. Solange Element Call ein Menü oder einen Dialog zeigt, liegt sein Fenster jetzt auf der Popover-Ebene über der Bühne (unter Dialogen, Hinweisen und Toasts). In WebKit und Chromium nachgestellt und geprüft. iOS und Android zeichnen den Call selbst und sind nicht betroffen.
 
 ## 1.12.2 (2026-11-17)
 

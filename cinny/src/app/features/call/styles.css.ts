@@ -1,6 +1,7 @@
 import { globalStyle, style } from '@vanilla-extract/css';
 import { color, config, toRem } from 'folds';
 import * as t from '../../components/diddy/designTokens';
+import { LAYER } from '../../components/sidebar/diddyTokens';
 
 const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
 
@@ -518,6 +519,14 @@ export const PopoverSeparator = style({
 // Element Call shows one of its menus or dialogs.
 globalStyle('[data-call-embed-container][data-call-stage]:not([data-call-overlay])', {
   pointerEvents: 'none',
+});
+
+// While Element Call shows a menu or dialog, its container goes above the stage. Without a
+// z-index the fixed container lost to every positioned stage element with one (name tags,
+// toolbar, hit areas, profile effects: 1 to 3), and a neighbouring name tag lay over the
+// volume menu (#260). The popover layer: below dialogs, notices and toasts.
+globalStyle('[data-call-embed-container][data-call-overlay]', {
+  zIndex: LAYER.popover,
 });
 
 export const StagePlaceholder = style({
