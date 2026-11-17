@@ -54,6 +54,32 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # The Foundation-only rule checks (ios/Tools/*_check) on their own runner, so the archive below
+  # does not wait for them. They run several at a time; the list is in ios/Tools/run-checks.sh.
+  checks:
+    name: iOS rule checks
+    runs-on: macos-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: ios
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Select newest Xcode
+        run: |
+          newest=$(printf '%s\n' /Applications/Xcode_*.app | grep -E 'Xcode_[0-9.]+\.app$' | sort -V | tail -n 1)
+          sudo xcode-select -s "$newest"
+          swift --version
+
+      - name: Compile and run the rule checks
+        run: Tools/run-checks.sh
+
   ios:
     runs-on: macos-latest
     timeout-minutes: 60
@@ -94,231 +120,6 @@ jobs:
           if [ "${sdk%%.*}" -lt 27 ]; then
             echo "::notice::iOS SDK $sdk: no ScreenCaptureKit; whole-screen sharing goes through the DiddyBroadcast extension on every iOS (also iOS 27)."
           fi
-
-      - name: Check emoji reaction rules
-        run: |
-          swiftc -swift-version 5 Diddy/Matrix/ReactionEmoji.swift Tools/reaction_check/main.swift -o "$RUNNER_TEMP/diddy-reaction-check"
-          "$RUNNER_TEMP/diddy-reaction-check"
-
-      - name: Check stream zoom rules
-        run: |
-          swiftc -swift-version 5 Diddy/Call/StreamZoom.swift Tools/streamzoom_check/main.swift -o "$RUNNER_TEMP/diddy-streamzoom-check"
-          "$RUNNER_TEMP/diddy-streamzoom-check"
-
-      - name: Check call stage layout
-        run: |
-          swiftc -swift-version 5 Diddy/Call/CallStageLayout.swift Tools/stagelayout_check/main.swift -o "$RUNNER_TEMP/diddy-stagelayout-check"
-          "$RUNNER_TEMP/diddy-stagelayout-check"
-
-      - name: Check avatar choice rules
-        run: |
-          swiftc -swift-version 5 Diddy/Matrix/AvatarChoice.swift Tools/avatar_check/main.swift -o "$RUNNER_TEMP/diddy-avatar-check"
-          "$RUNNER_TEMP/diddy-avatar-check"
-
-      - name: Check presence rules
-        run: |
-          swiftc -swift-version 5 Diddy/Matrix/PresenceLogic.swift Tools/presence_check/main.swift -o "$RUNNER_TEMP/diddy-presence-check"
-          "$RUNNER_TEMP/diddy-presence-check"
-
-      - name: Check profile decor rules
-        run: |
-          swiftc -swift-version 5 Diddy/Matrix/DiddyProfileDecor.swift Tools/profiledecor_check/main.swift -o "$RUNNER_TEMP/diddy-profiledecor-check"
-          "$RUNNER_TEMP/diddy-profiledecor-check"
-
-      - name: Check swipe to reply rules
-        run: |
-          swiftc -swift-version 5 Diddy/UI/SwipeReplyMath.swift Tools/swipereply_check/main.swift -o "$RUNNER_TEMP/diddy-swipereply-check"
-          "$RUNNER_TEMP/diddy-swipereply-check"
-
-      - name: Check chat scroll anchor rules
-        run: |
-          swiftc -swift-version 5 Diddy/UI/ChatScrollAnchorRules.swift Tools/scrollanchor_check/main.swift -o "$RUNNER_TEMP/diddy-scrollanchor-check"
-          "$RUNNER_TEMP/diddy-scrollanchor-check"
-
-      - name: Check timeline layout rules
-        run: |
-          swiftc -swift-version 5 Diddy/Matrix/TimelineLayout.swift Tools/timeline_check/main.swift -o "$RUNNER_TEMP/diddy-timeline-check"
-          "$RUNNER_TEMP/diddy-timeline-check"
-
-      - name: Check profile editor rules
-        run: |
-          swiftc -swift-version 5 Diddy/Matrix/DiddyJSONSize.swift Diddy/Matrix/DiddyProfileDecor.swift Diddy/Matrix/DiddyProfileDraft.swift Tools/profile_editor_check/main.swift -o "$RUNNER_TEMP/diddy-profile-editor-check"
-          "$RUNNER_TEMP/diddy-profile-editor-check"
-
-      - name: Check shared locale rules
-        run: |
-          swiftc -swift-version 5 Diddy/App/LocaleRules.swift Tools/locale_check/main.swift -o "$RUNNER_TEMP/diddy-locale-check"
-          "$RUNNER_TEMP/diddy-locale-check"
-
-      - name: Check appearance rules
-        run: |
-          swiftc -swift-version 5 Diddy/App/AppearanceLogic.swift Tools/appearance_check/main.swift -o "$RUNNER_TEMP/diddy-appearance-check"
-          "$RUNNER_TEMP/diddy-appearance-check"
-
-      - name: Check bot card rules
-        run: |
-          swiftc -swift-version 5 Diddy/Matrix/BotCard.swift Tools/botcard_check/main.swift -o "$RUNNER_TEMP/diddy-botcard-check"
-          "$RUNNER_TEMP/diddy-botcard-check"
-
-      - name: Sent picture preview checks
-        run: |
-          swiftc -swift-version 5 Diddy/Matrix/SentMedia.swift Tools/sentmedia_check/main.swift -o "$RUNNER_TEMP/diddy-sentmedia-check"
-          "$RUNNER_TEMP/diddy-sentmedia-check"
-
-      - name: Phone as camera and mic checks
-        run: |
-          swiftc -swift-version 5 Diddy/Call/CompanionProtocol.swift Tools/companion_check/main.swift -o "$RUNNER_TEMP/diddy-companion-check"
-          "$RUNNER_TEMP/diddy-companion-check"
-
-      - name: Push-to-talk checks
-        run: |
-          swiftc -swift-version 5 Diddy/Call/PushToTalkLogic.swift Tools/pushtotalk_check/main.swift -o "$RUNNER_TEMP/diddy-pushtotalk-check"
-          "$RUNNER_TEMP/diddy-pushtotalk-check"
-
-      - name: Screen broadcast wire checks
-        run: |
-          swiftc -swift-version 5 Diddy/Call/BroadcastWire.swift Tools/broadcastwire_check/main.swift -o "$RUNNER_TEMP/diddy-broadcastwire-check"
-          "$RUNNER_TEMP/diddy-broadcastwire-check"
-
-      - name: Account registration checks
-        run: |
-          swiftc -swift-version 5 Diddy/Matrix/RegistrationLogic.swift Tools/registration_check/main.swift -o "$RUNNER_TEMP/diddy-registration-check"
-          "$RUNNER_TEMP/diddy-registration-check"
-
-      - name: Options room marker checks
-        run: |
-          swiftc -swift-version 5 Diddy/Matrix/DiddyMarkerChecks.swift Tools/markerchecks_check/main.swift -o "$RUNNER_TEMP/diddy-markerchecks-check"
-          "$RUNNER_TEMP/diddy-markerchecks-check"
-
-      - name: Music card and share hand-off checks
-        run: |
-          swiftc -swift-version 5 Diddy/Matrix/MusicCard.swift Diddy/App/ShareHandoff.swift Tools/musiccard_check/main.swift -o "$RUNNER_TEMP/diddy-musiccard-check"
-          "$RUNNER_TEMP/diddy-musiccard-check"
-
-      - name: Check composer rules
-        run: |
-          swiftc -swift-version 5 Diddy/Matrix/DesktopMarkdown.swift Diddy/Matrix/EmojiData.swift Diddy/Matrix/ComposerLogic.swift Tools/composer_check/main.swift -o "$RUNNER_TEMP/diddy-composer-check"
-          "$RUNNER_TEMP/diddy-composer-check"
-
-      - name: Check date format rules
-        run: |
-          swiftc -swift-version 5 Diddy/App/DateFormatRules.swift Tools/dateformat_check/main.swift -o "$RUNNER_TEMP/diddy-dateformat-check"
-          "$RUNNER_TEMP/diddy-dateformat-check"
-
-      - name: Check Do Not Disturb rules
-        run: |
-          swiftc -swift-version 5 Diddy/Matrix/DoNotDisturb.swift Tools/dnd_check/main.swift -o "$RUNNER_TEMP/diddy-dnd-check"
-          "$RUNNER_TEMP/diddy-dnd-check"
-
-      - name: Check send later rules
-        run: |
-          swiftc -swift-version 5 Diddy/Matrix/SendLaterLogic.swift Tools/sendlater_check/main.swift -o "$RUNNER_TEMP/diddy-sendlater-check"
-          "$RUNNER_TEMP/diddy-sendlater-check"
-
-      - name: Check soundboard sync rules
-        run: |
-          swiftc -swift-version 5 Diddy/Call/SoundboardSyncLogic.swift Tools/soundboardsync_check/main.swift -o "$RUNNER_TEMP/diddy-soundboardsync-check"
-          "$RUNNER_TEMP/diddy-soundboardsync-check"
-
-      - name: Check automatic message deletion rules
-        run: |
-          swiftc -swift-version 5 Diddy/Matrix/RoomRetention.swift Tools/retention_check/main.swift -o "$RUNNER_TEMP/diddy-retention-check"
-          "$RUNNER_TEMP/diddy-retention-check" ../docs/fixtures/retention.json
-
-      - name: Check message search rules
-        run: |
-          swiftc -swift-version 5 Diddy/Matrix/MessageSearchLogic.swift Tools/messagesearch_check/main.swift -o "$RUNNER_TEMP/diddy-messagesearch-check"
-          "$RUNNER_TEMP/diddy-messagesearch-check"
-
-      - name: Check Ogg/Opus voice message decoding
-        run: |
-          swiftc -swift-version 5 Diddy/Matrix/OpusContainer.swift Diddy/Matrix/OpusCAFWriter.swift Diddy/Matrix/VoiceCache.swift Tools/oggopus_check/main.swift -o "$RUNNER_TEMP/diddy-oggopus-check"
-          "$RUNNER_TEMP/diddy-oggopus-check"
-
-      - name: Check notification rule logic
-        run: |
-          swiftc -swift-version 5 Diddy/Matrix/PushRuleLogic.swift Tools/pushrules_check/main.swift -o "$RUNNER_TEMP/diddy-pushrules-check"
-          "$RUNNER_TEMP/diddy-pushrules-check"
-
-      - name: Check quick switcher rules
-        run: |
-          swiftc -swift-version 5 Diddy/Matrix/QuickSwitchLogic.swift Tools/quickswitch_check/main.swift -o "$RUNNER_TEMP/diddy-quickswitch-check"
-          "$RUNNER_TEMP/diddy-quickswitch-check"
-
-      - name: Check room list and server rail rules
-        run: |
-          swiftc -swift-version 5 Diddy/Matrix/RoomListLogic.swift Tools/roomlist_check/main.swift -o "$RUNNER_TEMP/diddy-roomlist-check"
-          "$RUNNER_TEMP/diddy-roomlist-check"
-
-      - name: Check room settings rules
-        run: |
-          swiftc -swift-version 5 Diddy/Matrix/RoomSettingsLogic.swift Diddy/Matrix/RoomRetention.swift Tools/roomsettings_check/main.swift -o "$RUNNER_TEMP/diddy-roomsettings-check"
-          "$RUNNER_TEMP/diddy-roomsettings-check"
-
-      - name: Check security and device rules
-        run: |
-          swiftc -swift-version 5 Diddy/Matrix/SecurityLogic.swift Tools/security_check/main.swift -o "$RUNNER_TEMP/diddy-security-check"
-          "$RUNNER_TEMP/diddy-security-check"
-
-      - name: Check account cleanup and logout rules
-        run: |
-          swiftc -swift-version 5 Diddy/Matrix/AccountCleanupLogic.swift Tools/accountcleanup_check/main.swift -o "$RUNNER_TEMP/diddy-accountcleanup-check"
-          "$RUNNER_TEMP/diddy-accountcleanup-check"
-
-      - name: Check app shell rules
-        run: |
-          swiftc -swift-version 5 Diddy/App/ShellLogic.swift Tools/shell_check/main.swift -o "$RUNNER_TEMP/diddy-shell-check"
-          "$RUNNER_TEMP/diddy-shell-check"
-
-      - name: Check timeline navigation rules
-        run: |
-          swiftc -swift-version 5 Diddy/Matrix/TimelineNavLogic.swift Tools/timelinenav_check/main.swift -o "$RUNNER_TEMP/diddy-timelinenav-check"
-          "$RUNNER_TEMP/diddy-timelinenav-check"
-
-      - name: Check homeserver timeout rules
-        run: |
-          swiftc -swift-version 5 Diddy/Matrix/HomeserverTimeout.swift Tools/timeout_check/main.swift -o "$RUNNER_TEMP/diddy-timeout-check"
-          "$RUNNER_TEMP/diddy-timeout-check"
-
-      - name: Check watch together rules
-        run: |
-          swiftc -swift-version 5 Diddy/Call/WatchTogetherLogic.swift Tools/watchtogether_check/main.swift -o "$RUNNER_TEMP/diddy-watchtogether-check"
-          "$RUNNER_TEMP/diddy-watchtogether-check"
-
-      - name: Check call audio rules
-        run: |
-          swiftc -swift-version 5 Diddy/Call/CallAudioLogic.swift Diddy/Call/CallVolumeMemory.swift Diddy/Call/CallReactionLogic.swift Diddy/Call/AgentVoice.swift Tools/call_audio_check/main.swift -o "$RUNNER_TEMP/diddy-call-audio-check"
-          "$RUNNER_TEMP/diddy-call-audio-check"
-
-      - name: Check call media key rules
-        run: |
-          swiftc -swift-version 5 Diddy/Call/CallKeyLogic.swift Tools/callkeys_check/main.swift -o "$RUNNER_TEMP/diddy-callkeys-check"
-          "$RUNNER_TEMP/diddy-callkeys-check"
-
-      - name: Check rich text and message embed rules
-        run: |
-          swiftc -swift-version 5 Diddy/Matrix/RichText.swift Diddy/Matrix/MessageEmbeds.swift Tools/richtext_check/main.swift -o "$RUNNER_TEMP/diddy-richtext-check"
-          "$RUNNER_TEMP/diddy-richtext-check"
-
-      - name: Check Diddy badge rules
-        run: |
-          swiftc -swift-version 5 Diddy/Matrix/DiddyJSONSize.swift Diddy/Matrix/DiddyEvents.swift Diddy/Matrix/DiddyTrust.swift Diddy/Matrix/DiddyProfileDecor.swift Diddy/Matrix/DiddyProfileDraft.swift Diddy/Matrix/DiddyBadgeLogic.swift Tools/badge_check/main.swift -o "$RUNNER_TEMP/diddy-badge-check"
-          "$RUNNER_TEMP/diddy-badge-check"
-
-      - name: Check Diddy decor import (zip) rules
-        run: |
-          swiftc -swift-version 5 Diddy/Matrix/DiddyJSONSize.swift Diddy/Matrix/DiddyProfileDecor.swift Diddy/Matrix/DiddyProfileDraft.swift Diddy/Matrix/DiddyZip.swift Diddy/Matrix/DiddyDecorImport.swift Tools/diddyzip_check/main.swift -o "$RUNNER_TEMP/diddy-diddyzip-check"
-          "$RUNNER_TEMP/diddy-diddyzip-check"
-
-      - name: Check Diddy options room rules
-        run: |
-          swiftc -swift-version 5 Diddy/Matrix/DiddyJSONSize.swift Diddy/Matrix/DiddyEvents.swift Diddy/Matrix/DiddyOptionsRoomLogic.swift Tools/optionsroom_check/main.swift -o "$RUNNER_TEMP/diddy-optionsroom-check"
-          "$RUNNER_TEMP/diddy-optionsroom-check"
-
-      - name: Check Diddy profile export and import
-        run: |
-          swiftc -swift-version 5 Diddy/Matrix/DiddyJSONSize.swift Diddy/Matrix/DiddyProfileDecor.swift Diddy/Matrix/DiddyProfileDraft.swift Diddy/Matrix/DiddyProfileTransfer.swift Tools/profiletransfer_check/main.swift -o "$RUNNER_TEMP/diddy-profiletransfer-check"
-          "$RUNNER_TEMP/diddy-profiletransfer-check"
 
       - name: Install XcodeGen
         run: command -v xcodegen || brew install xcodegen
@@ -459,7 +260,7 @@ jobs:
   release:
     # Only for ios-v* tags or a manual run with release_tag. Gets the IPA from the build job's
     # artifact, so the job that runs third-party build code never holds a write token.
-    needs: ios
+    needs: [checks, ios]
     if: startsWith(github.ref, 'refs/tags/ios-v') || inputs.release_tag != ''
     runs-on: ubuntu-latest
     timeout-minutes: 10

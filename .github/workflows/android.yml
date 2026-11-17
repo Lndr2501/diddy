@@ -62,6 +62,15 @@ jobs:
       - name: Point Gradle at the Android SDK
         run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
 
+      # Dependencies, transforms and the Gradle build cache (org.gradle.caching). Written on main,
+      # read by PRs and branches. Release tags build without it, like the npm caches.
+      - name: Cache Gradle
+        uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+        with:
+          cache-provider: basic
+          cache-disabled: ${{ startsWith(github.ref, 'refs/tags/') }}
+          add-job-summary: on-failure
+
       - name: Unit tests
         working-directory: android
         run: ./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug assembleDebugAndroidTest
@@ -178,16 +187,20 @@ jobs:
           path: emulator-report/
 
   # F-Droid rebuilds every release from source and ships Diddy's own signed APK only when its build
-  # gives the same bytes (android/fdroid/README.md). This job does F-Droid's check: one release
-  # build signed by Gradle (throwaway key, like release.yml with the real one), one unsigned build in
-  # another path with its own Gradle home and Gradle on Java 21, then apksigcopier copies the
-  # signature over and verifies. Plus F-Droid's scanner (non-free libraries, trackers). Not for
-  # release tags.
-  fdroid:
-    name: F-Droid (reproducible build, scanner)
+  # gives the same bytes (android/fdroid/README.md). These jobs do F-Droid's check: one release
+  # build signed by Gradle (throwaway key, like release.yml with the real one), one unsigned build on
+  # another runner in another path with Gradle on Java 21, both in parallel and without any cache;
+  # then apksigcopier copies the signature over and verifies. Plus F-Droid's scanner (non-free
+  # libraries, trackers). Not for release tags.
+  fdroid-build:
+    name: F-Droid build (${{ matrix.copy }})
     if: ${{ !startsWith(github.ref, 'refs/tags/') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        copy: [signed, unsigned]
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -195,20 +208,21 @@ jobs:
           persist-credentials: false
           path: first
 
-      - name: Second copy in another path
+      - name: Pick the build path and point Gradle at the Android SDK
+        env:
+          COPY: ${{ matrix.copy }}
         run: |
-          cp -a first "$RUNNER_TEMP/second"
-          echo "sdk.dir=$ANDROID_HOME" > first/android/local.properties
-          echo "sdk.dir=$ANDROID_HOME" > "$RUNNER_TEMP/second/android/local.properties"
-
-      - name: F-Droid tools
-        run: |
-          python3 -m venv "$RUNNER_TEMP/fdroidserver"
-          "$RUNNER_TEMP/fdroidserver/bin/pip" install --quiet fdroidserver==2.4.5 apksigcopier==1.1.1
-          echo "$(find "$ANDROID_HOME/build-tools" -maxdepth 1 -mindepth 1 -type d | sort -V | tail -n 1)" >> "$GITHUB_PATH"
+          dir="$GITHUB_WORKSPACE/first/android"
+          if [ "$COPY" = unsigned ]; then
+            cp -a first "$RUNNER_TEMP/second"
+            dir="$RUNNER_TEMP/second/android"
+          fi
+          echo "sdk.dir=$ANDROID_HOME" > "$dir/local.properties"
+          echo "ANDROID_DIR=$dir" >> "$GITHUB_ENV"
 
       - name: Signed release build (throwaway key)
-        working-directory: first/android
+        if: matrix.copy == 'signed'
+        working-directory: ${{ env.ANDROID_DIR }}
         run: |
           export JAVA_HOME="$JAVA_HOME_17_X64"
           "$JAVA_HOME/bin/keytool" -genkeypair -keystore "$RUNNER_TEMP/throwaway.jks" -storepass throwaway \
@@ -216,17 +230,57 @@ jobs:
           DIDDY_ANDROID_KEYSTORE_FILE="$RUNNER_TEMP/throwaway.jks" DIDDY_ANDROID_KEYSTORE_PASSWORD=throwaway \
             DIDDY_ANDROID_KEY_ALIAS=throwaway DIDDY_ANDROID_KEY_PASSWORD=throwaway \
             ./gradlew --no-daemon --no-build-cache assembleRelease
+          mkdir -p "$RUNNER_TEMP/apk" && cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/apk/"
 
       - name: Unsigned release build (other path, Gradle home and JVM)
-        working-directory: ${{ runner.temp }}/second/android
+        if: matrix.copy == 'unsigned'
+        working-directory: ${{ env.ANDROID_DIR }}
         run: |
           JAVA_HOME="$JAVA_HOME_21_X64" GRADLE_USER_HOME="$RUNNER_TEMP/gradle-second" \
             ./gradlew --no-daemon --no-build-cache -Porg.gradle.java.installations.fromEnv=JAVA_HOME_17_X64 assembleRelease
+          mkdir -p "$RUNNER_TEMP/apk" && cp app/build/outputs/apk/release/app-release-unsigned.apk "$RUNNER_TEMP/apk/"
+
+      - name: Remove the throwaway key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/throwaway.jks"
+
+      - name: Upload the APK
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: android-fdroid-${{ matrix.copy }}
+          path: ${{ runner.temp }}/apk/*.apk
+          if-no-files-found: error
+          retention-days: 3
+
+  fdroid:
+    name: F-Droid (reproducible build, scanner)
+    needs: fdroid-build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          path: first
+
+      - name: Download both APKs
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: android-fdroid-*
+          merge-multiple: true
+          path: apks
+
+      - name: F-Droid tools
+        run: |
+          python3 -m venv "$RUNNER_TEMP/fdroidserver"
+          "$RUNNER_TEMP/fdroidserver/bin/pip" install --quiet fdroidserver==2.4.5 apksigcopier==1.1.1
+          echo "$(find "$ANDROID_HOME/build-tools" -maxdepth 1 -mindepth 1 -type d | sort -V | tail -n 1)" >> "$GITHUB_PATH"
 
       - name: Compare like F-Droid
         run: |
-          signed=first/android/app/build/outputs/apk/release/app-release.apk
-          unsigned="$RUNNER_TEMP/second/android/app/build/outputs/apk/release/app-release-unsigned.apk"
+          signed=apks/app-release.apk
+          unsigned=apks/app-release-unsigned.apk
           if ! "$RUNNER_TEMP/fdroidserver/bin/apksigcopier" compare "$signed" --unsigned "$unsigned"; then
             python3 first/android/fdroid/compare-apks.py "$signed" "$unsigned" || true
             exit 1
@@ -235,20 +289,6 @@ jobs:
 
       - name: F-Droid scanner
         run: |
-          cp "$RUNNER_TEMP/second/android/app/build/outputs/apk/release/app-release-unsigned.apk" \
-            first/android/app/build/outputs/apk/release/
+          mkdir -p first/android/app/build/outputs/apk/release
+          cp apks/app-release-unsigned.apk first/android/app/build/outputs/apk/release/
           "$RUNNER_TEMP/fdroidserver/bin/python" first/android/fdroid/scan.py first
-
-      - name: Remove the throwaway key
-        if: always()
-        run: rm -f "$RUNNER_TEMP/throwaway.jks"
-
-      - name: Upload both APKs
-        if: failure()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: android-fdroid-apks
-          path: |
-            first/android/app/build/outputs/apk/release/app-release.apk
-            ${{ runner.temp }}/second/android/app/build/outputs/apk/release/app-release-unsigned.apk
-          if-no-files-found: ignore

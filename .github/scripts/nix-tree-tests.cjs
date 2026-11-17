@@ -43,7 +43,7 @@ Object.entries(TREES).forEach(([name, testDir]) => {
     .filter((f) => f.endsWith('.test.cjs'))
     .map((f) => path.join('tests', f));
   console.log(`\n== ${name}: ${paths.join(', ')} -> ${tests.length} test files in ${testDir}/`);
-  const result = spawnSync(process.execPath, ['--test', '--test-concurrency=1', ...tests], {
+  const result = spawnSync(process.execPath, ['--test', ...tests], {
     cwd: path.join(tree, testDir),
     stdio: 'inherit',
   });

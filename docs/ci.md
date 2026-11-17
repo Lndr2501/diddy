@@ -16,11 +16,31 @@ startup/activity recreation with the login UI visible. Reports include emulator 
 and sanitized crash output, never production accounts. Hardware push/route/long-call acceptance is
 tracked separately in `android/ACCEPTANCE.md`; emulator success does not imply those checks passed.
 
-The Test workflow installs Cinny once, runs type checking and both JavaScript test suites,
-builds the production frontend once and smoke-tests that exact bundle with Playwright.
-Playwright also checks the voice-recorder hook using synthetic audio and Chromium’s real
-WebM encoder, decoder, playback and seeking; this does not replace Linux device tests.
-Rust tests run in parallel on macOS. No checks were removed.
+The Test workflow runs three Linux jobs in parallel, each installing Cinny from the npm cache:
+unit tests (Cinny and Electron), type checking plus the tests in the Nix source trees, and the
+production build that Playwright smoke-tests. Chromium is installed in the background while that
+bundle builds. Playwright also checks the voice-recorder hook using synthetic audio and Chromium’s
+real WebM encoder, decoder, playback and seeking; this does not replace Linux device tests.
+Rust tests run in parallel on macOS.
+
+`npm test` runs the test files in parallel (Node's default, one process per file). Each file is its
+own process, so tests in different files share no state; a test that writes files uses its own
+temporary directory. The Nix build itself keeps `--test-concurrency=1` (two cores in the sandbox).
+
+## Where the time goes (2026-11-17)
+
+Measured on recent runs before the changes below; job durations, not queue time.
+
+| Workflow | Before | Change |
+|---|---|---|
+| Test | 211 s in one job (unit tests twice in a row: 45 s + 46 s) | three parallel jobs, tests in parallel files |
+| Build Android | 555–750 s: F-Droid built twice in a row (254 s + 231 s), no Gradle cache | both F-Droid builds on their own runners; Gradle cache for the debug build |
+| Build iOS | 640 s: 45 rule checks one after another (~130 s), then the archive (439 s) | checks on their own runner, several at a time (`ios/Tools/run-checks.sh`) |
+| Linux | 363 s: deb and rpm with xz took ~190 s | gzip for builds that are not released; tags keep xz |
+
+No test or check was dropped. The only assertion removed was `check(true, …)` in
+`ios/Tools/richtext_check`, which could not fail (the hostile-input calls before it still have to
+finish without crashing).
 
 The Bot SDK workflow (`bot-sdk.yml`) runs only when `sdk/python/` or Diddy's bot parsers change: Python unit
 tests, a parity test of `sdk/python/diddybot/protocol.py` against the TypeScript parsers, and an end-to-end run
@@ -30,6 +50,10 @@ against a throwaway Synapse container in an encrypted room.
 
 - Test jobs cache npm downloads keyed by `cinny/package-lock.json`; `npm ci` still installs
   from the lockfile. Publishing builds keep npm caching disabled.
+- The Android build job caches the Gradle user home (dependencies, transforms and the Gradle
+  build cache) with `gradle/actions/setup-gradle` (`cache-provider: basic`, no commercial
+  service). Only `main` writes it; PRs read it. Release tags build without it. The F-Droid
+  builds never use a cache, since they stand in for F-Droid's clean build server.
 - Rust jobs cache Cargo dependencies/compiled dependency crates for `src-tauri`, separated
   by platform, architecture, toolchain and test/release job. Cargo uses `--locked`.
 - iOS keeps the dependency graph in `ios/Package.resolved`. The generated Xcode project gets

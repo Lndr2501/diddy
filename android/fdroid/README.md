@@ -25,10 +25,11 @@ matrix-rust-sdk, LiveKit and WebRTC libraries, which F-Droid accepts for Element
   build file.
 
 The CI job **F-Droid (reproducible build, scanner)** in `android.yml` runs F-Droid's own check on
-every pull request:
+every pull request. The two builds run at the same time on separate runners (`F-Droid build`),
+without any cache:
 
 - One release build signed by Gradle with a throwaway key (as `release.yml` signs with the real one).
-- One unsigned build in another path, with its own Gradle home and Gradle on Java 21.
+- One unsigned build on another runner in another path, with its own Gradle home and Gradle on Java 21.
 - `apksigcopier compare` copies the signature onto the unsigned APK and verifies it.
   If that fails, `compare-apks.py` names the files that differ.
 - F-Droid's scanner checks the source and the APK (`scan.py`).

@@ -19,7 +19,32 @@ env:
   HUSKY: "0"
 
 jobs:
-  frontend:
+  # The frontend checks run as three parallel jobs; each installs Cinny from the npm cache.
+  unit:
+    name: Unit tests
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: ".node-version"
+          cache: npm
+          cache-dependency-path: cinny/package-lock.json
+
+      - name: Install dependencies
+        run: cd cinny && npm ci --no-audit --no-fund
+
+      - name: Tests
+        run: cd cinny && npm test
+
+      - name: Linux shell tests (Electron main process helpers, no Electron needed)
+        run: cd electron && npm test
+
+  typecheck:
+    name: Typecheck and Nix source trees
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
@@ -40,24 +65,46 @@ jobs:
           NODE_OPTIONS: "--max_old_space_size=4096"
         run: cd cinny && npm run typecheck
 
-      - name: Tests
-        run: cd cinny && npm test
-
-      - name: Linux shell tests (Electron main process helpers, no Electron needed)
-        run: cd electron && npm test
-
       # The Nix build runs the same tests in a tree with only the paths nix/package.nix copies.
       # Nix itself runs on main only for dependency changes, so check that tree on every push.
       - name: Tests in the Nix source trees
         run: node .github/scripts/nix-tree-tests.cjs
+
+  frontend:
+    name: Web build and browser smoke test
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: ".node-version"
+          cache: npm
+          cache-dependency-path: cinny/package-lock.json
+
+      - name: Install dependencies
+        run: cd cinny && npm ci --no-audit --no-fund
+
+      # Downloads Chromium and its system libraries in the background while the app builds.
+      - name: Start browser install
+        run: |
+          cd cinny
+          # Fully detached from the step's output, so the step ends right away.
+          (npx playwright install --with-deps chromium; echo $? > "$RUNNER_TEMP/playwright-install.status") \
+            < /dev/null > "$RUNNER_TEMP/playwright-install.log" 2>&1 &
 
       - name: Build web app
         env:
           NODE_OPTIONS: "--max_old_space_size=4096"
         run: cp config.json cinny/ && cd cinny && npm run build
 
-      - name: Install browser
-        run: cd cinny && npx playwright install --with-deps chromium
+      - name: Finish browser install
+        run: |
+          for _ in $(seq 600); do [ -s "$RUNNER_TEMP/playwright-install.status" ] && break; sleep 1; done
+          cat "$RUNNER_TEMP/playwright-install.log"
+          exit "$(cat "$RUNNER_TEMP/playwright-install.status" 2>/dev/null || echo 1)"
 
       - name: Test login screen and voice recording in Chromium
         run: cd cinny && npm run test:e2e
