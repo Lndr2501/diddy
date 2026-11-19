@@ -1,4 +1,11 @@
-import React, { MouseEventHandler, forwardRef, useMemo, useRef, useState } from 'react';
+import React, {
+  MouseEventHandler,
+  forwardRef,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useAtom, useAtomValue } from 'jotai';
 import {
   Avatar,
@@ -55,6 +62,7 @@ import {
 } from '../../../hooks/useRoomsNotificationPreferences';
 import { useDirectCreateSelected } from '../../../hooks/router/useDirectSelected';
 import { useTranslation } from 'react-i18next';
+import { roomNavRowKey } from '../../../utils/roomNavKey';
 
 type DirectMenuProps = {
   requestClose: () => void;
@@ -264,10 +272,16 @@ export function Direct() {
     t,
   ]);
 
+  // heights follow the room, not the position (#262); a new list gives a new key function
+  const getItemKey = useCallback(
+    (index: number) => roomNavRowKey(virtualItems[index], index),
+    [virtualItems]
+  );
   const virtualizer = useVirtualizer({
     count: virtualItems.length,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => 38,
+    getItemKey,
     overscan: 10,
   });
 

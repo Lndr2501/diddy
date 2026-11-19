@@ -1,4 +1,11 @@
-import React, { MouseEventHandler, forwardRef, useMemo, useRef, useState } from 'react';
+import React, {
+  MouseEventHandler,
+  forwardRef,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Avatar,
@@ -75,6 +82,7 @@ import { UseStateProvider } from '../../../components/UseStateProvider';
 import { JoinAddressPrompt } from '../../../components/join-address-prompt';
 import { _RoomSearchParams } from '../../paths';
 import { useTranslation } from 'react-i18next';
+import { roomNavRowKey } from '../../../utils/roomNavKey';
 
 type HomeMenuProps = {
   requestClose: () => void;
@@ -333,10 +341,16 @@ export function Home() {
     t,
   ]);
 
+  // heights follow the room, not the position (#262); a new list gives a new key function
+  const getItemKey = useCallback(
+    (index: number) => roomNavRowKey(virtualItems[index], index),
+    [virtualItems]
+  );
   const virtualizer = useVirtualizer({
     count: virtualItems.length,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => 38,
+    getItemKey,
     overscan: 10,
   });
 
