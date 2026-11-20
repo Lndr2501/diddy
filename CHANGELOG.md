@@ -1,5 +1,9 @@
 # Changelog
 
+## Unveröffentlicht
+
+- **Raumliste: Call-Teilnehmer überdecken keine anderen Räume mehr (#262, macOS, Linux, Windows):** Lief in einem Raum ein Call, stand die Teilnehmerliste unter dem Raum manchmal über den Räumen darunter, und an anderer Stelle klaffte eine Lücke. Das passierte, sobald ein Raum in der Liste nach oben rückte. Die Raumliste merkte sich die gemessene Zeilenhöhe pro Position statt pro Raum, und seit 1.10.1 behält eine Zeile beim Umsortieren ihr Element und wird nicht neu gemessen. Start und Direktnachrichten führen die Höhe jetzt pro Raum; in Spaces wurde schon neu gemessen. iOS und Android haben eigene Raumlisten und sind nicht betroffen.
+
 ## 1.12.3 (2026-11-17)
 
 - **Systemton beim Ansehen eines geteilten Bildschirms (macOS, Linux, Windows):** Beim Klick auf „Ansehen“ wurde das Bild sichtbar, die Tonspur blieb aber deaktiviert. Diddy ordnet jetzt die Kachel auch dann der richtigen LiveKit-Tonspur zu, wenn Element Call einen zusätzlichen Kachelindex verwendet. Das Update ist auf der Empfängerseite nötig. iOS und Android nutzen einen eigenen Call-Code und sind von diesem Fehler nicht betroffen.
