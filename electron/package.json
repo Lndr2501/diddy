@@ -16,8 +16,8 @@
     "dist:win": "npm run build:audio:win && electron-builder --win nsis --x64 --publish never"
   },
   "devDependencies": {
-    "electron": "45.2.3",
-    "electron-builder": "26.18.0"
+    "electron": "45.3.4",
+    "electron-builder": "26.18.1"
   },
   "build": {
     "appId": "app.diddy.desktop",
