@@ -13,7 +13,7 @@ from PIL import Image
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 LOGO = os.path.join(HERE, "logo")
-TONES = ["pink", "blue", "purple", "black", "magenta", "christmas"]
+TONES = ["pink", "blue", "purple", "black", "magenta", "valentine", "easter", "halloween", "christmas", "newyear"]
 
 
 def render(tone, shape, size):

@@ -50,8 +50,8 @@ Name colors, banners, badges and animated name plates. Everyone running Diddy se
 <tr>
 <td valign="top">
 
-### Eleven themes
-From Light and Silver to Dark, Daaark, Butter, Diddy, Red, Green, Purple, Amber and a wine red Christmas theme with falling snow. Pick one in *Settings → Appearance*, or follow the system.
+### Fifteen themes
+From Light and Silver to Dark, Daaark, Butter, Diddy, Red, Green, Purple and Amber, plus one for every holiday: Valentine, Easter, Halloween, Christmas and New Year, each with a matching app icon. Pick one in *Settings → Appearance*, or follow the system.
 
 </td>
 <td valign="top">

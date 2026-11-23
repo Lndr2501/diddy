@@ -1,4 +1,4 @@
-"""Builds the Diddy logo: one vector drawing, five colour tones, three icon shapes.
+"""Builds the Diddy logo: one vector drawing, its colour tones and occasion editions, three icon shapes.
 
 The mark is a bold lowercase "d" whose counter is a speech bubble. The drawing lives in this file,
 so every tone has exactly the same shape. Output goes to `branding/logo/` (SVG masters) and
@@ -18,6 +18,8 @@ SIZE = 1024
 
 # Per tone: tile gradient, gradient of the "d" (both top to bottom) and the fill of the speech
 # bubble. Without a bubble fill the bubble is a hole and shows the tile.
+# Occasion editions also name a decoration on the "d" (DECORATIONS, e.g. a hat on the stem) and the
+# small shapes scattered over the tile (SCATTERS).
 PINK = ("#FF6FC0", "#E60A78")
 TONES = {
     "pink": {"tile": ("#FF80CA", "#E60A78"), "letter": ("#FFFFFF", "#FFE4F2"), "bubble": None},
@@ -25,28 +27,29 @@ TONES = {
     "purple": {"tile": ("#B566FF", "#6418C9"), "letter": ("#FFFFFF", "#EEE0FF"), "bubble": None},
     "black": {"tile": ("#2F2F35", "#0C0C0E"), "letter": ("#FFFFFF", "#E4E4EA"), "bubble": PINK},
     "magenta": {"tile": ("#A8155F", "#4F0A30"), "letter": ("#FFF3F9", "#FFD3EA"), "bubble": None},
-    # Christmas edition: wine red tile, the "d" wears a Santa hat (see hat_svg) and the mark shrinks
-    # a little so the hat fits on the tile.
+    # Occasion editions, in calendar order.
+    "valentine": {"tile": ("#FF5C7C", "#A4133C"), "letter": ("#FFFFFF", "#FFE3EA"), "bubble": None,
+                  "deco": "heart", "scatter": "hearts"},
+    "easter": {"tile": ("#8FDB6E", "#2F8F45"), "letter": ("#FFFFFF", "#F0FBE8"), "bubble": None,
+               "deco": "bunny-ears", "scatter": "eggs"},
+    "halloween": {"tile": ("#FF9A2E", "#C2410C"), "letter": ("#FFFFFF", "#FFEBD6"), "bubble": None,
+                  "deco": "witch-hat", "scatter": "bats"},
     "christmas": {"tile": ("#A3223D", "#4A0716"), "letter": ("#FFFFFF", "#FBE6EA"), "bubble": None,
-                  "hat": True},
+                  "deco": "santa-hat", "scatter": "snow"},
+    "newyear": {"tile": ("#2B3A78", "#080C22"), "letter": ("#FFF6DA", "#F2C24E"), "bubble": None,
+                "deco": "party-hat", "scatter": "confetti"},
 }
 
-# Santa hat, drawn in its own frame: origin at the middle of the fur band, which sits on the top of
-# the stem of the "d". The tip falls to the left over the round part.
-HAT_AT = (180, -322)  # centre of the fur band in letter coordinates (stem centre, just below its top)
-HAT_TILT = -12  # degrees, negative leans the hat to the left
-HAT_SIZE = 1.0
-HAT_CONE = ("#FF5A64", "#C8102E")  # top to bottom
-HAT_FUR = ("#FFFFFF", "#E8E1E4")
-# Snow on the Christmas tile: (x, y, radius) in tile units of 1024, kept away from the mark.
-SNOW = [
-    (176, 236, 13), (292, 150, 8), (128, 420, 9), (214, 330, 6), (402, 214, 7),
-    (848, 318, 11), (770, 176, 7), (896, 470, 7), (820, 640, 9), (902, 812, 12),
-    (744, 868, 7), (150, 708, 8), (236, 858, 11), (106, 596, 6), (612, 912, 6),
+# Hats and ears sit on the round part of the "d" like on a head, left of the stem, where the tile
+# has room. The "d" itself stays exactly as in every other tone (same size and place).
+
+# Where the scattered shapes sit on occasion tiles: (x, y, size) in tile units of 1024, all clear
+# of the mark and of a decoration on the stem.
+SCATTER_AT = [
+    (130, 140, 9), (700, 86, 7), (840, 150, 12), (940, 300, 7), (870, 440, 9),
+    (950, 600, 11), (860, 760, 7), (930, 900, 12), (740, 930, 7), (560, 930, 9),
+    (370, 915, 6), (210, 940, 11), (110, 800, 8), (170, 620, 12), (90, 470, 7),
 ]
-SNOW_OPACITY = 0.5
-HAT_SCALE = 0.86  # the hatted mark is this much smaller than the plain one
-HAT_SHIFT = 112  # and moves this far down (letter units), so mark and hat sit in the middle
 
 # The "d", drawn around the centre of the icon (0,0).
 BOWL = 245  # outer radius of the round part
@@ -111,32 +114,159 @@ def bubble_path():
     )
 
 
-def hat_svg():
-    """Santa hat for the Christmas tone: red cone falling to the left, fur band and bobble.
+SHADOW = (
+    '<filter id="decoshadow" x="-20%" y="-20%" width="140%" height="150%">'
+    '<feGaussianBlur in="SourceAlpha" stdDeviation="9"/><feOffset dy="10"/>'
+    '<feComponentTransfer><feFuncA type="linear" slope=".35"/></feComponentTransfer>'
+    '<feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>'
+)
+# Unit shapes (about 2 units wide, centred on 0 0), scaled where they are used.
+HEART = (
+    "M0 .95C-.3 .72 -1 .25 -1 -.28C-1 -.7 -.7 -.98 -.38 -.98C-.18 -.98 -.05 -.86 0 -.7"
+    "C.05 -.86 .18 -.98 .38 -.98C.7 -.98 1 -.7 1 -.28C1 .25 .3 .72 0 .95Z"
+)
+SPARKLE = "M0 -1Q.12 -.12 1 0Q.12 .12 0 1Q-.12 .12 -1 0Q-.12 -.12 0 -1Z"
+BAT = (
+    "M0 -.1C.12 -.4 .5 -.5 1 -.55C.82 -.35 .78 -.1 .84 .16C.64 .02 .48 .06 .36 .26"
+    "C.26 .08 .12 .08 0 .32C-.12 .08 -.26 .08 -.36 .26C-.48 .06 -.64 .02 -.84 .16"
+    "C-.78 -.1 -.82 -.35 -1 -.55C-.5 -.5 -.12 -.4 0 -.1Z"
+)
 
-    Returns (defs, body). The body is placed in letter coordinates, like the "d".
+
+def on_head(body, angle, scale=1.0, lean=0, lift=0):
+    """Places a decoration drawn upright around 0 0 on the round part of the "d".
+
+    `angle` is where on the round part it sits (degrees clockwise from 3 o'clock, -90 is the top),
+    it stands at right angles to the surface there, plus `lean` degrees. `lift` moves it out from
+    the surface.
     """
+    x, y = point(BOWL + lift, angle)
+    return (
+        f'<g transform="translate({n(x)} {n(y)}) rotate({n(angle + 90 + lean)}) scale({n(scale)})"'
+        f' filter="url(#decoshadow)">{body}</g>'
+    )
+
+
+def santa_hat():
+    """Red cone falling to the left over the round part, fur band and bobble."""
     cone = (
         "M100 -20C104 -112 72 -206 -8 -224C-96 -242 -178 -182 -224 -64"
         "C-196 -64 -148 -72 -100 -30Z"
     )
     defs = (
-        gradient("hatcone", HAT_CONE, -60, -230, 40, 0)
-        + gradient("hatfur", HAT_FUR, 0, -40, 0, 40)
-        + '<filter id="hatshadow" x="-20%" y="-20%" width="140%" height="150%">'
-        '<feGaussianBlur in="SourceAlpha" stdDeviation="9"/><feOffset dy="10"/>'
-        '<feComponentTransfer><feFuncA type="linear" slope=".35"/></feComponentTransfer>'
-        '<feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>'
+        gradient("hatcone", ("#FF5A64", "#C8102E"), -60, -230, 40, 0)
+        + gradient("hatfur", ("#FFFFFF", "#E8E1E4"), 0, -40, 0, 40)
     )
     body = (
-        f'<g transform="translate({n(HAT_AT[0])} {n(HAT_AT[1])}) rotate({n(HAT_TILT)}) scale({n(HAT_SIZE)})"'
-        ' filter="url(#hatshadow)">'
         f'<path d="{cone}" fill="url(#hatcone)"/>'
         '<rect x="-122" y="-42" width="244" height="84" rx="42" fill="url(#hatfur)"/>'
         '<circle cx="-222" cy="-58" r="50" fill="url(#hatfur)"/>'
-        "</g>"
     )
+    return defs, on_head(body, -108, 1.0, lift=8)
+
+
+def heart():
+    """A heart in the speech bubble: the "d" sends love."""
+    defs = gradient("heart", ("#FFFFFF", "#FFD6E0"), 0, BOWL_Y - 60, 0, BOWL_Y + 60)
+    body = f'<path transform="translate(0 {n(BOWL_Y + 4)}) scale(62)" d="{HEART}" fill="url(#heart)"/>'
     return defs, body
+
+
+def bunny_ears():
+    """Two bunny ears growing out of the stem, in the colour of the letter, pink inside."""
+    outer = "M-48 30C-62 -80 -56 -232 0 -264C56 -232 62 -80 48 30Z"
+    inner = "M-23 -10C-31 -90 -27 -198 0 -228C27 -198 31 -90 23 -10Z"
+    defs = gradient("earin", ("#FFC2D4", "#FF8FB1"), 0, -228, 0, -10)
+
+    ear = f'<path d="{outer}" fill="url(#letter)"/><path d="{inner}" fill="url(#earin)"/>'
+    return defs, on_head(ear, -124, 0.9, lean=-4) + on_head(ear, -92, 0.9, lean=2)
+
+
+def witch_hat():
+    """Dark pointed hat with a bent tip, a purple band and a gold buckle, on a wide brim."""
+    cone = (
+        "M92 -6C70 -80 40 -170 0 -230C-20 -262 -60 -282 -112 -280"
+        "C-70 -262 -48 -236 -40 -200C-55 -130 -75 -60 -92 -6Z"
+    )
+    defs = (
+        gradient("witch", ("#4A2A66", "#160A22"), -60, -280, 40, 0)
+        + gradient("witchband", ("#B57BFF", "#7B3FD6"), 0, -64, 0, -18)
+        + f'<clipPath id="witchcone"><path d="{cone}"/></clipPath>'
+    )
+    body = (
+        '<ellipse cx="0" cy="0" rx="176" ry="34" fill="url(#witch)"/>'
+        f'<path d="{cone}" fill="url(#witch)"/>'
+        '<rect x="-120" y="-64" width="240" height="46" fill="url(#witchband)" clip-path="url(#witchcone)"/>'
+        '<rect x="-22" y="-62" width="44" height="42" rx="7" fill="none" stroke="#FFD66B" stroke-width="9"/>'
+    )
+    return defs, on_head(body, -110, 0.82, lean=-2, lift=6)
+
+
+def party_hat():
+    """Striped party cone with a golden bobble, for New Year's Eve."""
+    cone = "M-98 8L-8 -272Q0 -284 8 -272L98 8Q0 28 -98 8Z"
+    stripes = "".join(
+        f'<rect x="-140" y="{n(y)}" width="280" height="30" transform="rotate(-18 0 {n(y + 13)})"/>'
+        for y in (-226, -150, -74)
+    )
+    defs = (
+        gradient("party", ("#FF6FAE", "#D61F69"), 0, -280, 0, 10)
+        + gradient("gold", ("#FFF1B8", "#F2B93B"), 0, -322, 0, -246)
+        + f'<clipPath id="partycone"><path d="{cone}"/></clipPath>'
+    )
+    body = (
+        f'<path d="{cone}" fill="url(#party)"/>'
+        f'<g fill="#FFE08A" clip-path="url(#partycone)">{stripes}</g>'
+        '<circle cx="0" cy="-284" r="38" fill="url(#gold)"/>'
+    )
+    return defs, on_head(body, -114, 0.9, lean=-4, lift=4)
+
+
+DECORATIONS = {
+    "santa-hat": santa_hat,
+    "heart": heart,
+    "bunny-ears": bunny_ears,
+    "witch-hat": witch_hat,
+    "party-hat": party_hat,
+}
+
+EGG_COLORS = ["#FFE08A", "#FFB3CE", "#A9D8FF", "#D6BDFF", "#FFFFFF"]
+CONFETTI_COLORS = ["#FFD66B", "#FF6FAE", "#6FE3FF", "#FFFFFF"]
+
+
+def scatter(kind, x, y, size, i):
+    """One small shape on an occasion tile, at x y (tile units), `size` about its radius."""
+    if kind == "snow":
+        return f'<circle cx="{n(x)}" cy="{n(y)}" r="{n(size)}" fill="#FFFFFF" fill-opacity=".5"/>'
+    if kind == "hearts":
+        return (
+            f'<path transform="translate({n(x)} {n(y)}) rotate({(i * 23) % 50 - 25}) scale({n(size * 1.5)})"'
+            f' d="{HEART}" fill="#FFFFFF" fill-opacity=".45"/>'
+        )
+    if kind == "eggs":
+        return (
+            f'<ellipse transform="rotate({(i * 29) % 60 - 30} {n(x)} {n(y)})" cx="{n(x)}" cy="{n(y)}"'
+            f' rx="{n(size * 1.15)}" ry="{n(size * 1.5)}" fill="{EGG_COLORS[i % len(EGG_COLORS)]}"'
+            ' fill-opacity=".85"/>'
+        )
+    if kind == "bats":
+        return (
+            f'<path transform="translate({n(x)} {n(y)}) rotate({(i * 17) % 40 - 20}) scale({n(size * 3.4)})"'
+            f' d="{BAT}" fill="#2A0F1F" fill-opacity=".6"/>'
+        )
+    if kind == "confetti":
+        w, h = size * 1.1, size * 2.4
+        return (
+            f'<rect transform="rotate({(i * 47) % 180} {n(x)} {n(y)})" x="{n(x - w / 2)}" y="{n(y - h / 2)}"'
+            f' width="{n(w)}" height="{n(h)}" rx="{n(w / 3)}" fill="{CONFETTI_COLORS[i % len(CONFETTI_COLORS)]}"'
+            ' fill-opacity=".85"/>'
+        )
+    if kind == "stars":
+        return (
+            f'<path transform="translate({n(x)} {n(y)}) scale({n(size * 1.8)})" d="{SPARKLE}"'
+            ' fill="#FFE9B8" fill-opacity=".7"/>'
+        )
+    raise ValueError(f"unknown scatter: {kind}")
 
 
 def squircle(x, y, size, radius, smoothing=0.6):
@@ -195,12 +325,10 @@ def icon_svg(tone, shape):
         mark = f'<path d="{letter_path()}" fill="url(#letter)"/><path d="{bubble_path()}" fill="url(#bubble)"/>'
     else:
         mark = f'<path fill-rule="evenodd" d="{letter_path()}{bubble_path()}" fill="url(#letter)"/>'
-    scale_by, shift = 1.0, 0
-    if colors.get("hat"):
-        hat_defs, hat = hat_svg()
-        defs.append(hat_defs)
-        mark += hat
-        scale_by, shift = HAT_SCALE, HAT_SHIFT
+    if colors.get("deco"):
+        deco_defs, deco = DECORATIONS[colors["deco"]]()
+        defs.append(deco_defs + SHADOW)
+        mark += deco
 
     if shape == "mac":
         box, scale = (100, 100, 824), 0.8
@@ -219,15 +347,13 @@ def icon_svg(tone, shape):
         tile = f'<rect width="{SIZE}" height="{SIZE}" fill="url(#tile)"/>'
     x, y, size = box
     defs.insert(0, gradient("tile", colors["tile"], x + size * 0.28, y, x + size * 0.72, y + size))
-    if colors.get("hat"):
-        # The snow scales with the tile (the mac shape has a margin).
+    if colors.get("scatter"):
+        # The shapes scale with the tile (the mac shape has a margin).
         k = size / SIZE
-        dots = "".join(
-            f'<circle cx="{n(x + sx * k)}" cy="{n(y + sy * k)}" r="{n(r * k)}"/>' for sx, sy, r in SNOW
+        tile += "".join(
+            scatter(colors["scatter"], x + sx * k, y + sy * k, r * k, i) for i, (sx, sy, r) in enumerate(SCATTER_AT)
         )
-        tile += f'<g fill="#FFFFFF" fill-opacity="{n(SNOW_OPACITY)}">{dots}</g>'
-    scale *= scale_by
-    placed = f'<g transform="translate(512 {n(512 + shift * scale)}) scale({n(scale)})">{mark}</g>'
+    placed = f'<g transform="translate(512 512) scale({n(scale)})">{mark}</g>'
     return svg(tile + placed, f'<defs>{"".join(defs)}</defs>')
 
 

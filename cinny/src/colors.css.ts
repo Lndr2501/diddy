@@ -419,6 +419,309 @@ export const diddyTheme = createTheme(color, {
 });
 
 /**
+ * Valentine: a light blush theme with a raspberry accent (#C2185B, 5.9:1 with white). Pairs with
+ * the "Valentine" app icon. Status colours as in Silver.
+ */
+export const valentineTheme = createTheme(color, {
+  Background: {
+    Container: '#F6E3EA',
+    ContainerHover: '#F0D6E0',
+    ContainerActive: '#E9C8D5',
+    ContainerLine: '#E2BACA',
+    OnContainer: '#2A0F1A',
+  },
+
+  Surface: {
+    Container: '#FFF7FA',
+    ContainerHover: '#F9ECF1',
+    ContainerActive: '#F3E0E8',
+    ContainerLine: '#EAD3DD',
+    OnContainer: '#2A0F1A',
+  },
+
+  SurfaceVariant: {
+    Container: '#F8E8EE',
+    ContainerHover: '#F2DCE5',
+    ContainerActive: '#ECD0DB',
+    ContainerLine: '#E4C3D1',
+    OnContainer: '#2A0F1A',
+  },
+
+  Primary: {
+    Main: '#C2185B',
+    MainHover: '#AD1551',
+    MainActive: '#A3144C',
+    MainLine: '#991248',
+    OnMain: '#FFFFFF',
+    Container: '#F5C6D8',
+    ContainerHover: '#F1B8CE',
+    ContainerActive: '#EDAAC4',
+    ContainerLine: '#E89CBA',
+    OnContainer: '#6B0C32',
+  },
+
+  Secondary: {
+    Main: '#2A0F1A',
+    MainHover: '#3B1A27',
+    MainActive: '#4A2533',
+    MainLine: '#583040',
+    OnMain: '#FFF7FA',
+    Container: '#EBCFDB',
+    ContainerHover: '#E4C1D0',
+    ContainerActive: '#DDB3C5',
+    ContainerLine: '#D6A6BA',
+    OnContainer: '#2A0F1A',
+  },
+
+  Success: {
+    Main: '#017343',
+    MainHover: '#01683C',
+    MainActive: '#016239',
+    MainLine: '#015C36',
+    OnMain: '#FFFFFF',
+    Container: '#BFDCD0',
+    ContainerHover: '#B3D5C7',
+    ContainerActive: '#A6CEBD',
+    ContainerLine: '#99C7B4',
+    OnContainer: '#01512F',
+  },
+
+  Warning: {
+    Main: '#864300',
+    MainHover: '#793C00',
+    MainActive: '#723900',
+    MainLine: '#6B3600',
+    OnMain: '#FFFFFF',
+    Container: '#E1D0BF',
+    ContainerHover: '#DBC7B2',
+    ContainerActive: '#D5BDA6',
+    ContainerLine: '#CFB499',
+    OnContainer: '#5E2F00',
+  },
+
+  Critical: {
+    Main: '#9D0F0F',
+    MainHover: '#8D0E0E',
+    MainActive: '#850D0D',
+    MainLine: '#7E0C0C',
+    OnMain: '#FFFFFF',
+    Container: '#E7C3C3',
+    ContainerHover: '#E2B7B7',
+    ContainerActive: '#DDABAB',
+    ContainerLine: '#D89F9F',
+    OnContainer: '#6E0B0B',
+  },
+
+  Other: {
+    FocusRing: 'rgba(194, 24, 91, 0.5)',
+    Shadow: 'rgba(60, 10, 30, 0.18)',
+    Overlay: 'rgba(40, 10, 20, 0.3)',
+  },
+});
+
+/**
+ * Easter: a light spring green theme with a lilac accent (#6A3FC8, 6.7:1 with white). Pairs with
+ * the "Easter" app icon. Status colours as in Silver.
+ */
+export const easterTheme = createTheme(color, {
+  Background: {
+    Container: '#E9F4DF',
+    ContainerHover: '#DFEED2',
+    ContainerActive: '#D4E7C4',
+    ContainerLine: '#C9E0B6',
+    OnContainer: '#14240F',
+  },
+
+  Surface: {
+    Container: '#FBFDF6',
+    ContainerHover: '#F2F8EA',
+    ContainerActive: '#E8F2DD',
+    ContainerLine: '#DEEBD0',
+    OnContainer: '#14240F',
+  },
+
+  SurfaceVariant: {
+    Container: '#F1F7E8',
+    ContainerHover: '#E7F1DB',
+    ContainerActive: '#DDEBCE',
+    ContainerLine: '#D3E5C1',
+    OnContainer: '#14240F',
+  },
+
+  Primary: {
+    Main: '#6A3FC8',
+    MainHover: '#5E38B3',
+    MainActive: '#5935A9',
+    MainLine: '#53319F',
+    OnMain: '#FFFFFF',
+    Container: '#E2D6FA',
+    ContainerHover: '#D8C9F7',
+    ContainerActive: '#CEBCF4',
+    ContainerLine: '#C4AFF1',
+    OnContainer: '#3A1F80',
+  },
+
+  Secondary: {
+    Main: '#14240F',
+    MainHover: '#21341B',
+    MainActive: '#2C4026',
+    MainLine: '#374C31',
+    OnMain: '#FBFDF6',
+    Container: '#D4E7C4',
+    ContainerHover: '#C9E0B6',
+    ContainerActive: '#BED9A8',
+    ContainerLine: '#B3D29B',
+    OnContainer: '#14240F',
+  },
+
+  Success: {
+    Main: '#017343',
+    MainHover: '#01683C',
+    MainActive: '#016239',
+    MainLine: '#015C36',
+    OnMain: '#FFFFFF',
+    Container: '#BFDCD0',
+    ContainerHover: '#B3D5C7',
+    ContainerActive: '#A6CEBD',
+    ContainerLine: '#99C7B4',
+    OnContainer: '#01512F',
+  },
+
+  Warning: {
+    Main: '#864300',
+    MainHover: '#793C00',
+    MainActive: '#723900',
+    MainLine: '#6B3600',
+    OnMain: '#FFFFFF',
+    Container: '#E1D0BF',
+    ContainerHover: '#DBC7B2',
+    ContainerActive: '#D5BDA6',
+    ContainerLine: '#CFB499',
+    OnContainer: '#5E2F00',
+  },
+
+  Critical: {
+    Main: '#9D0F0F',
+    MainHover: '#8D0E0E',
+    MainActive: '#850D0D',
+    MainLine: '#7E0C0C',
+    OnMain: '#FFFFFF',
+    Container: '#E7C3C3',
+    ContainerHover: '#E2B7B7',
+    ContainerActive: '#DDABAB',
+    ContainerLine: '#D89F9F',
+    OnContainer: '#6E0B0B',
+  },
+
+  Other: {
+    FocusRing: 'rgba(106, 63, 200, 0.5)',
+    Shadow: 'rgba(20, 36, 15, 0.16)',
+    Overlay: 'rgba(10, 20, 8, 0.3)',
+  },
+});
+
+/**
+ * Halloween: purple near-black with a pumpkin accent (#FF9033, dark text on it) and slime green
+ * for success. Pairs with the "Halloween" app icon.
+ */
+export const halloweenTheme = createTheme(color, {
+  Background: {
+    Container: '#211628',
+    ContainerHover: '#2B1D33',
+    ContainerActive: '#3D2848',
+    ContainerLine: '#33243C',
+    OnContainer: '#F4ECF7',
+  },
+
+  Surface: {
+    Container: '#16111A',
+    ContainerHover: '#1F1824',
+    ContainerActive: '#28202E',
+    ContainerLine: '#2A2230',
+    OnContainer: '#F4ECF7',
+  },
+
+  SurfaceVariant: {
+    Container: '#251C2B',
+    ContainerHover: '#2E2434',
+    ContainerActive: '#382D3F',
+    ContainerLine: '#3A3041',
+    OnContainer: '#F4ECF7',
+  },
+
+  Primary: {
+    Main: '#FF9033',
+    MainHover: '#FF9C4A',
+    MainActive: '#FF9640',
+    MainLine: '#FFA85E',
+    OnMain: '#1A0D04',
+    Container: '#5A2E12',
+    ContainerHover: '#663515',
+    ContainerActive: '#723C18',
+    ContainerLine: '#80441B',
+    OnContainer: '#FFDCC0',
+  },
+
+  Secondary: {
+    Main: '#F4ECF7',
+    MainHover: '#E3DAE7',
+    MainActive: '#D7CDDC',
+    MainLine: '#CABFD0',
+    OnMain: '#16111A',
+    Container: '#382D3F',
+    ContainerHover: '#43374A',
+    ContainerActive: '#4E4255',
+    ContainerLine: '#594D60',
+    OnContainer: '#F4ECF7',
+  },
+
+  Success: {
+    Main: '#8BE05A',
+    MainHover: '#98E46D',
+    MainActive: '#91E263',
+    MainLine: '#A3E77D',
+    OnMain: '#16300A',
+    Container: '#2E5418',
+    ContainerHover: '#35601C',
+    ContainerActive: '#3C6C20',
+    ContainerLine: '#437824',
+    OnContainer: '#E0F7D2',
+  },
+
+  Warning: {
+    Main: '#F0C060',
+    MainHover: '#F2C873',
+    MainActive: '#F1C46A',
+    MainLine: '#F4CF84',
+    OnMain: '#3F2A08',
+    Container: '#5E4318',
+    ContainerHover: '#6A4C1C',
+    ContainerActive: '#765520',
+    ContainerLine: '#825E24',
+    OnContainer: '#F8E6C2',
+  },
+
+  Critical: {
+    Main: '#F0606E',
+    MainHover: '#F27580',
+    MainActive: '#F16B79',
+    MainLine: '#F38691',
+    OnMain: '#401018',
+    Container: '#5E2530',
+    ContainerHover: '#6A2A36',
+    ContainerActive: '#76303D',
+    ContainerLine: '#823644',
+    OnContainer: '#F8D2D7',
+  },
+
+  Other: {
+    FocusRing: 'rgba(255, 144, 51, 0.6)',
+    Shadow: 'rgba(0, 0, 0, 1)',
+    Overlay: 'rgba(10, 6, 14, 0.55)',
+  },
+});
+
+/**
  * Christmas: wine red near-black with a cranberry accent, pine green and gold for the status
  * colours. Pairs with the "Christmas" app icon (branding/build.py). Same roles as the Diddy theme:
  * Background = sidebar, Surface = content, SurfaceVariant = raised panels.
@@ -517,6 +820,107 @@ export const christmasTheme = createTheme(color, {
     FocusRing: 'rgba(219, 59, 87, 0.6)',
     Shadow: 'rgba(0, 0, 0, 1)',
     Overlay: 'rgba(12, 5, 7, 0.55)',
+  },
+});
+
+/**
+ * New Year: midnight blue with a champagne gold accent (#F2C24E, dark text on it) and orange for
+ * warnings, so they do not look like the accent. Pairs with the "New Year" app icon.
+ */
+export const newYearTheme = createTheme(color, {
+  Background: {
+    Container: '#151B36',
+    ContainerHover: '#1C2342',
+    ContainerActive: '#28305A',
+    ContainerLine: '#222A4A',
+    OnContainer: '#EEF0FA',
+  },
+
+  Surface: {
+    Container: '#0E1226',
+    ContainerHover: '#151A30',
+    ContainerActive: '#1C223A',
+    ContainerLine: '#1E2440',
+    OnContainer: '#EEF0FA',
+  },
+
+  SurfaceVariant: {
+    Container: '#1A2040',
+    ContainerHover: '#222849',
+    ContainerActive: '#2B3253',
+    ContainerLine: '#2D3456',
+    OnContainer: '#EEF0FA',
+  },
+
+  Primary: {
+    Main: '#F2C24E',
+    MainHover: '#F4CB66',
+    MainActive: '#F3C75A',
+    MainLine: '#F6D27C',
+    OnMain: '#1A1406',
+    Container: '#4D3D12',
+    ContainerHover: '#594616',
+    ContainerActive: '#654F19',
+    ContainerLine: '#71591D',
+    OnContainer: '#FBEAC0',
+  },
+
+  Secondary: {
+    Main: '#EEF0FA',
+    MainHover: '#DCDFEC',
+    MainActive: '#D0D3E2',
+    MainLine: '#C3C7D8',
+    OnMain: '#0E1226',
+    Container: '#2B3253',
+    ContainerHover: '#363D5E',
+    ContainerActive: '#414869',
+    ContainerLine: '#4C5374',
+    OnContainer: '#EEF0FA',
+  },
+
+  Success: {
+    Main: '#4FD1A1',
+    MainHover: '#64D7AD',
+    MainActive: '#5AD4A7',
+    MainLine: '#74DCB6',
+    OnMain: '#0A3324',
+    Container: '#17513D',
+    ContainerHover: '#1A5C45',
+    ContainerActive: '#1D674D',
+    ContainerLine: '#207255',
+    OnContainer: '#CDF4E6',
+  },
+
+  Warning: {
+    Main: '#FFA24D',
+    MainHover: '#FFAE63',
+    MainActive: '#FFA858',
+    MainLine: '#FFB978',
+    OnMain: '#3F2208',
+    Container: '#5E3A18',
+    ContainerHover: '#6A421C',
+    ContainerActive: '#764A20',
+    ContainerLine: '#825224',
+    OnContainer: '#FBE0C6',
+  },
+
+  Critical: {
+    Main: '#FF6B7A',
+    MainHover: '#FF7E8B',
+    MainActive: '#FF7583',
+    MainLine: '#FF919C',
+    OnMain: '#40101A',
+    Container: '#5E2531',
+    ContainerHover: '#6A2A37',
+    ContainerActive: '#76303E',
+    ContainerLine: '#823645',
+    OnContainer: '#F8D2D8',
+  },
+
+  Other: {
+    FocusRing: 'rgba(242, 194, 78, 0.6)',
+    Shadow: 'rgba(0, 0, 0, 1)',
+    Overlay: 'rgba(5, 7, 18, 0.55)',
   },
 });
 

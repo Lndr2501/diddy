@@ -124,29 +124,80 @@ body.theme-diddy .glow {
   opacity: 1;
 }
 
-/* Christmas theme: wine red and pine green glows with slowly falling snow (cinny/src/index.css) */
-body.theme-christmas .glow {
+/* Occasion themes: glows and small shapes behind the window, same values as cinny/src/index.css */
+body.theme-valentine {
+  --occasion-glow: radial-gradient(ellipse 60% 55% at 0% 0%, rgba(255, 120, 165, 0.35) 0%, transparent 75%),
+    radial-gradient(ellipse 45% 40% at 100% 100%, rgba(255, 170, 195, 0.35) 0%, transparent 78%);
+  --occasion-shapes: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cpath transform='translate%2853 74%29 scale%287%29' fill='%23E0457A' fill-opacity='0.4' d='M0 .95C-.3 .72 -1 .25 -1 -.28C-1 -.7 -.7 -.98 -.38 -.98C-.18 -.98 -.05 -.86 0 -.7C.05 -.86 .18 -.98 .38 -.98C.7 -.98 1 -.7 1 -.28C1 .25 .3 .72 0 .95Z'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cpath transform='translate%28128 115%29 scale%285%29' fill='%23E0457A' fill-opacity='0.3' d='M0 .95C-.3 .72 -1 .25 -1 -.28C-1 -.7 -.7 -.98 -.38 -.98C-.18 -.98 -.05 -.86 0 -.7C.05 -.86 .18 -.98 .38 -.98C.7 -.98 1 -.7 1 -.28C1 .25 .3 .72 0 .95Z'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='360'%3E%3Cpath transform='translate%28166 299%29 scale%289%29' fill='%23E0457A' fill-opacity='0.35' d='M0 .95C-.3 .72 -1 .25 -1 -.28C-1 -.7 -.7 -.98 -.38 -.98C-.18 -.98 -.05 -.86 0 -.7C.05 -.86 .18 -.98 .38 -.98C.7 -.98 1 -.7 1 -.28C1 .25 .3 .72 0 .95Z'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cpath transform='translate%28101 20%29 scale%284%29' fill='%23E0457A' fill-opacity='0.25' d='M0 .95C-.3 .72 -1 .25 -1 -.28C-1 -.7 -.7 -.98 -.38 -.98C-.18 -.98 -.05 -.86 0 -.7C.05 -.86 .18 -.98 .38 -.98C.7 -.98 1 -.7 1 -.28C1 .25 .3 .72 0 .95Z'/%3E%3C/svg%3E");
+}
+body.theme-easter {
+  --occasion-glow: radial-gradient(ellipse 60% 55% at 0% 0%, rgba(255, 220, 110, 0.4) 0%, transparent 75%),
+    radial-gradient(ellipse 45% 40% at 100% 100%, rgba(190, 160, 255, 0.35) 0%, transparent 78%);
+  --occasion-shapes: radial-gradient(circle at 22% 31%, rgba(245, 197, 66, 0.7) 0 2.5px, transparent 3.5px),
+    radial-gradient(circle at 71% 64%, rgba(255, 143, 177, 0.6) 0 2px, transparent 3px),
+    radial-gradient(circle at 46% 83%, rgba(111, 184, 245, 0.6) 0 3px, transparent 4px),
+    radial-gradient(circle at 84% 17%, rgba(176, 140, 245, 0.6) 0 1.5px, transparent 2.5px);
+}
+body.theme-halloween {
+  --occasion-glow: radial-gradient(ellipse 60% 55% at 0% 0%, rgba(110, 50, 150, 0.5) 0%, transparent 75%),
+    radial-gradient(ellipse 45% 40% at 100% 100%, rgba(255, 120, 30, 0.28) 0%, transparent 78%);
+  --occasion-shapes: radial-gradient(circle at 22% 31%, rgba(255, 233, 184, 0.6) 0 1.5px, transparent 2.5px),
+    radial-gradient(circle at 71% 64%, rgba(255, 233, 184, 0.45) 0 1px, transparent 2px),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='360'%3E%3Cpath transform='translate%28166 299%29 scale%285%29' fill='%23FFE9B8' fill-opacity='.55' d='M0 -1Q.12 -.12 1 0Q.12 .12 0 1Q-.12 .12 -1 0Q-.12 -.12 0 -1Z'/%3E%3C/svg%3E"),
+    radial-gradient(circle at 84% 17%, rgba(255, 233, 184, 0.35) 0 1px, transparent 2px);
+}
+body.theme-christmas {
+  --occasion-glow: radial-gradient(ellipse 60% 55% at 0% 0%, rgba(150, 28, 52, 0.6) 0%, transparent 75%),
+    radial-gradient(ellipse 45% 40% at 100% 100%, rgba(24, 92, 56, 0.34) 0%, transparent 78%);
+  --occasion-shapes: radial-gradient(circle at 22% 31%, rgba(255, 255, 255, 0.55) 0 1.5px, transparent 2.5px),
+    radial-gradient(circle at 71% 64%, rgba(255, 255, 255, 0.4) 0 1px, transparent 2px),
+    radial-gradient(circle at 46% 83%, rgba(255, 255, 255, 0.5) 0 2px, transparent 3px),
+    radial-gradient(circle at 84% 17%, rgba(255, 255, 255, 0.35) 0 1px, transparent 2px);
+}
+body.theme-newyear {
+  --occasion-glow: radial-gradient(ellipse 60% 55% at 0% 0%, rgba(242, 194, 78, 0.22) 0%, transparent 75%),
+    radial-gradient(ellipse 45% 40% at 100% 100%, rgba(60, 80, 200, 0.35) 0%, transparent 78%);
+  --occasion-shapes: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Crect x='51' y='69' width='4' height='10' rx='1.5' transform='rotate%2820 53 74%29' fill='%23FFD66B' fill-opacity='.7'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Crect x='126' y='110' width='4' height='10' rx='1.5' transform='rotate%28-35 128 115%29' fill='%23FF6FAE' fill-opacity='.7'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='360'%3E%3Crect x='164' y='294' width='4' height='10' rx='1.5' transform='rotate%2860 166 299%29' fill='%236FE3FF' fill-opacity='.7'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Crect x='99' y='15' width='4' height='10' rx='1.5' transform='rotate%28-10 101 20%29' fill='%23FFFFFF' fill-opacity='.7'/%3E%3C/svg%3E");
+}
+body.theme-valentine .glow,
+body.theme-easter .glow,
+body.theme-halloween .glow,
+body.theme-christmas .glow,
+body.theme-newyear .glow {
   opacity: 1;
   overflow: hidden;
-  background-image: radial-gradient(ellipse 60% 55% at 0% 0%, rgba(150, 28, 52, 0.6) 0%, rgba(150, 28, 52, 0.2) 45%, transparent 75%),
-    radial-gradient(ellipse 45% 40% at 100% 100%, rgba(24, 92, 56, 0.34) 0%, rgba(24, 92, 56, 0.1) 50%, transparent 78%);
+  background-image: var(--occasion-glow);
 }
-body.theme-christmas .glow::after {
+body.theme-valentine .glow::after,
+body.theme-easter .glow::after,
+body.theme-halloween .glow::after,
+body.theme-christmas .glow::after,
+body.theme-newyear .glow::after {
   content: '';
   position: absolute;
   left: 0;
   right: 0;
   top: -720px;
   height: calc(100% + 720px);
-  background-image: radial-gradient(circle at 22% 31%, rgba(255, 255, 255, 0.55) 0 1.5px, transparent 2.5px),
-    radial-gradient(circle at 71% 64%, rgba(255, 255, 255, 0.4) 0 1px, transparent 2px),
-    radial-gradient(circle at 46% 83%, rgba(255, 255, 255, 0.5) 0 2px, transparent 3px),
-    radial-gradient(circle at 84% 17%, rgba(255, 255, 255, 0.35) 0 1px, transparent 2px);
+  background-image: var(--occasion-shapes);
   background-size: 240px 240px, 180px 180px, 360px 360px, 120px 120px;
   will-change: transform;
-  animation: demo-snow 90s linear infinite;
+  animation: demo-occasion 90s linear infinite;
 }
-@keyframes demo-snow {
+body.theme-valentine .glow::after {
+  animation-direction: reverse;
+}
+body.theme-halloween .glow::after {
+  animation: none;
+  will-change: auto;
+}
+@keyframes demo-occasion {
   from {
     transform: translateY(0);
   }
@@ -155,10 +206,15 @@ body.theme-christmas .glow::after {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  body.theme-christmas .glow::after {
+  body.theme-valentine .glow::after,
+  body.theme-easter .glow::after,
+  body.theme-halloween .glow::after,
+  body.theme-christmas .glow::after,
+  body.theme-newyear .glow::after {
     animation: none;
   }
 }
+
 
 /* ---------- demo bar ---------- */
 .demobar {

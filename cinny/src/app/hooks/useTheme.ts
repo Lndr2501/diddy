@@ -8,10 +8,14 @@ import {
   daaarkTheme,
   darkTheme,
   diddyTheme,
+  easterTheme,
   greenTheme,
+  halloweenTheme,
+  newYearTheme,
   purpleTheme,
   redTheme,
   silverTheme,
+  valentineTheme,
 } from '../../colors.css';
 import { settingsAtom } from '../state/settings';
 import { useSetting } from '../state/hooks/settings';
@@ -81,11 +85,34 @@ export const DaaarkTheme: Theme = {
   classNames: ['daaark-theme', daaarkTheme, onDarkFontWeight, 'prism-dark'],
 };
 
-/** Wine red with a cranberry accent and falling snow behind the window (index.css). */
+/*
+ * Occasion themes, each pairs with the app icon of the same name. Behind the window they show
+ * two glows and small shapes (hearts, petals, stars, snow, confetti), see index.css.
+ */
+export const ValentineTheme: Theme = {
+  id: 'valentine-theme',
+  kind: ThemeKind.Light,
+  classNames: ['valentine-theme', valentineTheme, onLightFontWeight, 'prism-light'],
+};
+export const EasterTheme: Theme = {
+  id: 'easter-theme',
+  kind: ThemeKind.Light,
+  classNames: ['easter-theme', easterTheme, onLightFontWeight, 'prism-light'],
+};
+export const HalloweenTheme: Theme = {
+  id: 'halloween-theme',
+  kind: ThemeKind.Dark,
+  classNames: ['halloween-theme', halloweenTheme, onDarkFontWeight, 'prism-dark'],
+};
 export const ChristmasTheme: Theme = {
   id: 'christmas-theme',
   kind: ThemeKind.Dark,
   classNames: ['christmas-theme', christmasTheme, onDarkFontWeight, 'prism-dark'],
+};
+export const NewYearTheme: Theme = {
+  id: 'newyear-theme',
+  kind: ThemeKind.Dark,
+  classNames: ['newyear-theme', newYearTheme, onDarkFontWeight, 'prism-dark'],
 };
 
 /** Colors, gradient and background media come from the user's settings, see CustomThemeEffects. */
@@ -109,7 +136,11 @@ export const useThemes = (): Theme[] => {
       PurpleTheme,
       AmberTheme,
       DaaarkTheme,
+      ValentineTheme,
+      EasterTheme,
+      HalloweenTheme,
       ChristmasTheme,
+      NewYearTheme,
       CustomTheme,
     ],
     []
@@ -131,7 +162,11 @@ export const useThemeNames = (): Record<string, string> =>
       [PurpleTheme.id]: 'Purple & Black',
       [AmberTheme.id]: 'Amber & Black',
       [DaaarkTheme.id]: 'DAAARK',
+      [ValentineTheme.id]: 'Valentine',
+      [EasterTheme.id]: 'Easter',
+      [HalloweenTheme.id]: 'Halloween',
       [ChristmasTheme.id]: 'Christmas',
+      [NewYearTheme.id]: 'New Year',
       [CustomTheme.id]: 'Custom',
     }),
     []

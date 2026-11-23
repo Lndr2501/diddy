@@ -70,7 +70,9 @@
 .butter-theme,
 .diddy-theme,
 .daaark-theme,
-.christmas-theme {
+.halloween-theme,
+.christmas-theme,
+.newyear-theme {
   --tc-link: hsl(213deg 100% 80%);
 
   --mx-uc-1: hsl(208, 100%, 75%);
@@ -175,44 +177,70 @@ body.diddy-theme::before {
 }
 
 /*
- * Christmas theme: wine red window with a cranberry glow at the top left and a pine green one at
- * the bottom right, and snow falling behind #root. The snow shows where the window background is
- * visible (space rail, gaps around the cards). The four dot layers repeat every 120/180/240/360 px,
- * so moving the layer by 720 px (a multiple of all four) loops without a jump. Only `transform` is
- * animated (compositor, no repaint); with reduced motion the snow stands still.
+ * Occasion themes (Valentine, Easter, Halloween, Christmas, New Year): two soft glows behind the
+ * window (::before) and a layer of small shapes (::after: hearts, petals, stars, snow, confetti).
+ * Both sit behind #root and show where the window background is visible (space rail, gaps around
+ * the cards). Every shape layer repeats at 120/180/240/360 px, so moving it by 720 px (a multiple
+ * of all four) loops without a jump. Only `transform` is animated (compositor, no repaint): snow,
+ * petals and confetti fall, hearts rise, Halloween's stars stand still; with reduced motion all do.
+ * Generated values; keep the website demo (website/demo/demo.css) in step.
  */
-body.christmas-theme {
-  background-color: #12070A;
-}
-body.christmas-theme::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background-image: radial-gradient(
+body.valentine-theme {
+  background-color: #f3dce5;
+  --occasion-glow: radial-gradient(
       ellipse 60% 55% at 0% 0%,
-      rgba(150, 28, 52, 0.6) 0%,
-      rgba(150, 28, 52, 0.2) 45%,
+      rgba(255, 120, 165, 0.35) 0%,
       transparent 75%
     ),
-    radial-gradient(
-      ellipse 45% 40% at 100% 100%,
-      rgba(24, 92, 56, 0.34) 0%,
-      rgba(24, 92, 56, 0.1) 50%,
-      transparent 78%
-    );
+    radial-gradient(ellipse 45% 40% at 100% 100%, rgba(255, 170, 195, 0.35) 0%, transparent 78%);
+  --occasion-shapes: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cpath transform='translate%2853 74%29 scale%287%29' fill='%23E0457A' fill-opacity='0.4' d='M0 .95C-.3 .72 -1 .25 -1 -.28C-1 -.7 -.7 -.98 -.38 -.98C-.18 -.98 -.05 -.86 0 -.7C.05 -.86 .18 -.98 .38 -.98C.7 -.98 1 -.7 1 -.28C1 .25 .3 .72 0 .95Z'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cpath transform='translate%28128 115%29 scale%285%29' fill='%23E0457A' fill-opacity='0.3' d='M0 .95C-.3 .72 -1 .25 -1 -.28C-1 -.7 -.7 -.98 -.38 -.98C-.18 -.98 -.05 -.86 0 -.7C.05 -.86 .18 -.98 .38 -.98C.7 -.98 1 -.7 1 -.28C1 .25 .3 .72 0 .95Z'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='360'%3E%3Cpath transform='translate%28166 299%29 scale%289%29' fill='%23E0457A' fill-opacity='0.35' d='M0 .95C-.3 .72 -1 .25 -1 -.28C-1 -.7 -.7 -.98 -.38 -.98C-.18 -.98 -.05 -.86 0 -.7C.05 -.86 .18 -.98 .38 -.98C.7 -.98 1 -.7 1 -.28C1 .25 .3 .72 0 .95Z'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cpath transform='translate%28101 20%29 scale%284%29' fill='%23E0457A' fill-opacity='0.25' d='M0 .95C-.3 .72 -1 .25 -1 -.28C-1 -.7 -.7 -.98 -.38 -.98C-.18 -.98 -.05 -.86 0 -.7C.05 -.86 .18 -.98 .38 -.98C.7 -.98 1 -.7 1 -.28C1 .25 .3 .72 0 .95Z'/%3E%3C/svg%3E");
 }
-body.christmas-theme::after {
-  content: '';
-  position: fixed;
-  left: 0;
-  right: 0;
-  top: -720px;
-  height: calc(100% + 720px);
-  z-index: 0;
-  pointer-events: none;
-  background-image: radial-gradient(
+body.easter-theme {
+  background-color: #e3f0d6;
+  --occasion-glow: radial-gradient(
+      ellipse 60% 55% at 0% 0%,
+      rgba(255, 220, 110, 0.4) 0%,
+      transparent 75%
+    ),
+    radial-gradient(ellipse 45% 40% at 100% 100%, rgba(190, 160, 255, 0.35) 0%, transparent 78%);
+  --occasion-shapes: radial-gradient(
+      circle at 22% 31%,
+      rgba(245, 197, 66, 0.7) 0 2.5px,
+      transparent 3.5px
+    ),
+    radial-gradient(circle at 71% 64%, rgba(255, 143, 177, 0.6) 0 2px, transparent 3px),
+    radial-gradient(circle at 46% 83%, rgba(111, 184, 245, 0.6) 0 3px, transparent 4px),
+    radial-gradient(circle at 84% 17%, rgba(176, 140, 245, 0.6) 0 1.5px, transparent 2.5px);
+}
+body.halloween-theme {
+  background-color: #0e0912;
+  --occasion-glow: radial-gradient(
+      ellipse 60% 55% at 0% 0%,
+      rgba(110, 50, 150, 0.5) 0%,
+      transparent 75%
+    ),
+    radial-gradient(ellipse 45% 40% at 100% 100%, rgba(255, 120, 30, 0.28) 0%, transparent 78%);
+  --occasion-shapes: radial-gradient(
+      circle at 22% 31%,
+      rgba(255, 233, 184, 0.6) 0 1.5px,
+      transparent 2.5px
+    ),
+    radial-gradient(circle at 71% 64%, rgba(255, 233, 184, 0.45) 0 1px, transparent 2px),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='360'%3E%3Cpath transform='translate%28166 299%29 scale%285%29' fill='%23FFE9B8' fill-opacity='.55' d='M0 -1Q.12 -.12 1 0Q.12 .12 0 1Q-.12 .12 -1 0Q-.12 -.12 0 -1Z'/%3E%3C/svg%3E"),
+    radial-gradient(circle at 84% 17%, rgba(255, 233, 184, 0.35) 0 1px, transparent 2px);
+}
+body.christmas-theme {
+  background-color: #12070a;
+  --occasion-glow: radial-gradient(
+      ellipse 60% 55% at 0% 0%,
+      rgba(150, 28, 52, 0.6) 0%,
+      transparent 75%
+    ),
+    radial-gradient(ellipse 45% 40% at 100% 100%, rgba(24, 92, 56, 0.34) 0%, transparent 78%);
+  --occasion-shapes: radial-gradient(
       circle at 22% 31%,
       rgba(255, 255, 255, 0.55) 0 1.5px,
       transparent 2.5px
@@ -220,11 +248,58 @@ body.christmas-theme::after {
     radial-gradient(circle at 71% 64%, rgba(255, 255, 255, 0.4) 0 1px, transparent 2px),
     radial-gradient(circle at 46% 83%, rgba(255, 255, 255, 0.5) 0 2px, transparent 3px),
     radial-gradient(circle at 84% 17%, rgba(255, 255, 255, 0.35) 0 1px, transparent 2px);
+}
+body.newyear-theme {
+  background-color: #070a18;
+  --occasion-glow: radial-gradient(
+      ellipse 60% 55% at 0% 0%,
+      rgba(242, 194, 78, 0.22) 0%,
+      transparent 75%
+    ),
+    radial-gradient(ellipse 45% 40% at 100% 100%, rgba(60, 80, 200, 0.35) 0%, transparent 78%);
+  --occasion-shapes: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Crect x='51' y='69' width='4' height='10' rx='1.5' transform='rotate%2820 53 74%29' fill='%23FFD66B' fill-opacity='.7'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Crect x='126' y='110' width='4' height='10' rx='1.5' transform='rotate%28-35 128 115%29' fill='%23FF6FAE' fill-opacity='.7'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='360'%3E%3Crect x='164' y='294' width='4' height='10' rx='1.5' transform='rotate%2860 166 299%29' fill='%236FE3FF' fill-opacity='.7'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Crect x='99' y='15' width='4' height='10' rx='1.5' transform='rotate%28-10 101 20%29' fill='%23FFFFFF' fill-opacity='.7'/%3E%3C/svg%3E");
+}
+body.valentine-theme::before,
+body.easter-theme::before,
+body.halloween-theme::before,
+body.christmas-theme::before,
+body.newyear-theme::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: var(--occasion-glow);
+}
+body.valentine-theme::after,
+body.easter-theme::after,
+body.halloween-theme::after,
+body.christmas-theme::after,
+body.newyear-theme::after {
+  content: '';
+  position: fixed;
+  z-index: 0;
+  pointer-events: none;
+  left: 0;
+  right: 0;
+  top: -720px;
+  height: calc(100% + 720px);
+  background-image: var(--occasion-shapes);
   background-size: 240px 240px, 180px 180px, 360px 360px, 120px 120px;
   will-change: transform;
-  animation: diddy-snow 90s linear infinite;
+  animation: diddy-occasion 90s linear infinite;
 }
-@keyframes diddy-snow {
+body.valentine-theme::after {
+  animation-direction: reverse;
+}
+body.halloween-theme::after {
+  animation: none;
+  will-change: auto;
+}
+@keyframes diddy-occasion {
   from {
     transform: translateY(0);
   }
@@ -233,7 +308,11 @@ body.christmas-theme::after {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  body.christmas-theme::after {
+  body.valentine-theme::after,
+  body.easter-theme::after,
+  body.halloween-theme::after,
+  body.christmas-theme::after,
+  body.newyear-theme::after {
     animation: none;
   }
 }
