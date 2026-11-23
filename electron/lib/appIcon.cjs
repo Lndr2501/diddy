@@ -4,7 +4,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const ICON_IDS = ['pink', 'blue', 'purple', 'black', 'magenta'];
+const ICON_IDS = ['pink', 'blue', 'purple', 'black', 'magenta', 'christmas'];
 
 const createAppIcons = ({ iconsDir, configDir, nativeImage, windows, log = () => {}, fileSystem = fs }) => {
   const iconFile = () => path.join(configDir(), 'app-icon');

@@ -86,6 +86,12 @@ data class DiddyTheme(
             rail = 0x000000, sidebar = 0x111111, chat = 0x000000, elevated = 0x111111, input = 0x1A1A1A,
             accent = 0x346BF1, text = 0xF5F5F5, online = VIVID_ONLINE, danger = VIVID_DANGER,
         )
+        /** Wine red surfaces and a cranberry accent, pairs with the Christmas app icon. */
+        val christmas = make(
+            "christmas-theme", "Christmas", false,
+            rail = 0x12070A, sidebar = 0x261117, chat = 0x1B1214, elevated = 0x2A1C20, input = 0x332428,
+            accent = 0xDB3B57, text = 0xF6ECEE, online = VIVID_ONLINE, danger = VIVID_DANGER,
+        )
 
         val all: List<DiddyTheme> = listOf(
             diddy, light, silver, dark, butter,
@@ -94,6 +100,7 @@ data class DiddyTheme(
             accentOnBlack("purple-theme", "Purple & Black", 0x0F0818, 0xB26BFF, 0xEFE8F9),
             accentOnBlack("amber-theme", "Amber & Black", 0x130C03, 0xFFA726, 0xFBEFD9),
             daaark,
+            christmas,
         )
 
         fun named(id: String?): DiddyTheme {

@@ -1,10 +1,10 @@
 import SwiftUI
 import UIKit
 
-/// Switchable home-screen icon, the same five colours as the desktop app. The alternate icons are
+/// Switchable home-screen icon, the same six choices as the desktop app. The alternate icons are
 /// listed in ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES (project.yml).
 enum AppIconChoice: String, CaseIterable, Identifiable {
-    case pink, blue, purple, black, magenta
+    case pink, blue, purple, black, magenta, christmas
 
     var id: String { rawValue }
 

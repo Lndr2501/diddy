@@ -9,12 +9,17 @@ Vektorgrafik und in allen Farbtönen exakt dieselbe Form.
   <img src="logo/diddy-purple-rounded.svg" width="96" alt="Purple">
   <img src="logo/diddy-black-rounded.svg" width="96" alt="Black">
   <img src="logo/diddy-magenta-rounded.svg" width="96" alt="Magenta">
+  <img src="logo/diddy-christmas-rounded.svg" width="96" alt="Christmas">
 </p>
 
 ## Dateien
 
-Farbtöne: `pink` (Standard), `blue`, `purple`, `black`, `magenta`. Das sind dieselben Namen wie in der
-App-Icon-Auswahl.
+Farbtöne: `pink` (Standard), `blue`, `purple`, `black`, `magenta`, `christmas`. Das sind dieselben Namen wie
+in der App-Icon-Auswahl.
+
+`christmas` ist die Weihnachtsausgabe: weinrote Kachel mit Schneeflocken, das „d“ trägt eine Weihnachtsmütze.
+Damit die Mütze auf die Kachel passt, ist das Zeichen dort kleiner und sitzt tiefer (`HAT_SCALE`, `HAT_SHIFT`
+in `build.py`). Das passende App-Theme heißt „Christmas“ (`christmasTheme` in `cinny/src/colors.css.ts`).
 
 | Datei | Zweck |
 |---|---|

@@ -69,7 +69,8 @@
 .dark-theme,
 .butter-theme,
 .diddy-theme,
-.daaark-theme {
+.daaark-theme,
+.christmas-theme {
   --tc-link: hsl(213deg 100% 80%);
 
   --mx-uc-1: hsl(208, 100%, 75%);
@@ -171,6 +172,70 @@ body.diddy-theme::before {
       rgba(135, 45, 80, 0.1) 50%,
       transparent 78%
     );
+}
+
+/*
+ * Christmas theme: wine red window with a cranberry glow at the top left and a pine green one at
+ * the bottom right, and snow falling behind #root. The snow shows where the window background is
+ * visible (space rail, gaps around the cards). The four dot layers repeat every 120/180/240/360 px,
+ * so moving the layer by 720 px (a multiple of all four) loops without a jump. Only `transform` is
+ * animated (compositor, no repaint); with reduced motion the snow stands still.
+ */
+body.christmas-theme {
+  background-color: #12070A;
+}
+body.christmas-theme::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: radial-gradient(
+      ellipse 60% 55% at 0% 0%,
+      rgba(150, 28, 52, 0.6) 0%,
+      rgba(150, 28, 52, 0.2) 45%,
+      transparent 75%
+    ),
+    radial-gradient(
+      ellipse 45% 40% at 100% 100%,
+      rgba(24, 92, 56, 0.34) 0%,
+      rgba(24, 92, 56, 0.1) 50%,
+      transparent 78%
+    );
+}
+body.christmas-theme::after {
+  content: '';
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: -720px;
+  height: calc(100% + 720px);
+  z-index: 0;
+  pointer-events: none;
+  background-image: radial-gradient(
+      circle at 22% 31%,
+      rgba(255, 255, 255, 0.55) 0 1.5px,
+      transparent 2.5px
+    ),
+    radial-gradient(circle at 71% 64%, rgba(255, 255, 255, 0.4) 0 1px, transparent 2px),
+    radial-gradient(circle at 46% 83%, rgba(255, 255, 255, 0.5) 0 2px, transparent 3px),
+    radial-gradient(circle at 84% 17%, rgba(255, 255, 255, 0.35) 0 1px, transparent 2px);
+  background-size: 240px 240px, 180px 180px, 360px 360px, 120px 120px;
+  will-change: transform;
+  animation: diddy-snow 90s linear infinite;
+}
+@keyframes diddy-snow {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(720px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  body.christmas-theme::after {
+    animation: none;
+  }
 }
 
 /* Text selection in the accent colour (value from colors.css.ts). */

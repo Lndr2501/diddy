@@ -10,6 +10,7 @@ const ICONS: &[(&str, &[u8], &[u8])] = &[
     ("purple", include_bytes!("../app-icons/purple.png"), include_bytes!("../app-icons/purple-mac.png")),
     ("black", include_bytes!("../app-icons/black.png"), include_bytes!("../app-icons/black-mac.png")),
     ("magenta", include_bytes!("../app-icons/magenta.png"), include_bytes!("../app-icons/magenta-mac.png")),
+    ("christmas", include_bytes!("../app-icons/christmas.png"), include_bytes!("../app-icons/christmas-mac.png")),
 ];
 
 #[cfg(target_os = "macos")]

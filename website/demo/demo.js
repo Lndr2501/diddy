@@ -108,6 +108,7 @@
     purple: palette('Purple', '#0F0818', '#B26BFF', '#EFE8F9'),
     amber: palette('Amber', '#130C03', '#FFA726', '#FBEFD9'),
     daaark: { name: 'DAAARK', window: '#000000', nav: '#111111', surface: '#000000', raised: '#1A1A1A', text: '#F5F5F5', accent: '#346BF1', onAccent: '#FFFFFF', accentSoft: '#0D1A3A', onAccentSoft: '#C5D5FB', tint: '#FFFFFF' },
+    christmas: { name: 'Christmas', window: '#12070A', nav: '#261117', surface: '#1B1214', raised: '#2A1C20', text: '#F6ECEE', accent: '#DB3B57', onAccent: '#FFFFFF', accentSoft: '#5C1A2B', onAccentSoft: '#F8D5DC', tint: '#FFFFFF' },
   };
 
   // ---------------------------------------------------------------- people + rooms (made up)
@@ -130,7 +131,7 @@
         { id: 'g1', u: 'jonas', t: T(19, 2), text: 'Does voice actually work on macOS now? Cinny just hung when joining for me.' },
         { id: 'g2', u: 'mara', t: T(19, 3), text: 'Yep. And with "Voice processing" off, the mic skips Apple\'s voice processing, so your music doesn\'t get quieter anymore.', react: { '🙌': ['jonas', 'luis'] } },
         { id: 'g3', u: 'jonas', t: T(19, 4), text: 'And themes?' },
-        { id: 'g4', u: 'mara', t: T(19, 4), text: 'Ten of them, from Light to DAAARK. Try "Diddy". 🎨', react: { '🎨': ['jonas'] } },
+        { id: 'g4', u: 'mara', t: T(19, 4), text: 'Eleven of them, from Light to DAAARK, plus Christmas. Try "Diddy". 🎨', react: { '🎨': ['jonas'] } },
         { id: 'g5', u: 'luis', t: T(19, 6), kind: 'voice', dur: 9, text: 'Voice message' },
         { id: 'g6', u: 'jonas', t: T(19, 7), text: 'Screen sharing with sound works too, right?', reply: 'g5' },
         { id: 'g7', u: 'luis', t: T(19, 7), text: 'With system audio, yes. Diddy\'s own call sounds are left out. Movie night at eight? 🍿' },
@@ -1062,7 +1063,7 @@
     const sw = (on, act, extra = '') => `<button class="switch ${on ? 'is-on' : ''}" type="button" role="switch" aria-checked="${on}" data-act="${act}" ${extra}></button>`;
     let html = '';
     if (settingsTab === 'appearance') {
-      html = `<h1>Appearance</h1><p class="lead">Ten built-in themes, from light to pitch black. Click one, the whole app changes.</p>
+      html = `<h1>Appearance</h1><p class="lead">Eleven built-in themes, from light to pitch black. Click one, the whole app changes.</p>
         <div class="sbox"><h3>Theme</h3><p>Same colours as the app.</p><div class="themes" id="themeGrid">${Object.entries(THEMES)
           .map(([id, t]) => `<button class="theme ${state.theme === id ? 'is-active' : ''}" type="button" data-theme="${id}">
             <div class="theme__mini" style="background:${t.surface}"><div class="n" style="background:${t.nav}"><i style="background:${t.accent}"></i><i style="background:${t.text}"></i><i style="background:${t.text}"></i></div>

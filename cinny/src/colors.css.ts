@@ -418,6 +418,108 @@ export const diddyTheme = createTheme(color, {
   },
 });
 
+/**
+ * Christmas: wine red near-black with a cranberry accent, pine green and gold for the status
+ * colours. Pairs with the "Christmas" app icon (branding/build.py). Same roles as the Diddy theme:
+ * Background = sidebar, Surface = content, SurfaceVariant = raised panels.
+ */
+export const christmasTheme = createTheme(color, {
+  Background: {
+    Container: '#261117',
+    ContainerHover: '#311820',
+    ContainerActive: '#4A1E2B',
+    ContainerLine: '#3A2028',
+    OnContainer: '#F6ECEE',
+  },
+
+  Surface: {
+    Container: '#1B1214',
+    ContainerHover: '#24191C',
+    ContainerActive: '#2D2023',
+    ContainerLine: '#2E2226',
+    OnContainer: '#F6ECEE',
+  },
+
+  SurfaceVariant: {
+    Container: '#2A1C20',
+    ContainerHover: '#332428',
+    ContainerActive: '#3D2D31',
+    ContainerLine: '#3F2F33',
+    OnContainer: '#F6ECEE',
+  },
+
+  Primary: {
+    Main: '#DB3B57',
+    MainHover: '#E14F69',
+    MainActive: '#DE4560',
+    MainLine: '#E6637A',
+    OnMain: '#FFFFFF',
+    Container: '#5C1A2B',
+    ContainerHover: '#682034',
+    ContainerActive: '#74263C',
+    ContainerLine: '#842D45',
+    OnContainer: '#F8D5DC',
+  },
+
+  Secondary: {
+    Main: '#F6ECEE',
+    MainHover: '#E6DADD',
+    MainActive: '#DACDD0',
+    MainLine: '#CDBFC3',
+    OnMain: '#1B1214',
+    Container: '#3D2D31',
+    ContainerHover: '#48373B',
+    ContainerActive: '#534246',
+    ContainerLine: '#5E4D51',
+    OnContainer: '#F6ECEE',
+  },
+
+  Success: {
+    Main: '#4CC27E',
+    MainHover: '#5FC98C',
+    MainActive: '#56C585',
+    MainLine: '#6ECF97',
+    OnMain: '#0B3A20',
+    Container: '#174A2E',
+    ContainerHover: '#1B5535',
+    ContainerActive: '#1F603C',
+    ContainerLine: '#236B43',
+    OnContainer: '#CFF2DD',
+  },
+
+  Warning: {
+    Main: '#E9BE62',
+    MainHover: '#EDC775',
+    MainActive: '#EBC26B',
+    MainLine: '#F0CE86',
+    OnMain: '#3F2A08',
+    Container: '#5E4318',
+    ContainerHover: '#6A4C1C',
+    ContainerActive: '#765520',
+    ContainerLine: '#825E24',
+    OnContainer: '#F8E6C2',
+  },
+
+  Critical: {
+    Main: '#F26D6D',
+    MainHover: '#F48080',
+    MainActive: '#F37777',
+    MainLine: '#F58F8F',
+    OnMain: '#401010',
+    Container: '#5E2525',
+    ContainerHover: '#6A2A2A',
+    ContainerActive: '#763030',
+    ContainerLine: '#823636',
+    OnContainer: '#F8D2D2',
+  },
+
+  Other: {
+    FocusRing: 'rgba(219, 59, 87, 0.6)',
+    Shadow: 'rgba(0, 0, 0, 1)',
+    Overlay: 'rgba(12, 5, 7, 0.55)',
+  },
+});
+
 /*
  * Diddy design tokens that depend on the active theme (#21). The theme classes sit on <body>, so the
  * folds colour variables resolve there; the rest of the tokens are in index.css. Dark is the

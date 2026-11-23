@@ -4,6 +4,7 @@ import { onDarkFontWeight, onLightFontWeight } from '../../config.css';
 import {
   amberTheme,
   butterTheme,
+  christmasTheme,
   daaarkTheme,
   darkTheme,
   diddyTheme,
@@ -80,6 +81,13 @@ export const DaaarkTheme: Theme = {
   classNames: ['daaark-theme', daaarkTheme, onDarkFontWeight, 'prism-dark'],
 };
 
+/** Wine red with a cranberry accent and falling snow behind the window (index.css). */
+export const ChristmasTheme: Theme = {
+  id: 'christmas-theme',
+  kind: ThemeKind.Dark,
+  classNames: ['christmas-theme', christmasTheme, onDarkFontWeight, 'prism-dark'],
+};
+
 /** Colors, gradient and background media come from the user's settings, see CustomThemeEffects. */
 export const CUSTOM_THEME_ID = 'custom-theme';
 export const CustomTheme: Theme = {
@@ -101,6 +109,7 @@ export const useThemes = (): Theme[] => {
       PurpleTheme,
       AmberTheme,
       DaaarkTheme,
+      ChristmasTheme,
       CustomTheme,
     ],
     []
@@ -122,6 +131,7 @@ export const useThemeNames = (): Record<string, string> =>
       [PurpleTheme.id]: 'Purple & Black',
       [AmberTheme.id]: 'Amber & Black',
       [DaaarkTheme.id]: 'DAAARK',
+      [ChristmasTheme.id]: 'Christmas',
       [CustomTheme.id]: 'Custom',
     }),
     []

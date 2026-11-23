@@ -2,6 +2,8 @@
 
 ## Unveröffentlicht
 
+- **Weihnachtsausgabe: App-Icon und Theme „Christmas“ (macOS, Linux, Windows, iOS, Android):** Neues App-Icon unter *Einstellungen → Darstellung*: das Diddy-„d“ mit Weihnachtsmütze auf einer weinroten Kachel mit Schneeflocken. Dazu das Theme „Christmas“: weinrote, fast schwarze Flächen, Cranberry als Akzent (Weiß darauf 4,4:1), Tannengrün und Gold für Status-Farben. Am Desktop fällt hinter dem Fenster leise Schnee (sichtbar in der Space-Leiste und an den Rändern); bei „Bewegung reduzieren“ steht er still. iOS und Android bekommen das Theme mit denselben Farben, iOS auch das Icon. Android kann das App-Icon nicht wechseln und behält das pinke. Logo-Quelle: `branding/build.py`, Farbton `christmas`.
+
 - **Raumliste: Call-Teilnehmer überdecken keine anderen Räume mehr (#262, macOS, Linux, Windows):** Lief in einem Raum ein Call, stand die Teilnehmerliste unter dem Raum manchmal über den Räumen darunter, und an anderer Stelle klaffte eine Lücke. Das passierte, sobald ein Raum in der Liste nach oben rückte. Die Raumliste merkte sich die gemessene Zeilenhöhe pro Position statt pro Raum, und seit 1.10.1 behält eine Zeile beim Umsortieren ihr Element und wird nicht neu gemessen. Start und Direktnachrichten führen die Höhe jetzt pro Raum; in Spaces wurde schon neu gemessen. iOS und Android haben eigene Raumlisten und sind nicht betroffen.
 
 ## 1.12.3 (2026-11-17)

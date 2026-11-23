@@ -36,7 +36,7 @@ struct DiddyTheme: Identifiable, Equatable {
         .accentOnBlack(id: "green-theme", name: "Green & Black", background: 0x07120C, accent: 0x42E08C, text: 0xE8F6EE),
         .accentOnBlack(id: "purple-theme", name: "Purple & Black", background: 0x0F0818, accent: 0xB26BFF, text: 0xEFE8F9),
         .accentOnBlack(id: "amber-theme", name: "Amber & Black", background: 0x130C03, accent: 0xFFA726, text: 0xFBEFD9),
-        .daaark,
+        .daaark, .christmas,
     ]
 
     static func named(_ id: String?) -> DiddyTheme {
@@ -114,6 +114,12 @@ struct DiddyTheme: Identifiable, Equatable {
         id: "daaark-theme", name: "DAAARK", isLight: false,
         rail: 0x000000, sidebar: 0x111111, chat: 0x000000, elevated: 0x111111, input: 0x1A1A1A,
         accent: 0x346BF1, text: 0xF5F5F5, online: vividOnline, danger: vividDanger)
+
+    /// Wine red surfaces and a cranberry accent, pairs with the Christmas app icon.
+    static let christmas = DiddyTheme(
+        id: "christmas-theme", name: "Christmas", isLight: false,
+        rail: 0x12070A, sidebar: 0x261117, chat: 0x1B1214, elevated: 0x2A1C20, input: 0x332428,
+        accent: 0xDB3B57, text: 0xF6ECEE, online: vividOnline, danger: vividDanger)
 
     /// The desktop's `darkPalette()`: a near-black background tinted by the accent.
     private static func accentOnBlack(id: String, name: String, background: UInt32, accent: UInt32, text: UInt32) -> DiddyTheme {

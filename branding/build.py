@@ -25,7 +25,28 @@ TONES = {
     "purple": {"tile": ("#B566FF", "#6418C9"), "letter": ("#FFFFFF", "#EEE0FF"), "bubble": None},
     "black": {"tile": ("#2F2F35", "#0C0C0E"), "letter": ("#FFFFFF", "#E4E4EA"), "bubble": PINK},
     "magenta": {"tile": ("#A8155F", "#4F0A30"), "letter": ("#FFF3F9", "#FFD3EA"), "bubble": None},
+    # Christmas edition: wine red tile, the "d" wears a Santa hat (see hat_svg) and the mark shrinks
+    # a little so the hat fits on the tile.
+    "christmas": {"tile": ("#A3223D", "#4A0716"), "letter": ("#FFFFFF", "#FBE6EA"), "bubble": None,
+                  "hat": True},
 }
+
+# Santa hat, drawn in its own frame: origin at the middle of the fur band, which sits on the top of
+# the stem of the "d". The tip falls to the left over the round part.
+HAT_AT = (180, -322)  # centre of the fur band in letter coordinates (stem centre, just below its top)
+HAT_TILT = -12  # degrees, negative leans the hat to the left
+HAT_SIZE = 1.0
+HAT_CONE = ("#FF5A64", "#C8102E")  # top to bottom
+HAT_FUR = ("#FFFFFF", "#E8E1E4")
+# Snow on the Christmas tile: (x, y, radius) in tile units of 1024, kept away from the mark.
+SNOW = [
+    (176, 236, 13), (292, 150, 8), (128, 420, 9), (214, 330, 6), (402, 214, 7),
+    (848, 318, 11), (770, 176, 7), (896, 470, 7), (820, 640, 9), (902, 812, 12),
+    (744, 868, 7), (150, 708, 8), (236, 858, 11), (106, 596, 6), (612, 912, 6),
+]
+SNOW_OPACITY = 0.5
+HAT_SCALE = 0.86  # the hatted mark is this much smaller than the plain one
+HAT_SHIFT = 112  # and moves this far down (letter units), so mark and hat sit in the middle
 
 # The "d", drawn around the centre of the icon (0,0).
 BOWL = 245  # outer radius of the round part
@@ -90,6 +111,34 @@ def bubble_path():
     )
 
 
+def hat_svg():
+    """Santa hat for the Christmas tone: red cone falling to the left, fur band and bobble.
+
+    Returns (defs, body). The body is placed in letter coordinates, like the "d".
+    """
+    cone = (
+        "M100 -20C104 -112 72 -206 -8 -224C-96 -242 -178 -182 -224 -64"
+        "C-196 -64 -148 -72 -100 -30Z"
+    )
+    defs = (
+        gradient("hatcone", HAT_CONE, -60, -230, 40, 0)
+        + gradient("hatfur", HAT_FUR, 0, -40, 0, 40)
+        + '<filter id="hatshadow" x="-20%" y="-20%" width="140%" height="150%">'
+        '<feGaussianBlur in="SourceAlpha" stdDeviation="9"/><feOffset dy="10"/>'
+        '<feComponentTransfer><feFuncA type="linear" slope=".35"/></feComponentTransfer>'
+        '<feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>'
+    )
+    body = (
+        f'<g transform="translate({n(HAT_AT[0])} {n(HAT_AT[1])}) rotate({n(HAT_TILT)}) scale({n(HAT_SIZE)})"'
+        ' filter="url(#hatshadow)">'
+        f'<path d="{cone}" fill="url(#hatcone)"/>'
+        '<rect x="-122" y="-42" width="244" height="84" rx="42" fill="url(#hatfur)"/>'
+        '<circle cx="-222" cy="-58" r="50" fill="url(#hatfur)"/>'
+        "</g>"
+    )
+    return defs, body
+
+
 def squircle(x, y, size, radius, smoothing=0.6):
     """Rounded square with continuous corners (the shape of an iOS or macOS app icon)."""
     budget = size / 2
@@ -146,6 +195,12 @@ def icon_svg(tone, shape):
         mark = f'<path d="{letter_path()}" fill="url(#letter)"/><path d="{bubble_path()}" fill="url(#bubble)"/>'
     else:
         mark = f'<path fill-rule="evenodd" d="{letter_path()}{bubble_path()}" fill="url(#letter)"/>'
+    scale_by, shift = 1.0, 0
+    if colors.get("hat"):
+        hat_defs, hat = hat_svg()
+        defs.append(hat_defs)
+        mark += hat
+        scale_by, shift = HAT_SCALE, HAT_SHIFT
 
     if shape == "mac":
         box, scale = (100, 100, 824), 0.8
@@ -164,7 +219,15 @@ def icon_svg(tone, shape):
         tile = f'<rect width="{SIZE}" height="{SIZE}" fill="url(#tile)"/>'
     x, y, size = box
     defs.insert(0, gradient("tile", colors["tile"], x + size * 0.28, y, x + size * 0.72, y + size))
-    placed = f'<g transform="translate(512 512) scale({n(scale)})">{mark}</g>'
+    if colors.get("hat"):
+        # The snow scales with the tile (the mac shape has a margin).
+        k = size / SIZE
+        dots = "".join(
+            f'<circle cx="{n(x + sx * k)}" cy="{n(y + sy * k)}" r="{n(r * k)}"/>' for sx, sy, r in SNOW
+        )
+        tile += f'<g fill="#FFFFFF" fill-opacity="{n(SNOW_OPACITY)}">{dots}</g>'
+    scale *= scale_by
+    placed = f'<g transform="translate(512 {n(512 + shift * scale)}) scale({n(scale)})">{mark}</g>'
     return svg(tile + placed, f'<defs>{"".join(defs)}</defs>')
 
 
