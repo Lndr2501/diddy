@@ -53,7 +53,8 @@ function moveCallRoomUp(keyed) {
   const { v, setRows } = makeVirtualizer(before, keyed);
   v.getMeasurements();
   // the row of "luis" grows: a call with two people listed underneath
-  v.resizeItem(v.getMeasurements()[2], 110);
+  // (virtual-core 3.14 takes the index; before 3.13 it took the measurement)
+  v.resizeItem(2, 110);
   // a message moves "luis" above "mail"; the row keeps its DOM node, so it is not measured again
   const after = [category, room('luis'), room('mail'), room('lndr')];
   setRows(after);
