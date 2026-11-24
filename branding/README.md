@@ -10,11 +10,37 @@ Vektorgrafik und in allen Farbtönen exakt dieselbe Form.
   <img src="logo/diddy-black-rounded.svg" width="96" alt="Black">
   <img src="logo/diddy-magenta-rounded.svg" width="96" alt="Magenta">
 </p>
+<p>
+  <img src="logo/diddy-valentine-rounded.svg" width="96" alt="Valentine">
+  <img src="logo/diddy-easter-rounded.svg" width="96" alt="Easter">
+  <img src="logo/diddy-halloween-rounded.svg" width="96" alt="Halloween">
+  <img src="logo/diddy-christmas-rounded.svg" width="96" alt="Christmas">
+  <img src="logo/diddy-newyear-rounded.svg" width="96" alt="New Year">
+</p>
 
 ## Dateien
 
-Farbtöne: `pink` (Standard), `blue`, `purple`, `black`, `magenta`. Das sind dieselben Namen wie in der
-App-Icon-Auswahl.
+Farbtöne: `pink` (Standard), `blue`, `purple`, `black`, `magenta`. Dazu die Anlass-Ausgaben `valentine`,
+`easter`, `halloween`, `christmas`, `newyear`. Das sind dieselben Namen wie in der App-Icon-Auswahl.
+
+## Anlass-Ausgaben
+
+Das „d“ bleibt in jeder Ausgabe genau wie im Original (Form, Größe, Lage). Dazu kommen eine Deko und kleine
+Formen auf der Kachel:
+
+| Ton | Kachel | Deko (`DECORATIONS`) | Formen (`SCATTER`) | Theme |
+|---|---|---|---|---|
+| `valentine` | Rosenrot | Herz in der Sprechblase | Herzen | Valentine (hell) |
+| `easter` | Frühlingsgrün | Hasenohren | bunte Eier | Easter (hell) |
+| `halloween` | Kürbisorange | Hexenhut | Fledermäuse | Halloween |
+| `christmas` | Weinrot | Weihnachtsmütze | Schnee | Christmas |
+| `newyear` | Mitternachtsblau, goldenes „d“ | Partyhut | Konfetti | New Year |
+
+Hüte und Ohren sitzen auf dem runden Teil des „d“ wie auf einem Kopf (`on_head` in `build.py`), dort hat die
+Kachel Platz. Ein neuer Anlass braucht einen Eintrag in `TONES`, eine Zeichenfunktion in `DECORATIONS` und
+eine Form in `scatter()`. Danach die ID überall eintragen, wo die anderen Töne stehen; `cinny/tests/themeParity.test.cjs`
+und `electron/tests/linuxFeatures.test.cjs` melden fehlende Stellen. Die Themes stehen in `cinny/src/colors.css.ts`,
+ihr Fensterhintergrund (Glühen und Formen) in `cinny/src/index.css`.
 
 | Datei | Zweck |
 |---|---|

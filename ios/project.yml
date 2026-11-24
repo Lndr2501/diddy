@@ -110,7 +110,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: app.diddy.ios
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         # Home-screen icons the user can switch to in Settings (see AppIconManager.swift).
-        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: AppIcon-Blue AppIcon-Purple AppIcon-Black AppIcon-Magenta
+        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: AppIcon-Blue AppIcon-Purple AppIcon-Black AppIcon-Magenta AppIcon-Valentine AppIcon-Easter AppIcon-Halloween AppIcon-Christmas AppIcon-Newyear
         ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: NO
 
   # "Diddy" in the screen broadcast sheet: records the whole screen, also in other apps, and hands

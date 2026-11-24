@@ -5,10 +5,31 @@
 import { useSyncExternalStore } from 'react';
 import { canInvoke, invoke } from './tauri';
 
-export type AppIconId = 'pink' | 'blue' | 'purple' | 'black' | 'magenta';
+export type AppIconId =
+  | 'pink'
+  | 'blue'
+  | 'purple'
+  | 'black'
+  | 'magenta'
+  | 'valentine'
+  | 'easter'
+  | 'halloween'
+  | 'christmas'
+  | 'newyear';
 
 export const DEFAULT_APP_ICON: AppIconId = 'pink';
-export const APP_ICON_IDS: AppIconId[] = ['pink', 'blue', 'purple', 'black', 'magenta'];
+export const APP_ICON_IDS: AppIconId[] = [
+  'pink',
+  'blue',
+  'purple',
+  'black',
+  'magenta',
+  'valentine',
+  'easter',
+  'halloween',
+  'christmas',
+  'newyear',
+];
 
 const STORAGE_KEY = 'appIcon';
 const CHANGE_EVENT = 'diddy-app-icon-change';

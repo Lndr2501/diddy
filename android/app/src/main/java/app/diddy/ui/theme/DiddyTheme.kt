@@ -86,6 +86,34 @@ data class DiddyTheme(
             rail = 0x000000, sidebar = 0x111111, chat = 0x000000, elevated = 0x111111, input = 0x1A1A1A,
             accent = 0x346BF1, text = 0xF5F5F5, online = VIVID_ONLINE, danger = VIVID_DANGER,
         )
+        // Occasion themes, each pairs with the desktop/iOS app icon of the same name.
+        val valentine = make(
+            "valentine-theme", "Valentine", true,
+            rail = 0xEBCFDB, sidebar = 0xF6E3EA, chat = 0xFFF7FA, elevated = 0xF8E8EE, input = 0xF0D6E0,
+            accent = 0xC2185B, text = 0x2A0F1A, online = 0x00844C, danger = 0xC40E0E,
+        )
+        val easter = make(
+            "easter-theme", "Easter", true,
+            rail = 0xDCEBCD, sidebar = 0xE9F4DF, chat = 0xFBFDF6, elevated = 0xF1F7E8, input = 0xE7F1DB,
+            accent = 0x6A3FC8, text = 0x14240F, online = 0x00844C, danger = 0xC40E0E,
+        )
+        val halloween = make(
+            "halloween-theme", "Halloween", false,
+            rail = 0x0E0912, sidebar = 0x211628, chat = 0x16111A, elevated = 0x251C2B, input = 0x2E2434,
+            accent = 0xFF9033, text = 0xF4ECF7, online = VIVID_ONLINE, danger = VIVID_DANGER,
+        )
+        val newYear = make(
+            "newyear-theme", "New Year", false,
+            rail = 0x080C1C, sidebar = 0x151B36, chat = 0x0E1226, elevated = 0x1A2040, input = 0x222849,
+            accent = 0xF2C24E, text = 0xEEF0FA, online = VIVID_ONLINE, danger = VIVID_DANGER,
+        )
+
+        /** Wine red surfaces and a cranberry accent, pairs with the Christmas app icon. */
+        val christmas = make(
+            "christmas-theme", "Christmas", false,
+            rail = 0x12070A, sidebar = 0x261117, chat = 0x1B1214, elevated = 0x2A1C20, input = 0x332428,
+            accent = 0xDB3B57, text = 0xF6ECEE, online = VIVID_ONLINE, danger = VIVID_DANGER,
+        )
 
         val all: List<DiddyTheme> = listOf(
             diddy, light, silver, dark, butter,
@@ -94,6 +122,11 @@ data class DiddyTheme(
             accentOnBlack("purple-theme", "Purple & Black", 0x0F0818, 0xB26BFF, 0xEFE8F9),
             accentOnBlack("amber-theme", "Amber & Black", 0x130C03, 0xFFA726, 0xFBEFD9),
             daaark,
+            valentine,
+            easter,
+            halloween,
+            christmas,
+            newYear,
         )
 
         fun named(id: String?): DiddyTheme {

@@ -36,7 +36,7 @@ struct DiddyTheme: Identifiable, Equatable {
         .accentOnBlack(id: "green-theme", name: "Green & Black", background: 0x07120C, accent: 0x42E08C, text: 0xE8F6EE),
         .accentOnBlack(id: "purple-theme", name: "Purple & Black", background: 0x0F0818, accent: 0xB26BFF, text: 0xEFE8F9),
         .accentOnBlack(id: "amber-theme", name: "Amber & Black", background: 0x130C03, accent: 0xFFA726, text: 0xFBEFD9),
-        .daaark,
+        .daaark, .valentine, .easter, .halloween, .christmas, .newYear,
     ]
 
     static func named(_ id: String?) -> DiddyTheme {
@@ -114,6 +114,33 @@ struct DiddyTheme: Identifiable, Equatable {
         id: "daaark-theme", name: "DAAARK", isLight: false,
         rail: 0x000000, sidebar: 0x111111, chat: 0x000000, elevated: 0x111111, input: 0x1A1A1A,
         accent: 0x346BF1, text: 0xF5F5F5, online: vividOnline, danger: vividDanger)
+
+    // Occasion themes, each pairs with the app icon of the same name.
+    static let valentine = DiddyTheme(
+        id: "valentine-theme", name: "Valentine", isLight: true,
+        rail: 0xEBCFDB, sidebar: 0xF6E3EA, chat: 0xFFF7FA, elevated: 0xF8E8EE, input: 0xF0D6E0,
+        accent: 0xC2185B, text: 0x2A0F1A, online: 0x00844C, danger: 0xC40E0E)
+
+    static let easter = DiddyTheme(
+        id: "easter-theme", name: "Easter", isLight: true,
+        rail: 0xDCEBCD, sidebar: 0xE9F4DF, chat: 0xFBFDF6, elevated: 0xF1F7E8, input: 0xE7F1DB,
+        accent: 0x6A3FC8, text: 0x14240F, online: 0x00844C, danger: 0xC40E0E)
+
+    static let halloween = DiddyTheme(
+        id: "halloween-theme", name: "Halloween", isLight: false,
+        rail: 0x0E0912, sidebar: 0x211628, chat: 0x16111A, elevated: 0x251C2B, input: 0x2E2434,
+        accent: 0xFF9033, text: 0xF4ECF7, online: vividOnline, danger: vividDanger)
+
+    static let newYear = DiddyTheme(
+        id: "newyear-theme", name: "New Year", isLight: false,
+        rail: 0x080C1C, sidebar: 0x151B36, chat: 0x0E1226, elevated: 0x1A2040, input: 0x222849,
+        accent: 0xF2C24E, text: 0xEEF0FA, online: vividOnline, danger: vividDanger)
+
+    /// Wine red surfaces and a cranberry accent, pairs with the Christmas app icon.
+    static let christmas = DiddyTheme(
+        id: "christmas-theme", name: "Christmas", isLight: false,
+        rail: 0x12070A, sidebar: 0x261117, chat: 0x1B1214, elevated: 0x2A1C20, input: 0x332428,
+        accent: 0xDB3B57, text: 0xF6ECEE, online: vividOnline, danger: vividDanger)
 
     /// The desktop's `darkPalette()`: a near-black background tinted by the accent.
     private static func accentOnBlack(id: String, name: String, background: UInt32, accent: UInt32, text: UInt32) -> DiddyTheme {

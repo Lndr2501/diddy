@@ -145,7 +145,7 @@ stdenv.mkDerivation {
     jq --arg version "${version}" '.version = $version | del(.scripts)' electron/package.json \
       > $share/electron/package.json
     ln -s ${frontend} $share/frontend
-    cp src-tauri/app-icons/{pink,blue,purple,black,magenta}.png $share/app-icons/
+    cp src-tauri/app-icons/{pink,blue,purple,black,magenta,valentine,easter,halloween,christmas,newyear}.png $share/app-icons/
 
     install -Dm644 src-tauri/icons/32x32.png $out/share/icons/hicolor/32x32/apps/diddy.png
     install -Dm644 src-tauri/icons/128x128.png $out/share/icons/hicolor/128x128/apps/diddy.png

@@ -73,7 +73,12 @@ test('app icon: all ids exist and are shipped by the Linux package and the Nix p
   assert.ok(nix.includes(`src-tauri/app-icons/{${ICON_IDS.join(',')}}.png`), 'nix copies every icon');
   // same ids as the page and the Tauri build
   const page = fs.readFileSync(path.join(root, 'cinny/src/app/plugins/appIcon.ts'), 'utf8');
-  assert.ok(page.includes(`APP_ICON_IDS: AppIconId[] = [${ICON_IDS.map((id) => `'${id}'`).join(', ')}]`));
+  // the list may be wrapped over several lines
+  const pageIds = page.match(/APP_ICON_IDS: AppIconId\[\] = \[([^\]]+)\]/)[1].match(/'[a-z]+'/g);
+  assert.deepEqual(pageIds, ICON_IDS.map((id) => `'${id}'`));
+  // the Tauri build embeds every icon
+  const rust = fs.readFileSync(path.join(root, 'src-tauri/src/app_icon.rs'), 'utf8');
+  for (const id of ICON_IDS) assert.ok(rust.includes(`("${id}", include_bytes!("../app-icons/${id}.png")`), id);
 });
 
 test('app icon: applied to every open window, saved, used for the next window', () => {
