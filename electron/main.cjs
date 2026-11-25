@@ -22,6 +22,7 @@ const {
   screen,
   session,
   shell,
+  systemPreferences,
 } = require('electron');
 const { configDir, browserDataDir } = require('./lib/paths.cjs');
 const diag = require('./lib/diag.cjs');
@@ -38,6 +39,7 @@ const { shouldReloadAfter, createRateLimiter, describeError } = require('./lib/c
 const { startStaticServer } = require('./lib/staticServer.cjs');
 const { isSsoStart, openSsoWindow } = require('./lib/ssoWindow.cjs');
 const { createSystemAudio, bindSystemAudioLifecycle, systemAudioSupport, helperName } = require('./lib/systemAudio.cjs');
+const { createMicrophoneAccess } = require('./lib/microphone.cjs');
 const { createScreenPicker, screenSourceOptions } = require('./lib/screenPicker.cjs');
 const { parseAgentVoiceLaunch, createAgentVoiceTrigger } = require('./lib/agentVoice.cjs');
 const { createAgentVoiceHotkey } = require('./lib/agentVoiceHotkey.cjs');
@@ -402,6 +404,15 @@ const handleLaunch = (argv) => {
   return true;
 };
 
+// ---- microphone permission of the system (Windows privacy settings) --------------------------
+
+const { microphoneAccess, openMicrophoneSettings } = createMicrophoneAccess({
+  platform: process.platform,
+  systemPreferences,
+  shell,
+  log: (line) => diag.writeLine(line),
+});
+
 // ---- commands of the page (same names and arguments as the Tauri commands) ----------------
 
 const commands = {
@@ -443,6 +454,9 @@ const commands = {
   updater_set_config: () => null,
   // texts of the right-click menu and the screen picker in the UI language (lib/uiStrings.cjs)
   set_ui_language: (args) => setUiLanguage(args),
+  // Windows: whether "Let desktop apps access your microphone" lets Diddy in (lib/microphone.cjs).
+  microphone_access: () => microphoneAccess(),
+  open_microphone_settings: () => openMicrophoneSettings(),
 };
 
 const audioCaptures = new Map();
@@ -534,6 +548,8 @@ if (!app.requestSingleInstanceLock()) {
       `---- Diddy ${VERSION} started (${process.platform} ${process.arch}, electron ${process.versions.electron}, chromium ${process.versions.chrome}) ----`
     );
     Menu.setApplicationMenu(null);
+    // Windows: a microphone blocked in the privacy settings is the first thing to rule out.
+    if (process.platform === 'win32') microphoneAccess();
     if (!process.env.DIDDY_DEV_URL) {
       if (!frontendDir) {
         dialog.showErrorBox('Diddy', 'Die Diddy-Oberfläche wurde nicht gefunden (DIDDY_FRONTEND_DIR).');

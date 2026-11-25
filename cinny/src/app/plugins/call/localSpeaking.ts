@@ -6,7 +6,7 @@
  * Installed as a wrapper around the call iframe's getUserMedia(), after the soundboard's wrapper.
  */
 import { useSyncExternalStore } from 'react';
-import { getSharedAudioContext } from './sharedAudio';
+import { getMicAudioContext } from './micAudio';
 import { createVoiceActivity, levelDb, SILENCE_DB } from './voiceActivity';
 
 /** Measuring interval while the microphone is live; 100 ms still follows speech closely. */
@@ -59,7 +59,7 @@ export const watchLocalMicrophone = (track: MediaStreamTrack, win?: Window): voi
   let source: MediaStreamAudioSourceNode;
   let analyser: AnalyserNode;
   try {
-    ctx = getSharedAudioContext();
+    ctx = getMicAudioContext();
     source = ctx.createMediaStreamSource(new MediaStream([track]));
     analyser = ctx.createAnalyser();
     analyser.fftSize = 1024;

@@ -1483,7 +1483,13 @@
       "turnOff": "Turn Off {{what}}",
       "turnOn": "Turn On {{what}}",
       "stop": "Stop {{what}}",
-      "start": "Start {{what}}"
+      "start": "Start {{what}}",
+      "micBlocked": "Windows blocks the microphone for desktop apps",
+      "micDenied": "Diddy may not use the microphone",
+      "micBusy": "The microphone does not open. Another app may be using it",
+      "micMissing": "No microphone found",
+      "micProcessingOff": "Audio processing stopped: plain microphone, no noise filter or soundboard",
+      "openSettings": "Open settings"
     },
     "memberCard": {
       "collapse": "Collapse",

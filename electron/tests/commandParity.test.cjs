@@ -20,7 +20,17 @@ const MACOS_ONLY = new Set(['updater_state', 'updater_action', 'updater_open_rel
 // set_in_call switches background throttling of the Electron window by call state; Tauri keeps its
 // own fixed setting and the page only calls it outside macOS (CallEmbedProvider).
 // hotkey_bind is the same for the page's other hotkeys (push-to-talk); hotkey_wait exists on both.
-const LINUX_ONLY = new Set(['agent_voice_bind', 'agent_voice_hotkey_info', 'hotkey_bind', 'set_in_call', 'set_ui_language']);
+// microphone_access and open_microphone_settings read and open the Windows privacy settings (micProblem.ts
+// only calls them on Windows).
+const LINUX_ONLY = new Set([
+  'agent_voice_bind',
+  'agent_voice_hotkey_info',
+  'hotkey_bind',
+  'set_in_call',
+  'set_ui_language',
+  'microphone_access',
+  'open_microphone_settings',
+]);
 
 const tauriCommands = () => {
   const block = /generate_handler!\[([\s\S]*?)\]/.exec(libRs);

@@ -16,6 +16,13 @@ import { getCallPrefs, micAutoGain } from '../../state/callPrefs';
 import { getAudioPrefs, registerInputGain } from './audioDevices';
 import { applyAudioProcessingPolicy } from './audioConstraints';
 import { getSharedAudioContext } from './sharedAudio';
+import { ClockWatch, discardMicAudioContext, getMicAudioContext, STALL_MS } from './micAudio';
+import {
+  clearMicProblem,
+  reportMicFailure,
+  reportMicOpened,
+  reportProcessingStopped,
+} from './micProblem';
 import { createNoiseSuppressor, releaseNoiseSuppressor } from './noiseSuppression';
 import { isNativeMic, nativeMicAvailable, openNativeMic, preferredNativeMic } from './nativeMic';
 import { PreviewContext, SoundPreview } from './soundPreview';
@@ -42,6 +49,10 @@ const HOTKEYS_GLOBAL_KEY = 'soundboardHotkeysGlobal';
 const MAX_SECONDS = 20;
 
 const blobKey = (id: string) => `clip:${id}`;
+
+/** How often the clock of the mix context is checked, and after how many stops it is given up. */
+const CLOCK_CHECK_MS = 1000;
+const MAX_MIXER_STALLS = 2;
 
 /** Keep every microphone entry point on the current voice-processing policy. */
 const forceProcessingOff = (c?: MediaTrackConstraints): MediaTrackConstraints =>
@@ -95,8 +106,12 @@ const logMicSettings = (
 };
 
 type MicMix = {
+  /** The context the mix runs in (micAudio.ts); clips for the call are played in it. */
+  ctx: AudioContext;
   /** Clips are connected here to be heard by the call. */
   bus: GainNode;
+  /** Ends the mixed track as if the microphone was unplugged: LiveKit opens a new one. */
+  fail: () => void;
   stop: () => void;
   /** Swaps the microphone under the mixer (live switching of the input device). */
   replaceMic: (track: MediaStreamTrack) => void;
@@ -149,6 +164,20 @@ class Soundboard {
 
   /** Clips that are playing right now. */
   private active = new Set<AudioBufferSourceNode>();
+
+  /** The same clips, played into call mixes that run in a context of their own (micAudio.ts). */
+  private callSources = new Set<AudioBufferSourceNode>();
+
+  /** Watches the clock of the mix context while a mix runs (see checkClock). */
+  private clockWatch = new ClockWatch();
+
+  private clockTimer?: ReturnType<typeof setInterval>;
+
+  /** How often the mix context stopped in this session. */
+  private stalls = 0;
+
+  /** After repeated stalls the call gets the plain microphone for the rest of the session. */
+  private bypassMixer = false;
 
   private hotkeys: Record<string, string>;
 
@@ -345,7 +374,10 @@ class Soundboard {
     gain.gain.value = this.volume;
     source.connect(gain);
     gain.connect(ctx.destination);
-    this.mixes.forEach((mix) => gain.connect(mix.bus));
+    this.mixes.forEach((mix) => {
+      if (mix.ctx === ctx) gain.connect(mix.bus);
+      else this.playIntoMix(mix, buffer);
+    });
 
     this.active.add(source);
     this.playing = id;
@@ -360,6 +392,70 @@ class Soundboard {
       }
     };
     source.start();
+  }
+
+  /** Plays a clip into a call mix whose context is not the local one (nodes cannot cross). */
+  private playIntoMix(mix: MicMix, buffer: AudioBuffer): void {
+    try {
+      const source = mix.ctx.createBufferSource();
+      source.buffer = buffer;
+      const gain = mix.ctx.createGain();
+      gain.gain.value = this.volume;
+      source.connect(gain);
+      gain.connect(mix.bus);
+      this.callSources.add(source);
+      source.onended = () => {
+        source.disconnect();
+        gain.disconnect();
+        this.callSources.delete(source);
+      };
+      source.start();
+    } catch (e) {
+      diag(`soundboard: clip into the call failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
+  /**
+   * The mix context must keep running: if its clock stands still, the call hears silence while
+   * everything looks fine. Then the mixed track is ended like an unplugged microphone, LiveKit
+   * opens the microphone again and gets a fresh mix in a fresh context. Stopping a second time
+   * means the processing cannot work here: the plain microphone is used from then on.
+   */
+  private checkClock(): void {
+    const [first] = Array.from(this.mixes);
+    if (!first) {
+      this.stopClockWatch();
+      return;
+    }
+    const { ctx } = first;
+    if (ctx.state === 'suspended' || (ctx.state as string) === 'interrupted') {
+      ctx.resume().catch(() => undefined);
+    }
+    if (!this.clockWatch.update(performance.now(), ctx.currentTime, ctx.state)) return;
+    this.stalls += 1;
+    diag(
+      `mic mixer stalled: audio clock stood still for ${STALL_MS} ms (state=${ctx.state} rate=${ctx.sampleRate}), stall ${this.stalls}`
+    );
+    if (this.stalls >= MAX_MIXER_STALLS) {
+      this.bypassMixer = true;
+      diag('mic mixer off for this session: the call gets the plain microphone');
+      reportProcessingStopped();
+    }
+    this.clockWatch.reset();
+    Array.from(this.mixes).forEach((mix) => mix.fail());
+    discardMicAudioContext(ctx);
+  }
+
+  private startClockWatch(): void {
+    if (this.clockTimer !== undefined) return;
+    this.clockWatch.reset();
+    this.clockTimer = setInterval(() => this.checkClock(), CLOCK_CHECK_MS);
+  }
+
+  private stopClockWatch(): void {
+    if (this.clockTimer === undefined) return;
+    clearInterval(this.clockTimer);
+    this.clockTimer = undefined;
   }
 
   /**
@@ -392,7 +488,7 @@ class Soundboard {
   /** Stops every clip that is playing right now, for you and for the call. */
   public stopAll(): void {
     // onended runs for each source and cleans up its gain node and the state.
-    Array.from(this.active).forEach((source) => {
+    [...Array.from(this.active), ...Array.from(this.callSources)].forEach((source) => {
       try {
         source.stop();
       } catch {
@@ -469,6 +565,7 @@ class Soundboard {
   ): Promise<MediaStream> {
     const [mic] = stream.getAudioTracks();
     if (!mic) return stream;
+    if (this.bypassMixer) return stream;
     // Without clips, a custom input volume or a chosen microphone there is nothing to process, so
     // keep the plain microphone: the most direct, glitch-free path to the call. (A chosen
     // microphone goes through the mixer so it can be switched live without Element Call's help.)
@@ -483,7 +580,8 @@ class Soundboard {
       return stream;
     }
 
-    const ctx = this.getContext();
+    // A context of its own without output device where possible (micAudio.ts).
+    const ctx = getMicAudioContext();
     // A suspended context would make the microphone silent. Better no soundboard than no voice.
     if (ctx.state !== 'running') {
       await Promise.race([ctx.resume(), new Promise((resolve) => setTimeout(resolve, 800))]).catch(
@@ -518,6 +616,7 @@ class Soundboard {
 
     let stopped = false;
     const mix: MicMix = {
+      ctx,
       bus,
       getMic: () => currentMic,
       stop: () => {
@@ -530,8 +629,16 @@ class Soundboard {
         micGain.disconnect();
         bus.disconnect();
         this.mixes.delete(mix);
-        if (this.mixes.size === 0) this.micConstraints = undefined;
+        if (this.mixes.size === 0) {
+          this.micConstraints = undefined;
+          this.stopClockWatch();
+        }
         this.emit();
+      },
+      fail: () => {
+        if (stopped) return;
+        mixed.stop();
+        mixed.dispatchEvent(new Event('ended'));
       },
       replaceMic: (track) => {
         const old = currentMic;
@@ -546,7 +653,13 @@ class Soundboard {
     };
     this.mixes.add(mix);
     this.micConstraints = audioConstraints ?? true;
+    this.startClockWatch();
     this.emit();
+    diag(
+      `mic mixer on rate=${ctx.sampleRate} noiseSuppression=${suppressor ? 'on' : 'off'} clips=${
+        this.clips.length
+      }`
+    );
 
     // Behave like the microphone track for code that inspects or reconfigures it.
     Object.defineProperties(mixed, {
@@ -723,6 +836,7 @@ export const installSoundboard = (win: Window | null | undefined) => {
           e instanceof Error ? `${e.name}: ${e.message}` : String(e)
         }`
       );
+      if (constraints?.audio) reportMicFailure(e).catch(() => undefined);
       throw e;
     }
     diag(
@@ -736,6 +850,7 @@ export const installSoundboard = (win: Window | null | undefined) => {
       // Missing settings do not prove that the browser honored or rejected a processing flag.
       const track = stream.getAudioTracks()[0];
       logMicSettings('mic', usedAudio, track?.getSettings?.() ?? {});
+      reportMicOpened().catch(() => undefined);
     }
     if (!constraints?.audio) return stream;
     try {
@@ -767,6 +882,8 @@ const callMicTracks = new WeakMap<Window, Set<MediaStreamTrack>>();
 /** Stops every microphone track this call page got (stopping a mixed track also ends its mixer). */
 export const releaseCallMicrophones = (win: Window | null | undefined): void => {
   if (!win) return;
+  // a hint about the microphone belongs to the call that ends here
+  clearMicProblem();
   const tracks = callMicTracks.get(win);
   if (!tracks) return;
   callMicTracks.delete(win);

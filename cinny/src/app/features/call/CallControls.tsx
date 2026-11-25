@@ -36,6 +36,21 @@ import { useTranslation } from 'react-i18next';
 import { usePushToTalkPrefs, usePushToTalkState } from '../../state/pushToTalk';
 import { formatHotkey } from '../../plugins/agentVoice/hotkey';
 import { isMacOS } from '../../utils/user-agent';
+import {
+  canOpenMicSettings,
+  dismissMicProblem,
+  MicProblem,
+  openMicSettings,
+  useMicProblem,
+} from '../../plugins/call/micProblem';
+
+const MIC_PROBLEM_TEXT: Record<MicProblem, string> = {
+  blocked: 'call.controls.micBlocked',
+  denied: 'call.controls.micDenied',
+  busy: 'call.controls.micBusy',
+  missing: 'call.controls.micMissing',
+  processing: 'call.controls.micProcessingOff',
+};
 
 type CallControlsProps = {
   callEmbed: CallEmbed;
@@ -69,6 +84,8 @@ export function CallControls({ callEmbed }: CallControlsProps) {
   let phoneState: 'idle' | 'waiting' | 'connected' = 'idle';
   if (phone) phoneState = 'connected';
   else if (companion.phase === 'waiting') phoneState = 'waiting';
+
+  const micProblem = useMicProblem();
 
   const pttState = usePushToTalkState();
   const pttPrefs = usePushToTalkPrefs();
@@ -134,6 +151,30 @@ export function CallControls({ callEmbed }: CallControlsProps) {
           <Text size="T200" truncate>
             {status.text}
           </Text>
+        </div>
+      )}
+      {micProblem && !phoneMic && (
+        <div
+          className={css.ControlToast}
+          data-kind={micProblem === 'processing' ? 'info' : 'warning'}
+          role="alert"
+        >
+          <Icon size="100" src={micProblem === 'processing' ? Icons.Info : Icons.MicMute} />
+          <Text size="T200" truncate>
+            {t(MIC_PROBLEM_TEXT[micProblem])}
+          </Text>
+          {(micProblem === 'blocked' || micProblem === 'denied') && canOpenMicSettings() && (
+            <button type="button" className={css.ToastAction} onClick={openMicSettings}>
+              <Text as="span" size="T200">
+                {t('call.controls.openSettings')}
+              </Text>
+            </button>
+          )}
+          <button type="button" className={css.ToastAction} onClick={dismissMicProblem}>
+            <Text as="span" size="T200">
+              {t('call.controls.ok')}
+            </Text>
+          </button>
         </div>
       )}
       {companion.phase === 'ended' && (
