@@ -1,0 +1,1 @@
+New occasion themes: Valentine, Easter, Halloween, Christmas and New Year, with the same colours as on desktop and iOS. The app icon stays the pink one on Android. On desktop, the microphone now stays audible in calls on Windows and Diddy explains when it fails; the Android call client is not affected.

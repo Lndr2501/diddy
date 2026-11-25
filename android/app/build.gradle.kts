@@ -16,10 +16,10 @@ plugins {
 
 // The Diddy version, the same for every platform. .github/scripts/stamp-version.sh writes both lines.
 // The versionCode stays a plain number because F-Droid's update check reads it from this file.
-val diddyVersion = "1.12.3"
-val diddyVersionCode = 11203
+val diddyVersion = "1.13.0"
+val diddyVersionCode = 11300
 
-/** 1.12.3 -> 11203. Updates need a growing versionCode; the patch level has two digits. */
+/** 1.13.0 -> 11300. Updates need a growing versionCode; the patch level has two digits. */
 fun versionCodeOf(version: String): Int {
     val (major, minor, patch) = version.split(".").map { it.toInt() }
     return major * 10000 + minor * 100 + patch

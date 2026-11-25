@@ -1,0 +1,1 @@
+Neue Themes zu Anlässen: Valentine, Easter, Halloween, Christmas und New Year, mit denselben Farben wie am Desktop und auf iOS. Das App-Icon bleibt auf Android das pinke. Am Desktop bleibt das Mikrofon unter Windows im Call hörbar und Diddy erklärt, wenn es nicht geht; der Android-Call-Client ist davon nicht betroffen.
